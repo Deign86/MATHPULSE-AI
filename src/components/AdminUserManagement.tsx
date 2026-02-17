@@ -91,7 +91,7 @@ const AdminUserManagement: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<(typeof initialUsers)[number] | null>(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -114,7 +114,7 @@ const AdminUserManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (user: any) => {
+  const handleOpenEditModal = (user: (typeof initialUsers)[number]) => {
     setEditingUser(user);
     setFormData({
       name: user.name,

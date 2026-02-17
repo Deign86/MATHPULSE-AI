@@ -2,20 +2,7 @@ import React, { useState } from 'react';
 import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
-
-interface Quiz {
-  id: string;
-  title: string;
-  subject: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  questions: number;
-  duration: string;
-  xpReward: number;
-  type: 'practice' | 'challenge' | 'mastery';
-  completed: boolean;
-  bestScore?: number;
-  locked: boolean;
-}
+import { Quiz } from './QuizExperience';
 
 interface PracticeCenterProps {
   onStartQuiz?: (quiz: Quiz) => void;

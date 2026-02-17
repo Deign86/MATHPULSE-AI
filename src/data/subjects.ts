@@ -1,3 +1,4 @@
+import React from 'react';
 import { Calculator, TrendingUp, BarChart3, Sigma } from 'lucide-react';
 
 export interface Lesson {
@@ -38,7 +39,7 @@ export interface Subject {
   title: string;
   description: string;
   modules: Module[];
-  icon: any;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   color: string;
   iconColor: string;
   accentColor: string;

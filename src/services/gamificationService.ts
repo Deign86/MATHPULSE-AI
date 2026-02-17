@@ -145,14 +145,24 @@ export const getLeaderboard = async (
 
       // This is a simplified version - in production, you'd want to batch this
       const usersSnapshot = await getDocs(collection(db, 'users'));
+      interface LeaderboardUser {
+        uid: string;
+        name?: string;
+        photo?: string;
+        totalXP?: number;
+        level?: number;
+        weeklyXP?: number;
+        monthlyXP?: number;
+      }
+
       const allUsers = usersSnapshot.docs
-        .map(doc => ({ ...doc.data(), uid: doc.id }) as any)
-        .filter((user: any) => friends.includes(user.uid));
+        .map(doc => ({ ...doc.data(), uid: doc.id }) as LeaderboardUser)
+        .filter((user) => friends.includes(user.uid));
 
       return allUsers
-        .sort((a: any, b: any) => (b.totalXP || 0) - (a.totalXP || 0))
+        .sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0))
         .slice(0, limitCount)
-        .map((user: any, index: number) => ({
+        .map((user, index: number) => ({
           userId: user.uid,
           name: user.name || 'Unknown',
           photo: user.photo,
@@ -280,7 +290,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
       },
       {
         id: 'perfect_score',
-        condition: progressData.quizAttempts?.some((q: any) => q.score === 100) || false,
+        condition: progressData.quizAttempts?.some((q: { score: number }) => q.score === 100) || false,
         title: 'Perfect Score',
         description: 'Get 100% on a quiz',
         icon: '⭐',
@@ -306,7 +316,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
 
     // Check each condition
     for (const achievement of achievementConditions) {
-      const alreadyUnlocked = unlockedAchievements.some((a: any) => a.id === achievement.id);
+      const alreadyUnlocked = unlockedAchievements.some((a: { id: string }) => a.id === achievement.id);
       
       if (!alreadyUnlocked && achievement.condition) {
         const newAchievement: Achievement = {

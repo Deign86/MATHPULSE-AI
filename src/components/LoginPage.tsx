@@ -81,8 +81,8 @@ const LoginPage: React.FC = () => {
         // Sign in existing user
         await signInWithEmail(email, password);
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
       setLoading(false);
     }
   };
@@ -93,8 +93,8 @@ const LoginPage: React.FC = () => {
     
     try {
       await signInWithGoogle(selectedRole);
-    } catch (err: any) {
-      setError(err.message || 'Google sign-in failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setLoading(false);
     }
   };
@@ -108,30 +108,32 @@ const LoginPage: React.FC = () => {
     try {
       // Try to sign in first (signInWithEmail now auto-creates profile if missing)
       await signInWithEmail(demoEmail, demoPassword);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If sign in fails because account doesn't exist at all, create it
-      if (err.message?.includes('user-not-found') || err.message?.includes('invalid-credential')) {
+      const errMsg = err instanceof Error ? err.message : '';
+      if (errMsg.includes('user-not-found') || errMsg.includes('invalid-credential')) {
         try {
           const demoAccount = demoAccounts.find(acc => acc.type === type);
           if (demoAccount) {
             await signUpWithEmail(demoEmail, demoPassword, demoAccount.name, type);
           }
-        } catch (signUpErr: any) {
+        } catch (signUpErr: unknown) {
           // If sign-up fails because email already in use, try signing in again
-          if (signUpErr.message?.includes('email-already-in-use')) {
+          const signUpMsg = signUpErr instanceof Error ? signUpErr.message : '';
+          if (signUpMsg.includes('email-already-in-use')) {
             try {
               await signInWithEmail(demoEmail, demoPassword);
-            } catch (finalErr: any) {
-              setError(finalErr.message || 'Authentication failed');
+            } catch (finalErr: unknown) {
+              setError(finalErr instanceof Error ? finalErr.message : 'Authentication failed');
               setLoading(false);
             }
           } else {
-            setError(signUpErr.message || 'Demo account creation failed');
+            setError(signUpMsg || 'Demo account creation failed');
             setLoading(false);
           }
         }
       } else {
-        setError(err.message || 'Authentication failed');
+        setError(errMsg || 'Authentication failed');
         setLoading(false);
       }
     }

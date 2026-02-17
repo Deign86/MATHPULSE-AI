@@ -5,11 +5,18 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 
+interface ProfileData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  photo?: string;
+}
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  profileData?: any;
-  onSave?: (data: any) => void;
+  profileData?: ProfileData;
+  onSave?: (data: ProfileData) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileData, onSave }) => {

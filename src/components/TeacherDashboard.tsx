@@ -441,7 +441,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
 // Navigation Item Component
 const NavItem: React.FC<{
-  icon: any;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
   active: boolean;
   collapsed: boolean;
@@ -910,9 +910,9 @@ const InterventionView: React.FC<{
                       <div>
                         <h3 className="font-bold text-slate-800 mb-1">{step.title}</h3>
                         <p className="text-sm text-slate-600">
-                          {step.type === 'video' && `${(step as any).duration} video lesson`}
-                          {step.type === 'quiz' && `${(step as any).questions} practice questions`}
-                          {step.type === 'assessment' && `${(step as any).questions} assessment questions`}
+                          {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
+                          {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
+                          {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
@@ -966,8 +966,8 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
         toast.success(`Successfully imported ${result.students.length} student records`);
         setUploadResult(`Imported ${result.students.length} students. Column mapping: ${JSON.stringify(result.columnMapping)}`);
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Upload failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
       setUploadResult('Upload failed. Please check the file format and try again.');
     } finally {
       setUploading(false);

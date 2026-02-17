@@ -2,8 +2,17 @@ import React from 'react';
 import { X, Trophy, Target, BookOpen, Flame, Clock, Award, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+interface CompareStudent {
+  name: string;
+  avatar: string;
+  level: number;
+  totalXP: number;
+  currentStreak: number;
+  stats: { quizzesCompleted: number; averageScore: number; modulesCompleted: number; studyHours: number };
+}
+
 interface CompareStatsModalProps {
-  student: any;
+  student: CompareStudent | null;
   onClose: () => void;
 }
 

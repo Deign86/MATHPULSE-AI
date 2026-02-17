@@ -260,7 +260,7 @@ const LeaderboardPage = () => {
             return (
               <button
                 key={view.id}
-                onClick={() => setActiveView(view.id as any)}
+                onClick={() => setActiveView(view.id as typeof activeView)}
                 className={`px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${
                   activeView === view.id
                     ? 'bg-blue-600 text-white shadow-md'
@@ -295,7 +295,7 @@ const LeaderboardPage = () => {
 
           <select
             value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value as any)}
+            onChange={(e) => setTimeFilter(e.target.value as typeof timeFilter)}
             className="px-4 py-2 border border-slate-200 rounded-xl text-sm bg-white"
           >
             <option value="all">All Time</option>
