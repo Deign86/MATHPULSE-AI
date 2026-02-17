@@ -1,17 +1,21 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-3B-Instruct for chat, learning paths, and insights
+- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, and insights
 - facebook/bart-large-mnli for student risk classification
+- Multi-method verification system for math accuracy
 
 Auto-deployed to HuggingFace Spaces via GitHub Actions.
 """
 
 import os
 import io
+import re
 import json
 import logging
-from typing import List, Optional
+import traceback
+from typing import List, Optional, Dict, Any
+from collections import Counter
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,8 +28,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mathpulse")
 
 HF_TOKEN = os.environ.get("HUGGING_FACE_API_TOKEN", os.environ.get("HF_TOKEN", ""))
-CHAT_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+CHAT_MODEL = "Qwen/Qwen2.5-Math-7B-Instruct"
 RISK_MODEL = "facebook/bart-large-mnli"
+VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
 
 # ─── FastAPI App ───────────────────────────────────────────────
 
@@ -75,10 +80,14 @@ class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage] = Field(default_factory=list)
     userId: Optional[str] = None
+    verify: bool = Field(default=False, description="Enable self-consistency verification for math answers")
 
 
 class ChatResponse(BaseModel):
     response: str
+    verified: Optional[bool] = None
+    confidence: Optional[str] = None
+    warning: Optional[str] = None
 
 
 class StudentRiskData(BaseModel):
@@ -124,6 +133,40 @@ class DailyInsightResponse(BaseModel):
     insight: str
 
 
+class VerificationResult(BaseModel):
+    verified: bool
+    confidence: str
+    response: str
+    warning: Optional[str] = None
+
+
+class CodeVerificationResult(BaseModel):
+    verified: bool
+    code: str
+    output: str
+    error: Optional[str] = None
+
+
+class LLMJudgeResult(BaseModel):
+    correct: bool
+    issues: List[str]
+    confidence: float
+
+
+class VerifySolutionRequest(BaseModel):
+    problem: str
+    solution: str
+
+
+class VerifySolutionResponse(BaseModel):
+    overall_verified: bool
+    aggregated_confidence: float
+    self_consistency: Optional[VerificationResult] = None
+    code_verification: Optional[CodeVerificationResult] = None
+    llm_judge: Optional[LLMJudgeResult] = None
+    warnings: List[str] = Field(default_factory=list)
+
+
 # ─── Routes ────────────────────────────────────────────────────
 
 
@@ -145,25 +188,33 @@ async def root():
 # ─── AI Chat Tutor (Qwen/Qwen2.5-3B-Instruct) ───────────────
 
 
-MATH_TUTOR_SYSTEM_PROMPT = """You are MathPulse AI, a friendly and expert math tutor for students. You help with:
+MATH_TUTOR_SYSTEM_PROMPT = """You are MathPulse AI, a rigorous and friendly expert math tutor for students. You help with:
 - Algebra, Geometry, Calculus, Trigonometry, Statistics, and all math topics
-- Step-by-step problem solving with clear explanations
+- Step-by-step problem solving with clear, verifiable explanations
 - Practice problems and concept reinforcement
 - Building confidence in mathematics
 
-Guidelines:
-1. Break down complex problems into clear, numbered steps
-2. Use mathematical notation where helpful (e.g., x², √, π)
-3. Encourage students and celebrate their progress
-4. If a student is struggling, try explaining from a different angle
-5. Ask follow-up questions to check understanding
-6. Keep responses focused and concise (under 300 words unless a detailed derivation is needed)
-7. Use examples relatable to students' daily life when possible"""
+Strict Problem-Solving Protocol:
+1. **Restate the Problem**: Begin every solution by clearly restating what is being asked in your own words.
+2. **Show ALL Calculation Steps**: Write out every intermediate step with full equations. Never skip arithmetic.
+3. **Verify Arithmetic at Each Step**: After each calculation, briefly confirm the result (e.g., "Check: 7 × 8 = 56 ✓").
+4. **State the Final Answer Clearly**: End with a clearly labeled final answer including appropriate units (e.g., "**Final Answer: 42 cm²**").
+5. **Admit Uncertainty**: If you are unsure about any step or the problem is ambiguous, explicitly say so. Never guess.
+6. **Cross-Verify**: For computational problems, verify your answer with a different method when possible (e.g., substitute back, use estimation, or solve via an alternate approach).
+
+Additional Guidelines:
+- Use mathematical notation where helpful (e.g., x², √, π)
+- Encourage students and celebrate their progress
+- If a student is struggling, try explaining from a different angle
+- Ask follow-up questions to check understanding
+- Keep responses focused and concise (under 300 words unless a detailed derivation is needed)
+- Use examples relatable to students' daily life when possible
+- If a problem has multiple valid interpretations, address the most likely one and note alternatives"""
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
-    """AI Math Tutor powered by Qwen/Qwen2.5-3B-Instruct"""
+    """AI Math Tutor powered by Qwen/Qwen2.5-Math-7B-Instruct"""
     try:
         hf = get_client()
 
@@ -180,16 +231,418 @@ async def chat_tutor(request: ChatRequest):
             model=CHAT_MODEL,
             messages=messages,
             max_tokens=2048,
-            temperature=0.7,
+            temperature=0.2,
             top_p=0.9,
         )
 
         answer = response.choices[0].message.content or ""
+
+        # Optional self-consistency verification
+        if request.verify:
+            logger.info("Running self-consistency verification for chat response")
+            verification = await verify_math_response(request.message, messages)
+            return ChatResponse(
+                response=verification["response"],
+                verified=verification["verified"],
+                confidence=verification["confidence"],
+                warning=verification.get("warning"),
+            )
+
         return ChatResponse(response=answer)
 
     except Exception as e:
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
+
+
+# ─── Verification System ──────────────────────────────────────
+
+
+def _extract_final_answer(text: str) -> Optional[str]:
+    """Extract the final numeric/symbolic answer from a math response."""
+    # Try to find explicitly labeled final answers
+    patterns = [
+        r"\*\*Final Answer[:\s]*(.+?)\*\*",
+        r"Final Answer[:\s]*(.+?)[\n\.]",
+        r"(?:the answer is|= )\s*(.+?)[\n\.\s]",
+        r"\\boxed\{(.+?)\}",
+    ]
+    for pat in patterns:
+        match = re.search(pat, text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip().rstrip(".")
+    # Fallback: last line with an equals sign
+    for line in reversed(text.strip().splitlines()):
+        if "=" in line:
+            parts = line.split("=")
+            return parts[-1].strip().rstrip(".")
+    return None
+
+
+async def verify_math_response(
+    problem: str, base_messages: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Self-consistency verification: generate multiple responses to the same
+    math problem and check if the final answers agree.
+    Returns dict with 'verified' (bool), 'confidence' (str), and 'response'.
+    """
+    hf = get_client()
+    responses: List[str] = []
+    answers: List[Optional[str]] = []
+
+    logger.info(f"Generating {VERIFICATION_SAMPLES} responses for self-consistency check")
+
+    for i in range(VERIFICATION_SAMPLES):
+        try:
+            result = hf.chat_completion(
+                model=CHAT_MODEL,
+                messages=base_messages,
+                max_tokens=2048,
+                temperature=0.7,
+                top_p=0.9,
+            )
+            text = result.choices[0].message.content or ""
+            responses.append(text)
+            answers.append(_extract_final_answer(text))
+            logger.info(f"  Sample {i+1} answer: {answers[-1]}")
+        except Exception as e:
+            logger.warning(f"  Sample {i+1} failed: {e}")
+            responses.append("")
+            answers.append(None)
+
+    # Check agreement among non-None answers
+    valid_answers = [a for a in answers if a is not None]
+
+    if not valid_answers:
+        return {
+            "verified": False,
+            "confidence": "low",
+            "response": responses[0] if responses else "",
+            "warning": "Could not extract answers for verification.",
+        }
+
+    counter = Counter(valid_answers)
+    most_common_answer, most_common_count = counter.most_common(1)[0]
+    agreement_ratio = most_common_count / len(valid_answers)
+
+    if agreement_ratio >= 1.0:
+        confidence = "high"
+        verified = True
+    elif agreement_ratio >= 0.6:
+        confidence = "medium"
+        verified = True
+    else:
+        confidence = "low"
+        verified = False
+
+    # Pick the response whose answer matches the majority
+    best_response = responses[0]
+    for resp, ans in zip(responses, answers):
+        if ans == most_common_answer and resp:
+            best_response = resp
+            break
+
+    result: Dict[str, Any] = {
+        "verified": verified,
+        "confidence": confidence,
+        "response": best_response,
+    }
+
+    if not verified:
+        result["warning"] = (
+            f"Self-consistency check failed: answers did not converge "
+            f"({len(set(valid_answers))} distinct answers from {len(valid_answers)} samples). "
+            f"This answer may be unreliable."
+        )
+
+    logger.info(f"Self-consistency result: verified={verified}, confidence={confidence}")
+    return result
+
+
+async def verify_with_code(problem: str, solution: str) -> Dict[str, Any]:
+    """
+    Ask the model to generate Python verification code for a math solution,
+    execute it safely, and return the verification result.
+    """
+    hf = get_client()
+
+    prompt = f"""Given this math problem and its proposed solution, write a short Python script that numerically verifies the answer.
+
+**Problem:** {problem}
+
+**Proposed Solution:** {solution}
+
+Rules:
+- Use only the Python standard library and the `math` module.
+- The script must print EXACTLY one line: either "VERIFIED" if the solution is correct, or "FAILED: <reason>" if it is wrong.
+- Do NOT use input(), networking, file I/O, or any system calls.
+- Keep the script under 30 lines.
+
+Respond with ONLY the Python code, no markdown fences, no explanation."""
+
+    try:
+        result = hf.chat_completion(
+            model=CHAT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a Python code generator. Output only valid Python code, nothing else.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=800,
+            temperature=0.1,
+        )
+
+        raw_code = result.choices[0].message.content or ""
+        # Strip markdown code fences if present
+        code = re.sub(r"^```(?:python)?\s*\n?", "", raw_code.strip())
+        code = re.sub(r"\n?```\s*$", "", code)
+        code = code.strip()
+
+        if not code:
+            return {"verified": False, "code": "", "output": "", "error": "No code generated"}
+
+        logger.info(f"Executing verification code:\n{code}")
+
+        # Execute safely with restricted builtins
+        import math as _math
+
+        safe_globals: Dict[str, Any] = {
+            "__builtins__": {
+                "print": print,
+                "range": range,
+                "len": len,
+                "abs": abs,
+                "round": round,
+                "int": int,
+                "float": float,
+                "str": str,
+                "sum": sum,
+                "min": min,
+                "max": max,
+                "enumerate": enumerate,
+                "zip": zip,
+                "map": map,
+                "list": list,
+                "tuple": tuple,
+                "dict": dict,
+                "set": set,
+                "sorted": sorted,
+                "pow": pow,
+                "isinstance": isinstance,
+                "True": True,
+                "False": False,
+                "None": None,
+            },
+            "math": _math,
+        }
+
+        # Capture stdout
+        import contextlib
+
+        stdout_capture = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(stdout_capture):
+                exec(code, safe_globals)  # noqa: S102
+            output = stdout_capture.getvalue().strip()
+        except Exception as exec_err:
+            output = ""
+            return {
+                "verified": False,
+                "code": code,
+                "output": "",
+                "error": f"Code execution error: {str(exec_err)}",
+            }
+
+        verified = output.upper().startswith("VERIFIED")
+        logger.info(f"Code verification output: {output}")
+
+        return {
+            "verified": verified,
+            "code": code,
+            "output": output,
+            "error": None,
+        }
+
+    except Exception as e:
+        logger.error(f"Code verification error: {e}")
+        return {"verified": False, "code": "", "output": "", "error": str(e)}
+
+
+async def llm_judge_verification(problem: str, solution: str) -> Dict[str, Any]:
+    """
+    Use a second LLM call with low temperature to judge whether a math
+    solution is correct. Checks formula usage, calculations, and logic.
+    Returns dict with 'correct' (bool), 'issues' (list), 'confidence' (float).
+    """
+    hf = get_client()
+
+    prompt = f"""You are a meticulous math verification expert. Your job is to verify whether the following solution to a math problem is mathematically correct.
+
+**Problem:** {problem}
+
+**Solution to verify:**
+{solution}
+
+Carefully check:
+1. Are the correct formulas and theorems applied?
+2. Is every arithmetic calculation accurate?
+3. Is the logical reasoning valid at each step?
+4. Is the final answer correct and in the right units?
+
+Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
+{{
+  "correct": true or false,
+  "issues": ["list of specific errors or concerns, empty if correct"],
+  "confidence": 0.0 to 1.0
+}}"""
+
+    try:
+        result = hf.chat_completion(
+            model=CHAT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a mathematical verification judge. Respond ONLY with valid JSON.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=500,
+            temperature=0.1,
+        )
+
+        raw = result.choices[0].message.content or ""
+        # Extract JSON from response
+        json_start = raw.find("{")
+        json_end = raw.rfind("}") + 1
+        if json_start >= 0 and json_end > json_start:
+            parsed = json.loads(raw[json_start:json_end])
+        else:
+            logger.warning(f"LLM judge returned non-JSON: {raw[:200]}")
+            return {"correct": False, "issues": ["Could not parse judge response"], "confidence": 0.0}
+
+        judge_result = {
+            "correct": bool(parsed.get("correct", False)),
+            "issues": list(parsed.get("issues", [])),
+            "confidence": float(parsed.get("confidence", 0.0)),
+        }
+
+        logger.info(f"LLM judge result: correct={judge_result['correct']}, confidence={judge_result['confidence']}")
+        return judge_result
+
+    except Exception as e:
+        logger.error(f"LLM judge error: {e}\n{traceback.format_exc()}")
+        return {"correct": False, "issues": [f"Judge error: {str(e)}"], "confidence": 0.0}
+
+
+# ─── Verification Endpoint ────────────────────────────────────
+
+
+@app.post("/api/verify-solution", response_model=VerifySolutionResponse)
+async def verify_solution(request: VerifySolutionRequest):
+    """
+    Run all 3 verification methods on a problem+solution pair:
+    1. Self-consistency (multiple samples)
+    2. Code-based verification
+    3. LLM judge review
+    Returns aggregated confidence and per-method results.
+    """
+    try:
+        logger.info(f"Running full verification for problem: {request.problem[:80]}...")
+        warnings: List[str] = []
+
+        # Build messages for self-consistency check
+        messages = [
+            {"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT},
+            {"role": "user", "content": request.problem},
+        ]
+
+        # 1. Self-consistency check
+        try:
+            sc_result = await verify_math_response(request.problem, messages)
+            sc_model = VerificationResult(
+                verified=sc_result["verified"],
+                confidence=sc_result["confidence"],
+                response=sc_result["response"],
+                warning=sc_result.get("warning"),
+            )
+            if sc_result.get("warning"):
+                warnings.append(f"Self-consistency: {sc_result['warning']}")
+        except Exception as e:
+            logger.error(f"Self-consistency verification failed: {e}")
+            sc_model = VerificationResult(
+                verified=False, confidence="low", response="", warning=str(e)
+            )
+            warnings.append(f"Self-consistency check failed: {str(e)}")
+
+        # 2. Code verification
+        try:
+            cv_result = await verify_with_code(request.problem, request.solution)
+            cv_model = CodeVerificationResult(
+                verified=cv_result["verified"],
+                code=cv_result.get("code", ""),
+                output=cv_result.get("output", ""),
+                error=cv_result.get("error"),
+            )
+            if cv_result.get("error"):
+                warnings.append(f"Code verification: {cv_result['error']}")
+        except Exception as e:
+            logger.error(f"Code verification failed: {e}")
+            cv_model = CodeVerificationResult(
+                verified=False, code="", output="", error=str(e)
+            )
+            warnings.append(f"Code verification failed: {str(e)}")
+
+        # 3. LLM judge
+        try:
+            lj_result = await llm_judge_verification(request.problem, request.solution)
+            lj_model = LLMJudgeResult(
+                correct=lj_result["correct"],
+                issues=lj_result["issues"],
+                confidence=lj_result["confidence"],
+            )
+            if lj_result["issues"]:
+                warnings.append(f"LLM judge issues: {'; '.join(lj_result['issues'])}")
+        except Exception as e:
+            logger.error(f"LLM judge verification failed: {e}")
+            lj_model = LLMJudgeResult(correct=False, issues=[str(e)], confidence=0.0)
+            warnings.append(f"LLM judge failed: {str(e)}")
+
+        # Aggregate confidence score (0.0 - 1.0)
+        scores: List[float] = []
+
+        # Self-consistency score
+        sc_score_map = {"high": 1.0, "medium": 0.6, "low": 0.2}
+        scores.append(sc_score_map.get(sc_model.confidence, 0.2))
+
+        # Code verification score
+        scores.append(1.0 if cv_model.verified else 0.0)
+
+        # LLM judge score
+        scores.append(lj_model.confidence if lj_model.correct else (1.0 - lj_model.confidence) * 0.3)
+
+        aggregated = round(sum(scores) / len(scores), 3) if scores else 0.0
+        overall_verified = aggregated >= 0.6
+
+        logger.info(
+            f"Verification complete: overall_verified={overall_verified}, "
+            f"aggregated_confidence={aggregated}"
+        )
+
+        return VerifySolutionResponse(
+            overall_verified=overall_verified,
+            aggregated_confidence=aggregated,
+            self_consistency=sc_model,
+            code_verification=cv_model,
+            llm_judge=lj_model,
+            warnings=warnings,
+        )
+
+    except Exception as e:
+        logger.error(f"Verify solution error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Verification error: {str(e)}")
 
 
 # ─── Student Risk Classification (facebook/bart-large-mnli) ───
