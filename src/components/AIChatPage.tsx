@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { useChatContext } from '../contexts/ChatContext';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import { warmupBackend } from '../services/apiService';
 
 const AIChatPage = () => {
   const { 
@@ -28,6 +29,11 @@ const AIChatPage = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Warm up the HuggingFace Space on mount to reduce cold-start latency
+  useEffect(() => {
+    warmupBackend();
+  }, []);
 
   useEffect(() => {
     scrollToBottom();

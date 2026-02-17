@@ -250,20 +250,26 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
-      // Call backend API
-      const data = await apiService.chat(userText.trim(), history);
+      // Use chatSafe for automatic fallback handling
+      const { data, fromFallback } = await apiService.chatSafe(userText.trim(), history);
+
+      // If we got a fallback response from the API service, enhance it with context-aware response
+      const responseText = fromFallback 
+        ? generateFallbackResponse(userText.trim())
+        : data.response;
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: data.response,
+        text: responseText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       addMessageToSession(sessionId, aiMsg);
     } catch (error) {
-      console.error('AI chat error:', error);
+      // This should rarely happen since chatSafe handles errors gracefully
+      console.warn('Chat fallback also failed:', error);
       
-      // Generate a helpful fallback response instead of a generic error
+      // Generate a helpful fallback response
       const fallbackResponse = generateFallbackResponse(userText.trim());
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),

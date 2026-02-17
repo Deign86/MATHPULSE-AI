@@ -3,6 +3,7 @@ import { Bot, X, Send, Maximize2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
 import ReactMarkdown from 'react-markdown';
+import { warmupBackend } from '../services/apiService';
 
 interface FloatingAITutorProps {
   constraintsRef: React.RefObject<HTMLDivElement | null>;
@@ -14,6 +15,13 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
   const [isOpen, setIsOpen] = useState(false);
   const [currentMessage, setCurrentMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Warm up the HuggingFace Space when chat is opened
+  useEffect(() => {
+    if (isOpen) {
+      warmupBackend();
+    }
+  }, [isOpen]);
 
   // Initialize with a new session if none exists
   useEffect(() => {
