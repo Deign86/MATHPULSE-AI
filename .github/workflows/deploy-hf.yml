@@ -1,0 +1,65 @@
+# ============================================================
+# Auto-deploy backend to Hugging Face Spaces on push to main
+# Mirrors the backend/ folder to your HF Space repository
+# ============================================================
+# 
+# SETUP (one-time):
+# 1. Go to https://huggingface.co/settings/tokens
+#    Create a token with "Write" access
+# 2. In your GitHub repo, go to Settings → Secrets → Actions
+#    Add a secret named HF_TOKEN with your HF token value
+# 3. Push to main — the Action will auto-deploy your backend
+# ============================================================
+
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'    # Only trigger when backend files change
+  workflow_dispatch:     # Allow manual trigger from GitHub UI
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push backend to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Configure git for HF push
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          # Clone the HF Space repo (or create it)
+          SPACE_REPO="https://Deign86:${HF_TOKEN}@huggingface.co/spaces/Deign86/mathpulse-api"
+          
+          git clone "${SPACE_REPO}" hf-space 2>/dev/null || {
+            echo "Space repo not found — creating fresh push"
+            mkdir hf-space && cd hf-space && git init
+            git remote add origin "${SPACE_REPO}"
+            cd ..
+          }
+          
+          # Sync backend files into the Space repo
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            backend/ hf-space/
+          
+          # Commit and push
+          cd hf-space
+          git add -A
+          git diff --staged --quiet && echo "No changes to deploy" && exit 0
+          git commit -m "🚀 Auto-deploy from GitHub (${GITHUB_SHA::7})"
+          git push origin main --force
+          echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-api"
