@@ -197,6 +197,48 @@ const UPLOAD_RETRY_OPTS: RetryFetchOptions = {
   baseBackoffMs: 2_000,
 };
 
+// ─── Warmup / Health Ping ────────────────────────────────────
+
+let _warmupPromise: Promise<boolean> | null = null;
+
+/**
+ * Wake up the HuggingFace Space by pinging the health endpoint.
+ * Called early (e.g., on app load or when chat page mounts) to reduce
+ * cold-start latency when the user actually sends a message.
+ *
+ * Returns true if the backend is healthy, false if unreachable.
+ * Safe to call multiple times – only one request is made.
+ */
+export async function warmupBackend(): Promise<boolean> {
+  if (_warmupPromise) return _warmupPromise;
+
+  _warmupPromise = (async () => {
+    try {
+      logApiInfo('/health', 'GET', 'Warming up HuggingFace Space...');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+
+      const res = await fetch(`${API_URL}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        logApiInfo('/health', 'GET', 'Backend warm and ready');
+        return true;
+      }
+      console.warn('[apiService] Backend health check returned', res.status);
+      return false;
+    } catch (err) {
+      console.warn('[apiService] Backend warmup failed (cold start expected):', err);
+      return false;
+    }
+  })();
+
+  return _warmupPromise;
+}
+
 // ─── Core fetch wrapper ──────────────────────────────────────
 
 /**

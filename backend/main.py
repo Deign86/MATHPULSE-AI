@@ -390,10 +390,10 @@ async def chat_tutor(request: ChatRequest):
         # Add current message
         messages.append({"role": "user", "content": request.message})
 
-        # Retry HF inference up to 3 times with exponential backoff
+        # Retry HF inference up to 5 times with longer backoff for cold starts
         answer = ""
         last_err: Optional[Exception] = None
-        for attempt in range(3):
+        for attempt in range(5):
             try:
                 response = hf.chat_completion(
                     model=CHAT_MODEL,
@@ -407,12 +407,13 @@ async def chat_tutor(request: ChatRequest):
                 break
             except Exception as hf_err:
                 last_err = hf_err
-                logger.warning(f"HF chat attempt {attempt + 1} failed: {hf_err}")
-                if attempt < 2:
-                    await asyncio.sleep(2 ** attempt)
+                logger.warning(f"HF chat attempt {attempt + 1}/5 failed: {hf_err}")
+                if attempt < 4:
+                    # Longer backoff: 2s, 4s, 8s, 16s to handle cold starts
+                    await asyncio.sleep(2 ** (attempt + 1))
 
         if last_err is not None:
-            logger.error(f"HF chat failed after 3 attempts: {last_err}")
+            logger.error(f"HF chat failed after 5 attempts: {last_err}")
             raise HTTPException(
                 status_code=502,
                 detail="AI model service is temporarily unavailable. Please try again.",
