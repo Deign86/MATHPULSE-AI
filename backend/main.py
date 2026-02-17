@@ -20,9 +20,14 @@ import traceback
 from typing import List, Optional, Dict, Any
 from collections import Counter
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
+from starlette.middleware.base import BaseHTTPMiddleware
+import asyncio
+import time
+import uuid
 import uvicorn
 
 # Event-driven automation engine
@@ -99,6 +104,91 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
+# ─── Middleware: Request ID + Logging + Timeout ────────────────
+
+REQUEST_TIMEOUT_SECONDS = 120  # 2 minutes for AI-heavy endpoints
+
+
+class RequestMiddleware(BaseHTTPMiddleware):
+    """Adds request-ID header, logs requests, and enforces timeouts."""
+
+    async def dispatch(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())[:8]
+        start = time.time()
+
+        # Attach request_id for downstream logging
+        request.state.request_id = request_id
+        logger.info(f"[{request_id}] {request.method} {request.url.path}")
+
+        try:
+            response = await asyncio.wait_for(
+                call_next(request),
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
+            duration = round(time.time() - start, 3)
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Response-Time"] = f"{duration}s"
+            logger.info(f"[{request_id}] {response.status_code} in {duration}s")
+            return response
+        except asyncio.TimeoutError:
+            duration = round(time.time() - start, 3)
+            logger.error(f"[{request_id}] TIMEOUT after {duration}s on {request.url.path}")
+            return JSONResponse(
+                status_code=504,
+                content={
+                    "detail": f"Request timed out after {REQUEST_TIMEOUT_SECONDS}s",
+                    "requestId": request_id,
+                },
+                headers={"X-Request-ID": request_id},
+            )
+        except Exception as exc:
+            duration = round(time.time() - start, 3)
+            logger.error(f"[{request_id}] Unhandled error after {duration}s: {exc}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Internal server error",
+                    "requestId": request_id,
+                },
+                headers={"X-Request-ID": request_id},
+            )
+
+
+app.add_middleware(RequestMiddleware)
+
+
+# ─── Global Exception Handler ─────────────────────────────────
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error(f"[{request_id}] HTTPException {exc.status_code}: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "status": exc.status_code,
+            "requestId": request_id,
+        },
+        headers={"X-Request-ID": request_id},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error(f"[{request_id}] Unhandled: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An unexpected error occurred. Please try again.",
+            "error": type(exc).__name__,
+            "requestId": request_id,
+        },
+        headers={"X-Request-ID": request_id},
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -115,6 +205,7 @@ client: Optional[InferenceClient] = None
 
 
 def get_client() -> InferenceClient:
+    """Get or initialize the HuggingFace InferenceClient with retry."""
     global client
     if client is None:
         if not HF_TOKEN:
@@ -122,8 +213,21 @@ def get_client() -> InferenceClient:
                 status_code=500,
                 detail="HUGGING_FACE_API_TOKEN not configured. Set the HF_TOKEN environment variable.",
             )
-        client = InferenceClient(token=HF_TOKEN)
-        logger.info("Hugging Face InferenceClient initialized")
+        for attempt in range(3):
+            try:
+                client = InferenceClient(token=HF_TOKEN, timeout=60)
+                logger.info("Hugging Face InferenceClient initialized")
+                break
+            except Exception as e:
+                logger.warning(f"HF client init attempt {attempt + 1} failed: {e}")
+                if attempt == 2:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Failed to initialize AI model client after 3 attempts.",
+                    )
+                time.sleep(2 ** attempt)
+    # At this point client is guaranteed to be initialized (or HTTPException raised)
+    assert client is not None
     return client
 
 
@@ -286,15 +390,33 @@ async def chat_tutor(request: ChatRequest):
         # Add current message
         messages.append({"role": "user", "content": request.message})
 
-        response = hf.chat_completion(
-            model=CHAT_MODEL,
-            messages=messages,
-            max_tokens=2048,
-            temperature=0.2,
-            top_p=0.9,
-        )
+        # Retry HF inference up to 3 times with exponential backoff
+        answer = ""
+        last_err: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                response = hf.chat_completion(
+                    model=CHAT_MODEL,
+                    messages=messages,
+                    max_tokens=2048,
+                    temperature=0.2,
+                    top_p=0.9,
+                )
+                answer = response.choices[0].message.content or ""
+                last_err = None
+                break
+            except Exception as hf_err:
+                last_err = hf_err
+                logger.warning(f"HF chat attempt {attempt + 1} failed: {hf_err}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
 
-        answer = response.choices[0].message.content or ""
+        if last_err is not None:
+            logger.error(f"HF chat failed after 3 attempts: {last_err}")
+            raise HTTPException(
+                status_code=502,
+                detail="AI model service is temporarily unavailable. Please try again.",
+            )
 
         # Optional self-consistency verification
         if request.verify:
@@ -309,6 +431,8 @@ async def chat_tutor(request: ChatRequest):
 
         return ChatResponse(response=answer)
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
@@ -734,15 +858,33 @@ async def predict_risk(student_data: StudentRiskData):
             f"Assignment completion rate is {student_data.assignmentCompletion:.0f}%."
         )
 
-        result = hf.zero_shot_classification(
-            text=text,
-            candidate_labels=RISK_LABELS,
-            model=RISK_MODEL,
-            multi_label=False,
-        )
+        # Retry HF inference with backoff
+        result = None
+        last_err: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                result = hf.zero_shot_classification(
+                    text=text,
+                    candidate_labels=RISK_LABELS,
+                    model=RISK_MODEL,
+                    multi_label=False,
+                )
+                last_err = None
+                break
+            except Exception as hf_err:
+                last_err = hf_err
+                logger.warning(f"HF risk prediction attempt {attempt + 1} failed: {hf_err}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+
+        if last_err is not None or result is None:
+            logger.error(f"HF risk prediction failed after 3 attempts: {last_err}")
+            raise HTTPException(
+                status_code=502,
+                detail="Risk prediction model is temporarily unavailable.",
+            )
 
         # result is list[ZeroShotClassificationOutputElement] sorted by score desc
-        # Each element has .label (str) and .score (float)
         top = result[0]
         top_label = top.label
         top_score = top.score
@@ -758,6 +900,8 @@ async def predict_risk(student_data: StudentRiskData):
             },
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Risk prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Risk prediction error: {str(e)}")
@@ -808,15 +952,37 @@ Format as a numbered list. Be specific to the math topics mentioned."""
             {"role": "user", "content": prompt},
         ]
 
-        response = hf.chat_completion(
-            model=CHAT_MODEL,
-            messages=messages,
-            max_tokens=1500,
-            temperature=0.7,
-        )
+        # Retry HF inference with backoff
+        content = ""
+        last_err: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                response = hf.chat_completion(
+                    model=CHAT_MODEL,
+                    messages=messages,
+                    max_tokens=1500,
+                    temperature=0.7,
+                )
+                content = response.choices[0].message.content or ""
+                last_err = None
+                break
+            except Exception as hf_err:
+                last_err = hf_err
+                logger.warning(f"HF learning-path attempt {attempt + 1} failed: {hf_err}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
 
-        return LearningPathResponse(learningPath=response.choices[0].message.content or "")
+        if last_err is not None:
+            logger.error(f"HF learning-path failed after 3 attempts: {last_err}")
+            raise HTTPException(
+                status_code=502,
+                detail="Learning path generation is temporarily unavailable.",
+            )
 
+        return LearningPathResponse(learningPath=content)
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Learning path error: {e}")
         raise HTTPException(status_code=500, detail=f"Learning path error: {str(e)}")
@@ -868,15 +1034,37 @@ Keep the response under 200 words. Be specific and practical."""
             {"role": "user", "content": prompt},
         ]
 
-        response = hf.chat_completion(
-            model=CHAT_MODEL,
-            messages=messages,
-            max_tokens=800,
-            temperature=0.7,
-        )
+        # Retry HF inference with backoff
+        content = ""
+        last_err: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                response = hf.chat_completion(
+                    model=CHAT_MODEL,
+                    messages=messages,
+                    max_tokens=800,
+                    temperature=0.7,
+                )
+                content = response.choices[0].message.content or ""
+                last_err = None
+                break
+            except Exception as hf_err:
+                last_err = hf_err
+                logger.warning(f"HF daily-insight attempt {attempt + 1} failed: {hf_err}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
 
-        return DailyInsightResponse(insight=response.choices[0].message.content or "")
+        if last_err is not None:
+            logger.error(f"HF daily-insight failed after 3 attempts: {last_err}")
+            raise HTTPException(
+                status_code=502,
+                detail="AI insight generation is temporarily unavailable.",
+            )
 
+        return DailyInsightResponse(insight=content)
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Daily insight error: {e}")
         raise HTTPException(status_code=500, detail=f"Daily insight error: {str(e)}")
