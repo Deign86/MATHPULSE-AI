@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useChatContext } from '../contexts/ChatContext';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 
 const AIChatPage = () => {
   const { 
@@ -195,7 +196,13 @@ const AIChatPage = () => {
                           : 'bg-white text-slate-800 shadow-md border border-slate-100'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                      {message.sender === 'user' ? (
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                      ) : (
+                        <div className="chat-markdown">
+                          <ReactMarkdown>{message.text}</ReactMarkdown>
+                        </div>
+                      )}
                       <p className={`text-[10px] mt-1.5 ${
                         message.sender === 'user' ? 'text-blue-100' : 'text-slate-400'
                       }`}>
