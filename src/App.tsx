@@ -29,6 +29,7 @@ import { useAuth } from './contexts/AuthContext';
 import { signOutUser } from './services/authService';
 import { updateStreak, awardXP } from './services/gamificationService';
 import { StudentProfile } from './types/models';
+import { triggerStudentEnrolled } from './services/automationService';
 
 const App = () => {
   // Get authentication state from context
@@ -439,6 +440,8 @@ const App = () => {
             isOpen={showDiagnosticModal}
             onClose={() => setShowDiagnosticModal(false)}
             onComplete={handleDiagnosticComplete}
+            studentId={userProfile?.uid}
+            gradeLevel={(studentProfile as StudentProfile)?.grade}
           />
         </div>
       </div>

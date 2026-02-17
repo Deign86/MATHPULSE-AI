@@ -66,6 +66,85 @@ export interface UploadResponse {
   columnMapping: Record<string, string>;
 }
 
+// ─── Quiz Maker Types ────────────────────────────────────────
+
+export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
+export type BloomLevel = 'remember' | 'understand' | 'apply' | 'analyze';
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
+export interface QuizGenerationRequest {
+  topics: string[];
+  gradeLevel: string;
+  numQuestions?: number;
+  questionTypes?: QuestionType[];
+  includeGraphs?: boolean;
+  difficultyDistribution?: Record<DifficultyLevel, number>;
+  bloomLevels?: BloomLevel[];
+  excludeTopics?: string[];
+}
+
+export interface QuizQuestionGenerated {
+  questionType: string;
+  question: string;
+  correctAnswer: string;
+  options?: string[] | null;
+  bloomLevel: string;
+  difficulty: string;
+  topic: string;
+  points: number;
+  explanation: string;
+}
+
+export interface QuizGenerationResponse {
+  questions: QuizQuestionGenerated[];
+  totalPoints: number;
+  metadata: {
+    topicsCovered: Record<string, number>;
+    difficultyBreakdown: Record<string, number>;
+    bloomTaxonomyDistribution: Record<string, number>;
+    questionTypeBreakdown: Record<string, number>;
+    gradeLevel: string;
+    totalQuestions: number;
+    includesGraphQuestions: boolean;
+    supplementalPurpose: string;
+    bloomTaxonomyRationale: string;
+    recommendedTeacherActions: string[];
+    graphQuestionNote?: string;
+  };
+}
+
+export interface TopicCompetency {
+  topic: string;
+  efficiencyScore: number;
+  competencyLevel: 'beginner' | 'developing' | 'proficient' | 'advanced';
+  perspective: string;
+}
+
+export interface StudentCompetencyResponse {
+  studentId: string;
+  competencies: TopicCompetency[];
+  recommendedTopics: string[];
+  excludeTopics: string[];
+}
+
+export interface CalculatorRequest {
+  expression: string;
+}
+
+export interface CalculatorResponse {
+  expression: string;
+  result: string;
+  steps: string[];
+  simplified?: string | null;
+  latex?: string | null;
+}
+
+export interface QuizTopicsResponse {
+  gradeLevel?: string;
+  topics?: Record<string, string[]>;
+  allTopics?: Record<string, Record<string, string[]>>;
+}
+
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${API_URL}${endpoint}`;
   const response = await fetch(url, {
@@ -138,6 +217,121 @@ export const apiService = {
     return apiFetch('/api/upload/class-records', {
       method: 'POST',
       body: formData,
+    });
+  },
+
+  // ─── Quiz Maker ───────────────────────────────────────────
+
+  /** Generate AI-powered quiz */
+  async generateQuiz(request: QuizGenerationRequest): Promise<QuizGenerationResponse> {
+    return apiFetch('/api/quiz/generate', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  /** Preview quiz (3 questions) for teacher review */
+  async previewQuiz(request: QuizGenerationRequest): Promise<QuizGenerationResponse> {
+    return apiFetch('/api/quiz/preview', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  /** Get math topics by grade level */
+  async getQuizTopics(gradeLevel?: string): Promise<QuizTopicsResponse> {
+    const query = gradeLevel ? `?gradeLevel=${encodeURIComponent(gradeLevel)}` : '';
+    return apiFetch(`/api/quiz/topics${query}`);
+  },
+
+  /** Get student competency assessment */
+  async getStudentCompetency(
+    studentId: string,
+    quizHistory?: { topic: string; score: number; total: number; timeTaken?: number }[]
+  ): Promise<StudentCompetencyResponse> {
+    return apiFetch('/api/quiz/student-competency', {
+      method: 'POST',
+      body: JSON.stringify({ studentId, quizHistory }),
+    });
+  },
+
+  /** Evaluate mathematical expression */
+  async evaluateExpression(expression: string): Promise<CalculatorResponse> {
+    return apiFetch('/api/calculator/evaluate', {
+      method: 'POST',
+      body: JSON.stringify({ expression }),
+    });
+  },
+
+  // ─── Automation Engine ──────────────────────────────────────
+
+  /** Trigger diagnostic completion automation */
+  async automationDiagnosticCompleted(payload: {
+    studentId: string;
+    results: { subject: string; score: number }[];
+    gradeLevel?: string;
+    questionBreakdown?: Record<string, { correct: boolean }[]>;
+  }): Promise<unknown> {
+    return apiFetch('/api/automation/diagnostic-completed', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Trigger quiz submission automation */
+  async automationQuizSubmitted(payload: {
+    studentId: string;
+    quizId: string;
+    subject: string;
+    score: number;
+    totalQuestions: number;
+    correctAnswers: number;
+    timeSpentSeconds: number;
+  }): Promise<unknown> {
+    return apiFetch('/api/automation/quiz-submitted', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Trigger student enrollment automation */
+  async automationStudentEnrolled(payload: {
+    studentId: string;
+    name: string;
+    email: string;
+    gradeLevel?: string;
+    teacherId?: string;
+  }): Promise<unknown> {
+    return apiFetch('/api/automation/student-enrolled', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Trigger data import automation */
+  async automationDataImported(payload: {
+    teacherId: string;
+    students: Record<string, unknown>[];
+    columnMapping: Record<string, string>;
+  }): Promise<unknown> {
+    return apiFetch('/api/automation/data-imported', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Trigger content update automation */
+  async automationContentUpdated(payload: {
+    adminId: string;
+    action: string;
+    contentType: string;
+    contentId: string;
+    subjectId?: string;
+    details?: string;
+  }): Promise<unknown> {
+    return apiFetch('/api/automation/content-updated', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 };

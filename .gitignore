@@ -34,6 +34,13 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
+# Cloud Functions build output
+functions/lib/
+
+# Python
+__pycache__/
+*.pyc
+
 # Build outputs
 build/
 out/

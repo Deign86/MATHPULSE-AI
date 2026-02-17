@@ -3,6 +3,7 @@ import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
 import { getUserProfile, createUserProfile } from '../services/authService';
+import { triggerStudentEnrolled } from '../services/automationService';
 
 // Demo account configuration
 const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string }> = {
@@ -62,6 +63,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             profile = await createUserProfile(user, role, { name });
             console.log('✅ AuthContext: Profile auto-created:', { role, name });
+
+            // Fire automation for new student enrollment
+            if (role === 'student') {
+              triggerStudentEnrolled({
+                studentId: user.uid,
+                name,
+                email: user.email || '',
+                gradeLevel: 'Grade 10',
+              }).catch((err) =>
+                console.error('⚠️ Automation: enrollment pipeline failed:', err)
+              );
+            }
           } catch (err) {
             console.error('🚨 AuthContext: Failed to auto-create profile:', err);
           }

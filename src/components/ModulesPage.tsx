@@ -8,6 +8,7 @@ import PracticeCenter from './PracticeCenter';
 import QuizExperience from './QuizExperience';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { subjects, Subject, Module } from '../data/subjects';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -15,6 +16,7 @@ interface ModulesPageProps {
 }
 
 const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = [] }) => {
+  const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'learning-path' | 'all-subjects' | 'practice' | 'recommended'>('learning-path');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
@@ -40,6 +42,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
         quiz={selectedQuiz}
         onClose={() => setSelectedQuiz(null)}
         onComplete={handleQuizComplete}
+        studentId={userProfile?.uid}
       />
     );
   }

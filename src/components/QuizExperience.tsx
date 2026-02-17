@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { triggerQuizSubmitted } from '../services/automationService';
 
 export interface Quiz {
   id: string;
@@ -29,9 +30,10 @@ interface QuizExperienceProps {
   quiz: Quiz;
   onClose: () => void;
   onComplete: (score: number, xpEarned: number) => void;
+  studentId?: string;
 }
 
-const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete }) => {
+const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, studentId }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -194,6 +196,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     }
 
     setTotalXP(xpEarned);
+
+    // Fire automation: quiz submitted
+    if (studentId) {
+      const timeSpent = totalTime - timeRemaining;
+      triggerQuizSubmitted({
+        studentId,
+        quizId: quiz.id,
+        subject: quiz.subject,
+        score: percentage,
+        totalQuestions: questions.length,
+        correctAnswers: score,
+        timeSpentSeconds: timeSpent,
+      }).catch((err) => console.error('⚠️ Automation: quiz pipeline failed:', err));
+    }
 
     playSound('complete');
     confetti({
