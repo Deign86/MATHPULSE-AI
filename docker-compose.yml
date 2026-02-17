@@ -1,0 +1,58 @@
+# ============================================================
+# MathPulse AI - Docker Compose
+# Quick start: docker compose up
+# ============================================================
+
+services:
+  # React + Vite frontend (dev mode with hot reload)
+  frontend:
+    build:
+      context: .
+      target: frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules        # Preserve container node_modules
+    env_file:
+      - .env.local
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Reliable file watching in Docker
+    depends_on:
+      - backend
+    networks:
+      - mathpulse
+
+  # FastAPI backend (AI endpoints)
+  backend:
+    build:
+      context: .
+      target: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend   # Hot reload for Python changes
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+    networks:
+      - mathpulse
+
+  # --- Production profile (use: docker compose --profile prod up) ---
+  production:
+    build:
+      context: .
+      target: production
+    ports:
+      - "80:80"
+    env_file:
+      - .env.local
+    depends_on:
+      - backend
+    profiles:
+      - prod
+    networks:
+      - mathpulse
+
+networks:
+  mathpulse:
+    driver: bridge
