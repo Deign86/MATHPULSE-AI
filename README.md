@@ -28,7 +28,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
 - **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
 - **Practice Center** — Dedicated practice area for reinforcing concepts
-- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen2.5-3B-Instruct via Hugging Face Inference API
+- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen2.5-Math-7B-Instruct via Hugging Face Inference API, with optional self-consistency verification
 - **Floating AI Tutor** — Always-accessible AI help widget available from any page
 - **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
 - **XP Notifications** — Real-time animated XP gain notifications
@@ -105,7 +105,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 ### AI Models
 | Model | Use Case |
 |---|---|
-| **Qwen/Qwen2.5-3B-Instruct** | Chat tutoring, learning path generation, daily class insights, document column detection |
+| **Qwen/Qwen2.5-Math-7B-Instruct** | Chat tutoring (low-temperature, step-by-step verified), learning path generation, daily class insights, document column detection, math verification (self-consistency, code-based, LLM judge) |
 | **facebook/bart-large-mnli** | Student risk classification via zero-shot classification |
 
 ## 🚀 Getting Started
@@ -212,7 +212,7 @@ MATHPULSE-AI/
 │   └── styles/
 │       └── globals.css          # Tailwind CSS + custom CSS variables
 ├── backend/
-│   ├── main.py                  # FastAPI application (490 lines, all-in-one)
+│   ├── main.py                  # FastAPI application (all-in-one: API, verification system)
 │   ├── requirements.txt         # Python dependencies
 │   └── Dockerfile               # Container configuration (Python 3.11)
 ├── docker-compose.yml           # Multi-service orchestration (frontend + backend)
@@ -259,7 +259,8 @@ The FastAPI backend exposes the following endpoints:
 |---|---|---|
 | `GET`  | `/` | Root info (name, version, docs link) |
 | `GET`  | `/health` | Health check with model status |
-| `POST` | `/api/chat` | AI Math Tutor conversation (Qwen 2.5, supports history) |
+| `POST` | `/api/chat` | AI Math Tutor conversation (Qwen 2.5 Math, temp=0.2, optional verification) |
+| `POST` | `/api/verify-solution` | Full multi-method verification of a math solution |
 | `POST` | `/api/predict-risk` | Single student risk classification (BART zero-shot) |
 | `POST` | `/api/predict-risk/batch` | Batch risk prediction for multiple students |
 | `POST` | `/api/learning-path` | Generate personalized learning path by weaknesses |
@@ -272,13 +273,26 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 
 | Endpoint | Request Body | Response Body |
 |---|---|---|
-| `/api/chat` | `{ message, history[{role, content}], userId? }` | `{ response }` |
+| `/api/chat` | `{ message, history[{role, content}], userId?, verify? }` | `{ response, verified?, confidence?, warning? }` |
+| `/api/verify-solution` | `{ problem, solution }` | `{ overall_verified, aggregated_confidence, self_consistency, code_verification, llm_judge, warnings[] }` |
 | `/api/predict-risk` | `{ engagementScore, avgQuizScore, attendance, assignmentCompletion }` | `{ riskLevel, confidence, analysis{labels, scores} }` |
 | `/api/learning-path` | `{ weaknesses[], gradeLevel, learningStyle? }` | `{ learningPath }` |
 | `/api/analytics/daily-insight` | `{ students[{name, engagementScore, avgQuizScore, attendance, riskLevel}] }` | `{ insight }` |
 | `/api/upload/class-records` | `FormData(file)` — CSV/XLSX/PDF | `{ success, students[], columnMapping, totalRows }` |
 
 > **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api.hf.space`.
+
+### Math Verification System
+
+The backend includes a multi-method verification pipeline to reduce math hallucinations:
+
+| Method | How It Works |
+|---|---|
+| **Self-Consistency** | Generates 3 independent responses (temp=0.7), extracts final answers, checks agreement. Confidence: high (100% agree), medium (≥60%), low (<60%). |
+| **Code Verification** | Asks the model to write Python code that numerically verifies the answer, then executes it in a sandboxed environment. |
+| **LLM Judge** | A second LLM call (temp=0.1) reviews the solution for correct formula usage, arithmetic accuracy, and logical reasoning. Returns a confidence score. |
+
+The `/api/verify-solution` endpoint runs all three methods and returns an aggregated confidence score (0.0–1.0). The `/api/chat` endpoint supports an optional `verify: true` flag to trigger self-consistency checking inline.
 
 ## 🎮 Gamification System
 

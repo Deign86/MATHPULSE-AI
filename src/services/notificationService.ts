@@ -17,7 +17,7 @@ import { Notification } from '../types/models';
 // Create notification
 export const createNotification = async (
   userId: string,
-  type: 'friend_request' | 'achievement' | 'message' | 'grade' | 'reminder',
+  type: 'friend_request' | 'achievement' | 'message' | 'grade' | 'reminder' | 'risk_alert' | 'automation',
   title: string,
   message: string,
   actionUrl?: string

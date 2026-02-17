@@ -1,9 +1,11 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, and insights
+- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
+- AI-powered Quiz Maker with Bloom's Taxonomy integration
+- Symbolic math calculator via SymPy
 
 Auto-deployed to HuggingFace Spaces via GitHub Actions.
 """
@@ -12,15 +14,72 @@ import os
 import io
 import re
 import json
+import math
 import logging
 import traceback
 from typing import List, Optional, Dict, Any
 from collections import Counter
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 import uvicorn
+
+# Event-driven automation engine
+from automation_engine import (
+    automation_engine,
+    DiagnosticCompletionPayload,
+    QuizSubmissionPayload,
+    StudentEnrollmentPayload,
+    DataImportPayload,
+    ContentUpdatePayload,
+    AutomationResult,
+)
+
+# ML-powered analytics module
+from analytics import (
+    # Request/Response models
+    CompetencyAnalysisRequest,
+    CompetencyAnalysis,
+    CompetencyAnalysisResponse,
+    TopicRecommendation,
+    TopicRecommendationRequest,
+    TopicRecommendationResponse,
+    EnhancedRiskPrediction,
+    EnhancedRiskRequest,
+    RiskTrainRequest,
+    RiskTrainResponse,
+    CalibrateDifficultyRequest,
+    CalibrateDifficultyResponse,
+    AdaptiveQuizRequest as AdaptiveQuizSelectRequest,
+    AdaptiveQuizResponse,
+    StudentSummaryResponse,
+    ClassInsightsRequest,
+    ClassInsightsResponse,
+    MockDataRequest,
+    RefreshCacheResponse,
+    # Core functions
+    compute_competency_analysis,
+    predict_risk_enhanced,
+    train_risk_model,
+    calibrate_question_difficulty,
+    select_adaptive_quiz,
+    recommend_topics,
+    get_student_summary,
+    get_class_insights,
+    generate_mock_student_data,
+    refresh_all_caches,
+    # Helpers
+    fetch_student_quiz_history,
+    fetch_student_engagement_metrics,
+    fetch_topic_dependencies,
+    store_competency_analysis,
+    store_question_difficulty,
+    # Config
+    RISK_MODEL_PATH,
+    COMPETENCY_THRESHOLDS,
+    MIN_QUIZ_ATTEMPTS_FOR_COMPETENCY,
+)
 
 # ─── Configuration ─────────────────────────────────────────────
 
@@ -933,6 +992,1063 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
     except Exception as e:
         logger.error(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=f"File upload error: {str(e)}")
+
+
+# ─── Quiz Maker Models ────────────────────────────────────────
+
+VALID_QUESTION_TYPES = [
+    "identification",
+    "enumeration",
+    "multiple_choice",
+    "word_problem",
+    "equation_based",
+]
+
+VALID_BLOOM_LEVELS = ["remember", "understand", "apply", "analyze"]
+
+VALID_DIFFICULTY_LEVELS = ["easy", "medium", "hard"]
+
+
+class QuizGenerationRequest(BaseModel):
+    topics: List[str] = Field(..., min_length=1, description="Specific math topics to cover")
+    gradeLevel: str = Field(..., description="Student grade level (e.g., 'Grade 7', 'Grade 10', 'College')")
+    numQuestions: int = Field(default=10, ge=1, le=50, description="Number of questions to generate")
+    questionTypes: List[str] = Field(
+        default=["multiple_choice", "identification", "word_problem"],
+        description="Types of questions to include",
+    )
+    includeGraphs: bool = Field(default=False, description="Include graph-based identification questions")
+    difficultyDistribution: Dict[str, int] = Field(
+        default={"easy": 30, "medium": 50, "hard": 20},
+        description="Percentage distribution per difficulty level",
+    )
+    bloomLevels: List[str] = Field(
+        default=["remember", "understand", "apply", "analyze"],
+        description="Bloom's Taxonomy cognitive levels",
+    )
+    excludeTopics: List[str] = Field(
+        default_factory=list,
+        description="Topics the class is already competent in — these will be excluded",
+    )
+
+    @validator("questionTypes", each_item=True)
+    def validate_question_types(cls, v: str) -> str:
+        if v not in VALID_QUESTION_TYPES:
+            raise ValueError(f"Invalid question type '{v}'. Must be one of: {VALID_QUESTION_TYPES}")
+        return v
+
+    @validator("bloomLevels", each_item=True)
+    def validate_bloom_levels(cls, v: str) -> str:
+        if v not in VALID_BLOOM_LEVELS:
+            raise ValueError(f"Invalid Bloom level '{v}'. Must be one of: {VALID_BLOOM_LEVELS}")
+        return v
+
+    @validator("difficultyDistribution")
+    def validate_difficulty_distribution(cls, v: Dict[str, int]) -> Dict[str, int]:
+        for key in v:
+            if key not in VALID_DIFFICULTY_LEVELS:
+                raise ValueError(f"Invalid difficulty key '{key}'. Must be one of: {VALID_DIFFICULTY_LEVELS}")
+        total = sum(v.values())
+        if total != 100:
+            raise ValueError(f"Difficulty distribution percentages must sum to 100, got {total}")
+        return v
+
+
+class QuizQuestion(BaseModel):
+    questionType: str
+    question: str
+    correctAnswer: str
+    options: Optional[List[str]] = None
+    bloomLevel: str
+    difficulty: str
+    topic: str
+    points: int
+    explanation: str
+
+
+class QuizResponse(BaseModel):
+    questions: List[QuizQuestion]
+    totalPoints: int
+    metadata: Dict[str, Any]
+
+
+class StudentCompetencyRequest(BaseModel):
+    studentId: str = Field(..., description="Firebase user ID of the student")
+    quizHistory: Optional[List[Dict[str, Any]]] = Field(
+        default_factory=list,
+        description="Student quiz history — list of {topic, score, total, timeTaken}",
+    )
+
+
+class TopicCompetency(BaseModel):
+    topic: str
+    efficiencyScore: float = Field(..., ge=0, le=100)
+    competencyLevel: str
+    perspective: str
+
+
+class StudentCompetencyResponse(BaseModel):
+    studentId: str
+    competencies: List[TopicCompetency]
+    recommendedTopics: List[str]
+    excludeTopics: List[str]
+
+
+class CalculatorRequest(BaseModel):
+    expression: str = Field(..., min_length=1, max_length=500, description="Mathematical expression to evaluate")
+
+
+class CalculatorResponse(BaseModel):
+    expression: str
+    result: str
+    steps: List[str]
+    simplified: Optional[str] = None
+    latex: Optional[str] = None
+
+
+# ─── Quiz Topics Database ─────────────────────────────────────
+
+MATH_TOPICS_BY_GRADE: Dict[str, Dict[str, List[str]]] = {
+    "Grade 7": {
+        "Number Sense": ["Integers", "Fractions & Decimals", "Ratios & Proportions", "Percentages"],
+        "Algebra": ["Variables & Expressions", "One-Step Equations", "Inequalities", "Patterns"],
+        "Geometry": ["Angles", "Triangles", "Area & Perimeter", "Volume"],
+        "Statistics": ["Mean, Median, Mode", "Bar & Line Graphs", "Probability Basics"],
+    },
+    "Grade 8": {
+        "Algebra": ["Linear Equations", "Systems of Equations (Introduction)", "Slope & Rate of Change", "Functions"],
+        "Geometry": ["Pythagorean Theorem", "Transformations", "Congruence & Similarity", "Surface Area & Volume"],
+        "Number Sense": ["Exponents & Powers", "Scientific Notation", "Square & Cube Roots", "Rational & Irrational Numbers"],
+        "Statistics": ["Scatter Plots", "Two-Way Tables", "Probability of Compound Events"],
+    },
+    "Grade 9": {
+        "Algebra": ["Linear Functions", "Quadratic Equations", "Polynomials", "Factoring"],
+        "Geometry": ["Coordinate Geometry", "Circles", "Trigonometric Ratios", "Proofs"],
+        "Statistics": ["Data Analysis", "Normal Distribution Basics", "Sampling Methods"],
+        "Number Sense": ["Radicals & Exponents", "Rational Expressions"],
+    },
+    "Grade 10": {
+        "Algebra": ["Quadratic Functions", "Systems of Equations", "Exponential Functions", "Radical Equations"],
+        "Geometry": ["Circle Theorems", "Solid Geometry", "Coordinate Proofs", "Trigonometry"],
+        "Statistics & Probability": ["Permutations & Combinations", "Conditional Probability", "Binomial Probability"],
+        "Pre-Calculus": ["Sequences & Series", "Polynomial Functions"],
+    },
+    "Grade 11": {
+        "Pre-Calculus": ["Functions & Graphs", "Polynomial Division", "Rational Functions", "Logarithmic Functions", "Trigonometric Functions"],
+        "Statistics": ["Regression Analysis", "Confidence Intervals", "Hypothesis Testing Basics"],
+        "Algebra": ["Complex Numbers", "Matrices (Introduction)", "Conic Sections"],
+    },
+    "Grade 12": {
+        "Basic Calculus": ["Limits", "Derivatives", "Integration", "Applications of Derivatives", "Area Under a Curve"],
+        "Statistics": ["Normal Distribution", "Z-Scores", "Chi-Square Tests"],
+        "Advanced Algebra": ["Series & Convergence", "Parametric Equations", "Polar Coordinates"],
+    },
+    "College": {
+        "Calculus": ["Multivariable Calculus", "Differential Equations", "Vector Calculus", "Infinite Series"],
+        "Linear Algebra": ["Matrices & Determinants", "Eigenvalues & Eigenvectors", "Vector Spaces", "Linear Transformations"],
+        "Discrete Mathematics": ["Set Theory", "Graph Theory", "Combinatorics", "Number Theory"],
+        "Statistics": ["Probability Distributions", "Bayesian Statistics", "Statistical Inference", "ANOVA"],
+    },
+}
+
+
+# ─── Quiz Generation System Prompt ────────────────────────────
+
+QUIZ_GENERATION_SYSTEM_PROMPT = """You are an expert math quiz generator for MathPulse AI, an educational platform.
+
+PURPOSE:
+You are creating supplemental math assessments to support classroom learning, not replace teacher instruction.
+
+BLOOM'S TAXONOMY FRAMEWORK:
+Generate questions following Bloom's Taxonomy levels to ensure comprehensive skill evaluation:
+- Remember (recall): Recall facts, definitions, or formulas
+- Understand (explain): Explain concepts in own words, interpret data
+- Apply (use): Use formulas/methods to solve problems in new contexts
+- Analyze (examine): Break down complex problems, compare approaches, identify patterns
+
+QUESTION TYPES:
+- Identification: Define or identify mathematical concepts, properties, or theorems
+- Enumeration: List steps in a process, properties of a shape, or related concepts
+- Multiple Choice: Standard multiple-choice with 4 options (one correct)
+- Word Problem: Real-world context-based problems relatable to students' experiences
+- Equation-Based: Solve equations, manipulate expressions, prove identities
+
+GRAPH QUESTIONS (when requested):
+- Use ONLY identification-type questions about graphs
+- Ask students to identify key features: intercepts, slopes, vertex locations, asymptotes, domain/range, transformations
+- Describe the graph in text (do NOT attempt to render images)
+- Format: "Given a graph of [description with key coordinates]... Identify [feature]."
+- Note: Graph questions use identification format as graphing is challenging for students
+
+GUIDELINES:
+- Make questions context-based and relatable to students' real-world experiences
+- Generate clear, unambiguous questions with definitive correct answers
+- For each question, provide a detailed step-by-step explanation
+- Ensure mathematical accuracy — verify all answers
+- Match difficulty to the specified level (easy, medium, hard)
+- Distribute Bloom's Taxonomy levels as evenly as possible across the quiz
+
+RESPONSE FORMAT:
+Respond ONLY with a valid JSON array of question objects. No markdown, no explanation outside:
+[
+  {
+    "questionType": "multiple_choice",
+    "question": "...",
+    "correctAnswer": "...",
+    "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+    "bloomLevel": "apply",
+    "difficulty": "medium",
+    "topic": "Linear Equations",
+    "points": 3,
+    "explanation": "Step 1: ... Step 2: ... Therefore the answer is ..."
+  }
+]
+
+Points by difficulty: easy=1, medium=3, hard=5.
+For non-multiple-choice questions, omit the "options" field or set to null.
+"""
+
+
+# ─── Quiz Generation Helpers ──────────────────────────────────
+
+
+def _distribute_questions(
+    num_questions: int,
+    difficulty_distribution: Dict[str, int],
+    bloom_levels: List[str],
+    question_types: List[str],
+) -> List[Dict[str, str]]:
+    """
+    Pre-compute the distribution of questions by difficulty, Bloom level,
+    and question type so the LLM prompt can be very specific.
+    """
+    distribution: List[Dict[str, str]] = []
+
+    # Compute counts per difficulty
+    difficulty_counts: Dict[str, int] = {}
+    remaining = num_questions
+    for i, (diff, pct) in enumerate(difficulty_distribution.items()):
+        if i == len(difficulty_distribution) - 1:
+            difficulty_counts[diff] = remaining
+        else:
+            count = max(1, round(num_questions * pct / 100))
+            count = min(count, remaining)
+            difficulty_counts[diff] = count
+            remaining -= count
+
+    idx = 0
+    for diff, count in difficulty_counts.items():
+        for j in range(count):
+            bloom = bloom_levels[idx % len(bloom_levels)]
+            qtype = question_types[idx % len(question_types)]
+            distribution.append({
+                "difficulty": diff,
+                "bloomLevel": bloom,
+                "questionType": qtype,
+            })
+            idx += 1
+
+    return distribution
+
+
+def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
+    """Robustly extract a JSON array of quiz questions from LLM output."""
+    # Try direct parse
+    cleaned = raw.strip()
+    # Remove markdown fences
+    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
+    cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+    cleaned = cleaned.strip()
+
+    # Try to find array brackets
+    arr_start = cleaned.find("[")
+    arr_end = cleaned.rfind("]") + 1
+    if arr_start >= 0 and arr_end > arr_start:
+        try:
+            return json.loads(cleaned[arr_start:arr_end])
+        except json.JSONDecodeError:
+            pass
+
+    # Fallback: try parsing individual objects
+    objects: List[Dict[str, Any]] = []
+    for match in re.finditer(r"\{[^{}]+\}", cleaned, re.DOTALL):
+        try:
+            obj = json.loads(match.group())
+            if "question" in obj:
+                objects.append(obj)
+        except json.JSONDecodeError:
+            continue
+
+    return objects
+
+
+def _validate_quiz_questions(
+    questions: List[Dict[str, Any]],
+    distribution: List[Dict[str, str]],
+) -> List[QuizQuestion]:
+    """Validate and normalise each question from the LLM response."""
+    validated: List[QuizQuestion] = []
+    points_map = {"easy": 1, "medium": 3, "hard": 5}
+
+    for i, q in enumerate(questions):
+        dist = distribution[i] if i < len(distribution) else {}
+
+        question_type = q.get("questionType", dist.get("questionType", "identification"))
+        if question_type not in VALID_QUESTION_TYPES:
+            question_type = "identification"
+
+        difficulty = q.get("difficulty", dist.get("difficulty", "medium"))
+        if difficulty not in VALID_DIFFICULTY_LEVELS:
+            difficulty = "medium"
+
+        bloom_level = q.get("bloomLevel", dist.get("bloomLevel", "understand"))
+        if bloom_level not in VALID_BLOOM_LEVELS:
+            bloom_level = "understand"
+
+        options = q.get("options") if question_type == "multiple_choice" else None
+
+        validated.append(QuizQuestion(
+            questionType=question_type,
+            question=q.get("question", ""),
+            correctAnswer=str(q.get("correctAnswer", "")),
+            options=options,
+            bloomLevel=bloom_level,
+            difficulty=difficulty,
+            topic=q.get("topic", "General"),
+            points=q.get("points", points_map.get(difficulty, 3)),
+            explanation=q.get("explanation", "No explanation provided."),
+        ))
+
+    return validated
+
+
+# ─── Quiz Generation Endpoints ────────────────────────────────
+
+
+@app.post("/api/quiz/generate", response_model=QuizResponse)
+async def generate_quiz(request: QuizGenerationRequest):
+    """
+    Generate an AI-powered quiz using Qwen2.5-Math-7B-Instruct.
+    Supports Bloom's Taxonomy integration, multiple question types,
+    and graph-based identification questions.
+    """
+    try:
+        hf = get_client()
+
+        # Filter out excluded topics
+        effective_topics = [t for t in request.topics if t not in request.excludeTopics]
+        if not effective_topics:
+            raise HTTPException(
+                status_code=400,
+                detail="All requested topics are in the exclude list. Please provide at least one topic to cover.",
+            )
+
+        # Pre-compute question distribution
+        distribution = _distribute_questions(
+            request.numQuestions,
+            request.difficultyDistribution,
+            request.bloomLevels,
+            request.questionTypes,
+        )
+
+        # Build per-question specifications
+        spec_lines: List[str] = []
+        for i, d in enumerate(distribution):
+            topic = effective_topics[i % len(effective_topics)]
+            graph_note = ""
+            if request.includeGraphs and d["questionType"] == "identification":
+                graph_note = " (GRAPH-BASED: describe a graph and ask the student to identify a feature)"
+            spec_lines.append(
+                f"Q{i+1}: type={d['questionType']}, difficulty={d['difficulty']}, "
+                f"bloom={d['bloomLevel']}, topic={topic}{graph_note}"
+            )
+
+        graph_instruction = ""
+        if request.includeGraphs:
+            graph_instruction = (
+                "\n\nGRAPH QUESTIONS: For any identification questions, make them graph-based. "
+                "Describe the graph verbally (e.g., 'Given a parabola with vertex at (2,3) opening upward...') "
+                "and ask the student to identify key features such as intercepts, axis of symmetry, "
+                "slopes, asymptotes, domain, range, or transformations. "
+                "Do NOT attempt to render an actual image."
+            )
+
+        prompt = f"""Generate exactly {request.numQuestions} math quiz questions for {request.gradeLevel} students.
+
+Topics to cover: {', '.join(effective_topics)}
+
+Question specifications:
+{chr(10).join(spec_lines)}
+{graph_instruction}
+
+Remember:
+- Points: easy=1, medium=3, hard=5
+- Each question must have a step-by-step explanation
+- Multiple choice must have exactly 4 options
+- All math must be accurate
+- Make problems relatable to students' real-world experiences"""
+
+        messages = [
+            {"role": "system", "content": QUIZ_GENERATION_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+
+        logger.info(f"Generating quiz: {request.numQuestions} questions, topics={effective_topics}")
+
+        response = hf.chat_completion(
+            model=CHAT_MODEL,
+            messages=messages,
+            max_tokens=4096,
+            temperature=0.3,
+            top_p=0.9,
+        )
+
+        raw_content = response.choices[0].message.content or ""
+        logger.info(f"Raw quiz response length: {len(raw_content)} chars")
+
+        parsed_questions = _parse_quiz_json(raw_content)
+        if not parsed_questions:
+            logger.error(f"Failed to parse quiz JSON. Raw content:\n{raw_content[:500]}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to parse quiz questions from AI response. Please try again.",
+            )
+
+        validated = _validate_quiz_questions(parsed_questions, distribution)
+        total_points = sum(q.points for q in validated)
+
+        # Build metadata
+        topic_counts: Dict[str, int] = {}
+        difficulty_counts: Dict[str, int] = {}
+        bloom_counts: Dict[str, int] = {}
+        for q in validated:
+            topic_counts[q.topic] = topic_counts.get(q.topic, 0) + 1
+            difficulty_counts[q.difficulty] = difficulty_counts.get(q.difficulty, 0) + 1
+            bloom_counts[q.bloomLevel] = bloom_counts.get(q.bloomLevel, 0) + 1
+
+        metadata: Dict[str, Any] = {
+            "topicsCovered": topic_counts,
+            "difficultyBreakdown": difficulty_counts,
+            "bloomTaxonomyDistribution": bloom_counts,
+            "questionTypeBreakdown": dict(Counter(q.questionType for q in validated)),
+            "gradeLevel": request.gradeLevel,
+            "totalQuestions": len(validated),
+            "includesGraphQuestions": request.includeGraphs,
+            "supplementalPurpose": (
+                "This quiz is designed to supplement classroom instruction, "
+                "not replace teacher-led learning."
+            ),
+            "bloomTaxonomyRationale": (
+                "Ensures questions assess different cognitive levels from basic recall "
+                "to complex analysis, providing comprehensive skill evaluation."
+            ),
+            "recommendedTeacherActions": [
+                "Review questions before assigning to students",
+                "Use difficulty breakdown to identify areas needing re-teaching",
+                "Focus on topics where students score below 60%",
+                "Use Bloom analysis to ensure higher-order thinking is practiced",
+            ],
+        }
+
+        if request.includeGraphs:
+            metadata["graphQuestionNote"] = (
+                "Graph questions use identification format as graphing is "
+                "challenging for students. Graphs are described in text."
+            )
+
+        logger.info(f"Quiz generated: {len(validated)} questions, {total_points} total points")
+
+        return QuizResponse(
+            questions=validated,
+            totalPoints=total_points,
+            metadata=metadata,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Quiz generation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Quiz generation error: {str(e)}")
+
+
+@app.post("/api/quiz/preview", response_model=QuizResponse)
+async def preview_quiz(request: QuizGenerationRequest):
+    """
+    Generate a 3-question preview quiz for teachers to verify AI question
+    quality before assigning a full quiz to students.
+    """
+    # Override to produce only 3 questions
+    request.numQuestions = 3
+    return await generate_quiz(request)
+
+
+@app.get("/api/quiz/topics")
+async def get_quiz_topics(gradeLevel: Optional[str] = None):
+    """
+    Return structured list of math topics organised by grade level.
+    If gradeLevel is provided, return topics for that grade only.
+    """
+    if gradeLevel:
+        key = gradeLevel.strip()
+        # Try exact match first
+        if key in MATH_TOPICS_BY_GRADE:
+            return {"gradeLevel": key, "topics": MATH_TOPICS_BY_GRADE[key]}
+        # Case-insensitive match
+        for k, v in MATH_TOPICS_BY_GRADE.items():
+            if k.lower() == key.lower():
+                return {"gradeLevel": k, "topics": v}
+        raise HTTPException(
+            status_code=404,
+            detail=f"Grade level '{gradeLevel}' not found. Available: {list(MATH_TOPICS_BY_GRADE.keys())}",
+        )
+
+    return {"allTopics": MATH_TOPICS_BY_GRADE}
+
+
+# ─── Student Competency Assessment ────────────────────────────
+
+
+@app.post("/api/quiz/student-competency", response_model=StudentCompetencyResponse)
+async def student_competency(request: StudentCompetencyRequest):
+    """
+    Assess a student's competency per topic based on their quiz history.
+    Returns efficiency scores, competency levels, and recommendations.
+    """
+    try:
+        hf = get_client()
+
+        history = request.quizHistory or []
+
+        if not history:
+            # No history — return empty competency with recommendation to start
+            return StudentCompetencyResponse(
+                studentId=request.studentId,
+                competencies=[],
+                recommendedTopics=["Start with foundational topics to build a learning profile"],
+                excludeTopics=[],
+            )
+
+        # Aggregate scores per topic
+        topic_data: Dict[str, List[Dict[str, Any]]] = {}
+        for entry in history:
+            topic = entry.get("topic", "Unknown")
+            if topic not in topic_data:
+                topic_data[topic] = []
+            topic_data[topic].append(entry)
+
+        # Compute competency per topic
+        competencies: List[TopicCompetency] = []
+        recommended: List[str] = []
+        exclude: List[str] = []
+
+        for topic, entries in topic_data.items():
+            scores = [e.get("score", 0) / max(e.get("total", 1), 1) * 100 for e in entries]
+            avg_score = sum(scores) / len(scores) if scores else 0
+
+            # Factor in time efficiency (faster with correct answers = more efficient)
+            time_factors = []
+            for e in entries:
+                if e.get("timeTaken") and e.get("total"):
+                    time_per_q = e["timeTaken"] / e["total"]
+                    # Normalise: < 30s per question = efficient, > 120s = slow
+                    efficiency = max(0, min(100, 100 - (time_per_q - 30) * (100 / 90)))
+                    time_factors.append(efficiency)
+
+            time_efficiency = sum(time_factors) / len(time_factors) if time_factors else 50
+            efficiency_score = round(avg_score * 0.7 + time_efficiency * 0.3, 1)
+
+            if efficiency_score >= 85:
+                level = "advanced"
+                perspective = f"Student demonstrates strong mastery of {topic}. Consistently scores well with efficient problem-solving."
+                exclude.append(topic)
+            elif efficiency_score >= 65:
+                level = "proficient"
+                perspective = f"Student has solid understanding of {topic} but may benefit from challenging practice problems."
+            elif efficiency_score >= 40:
+                level = "developing"
+                perspective = f"Student shows foundational knowledge of {topic} but needs more practice to build fluency."
+                recommended.append(topic)
+            else:
+                level = "beginner"
+                perspective = f"Student is still building understanding of {topic}. Recommend focused review and guided practice."
+                recommended.insert(0, topic)  # High-priority
+
+            competencies.append(TopicCompetency(
+                topic=topic,
+                efficiencyScore=efficiency_score,
+                competencyLevel=level,
+                perspective=perspective,
+            ))
+
+        # If the AI is available, enhance perspectives
+        if competencies:
+            try:
+                summary = ", ".join(
+                    f"{c.topic}: {c.competencyLevel} ({c.efficiencyScore}%)"
+                    for c in competencies
+                )
+                ai_prompt = f"""Based on this student competency profile, provide a brief (2-3 sentence) overall assessment:
+{summary}
+
+Focus on actionable recommendations. Be encouraging yet honest."""
+
+                ai_response = hf.chat_completion(
+                    model=CHAT_MODEL,
+                    messages=[
+                        {"role": "system", "content": "You are an educational assessment expert. Be concise and supportive."},
+                        {"role": "user", "content": ai_prompt},
+                    ],
+                    max_tokens=200,
+                    temperature=0.3,
+                )
+                overall_perspective = ai_response.choices[0].message.content or ""
+                if overall_perspective:
+                    # Add to recommended as a note
+                    recommended.append(f"AI Insight: {overall_perspective.strip()}")
+            except Exception as e:
+                logger.warning(f"AI competency enhancement failed: {e}")
+
+        competencies.sort(key=lambda c: c.efficiencyScore)
+
+        return StudentCompetencyResponse(
+            studentId=request.studentId,
+            competencies=competencies,
+            recommendedTopics=recommended,
+            excludeTopics=exclude,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Student competency error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Competency assessment error: {str(e)}")
+
+
+# ─── Calculator / Symbolic Math ───────────────────────────────
+
+# Allowed names for safe expression evaluation via SymPy
+_SAFE_SYMPY_NAMES: Optional[Dict[str, Any]] = None
+
+
+def _get_sympy_safe_dict() -> Dict[str, Any]:
+    """Lazily build allowlist of SymPy names for safe eval."""
+    global _SAFE_SYMPY_NAMES
+    if _SAFE_SYMPY_NAMES is not None:
+        return _SAFE_SYMPY_NAMES
+
+    import sympy  # type: ignore[import-untyped]
+
+    _SAFE_SYMPY_NAMES = {
+        # Symbols
+        "x": sympy.Symbol("x"),
+        "y": sympy.Symbol("y"),
+        "z": sympy.Symbol("z"),
+        "t": sympy.Symbol("t"),
+        "n": sympy.Symbol("n"),
+        # Constants
+        "pi": sympy.pi,
+        "e": sympy.E,
+        "E": sympy.E,
+        "I": sympy.I,
+        "oo": sympy.oo,
+        "inf": sympy.oo,
+        # Functions
+        "sin": sympy.sin,
+        "cos": sympy.cos,
+        "tan": sympy.tan,
+        "asin": sympy.asin,
+        "acos": sympy.acos,
+        "atan": sympy.atan,
+        "sinh": sympy.sinh,
+        "cosh": sympy.cosh,
+        "tanh": sympy.tanh,
+        "log": sympy.log,
+        "ln": sympy.log,
+        "exp": sympy.exp,
+        "sqrt": sympy.sqrt,
+        "Abs": sympy.Abs,
+        "abs": sympy.Abs,
+        "factorial": sympy.factorial,
+        "binomial": sympy.binomial,
+        "ceiling": sympy.ceiling,
+        "floor": sympy.floor,
+        # Operations
+        "diff": sympy.diff,
+        "integrate": sympy.integrate,
+        "limit": sympy.limit,
+        "solve": sympy.solve,
+        "simplify": sympy.simplify,
+        "expand": sympy.expand,
+        "factor": sympy.factor,
+        "Rational": sympy.Rational,
+        "Matrix": sympy.Matrix,
+        "Sum": sympy.Sum,
+        "Product": sympy.Product,
+        "Derivative": sympy.Derivative,
+        "Integral": sympy.Integral,
+        "Limit": sympy.Limit,
+    }
+    return _SAFE_SYMPY_NAMES
+
+
+_DANGEROUS_PATTERNS = re.compile(
+    r"(__\w+__|import\s|exec\s*\(|eval\s*\(|open\s*\(|os\.|sys\.|subprocess|shutil|__builtins__|globals|locals|compile|getattr|setattr|delattr)",
+    re.IGNORECASE,
+)
+
+
+@app.post("/api/calculator/evaluate", response_model=CalculatorResponse)
+async def calculator_evaluate(request: CalculatorRequest):
+    """
+    Evaluate a mathematical expression symbolically using SymPy.
+    Supports arithmetic, algebra, trigonometry, and calculus.
+    """
+    try:
+        import sympy  # type: ignore[import-untyped]
+
+        expr_str = request.expression.strip()
+
+        # Safety validation
+        if _DANGEROUS_PATTERNS.search(expr_str):
+            raise HTTPException(
+                status_code=400,
+                detail="Expression contains disallowed patterns. Only mathematical expressions are permitted.",
+            )
+        if len(expr_str) > 500:
+            raise HTTPException(status_code=400, detail="Expression too long (max 500 characters).")
+
+        safe_dict = _get_sympy_safe_dict()
+        steps: List[str] = [f"Input expression: {expr_str}"]
+
+        # Parse expression
+        try:
+            parsed = sympy.sympify(expr_str, locals=safe_dict)
+            steps.append(f"Parsed as: {parsed}")
+        except Exception as parse_err:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not parse expression: {str(parse_err)}",
+            )
+
+        # Simplify
+        simplified = sympy.simplify(parsed)
+        if simplified != parsed:
+            steps.append(f"Simplified: {simplified}")
+
+        # Try numeric evaluation
+        try:
+            numeric = float(simplified.evalf())
+            if numeric == int(numeric):
+                result_str = str(int(numeric))
+            else:
+                result_str = str(round(numeric, 10))
+            steps.append(f"Numerical result: {result_str}")
+        except Exception:
+            result_str = str(simplified)
+            steps.append(f"Symbolic result: {result_str}")
+
+        # LaTeX representation
+        try:
+            latex_str = sympy.latex(simplified)
+        except Exception:
+            latex_str = None
+
+        return CalculatorResponse(
+            expression=expr_str,
+            result=result_str,
+            steps=steps,
+            simplified=str(simplified) if simplified != parsed else None,
+            latex=latex_str,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Calculator error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Calculator error: {str(e)}")
+
+
+# ─── ML-Powered Student Analytics Endpoints ──────────────────
+
+
+@app.post("/api/student/competency-analysis", response_model=CompetencyAnalysisResponse)
+async def student_competency_analysis(request: CompetencyAnalysisRequest):
+    """
+    Analyse student competency per topic using IRT (Item Response Theory).
+    Calculates efficiency scores, mastery percentages, learning velocity,
+    and theta (ability) estimates.
+    """
+    try:
+        logger.info(f"Competency analysis requested for student {request.studentId}")
+
+        # Fetch quiz history from Firestore
+        quiz_history = await fetch_student_quiz_history(request.studentId)
+
+        result = await compute_competency_analysis(
+            student_id=request.studentId,
+            quiz_history=quiz_history,
+            topic_filter=request.topicId,
+        )
+
+        # Store results if successful
+        if result.status == "success":
+            await store_competency_analysis(
+                request.studentId,
+                {
+                    "analyses": [a.dict() for a in result.analyses],
+                    "overallCompetency": result.overallCompetency,
+                    "thetaEstimate": result.thetaEstimate,
+                },
+            )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Competency analysis error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Competency analysis error: {str(e)}")
+
+
+@app.post("/api/risk/train-model", response_model=RiskTrainResponse)
+async def train_risk_classification_model(request: RiskTrainRequest):
+    """
+    Train a supervised ML model (XGBoost/Random Forest) for student risk prediction.
+    Admin-only endpoint. Collects historical data from Firestore, trains the model,
+    and saves it to disk.
+    """
+    try:
+        logger.info(f"Risk model training requested (forceRetrain={request.forceRetrain})")
+        result = await train_risk_model(force_retrain=request.forceRetrain)
+        return result
+    except Exception as e:
+        logger.error(f"Risk model training error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Model training error: {str(e)}")
+
+
+@app.post("/api/predict-risk/enhanced", response_model=EnhancedRiskPrediction)
+async def predict_risk_ml(data: EnhancedRiskRequest):
+    """
+    Enhanced student risk prediction using trained ML model with SHAP explanations.
+    Falls back to rule-based heuristics if no trained model is available.
+    Returns risk probabilities for all classes and top contributing factors.
+    """
+    try:
+        logger.info(f"Enhanced risk prediction for student {data.studentId}")
+        result = await predict_risk_enhanced(data)
+        return result
+    except Exception as e:
+        logger.error(f"Enhanced risk prediction error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Risk prediction error: {str(e)}")
+
+
+@app.post("/api/quiz/calibrate-difficulty", response_model=CalibrateDifficultyResponse)
+async def calibrate_quiz_difficulty(request: CalibrateDifficultyRequest):
+    """
+    Calculate IRT difficulty parameters for a question based on student responses.
+    Uses 3-Parameter Logistic model to estimate difficulty (b), discrimination (a),
+    and guessing (c) parameters.
+    """
+    try:
+        logger.info(f"Calibrating difficulty for question {request.questionId}")
+        result = await calibrate_question_difficulty(request)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Difficulty calibration error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Calibration error: {str(e)}")
+
+
+@app.post("/api/quiz/adaptive-select", response_model=AdaptiveQuizResponse)
+async def adaptive_quiz_selection(request: AdaptiveQuizSelectRequest):
+    """
+    Select questions adaptively based on student ability level using IRT.
+    Adjusts difficulty distribution to target ~70-75% success rate.
+    Uses student competency data to personalize quiz difficulty.
+    """
+    try:
+        logger.info(f"Adaptive quiz selection for student {request.studentId}, topic {request.topicId}")
+        result = await select_adaptive_quiz(request)
+        return result
+    except Exception as e:
+        logger.error(f"Adaptive quiz selection error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Adaptive selection error: {str(e)}")
+
+
+@app.post("/api/learning/recommend-topics", response_model=TopicRecommendationResponse)
+async def recommend_learning_topics(request: TopicRecommendationRequest):
+    """
+    Recommend topics for a student based on competency gaps, prerequisites,
+    recency of practice, and peer performance patterns.
+    Returns ranked list with reasoning and estimated time to mastery.
+    """
+    try:
+        logger.info(f"Topic recommendation for student {request.studentId}")
+        result = await recommend_topics(request)
+        return result
+    except Exception as e:
+        logger.error(f"Topic recommendation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Recommendation error: {str(e)}")
+
+
+@app.get("/api/analytics/student-summary", response_model=StudentSummaryResponse)
+async def student_analytics_summary(studentId: str = Query(..., description="Firebase user ID")):
+    """
+    Aggregate all ML-powered metrics for a student:
+    competency distribution, risk assessment, recommendations,
+    learning velocity trends, efficiency scores, predicted performance,
+    and engagement pattern analysis.
+    """
+    try:
+        logger.info(f"Student summary requested for {studentId}")
+        result = await get_student_summary(studentId)
+        return result
+    except Exception as e:
+        logger.error(f"Student summary error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Analytics error: {str(e)}")
+
+
+@app.post("/api/analytics/class-insights", response_model=ClassInsightsResponse)
+async def class_analytics_insights(request: ClassInsightsRequest):
+    """
+    Aggregate class-wide ML analytics for teacher dashboards.
+    Includes risk distribution, common weak topics, learning velocity,
+    engagement patterns, and intervention recommendations.
+    """
+    try:
+        logger.info(f"Class insights requested by teacher {request.teacherId}")
+        result = await get_class_insights(request)
+        return result
+    except Exception as e:
+        logger.error(f"Class insights error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Class insights error: {str(e)}")
+
+
+@app.post("/api/analytics/refresh-cache", response_model=RefreshCacheResponse)
+async def refresh_analytics_cache():
+    """
+    Force clear and refresh all ML analytics caches.
+    Use when student data has been updated and fresh analysis is needed.
+    """
+    try:
+        result = refresh_all_caches()
+        logger.info("Analytics caches refreshed")
+        return result
+    except Exception as e:
+        logger.error(f"Cache refresh error: {e}")
+        raise HTTPException(status_code=500, detail=f"Cache refresh error: {str(e)}")
+
+
+@app.post("/api/dev/generate-mock-data")
+async def generate_mock_data(request: MockDataRequest):
+    """
+    Generate realistic mock student data for testing ML features.
+    Development/testing endpoint only.
+    Generates students with varied archetypes: perfect, struggling,
+    inconsistent, improving, declining, and average performers.
+    """
+    try:
+        logger.info(f"Generating mock data: {request.numStudents} students, {request.numQuizzes} quizzes")
+        data = generate_mock_student_data(
+            num_students=request.numStudents,
+            num_quizzes=request.numQuizzes,
+            seed=request.seed,
+        )
+        return data
+    except Exception as e:
+        logger.error(f"Mock data generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Mock data error: {str(e)}")
+
+
+@app.get("/api/analytics/config")
+async def get_analytics_config():
+    """Return current ML analytics configuration parameters."""
+    return {
+        "riskModelPath": RISK_MODEL_PATH,
+        "riskModelExists": os.path.exists(RISK_MODEL_PATH),
+        "competencyThresholds": COMPETENCY_THRESHOLDS,
+        "minQuizAttemptsForCompetency": MIN_QUIZ_ATTEMPTS_FOR_COMPETENCY,
+        "cacheTTLSeconds": 3600,
+        "topicPrerequisites": fetch_topic_dependencies(),
+    }
+
+
+# ─── Automation Engine Endpoints ──────────────────────────────
+
+
+@app.post("/api/automation/diagnostic-completed", response_model=AutomationResult)
+async def automation_diagnostic_completed(payload: DiagnosticCompletionPayload):
+    """
+    Trigger automation pipeline after a student completes the diagnostic.
+    Classifies risk per subject, generates learning path, creates
+    remedial quizzes, and produces teacher intervention recommendations.
+    """
+    try:
+        logger.info(f"Automation trigger: diagnostic_completed for {payload.studentId}")
+        result = await automation_engine.handle_diagnostic_completion(payload)
+        return result
+    except Exception as e:
+        logger.error(f"Automation diagnostic error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+
+@app.post("/api/automation/quiz-submitted", response_model=AutomationResult)
+async def automation_quiz_submitted(payload: QuizSubmissionPayload):
+    """
+    Trigger automation after any quiz / assessment submission.
+    Recalculates risk for the subject and determines status changes.
+    """
+    try:
+        logger.info(f"Automation trigger: quiz_submitted by {payload.studentId}")
+        result = await automation_engine.handle_quiz_submission(payload)
+        return result
+    except Exception as e:
+        logger.error(f"Automation quiz error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+
+@app.post("/api/automation/student-enrolled", response_model=AutomationResult)
+async def automation_student_enrolled(payload: StudentEnrollmentPayload):
+    """
+    Trigger automation when a new student account is created.
+    Initialises progress tracking, gamification, and flags diagnostic as pending.
+    """
+    try:
+        logger.info(f"Automation trigger: student_enrolled for {payload.studentId}")
+        result = await automation_engine.handle_student_enrollment(payload)
+        return result
+    except Exception as e:
+        logger.error(f"Automation enrollment error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+
+@app.post("/api/automation/data-imported", response_model=AutomationResult)
+async def automation_data_imported(payload: DataImportPayload):
+    """
+    Trigger automation after a teacher uploads external data.
+    Recalculates risk for all affected students and flags status changes.
+    """
+    try:
+        logger.info(f"Automation trigger: data_imported by teacher {payload.teacherId}")
+        result = await automation_engine.handle_data_import(payload)
+        return result
+    except Exception as e:
+        logger.error(f"Automation import error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+
+@app.post("/api/automation/content-updated", response_model=AutomationResult)
+async def automation_content_updated(payload: ContentUpdatePayload):
+    """
+    Trigger automation after admin CRUD on curriculum content.
+    Logs the change and notifies affected teachers.
+    """
+    try:
+        logger.info(f"Automation trigger: content_updated by admin {payload.adminId}")
+        result = await automation_engine.handle_content_update(payload)
+        return result
+    except Exception as e:
+        logger.error(f"Automation content error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
 
 
 # ─── Main ──────────────────────────────────────────────────────
