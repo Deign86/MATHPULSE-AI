@@ -210,7 +210,18 @@ export const getPendingFriendRequests = async (userId: string): Promise<FriendRe
 };
 
 // Get user's friends
-export const getUserFriends = async (userId: string): Promise<any[]> => {
+interface FriendInfo {
+  uid: string;
+  name?: string;
+  email?: string;
+  photo?: string;
+  level?: number;
+  totalXP?: number;
+  streak?: number;
+  role?: string;
+}
+
+export const getUserFriends = async (userId: string): Promise<FriendInfo[]> => {
   try {
     const userDoc = await getDoc(doc(db, 'users', userId));
     const friendIds = userDoc.data()?.friends || [];
@@ -236,7 +247,7 @@ export const getUserFriends = async (userId: string): Promise<any[]> => {
 };
 
 // Search for users
-export const searchUsers = async (searchTerm: string, currentUserId: string): Promise<any[]> => {
+export const searchUsers = async (searchTerm: string, currentUserId: string): Promise<FriendInfo[]> => {
   try {
     // Note: This is a simple implementation. For production, consider using Algolia or similar
     const usersQuery = query(
@@ -246,8 +257,8 @@ export const searchUsers = async (searchTerm: string, currentUserId: string): Pr
 
     const snapshot = await getDocs(usersQuery);
     const users = snapshot.docs
-      .map(doc => ({ ...doc.data(), uid: doc.id }) as any)
-      .filter((user: any) => 
+      .map(doc => ({ ...doc.data(), uid: doc.id }) as FriendInfo)
+      .filter((user: FriendInfo) => 
         user.uid !== currentUserId &&
         (user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
          user.email?.toLowerCase().includes(searchTerm.toLowerCase()))

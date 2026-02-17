@@ -7,7 +7,7 @@ interface SearchResult {
   type: 'module' | 'student' | 'teacher' | 'page';
   title: string;
   subtitle?: string;
-  icon?: React.ComponentType<any>;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
 }
 
 interface SearchBarProps {
