@@ -6,6 +6,7 @@ import SubjectDetailView from './SubjectDetailView';
 import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
 import QuizExperience from './QuizExperience';
+import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { subjects, Subject, Module } from '../data/subjects';
 
 interface ModulesPageProps {
@@ -17,10 +18,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
   const [activeTab, setActiveTab] = useState<'learning-path' | 'all-subjects' | 'practice' | 'recommended'>('learning-path');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [selectedQuiz, setSelectedQuiz] = useState<any | null>(null);
+  const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
 
   // Handle quiz start
-  const handleStartQuiz = (quiz: any) => {
+  const handleStartQuiz = (quiz: QuizExperienceQuiz) => {
     setSelectedQuiz(quiz);
   };
 

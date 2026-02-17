@@ -3,7 +3,7 @@
 ## Architecture Overview
 
 **Tech Stack**: React 18 + TypeScript + Vite + Firebase (Auth, Firestore, Storage)  
-**UI Framework**: Radix UI primitives + Tailwind CSS + Framer Motion  
+**UI Framework**: Radix UI primitives + Tailwind CSS + Motion for React (`motion/react`)  
 **Project Type**: Educational platform with role-based access (Student/Teacher/Admin)
 
 ### Key Architectural Patterns
@@ -36,7 +36,7 @@ type UserRole = 'student' | 'teacher' | 'admin';
 ### Running the Project
 ```bash
 npm install          # First time setup
-npm run dev          # Dev server on localhost:5173
+npm run dev          # Dev server on localhost:3000
 npm run build        # Production build
 ```
 

@@ -138,7 +138,7 @@ const App = () => {
     }
   };
 
-  const handleSaveProfile = (data: any) => {
+  const handleSaveProfile = (data: { name?: string; email?: string; phone?: string; photo?: string }) => {
     // TODO: Save to Firebase (update user profile)
     setShowProfileModal(false);
   };
@@ -285,7 +285,7 @@ const App = () => {
             <div className="flex items-center gap-3">
               <SearchBar
                 onSelect={(result) => {
-                  console.log('Selected:', result);
+                  // TODO: Navigate to selected search result
                 }}
               />
               <NotificationCenter userRole={userRole} />

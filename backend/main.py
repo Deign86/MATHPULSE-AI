@@ -377,7 +377,7 @@ Keep the response under 200 words. Be specific and practical."""
 async def upload_class_records(file: UploadFile = File(...)):
     """Upload and parse class records (CSV, Excel, PDF) with AI column detection"""
     try:
-        import pandas as pd
+        import pandas as pd  # type: ignore[import-not-found]
 
         filename = file.filename or ""
         contents = await file.read()

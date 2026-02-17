@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-interface Quiz {
+export interface Quiz {
   id: string;
   title: string;
   subject: string;
@@ -77,7 +77,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
 
   // Sound effects
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'combo') => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 

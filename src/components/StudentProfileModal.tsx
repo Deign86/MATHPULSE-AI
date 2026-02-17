@@ -3,8 +3,21 @@ import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, UserPlus,
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 
+interface StudentData {
+  avatar: string;
+  isOnline: boolean;
+  name: string;
+  section: string;
+  level: number;
+  totalXP: number;
+  currentStreak: number;
+  isFriend: boolean;
+  rank: { global: number; section: number; friends: number; change: number };
+  stats: { quizzesCompleted: number; averageScore: number; modulesCompleted: number; studyHours: number };
+}
+
 interface StudentProfileModalProps {
-  student: any;
+  student: StudentData | null;
   onClose: () => void;
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, LogOut, Users, BarChart3, Shield, Trophy } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 interface SidebarProps {
   activeTab: string;

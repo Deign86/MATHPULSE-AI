@@ -98,7 +98,7 @@ export const updateTaskStatus = async (
 ): Promise<void> => {
   try {
     const taskRef = doc(db, 'tasks', taskId);
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status,
       updatedAt: serverTimestamp(),
     };

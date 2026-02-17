@@ -14,6 +14,20 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
 
+/** Role-specific additional data passed during signup / profile creation. */
+interface AdditionalProfileData {
+  name?: string;
+  grade?: string;
+  school?: string;
+  major?: string;
+  gpa?: string;
+  department?: string;
+  subject?: string;
+  yearsOfExperience?: string;
+  qualification?: string;
+  position?: string;
+}
+
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 
@@ -23,7 +37,7 @@ export const signUpWithEmail = async (
   password: string,
   name: string,
   role: UserRole,
-  additionalData: any = {}
+  additionalData: AdditionalProfileData = {}
 ): Promise<User> => {
   try {
     // Create auth user
@@ -37,13 +51,14 @@ export const signUpWithEmail = async (
     const userProfile = await createUserProfile(firebaseUser, role, additionalData);
 
     return userProfile;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const firebaseError = error as { code?: string; message?: string };
     console.error('🚨 Error signing up:', {
-      code: error.code,
-      message: error.message,
+      code: firebaseError.code,
+      message: firebaseError.message,
       fullError: error
     });
-    throw new Error(error.message || 'Failed to create account');
+    throw new Error(firebaseError.message || 'Failed to create account');
   }
 };
 
@@ -68,13 +83,14 @@ export const signInWithEmail = async (email: string, password: string): Promise<
     }
     
     console.log('✅ Sign in successful, AuthContext will handle profile creation');
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const firebaseError = error as { code?: string; message?: string };
     console.error('🚨 Error signing in:', {
-      code: error.code,
-      message: error.message,
+      code: firebaseError.code,
+      message: firebaseError.message,
       fullError: error
     });
-    throw new Error(error.message || 'Failed to sign in');
+    throw new Error(firebaseError.message || 'Failed to sign in');
   }
 };
 
@@ -93,9 +109,9 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
     }
 
     return userProfile;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error signing in with Google:', error);
-    throw new Error(error.message || 'Failed to sign in with Google');
+    throw new Error(error instanceof Error ? error.message : 'Failed to sign in with Google');
   }
 };
 
@@ -103,9 +119,9 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
 export const signOutUser = async (): Promise<void> => {
   try {
     await signOut(auth);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error signing out:', error);
-    throw new Error(error.message || 'Failed to sign out');
+    throw new Error(error instanceof Error ? error.message : 'Failed to sign out');
   }
 };
 
@@ -113,9 +129,9 @@ export const signOutUser = async (): Promise<void> => {
 export const resetPassword = async (email: string): Promise<void> => {
   try {
     await sendPasswordResetEmail(auth, email);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error resetting password:', error);
-    throw new Error(error.message || 'Failed to send reset email');
+    throw new Error(error instanceof Error ? error.message : 'Failed to send reset email');
   }
 };
 
@@ -123,7 +139,7 @@ export const resetPassword = async (email: string): Promise<void> => {
 export const createUserProfile = async (
   firebaseUser: FirebaseUser,
   role: UserRole,
-  additionalData: any
+  additionalData: AdditionalProfileData
 ): Promise<User> => {
   const baseProfile = {
     uid: firebaseUser.uid,
@@ -135,49 +151,51 @@ export const createUserProfile = async (
     updatedAt: serverTimestamp(),
   };
 
-  let userProfile: any = { ...baseProfile };
+  // Build role-specific profile data to persist in Firestore.
+  // serverTimestamp() returns FieldValue (not Date), so we use a plain object
+  // and cast to User on return — Firestore handles the timestamp conversion.
+  const roleFields = (() => {
+    switch (role) {
+      case 'student':
+        return {
+          studentId: `STU-${Date.now()}`,
+          grade: additionalData.grade || '10th Grade',
+          school: additionalData.school || '',
+          enrollmentDate: new Date().toISOString().split('T')[0],
+          major: additionalData.major || 'General',
+          gpa: additionalData.gpa || '0.00',
+          level: 1,
+          currentXP: 0,
+          totalXP: 0,
+          streak: 0,
+          friends: [] as string[],
+          atRiskSubjects: [] as string[],
+          hasTakenDiagnostic: false,
+        };
+      case 'teacher':
+        return {
+          teacherId: `TCH-${Date.now()}`,
+          department: additionalData.department || 'Mathematics',
+          subject: additionalData.subject || 'Mathematics',
+          yearsOfExperience: additionalData.yearsOfExperience || '0',
+          qualification: additionalData.qualification || '',
+          students: [] as string[],
+        };
+      case 'admin':
+        return {
+          adminId: `ADM-${Date.now()}`,
+          position: additionalData.position || 'Administrator',
+          department: additionalData.department || 'System',
+        };
+    }
+  })();
 
-  // Add role-specific fields
-  if (role === 'student') {
-    userProfile = {
-      ...userProfile,
-      studentId: `STU-${Date.now()}`,
-      grade: additionalData.grade || '10th Grade',
-      school: additionalData.school || '',
-      enrollmentDate: new Date().toISOString().split('T')[0],
-      major: additionalData.major || 'General',
-      gpa: additionalData.gpa || '0.00',
-      level: 1,
-      currentXP: 0,
-      totalXP: 0,
-      streak: 0,
-      friends: [],
-      atRiskSubjects: [],
-      hasTakenDiagnostic: false,
-    } as StudentProfile;
-  } else if (role === 'teacher') {
-    userProfile = {
-      ...userProfile,
-      teacherId: `TCH-${Date.now()}`,
-      department: additionalData.department || 'Mathematics',
-      subject: additionalData.subject || 'Mathematics',
-      yearsOfExperience: additionalData.yearsOfExperience || '0',
-      qualification: additionalData.qualification || '',
-      students: [],
-    } as TeacherProfile;
-  } else if (role === 'admin') {
-    userProfile = {
-      ...userProfile,
-      adminId: `ADM-${Date.now()}`,
-      position: additionalData.position || 'Administrator',
-      department: additionalData.department || 'System',
-    } as AdminProfile;
-  }
+  const userProfile = { ...baseProfile, ...roleFields };
 
   // Save to Firestore
   await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
 
-  return userProfile as User;
+  return userProfile as unknown as User;
 };
 
 // Get user profile from Firestore
