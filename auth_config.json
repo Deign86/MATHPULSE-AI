@@ -1,0 +1,6 @@
+{
+  "provider": [{
+    "id": "password",
+    "enabled": true
+  }]
+}
