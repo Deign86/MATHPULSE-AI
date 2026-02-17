@@ -3,6 +3,8 @@ MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
 - Qwen/Qwen2.5-3B-Instruct for chat, learning paths, and insights
 - facebook/bart-large-mnli for student risk classification
+
+Auto-deployed to HuggingFace Spaces via GitHub Actions.
 """
 
 import os
