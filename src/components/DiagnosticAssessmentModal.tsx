@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Brain, CheckCircle, ChevronRight, AlertTriangle, Calculator, BarChart3, TrendingUp, X } from 'lucide-react';
 import { subjects } from '../data/subjects';
+import { triggerDiagnosticCompleted, DiagnosticResult } from '../services/automationService';
 
 interface DiagnosticAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (atRiskSubjectIds: string[]) => void;
+  studentId?: string;
+  gradeLevel?: string;
 }
 
 // Simplified mock questions for the demo
@@ -42,11 +45,12 @@ const questions = [
   }
 ];
 
-const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ isOpen, onClose, onComplete }) => {
+const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ isOpen, onClose, onComplete, studentId, gradeLevel = 'Grade 10' }) => {
   const [step, setStep] = useState<'intro' | 'test' | 'results'>('intro');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]); // Store selected indices
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>([]);
+  const [automationProcessing, setAutomationProcessing] = useState(false);
 
   // Reset state when opened
   React.useEffect(() => {
@@ -88,21 +92,48 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
     }
   };
 
-  const calculateResults = (finalAnswers: number[]) => {
+  const calculateResults = async (finalAnswers: number[]) => {
     const riskList: string[] = [];
-    
-    questions.forEach((q, index) => {
-      if (finalAnswers[index] !== q.correct) {
-        riskList.push(q.subjectId);
-      }
-    });
 
-    // If perfectly answered, maybe pick one randomly for demo purposes or keep empty
-    // Let's ensure at least one is at risk for the demo if they miss anything
-    // If they get all right, no risk.
+    // Build per-subject scores (0 or 100 for single-question diagnostic)
+    const subjectScores: Record<string, { correct: number; total: number }> = {};
+    questions.forEach((q, index) => {
+      const isCorrect = finalAnswers[index] === q.correct;
+      if (!subjectScores[q.subjectId]) subjectScores[q.subjectId] = { correct: 0, total: 0 };
+      subjectScores[q.subjectId].total += 1;
+      if (isCorrect) subjectScores[q.subjectId].correct += 1;
+      if (!isCorrect) riskList.push(q.subjectId);
+    });
 
     setAtRiskSubjects(riskList);
     setStep('results');
+
+    // Fire automation pipeline if studentId is available
+    if (studentId) {
+      setAutomationProcessing(true);
+      try {
+        const diagnosticResults: DiagnosticResult[] = Object.entries(subjectScores).map(
+          ([subject, data]) => ({
+            subject,
+            score: Math.round((data.correct / data.total) * 100),
+          })
+        );
+
+        // Build question breakdown for weak-topic analysis
+        const questionBreakdown: Record<string, { correct: boolean }[]> = {};
+        questions.forEach((q, index) => {
+          if (!questionBreakdown[q.subjectId]) questionBreakdown[q.subjectId] = [];
+          questionBreakdown[q.subjectId].push({ correct: finalAnswers[index] === q.correct });
+        });
+
+        await triggerDiagnosticCompleted(studentId, diagnosticResults, gradeLevel, questionBreakdown);
+        console.log('✅ Automation: diagnostic pipeline completed');
+      } catch (err) {
+        console.error('⚠️ Automation: diagnostic pipeline failed:', err);
+      } finally {
+        setAutomationProcessing(false);
+      }
+    }
   };
 
   const handleComplete = () => {
