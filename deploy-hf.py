@@ -48,8 +48,15 @@ def main():
     )
     print(f"Created space: {SPACE_ID}")
 
-    # Step 3: Upload backend files
-    files_to_upload = ["main.py", "requirements.txt", "Dockerfile", "README.md"]
+    # Step 3: Upload backend files (include ALL Python modules imported by main.py)
+    files_to_upload = [
+        "main.py",
+        "analytics.py",
+        "automation_engine.py",
+        "requirements.txt",
+        "Dockerfile",
+        "README.md",
+    ]
     for filename in files_to_upload:
         filepath = os.path.join(BACKEND_DIR, filename)
         if os.path.exists(filepath):
@@ -62,6 +69,20 @@ def main():
             print(f"Uploaded: {filename}")
         else:
             print(f"Warning: {filename} not found in {BACKEND_DIR}")
+
+    # Upload models directory (may contain trained model artifacts)
+    models_dir = os.path.join(BACKEND_DIR, "models")
+    if os.path.isdir(models_dir):
+        for fname in os.listdir(models_dir):
+            fpath = os.path.join(models_dir, fname)
+            if os.path.isfile(fpath) and fname != ".gitkeep":
+                api.upload_file(
+                    path_or_fileobj=fpath,
+                    path_in_repo=f"models/{fname}",
+                    repo_id=SPACE_ID,
+                    repo_type="space",
+                )
+                print(f"Uploaded: models/{fname}")
 
     print(f"\nDeployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")
