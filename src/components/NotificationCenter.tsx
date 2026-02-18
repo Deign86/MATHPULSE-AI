@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, X, CheckCheck, Trophy, AlertCircle, BookOpen, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  getUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from '../services/notificationService';
 
 interface Notification {
-  id: number;
+  id: string;
   type: 'achievement' | 'alert' | 'message' | 'info';
   title: string;
   message: string;
@@ -16,104 +22,72 @@ interface NotificationCenterProps {
 }
 
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'student' }) => {
+  const { currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(
-    userRole === 'student' ? [
-      {
-        id: 1,
-        type: 'achievement',
-        title: 'New Achievement Unlocked!',
-        message: 'You earned the "Speed Learner" badge',
-        time: '5 min ago',
-        read: false
-      },
-      {
-        id: 2,
-        type: 'alert',
-        title: 'Quiz Reminder',
-        message: 'Your Algebra quiz is due tomorrow',
-        time: '1 hour ago',
-        read: false
-      },
-      {
-        id: 3,
-        type: 'message',
-        title: 'New Message from AI Tutor',
-        message: 'I found some helpful resources for you!',
-        time: '2 hours ago',
-        read: true
-      },
-      {
-        id: 4,
-        type: 'info',
-        title: 'Module Updated',
-        message: 'New content added to "Calculus Basics"',
-        time: '5 hours ago',
-        read: true
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Load notifications from Firebase
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!currentUser) return;
+      setLoading(true);
+      try {
+        const firebaseNotifications = await getUserNotifications(currentUser.uid, 20);
+        const mapped: Notification[] = firebaseNotifications.map(n => {
+          // Map Firebase notification types to component types
+          let type: Notification['type'] = 'info';
+          if (n.type === 'achievement') type = 'achievement';
+          else if (n.type === 'risk_alert' || n.type === 'reminder') type = 'alert';
+          else if (n.type === 'message' || n.type === 'friend_request') type = 'message';
+          else type = 'info';
+
+          // Format time as relative
+          const createdAt = n.createdAt instanceof Date ? n.createdAt : new Date(n.createdAt);
+          const diffMs = Date.now() - createdAt.getTime();
+          const diffMins = Math.floor(diffMs / 60000);
+          let time: string;
+          if (diffMins < 1) time = 'Just now';
+          else if (diffMins < 60) time = `${diffMins} min ago`;
+          else if (diffMins < 1440) time = `${Math.floor(diffMins / 60)} hours ago`;
+          else time = `${Math.floor(diffMins / 1440)} days ago`;
+
+          return {
+            id: n.id,
+            type,
+            title: n.title,
+            message: n.message,
+            time,
+            read: n.read,
+          };
+        });
+        setNotifications(mapped);
+      } catch (err) {
+        console.error('Error loading notifications:', err);
+      } finally {
+        setLoading(false);
       }
-    ] : userRole === 'teacher' ? [
-      {
-        id: 1,
-        type: 'alert',
-        title: 'Student At-Risk Alert',
-        message: '3 students showing declining performance',
-        time: '10 min ago',
-        read: false
-      },
-      {
-        id: 2,
-        type: 'info',
-        title: 'New Assignment Submissions',
-        message: '12 students submitted "Algebra Quiz 5"',
-        time: '1 hour ago',
-        read: false
-      },
-      {
-        id: 3,
-        type: 'message',
-        title: 'Parent Message',
-        message: 'Mrs. Johnson asked about her son\'s progress',
-        time: '3 hours ago',
-        read: true
-      }
-    ] : [
-      {
-        id: 1,
-        type: 'alert',
-        title: 'System Alert',
-        message: '15 new students identified as at-risk',
-        time: '5 min ago',
-        read: false
-      },
-      {
-        id: 2,
-        type: 'info',
-        title: 'New Teacher Registration',
-        message: 'Prof. Williams has joined the platform',
-        time: '1 hour ago',
-        read: false
-      },
-      {
-        id: 3,
-        type: 'achievement',
-        title: 'Performance Milestone',
-        message: 'Platform reached 95% student satisfaction',
-        time: '2 hours ago',
-        read: true
-      }
-    ]
-  );
+    };
+
+    loadNotifications();
+  }, [currentUser]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAllAsRead = () => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
+    if (currentUser) {
+      markAllNotificationsAsRead(currentUser.uid)
+        .catch(err => console.error('Error marking all as read:', err));
+    }
   };
 
-  const markAsRead = (id: number) => {
+  const markAsRead = (id: string) => {
     setNotifications(notifications.map(n => 
       n.id === id ? { ...n, read: true } : n
     ));
+    markNotificationAsRead(id)
+      .catch(err => console.error('Error marking as read:', err));
   };
 
   const getIcon = (type: string) => {
@@ -160,7 +134,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
       {/* Notification Dropdown */}
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="notification-panel">
             {/* Backdrop */}
             <div 
               className="fixed inset-0 z-40"
@@ -260,7 +234,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
                 </div>
               )}
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>
