@@ -216,8 +216,12 @@ def get_client() -> InferenceClient:
             )
         for attempt in range(3):
             try:
-                client = InferenceClient(token=HF_TOKEN, timeout=60)
-                logger.info("Hugging Face InferenceClient initialized")
+                client = InferenceClient(
+                    token=HF_TOKEN,
+                    timeout=60,
+                    provider="auto",  # auto-route to available inference providers
+                )
+                logger.info("Hugging Face InferenceClient initialized (provider=auto)")
                 break
             except Exception as e:
                 logger.warning(f"HF client init attempt {attempt + 1} failed: {e}")
