@@ -237,7 +237,6 @@ def get_client() -> InferenceClient:
                 _zsc_client = InferenceClient(
                     token=HF_TOKEN,
                     timeout=60,
-                    api_url="https://router.huggingface.co/hf-inference",
                 )
                 logger.info("HF InferenceClient initialized (for zero-shot classification)")
                 break
@@ -272,7 +271,7 @@ def call_hf_chat(
         raise RuntimeError("HF_TOKEN is not set")
 
     target_model = model or HF_MATH_MODEL_ID
-    url = f"https://router.huggingface.co/hf-inference/models/{target_model}/v1/chat/completions"
+    url = "https://router.huggingface.co/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
         "Content-Type": "application/json",
@@ -333,45 +332,10 @@ Student question:
 
 
 def call_math_tutor_llm(question: str) -> str:
-    """Convenience wrapper: call the HF serverless model with the MathPulse tutor prompt."""
-    if not HF_TOKEN:
-        raise RuntimeError("HF_TOKEN is not set")
-
-    url = f"https://router.huggingface.co/hf-inference/models/{HF_MATH_MODEL_ID}"
-    payload = {
-        "inputs": build_math_tutor_prompt(question),
-        "parameters": {
-            "max_new_tokens": 512,
-            "temperature": 0.2,
-            "top_p": 0.9,
-        },
-    }
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    for attempt in range(3):
-        resp = http_requests.post(url, headers=headers, json=payload, timeout=60)
-        if resp.status_code == 503 and attempt < 2:
-            time.sleep(3)
-            continue
-        if resp.status_code != 200:
-            raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
-
-        data = resp.json()
-        if isinstance(data, list) and len(data) > 0:
-            generated = data[0].get("generated_text") or data[0].get("output_text")
-            if generated:
-                return generated.strip()
-        elif isinstance(data, dict):
-            generated = data.get("generated_text") or data.get("output_text")
-            if generated:
-                return generated.strip()
-
-        raise RuntimeError(f"Unexpected HF response format: {data}")
-
-    raise RuntimeError("HF Inference failed after retries")
+    """Convenience wrapper: call the HF serverless model with the MathPulse tutor prompt via chat completions."""
+    prompt = build_math_tutor_prompt(question)
+    messages = [{"role": "user", "content": prompt}]
+    return call_hf_chat(messages, max_tokens=512, temperature=0.2, top_p=0.9)
 
 
 # ─── Request/Response Models ──────────────────────────────────
