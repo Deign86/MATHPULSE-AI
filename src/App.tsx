@@ -28,6 +28,7 @@ import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { signOutUser } from './services/authService';
 import { updateStreak, awardXP } from './services/gamificationService';
+import { getUserProgress } from './services/progressService';
 import { StudentProfile } from './types/models';
 import { triggerStudentEnrolled } from './services/automationService';
 
@@ -60,8 +61,22 @@ const App = () => {
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
   const [hasTakenDiagnostic, setHasTakenDiagnostic] = useState(studentProfile?.hasTakenDiagnostic || false);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
+  const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0.00');
+
+  // Load computed GPA from progress data
+  useEffect(() => {
+    if (isLoggedIn && userRole === 'student' && userProfile) {
+      getUserProgress(userProfile.uid).then((progress) => {
+        if (progress && progress.averageScore > 0) {
+          const gpa = Math.min(progress.averageScore / 25, 4.0).toFixed(2);
+          setComputedGpa(gpa);
+        }
+      }).catch(err => console.error('Error loading progress for GPA:', err));
+    }
+  }, [isLoggedIn, userRole, userProfile]);
 
   // Update local state when userProfile changes
+  const [profileReady, setProfileReady] = useState(false);
   useEffect(() => {
     if (studentProfile && userRole === 'student') {
       setUserLevel(studentProfile.level || 1);
@@ -70,6 +85,9 @@ const App = () => {
       setStreak(studentProfile.streak || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
       setHasTakenDiagnostic(studentProfile.hasTakenDiagnostic || false);
+      setProfileReady(true);
+    } else if (userRole !== 'student') {
+      setProfileReady(true);
     }
   }, [userProfile, userRole]);
 
@@ -157,7 +175,7 @@ const App = () => {
       school: studentProfile.school,
       enrollmentDate: studentProfile.enrollmentDate,
       major: studentProfile.major,
-      gpa: studentProfile.gpa,
+      gpa: computedGpa,
     } : {}),
   } : {
     name: 'User',
@@ -335,7 +353,9 @@ const App = () => {
                           userLevel={userLevel}
                           onContinueAlgebra={() => setActiveTab('Modules')} 
                         />
-                        <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
+                        {profileReady && (
+                          <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
+                        )}
                       </div>
                     ) : activeTab === 'Modules' ? (
                       <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} />

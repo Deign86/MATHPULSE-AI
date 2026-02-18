@@ -109,7 +109,7 @@ export const addMessageToSession = async (
       role,
       content,
       timestamp: new Date(),
-      context,
+      ...(context ? { context } : {}),
     };
 
     // Get session to get userId
@@ -118,12 +118,21 @@ export const addMessageToSession = async (
       message.userId = sessionDoc.data().userId;
     }
 
-    // Save message
-    await setDoc(messageRef, {
-      ...message,
+    // Build Firestore payload, excluding undefined values
+    const payload: Record<string, unknown> = {
+      id: message.id,
+      userId: message.userId,
+      role: message.role,
+      content: message.content,
       sessionId,
       timestamp: serverTimestamp(),
-    });
+    };
+    if (message.context) {
+      payload.context = message.context;
+    }
+
+    // Save message
+    await setDoc(messageRef, payload);
 
     // Update session
     await updateDoc(doc(db, 'chatSessions', sessionId), {
