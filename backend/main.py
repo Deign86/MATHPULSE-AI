@@ -1,7 +1,8 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
+- meta-llama/Meta-Llama-3-8B-Instruct for chat, learning paths, insights, and quiz generation
+  (via HF Serverless Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
@@ -29,6 +30,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 import time
 import uuid
+import requests as http_requests
 import uvicorn
 
 # Event-driven automation engine
@@ -92,10 +94,25 @@ from analytics import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mathpulse")
 
-HF_TOKEN = os.environ.get("HUGGING_FACE_API_TOKEN", os.environ.get("HF_TOKEN", ""))
-CHAT_MODEL = "Qwen/Qwen2.5-Math-7B-Instruct"
+HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
+
+# Temporarily using Meta-Llama-3-8B-Instruct via HF Serverless Inference API
+# because Qwen/Qwen2.5-Math-7B-Instruct is provider-only (not available on
+# HF serverless).  Swap this back once a provider is configured or the model
+# becomes serverless-compatible.
+HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "meta-llama/Meta-Llama-3-8B-Instruct")
+
+# Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
+CHAT_MODEL = HF_MATH_MODEL_ID
+
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
+
+if not HF_TOKEN:
+    logger.warning(
+        "HF_TOKEN is not set. AI features will fail. "
+        "On HF Spaces this is injected automatically as a secret."
+    )
 
 # ─── FastAPI App ───────────────────────────────────────────────
 
@@ -198,30 +215,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Hugging Face Client ──────────────────────────────────────
+# ─── Hugging Face Clients ─────────────────────────────────────
 
+# InferenceClient is kept only for zero-shot classification (BART).
 from huggingface_hub import InferenceClient
 
-client: Optional[InferenceClient] = None
+_zsc_client: Optional[InferenceClient] = None
 
 
 def get_client() -> InferenceClient:
-    """Get or initialize the HuggingFace InferenceClient with retry."""
-    global client
-    if client is None:
+    """Get or initialize the HuggingFace InferenceClient (used for zero-shot classification only)."""
+    global _zsc_client
+    if _zsc_client is None:
         if not HF_TOKEN:
             raise HTTPException(
                 status_code=500,
-                detail="HUGGING_FACE_API_TOKEN not configured. Set the HF_TOKEN environment variable.",
+                detail="HF_TOKEN not configured. Set the HF_TOKEN environment variable.",
             )
         for attempt in range(3):
             try:
-                client = InferenceClient(
+                _zsc_client = InferenceClient(
                     token=HF_TOKEN,
                     timeout=60,
-                    provider="auto",  # auto-route to available inference providers
                 )
-                logger.info("Hugging Face InferenceClient initialized (provider=auto)")
+                logger.info("HF InferenceClient initialized (for zero-shot classification)")
                 break
             except Exception as e:
                 logger.warning(f"HF client init attempt {attempt + 1} failed: {e}")
@@ -231,9 +248,129 @@ def get_client() -> InferenceClient:
                         detail="Failed to initialize AI model client after 3 attempts.",
                     )
                 time.sleep(2 ** attempt)
-    # At this point client is guaranteed to be initialized (or HTTPException raised)
-    assert client is not None
-    return client
+    assert _zsc_client is not None
+    return _zsc_client
+
+
+# ─── HF Serverless Chat Helper (requests-based) ───────────────
+
+
+def call_hf_chat(
+    messages: List[Dict[str, str]],
+    *,
+    max_tokens: int = 2048,
+    temperature: float = 0.2,
+    top_p: float = 0.9,
+    model: Optional[str] = None,
+) -> str:
+    """
+    Call the HF Serverless Inference API (OpenAI-compatible chat endpoint)
+    using plain ``requests``.  Retries up to 3 times on 503 (model loading).
+    """
+    if not HF_TOKEN:
+        raise RuntimeError("HF_TOKEN is not set")
+
+    target_model = model or HF_MATH_MODEL_ID
+    url = f"https://api-inference.huggingface.co/models/{target_model}/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": target_model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "top_p": top_p,
+    }
+
+    for attempt in range(3):
+        resp = http_requests.post(url, headers=headers, json=payload, timeout=60)
+        if resp.status_code == 503 and attempt < 2:
+            logger.warning(f"HF chat 503 (model loading), retry {attempt + 1}/3")
+            time.sleep(3)
+            continue
+        if resp.status_code != 200:
+            raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
+
+        data = resp.json()
+        # OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
+        choices = data.get("choices", [])
+        if choices:
+            return (choices[0].get("message", {}).get("content", "") or "").strip()
+
+        raise RuntimeError(f"Unexpected HF response format: {data}")
+
+    raise RuntimeError("HF Inference failed after retries")
+
+
+# ─── Math Tutor Prompt & Wrapper ──────────────────────────────
+
+
+def build_math_tutor_prompt(question: str) -> str:
+    """Build a structured math-tutor prompt for the LLM."""
+    return f"""SYSTEM:
+You are MathPulse Tutor, a precise and patient math tutor for Filipino senior high school STEM students.
+Your job is to:
+1) Understand the student's math question (algebra, functions, graphs, trigonometry, analytic geometry, basic calculus, statistics, or word problems).
+2) Solve the problem step by step, explaining each transformation in simple language.
+3) Show all important equations clearly and avoid skipping algebra steps unless obvious to a Grade 11–12 STEM student.
+4) At the end, restate the final answer explicitly (e.g., "Final answer: x = 3").
+5) If the question is ambiguous or missing information, ask a short clarifying question first instead of guessing.
+6) If the student makes a mistake, point it out gently, explain why it is wrong, and show the correct method.
+7) Never invent new notation or definitions; use standard high-school math notation only.
+8) When there are multiple possible methods, briefly mention alternatives but pick one main method and follow it consistently.
+9) If the computation is long, summarize intermediate results so the student does not get lost.
+10) If the answer depends on approximations, specify whether the result is exact or rounded (and to how many decimal places).
+Speak in clear, concise English. Use short paragraphs and LaTeX-style math when helpful (e.g., x^2 + 3x + 2 = 0).
+If the user question is not about math, politely say that you can only help with math-related questions.
+
+USER:
+Student question:
+{question}
+"""
+
+
+def call_math_tutor_llm(question: str) -> str:
+    """Convenience wrapper: call the HF serverless model with the MathPulse tutor prompt."""
+    if not HF_TOKEN:
+        raise RuntimeError("HF_TOKEN is not set")
+
+    url = f"https://api-inference.huggingface.co/models/{HF_MATH_MODEL_ID}"
+    payload = {
+        "inputs": build_math_tutor_prompt(question),
+        "parameters": {
+            "max_new_tokens": 512,
+            "temperature": 0.2,
+            "top_p": 0.9,
+        },
+    }
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    for attempt in range(3):
+        resp = http_requests.post(url, headers=headers, json=payload, timeout=60)
+        if resp.status_code == 503 and attempt < 2:
+            time.sleep(3)
+            continue
+        if resp.status_code != 200:
+            raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
+
+        data = resp.json()
+        if isinstance(data, list) and len(data) > 0:
+            generated = data[0].get("generated_text") or data[0].get("output_text")
+            if generated:
+                return generated.strip()
+        elif isinstance(data, dict):
+            generated = data.get("generated_text") or data.get("output_text")
+            if generated:
+                return generated.strip()
+
+        raise RuntimeError(f"Unexpected HF response format: {data}")
+
+    raise RuntimeError("HF Inference failed after retries")
 
 
 # ─── Request/Response Models ──────────────────────────────────
@@ -353,7 +490,7 @@ async def root():
     }
 
 
-# ─── AI Chat Tutor (Qwen/Qwen2.5-3B-Instruct) ───────────────
+# ─── AI Chat Tutor ─────────────────────────────────────────────
 
 
 MATH_TUTOR_SYSTEM_PROMPT = """You are MathPulse AI, a rigorous and friendly expert math tutor for students. You help with:
@@ -382,10 +519,8 @@ Additional Guidelines:
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
-    """AI Math Tutor powered by Qwen/Qwen2.5-Math-7B-Instruct"""
+    """AI Math Tutor powered by HF Serverless Inference (Meta-Llama-3-8B-Instruct)"""
     try:
-        hf = get_client()
-
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
         # Add conversation history
@@ -395,30 +530,11 @@ async def chat_tutor(request: ChatRequest):
         # Add current message
         messages.append({"role": "user", "content": request.message})
 
-        # Retry HF inference up to 5 times with longer backoff for cold starts
-        answer = ""
-        last_err: Optional[Exception] = None
-        for attempt in range(5):
-            try:
-                response = hf.chat_completion(
-                    model=CHAT_MODEL,
-                    messages=messages,
-                    max_tokens=2048,
-                    temperature=0.2,
-                    top_p=0.9,
-                )
-                answer = response.choices[0].message.content or ""
-                last_err = None
-                break
-            except Exception as hf_err:
-                last_err = hf_err
-                logger.warning(f"HF chat attempt {attempt + 1}/5 failed: {hf_err}")
-                if attempt < 4:
-                    # Longer backoff: 2s, 4s, 8s, 16s to handle cold starts
-                    await asyncio.sleep(2 ** (attempt + 1))
-
-        if last_err is not None:
-            logger.error(f"HF chat failed after 5 attempts: {last_err}")
+        # Call HF serverless with retry (handled inside call_hf_chat)
+        try:
+            answer = call_hf_chat(messages, max_tokens=2048, temperature=0.2, top_p=0.9)
+        except Exception as hf_err:
+            logger.error(f"HF chat failed: {hf_err}")
             raise HTTPException(
                 status_code=502,
                 detail="AI model service is temporarily unavailable. Please try again.",
@@ -476,7 +592,6 @@ async def verify_math_response(
     math problem and check if the final answers agree.
     Returns dict with 'verified' (bool), 'confidence' (str), and 'response'.
     """
-    hf = get_client()
     responses: List[str] = []
     answers: List[Optional[str]] = []
 
@@ -484,14 +599,7 @@ async def verify_math_response(
 
     for i in range(VERIFICATION_SAMPLES):
         try:
-            result = hf.chat_completion(
-                model=CHAT_MODEL,
-                messages=base_messages,
-                max_tokens=2048,
-                temperature=0.7,
-                top_p=0.9,
-            )
-            text = result.choices[0].message.content or ""
+            text = call_hf_chat(base_messages, max_tokens=2048, temperature=0.7, top_p=0.9)
             responses.append(text)
             answers.append(_extract_final_answer(text))
             logger.info(f"  Sample {i+1} answer: {answers[-1]}")
@@ -554,7 +662,6 @@ async def verify_with_code(problem: str, solution: str) -> Dict[str, Any]:
     Ask the model to generate Python verification code for a math solution,
     execute it safely, and return the verification result.
     """
-    hf = get_client()
 
     prompt = f"""Given this math problem and its proposed solution, write a short Python script that numerically verifies the answer.
 
@@ -571,8 +678,7 @@ Rules:
 Respond with ONLY the Python code, no markdown fences, no explanation."""
 
     try:
-        result = hf.chat_completion(
-            model=CHAT_MODEL,
+        raw_code = call_hf_chat(
             messages=[
                 {
                     "role": "system",
@@ -583,8 +689,6 @@ Respond with ONLY the Python code, no markdown fences, no explanation."""
             max_tokens=800,
             temperature=0.1,
         )
-
-        raw_code = result.choices[0].message.content or ""
         # Strip markdown code fences if present
         code = re.sub(r"^```(?:python)?\s*\n?", "", raw_code.strip())
         code = re.sub(r"\n?```\s*$", "", code)
@@ -666,7 +770,6 @@ async def llm_judge_verification(problem: str, solution: str) -> Dict[str, Any]:
     solution is correct. Checks formula usage, calculations, and logic.
     Returns dict with 'correct' (bool), 'issues' (list), 'confidence' (float).
     """
-    hf = get_client()
 
     prompt = f"""You are a meticulous math verification expert. Your job is to verify whether the following solution to a math problem is mathematically correct.
 
@@ -689,8 +792,7 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
 }}"""
 
     try:
-        result = hf.chat_completion(
-            model=CHAT_MODEL,
+        raw = call_hf_chat(
             messages=[
                 {
                     "role": "system",
@@ -701,8 +803,6 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
             max_tokens=500,
             temperature=0.1,
         )
-
-        raw = result.choices[0].message.content or ""
         # Extract JSON from response
         json_start = raw.find("{")
         json_end = raw.rfind("}") + 1
@@ -928,15 +1028,13 @@ async def predict_risk_batch(request: BatchRiskRequest):
     return results
 
 
-# ─── Learning Path Generation (Qwen model) ────────────────────
+# ─── Learning Path Generation ──────────────────────────────────
 
 
 @app.post("/api/learning-path", response_model=LearningPathResponse)
 async def generate_learning_path(request: LearningPathRequest):
     """Generate AI-powered personalized learning path"""
     try:
-        hf = get_client()
-
         prompt = f"""Generate a personalized math learning path for a student with these details:
 - Weak Topics: {', '.join(request.weaknesses)}
 - Grade Level: {request.gradeLevel}
@@ -958,28 +1056,10 @@ Format as a numbered list. Be specific to the math topics mentioned."""
             {"role": "user", "content": prompt},
         ]
 
-        # Retry HF inference with backoff
-        content = ""
-        last_err: Optional[Exception] = None
-        for attempt in range(3):
-            try:
-                response = hf.chat_completion(
-                    model=CHAT_MODEL,
-                    messages=messages,
-                    max_tokens=1500,
-                    temperature=0.7,
-                )
-                content = response.choices[0].message.content or ""
-                last_err = None
-                break
-            except Exception as hf_err:
-                last_err = hf_err
-                logger.warning(f"HF learning-path attempt {attempt + 1} failed: {hf_err}")
-                if attempt < 2:
-                    await asyncio.sleep(2 ** attempt)
-
-        if last_err is not None:
-            logger.error(f"HF learning-path failed after 3 attempts: {last_err}")
+        try:
+            content = call_hf_chat(messages, max_tokens=1500, temperature=0.7)
+        except Exception as hf_err:
+            logger.error(f"HF learning-path failed: {hf_err}")
             raise HTTPException(
                 status_code=502,
                 detail="Learning path generation is temporarily unavailable.",
@@ -994,15 +1074,13 @@ Format as a numbered list. Be specific to the math topics mentioned."""
         raise HTTPException(status_code=500, detail=f"Learning path error: {str(e)}")
 
 
-# ─── Daily AI Insights (Qwen model) ───────────────────────────
+# ─── Daily AI Insights ─────────────────────────────────────────
 
 
 @app.post("/api/analytics/daily-insight", response_model=DailyInsightResponse)
 async def daily_insight(request: DailyInsightRequest):
     """Generate daily AI insights for teacher dashboard"""
     try:
-        hf = get_client()
-
         students = request.students
         total = len(students)
         if total == 0:
@@ -1040,28 +1118,10 @@ Keep the response under 200 words. Be specific and practical."""
             {"role": "user", "content": prompt},
         ]
 
-        # Retry HF inference with backoff
-        content = ""
-        last_err: Optional[Exception] = None
-        for attempt in range(3):
-            try:
-                response = hf.chat_completion(
-                    model=CHAT_MODEL,
-                    messages=messages,
-                    max_tokens=800,
-                    temperature=0.7,
-                )
-                content = response.choices[0].message.content or ""
-                last_err = None
-                break
-            except Exception as hf_err:
-                last_err = hf_err
-                logger.warning(f"HF daily-insight attempt {attempt + 1} failed: {hf_err}")
-                if attempt < 2:
-                    await asyncio.sleep(2 ** attempt)
-
-        if last_err is not None:
-            logger.error(f"HF daily-insight failed after 3 attempts: {last_err}")
+        try:
+            content = call_hf_chat(messages, max_tokens=800, temperature=0.7)
+        except Exception as hf_err:
+            logger.error(f"HF daily-insight failed: {hf_err}")
             raise HTTPException(
                 status_code=502,
                 detail="AI insight generation is temporarily unavailable.",
@@ -1117,7 +1177,6 @@ async def upload_class_records(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="No data found in uploaded file")
 
         # AI-powered column mapping
-        hf = get_client()
         columns_text = ", ".join(df.columns.tolist())
 
         prompt = f"""I have a spreadsheet with these columns: {columns_text}
@@ -1132,16 +1191,11 @@ Map each column to one of these standard fields (respond as JSON only):
 
 If a column doesn't match any field, skip it. Respond ONLY with a JSON object mapping original column names to field names. Example: {{"Student Name": "name", "ID": "studentId"}}"""
 
-        mapping_response = hf.chat_completion(
-            model=CHAT_MODEL,
+        mapping_text = call_hf_chat(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=300,
             temperature=0.1,
         )
-
-        # Parse AI column mapping
-        raw_content = mapping_response.choices[0].message.content
-        mapping_text = (raw_content or "").strip()
         # Extract JSON from response
         try:
             # Try to find JSON in the response
@@ -1522,12 +1576,11 @@ def _validate_quiz_questions(
 @app.post("/api/quiz/generate", response_model=QuizResponse)
 async def generate_quiz(request: QuizGenerationRequest):
     """
-    Generate an AI-powered quiz using Qwen2.5-Math-7B-Instruct.
+    Generate an AI-powered quiz via HF Serverless Inference.
     Supports Bloom's Taxonomy integration, multiple question types,
     and graph-based identification questions.
     """
     try:
-        hf = get_client()
 
         # Filter out excluded topics
         effective_topics = [t for t in request.topics if t not in request.excludeTopics]
@@ -1589,15 +1642,7 @@ Remember:
 
         logger.info(f"Generating quiz: {request.numQuestions} questions, topics={effective_topics}")
 
-        response = hf.chat_completion(
-            model=CHAT_MODEL,
-            messages=messages,
-            max_tokens=4096,
-            temperature=0.3,
-            top_p=0.9,
-        )
-
-        raw_content = response.choices[0].message.content or ""
+        raw_content = call_hf_chat(messages, max_tokens=4096, temperature=0.3, top_p=0.9)
         logger.info(f"Raw quiz response length: {len(raw_content)} chars")
 
         parsed_questions = _parse_quiz_json(raw_content)
@@ -1709,8 +1754,6 @@ async def student_competency(request: StudentCompetencyRequest):
     Returns efficiency scores, competency levels, and recommendations.
     """
     try:
-        hf = get_client()
-
         history = request.quizHistory or []
 
         if not history:
@@ -1786,8 +1829,7 @@ async def student_competency(request: StudentCompetencyRequest):
 
 Focus on actionable recommendations. Be encouraging yet honest."""
 
-                ai_response = hf.chat_completion(
-                    model=CHAT_MODEL,
+                overall_perspective = call_hf_chat(
                     messages=[
                         {"role": "system", "content": "You are an educational assessment expert. Be concise and supportive."},
                         {"role": "user", "content": ai_prompt},
@@ -1795,7 +1837,6 @@ Focus on actionable recommendations. Be encouraging yet honest."""
                     max_tokens=200,
                     temperature=0.3,
                 )
-                overall_perspective = ai_response.choices[0].message.content or ""
                 if overall_perspective:
                     # Add to recommended as a note
                     recommended.append(f"AI Insight: {overall_perspective.strip()}")
