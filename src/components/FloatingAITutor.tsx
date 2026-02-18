@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Maximize2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
-import ReactMarkdown from 'react-markdown';
+import ChatMarkdown from './ChatMarkdown';
 import { warmupBackend } from '../services/apiService';
 
 interface FloatingAITutorProps {
@@ -113,9 +113,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
                 {message.sender === 'user' ? (
                   <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                 ) : (
-                  <div className="chat-markdown">
-                    <ReactMarkdown>{message.text}</ReactMarkdown>
-                  </div>
+                  <ChatMarkdown>{message.text}</ChatMarkdown>
                 )}
                 <p className={`text-[10px] mt-1 ${
                   message.sender === 'user' ? 'text-blue-100' : 'text-slate-400'
