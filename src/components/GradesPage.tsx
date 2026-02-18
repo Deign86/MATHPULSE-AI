@@ -1,44 +1,115 @@
-import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, Award, Target, Calendar, Download, Filter, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Award, Target, Calendar, Download, Filter, ChevronRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserProgress } from '../services/progressService';
+import { UserProgress } from '../types/models';
 
 const GradesPage = () => {
+  const { currentUser } = useAuth();
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState<UserProgress | null>(null);
 
-  // Mock grades data
-  const overallStats = {
-    gpa: 3.85,
-    totalQuizzes: 24,
-    averageScore: 87.5,
-    trend: 'up',
-    trendValue: 5.2
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!currentUser) return;
+      setLoading(true);
+      try {
+        const data = await getUserProgress(currentUser.uid);
+        setProgress(data);
+      } catch (err) {
+        console.error('Error loading grades:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProgress();
+  }, [currentUser]);
+
+  // Compute stats from Firebase progress data
+  const quizAttempts = progress?.quizAttempts || [];
+  const totalQuizzes = progress?.totalQuizzesCompleted || 0;
+  const averageScore = progress?.averageScore || 0;
+  const gpa = averageScore > 0 ? Math.min((averageScore / 25), 4.0).toFixed(2) : '0.00';
+
+  // Derive subject performance from progress data
+  const subjectMap: Record<string, { label: string; color: string }> = {
+    'general-math': { label: 'General Mathematics', color: 'blue' },
+    'pre-calculus': { label: 'Pre-Calculus', color: 'teal' },
+    'statistics-probability': { label: 'Statistics and Probability', color: 'cyan' },
+    'basic-calculus': { label: 'Basic Calculus', color: 'orange' },
   };
 
-  const subjectPerformance = [
-    { subject: 'General Mathematics', average: 90, quizzes: 6, color: 'blue', trend: 'up' },
-    { subject: 'Pre-Calculus', average: 88, quizzes: 8, color: 'teal', trend: 'up' },
-    { subject: 'Statistics and Probability', average: 86, quizzes: 5, color: 'cyan', trend: 'down' },
-    { subject: 'Basic Calculus', average: 85, quizzes: 5, color: 'orange', trend: 'up' },
+  const subjectPerformance = Object.entries(progress?.subjects || {}).map(([subjectId, subjectData]) => {
+    const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
+    const subjectQuizzes = quizAttempts.filter(q => q.quizId?.startsWith(subjectId));
+    const avg = subjectQuizzes.length > 0
+      ? Math.round(subjectQuizzes.reduce((sum, q) => sum + q.score, 0) / subjectQuizzes.length)
+      : Math.round(subjectData.progress);
+    return {
+      subject: info.label,
+      average: avg,
+      quizzes: subjectQuizzes.length || subjectData.completedModules,
+      color: info.color,
+      trend: 'up' as const,
+    };
+  });
+
+  // If no Firebase progress subjects, show default subjects with zero data
+  const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : [
+    { subject: 'General Mathematics', average: 0, quizzes: 0, color: 'blue', trend: 'up' as const },
+    { subject: 'Pre-Calculus', average: 0, quizzes: 0, color: 'teal', trend: 'up' as const },
+    { subject: 'Statistics and Probability', average: 0, quizzes: 0, color: 'cyan', trend: 'up' as const },
+    { subject: 'Basic Calculus', average: 0, quizzes: 0, color: 'orange', trend: 'up' as const },
   ];
 
-  const recentQuizzes = [
-    { id: 1, title: 'Module Quiz: Functions', subject: 'Pre-Calculus', score: 88, total: 100, date: '2024-02-08', type: 'module', status: 'passed' },
-    { id: 2, title: 'Practice Quiz: Limits', subject: 'Basic Calculus', score: 92, total: 100, date: '2024-02-07', type: 'practice', status: 'passed' },
-    { id: 3, title: 'Module Quiz: Number Systems', subject: 'General Mathematics', score: 85, total: 100, date: '2024-02-05', type: 'module', status: 'passed' },
-    { id: 4, title: 'Practice Quiz: Data Presentation', subject: 'Statistics and Probability', score: 92, total: 100, date: '2024-02-03', type: 'practice', status: 'passed' },
-    { id: 5, title: 'Module Quiz: Derivatives', subject: 'Basic Calculus', score: 90, total: 100, date: '2024-02-01', type: 'module', status: 'passed' },
-    { id: 6, title: 'Practice Quiz: Polynomials', subject: 'Pre-Calculus', score: 82, total: 100, date: '2024-01-30', type: 'practice', status: 'passed' },
-    { id: 7, title: 'Module Quiz: Percentages', subject: 'General Mathematics', score: 75, total: 100, date: '2024-01-28', type: 'module', status: 'passed' },
-    { id: 8, title: 'Practice Quiz: Central Tendency', subject: 'Statistics and Probability', score: 78, total: 100, date: '2024-01-26', type: 'practice', status: 'passed' },
-  ];
+  // Recent quizzes from quiz attempts
+  const recentQuizzes = quizAttempts
+    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+    .slice(0, 10)
+    .map((attempt, i) => ({
+      id: i + 1,
+      title: attempt.quizId?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || `Quiz ${i + 1}`,
+      subject: Object.entries(subjectMap).find(([key]) => attempt.quizId?.startsWith(key))?.[1]?.label || 'General',
+      score: attempt.score,
+      total: 100,
+      date: attempt.completedAt instanceof Date
+        ? attempt.completedAt.toISOString().split('T')[0]
+        : new Date(attempt.completedAt).toISOString().split('T')[0],
+      type: attempt.quizId?.includes('practice') ? 'practice' as const : 'module' as const,
+      status: attempt.score >= 60 ? 'passed' : 'failed',
+    }));
+
+  const overallStats = {
+    gpa: parseFloat(gpa),
+    totalQuizzes,
+    averageScore,
+    trend: 'up',
+    trendValue: 0,
+  };
 
   const filteredQuizzes = recentQuizzes.filter(quiz => {
     const subjectMatch = filterSubject === 'all' || quiz.subject === filterSubject;
     const typeMatch = filterType === 'all' || quiz.type === filterType;
     return subjectMatch && typeMatch;
   });
+
+  const handleExportReport = () => {
+    // Generate CSV export
+    const headers = ['Quiz', 'Subject', 'Type', 'Score', 'Date', 'Status'];
+    const rows = recentQuizzes.map(q => [q.title, q.subject, q.type, `${q.score}%`, q.date, q.status]);
+    const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mathpulse-grades-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const getGradeColor = (score: number) => {
     if (score >= 90) return 'text-green-600 bg-green-50';
@@ -109,14 +180,14 @@ const GradesPage = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-800">Subject Performance</h2>
-          <Button variant="outline" size="sm" className="rounded-xl">
+          <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExportReport}>
             <Download size={16} className="mr-2" />
             Export Report
           </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {subjectPerformance.map((subject) => (
+          {displaySubjectPerformance.map((subject) => (
             <motion.div
               key={subject.subject}
               whileHover={{ scale: 1.02 }}

@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, UserPlus, Swords, Eye, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, UserPlus, Swords, Eye, Search, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import StudentProfileModal from './StudentProfileModal';
 import AddFriendsModal from './AddFriendsModal';
 import CompareStatsModal from './CompareStatsModal';
+import { useAuth } from '../contexts/AuthContext';
+import { getLeaderboard } from '../services/gamificationService';
+import { StudentProfile } from '../types/models';
 
 interface LeaderboardStudent {
   id: string;
@@ -32,121 +35,60 @@ interface LeaderboardStudent {
 }
 
 const LeaderboardPage = () => {
+  const { currentUser, userProfile, userRole } = useAuth();
+  const studentProfile = userProfile as StudentProfile;
   const [activeView, setActiveView] = useState<'school' | 'section' | 'friends' | 'subject'>('section');
   const [timeFilter, setTimeFilter] = useState<'all' | 'month' | 'week' | 'today'>('week');
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardStudent | null>(null);
   const [showAddFriends, setShowAddFriends] = useState(false);
   const [showCompare, setShowCompare] = useState<LeaderboardStudent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [mockStudents, setMockStudents] = useState<LeaderboardStudent[]>([]);
 
-  // Mock data for leaderboard
-  const mockStudents: LeaderboardStudent[] = [
-    {
-      id: '1',
-      name: 'Sarah Chen',
-      avatar: '👩',
-      level: 18,
-      totalXP: 2450,
-      currentStreak: 42,
-      section: 'Grade 11 - STEM B',
-      rank: { global: 1, section: 1, friends: 1, change: 0 },
-      stats: { quizzesCompleted: 48, averageScore: 94, modulesCompleted: 12, studyHours: 86 },
-      isFriend: true,
-      isOnline: true,
-    },
-    {
-      id: '2',
-      name: 'Marcus Kim',
-      avatar: '👨',
-      level: 17,
-      totalXP: 2380,
-      currentStreak: 38,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 2, section: 1, friends: 2, change: 1 },
-      stats: { quizzesCompleted: 45, averageScore: 92, modulesCompleted: 11, studyHours: 82 },
-      isFriend: true,
-      isOnline: true,
-    },
-    {
-      id: '3',
-      name: 'Alex Johnson',
-      avatar: '🧑',
-      level: 12,
-      totalXP: 1250,
-      currentStreak: 15,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 3, section: 2, friends: 3, change: 2 },
-      stats: { quizzesCompleted: 24, averageScore: 87, modulesCompleted: 8, studyHours: 45 },
-      isFriend: false,
-      isOnline: true,
-      isYou: true,
-    },
-    {
-      id: '4',
-      name: 'Emma Rodriguez',
-      avatar: '👧',
-      level: 15,
-      totalXP: 1890,
-      currentStreak: 28,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 4, section: 3, friends: 0, change: -1 },
-      stats: { quizzesCompleted: 38, averageScore: 89, modulesCompleted: 10, studyHours: 68 },
-      isFriend: false,
-      isOnline: false,
-    },
-    {
-      id: '5',
-      name: 'David Patel',
-      avatar: '👦',
-      level: 14,
-      totalXP: 1720,
-      currentStreak: 22,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 5, section: 4, friends: 4, change: 3 },
-      stats: { quizzesCompleted: 32, averageScore: 85, modulesCompleted: 9, studyHours: 58 },
-      isFriend: true,
-      isOnline: true,
-    },
-    {
-      id: '6',
-      name: 'Olivia Brown',
-      avatar: '👩',
-      level: 13,
-      totalXP: 1580,
-      currentStreak: 19,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 6, section: 5, friends: 0, change: 0 },
-      stats: { quizzesCompleted: 28, averageScore: 88, modulesCompleted: 8, studyHours: 52 },
-      isFriend: false,
-      isOnline: true,
-    },
-    {
-      id: '7',
-      name: 'James Wilson',
-      avatar: '🧑',
-      level: 13,
-      totalXP: 1520,
-      currentStreak: 17,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 7, section: 6, friends: 0, change: -2 },
-      stats: { quizzesCompleted: 26, averageScore: 83, modulesCompleted: 7, studyHours: 48 },
-      isFriend: false,
-      isOnline: false,
-    },
-    {
-      id: '8',
-      name: 'Sophia Lee',
-      avatar: '👧',
-      level: 12,
-      totalXP: 1420,
-      currentStreak: 25,
-      section: 'Grade 11 - STEM A',
-      rank: { global: 8, section: 7, friends: 5, change: 5 },
-      stats: { quizzesCompleted: 25, averageScore: 90, modulesCompleted: 7, studyHours: 50 },
-      isFriend: true,
-      isOnline: true,
-    },
-  ];
+  const avatars = ['👩', '👨', '🧑', '👧', '👦', '👩', '🧑', '👧'];
+
+  // Load leaderboard data from Firebase
+  useEffect(() => {
+    const loadLeaderboard = async () => {
+      if (!currentUser) return;
+      setLeaderboardLoading(true);
+      try {
+        const entries = await getLeaderboard(currentUser.uid, false, timeFilter === 'today' ? 'week' : timeFilter, 20);
+        const students: LeaderboardStudent[] = entries.map((entry, index) => ({
+          id: entry.userId,
+          name: entry.name,
+          avatar: entry.photo || avatars[index % avatars.length],
+          level: entry.level,
+          totalXP: entry.xp,
+          currentStreak: 0,
+          section: studentProfile?.grade || 'Grade 11 - STEM A',
+          rank: {
+            global: entry.rank,
+            section: entry.rank,
+            friends: entry.rank,
+            change: 0,
+          },
+          stats: {
+            quizzesCompleted: 0,
+            averageScore: 0,
+            modulesCompleted: 0,
+            studyHours: 0,
+          },
+          isFriend: studentProfile?.friends?.includes(entry.userId) || false,
+          isOnline: false,
+          isYou: entry.userId === currentUser.uid,
+        }));
+        setMockStudents(students);
+      } catch (err) {
+        console.error('Error loading leaderboard:', err);
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+
+    loadLeaderboard();
+  }, [currentUser, timeFilter]);
 
   const getCurrentRank = () => {
     const you = mockStudents.find(s => s.isYou);
@@ -226,12 +168,12 @@ const LeaderboardPage = () => {
           </div>
           <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
             <Users size={24} className="text-blue-300 mb-2" />
-            <p className="text-2xl font-bold">{mockStudents.filter(s => s.isFriend).length}</p>
+            <p className="text-2xl font-bold">{studentProfile?.friends?.length || 0}</p>
             <p className="text-sm text-cyan-100">Friends</p>
           </div>
           <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
             <Flame size={24} className="text-orange-300 mb-2" />
-            <p className="text-2xl font-bold">15 Days</p>
+            <p className="text-2xl font-bold">{studentProfile?.streak || 0} Days</p>
             <p className="text-sm text-cyan-100">Current Streak</p>
           </div>
           <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">

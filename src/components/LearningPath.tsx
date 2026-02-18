@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Sigma, Shapes, ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calculator, Sigma, Shapes, BarChart3, ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface LearningPathProps {
   onNavigateToModules?: () => void;
@@ -10,41 +10,41 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   const modules = [
     {
       id: 1,
-      subjectId: 'gen-math',
-      title: 'Algebra',
-      subtitle: 'Linear Equations',
+      subjectId: 'general-math',
+      title: 'General Mathematics',
+      subtitle: 'Number Systems & Algebra',
       duration: '45 mins',
       icon: Calculator,
-      color: 'bg-teal-50',
-      iconColor: 'text-teal-600',
-      accentColor: 'bg-teal-500',
-      status: 'In Progress', // Fallback status if needed
+      color: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      accentColor: 'bg-indigo-500',
+      status: 'In Progress',
       progress: 60
     },
     {
       id: 2,
-      subjectId: 'calc',
-      title: 'Calculus',
-      subtitle: 'Derivatives',
+      subjectId: 'pre-calculus',
+      title: 'Pre-Calculus',
+      subtitle: 'Functions & Polynomials',
       duration: '60 mins',
       icon: Sigma,
       color: 'bg-purple-50',
       iconColor: 'text-purple-600',
       accentColor: 'bg-purple-500',
-      status: 'Due Tomorrow', // This will be replaced
+      status: 'Due Tomorrow',
       progress: 15
     },
     {
       id: 3,
-      subjectId: 'pre-calc',
-      title: 'Geometry',
-      subtitle: '3D Shapes',
+      subjectId: 'basic-calculus',
+      title: 'Basic Calculus',
+      subtitle: 'Limits & Derivatives',
       duration: '30 mins',
       icon: Shapes,
       color: 'bg-orange-50',
       iconColor: 'text-orange-600',
       accentColor: 'bg-orange-500',
-      status: 'Locked',
+      status: 'Not Started',
       progress: 0
     }
   ];

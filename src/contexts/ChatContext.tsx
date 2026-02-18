@@ -1,5 +1,14 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { apiService } from '../services/apiService';
+import { useAuth } from './AuthContext';
+import {
+  createChatSession as createFirebaseSession,
+  getUserChatSessions,
+  addMessageToSession as addFirebaseMessage,
+  updateSessionTitle as updateFirebaseTitle,
+  deleteSession as deleteFirebaseSession,
+  getSessionMessages,
+} from '../services/chatService';
 
 export interface Message {
   id: string;
@@ -24,6 +33,7 @@ interface ChatContextType {
   sessions: ChatSession[];
   activeSessionId: string | null;
   isLoading: boolean;
+  sessionsLoaded: boolean;
   setActiveSessionId: (id: string | null) => void;
   createNewSession: (firstMessage?: Message) => string;
   addMessageToSession: (sessionId: string, message: Message) => void;
@@ -165,9 +175,61 @@ interface ChatProviderProps {
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+  const { currentUser } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  // Map of tempId → Promise<firebaseId> for sessions being created
+  const pendingSessionsRef = useRef<Map<string, Promise<string>>>(new Map());
+
+  // Load sessions from Firebase on mount / user change
+  useEffect(() => {
+    if (!currentUser) {
+      setSessions([]);
+      setSessionsLoaded(false);
+      return;
+    }
+
+    const loadSessions = async () => {
+      try {
+        const firebaseSessions = await getUserChatSessions(currentUser.uid);
+        const loadedSessions: ChatSession[] = await Promise.all(
+          firebaseSessions.map(async (s) => {
+            const msgs = await getSessionMessages(s.id);
+            const messages: Message[] = msgs.map((m) => ({
+              id: m.id,
+              sender: m.role === 'user' ? 'user' : 'ai',
+              text: m.content,
+              timestamp: m.timestamp instanceof Date
+                ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }));
+            return {
+              id: s.id,
+              title: s.title,
+              date: s.updatedAt instanceof Date
+                ? s.updatedAt.toLocaleDateString()
+                : new Date(s.updatedAt).toLocaleDateString(),
+              messageCount: messages.length,
+              preview: messages.length > 0 ? messages[messages.length - 1].text.slice(0, 80) : 'No messages yet',
+              topics: [],
+              messages,
+              createdAt: s.createdAt instanceof Date ? s.createdAt : new Date(s.createdAt),
+              updatedAt: s.updatedAt instanceof Date ? s.updatedAt : new Date(s.updatedAt),
+            };
+          })
+        );
+        setSessions(loadedSessions);
+      } catch (err) {
+        console.error('Error loading chat sessions:', err);
+      } finally {
+        setSessionsLoaded(true);
+      }
+    };
+
+    loadSessions();
+  }, [currentUser]);
 
   const generateTitleFromMessages = (messages: Message[]): string => {
     if (messages.length === 0) return 'New Chat';
@@ -192,11 +254,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   const createNewSession = useCallback((firstMessage?: Message): string => {
-    const newId = Date.now().toString();
+    const tempId = Date.now().toString();
     const now = new Date();
 
     const newSession: ChatSession = {
-      id: newId,
+      id: tempId,
       title: firstMessage ? generateTitleFromMessages([firstMessage]) : 'New Chat',
       date: 'Just now',
       messageCount: firstMessage ? 1 : 0,
@@ -208,8 +270,32 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     };
 
     setSessions(prev => [newSession, ...prev]);
-    return newId;
-  }, []);
+
+    // Persist to Firebase in background, storing the promise so addMessageToSession can await it
+    if (currentUser) {
+      const title = firstMessage ? generateTitleFromMessages([firstMessage]) : 'New Chat';
+      const firebasePromise = createFirebaseSession(currentUser.uid, title)
+        .then(async (firebaseSession) => {
+          // If there was a first message, persist it
+          if (firstMessage) {
+            await addFirebaseMessage(
+              firebaseSession.id,
+              firstMessage.sender === 'user' ? 'user' : 'assistant',
+              firstMessage.text
+            );
+          }
+          return firebaseSession.id;
+        })
+        .catch(err => {
+          console.error('Error creating Firebase session:', err);
+          return tempId; // fallback to tempId on error
+        });
+      // Store the promise so addMessageToSession can resolve temp IDs to real Firebase IDs
+      pendingSessionsRef.current.set(tempId, firebasePromise);
+    }
+
+    return tempId;
+  }, [currentUser]);
 
   const addMessageToSession = useCallback((sessionId: string, message: Message) => {
     setSessions(prev =>
@@ -228,6 +314,37 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return session;
       })
     );
+
+    // Resolve temp ID to real Firebase ID before persisting
+    const resolveFirebaseId = async (sid: string): Promise<string> => {
+      const pending = pendingSessionsRef.current.get(sid);
+      if (pending) {
+        return await pending;
+      }
+      return sid;
+    };
+
+    // Persist message to Firebase in background (awaiting real session ID if needed)
+    resolveFirebaseId(sessionId).then(realId =>
+      addFirebaseMessage(
+        realId,
+        message.sender === 'user' ? 'user' : 'assistant',
+        message.text
+      ).catch(err => console.error('Error persisting message:', err))
+    );
+
+    // Update title in Firebase if this is the 2nd message
+    setSessions(prev => {
+      const session = prev.find(s => s.id === sessionId);
+      if (session && session.messages.length === 2) {
+        const newTitle = generateTitleFromMessages(session.messages);
+        resolveFirebaseId(sessionId).then(realId =>
+          updateFirebaseTitle(realId, newTitle)
+            .catch(err => console.error('Error updating title:', err))
+        );
+      }
+      return prev;
+    });
   }, []);
 
   /** Send a message and get AI response from the backend */
@@ -287,6 +404,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setSessions(prev =>
       prev.map(session => (session.id === sessionId ? { ...session, title } : session))
     );
+    // Persist to Firebase (resolve temp ID if needed)
+    const pending = pendingSessionsRef.current.get(sessionId);
+    const realIdPromise = pending ? pending : Promise.resolve(sessionId);
+    realIdPromise.then(realId =>
+      updateFirebaseTitle(realId, title)
+        .catch(err => console.error('Error updating session title:', err))
+    );
   }, []);
 
   const deleteSession = useCallback((sessionId: string) => {
@@ -294,6 +418,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (activeSessionId === sessionId) {
       setActiveSessionId(null);
     }
+    // Persist to Firebase (soft delete, resolve temp ID if needed)
+    const pending = pendingSessionsRef.current.get(sessionId);
+    const realIdPromise = pending ? pending : Promise.resolve(sessionId);
+    realIdPromise.then(realId =>
+      deleteFirebaseSession(realId)
+        .catch(err => console.error('Error deleting session:', err))
+    );
+    // Clean up the pending map entry
+    pendingSessionsRef.current.delete(sessionId);
   }, [activeSessionId]);
 
   const getActiveSession = useCallback((): ChatSession | null => {
@@ -306,6 +439,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         sessions,
         activeSessionId,
         isLoading,
+        sessionsLoaded,
         setActiveSessionId,
         createNewSession,
         addMessageToSession,
