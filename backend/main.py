@@ -6,6 +6,7 @@ AI-powered math tutoring backend using Hugging Face models.
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
 - Symbolic math calculator via SymPy
+- Analytics and automation engine modules
 
 Auto-deployed to HuggingFace Spaces via GitHub Actions.
 """
