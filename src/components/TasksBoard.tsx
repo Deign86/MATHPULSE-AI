@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Square, CheckSquare, Trash2, Edit2, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  getUserTasks,
+  createTask as createFirebaseTask,
+  updateTaskStatus,
+  deleteTask as deleteFirebaseTask,
+  updateTask as updateFirebaseTask,
+} from '../services/taskService';
 
 export interface Task {
   id: number;
@@ -20,47 +28,43 @@ interface TasksBoardProps {
 }
 
 const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks = [] }) => {
-  const [tasks, setTasks] = useState<Task[]>([
-    // System-generated tasks
-    { 
-      id: 1, 
-      title: 'Complete Lesson: Linear Equations', 
-      date: 'Today', 
-      completed: false,
-      isUrgent: true,
-      type: 'system',
-      color: 'bg-indigo-50 border border-indigo-100'
-    },
-    { 
-      id: 2, 
-      title: 'Quiz: Basic Calculus', 
-      date: 'Tomorrow', 
-      completed: false,
-      isUrgent: true,
-      type: 'system',
-      color: 'bg-purple-50 border border-purple-100'
-    },
-    { 
-      id: 3, 
-      title: 'Practice: Derivatives', 
-      date: 'Oct 28', 
-      completed: false,
-      isUrgent: false,
-      type: 'system',
-      color: 'bg-teal-50 border border-teal-100'
-    },
-    // Custom tasks
-    { 
-      id: 4, 
-      title: 'Review notes', 
-      date: 'Oct 27', 
-      completed: false,
-      isUrgent: false,
-      type: 'custom',
-      color: 'bg-orange-50 border border-orange-100'
-    },
-    ...initialTasks
-  ]);
+  const { currentUser } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+
+  // Load tasks from Firebase
+  useEffect(() => {
+    const loadTasks = async () => {
+      if (!currentUser) return;
+      try {
+        const firebaseTasks = await getUserTasks(currentUser.uid);
+        const mapped: Task[] = firebaseTasks.map(t => {
+          const dueDate = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
+          const isToday = new Date().toDateString() === dueDate.toDateString();
+          const isTomorrow = new Date(Date.now() + 86400000).toDateString() === dueDate.toDateString();
+          const dateStr = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+          return {
+            id: t.id as unknown as number, // Keep Firebase string ID in the id field
+            firebaseId: t.id, // Store actual Firebase ID
+            title: t.title,
+            date: dateStr,
+            completed: t.status === 'completed',
+            isUrgent: t.priority === 'high',
+            type: t.category === 'system' ? 'system' as const : 'custom' as const,
+            color: t.priority === 'high' ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100',
+          };
+        });
+        setTasks(mapped.length > 0 ? mapped : [...initialTasks]);
+      } catch (err) {
+        console.error('Error loading tasks:', err);
+        setTasks([...initialTasks]);
+      } finally {
+        setTasksLoaded(true);
+      }
+    };
+    loadTasks();
+  }, [currentUser]);
 
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -69,11 +73,11 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
   const [editTitle, setEditTitle] = useState('');
   const [editDate, setEditDate] = useState('');
 
-  const addTask = () => {
+  const addTask = async () => {
     if (newTaskTitle.trim() === '') return;
     
     const newTask: Task = {
-      id: Math.max(...tasks.map(t => t.id), 0) + 1,
+      id: Math.max(...tasks.map(t => typeof t.id === 'number' ? t.id : 0), 0) + 1,
       title: newTaskTitle,
       date: newTaskDate || 'No date',
       completed: false,
@@ -86,17 +90,56 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
     setNewTaskTitle('');
     setNewTaskDate('');
     setShowAddTask(false);
+
+    // Persist to Firebase
+    if (currentUser) {
+      try {
+        const dueDate = newTaskDate ? new Date(newTaskDate) : new Date();
+        const created = await createFirebaseTask(
+          currentUser.uid,
+          newTaskTitle,
+          '',
+          dueDate,
+          'medium',
+          'custom'
+        );
+        // Update local task with Firebase ID
+        setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, id: created.id as unknown as number, firebaseId: created.id } : t));
+      } catch (err) {
+        console.error('Error creating task:', err);
+      }
+    }
   };
 
-  const toggleTask = (id: number) => {
+  const toggleTask = async (id: number) => {
+    const task = tasks.find(t => t.id === id);
     setTasks(tasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
+    
+    // Persist to Firebase
+    const firebaseId = (task as any)?.firebaseId || String(id);
+    try {
+      await updateTaskStatus(firebaseId, task?.completed ? 'todo' : 'completed');
+    } catch (err) {
+      console.error('Error toggling task:', err);
+    }
   };
 
-  const deleteTask = (id: number) => {
+  const deleteTask = async (id: number) => {
+    const task = tasks.find(t => t.id === id);
     // Only allow deleting custom tasks
     setTasks(tasks.filter(task => !(task.id === id && task.type === 'custom')));
+    
+    // Persist to Firebase
+    const firebaseId = (task as any)?.firebaseId || String(id);
+    if (task?.type === 'custom') {
+      try {
+        await deleteFirebaseTask(firebaseId);
+      } catch (err) {
+        console.error('Error deleting task:', err);
+      }
+    }
   };
 
   const startEditing = (task: Task) => {
@@ -107,13 +150,22 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
     }
   };
 
-  const saveEdit = (id: number) => {
+  const saveEdit = async (id: number) => {
+    const task = tasks.find(t => t.id === id);
     setTasks(tasks.map(task =>
       task.id === id ? { ...task, title: editTitle, date: editDate } : task
     ));
     setEditingTask(null);
     setEditTitle('');
     setEditDate('');
+
+    // Persist to Firebase
+    const firebaseId = (task as any)?.firebaseId || String(id);
+    try {
+      await updateFirebaseTask(firebaseId, { title: editTitle });
+    } catch (err) {
+      console.error('Error saving task edit:', err);
+    }
   };
 
   const cancelEdit = () => {
