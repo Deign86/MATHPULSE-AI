@@ -237,6 +237,7 @@ def get_client() -> InferenceClient:
                 _zsc_client = InferenceClient(
                     token=HF_TOKEN,
                     timeout=60,
+                    api_url="https://router.huggingface.co/hf-inference",
                 )
                 logger.info("HF InferenceClient initialized (for zero-shot classification)")
                 break
@@ -271,7 +272,7 @@ def call_hf_chat(
         raise RuntimeError("HF_TOKEN is not set")
 
     target_model = model or HF_MATH_MODEL_ID
-    url = f"https://api-inference.huggingface.co/models/{target_model}/v1/chat/completions"
+    url = f"https://router.huggingface.co/hf-inference/models/{target_model}/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
         "Content-Type": "application/json",
@@ -336,7 +337,7 @@ def call_math_tutor_llm(question: str) -> str:
     if not HF_TOKEN:
         raise RuntimeError("HF_TOKEN is not set")
 
-    url = f"https://api-inference.huggingface.co/models/{HF_MATH_MODEL_ID}"
+    url = f"https://router.huggingface.co/hf-inference/models/{HF_MATH_MODEL_ID}"
     payload = {
         "inputs": build_math_tutor_prompt(question),
         "parameters": {
