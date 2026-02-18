@@ -129,16 +129,16 @@ jobs:
             build/ hf-frontend/
 
           # Ensure HF Space metadata README exists
-          cat > hf-frontend/README.md << 'EOF'
-          ---
-          title: MathPulse AI
-          emoji: 📐
-          colorFrom: blue
-          colorTo: purple
-          sdk: static
-          pinned: false
-          ---
-          EOF
+          cat > hf-frontend/README.md << 'HFEOF'
+---
+title: MathPulse AI
+emoji: 📐
+colorFrom: blue
+colorTo: purple
+sdk: static
+pinned: false
+---
+HFEOF
           
           # Commit and push
           cd hf-frontend
