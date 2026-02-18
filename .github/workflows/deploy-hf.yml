@@ -127,6 +127,18 @@ jobs:
           rsync -av --delete \
             --exclude='.git' \
             build/ hf-frontend/
+
+          # Ensure HF Space metadata README exists
+          cat > hf-frontend/README.md << 'EOF'
+          ---
+          title: MathPulse AI
+          emoji: 📐
+          colorFrom: blue
+          colorTo: purple
+          sdk: static
+          pinned: false
+          ---
+          EOF
           
           # Commit and push
           cd hf-frontend
