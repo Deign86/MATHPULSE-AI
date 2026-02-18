@@ -114,7 +114,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Node.js** ≥ 18
 - **npm** ≥ 9
 - **Python** ≥ 3.10 (for backend)
-- A **Firebase** project ([setup guide](FIREBASE_SETUP.md))
+- A **Firebase** project ([Firebase Console](https://console.firebase.google.com/))
 - A **Hugging Face** API token (for AI features)
 
 ### Installation

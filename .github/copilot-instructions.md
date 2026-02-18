@@ -41,9 +41,9 @@ npm run build        # Production build
 ```
 
 ### Firebase Configuration
-- Config in `src/lib/firebase.ts` with fallback hardcoded values
+- Config in `src/lib/firebase.ts` loaded from env vars
 - Environment variables in `.env.local` (VITE_FIREBASE_* prefix)
-- Project ID: `mathpulse-ai-2026` (see `FIREBASE_CONNECTION_STATUS.md`)
+- See `.env.example` for required variables
 
 ### Testing Locally
 - Use demo accounts or create test users for each role

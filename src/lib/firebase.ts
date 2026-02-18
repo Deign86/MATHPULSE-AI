@@ -8,22 +8,23 @@ import { getAnalytics } from 'firebase/analytics';
 // Configuration is loaded from environment variables (.env.local)
 // See .env.example for required variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBtKDbf3CoNSJHMX2W-Bfru8qEX2mKm03Y",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "mathpulse-ai-2026.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "mathpulse-ai-2026",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "mathpulse-ai-2026.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "441656461",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:441656461:web:68f877c7bdde7065ec2ec4"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Debug logging
+if (!firebaseConfig.apiKey) {
+  console.error('🚨 Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
+}
+
+// Debug logging (no secrets)
 console.log('🔥 Firebase Config:', {
-  apiKey: firebaseConfig.apiKey?.substring(0, 10) + '...',
-  authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket,
-  messagingSenderId: firebaseConfig.messagingSenderId,
-  appId: firebaseConfig.appId
+  authDomain: firebaseConfig.authDomain,
+  configured: !!firebaseConfig.apiKey
 });
 
 // Initialize Firebase
