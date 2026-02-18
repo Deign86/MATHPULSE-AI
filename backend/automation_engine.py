@@ -514,11 +514,9 @@ class MathPulseAutomationEngine:
         weak_topics: List[Dict[str, Any]],
         grade_level: str,
     ) -> Optional[str]:
-        """Ask the Qwen model for a personalised learning path."""
+        """Generate a personalised learning path via HF Serverless Inference."""
         try:
-            from main import get_client, CHAT_MODEL
-
-            hf = get_client()
+            from main import call_hf_chat
 
             weakness_lines = ", ".join(at_risk_subjects)
             topic_lines = "\n".join(
@@ -538,8 +536,7 @@ class MathPulseAutomationEngine:
                 "Format as a numbered list. Be specific."
             )
 
-            response = hf.chat_completion(
-                model=CHAT_MODEL,
+            return call_hf_chat(
                 messages=[
                     {
                         "role": "system",
@@ -553,7 +550,6 @@ class MathPulseAutomationEngine:
                 max_tokens=1500,
                 temperature=0.7,
             )
-            return response.choices[0].message.content or ""
         except Exception as e:
             logger.warning(f"Learning-path AI call failed: {e}")
             return None
@@ -563,11 +559,9 @@ class MathPulseAutomationEngine:
         risk_classifications: Dict[str, Dict[str, Any]],
         weak_topics: List[Dict[str, Any]],
     ) -> Optional[str]:
-        """Ask the Qwen model for teacher intervention recommendations."""
+        """Generate teacher intervention recommendations via HF Serverless Inference."""
         try:
-            from main import get_client, CHAT_MODEL
-
-            hf = get_client()
+            from main import call_hf_chat
 
             at_risk = [
                 subj for subj, data in risk_classifications.items()
@@ -592,8 +586,7 @@ class MathPulseAutomationEngine:
                 "Keep response under 300 words, structured with clear sections."
             )
 
-            response = hf.chat_completion(
-                model=CHAT_MODEL,
+            return call_hf_chat(
                 messages=[
                     {
                         "role": "system",
@@ -607,7 +600,6 @@ class MathPulseAutomationEngine:
                 max_tokens=1000,
                 temperature=0.5,
             )
-            return response.choices[0].message.content or ""
         except Exception as e:
             logger.warning(f"Teacher-intervention AI call failed: {e}")
             return None

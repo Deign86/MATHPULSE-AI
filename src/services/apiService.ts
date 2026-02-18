@@ -336,7 +336,7 @@ export const apiService = {
     return apiFetch('/health', undefined, { ...DEFAULT_RETRY_OPTS, timeoutMs: 10_000 });
   },
 
-  /** AI Math Tutor Chat (Qwen/Qwen2.5-3B-Instruct) */
+  /** AI Math Tutor Chat (HF Serverless Inference) */
   async chat(
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[],
@@ -409,7 +409,7 @@ export const apiService = {
     });
   },
 
-  /** AI-Generated Learning Path (Qwen model) */
+  /** AI-Generated Learning Path */
   async getLearningPath(request: LearningPathRequest): Promise<LearningPathResponse> {
     validateRequired('/api/learning-path', {
       weaknesses: request.weaknesses,
@@ -435,7 +435,7 @@ export const apiService = {
     );
   },
 
-  /** Daily AI Insights for Teacher Dashboard (Qwen model) */
+  /** Daily AI Insights for Teacher Dashboard */
   async getDailyInsight(request: DailyInsightRequest): Promise<DailyInsightResponse> {
     if (!Array.isArray(request.students) || request.students.length === 0) {
       throw new ApiValidationError('/api/analytics/daily-insight', 'students array must not be empty');

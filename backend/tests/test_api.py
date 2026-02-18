@@ -102,27 +102,15 @@ class FakeClassificationElement:
         self.score = score
 
 
-class FakeChatChoice:
-    """Mimics ChatCompletionOutput.choices[0]."""
-
-    def __init__(self, content: str):
-        self.message = MagicMock(content=content)
-
-
-class FakeChatCompletion:
-    """Mimics InferenceClient.chat_completion() return."""
-
-    def __init__(self, content: str):
-        self.choices = [FakeChatChoice(content)]
-
-
-def make_hf_client(
-    chat_content: str = "The answer is 42.",
+def make_zsc_client(
     classification: list | None = None,
 ):
-    """Create a mock InferenceClient with predictable outputs."""
+    """Create a mock InferenceClient with predictable zero-shot outputs.
+
+    Used only for risk-prediction tests (the only endpoint still using
+    ``get_client()`` / ``InferenceClient``).
+    """
     mock_client = MagicMock()
-    mock_client.chat_completion.return_value = FakeChatCompletion(chat_content)
 
     if classification is None:
         classification = [
@@ -162,9 +150,9 @@ class TestHealthEndpoints:
 
 
 class TestChatEndpoint:
-    @patch("main.get_client")
-    def test_chat_success(self, mock_get):
-        mock_get.return_value = make_hf_client("Hello! 2+2=4.")
+    @patch("main.call_hf_chat")
+    def test_chat_success(self, mock_chat):
+        mock_chat.return_value = "Hello! 2+2=4."
         response = client.post("/api/chat", json={
             "message": "What is 2+2?",
             "history": [],
@@ -172,10 +160,9 @@ class TestChatEndpoint:
         assert response.status_code == 200
         assert "4" in response.json()["response"]
 
-    @patch("main.get_client")
-    def test_chat_with_history(self, mock_get):
-        hf = make_hf_client("Yes, that's right.")
-        mock_get.return_value = hf
+    @patch("main.call_hf_chat")
+    def test_chat_with_history(self, mock_chat):
+        mock_chat.return_value = "Yes, that's right."
         response = client.post("/api/chat", json={
             "message": "Is that correct?",
             "history": [
@@ -185,19 +172,17 @@ class TestChatEndpoint:
         })
         assert response.status_code == 200
         # Verify history was included in messages
-        call_args = hf.chat_completion.call_args
-        messages = call_args.kwargs.get("messages") or call_args[1].get("messages", [])
+        call_args = mock_chat.call_args
+        messages = call_args.args[0] if call_args.args else call_args.kwargs.get("messages", [])
         assert len(messages) >= 3  # system + 2 history + 1 current
 
     def test_chat_missing_message_returns_422(self):
         response = client.post("/api/chat", json={"history": []})
         assert response.status_code == 422
 
-    @patch("main.get_client")
-    def test_chat_hf_failure_returns_502(self, mock_get):
-        hf = make_hf_client()
-        hf.chat_completion.side_effect = Exception("HF API down")
-        mock_get.return_value = hf
+    @patch("main.call_hf_chat")
+    def test_chat_hf_failure_returns_502(self, mock_chat):
+        mock_chat.side_effect = Exception("HF API down")
         response = client.post("/api/chat", json={
             "message": "Hello",
             "history": [],
@@ -211,7 +196,7 @@ class TestChatEndpoint:
 class TestRiskPrediction:
     @patch("main.get_client")
     def test_predict_risk_success(self, mock_get):
-        mock_get.return_value = make_hf_client()
+        mock_get.return_value = make_zsc_client()
         response = client.post("/api/predict-risk", json={
             "engagementScore": 80,
             "avgQuizScore": 75,
@@ -249,7 +234,7 @@ class TestRiskPrediction:
 
     @patch("main.get_client")
     def test_predict_risk_hf_failure(self, mock_get):
-        hf = make_hf_client()
+        hf = make_zsc_client()
         hf.zero_shot_classification.side_effect = Exception("HF down")
         mock_get.return_value = hf
         response = client.post("/api/predict-risk", json={
@@ -262,7 +247,7 @@ class TestRiskPrediction:
 
     @patch("main.get_client")
     def test_batch_risk_prediction(self, mock_get):
-        mock_get.return_value = make_hf_client()
+        mock_get.return_value = make_zsc_client()
         response = client.post("/api/predict-risk/batch", json={
             "students": [
                 {"engagementScore": 80, "avgQuizScore": 75, "attendance": 90, "assignmentCompletion": 85},
@@ -277,9 +262,9 @@ class TestRiskPrediction:
 
 
 class TestLearningPath:
-    @patch("main.get_client")
-    def test_learning_path_success(self, mock_get):
-        mock_get.return_value = make_hf_client("1. Review fractions\n2. Practice decimals")
+    @patch("main.call_hf_chat")
+    def test_learning_path_success(self, mock_chat):
+        mock_chat.return_value = "1. Review fractions\n2. Practice decimals"
         response = client.post("/api/learning-path", json={
             "weaknesses": ["fractions", "decimals"],
             "gradeLevel": "Grade 7",
@@ -299,11 +284,9 @@ class TestLearningPath:
         })
         assert response.status_code == 422
 
-    @patch("main.get_client")
-    def test_learning_path_hf_failure(self, mock_get):
-        hf = make_hf_client()
-        hf.chat_completion.side_effect = Exception("HF down")
-        mock_get.return_value = hf
+    @patch("main.call_hf_chat")
+    def test_learning_path_hf_failure(self, mock_chat):
+        mock_chat.side_effect = Exception("HF down")
         response = client.post("/api/learning-path", json={
             "weaknesses": ["algebra"],
             "gradeLevel": "Grade 8",
@@ -315,9 +298,9 @@ class TestLearningPath:
 
 
 class TestDailyInsight:
-    @patch("main.get_client")
-    def test_daily_insight_success(self, mock_get):
-        mock_get.return_value = make_hf_client("Class is doing well.")
+    @patch("main.call_hf_chat")
+    def test_daily_insight_success(self, mock_chat):
+        mock_chat.return_value = "Class is doing well."
         response = client.post("/api/analytics/daily-insight", json={
             "students": [
                 {"name": "Alice", "engagementScore": 80, "avgQuizScore": 75, "attendance": 90, "riskLevel": "Low"},
@@ -359,8 +342,8 @@ class TestQuizTopics:
 
 
 class TestQuizGeneration:
-    @patch("main.get_client")
-    def test_generate_quiz_success(self, mock_get):
+    @patch("main.call_hf_chat")
+    def test_generate_quiz_success(self, mock_chat):
         quiz_json = json.dumps([{
             "questionType": "multiple_choice",
             "question": "What is 2+2?",
@@ -372,7 +355,7 @@ class TestQuizGeneration:
             "points": 1,
             "explanation": "2+2=4",
         }])
-        mock_get.return_value = make_hf_client(quiz_json)
+        mock_chat.return_value = quiz_json
 
         response = client.post("/api/quiz/generate", json={
             "topics": ["Arithmetic"],
@@ -390,9 +373,9 @@ class TestQuizGeneration:
         })
         assert response.status_code == 422
 
-    @patch("main.get_client")
-    def test_generate_quiz_bad_llm_output(self, mock_get):
-        mock_get.return_value = make_hf_client("This is not valid JSON at all.")
+    @patch("main.call_hf_chat")
+    def test_generate_quiz_bad_llm_output(self, mock_chat):
+        mock_chat.return_value = "This is not valid JSON at all."
         response = client.post("/api/quiz/generate", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 8",
@@ -400,8 +383,8 @@ class TestQuizGeneration:
         })
         assert response.status_code == 500
 
-    @patch("main.get_client")
-    def test_preview_quiz(self, mock_get):
+    @patch("main.call_hf_chat")
+    def test_preview_quiz(self, mock_chat):
         quiz_json = json.dumps([{
             "questionType": "identification",
             "question": "Define slope.",
@@ -412,7 +395,7 @@ class TestQuizGeneration:
             "points": 1,
             "explanation": "Slope = rise/run.",
         }])
-        mock_get.return_value = make_hf_client(quiz_json)
+        mock_chat.return_value = quiz_json
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 8",
@@ -491,9 +474,9 @@ class TestErrorHandling:
 
 
 class TestStudentCompetency:
-    @patch("main.get_client")
-    def test_competency_no_history(self, mock_get):
-        mock_get.return_value = make_hf_client()
+    @patch("main.call_hf_chat")
+    def test_competency_no_history(self, mock_chat):
+        mock_chat.return_value = ""
         response = client.post("/api/quiz/student-competency", json={
             "studentId": "student123",
             "quizHistory": [],
@@ -503,9 +486,9 @@ class TestStudentCompetency:
         assert data["studentId"] == "student123"
         assert data["competencies"] == []
 
-    @patch("main.get_client")
-    def test_competency_with_history(self, mock_get):
-        mock_get.return_value = make_hf_client("Good progress overall.")
+    @patch("main.call_hf_chat")
+    def test_competency_with_history(self, mock_chat):
+        mock_chat.return_value = "Good progress overall."
         response = client.post("/api/quiz/student-competency", json={
             "studentId": "student123",
             "quizHistory": [
