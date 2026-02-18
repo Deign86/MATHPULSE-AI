@@ -1,14 +1,23 @@
 # ============================================================
-# Auto-deploy backend to Hugging Face Spaces on push to main
-# Mirrors the backend/ folder to your HF Space repository
+# Auto-deploy to Hugging Face Spaces on push to main
+# - Backend (Docker): Deign86/mathpulse-api
+# - Frontend (Static): Deign86/mathpulse-ai
 # ============================================================
 # 
 # SETUP (one-time):
 # 1. Go to https://huggingface.co/settings/tokens
 #    Create a token with "Write" access
 # 2. In your GitHub repo, go to Settings → Secrets → Actions
-#    Add a secret named HF_TOKEN with your HF token value
-# 3. Push to main — the Action will auto-deploy your backend
+#    Add these secrets:
+#      HF_TOKEN                         — HuggingFace write token
+#      VITE_FIREBASE_API_KEY            — Firebase API key
+#      VITE_FIREBASE_AUTH_DOMAIN        — Firebase auth domain
+#      VITE_FIREBASE_PROJECT_ID         — Firebase project ID
+#      VITE_FIREBASE_STORAGE_BUCKET     — Firebase storage bucket
+#      VITE_FIREBASE_MESSAGING_SENDER_ID — Firebase messaging sender ID
+#      VITE_FIREBASE_APP_ID             — Firebase app ID
+#      VITE_FIREBASE_MEASUREMENT_ID     — Firebase measurement ID
+# 3. Push to main — the Action will auto-deploy
 # ============================================================
 
 name: Deploy to Hugging Face Spaces
@@ -17,13 +26,17 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'backend/**'    # Only trigger when backend files change
   workflow_dispatch:     # Allow manual trigger from GitHub UI
 
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
+    # Only run when backend files change (or manual trigger)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(join(github.event.commits.*.modified, ','), 'backend/') ||
+      contains(join(github.event.commits.*.added, ','), 'backend/') ||
+      contains(join(github.event.commits.*.removed, ','), 'backend/')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +73,65 @@ jobs:
           cd hf-space
           git add -A
           git diff --staged --quiet && echo "No changes to deploy" && exit 0
-          git commit -m "🚀 Auto-deploy from GitHub (${GITHUB_SHA::7})"
+          git commit -m "🚀 Auto-deploy backend from GitHub (${GITHUB_SHA::7})"
           git push origin main --force
           echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-api"
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_API_URL: https://deign86-mathpulse-api.hf.space
+        run: npm run build
+
+      - name: Push frontend to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          SPACE_REPO="https://Deign86:${HF_TOKEN}@huggingface.co/spaces/Deign86/mathpulse-ai"
+          
+          git clone "${SPACE_REPO}" hf-frontend 2>/dev/null || {
+            echo "Space repo not found — creating fresh push"
+            mkdir hf-frontend && cd hf-frontend && git init
+            git remote add origin "${SPACE_REPO}"
+            cd ..
+          }
+          
+          # Sync build output into the Space repo (keep .git and README)
+          rsync -av --delete \
+            --exclude='.git' \
+            build/ hf-frontend/
+          
+          # Commit and push
+          cd hf-frontend
+          git add -A
+          git diff --staged --quiet && echo "No changes to deploy" && exit 0
+          git commit -m "🚀 Auto-deploy frontend from GitHub (${GITHUB_SHA::7})"
+          git push origin main --force
+          echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-ai"
