@@ -255,12 +255,40 @@ def get_client() -> InferenceClient:
 # ─── HF Serverless Chat Helper (requests-based) ───────────────
 
 
+def _strip_repetition(text: str, min_chunk: int = 40) -> str:
+    """Remove repeated blocks from model output (a common issue with smaller LLMs)."""
+    lines = text.split("\n")
+    seen_blocks: list[str] = []
+    result_lines: list[str] = []
+    i = 0
+    while i < len(lines):
+        # Try to match a block of 2-4 lines that repeats
+        matched = False
+        for blen in (4, 3, 2):
+            if i + blen > len(lines):
+                continue
+            block = "\n".join(lines[i : i + blen]).strip()
+            if len(block) < min_chunk:
+                continue
+            if block in seen_blocks:
+                # Skip this repeated block
+                i += blen
+                matched = True
+                break
+            seen_blocks.append(block)
+        if not matched:
+            result_lines.append(lines[i])
+            i += 1
+    return "\n".join(result_lines).strip()
+
+
 def call_hf_chat(
     messages: List[Dict[str, str]],
     *,
     max_tokens: int = 2048,
     temperature: float = 0.2,
     top_p: float = 0.9,
+    repetition_penalty: float = 1.15,
     model: Optional[str] = None,
 ) -> str:
     """
@@ -282,6 +310,7 @@ def call_hf_chat(
         "max_tokens": max_tokens,
         "temperature": temperature,
         "top_p": top_p,
+        "repetition_penalty": repetition_penalty,
     }
 
     for attempt in range(3):
@@ -297,7 +326,8 @@ def call_hf_chat(
         # OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
         choices = data.get("choices", [])
         if choices:
-            return (choices[0].get("message", {}).get("content", "") or "").strip()
+            raw = (choices[0].get("message", {}).get("content", "") or "").strip()
+            return _strip_repetition(raw)
 
         raise RuntimeError(f"Unexpected HF response format: {data}")
 
@@ -458,28 +488,21 @@ async def root():
 # ─── AI Chat Tutor ─────────────────────────────────────────────
 
 
-MATH_TUTOR_SYSTEM_PROMPT = """You are MathPulse AI, a rigorous and friendly expert math tutor for students. You help with:
-- Algebra, Geometry, Calculus, Trigonometry, Statistics, and all math topics
-- Step-by-step problem solving with clear, verifiable explanations
-- Practice problems and concept reinforcement
-- Building confidence in mathematics
+MATH_TUTOR_SYSTEM_PROMPT = """You are MathPulse AI, a friendly and concise expert math tutor for students.
 
-Strict Problem-Solving Protocol:
-1. **Restate the Problem**: Begin every solution by clearly restating what is being asked in your own words.
-2. **Show ALL Calculation Steps**: Write out every intermediate step with full equations. Never skip arithmetic.
-3. **Verify Arithmetic at Each Step**: After each calculation, briefly confirm the result (e.g., "Check: 7 × 8 = 56 ✓").
-4. **State the Final Answer Clearly**: End with a clearly labeled final answer including appropriate units (e.g., "**Final Answer: 42 cm²**").
-5. **Admit Uncertainty**: If you are unsure about any step or the problem is ambiguous, explicitly say so. Never guess.
-6. **Cross-Verify**: For computational problems, verify your answer with a different method when possible (e.g., substitute back, use estimation, or solve via an alternate approach).
+Problem-Solving Protocol:
+1. Restate the problem briefly.
+2. Solve step by step, showing each equation clearly.
+3. State the final answer with a label like "**Final Answer: x = 5**".
+4. Verify once at the end by substituting back (do NOT repeat verification steps).
 
-Additional Guidelines:
-- Use mathematical notation where helpful (e.g., x², √, π)
-- Encourage students and celebrate their progress
-- If a student is struggling, try explaining from a different angle
-- Ask follow-up questions to check understanding
-- Keep responses focused and concise (under 300 words unless a detailed derivation is needed)
-- Use examples relatable to students' daily life when possible
-- If a problem has multiple valid interpretations, address the most likely one and note alternatives"""
+Rules:
+- Be concise — aim for under 200 words.
+- Use math notation where helpful (x², √, π).
+- Never repeat yourself. Once a step is shown, move forward.
+- If unsure, say so rather than guessing.
+- Encourage the student briefly at the end.
+- If the question is not about math, politely say you can only help with math."""
 
 
 @app.post("/api/chat", response_model=ChatResponse)
@@ -497,7 +520,7 @@ async def chat_tutor(request: ChatRequest):
 
         # Call HF serverless with retry (handled inside call_hf_chat)
         try:
-            answer = call_hf_chat(messages, max_tokens=2048, temperature=0.2, top_p=0.9)
+            answer = call_hf_chat(messages, max_tokens=1024, temperature=0.3, top_p=0.9)
         except Exception as hf_err:
             logger.error(f"HF chat failed: {hf_err}")
             raise HTTPException(
