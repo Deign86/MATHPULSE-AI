@@ -30,17 +30,18 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const getSearchData = (): SearchResult[] => {
     if (userRole === 'student') {
       return [
-        { id: '1', type: 'module', title: 'Algebra Basics', subtitle: 'Foundation • 12 lessons', icon: BookOpen },
-        { id: '2', type: 'module', title: 'Calculus Introduction', subtitle: 'Advanced • 8 lessons', icon: BookOpen },
-        { id: '3', type: 'module', title: 'Geometry Fundamentals', subtitle: 'Foundation • 15 lessons', icon: BookOpen },
-        { id: '4', type: 'page', title: 'AI Chat', subtitle: 'Get help from AI tutor', icon: TrendingUp },
-        { id: '5', type: 'page', title: 'My Progress', subtitle: 'View your achievements', icon: TrendingUp },
+        { id: '1', type: 'module', title: 'General Mathematics', subtitle: 'Grade 11 • Functions & Business Math', icon: BookOpen },
+        { id: '2', type: 'module', title: 'Statistics & Probability', subtitle: 'Grade 11 • Distributions & Testing', icon: BookOpen },
+        { id: '3', type: 'module', title: 'Pre-Calculus', subtitle: 'Grade 12 • Analytic Geometry & Trig', icon: BookOpen },
+        { id: '4', type: 'module', title: 'Basic Calculus', subtitle: 'Grade 12 • Limits & Derivatives', icon: BookOpen },
+        { id: '5', type: 'page', title: 'AI Chat', subtitle: 'Get help from AI tutor', icon: TrendingUp },
+        { id: '6', type: 'page', title: 'My Progress', subtitle: 'View your achievements', icon: TrendingUp },
       ];
     } else if (userRole === 'teacher') {
       return [
-        { id: '1', type: 'student', title: 'Alex Johnson', subtitle: 'Math 101 • Level 12', icon: Users },
-        { id: '2', type: 'student', title: 'Sarah Williams', subtitle: 'Math 102 • Level 11', icon: Users },
-        { id: '3', type: 'module', title: 'Algebra Quiz 5', subtitle: '12 submissions', icon: BookOpen },
+        { id: '1', type: 'student', title: 'Alex Johnson', subtitle: 'Grade 11 • Level 12', icon: Users },
+        { id: '2', type: 'student', title: 'Sarah Williams', subtitle: 'Grade 12 • Level 11', icon: Users },
+        { id: '3', type: 'module', title: 'Gen Math Quiz 5', subtitle: '12 submissions', icon: BookOpen },
         { id: '4', type: 'page', title: 'Analytics', subtitle: 'Class performance overview', icon: TrendingUp },
         { id: '5', type: 'page', title: 'Create Assignment', subtitle: 'New homework or quiz', icon: BookOpen },
       ];
@@ -56,8 +57,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   const recentSearches = [
-    'Algebra Basics',
-    'Pythagorean Theorem',
+    'Functions and Relations',
+    'Normal Distribution',
     'AI Chat'
   ];
 

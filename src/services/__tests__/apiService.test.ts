@@ -69,7 +69,7 @@ const MOCK_QUIZ: QuizGenerationResponse = {
     difficultyBreakdown: { easy: 1 },
     bloomTaxonomyDistribution: { remember: 1 },
     questionTypeBreakdown: { multiple_choice: 1 },
-    gradeLevel: 'Grade 7',
+    gradeLevel: 'Grade 11',
     totalQuestions: 1,
     includesGraphQuestions: false,
     supplementalPurpose: 'test',
@@ -265,14 +265,14 @@ describe('apiService', () => {
       globalThis.fetch = mockFetch(MOCK_LEARNING_PATH);
       const result = await apiService.getLearningPath({
         weaknesses: ['fractions'],
-        gradeLevel: 'Grade 7',
+        gradeLevel: 'Grade 11',
       });
       expect(result.learningPath).toContain('fractions');
     });
 
     it('throws validation error for empty weaknesses', async () => {
       await expect(
-        apiService.getLearningPath({ weaknesses: [], gradeLevel: 'Grade 7' }),
+        apiService.getLearningPath({ weaknesses: [], gradeLevel: 'Grade 11' }),
       ).rejects.toThrow(ApiValidationError);
     });
 
@@ -288,7 +288,7 @@ describe('apiService', () => {
       globalThis.fetch = mockFetch({ detail: 'error' }, 500);
       const result = await apiService.getLearningPathSafe({
         weaknesses: ['fractions'],
-        gradeLevel: 'Grade 7',
+        gradeLevel: 'Grade 11',
       });
       expect(result.fromFallback).toBe(true);
       expect(result.data.learningPath).toContain('Unable to generate');
@@ -345,7 +345,7 @@ describe('apiService', () => {
   describe('generateQuiz()', () => {
     const quizRequest: QuizGenerationRequest = {
       topics: ['Linear Equations'],
-      gradeLevel: 'Grade 8',
+      gradeLevel: 'Grade 11',
     };
 
     it('returns quiz on success', async () => {
@@ -357,7 +357,7 @@ describe('apiService', () => {
 
     it('throws validation error for empty topics', async () => {
       await expect(
-        apiService.generateQuiz({ topics: [], gradeLevel: 'Grade 8' }),
+        apiService.generateQuiz({ topics: [], gradeLevel: 'Grade 11' }),
       ).rejects.toThrow(ApiValidationError);
     });
 
@@ -378,7 +378,7 @@ describe('apiService', () => {
       globalThis.fetch = mockFetch(MOCK_QUIZ);
       const result = await apiService.previewQuiz({
         topics: ['Algebra'],
-        gradeLevel: 'Grade 8',
+        gradeLevel: 'Grade 11',
       });
       expect(result.questions).toBeDefined();
     });
@@ -387,7 +387,7 @@ describe('apiService', () => {
   describe('getQuizTopics()', () => {
     it('returns all topics without gradeLevel', async () => {
       const topics: QuizTopicsResponse = {
-        allTopics: { 'Grade 7': { Algebra: ['Equations'] } },
+        allTopics: { 'Grade 11': { 'General Mathematics - Functions and Their Graphs': ['Functions and Relations'] } },
       };
       globalThis.fetch = mockFetch(topics);
       const result = await apiService.getQuizTopics();
@@ -396,12 +396,12 @@ describe('apiService', () => {
 
     it('returns topics for specific grade level', async () => {
       const topics: QuizTopicsResponse = {
-        gradeLevel: 'Grade 7',
-        topics: { Algebra: ['Equations'] },
+        gradeLevel: 'Grade 11',
+        topics: { 'General Mathematics - Functions and Their Graphs': ['Functions and Relations'] },
       };
       globalThis.fetch = mockFetch(topics);
-      const result = await apiService.getQuizTopics('Grade 7');
-      expect(result.gradeLevel).toBe('Grade 7');
+      const result = await apiService.getQuizTopics('Grade 11');
+      expect(result.gradeLevel).toBe('Grade 11');
     });
   });
 
