@@ -31,21 +31,21 @@ const questions = [
   },
   {
     id: 3,
-    subjectId: 'stats', // Matches Statistics and Probability
+    subjectId: 'stats-prob', // Matches Statistics and Probability
     question: "What is the median of the dataset: 2, 5, 8, 1, 9?",
     options: ["2", "5", "8", "1"],
     correct: 1
   },
   {
     id: 4,
-    subjectId: 'calc', // Matches Basic Calculus
+    subjectId: 'basic-calc', // Matches Basic Calculus
     question: "What is the derivative of f(x) = x²?",
     options: ["x", "2x", "2", "x²"],
     correct: 1
   }
 ];
 
-const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ isOpen, onClose, onComplete, studentId, gradeLevel = 'Grade 10' }) => {
+const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ isOpen, onClose, onComplete, studentId, gradeLevel = 'Grade 11' }) => {
   const [step, setStep] = useState<'intro' | 'test' | 'results'>('intro');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]); // Store selected indices
@@ -314,7 +314,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                       const subjectName = 
                         q.subjectId === 'gen-math' ? 'General Mathematics' :
                         q.subjectId === 'pre-calc' ? 'Pre-Calculus' :
-                        q.subjectId === 'stats' ? 'Statistics' : 'Basic Calculus';
+                        q.subjectId === 'stats-prob' ? 'Statistics and Probability' : 'Basic Calculus';
                       
                       return (
                         <div key={q.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
