@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
 import { saveQuizResults } from '../services/quizService';
 import ScientificCalculator from './ScientificCalculator';
+import MathAnswerInput from './MathAnswerInput';
 import SupplementalBanner from './SupplementalBanner';
 import type { AIQuizQuestion } from '../types/models';
 
@@ -84,6 +85,28 @@ function aiQuestionToInternal(q: AIQuizQuestion): QuizQuestion {
   };
 }
 
+function normalizeMathAnswer(s: string): string {
+  return s
+    .replace(/²/g, '^2')
+    .replace(/³/g, '^3')
+    .replace(/⁻¹/g, '^-1')
+    .replace(/⁰/g, '^0')
+    .replace(/¹/g, '^1')
+    .replace(/⁴/g, '^4')
+    .replace(/⁵/g, '^5')
+    .replace(/⁶/g, '^6')
+    .replace(/⁷/g, '^7')
+    .replace(/⁸/g, '^8')
+    .replace(/⁹/g, '^9')
+    .replace(/π/g, 'pi')
+    .replace(/√/g, 'sqrt')
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/\s+/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function validateTextAnswer(userAnswer: string, correctAnswer: string, questionType: string): boolean {
   const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
   switch (questionType) {
@@ -96,6 +119,9 @@ function validateTextAnswer(userAnswer: string, correctAnswer: string, questionT
     }
     case 'word_problem':
     case 'equation_based': {
+      const nUser = normalizeMathAnswer(userAnswer);
+      const nCorrect = normalizeMathAnswer(correctAnswer);
+      if (nUser === nCorrect) return true;
       const uNum = parseFloat(userAnswer.replace(/[^\d.\-]/g, ''));
       const cNum = parseFloat(correctAnswer.replace(/[^\d.\-]/g, ''));
       if (!isNaN(uNum) && !isNaN(cNum)) return Math.abs(uNum - cNum) <= 0.01;
@@ -621,6 +647,16 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                             : 'border-slate-200 focus:border-blue-500 bg-white'
                         }`}
                       />
+                    ) : (currentQuestion.questionType === 'equation_based' || currentQuestion.questionType === 'word_problem') ? (
+                      <MathAnswerInput
+                        value={textAnswer}
+                        onChange={setTextAnswer}
+                        placeholder={
+                          currentQuestion.questionType === 'equation_based' ? 'Enter the numerical result…'
+                            : 'Enter your answer…'
+                        }
+                        onCalculatorOpen={() => setShowCalculator(true)}
+                      />
                     ) : (
                       <input
                         type="text"
@@ -628,11 +664,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                         onChange={(e) => setTextAnswer(e.target.value)}
                         disabled={showExplanation}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
-                        placeholder={
-                          currentQuestion.questionType === 'equation_based' ? 'Enter the numerical result…'
-                            : currentQuestion.questionType === 'word_problem' ? 'Enter your answer…'
-                            : 'Type your answer…'
-                        }
+                        placeholder="Type your answer…"
                         className={`w-full pl-10 pr-4 py-3.5 rounded-xl border-2 text-sm outline-none transition-all ${
                           showExplanation
                             ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
