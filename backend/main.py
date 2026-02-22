@@ -1342,48 +1342,70 @@ class CalculatorResponse(BaseModel):
     latex: Optional[str] = None
 
 
-# ─── Quiz Topics Database ─────────────────────────────────────
+# ─── Quiz Topics Database (SHS Grade 11-12 Only) ─────────────
 
 MATH_TOPICS_BY_GRADE: Dict[str, Dict[str, List[str]]] = {
-    "Grade 7": {
-        "Number Sense": ["Integers", "Fractions & Decimals", "Ratios & Proportions", "Percentages"],
-        "Algebra": ["Variables & Expressions", "One-Step Equations", "Inequalities", "Patterns"],
-        "Geometry": ["Angles", "Triangles", "Area & Perimeter", "Volume"],
-        "Statistics": ["Mean, Median, Mode", "Bar & Line Graphs", "Probability Basics"],
-    },
-    "Grade 8": {
-        "Algebra": ["Linear Equations", "Systems of Equations (Introduction)", "Slope & Rate of Change", "Functions"],
-        "Geometry": ["Pythagorean Theorem", "Transformations", "Congruence & Similarity", "Surface Area & Volume"],
-        "Number Sense": ["Exponents & Powers", "Scientific Notation", "Square & Cube Roots", "Rational & Irrational Numbers"],
-        "Statistics": ["Scatter Plots", "Two-Way Tables", "Probability of Compound Events"],
-    },
-    "Grade 9": {
-        "Algebra": ["Linear Functions", "Quadratic Equations", "Polynomials", "Factoring"],
-        "Geometry": ["Coordinate Geometry", "Circles", "Trigonometric Ratios", "Proofs"],
-        "Statistics": ["Data Analysis", "Normal Distribution Basics", "Sampling Methods"],
-        "Number Sense": ["Radicals & Exponents", "Rational Expressions"],
-    },
-    "Grade 10": {
-        "Algebra": ["Quadratic Functions", "Systems of Equations", "Exponential Functions", "Radical Equations"],
-        "Geometry": ["Circle Theorems", "Solid Geometry", "Coordinate Proofs", "Trigonometry"],
-        "Statistics & Probability": ["Permutations & Combinations", "Conditional Probability", "Binomial Probability"],
-        "Pre-Calculus": ["Sequences & Series", "Polynomial Functions"],
-    },
     "Grade 11": {
-        "Pre-Calculus": ["Functions & Graphs", "Polynomial Division", "Rational Functions", "Logarithmic Functions", "Trigonometric Functions"],
-        "Statistics": ["Regression Analysis", "Confidence Intervals", "Hypothesis Testing Basics"],
-        "Algebra": ["Complex Numbers", "Matrices (Introduction)", "Conic Sections"],
+        "General Mathematics - Functions and Their Graphs": [
+            "Functions and Relations", "Evaluating Functions", "Operations on Functions",
+            "Composite Functions", "Inverse Functions", "Rational Functions",
+            "Exponential Functions", "Logarithmic Functions",
+        ],
+        "General Mathematics - Business Mathematics": [
+            "Simple Interest", "Compound Interest", "Annuities",
+            "Loans and Amortization", "Stocks and Bonds",
+        ],
+        "General Mathematics - Logic": [
+            "Propositions and Connectives", "Truth Tables",
+            "Logical Equivalence", "Valid Arguments and Fallacies",
+        ],
+        "Statistics and Probability - Random Variables": [
+            "Random Variables", "Discrete Probability Distributions",
+            "Mean and Variance of Discrete RV",
+        ],
+        "Statistics and Probability - Normal Distribution": [
+            "Normal Distribution", "Standard Normal Distribution and Z-scores",
+            "Areas Under the Normal Curve",
+        ],
+        "Statistics and Probability - Sampling and Estimation": [
+            "Sampling Distributions", "Central Limit Theorem",
+            "Point Estimation", "Confidence Intervals",
+        ],
+        "Statistics and Probability - Hypothesis Testing": [
+            "Hypothesis Testing Concepts", "T-test", "Z-test",
+            "Correlation and Regression",
+        ],
     },
     "Grade 12": {
-        "Basic Calculus": ["Limits", "Derivatives", "Integration", "Applications of Derivatives", "Area Under a Curve"],
-        "Statistics": ["Normal Distribution", "Z-Scores", "Chi-Square Tests"],
-        "Advanced Algebra": ["Series & Convergence", "Parametric Equations", "Polar Coordinates"],
-    },
-    "College": {
-        "Calculus": ["Multivariable Calculus", "Differential Equations", "Vector Calculus", "Infinite Series"],
-        "Linear Algebra": ["Matrices & Determinants", "Eigenvalues & Eigenvectors", "Vector Spaces", "Linear Transformations"],
-        "Discrete Mathematics": ["Set Theory", "Graph Theory", "Combinatorics", "Number Theory"],
-        "Statistics": ["Probability Distributions", "Bayesian Statistics", "Statistical Inference", "ANOVA"],
+        "Pre-Calculus - Analytic Geometry": [
+            "Conic Sections - Parabola", "Conic Sections - Ellipse",
+            "Conic Sections - Hyperbola", "Conic Sections - Circle",
+            "Systems of Nonlinear Equations",
+        ],
+        "Pre-Calculus - Series and Induction": [
+            "Sequences and Series", "Arithmetic Sequences", "Geometric Sequences",
+            "Mathematical Induction", "Binomial Theorem",
+        ],
+        "Pre-Calculus - Trigonometry": [
+            "Angles and Unit Circle", "Trigonometric Functions",
+            "Trigonometric Identities", "Sum and Difference Formulas",
+            "Inverse Trigonometric Functions", "Polar Coordinates",
+        ],
+        "Basic Calculus - Limits": [
+            "Limits of Functions", "Limit Theorems", "One-Sided Limits",
+            "Infinite Limits and Limits at Infinity", "Continuity of Functions",
+        ],
+        "Basic Calculus - Derivatives": [
+            "Definition of the Derivative", "Differentiation Rules", "Chain Rule",
+            "Implicit Differentiation", "Higher-Order Derivatives", "Related Rates",
+            "Extrema and the First Derivative Test",
+            "Concavity and the Second Derivative Test", "Optimization Problems",
+        ],
+        "Basic Calculus - Integration": [
+            "Antiderivatives and Indefinite Integrals",
+            "Definite Integrals and the FTC",
+            "Integration by Substitution", "Area Under a Curve",
+        ],
     },
 }
 
@@ -1712,7 +1734,8 @@ async def preview_quiz(request: QuizGenerationRequest):
 @app.get("/api/quiz/topics")
 async def get_quiz_topics(gradeLevel: Optional[str] = None):
     """
-    Return structured list of math topics organised by grade level.
+    Return structured list of SHS math topics organised by grade level.
+    Only Grade 11 and Grade 12 are supported.
     If gradeLevel is provided, return topics for that grade only.
     """
     if gradeLevel:
@@ -1729,7 +1752,11 @@ async def get_quiz_topics(gradeLevel: Optional[str] = None):
             detail=f"Grade level '{gradeLevel}' not found. Available: {list(MATH_TOPICS_BY_GRADE.keys())}",
         )
 
-    return {"allTopics": MATH_TOPICS_BY_GRADE}
+    # Return all SHS topics organized by grade
+    return {
+        "gradeLevels": list(MATH_TOPICS_BY_GRADE.keys()),
+        "allTopics": MATH_TOPICS_BY_GRADE,
+    }
 
 
 # ─── Student Competency Assessment ────────────────────────────
