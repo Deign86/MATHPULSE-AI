@@ -1659,6 +1659,7 @@ Remember:
         http_timeout = max(90, request.numQuestions * 12)
 
         parsed_questions: List[Dict[str, Any]] = []
+        raw_content = ""  # Will be set inside the loop
         max_attempts = 2  # Retry once if LLM generates too few questions
 
         for attempt in range(max_attempts):
