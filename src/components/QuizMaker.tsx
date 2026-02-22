@@ -122,23 +122,6 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   const [bankFilter, setBankFilter] = useState<GeneratedQuizStatus | 'all'>('all');
   const [bankAssignQuizId, setBankAssignQuizId] = useState<string | null>(null);
 
-  // Save / Assign / Publish state
-  const [saving, setSaving] = useState(false);
-  const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
-  const [publishing, setPublishing] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assigning, setAssigning] = useState(false);
-  const [students, setStudents] = useState<ManagedStudent[]>([]);
-  const [studentsLoading, setStudentsLoading] = useState(false);
-  const [studentSearch, setStudentSearch] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-
-  // Quiz Bank state
-  const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
-  const [bankLoading, setBankLoading] = useState(false);
-  const [bankFilter, setBankFilter] = useState<GeneratedQuizStatus | 'all'>('all');
-  const [bankAssignQuizId, setBankAssignQuizId] = useState<string | null>(null);
-
   // Load topics when grade changes
   const loadTopics = useCallback(async () => {
     setTopicsLoading(true);
