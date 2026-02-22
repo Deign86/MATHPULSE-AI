@@ -8,6 +8,7 @@ import AdminContent from './AdminContent';
 import AdminAuditLog from './AdminAuditLog';
 import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
+import MasteryHeatmap from './MasteryHeatmap';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -273,6 +274,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   </div>
                 </div>
               </div>
+
+              {/* Platform-Wide Subject Mastery Heatmap */}
+              <MasteryHeatmap />
 
               {/* Recent Activity */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">

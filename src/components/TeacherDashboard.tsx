@@ -27,13 +27,15 @@ import {
 import { apiService } from '../services/apiService';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
+import TopicMasteryView from './TopicMasteryView';
+import StudentCompetencyTable from './StudentCompetencyTable';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
 }
 
-type View = 'dashboard' | 'analytics' | 'intervention' | 'import' | 'edit_records';
+type View = 'dashboard' | 'analytics' | 'intervention' | 'import' | 'edit_records' | 'topic_mastery' | 'competency';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -309,6 +311,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             onClick={() => setActiveView('analytics')}
           />
           <NavItem
+            icon={Target}
+            label="Topic Mastery"
+            active={activeView === 'topic_mastery'}
+            collapsed={sidebarCollapsed}
+            onClick={() => setActiveView('topic_mastery')}
+          />
+          <NavItem
+            icon={Users}
+            label="Competency"
+            active={activeView === 'competency'}
+            collapsed={sidebarCollapsed}
+            onClick={() => setActiveView('competency')}
+          />
+          <NavItem
             icon={Database}
             label="Data Import"
             active={activeView === 'import'}
@@ -364,12 +380,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 {activeView === 'dashboard' && 'Teacher Dashboard'}
                 {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
                 {activeView === 'intervention' && 'Student Intervention'}
+                {activeView === 'topic_mastery' && 'Topic Mastery'}
+                {activeView === 'competency' && 'Student Competency'}
                 {activeView === 'import' && 'Data Import'}
               </h1>
               <p className="text-sm text-slate-500 mt-0.5">
                 {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
                 {activeView === 'analytics' && 'Deep dive into class performance'}
                 {activeView === 'intervention' && selectedStudent?.name}
+                {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
+                {activeView === 'competency' && 'Per-student topic-level competency breakdown'}
                 {activeView === 'import' && 'Upload class records and materials'}
               </p>
             </div>
@@ -423,6 +443,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onBack={handleBackToAnalytics}
               />
             )}
+            {activeView === 'topic_mastery' && <TopicMasteryView />}
+            {activeView === 'competency' && <StudentCompetencyTable />}
             {activeView === 'import' && <ImportView onEditRecords={() => setActiveView('edit_records')} />}
             {activeView === 'edit_records' && (
               <EditRecordsView

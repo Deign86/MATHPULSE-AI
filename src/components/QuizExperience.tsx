@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
 import { saveQuizResults } from '../services/quizService';
 import ScientificCalculator from './ScientificCalculator';
+import SupplementalBanner from './SupplementalBanner';
 import type { AIQuizQuestion } from '../types/models';
 
 export interface Quiz {
@@ -44,6 +45,7 @@ interface QuizExperienceProps {
   onClose: () => void;
   onComplete: (score: number, xpEarned: number) => void;
   studentId?: string;
+  atRiskSubjects?: string[];
 }
 
 // ─── AI → Internal Question Converter ───────────────────────
@@ -114,7 +116,7 @@ function getPromptForType(questionType?: string): string {
   }
 }
 
-const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, studentId }) => {
+const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, studentId, atRiskSubjects = [] }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [textAnswer, setTextAnswer] = useState('');
@@ -448,10 +450,18 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             )}
           </div>
 
+          {/* Supplemental Material Banner (Results) */}
+          <SupplementalBanner
+            variant="results"
+            quizSubject={quiz.subject}
+            quizScore={percentage}
+            atRiskSubjects={atRiskSubjects}
+          />
+
           {/* Action Button */}
           <button
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-4 rounded-xl transition-all"
+            className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-4 rounded-xl transition-all mt-4"
           >
             Continue
           </button>
@@ -568,6 +578,16 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Supplemental Focus Banner (In-Quiz) */}
+          {currentQuestionIndex === 0 && (
+            <SupplementalBanner
+              variant="compact"
+              quizSubject={quiz.subject}
+              atRiskSubjects={atRiskSubjects}
+            />
+          )}
+
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQuestionIndex}
