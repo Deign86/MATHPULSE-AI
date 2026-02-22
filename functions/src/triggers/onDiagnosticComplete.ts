@@ -44,7 +44,7 @@ export const onDiagnosticComplete = functions.firestore
       await processDiagnosticCompletion({
         studentId,
         results,
-        gradeLevel: diagnosticData.gradeLevel || "Grade 10",
+        gradeLevel: diagnosticData.gradeLevel || "Grade 11",
         questionBreakdown: diagnosticData.questionBreakdown,
       });
 

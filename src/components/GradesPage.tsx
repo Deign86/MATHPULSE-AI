@@ -37,10 +37,10 @@ const GradesPage = () => {
 
   // Derive subject performance from progress data
   const subjectMap: Record<string, { label: string; color: string }> = {
-    'general-math': { label: 'General Mathematics', color: 'blue' },
-    'pre-calculus': { label: 'Pre-Calculus', color: 'teal' },
-    'statistics-probability': { label: 'Statistics and Probability', color: 'cyan' },
-    'basic-calculus': { label: 'Basic Calculus', color: 'orange' },
+    'gen-math': { label: 'General Mathematics', color: 'blue' },
+    'pre-calc': { label: 'Pre-Calculus', color: 'teal' },
+    'stats-prob': { label: 'Statistics and Probability', color: 'cyan' },
+    'basic-calc': { label: 'Basic Calculus', color: 'orange' },
   };
 
   const subjectPerformance = Object.entries(progress?.subjects || {}).map(([subjectId, subjectData]) => {
