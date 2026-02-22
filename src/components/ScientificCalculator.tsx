@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Minimize2, Maximize2, GripVertical } from 'lucide-react';
+import { X, GripHorizontal, ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { apiService } from '../services/apiService';
 import type { CalculatorResponse } from '../services/apiService';
@@ -292,9 +292,34 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   const [isError, setIsError] = useState(false);
   const [sympyVerifying, setSympyVerifying] = useState(false);
   const [sympyResult, setSympyResult] = useState<CalculatorResponse | null>(null);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    try { return localStorage.getItem('mathpulse_calc_minimized') === 'true'; } catch { return false; }
+  });
+  const [isFocused, setIsFocused] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const expressionRef = useRef<HTMLDivElement>(null);
+  const calcWrapperRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  // Position for the floating calculator — always center on open
+  const [calcPos, setCalcPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (isOpen) {
+      const calcW = 380;
+      const calcH = 600;
+      setCalcPos({
+        x: Math.round((window.innerWidth - calcW) / 2),
+        y: Math.max(20, Math.round((window.innerHeight - calcH) / 2)),
+      });
+    }
+  }, [isOpen]);
+
+  // Persist minimized state
+  useEffect(() => {
+    try { localStorage.setItem('mathpulse_calc_minimized', String(isMinimized)); } catch { /* noop */ }
+  }, [isMinimized]);
 
   // Scroll expression line to the right
   useEffect(() => {
@@ -303,14 +328,49 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
     }
   }, [expression]);
 
+  /* ── Focus tracking for keyboard ──────────────────────────── */
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (calcWrapperRef.current && !calcWrapperRef.current.contains(e.target as Node)) {
+        setIsFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, []);
+
   /* ── Keyboard handler ────────────────────────────────────── */
   useEffect(() => {
-    if (!isOpen || isMinimized) return;
+    if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
-      // Don't capture if user is typing in other inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!isFocused) return;
 
       const key = e.key;
+
+      // Alt combinations
+      if (e.altKey) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (key === 'S' || key === 's') { handleFunction('asin'); return; }
+          if (key === 'C' || key === 'c') { handleFunction('acos'); return; }
+          if (key === 'T' || key === 't') { handleFunction('atan'); return; }
+        }
+        if (key === 's' || key === 'S') { handleFunction('sin'); return; }
+        if (key === 'c' || key === 'C') { handleFunction('cos'); return; }
+        if (key === 't' || key === 'T') { handleFunction('tan'); return; }
+        if (key === 'l' || key === 'L') { handleFunction('log'); return; }
+        if (key === 'n' || key === 'N') { handleFunction('ln'); return; }
+        if (key === 'r' || key === 'R') { handleFunction('sqrt'); return; }
+        if (key === 'p' || key === 'P') { handleInput('π'); return; }
+        if (key === 'e' || key === 'E') { handleInput('e'); return; }
+        if (key === '2') { handleInput('²'); return; }
+        if (key === '3') { handleInput('³'); return; }
+        if (key === '^' || key === '6') { handleInput('^'); return; }
+        if (key === 'a' || key === 'A') { handleInput('Ans'); return; }
+        if (key === 'd' || key === 'D') { handleToggleAngleMode(); return; }
+        return;
+      }
+
       e.stopPropagation();
 
       if (/^[0-9.]$/.test(key)) { handleInput(key); e.preventDefault(); }
@@ -318,17 +378,19 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       else if (key === '-') { handleInput('-'); e.preventDefault(); }
       else if (key === '*') { handleInput('×'); e.preventDefault(); }
       else if (key === '/') { handleInput('÷'); e.preventDefault(); }
-      else if (key === '(' || key === ')') { handleInput(key); e.preventDefault(); }
+      else if (key === '%') { handleInput('%'); e.preventDefault(); }
+      else if (key === '(') { handleInput('('); e.preventDefault(); }
+      else if (key === ')') { handleInput(')'); e.preventDefault(); }
       else if (key === '^') { handleInput('^'); e.preventDefault(); }
       else if (key === 'Enter' || key === '=') { handleEquals(); e.preventDefault(); }
       else if (key === 'Backspace') { handleDelete(); e.preventDefault(); }
       else if (key === 'Escape') { handleAllClear(); e.preventDefault(); }
       else if (key === 'Delete') { handleAllClear(); e.preventDefault(); }
     };
-    window.addEventListener('keydown', handleKey, true);
-    return () => window.removeEventListener('keydown', handleKey, true);
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isMinimized, expression, ans, angleMode]);
+  }, [isOpen, isFocused, expression, ans, angleMode]);
 
   /* ── Input handlers ──────────────────────────────────────── */
 
@@ -517,34 +579,61 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   /* ── Button style helper ─────────────────────────────────── */
   const getButtonClasses = (variant: BtnVariant, label: string): string => {
     const base = 'flex items-center justify-center rounded-lg font-semibold transition-all duration-150 active:scale-95 select-none cursor-pointer touch-manipulation';
-    const size = 'h-11 text-sm';
+    const sizeNum = 'min-h-[52px] text-[15px]';
+    const sizeFunc = 'min-h-[52px] text-[13px]';
 
     switch (variant) {
       case 'number':
-        return `${base} ${size} bg-slate-700 hover:bg-slate-600 text-white shadow-md shadow-slate-900/30`;
+        return `${base} ${sizeNum} bg-slate-700 hover:bg-slate-600 text-white shadow-md shadow-slate-900/30`;
       case 'op':
-        return `${base} ${size} bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
+        return `${base} ${sizeNum} bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
       case 'func':
-        return `${base} ${size} bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-900/30 text-xs`;
+        return `${base} ${sizeFunc} bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-900/30`;
       case 'del':
-        return `${base} ${size} ${label === 'AC' ? 'bg-red-600 hover:bg-red-500' : 'bg-red-500/80 hover:bg-red-500'} text-white shadow-md shadow-red-900/30 font-bold`;
+        return `${base} ${sizeNum} ${label === 'AC' ? 'bg-red-600 hover:bg-red-500' : 'bg-red-500/80 hover:bg-red-500'} text-white shadow-md shadow-red-900/30 font-bold`;
       case 'equals':
-        return `${base} ${size} bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-white shadow-lg shadow-cyan-900/40 font-bold text-base`;
+        return `${base} ${sizeNum} bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-white shadow-lg shadow-cyan-900/40 font-bold text-base`;
       case 'shift':
-        return `${base} ${size} bg-slate-800 hover:bg-slate-700 text-white shadow-md shadow-slate-900/30 text-xs font-bold`;
+        return `${base} ${sizeFunc} bg-slate-800 hover:bg-slate-700 text-white shadow-md shadow-slate-900/30 font-bold`;
       case 'mode':
-        return `${base} ${size} bg-slate-800 hover:bg-slate-700 text-blue-300 shadow-md shadow-slate-900/30 text-xs`;
+        return `${base} ${sizeFunc} bg-slate-800 hover:bg-slate-700 text-blue-300 shadow-md shadow-slate-900/30`;
       default:
-        return `${base} ${size} bg-slate-700 text-white`;
+        return `${base} ${sizeNum} bg-slate-700 text-white`;
     }
   };
 
   /* ── Render ──────────────────────────────────────────────── */
 
+  /** Custom drag handler for the title bar */
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origX = calcPos.x;
+    const origY = calcPos.y;
+
+    const onMove = (ev: MouseEvent) => {
+      const newX = origX + (ev.clientX - startX);
+      const newY = origY + (ev.clientY - startY);
+      setCalcPos({ x: newX, y: newY });
+    };
+    const onUp = (ev: MouseEvent) => {
+      isDragging.current = false;
+      const final = { x: origX + (ev.clientX - startX), y: origY + (ev.clientY - startY) };
+      setCalcPos(final);
+      try { localStorage.setItem('mathpulse_calc_position', JSON.stringify(final)); } catch { /* noop */ }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [calcPos]);
+
   if (!isOpen) return null;
 
   const calculator = (
-    <div className="flex flex-col w-full max-w-sm mx-auto select-none">
+    <div className="flex flex-col w-full select-none">
       {/* ── Display ────────────────────────────────────────── */}
       <div className="bg-slate-900 rounded-t-2xl p-4 border border-slate-700 border-b-0">
         {/* Mode badges */}
@@ -577,14 +666,14 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         {/* Expression line (top) */}
         <div
           ref={expressionRef}
-          className="text-right text-slate-400 text-sm font-mono h-6 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
+          className="text-right text-slate-400 text-[14px] font-mono h-6 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
         >
           {prevExpression || '\u00A0'}
         </div>
 
         {/* Result line (bottom) */}
         <div className={`
-          text-right font-mono font-bold text-2xl h-9 overflow-hidden whitespace-nowrap
+          text-right font-mono font-bold text-[32px] leading-tight h-10 overflow-hidden whitespace-nowrap
           ${isError ? 'text-red-400' : 'text-white'}
         `}>
           {expression || result}
@@ -637,7 +726,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       </button>
 
       {/* ── Button grid ────────────────────────────────────── */}
-      <div className="bg-slate-800 rounded-b-2xl p-3 border border-slate-700 border-t-0 space-y-2">
+      <div className="bg-slate-800 rounded-b-2xl p-4 border border-slate-700 border-t-0 space-y-1.5">
         {rows.map((row, ri) => (
           <div key={ri} className="grid grid-cols-5 gap-1.5">
             {row.map((btn, bi) => {
@@ -664,7 +753,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                 >
                   {/* Shift label above */}
                   {btn.shiftLabel && !shiftActive && (
-                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[7px] text-amber-400/70 font-medium whitespace-nowrap">
+                    <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[9px] text-amber-400 font-semibold whitespace-nowrap drop-shadow-[0_0_3px_rgba(251,191,36,0.4)]">
                       {btn.shiftLabel}
                     </span>
                   )}
@@ -677,6 +766,30 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
           </div>
         ))}
       </div>
+
+      {/* ── Keyboard shortcuts panel ──────────────────────── */}
+      {showShortcuts && (
+        <div className="bg-slate-900 border-t border-slate-700 text-xs text-slate-400 p-3 rounded-b-2xl">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <div className="flex justify-between"><span className="text-slate-500">Alt+S</span><span>sin(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+Shift+S</span><span>sin⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+C</span><span>cos(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+Shift+C</span><span>cos⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+T</span><span>tan(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+Shift+T</span><span>tan⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+L</span><span>log(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+N</span><span>ln(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+R</span><span>√(</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+P</span><span>π</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+E</span><span>e</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+2</span><span>²</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+3</span><span>³</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+^</span><span>^</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+A</span><span>Ans</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Alt+D</span><span>DEG/RAD</span></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -689,41 +802,35 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
-
-          {/* Calculator panel */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 40 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 40 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className={`
-              fixed z-[201] 
-              ${isMinimized 
-                ? 'bottom-4 right-4 w-72' 
-                : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[370px]'}
-            `}
+          <div
+            ref={calcWrapperRef}
+            className="fixed z-50"
+            style={{ top: calcPos.y, left: calcPos.x, width: 380 }}
+            onClick={() => setIsFocused(true)}
           >
-            {/* Header bar */}
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-t-2xl px-4 py-2.5 flex items-center justify-between">
+            {/* Header bar – draggable */}
+            <div
+              className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-t-2xl px-4 py-2.5 flex items-center justify-between"
+              style={{ cursor: 'move' }}
+              onMouseDown={handleDragStart}
+            >
               <div className="flex items-center gap-2">
-                <GripVertical size={14} className="text-white/50" />
+                <GripHorizontal size={14} className="text-white/50" />
                 <h3 className="text-white font-bold text-sm">Scientific Calculator</h3>
               </div>
               <div className="flex items-center gap-1">
                 <button
+                  onClick={() => setShowShortcuts(s => !s)}
+                  className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                  title="Keyboard shortcuts"
+                >
+                  <Keyboard size={14} className="text-white" />
+                </button>
+                <button
                   onClick={() => setIsMinimized(!isMinimized)}
                   className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
                 >
-                  {isMinimized ? <Maximize2 size={14} className="text-white" /> : <Minimize2 size={14} className="text-white" />}
+                  {isMinimized ? <ChevronUp size={14} className="text-white" /> : <ChevronDown size={14} className="text-white" />}
                 </button>
                 <button
                   onClick={onClose}
@@ -735,19 +842,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
             </div>
 
             {/* Body – collapsible */}
-            <AnimatePresence>
-              {!isMinimized && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  {calculator}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {!isMinimized && calculator}
 
             {/* Minimized preview */}
             {isMinimized && (
@@ -755,8 +850,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                 <p className="text-right text-white font-mono font-bold text-lg">{result}</p>
               </div>
             )}
-          </motion.div>
-        </>
+          </div>
       )}
     </AnimatePresence>
   );
