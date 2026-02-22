@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 studentId: user.uid,
                 name,
                 email: user.email || '',
-                gradeLevel: 'Grade 10',
+                gradeLevel: 'Grade 11',
               }).catch((err) =>
                 console.error('⚠️ Automation: enrollment pipeline failed:', err)
               );

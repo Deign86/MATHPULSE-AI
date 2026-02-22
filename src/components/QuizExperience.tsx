@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight } from 'lucide-react';
+import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight, Edit3 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
+import { saveQuizResults } from '../services/quizService';
+import ScientificCalculator from './ScientificCalculator';
+import type { AIQuizQuestion } from '../types/models';
 
 export interface Quiz {
   id: string;
@@ -16,14 +19,24 @@ export interface Quiz {
   completed: boolean;
   bestScore?: number;
   locked: boolean;
+  /** Pre-loaded AI-generated questions — when present, used instead of hardcoded generation */
+  loadedQuestions?: AIQuizQuestion[];
+  source?: 'ai_generated' | 'adaptive' | 'hardcoded';
+  generatedQuizId?: string;
 }
 
 interface QuizQuestion {
   id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
+  correctAnswer: number;          // option index for MC, -1 for non-MC
+  correctAnswerText?: string;     // raw text answer (used for non-MC validation & display)
   explanation: string;
+  questionType?: string;
+  points?: number;
+  difficulty?: string;
+  topic?: string;
+  bloomLevel?: string;
 }
 
 interface QuizExperienceProps {
@@ -33,28 +46,104 @@ interface QuizExperienceProps {
   studentId?: string;
 }
 
+// ─── AI → Internal Question Converter ───────────────────────
+
+function aiQuestionToInternal(q: AIQuizQuestion): QuizQuestion {
+  if (q.questionType === 'multiple_choice' && q.options && q.options.length > 0) {
+    const correctIdx = q.options.findIndex(
+      (o) => o.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase(),
+    );
+    return {
+      id: q.id,
+      question: q.question,
+      options: q.options,
+      correctAnswer: correctIdx >= 0 ? correctIdx : 0,
+      correctAnswerText: q.correctAnswer,
+      explanation: q.explanation,
+      questionType: q.questionType,
+      points: q.points,
+      difficulty: q.difficulty,
+      topic: q.topic,
+      bloomLevel: q.bloomLevel,
+    };
+  }
+  return {
+    id: q.id,
+    question: q.question,
+    options: [],
+    correctAnswer: -1,
+    correctAnswerText: q.correctAnswer,
+    explanation: q.explanation,
+    questionType: q.questionType,
+    points: q.points,
+    difficulty: q.difficulty,
+    topic: q.topic,
+    bloomLevel: q.bloomLevel,
+  };
+}
+
+function validateTextAnswer(userAnswer: string, correctAnswer: string, questionType: string): boolean {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  switch (questionType) {
+    case 'identification':
+      return norm(userAnswer) === norm(correctAnswer);
+    case 'enumeration': {
+      const ui = userAnswer.split(',').map((s) => norm(s)).filter(Boolean).sort();
+      const ci = correctAnswer.split(',').map((s) => norm(s)).filter(Boolean).sort();
+      return JSON.stringify(ui) === JSON.stringify(ci);
+    }
+    case 'word_problem':
+    case 'equation_based': {
+      const uNum = parseFloat(userAnswer.replace(/[^\d.\-]/g, ''));
+      const cNum = parseFloat(correctAnswer.replace(/[^\d.\-]/g, ''));
+      if (!isNaN(uNum) && !isNaN(cNum)) return Math.abs(uNum - cNum) <= 0.01;
+      return norm(userAnswer) === norm(correctAnswer);
+    }
+    default:
+      return norm(userAnswer) === norm(correctAnswer);
+  }
+}
+
+function getPromptForType(questionType?: string): string {
+  switch (questionType) {
+    case 'identification': return 'Type your answer below';
+    case 'enumeration': return 'List your answers separated by commas';
+    case 'word_problem': return 'Show your work and type the final answer';
+    case 'equation_based': return 'Solve the equation and type the result';
+    default: return 'Select the correct answer';
+  }
+}
+
 const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, studentId }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [textAnswer, setTextAnswer] = useState('');
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [comboMultiplier, setComboMultiplier] = useState(1);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [answerRecords, setAnswerRecords] = useState<{ questionId: string; answer: string; correct: boolean; timeSpent: number }[]>([]);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showResults, setShowResults] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
+  const [showCalculator, setShowCalculator] = useState(false);
 
-  // Generate mock questions with correct answers mapped properly
-  const [questions] = useState<QuizQuestion[]>(() => 
-    Array.from({ length: quiz.questions }, (_, i) => ({
+  // Load AI questions or generate hardcoded fallback
+  const [questions] = useState<QuizQuestion[]>(() => {
+    if (quiz.loadedQuestions && quiz.loadedQuestions.length > 0) {
+      return quiz.loadedQuestions.map(aiQuestionToInternal);
+    }
+    return Array.from({ length: quiz.questions }, (_, i) => ({
       id: `q${i + 1}`,
       question: getQuestionForSubject(quiz.subject, i),
       options: getOptionsForQuestion(quiz.subject, i),
       correctAnswer: getCorrectAnswerForQuestion(quiz.subject, i),
-      explanation: getExplanationForQuestion(quiz.subject, i, quiz.difficulty)
-    }))
-  );
+      explanation: getExplanationForQuestion(quiz.subject, i, quiz.difficulty),
+    }));
+  });
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -129,12 +218,34 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   };
 
   const handleSubmitAnswer = () => {
-    if (selectedAnswer === null) return;
+    const isNonMC = currentQuestion.questionType != null && currentQuestion.questionType !== 'multiple_choice';
 
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    if (isNonMC) {
+      if (!textAnswer.trim()) return;
+    } else {
+      if (selectedAnswer === null) return;
+    }
+
+    const isCorrect = isNonMC
+      ? validateTextAnswer(textAnswer, currentQuestion.correctAnswerText || '', currentQuestion.questionType || '')
+      : selectedAnswer === currentQuestion.correctAnswer;
+
     const newAnswers = [...answers];
-    newAnswers[currentQuestionIndex] = selectedAnswer;
+    newAnswers[currentQuestionIndex] = isNonMC ? (isCorrect ? 1 : 0) : selectedAnswer;
     setAnswers(newAnswers);
+    setLastAnswerCorrect(isCorrect);
+
+    // Track per-question record for result saving
+    const timeSpentQ = Math.round((Date.now() - questionStartTime) / 1000);
+    setAnswerRecords((prev) => [
+      ...prev,
+      {
+        questionId: currentQuestion.id,
+        answer: isNonMC ? textAnswer : String(selectedAnswer),
+        correct: isCorrect,
+        timeSpent: timeSpentQ,
+      },
+    ]);
 
     if (isCorrect) {
       playSound('correct');
@@ -142,15 +253,10 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       const newStreak = streak + 1;
       setStreak(newStreak);
 
-      // Update combo multiplier
       if (newStreak >= 5) {
         setComboMultiplier(3);
         playSound('combo');
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.6 }
-        });
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
       } else if (newStreak >= 3) {
         setComboMultiplier(2);
         playSound('combo');
@@ -170,6 +276,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
+      setTextAnswer('');
+      setQuestionStartTime(Date.now());
       setShowExplanation(false);
     } else {
       // Quiz complete
@@ -197,9 +305,10 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
 
     setTotalXP(xpEarned);
 
+    const timeSpent = totalTime - timeRemaining;
+
     // Fire automation: quiz submitted
     if (studentId) {
-      const timeSpent = totalTime - timeRemaining;
       triggerQuizSubmitted({
         studentId,
         quizId: quiz.id,
@@ -209,6 +318,26 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         correctAnswers: score,
         timeSpentSeconds: timeSpent,
       }).catch((err) => console.error('⚠️ Automation: quiz pipeline failed:', err));
+    }
+
+    // Save detailed results for AI-generated quizzes
+    if (quiz.source === 'ai_generated' && studentId) {
+      saveQuizResults(
+        studentId,
+        quiz.id,
+        quiz.generatedQuizId,
+        quiz.subject,
+        quiz.source,
+        percentage,
+        xpEarned,
+        timeSpent,
+        answerRecords,
+        questions.map((q) => ({
+          topic: q.topic || quiz.subject,
+          difficulty: q.difficulty || 'medium',
+          bloomLevel: q.bloomLevel || 'understand',
+        })),
+      ).catch((err) => console.error('⚠️ Quiz result save failed:', err));
     }
 
     playSound('complete');
@@ -353,7 +482,21 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             </button>
           </div>
 
-          {/* Progress Bar */}
+          {/* Calculator & Progress Bar */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setShowCalculator(prev => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold transition-all ${
+                showCalculator 
+                  ? 'bg-cyan-400/30 text-white ring-1 ring-cyan-300/50' 
+                  : 'bg-white/20 hover:bg-white/30 text-cyan-100'
+              }`}
+              title="Toggle Scientific Calculator"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
+              Calc
+            </button>
+          </div>
           <div className="mb-3">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
@@ -397,7 +540,34 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         </div>
 
         {/* Question Content */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-8 relative">
+          {/* Inline Calculator Panel */}
+          <AnimatePresence>
+            {showCalculator && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-6 overflow-hidden"
+              >
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /></svg>
+                      Scientific Calculator
+                    </h4>
+                    <button
+                      onClick={() => setShowCalculator(false)}
+                      className="text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQuestionIndex}
@@ -408,11 +578,57 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               {/* Question */}
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-slate-800 mb-2">{currentQuestion.question}</h3>
-                <p className="text-sm text-slate-500">Select the correct answer</p>
+                <p className="text-sm text-slate-500">{getPromptForType(currentQuestion.questionType)}</p>
               </div>
 
-              {/* Options */}
-              <div className="space-y-3 mb-6">
+              {/* Answer area */}
+              {currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice' ? (
+                <div className="mb-6">
+                  <div className="relative">
+                    <div className="absolute left-3 top-3.5">
+                      <Edit3 size={16} className="text-slate-400" />
+                    </div>
+                    {currentQuestion.questionType === 'enumeration' ? (
+                      <textarea
+                        value={textAnswer}
+                        onChange={(e) => setTextAnswer(e.target.value)}
+                        disabled={showExplanation}
+                        placeholder="Type each answer separated by commas…"
+                        rows={4}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 text-sm outline-none transition-all resize-none ${
+                          showExplanation
+                            ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
+                            : 'border-slate-200 focus:border-blue-500 bg-white'
+                        }`}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={textAnswer}
+                        onChange={(e) => setTextAnswer(e.target.value)}
+                        disabled={showExplanation}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
+                        placeholder={
+                          currentQuestion.questionType === 'equation_based' ? 'Enter the numerical result…'
+                            : currentQuestion.questionType === 'word_problem' ? 'Enter your answer…'
+                            : 'Type your answer…'
+                        }
+                        className={`w-full pl-10 pr-4 py-3.5 rounded-xl border-2 text-sm outline-none transition-all ${
+                          showExplanation
+                            ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
+                            : 'border-slate-200 focus:border-blue-500 bg-white'
+                        }`}
+                      />
+                    )}
+                  </div>
+                  {showExplanation && !lastAnswerCorrect && (
+                    <p className="mt-2 text-sm font-semibold text-teal-700">
+                      Correct answer: {currentQuestion.correctAnswerText}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 mb-6">
                 {currentQuestion.options.map((option, index) => {
                   const isSelected = selectedAnswer === index;
                   const isCorrect = index === currentQuestion.correctAnswer;
@@ -461,6 +677,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   );
                 })}
               </div>
+              )}
 
               {/* Explanation */}
               {showExplanation && (
@@ -468,21 +685,21 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={`p-4 rounded-xl border-2 ${
-                    selectedAnswer === currentQuestion.correctAnswer
+                    lastAnswerCorrect
                       ? 'bg-teal-50 border-teal-200'
                       : 'bg-blue-50 border-blue-200'
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      selectedAnswer === currentQuestion.correctAnswer
-                        ? 'bg-teal-500'
-                        : 'bg-blue-500'
+                      lastAnswerCorrect ? 'bg-teal-500' : 'bg-blue-500'
                     }`}>
                       <Award size={18} className="text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800 mb-1">Explanation</h4>
+                      <h4 className="font-bold text-slate-800 mb-1">
+                        {lastAnswerCorrect ? 'Correct!' : 'Not quite'}
+                      </h4>
                       <p className="text-sm text-slate-600">{currentQuestion.explanation}</p>
                     </div>
                   </div>
@@ -516,9 +733,15 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             ) : (
               <button
                 onClick={handleSubmitAnswer}
-                disabled={selectedAnswer === null}
+                disabled={
+                  currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
+                    ? !textAnswer.trim()
+                    : selectedAnswer === null
+                }
                 className={`font-bold px-8 py-3 rounded-xl transition-all ${
-                  selectedAnswer !== null
+                  (currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
+                    ? textAnswer.trim()
+                    : selectedAnswer !== null)
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}

@@ -159,7 +159,7 @@ export const createUserProfile = async (
       case 'student':
         return {
           studentId: `STU-${Date.now()}`,
-          grade: additionalData.grade || '10th Grade',
+          grade: additionalData.grade || 'Grade 11',
           school: additionalData.school || '',
           enrollmentDate: new Date().toISOString().split('T')[0],
           major: additionalData.major || 'General',
