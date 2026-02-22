@@ -1245,11 +1245,19 @@ VALID_BLOOM_LEVELS = ["remember", "understand", "apply", "analyze"]
 
 VALID_DIFFICULTY_LEVELS = ["easy", "medium", "hard"]
 
+# ── Temporary hard limits ──────────────────────────────────────
+# Meta-Llama-3-8B-Instruct has an 8 192-token context window.
+# Until we migrate to a model with a larger context (or add
+# streaming / chunked generation), enforce conservative caps so
+# the prompt + completion never exceed that budget.
+MAX_QUESTIONS_LIMIT = 15   # keeps completion ≤ ~4 000 tokens
+MAX_TOPICS_LIMIT = 8       # keeps the prompt ≤ ~3 500 tokens
+
 
 class QuizGenerationRequest(BaseModel):
     topics: List[str] = Field(..., min_length=1, description="Specific math topics to cover")
     gradeLevel: str = Field(..., description="Student grade level (e.g., 'Grade 7', 'Grade 10', 'College')")
-    numQuestions: int = Field(default=10, ge=1, le=50, description="Number of questions to generate")
+    numQuestions: int = Field(default=10, ge=1, le=MAX_QUESTIONS_LIMIT, description="Number of questions to generate (temporary max 15)")
     questionTypes: List[str] = Field(
         default=["multiple_choice", "identification", "word_problem"],
         description="Types of questions to include",
@@ -1601,6 +1609,19 @@ async def generate_quiz(request: QuizGenerationRequest):
                 detail="All requested topics are in the exclude list. Please provide at least one topic to cover.",
             )
 
+        # ── Enforce temporary limits (8 192-token model context) ──
+        if len(effective_topics) > MAX_TOPICS_LIMIT:
+            logger.warning(
+                f"Trimming topics from {len(effective_topics)} to {MAX_TOPICS_LIMIT} (model context limit)"
+            )
+            effective_topics = effective_topics[:MAX_TOPICS_LIMIT]
+
+        if request.numQuestions > MAX_QUESTIONS_LIMIT:
+            logger.warning(
+                f"Clamping numQuestions from {request.numQuestions} to {MAX_QUESTIONS_LIMIT} (model context limit)"
+            )
+            request.numQuestions = MAX_QUESTIONS_LIMIT
+
         # Pre-compute question distribution
         distribution = _distribute_questions(
             request.numQuestions,
@@ -1653,8 +1674,9 @@ Remember:
 
         logger.info(f"Generating quiz: {request.numQuestions} questions, topics={effective_topics}")
 
-        # Scale max_tokens based on requested questions — each question needs ~400-600 tokens
-        max_tokens = min(16384, max(4096, request.numQuestions * 600))
+        # Scale max_tokens based on requested questions — each question needs ~250-350 tokens
+        # Hard-cap to 4096 so prompt+completion stays within the 8192 context window
+        max_tokens = min(4096, max(2048, request.numQuestions * 300))
         # Use longer HTTP timeout for quiz generation (scales with question count)
         http_timeout = max(90, request.numQuestions * 12)
 

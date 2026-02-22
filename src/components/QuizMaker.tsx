@@ -63,6 +63,10 @@ const BLOOM_LABELS: Record<BloomLevel, { label: string; color: string; descripti
 
 const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
 
+// Temporary hard limits to prevent LLM token overflow (Meta-Llama-3-8B has 8192 token context)
+const MAX_QUESTIONS_LIMIT = 15;
+const MAX_TOPICS_LIMIT = 8;
+
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   easy: 'text-green-600',
   medium: 'text-amber-600',
@@ -80,7 +84,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   // Form state
   const [step, setStep] = useState<Step>('configure');
   const [selectedGrade, setSelectedGrade] = useState(initialGrade || 'Grade 11');
-  const [numQuestions, setNumQuestions] = useState(10);
+  const [numQuestions, setNumQuestions] = useState(10); // Capped at MAX_QUESTIONS_LIMIT
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [excludeTopics, setExcludeTopics] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<QuestionType[]>(['multiple_choice', 'word_problem', 'identification']);
@@ -218,16 +222,31 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
     });
   };
 
-  const buildRequest = (): QuizGenerationRequest => ({
-    topics: selectedTopics.length > 0 ? selectedTopics : Object.values(availableTopics).flat().slice(0, 3),
-    gradeLevel: selectedGrade,
-    numQuestions,
-    questionTypes: selectedTypes,
-    includeGraphs,
-    difficultyDistribution: difficultyDist,
-    bloomLevels: selectedBlooms,
-    excludeTopics,
-  });
+  const buildRequest = (): QuizGenerationRequest => {
+    // Determine effective topics, filtering out excluded ones
+    let effectiveTopics = selectedTopics.length > 0
+      ? selectedTopics.filter(t => !excludeTopics.includes(t))
+      : Object.values(availableTopics).flat().filter(t => !excludeTopics.includes(t)).slice(0, 3);
+
+    // Hard cap topics to stay within LLM token budget
+    if (effectiveTopics.length > MAX_TOPICS_LIMIT) {
+      effectiveTopics = effectiveTopics.slice(0, MAX_TOPICS_LIMIT);
+    }
+
+    // Hard cap questions
+    const clampedQuestions = Math.min(numQuestions, MAX_QUESTIONS_LIMIT);
+
+    return {
+      topics: effectiveTopics,
+      gradeLevel: selectedGrade,
+      numQuestions: clampedQuestions,
+      questionTypes: selectedTypes,
+      includeGraphs,
+      difficultyDistribution: difficultyDist,
+      bloomLevels: selectedBlooms,
+      excludeTopics,
+    };
+  };
 
   const handlePreview = async () => {
     setError('');
@@ -758,14 +777,19 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     This quiz maker generates supplemental assessments to support your classroom instruction — 
                     it does not replace teacher-led learning. Questions follow Bloom's Taxonomy for comprehensive skill evaluation.
                   </p>
+                  <p className="text-[11px] text-indigo-400 mt-1 flex items-center gap-1">
+                    <AlertCircle size={11} />
+                    Temporary limit: max {MAX_QUESTIONS_LIMIT} questions, {MAX_TOPICS_LIMIT} topics per quiz (model context constraint).
+                  </p>
                 </div>
               </div>
 
               {/* Grade + Question Count */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Grade Level</label>
+                  <label htmlFor="quiz-grade-level" className="text-sm font-semibold text-slate-700 mb-1.5 block">Grade Level</label>
                   <select
+                    id="quiz-grade-level"
                     value={selectedGrade}
                     onChange={e => setSelectedGrade(e.target.value)}
                     className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
@@ -776,7 +800,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Number of Questions</label>
+                  <label htmlFor="quiz-num-questions" className="text-sm font-semibold text-slate-700 mb-1.5 block">Number of Questions</label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
@@ -785,15 +809,16 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       <Minus size={14} />
                     </button>
                     <input
+                      id="quiz-num-questions"
                       type="number"
                       min={1}
-                      max={50}
+                      max={MAX_QUESTIONS_LIMIT}
                       value={numQuestions}
-                      onChange={e => setNumQuestions(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+                      onChange={e => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, Math.max(1, parseInt(e.target.value) || 1)))}
                       className="w-20 text-center border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-violet-500 outline-none"
                     />
                     <button
-                      onClick={() => setNumQuestions(Math.min(50, numQuestions + 1))}
+                      onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
                       className="w-9 h-9 border border-slate-300 rounded-lg flex items-center justify-center hover:bg-slate-100 transition-colors"
                     >
                       <Plus size={14} />
@@ -850,8 +875,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     ))
                   )}
                   {selectedTopics.length > 0 && (
-                    <p className="text-xs text-violet-600 mt-2">
-                      {selectedTopics.length} topic{selectedTopics.length !== 1 ? 's' : ''} selected
+                    <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-amber-600 font-medium' : 'text-violet-600'}`}>
+                      {selectedTopics.filter(t => !excludeTopics.includes(t)).length} topic{selectedTopics.filter(t => !excludeTopics.includes(t)).length !== 1 ? 's' : ''} selected
+                      {selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT && ` (only first ${MAX_TOPICS_LIMIT} will be used — model limit)`}
                     </p>
                   )}
                   {excludeTopics.length > 0 && (
@@ -984,8 +1010,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                 <div>
                   <p className="text-sm font-semibold text-amber-800">Preview Mode</p>
                   <p className="text-xs text-amber-600">
-                    Showing {previewResult.questions.length} sample questions with answers visible.
-                    Review quality before generating the full quiz.
+                    Showing {previewResult.questions.length} sample questions.
+                    Click each question to reveal its answer and explanation. Review quality before generating the full quiz.
                   </p>
                 </div>
               </div>
