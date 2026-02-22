@@ -18,6 +18,7 @@ import {
   type DifficultyLevel,
 } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
+import BloomsTaxonomyModal from './BloomsTaxonomyModal';
 import {
   saveGeneratedQuiz,
   publishQuiz,
@@ -102,6 +103,24 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   // UI state
   const [expandedSection, setExpandedSection] = useState<string | null>('topics');
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+  const [showBloomsModal, setShowBloomsModal] = useState(false);
+
+  // Save / Assign / Publish state
+  const [saving, setSaving] = useState(false);
+  const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [students, setStudents] = useState<ManagedStudent[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  // Quiz Bank state
+  const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankFilter, setBankFilter] = useState<GeneratedQuizStatus | 'all'>('all');
+  const [bankAssignQuizId, setBankAssignQuizId] = useState<string | null>(null);
 
   // Save / Assign / Publish state
   const [saving, setSaving] = useState(false);
@@ -296,7 +315,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
       id: `q_${Date.now()}_${i}`,
       questionType: (q.questionType as AIQuizQuestion['questionType']) || 'identification',
       question: q.question,
-      options: q.options ?? undefined,
+      ...(q.options ? { options: q.options } : {}),
       correctAnswer: q.correctAnswer,
       bloomLevel: (q.bloomLevel as AIQuizQuestion['bloomLevel']) || 'understand',
       difficulty: (q.difficulty as AIQuizQuestion['difficulty']) || 'medium',
@@ -331,7 +350,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   };
 
   const handleSaveToLibrary = async () => {
-    if (!quizResult || !currentUser) return;
+    if (!quizResult) {
+      toast.error('No quiz to save. Generate a quiz first.');
+      return;
+    }
+    if (!currentUser) {
+      toast.error('You must be signed in to save quizzes.');
+      return;
+    }
     setSaving(true);
     try {
       const quizData = buildGeneratedQuiz(quizResult);
@@ -437,7 +463,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
   // ─── Render ────────────────────────────────────────────────
 
-  const renderSection = (id: string, title: string, icon: React.ReactNode, children: React.ReactNode) => {
+  const renderSection = (id: string, title: React.ReactNode, icon: React.ReactNode, children: React.ReactNode) => {
     const isOpen = expandedSection === id;
     return (
       <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -468,16 +494,28 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
     );
   };
 
+  const BLOOM_BADGE_COLORS: Record<string, string> = {
+    remember: 'bg-blue-100 text-blue-700 border-blue-300',
+    understand: 'bg-purple-100 text-purple-700 border-purple-300',
+    apply: 'bg-green-100 text-green-700 border-green-300',
+    analyze: 'bg-orange-100 text-orange-700 border-orange-300',
+  };
+
   const renderQuestionCard = (q: QuizQuestionGenerated, index: number, showAnswer: boolean) => {
     const isExpanded = expandedQuestion === index;
+    const bloomBadge = BLOOM_BADGE_COLORS[q.bloomLevel] || 'bg-slate-100 text-slate-600 border-slate-300';
     return (
       <motion.div
         key={index}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
-        className="border border-slate-200 rounded-xl overflow-hidden"
+        className="border border-slate-200 rounded-xl overflow-hidden relative"
       >
+        {/* Bloom Level Badge - top right */}
+        <div className={`absolute top-2 right-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${bloomBadge} z-10`}>
+          {q.bloomLevel}
+        </div>
         <div
           className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
           onClick={() => setExpandedQuestion(isExpanded ? null : index)}
@@ -886,7 +924,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               ))}
 
               {/* Bloom's Taxonomy */}
-              {renderSection('bloom', "Bloom's Taxonomy Levels", <GraduationCap size={16} />, (
+              {renderSection('bloom', <span className="flex items-center gap-2">Bloom's Taxonomy Levels<span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setShowBloomsModal(true); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setShowBloomsModal(true); } }} className="w-5 h-5 rounded-full bg-cyan-100 hover:bg-cyan-200 flex items-center justify-center transition-colors cursor-pointer" title="What is Bloom's Taxonomy?"><Info size={12} className="text-cyan-600" /></span></span>, <GraduationCap size={16} />, (
                 <div className="space-y-3">
                   <div className="bg-slate-50 rounded-lg p-3 mb-3">
                     <div className="flex items-start gap-2">
@@ -1205,6 +1243,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
         </div>
         )}
       </motion.div>
+
+      {/* Bloom's Taxonomy Info Modal */}
+      <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
 
       {/* ═══ ASSIGN STUDENT MODAL ═══ */}
       <AnimatePresence>
