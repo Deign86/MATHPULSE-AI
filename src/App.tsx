@@ -25,6 +25,7 @@ import LeaderboardPage from './components/LeaderboardPage';
 import AddFriendsModal from './components/AddFriendsModal';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
 import ScientificCalculator from './components/ScientificCalculator';
+import SupplementalBanner from './components/SupplementalBanner';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { signOutUser } from './services/authService';
@@ -32,6 +33,7 @@ import { updateStreak, awardXP } from './services/gamificationService';
 import { getUserProgress } from './services/progressService';
 import { StudentProfile } from './types/models';
 import { triggerStudentEnrolled } from './services/automationService';
+import { Toaster } from 'sonner';
 
 const App = () => {
   // Get authentication state from context
@@ -264,6 +266,7 @@ const App = () => {
           profileData={profileData}
           onSave={handleSaveProfile}
         />
+        <Toaster position="top-right" richColors closeButton />
       </>
     );
   }
@@ -282,12 +285,14 @@ const App = () => {
           profileData={profileData}
           onSave={handleSaveProfile}
         />
+        <Toaster position="top-right" richColors closeButton />
       </>
     );
   }
 
   // Show Student Dashboard (existing code)
   return (
+    <>
     <ChatProvider>
       <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
         {/* Sidebar */}
@@ -366,6 +371,11 @@ const App = () => {
                           userName={profileData.name.split(' ')[0]} 
                           userLevel={userLevel}
                           onContinueLearning={() => setActiveTab('Modules')} 
+                        />
+                        <SupplementalBanner
+                          variant="full"
+                          atRiskSubjects={atRiskSubjects}
+                          onAction={() => setActiveTab('Modules')}
                         />
                         {profileReady && (
                           <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
@@ -486,6 +496,8 @@ const App = () => {
         </div>
       </div>
     </ChatProvider>
+    <Toaster position="top-right" richColors closeButton />
+    </>
   );
 };
 
