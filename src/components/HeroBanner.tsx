@@ -4,10 +4,10 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 interface HeroBannerProps {
   userName?: string;
   userLevel?: number;
-  onContinueAlgebra?: () => void;
+  onContinueLearning?: () => void;
 }
 
-const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel = 1, onContinueAlgebra }) => {
+const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel = 1, onContinueLearning }) => {
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -44,10 +44,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
           </div>
           
           <button 
-            onClick={onContinueAlgebra}
+            onClick={onContinueLearning}
             className="mt-8 bg-white text-blue-600 px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
           >
-            Continue Algebra
+            Continue Learning
           </button>
         </div>
 

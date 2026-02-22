@@ -93,7 +93,7 @@ export interface ContentUpdatePayload {
 export async function triggerDiagnosticCompleted(
   studentId: string,
   results: DiagnosticResult[],
-  gradeLevel: string = 'Grade 10',
+  gradeLevel: string = 'Grade 11',
   questionBreakdown?: Record<string, { correct: boolean }[]>,
 ): Promise<AutomationResult> {
   // Write to diagnosticResults — Cloud Function triggers from here

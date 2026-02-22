@@ -5,7 +5,9 @@ import {
   ChevronRight, Plus, Minus, Eye, Wand2, Download, Copy, Check,
   AlertCircle, Loader2, GraduationCap, Layers, TrendingUp,
   FileText, Calculator, ChevronUp, Info, Lightbulb,
+  Save, Send, Library, Trash2, Users, Search,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   apiService,
   type QuizGenerationRequest,
@@ -15,6 +17,16 @@ import {
   type BloomLevel,
   type DifficultyLevel,
 } from '../services/apiService';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  saveGeneratedQuiz,
+  publishQuiz,
+  assignQuizToStudent,
+  fetchQuizzesByTeacher,
+  deleteGeneratedQuiz,
+} from '../services/quizService';
+import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
+import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../types/models';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -24,6 +36,14 @@ interface QuizMakerProps {
 }
 
 type Step = 'configure' | 'preview' | 'results';
+type MakerTab = 'create' | 'bank';
+
+const STATUS_COLORS: Record<GeneratedQuizStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600',
+  published: 'bg-green-100 text-green-700',
+  assigned: 'bg-blue-100 text-blue-700',
+  completed: 'bg-violet-100 text-violet-700',
+};
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.ReactNode; description: string }> = {
   identification: { label: 'Identification', icon: <FileText size={16} />, description: 'Define or identify concepts' },
@@ -40,7 +60,7 @@ const BLOOM_LABELS: Record<BloomLevel, { label: string; color: string; descripti
   analyze: { label: 'Analyze', color: 'bg-purple-100 text-purple-700 border-purple-300', description: 'Examine & compare' },
 };
 
-const GRADE_LEVELS = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12', 'College'];
+const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   easy: 'text-green-600',
@@ -51,9 +71,14 @@ const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
 // ─── Component ──────────────────────────────────────────────
 
 const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade }) => {
+  const { currentUser } = useAuth();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<MakerTab>('create');
+
   // Form state
   const [step, setStep] = useState<Step>('configure');
-  const [selectedGrade, setSelectedGrade] = useState(initialGrade || 'Grade 10');
+  const [selectedGrade, setSelectedGrade] = useState(initialGrade || 'Grade 11');
   const [numQuestions, setNumQuestions] = useState(10);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [excludeTopics, setExcludeTopics] = useState<string[]>([]);
@@ -78,6 +103,23 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   const [expandedSection, setExpandedSection] = useState<string | null>('topics');
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
 
+  // Save / Assign / Publish state
+  const [saving, setSaving] = useState(false);
+  const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [students, setStudents] = useState<ManagedStudent[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  // Quiz Bank state
+  const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankFilter, setBankFilter] = useState<GeneratedQuizStatus | 'all'>('all');
+  const [bankAssignQuizId, setBankAssignQuizId] = useState<string | null>(null);
+
   // Load topics when grade changes
   const loadTopics = useCallback(async () => {
     setTopicsLoading(true);
@@ -87,11 +129,21 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
         setAvailableTopics(response.topics);
       }
     } catch {
-      // Fallback topics if API fails
+      // Fallback topics if API fails — aligned with SHS curriculum
       setAvailableTopics({
-        'Algebra': ['Linear Equations', 'Quadratic Equations', 'Systems of Equations', 'Polynomials'],
-        'Geometry': ['Triangles', 'Circles', 'Coordinate Geometry', 'Proofs'],
-        'Statistics': ['Mean, Median, Mode', 'Probability', 'Data Analysis'],
+        'General Mathematics - Functions and Their Graphs': ['Functions and Relations', 'Evaluating Functions', 'Operations on Functions', 'Composite Functions', 'Inverse Functions', 'Rational Functions', 'Exponential Functions', 'Logarithmic Functions'],
+        'General Mathematics - Business Mathematics': ['Simple Interest', 'Compound Interest', 'Annuities', 'Loans and Amortization', 'Stocks and Bonds'],
+        'General Mathematics - Logic': ['Propositions and Connectives', 'Truth Tables', 'Logical Equivalence', 'Valid Arguments and Fallacies'],
+        'Statistics and Probability - Random Variables': ['Random Variables', 'Discrete Probability Distributions', 'Mean and Variance of Discrete RV'],
+        'Statistics and Probability - Normal Distribution': ['Normal Distribution', 'Standard Normal Distribution and Z-scores', 'Areas Under the Normal Curve'],
+        'Statistics and Probability - Sampling and Estimation': ['Sampling Distributions', 'Central Limit Theorem', 'Point Estimation', 'Confidence Intervals'],
+        'Statistics and Probability - Hypothesis Testing': ['Hypothesis Testing Concepts', 'T-test', 'Z-test', 'Correlation and Regression'],
+        'Pre-Calculus - Analytic Geometry': ['Conic Sections - Parabola', 'Conic Sections - Ellipse', 'Conic Sections - Hyperbola', 'Conic Sections - Circle', 'Systems of Nonlinear Equations'],
+        'Pre-Calculus - Series and Induction': ['Sequences and Series', 'Arithmetic Sequences', 'Geometric Sequences', 'Mathematical Induction', 'Binomial Theorem'],
+        'Pre-Calculus - Trigonometry': ['Angles and Unit Circle', 'Trigonometric Functions', 'Trigonometric Identities', 'Sum and Difference Formulas', 'Inverse Trigonometric Functions', 'Polar Coordinates'],
+        'Basic Calculus - Limits': ['Limits of Functions', 'Limit Theorems', 'One-Sided Limits', 'Infinite Limits and Limits at Infinity', 'Continuity of Functions'],
+        'Basic Calculus - Derivatives': ['Definition of the Derivative', 'Differentiation Rules', 'Chain Rule', 'Implicit Differentiation', 'Higher-Order Derivatives', 'Related Rates', 'Extrema and the First Derivative Test', 'Concavity and the Second Derivative Test', 'Optimization Problems'],
+        'Basic Calculus - Integration': ['Antiderivatives and Indefinite Integrals', 'Definite Integrals and the FTC', 'Integration by Substitution', 'Area Under a Curve'],
       });
     } finally {
       setTopicsLoading(false);
@@ -235,6 +287,153 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   };
 
   const isFormValid = selectedTopics.length > 0 || Object.values(availableTopics).flat().length > 0;
+
+  // ─── Save / Publish / Assign Handlers ─────────────────────
+
+  /** Convert API QuizGenerationResponse to a storable GeneratedQuiz shape */
+  const buildGeneratedQuiz = (result: QuizGenerationResponse): Omit<GeneratedQuiz, 'id'> => {
+    const questions: AIQuizQuestion[] = result.questions.map((q, i) => ({
+      id: `q_${Date.now()}_${i}`,
+      questionType: (q.questionType as AIQuizQuestion['questionType']) || 'identification',
+      question: q.question,
+      options: q.options ?? undefined,
+      correctAnswer: q.correctAnswer,
+      bloomLevel: (q.bloomLevel as AIQuizQuestion['bloomLevel']) || 'understand',
+      difficulty: (q.difficulty as AIQuizQuestion['difficulty']) || 'medium',
+      topic: q.topic,
+      subject: selectedGrade,
+      points: q.points,
+      explanation: q.explanation,
+    }));
+
+    return {
+      title: `${selectedGrade} Quiz – ${selectedTopics.length > 0 ? selectedTopics.slice(0, 2).join(', ') : 'Mixed Topics'}`,
+      gradeLevel: selectedGrade,
+      questions,
+      totalPoints: result.totalPoints,
+      metadata: {
+        topicsCovered: Object.keys(result.metadata.topicsCovered),
+        difficultyBreakdown: {
+          easy: result.metadata.difficultyBreakdown['easy'] ?? 0,
+          medium: result.metadata.difficultyBreakdown['medium'] ?? 0,
+          hard: result.metadata.difficultyBreakdown['hard'] ?? 0,
+        },
+        bloomDistribution: result.metadata.bloomTaxonomyDistribution,
+        questionTypeBreakdown: result.metadata.questionTypeBreakdown,
+        supplementalPurpose: result.metadata.supplementalPurpose,
+        recommendedTeacherActions: result.metadata.recommendedTeacherActions ?? [],
+        generatedAt: new Date().toISOString(),
+        generatedBy: 'teacher_generated',
+      },
+      status: 'draft',
+      source: 'teacher_generated',
+    };
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (!quizResult || !currentUser) return;
+    setSaving(true);
+    try {
+      const quizData = buildGeneratedQuiz(quizResult);
+      const id = await saveGeneratedQuiz(quizData, currentUser.uid);
+      setSavedQuizId(id);
+      toast.success('Quiz saved to your library!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save quiz');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!savedQuizId) return;
+    setPublishing(true);
+    try {
+      await publishQuiz(savedQuizId);
+      toast.success('Quiz published to Quiz Bank!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to publish quiz');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleOpenAssign = async (quizId?: string) => {
+    const id = quizId ?? savedQuizId;
+    if (!id) {
+      toast.error('Save the quiz first before assigning.');
+      return;
+    }
+    setBankAssignQuizId(id);
+    setShowAssignModal(true);
+    setSelectedStudentId(null);
+    setStudentSearch('');
+
+    if (students.length === 0 && currentUser) {
+      setStudentsLoading(true);
+      try {
+        const s = await getStudentsByTeacher(currentUser.uid);
+        setStudents(s);
+      } catch {
+        toast.error('Failed to load students');
+      } finally {
+        setStudentsLoading(false);
+      }
+    }
+  };
+
+  const handleAssign = async () => {
+    const quizId = bankAssignQuizId ?? savedQuizId;
+    if (!selectedStudentId || !quizId || !currentUser) return;
+    setAssigning(true);
+    try {
+      await assignQuizToStudent(quizId, selectedStudentId, currentUser.uid);
+      toast.success('Quiz assigned to student!');
+      setShowAssignModal(false);
+      setBankAssignQuizId(null);
+      // Refresh bank if open
+      if (activeTab === 'bank') loadBankQuizzes();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to assign quiz');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // ─── Quiz Bank Loader ─────────────────────────────────────
+
+  const loadBankQuizzes = useCallback(async () => {
+    if (!currentUser) return;
+    setBankLoading(true);
+    try {
+      const quizzes = await fetchQuizzesByTeacher(currentUser.uid);
+      setBankQuizzes(quizzes);
+    } catch {
+      toast.error('Failed to load quiz bank');
+    } finally {
+      setBankLoading(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (activeTab === 'bank') loadBankQuizzes();
+  }, [activeTab, loadBankQuizzes]);
+
+  const handleDeleteBankQuiz = async (quizId: string) => {
+    try {
+      await deleteGeneratedQuiz(quizId);
+      setBankQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+      toast.success('Quiz deleted');
+    } catch {
+      toast.error('Failed to delete quiz');
+    }
+  };
+
+  const filteredStudents = students.filter(
+    (s) => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.email.toLowerCase().includes(studentSearch.toLowerCase()),
+  );
+
+  const filteredBankQuizzes = bankFilter === 'all' ? bankQuizzes : bankQuizzes.filter((q) => q.status === bankFilter);
 
   // ─── Render ────────────────────────────────────────────────
 
@@ -381,33 +580,133 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
             </button>
           </div>
 
-          {/* Step indicator */}
+          {/* Tab Switcher */}
           <div className="flex items-center gap-2 mt-4">
-            {(['configure', 'preview', 'results'] as Step[]).map((s, i) => (
-              <React.Fragment key={s}>
-                <button
-                  onClick={() => {
-                    if (s === 'configure') setStep('configure');
-                    if (s === 'preview' && previewResult) setStep('preview');
-                    if (s === 'results' && quizResult) setStep('results');
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    step === s ? 'bg-white text-violet-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
-                  }`}
-                >
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    step === s ? 'bg-violet-600 text-white' : 'bg-white/30'
-                  }`}>{i + 1}</span>
-                  {s === 'configure' ? 'Configure' : s === 'preview' ? 'Preview' : 'Full Quiz'}
-                </button>
-                {i < 2 && <ChevronRight size={14} className="text-white/40" />}
-              </React.Fragment>
-            ))}
+            <button
+              onClick={() => setActiveTab('create')}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                activeTab === 'create' ? 'bg-white text-violet-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
+              }`}
+            >
+              <Wand2 size={14} /> Create Quiz
+            </button>
+            <button
+              onClick={() => setActiveTab('bank')}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                activeTab === 'bank' ? 'bg-white text-violet-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
+              }`}
+            >
+              <Library size={14} /> Quiz Bank
+            </button>
           </div>
+
+          {/* Step indicator (Create tab only) */}
+          {activeTab === 'create' && (
+            <div className="flex items-center gap-2 mt-3">
+              {(['configure', 'preview', 'results'] as Step[]).map((s, i) => (
+                <React.Fragment key={s}>
+                  <button
+                    onClick={() => {
+                      if (s === 'configure') setStep('configure');
+                      if (s === 'preview' && previewResult) setStep('preview');
+                      if (s === 'results' && quizResult) setStep('results');
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      step === s ? 'bg-white/90 text-violet-700' : 'bg-white/15 text-white/70 hover:bg-white/25'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      step === s ? 'bg-violet-600 text-white' : 'bg-white/30'
+                    }`}>{i + 1}</span>
+                    {s === 'configure' ? 'Configure' : s === 'preview' ? 'Preview' : 'Full Quiz'}
+                  </button>
+                  {i < 2 && <ChevronRight size={14} className="text-white/40" />}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
+
+          {/* ═══ QUIZ BANK TAB ═══ */}
+          {activeTab === 'bank' && (
+            <div className="space-y-4">
+              {/* Bank Filters */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {(['all', 'draft', 'published', 'assigned', 'completed'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setBankFilter(f)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors ${
+                      bankFilter === f ? 'bg-violet-100 text-violet-700 border border-violet-300' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              {bankLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 size={24} className="animate-spin text-violet-500" />
+                  <span className="ml-2 text-sm text-slate-500">Loading quiz bank…</span>
+                </div>
+              ) : filteredBankQuizzes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                  <Library size={40} className="mb-3" />
+                  <p className="font-medium">No quizzes found</p>
+                  <p className="text-xs mt-1">Generate your first quiz in the Create tab</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredBankQuizzes.map((q) => (
+                    <motion.div
+                      key={q.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-sm font-bold text-slate-800 leading-tight">{q.title}</h4>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[q.status]}`}>
+                          {q.status}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {q.metadata.topicsCovered.slice(0, 3).map((t) => (
+                          <span key={t} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">{t}</span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
+                        <span>{q.questions.length} questions</span>
+                        <span>{q.totalPoints} pts</span>
+                        <span>{q.gradeLevel}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenAssign(q.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 transition-colors"
+                        >
+                          <Send size={12} /> Assign
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBankQuiz(q.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ CREATE QUIZ TAB ═══ */}
+          {activeTab === 'create' && (<>
           {/* Error */}
           {error && (
             <motion.div
@@ -786,9 +1085,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               </div>
             </div>
           )}
+          </>)}
         </div>
 
-        {/* Footer */}
+        {/* Footer (Create tab only) */}
+        {activeTab === 'create' && (
         <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between flex-shrink-0">
           <div className="text-xs text-slate-400">
             {step === 'configure' && (
@@ -856,11 +1157,42 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     setStep('configure');
                     setQuizResult(null);
                     setPreviewResult(null);
+                    setSavedQuizId(null);
                   }}
                   className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Create Another
                 </button>
+
+                {/* Save to Library */}
+                {!savedQuizId ? (
+                  <button
+                    onClick={handleSaveToLibrary}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                  >
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Save to Library
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handlePublish}
+                      disabled={publishing}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-green-50 border border-green-300 text-green-700 hover:bg-green-100 transition-colors"
+                    >
+                      {publishing ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}
+                      Publish
+                    </button>
+                    <button
+                      onClick={() => handleOpenAssign()}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-violet-50 border border-violet-300 text-violet-700 hover:bg-violet-100 transition-colors"
+                    >
+                      <Send size={16} /> Assign
+                    </button>
+                  </>
+                )}
+
                 <button
                   onClick={onClose}
                   className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white transition-all"
@@ -871,7 +1203,106 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
             )}
           </div>
         </div>
+        )}
       </motion.div>
+
+      {/* ═══ ASSIGN STUDENT MODAL ═══ */}
+      <AnimatePresence>
+        {showAssignModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4"
+            onClick={() => setShowAssignModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <Users size={18} className="text-violet-600" />
+                  Assign to Student
+                </h3>
+                <button onClick={() => setShowAssignModal(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
+                  <X size={16} className="text-slate-400" />
+                </button>
+              </div>
+
+              <div className="px-5 py-3 border-b border-slate-100">
+                <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
+                  <Search size={14} className="text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search students…"
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                {studentsLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 size={20} className="animate-spin text-violet-500" />
+                  </div>
+                ) : filteredStudents.length === 0 ? (
+                  <p className="text-center text-sm text-slate-400 py-10">No students found</p>
+                ) : (
+                  filteredStudents.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedStudentId(s.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                        selectedStudentId === s.id
+                          ? 'bg-violet-50 border border-violet-300'
+                          : 'hover:bg-slate-50 border border-transparent'
+                      }`}
+                    >
+                      <img
+                        src={s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random&size=32`}
+                        alt={s.name}
+                        className="w-8 h-8 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{s.name}</p>
+                        <p className="text-xs text-slate-400 truncate">{s.email}</p>
+                      </div>
+                      {selectedStudentId === s.id && <Check size={16} className="text-violet-600 flex-shrink-0" />}
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAssign}
+                  disabled={!selectedStudentId || assigning}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    selectedStudentId && !assigning
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  {assigning ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Assign
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

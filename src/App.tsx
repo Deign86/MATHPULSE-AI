@@ -24,6 +24,7 @@ import QuickStatsWidget from './components/QuickStatsWidget';
 import LeaderboardPage from './components/LeaderboardPage';
 import AddFriendsModal from './components/AddFriendsModal';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
+import ScientificCalculator from './components/ScientificCalculator';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { signOutUser } from './services/authService';
@@ -56,6 +57,7 @@ const App = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAddFriendsModal, setShowAddFriendsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   // Diagnostic State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
@@ -229,6 +231,10 @@ const App = () => {
             e.preventDefault();
             setShowProfileModal(true);
             break;
+          case 'k':
+            e.preventDefault();
+            setShowCalculator(prev => !prev);
+            break;
         }
       }
     };
@@ -307,6 +313,14 @@ const App = () => {
                   // TODO: Navigate to selected search result
                 }}
               />
+              {/* Calculator toggle */}
+              <button
+                onClick={() => setShowCalculator(prev => !prev)}
+                className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-blue-600 transition-all group relative"
+                title="Scientific Calculator (Alt+K)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
+              </button>
               <NotificationCenter userRole={userRole} />
               
               <button 
@@ -351,7 +365,7 @@ const App = () => {
                         <HeroBanner 
                           userName={profileData.name.split(' ')[0]} 
                           userLevel={userLevel}
-                          onContinueAlgebra={() => setActiveTab('Modules')} 
+                          onContinueLearning={() => setActiveTab('Modules')} 
                         />
                         {profileReady && (
                           <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
@@ -453,6 +467,12 @@ const App = () => {
           <AddFriendsModal
             isOpen={showAddFriendsModal}
             onClose={() => setShowAddFriendsModal(false)}
+          />
+
+          {/* Scientific Calculator */}
+          <ScientificCalculator
+            isOpen={showCalculator}
+            onClose={() => setShowCalculator(false)}
           />
 
           {/* Diagnostic Assessment Modal */}

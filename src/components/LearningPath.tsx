@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Sigma, Shapes, BarChart3, ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calculator, Sigma, TrendingUp, BarChart3, ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface LearningPathProps {
   onNavigateToModules?: () => void;
@@ -10,9 +10,9 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   const modules = [
     {
       id: 1,
-      subjectId: 'general-math',
+      subjectId: 'gen-math',
       title: 'General Mathematics',
-      subtitle: 'Number Systems & Algebra',
+      subtitle: 'Functions, Business Math & Logic',
       duration: '45 mins',
       icon: Calculator,
       color: 'bg-indigo-50',
@@ -23,24 +23,37 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
     },
     {
       id: 2,
-      subjectId: 'pre-calculus',
-      title: 'Pre-Calculus',
-      subtitle: 'Functions & Polynomials',
-      duration: '60 mins',
-      icon: Sigma,
+      subjectId: 'stats-prob',
+      title: 'Statistics & Probability',
+      subtitle: 'Random Variables & Distributions',
+      duration: '50 mins',
+      icon: BarChart3,
       color: 'bg-purple-50',
       iconColor: 'text-purple-600',
       accentColor: 'bg-purple-500',
+      status: 'In Progress',
+      progress: 30
+    },
+    {
+      id: 3,
+      subjectId: 'pre-calc',
+      title: 'Pre-Calculus',
+      subtitle: 'Analytic Geometry & Trigonometry',
+      duration: '60 mins',
+      icon: TrendingUp,
+      color: 'bg-teal-50',
+      iconColor: 'text-teal-600',
+      accentColor: 'bg-teal-500',
       status: 'Due Tomorrow',
       progress: 15
     },
     {
-      id: 3,
-      subjectId: 'basic-calculus',
+      id: 4,
+      subjectId: 'basic-calc',
       title: 'Basic Calculus',
-      subtitle: 'Limits & Derivatives',
+      subtitle: 'Limits, Derivatives & Integrals',
       duration: '30 mins',
-      icon: Shapes,
+      icon: Sigma,
       color: 'bg-orange-50',
       iconColor: 'text-orange-600',
       accentColor: 'bg-orange-500',
@@ -96,7 +109,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {modules.map((module) => (
           <div 
             key={module.id}

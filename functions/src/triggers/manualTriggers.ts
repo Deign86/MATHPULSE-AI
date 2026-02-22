@@ -77,7 +77,7 @@ export const manualProcessStudent = functions.https.onCall(
       await processDiagnosticCompletion({
         studentId,
         results,
-        gradeLevel: diagData.gradeLevel || "Grade 10",
+        gradeLevel: diagData.gradeLevel || "Grade 11",
         questionBreakdown: diagData.questionBreakdown,
       });
 
