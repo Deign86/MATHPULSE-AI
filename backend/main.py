@@ -290,6 +290,7 @@ def call_hf_chat(
     top_p: float = 0.9,
     repetition_penalty: float = 1.15,
     model: Optional[str] = None,
+    timeout: int = 90,
 ) -> str:
     """
     Call the HF Serverless Inference API (OpenAI-compatible chat endpoint)
@@ -314,7 +315,7 @@ def call_hf_chat(
     }
 
     for attempt in range(3):
-        resp = http_requests.post(url, headers=headers, json=payload, timeout=60)
+        resp = http_requests.post(url, headers=headers, json=payload, timeout=timeout)
         if resp.status_code == 503 and attempt < 2:
             logger.warning(f"HF chat 503 (model loading), retry {attempt + 1}/3")
             time.sleep(3)
@@ -1652,15 +1653,64 @@ Remember:
 
         logger.info(f"Generating quiz: {request.numQuestions} questions, topics={effective_topics}")
 
-        raw_content = call_hf_chat(messages, max_tokens=4096, temperature=0.3, top_p=0.9)
-        logger.info(f"Raw quiz response length: {len(raw_content)} chars")
+        # Scale max_tokens based on requested questions — each question needs ~400-600 tokens
+        max_tokens = min(16384, max(4096, request.numQuestions * 600))
+        # Use longer HTTP timeout for quiz generation (scales with question count)
+        http_timeout = max(90, request.numQuestions * 12)
 
-        parsed_questions = _parse_quiz_json(raw_content)
-        if not parsed_questions:
-            logger.error(f"Failed to parse quiz JSON. Raw content:\n{raw_content[:500]}")
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to parse quiz questions from AI response. Please try again.",
+        parsed_questions: List[Dict[str, Any]] = []
+        max_attempts = 2  # Retry once if LLM generates too few questions
+
+        for attempt in range(max_attempts):
+            raw_content = call_hf_chat(
+                messages, max_tokens=max_tokens, temperature=0.3, top_p=0.9,
+                timeout=http_timeout,
+            )
+            logger.info(f"Raw quiz response length: {len(raw_content)} chars (attempt {attempt + 1})")
+
+            parsed_questions = _parse_quiz_json(raw_content)
+
+            if not parsed_questions:
+                logger.error(f"Failed to parse quiz JSON (attempt {attempt + 1}). Raw content:\n{raw_content[:500]}")
+                if attempt < max_attempts - 1:
+                    logger.info("Retrying quiz generation...")
+                    continue
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to parse quiz questions from AI response. Please try again.",
+                )
+
+            # If we got at least 70% of requested questions, accept the result
+            if len(parsed_questions) >= request.numQuestions * 0.7:
+                break
+
+            # Otherwise retry with a stronger nudge
+            if attempt < max_attempts - 1:
+                logger.warning(
+                    f"LLM generated only {len(parsed_questions)}/{request.numQuestions} questions "
+                    f"(attempt {attempt + 1}). Retrying with reinforced prompt..."
+                )
+                # Add an assistant + user turn to push the LLM harder
+                messages = [
+                    {"role": "system", "content": QUIZ_GENERATION_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": raw_content},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"You only generated {len(parsed_questions)} questions but I need "
+                            f"exactly {request.numQuestions}. Please generate ALL "
+                            f"{request.numQuestions} questions in a single JSON array. "
+                            f"Do not stop early."
+                        ),
+                    },
+                ]
+
+        # Warn if the LLM still generated fewer questions than requested
+        if len(parsed_questions) < request.numQuestions:
+            logger.warning(
+                f"LLM generated {len(parsed_questions)}/{request.numQuestions} questions "
+                f"after {max_attempts} attempts (raw length={len(raw_content)} chars)."
             )
 
         validated = _validate_quiz_questions(parsed_questions, distribution)
@@ -2220,6 +2270,165 @@ async def get_analytics_config():
         "cacheTTLSeconds": 3600,
         "topicPrerequisites": fetch_topic_dependencies(),
     }
+
+
+# ─── Topic Mastery Analytics ──────────────────────────────────
+
+# SHS topic data for fallback/mock generation
+_SHS_TOPICS = {
+    "gen-math": {
+        "name": "General Mathematics",
+        "topics": [
+            ("Functions and Relations", "Functions and Their Graphs"),
+            ("Evaluating Functions", "Functions and Their Graphs"),
+            ("Operations on Functions", "Functions and Their Graphs"),
+            ("Composite Functions", "Functions and Their Graphs"),
+            ("Inverse Functions", "Functions and Their Graphs"),
+            ("Rational Functions", "Functions and Their Graphs"),
+            ("Exponential Functions", "Functions and Their Graphs"),
+            ("Logarithmic Functions", "Functions and Their Graphs"),
+            ("Simple Interest", "Business Mathematics"),
+            ("Compound Interest", "Business Mathematics"),
+            ("Annuities", "Business Mathematics"),
+            ("Loans and Amortization", "Business Mathematics"),
+            ("Stocks and Bonds", "Business Mathematics"),
+            ("Propositions and Connectives", "Logic"),
+            ("Truth Tables", "Logic"),
+            ("Logical Equivalence", "Logic"),
+            ("Valid Arguments and Fallacies", "Logic"),
+        ],
+    },
+    "stats-prob": {
+        "name": "Statistics and Probability",
+        "topics": [
+            ("Random Variables", "Random Variables"),
+            ("Discrete Probability Distributions", "Random Variables"),
+            ("Mean and Variance of Discrete RV", "Random Variables"),
+            ("Normal Distribution", "Normal Distribution"),
+            ("Standard Normal Distribution and Z-scores", "Normal Distribution"),
+            ("Areas Under the Normal Curve", "Normal Distribution"),
+            ("Sampling Distributions", "Sampling and Estimation"),
+            ("Central Limit Theorem", "Sampling and Estimation"),
+            ("Point Estimation", "Sampling and Estimation"),
+            ("Confidence Intervals", "Sampling and Estimation"),
+            ("Hypothesis Testing Concepts", "Hypothesis Testing"),
+            ("T-test", "Hypothesis Testing"),
+            ("Z-test", "Hypothesis Testing"),
+            ("Correlation and Regression", "Correlation and Regression"),
+        ],
+    },
+    "pre-calc": {
+        "name": "Pre-Calculus",
+        "topics": [
+            ("Conic Sections - Parabola", "Analytic Geometry"),
+            ("Conic Sections - Ellipse", "Analytic Geometry"),
+            ("Conic Sections - Hyperbola", "Analytic Geometry"),
+            ("Conic Sections - Circle", "Analytic Geometry"),
+            ("Systems of Nonlinear Equations", "Analytic Geometry"),
+            ("Sequences and Series", "Series and Induction"),
+            ("Arithmetic Sequences", "Series and Induction"),
+            ("Geometric Sequences", "Series and Induction"),
+            ("Mathematical Induction", "Series and Induction"),
+            ("Binomial Theorem", "Series and Induction"),
+            ("Angles and Unit Circle", "Trigonometry"),
+            ("Trigonometric Functions", "Trigonometry"),
+            ("Trigonometric Identities", "Trigonometry"),
+            ("Sum and Difference Formulas", "Trigonometry"),
+            ("Inverse Trigonometric Functions", "Trigonometry"),
+            ("Polar Coordinates", "Trigonometry"),
+        ],
+    },
+    "basic-calc": {
+        "name": "Basic Calculus",
+        "topics": [
+            ("Limits of Functions", "Limits"),
+            ("Limit Theorems", "Limits"),
+            ("One-Sided Limits", "Limits"),
+            ("Infinite Limits and Limits at Infinity", "Limits"),
+            ("Continuity of Functions", "Limits"),
+            ("Definition of the Derivative", "Derivatives"),
+            ("Differentiation Rules", "Derivatives"),
+            ("Chain Rule", "Derivatives"),
+            ("Implicit Differentiation", "Derivatives"),
+            ("Higher-Order Derivatives", "Derivatives"),
+            ("Related Rates", "Derivatives"),
+            ("Extrema and the First Derivative Test", "Derivatives"),
+            ("Concavity and the Second Derivative Test", "Derivatives"),
+            ("Optimization Problems", "Derivatives"),
+            ("Antiderivatives and Indefinite Integrals", "Integration"),
+            ("Definite Integrals and the FTC", "Integration"),
+            ("Integration by Substitution", "Integration"),
+            ("Area Under a Curve", "Integration"),
+        ],
+    },
+}
+
+
+@app.get("/api/analytics/topic-mastery")
+async def topic_mastery_analytics(
+    teacherId: str = Query(..., description="Teacher UID"),
+    classId: Optional[str] = Query(None, description="Optional class ID filter"),
+):
+    """
+    Aggregate per-topic mastery statistics for a teacher's class.
+    Returns topic-level averages, attempt counts, and mastery status.
+    """
+    import random
+
+    try:
+        # In production, this would query Firestore quiz submissions.
+        # For now, generate realistic mock data seeded by teacherId.
+        rng = random.Random(hash(teacherId))
+        total_students = 30
+
+        topics_out = []
+        mastered_count = 0
+        needs_attention_count = 0
+        excluded_count = 0
+
+        for subj_id, subj_data in _SHS_TOPICS.items():
+            for topic_name, unit in subj_data["topics"]:
+                attempted = rng.randint(3, total_students)
+                class_avg = round(rng.uniform(35, 95), 1)
+                above_85 = int(attempted * (rng.uniform(0.6, 0.95) if class_avg >= 85 else rng.uniform(0.05, 0.35)))
+                mastery_pct = round((above_85 / total_students) * 100, 1)
+
+                if attempted < 3:
+                    status = "no_data"
+                elif mastery_pct >= 75:
+                    status = "mastered"
+                    mastered_count += 1
+                elif class_avg >= 60:
+                    status = "on_track"
+                else:
+                    status = "needs_attention"
+                    needs_attention_count += 1
+
+                topics_out.append({
+                    "topicName": topic_name,
+                    "subjectId": subj_id,
+                    "unit": unit,
+                    "classAverage": class_avg,
+                    "studentsAttempted": attempted,
+                    "totalStudents": total_students,
+                    "studentsAbove85": above_85,
+                    "masteryPercentage": mastery_pct,
+                    "masteryStatus": status,
+                    "isExcluded": False,
+                })
+
+        return {
+            "topics": topics_out,
+            "summary": {
+                "totalTopicsTracked": len(topics_out),
+                "masteredCount": mastered_count,
+                "needsAttentionCount": needs_attention_count,
+                "excludedCount": excluded_count,
+            },
+        }
+    except Exception as e:
+        logger.error(f"Topic mastery analytics error: {e}")
+        raise HTTPException(status_code=500, detail=f"Topic mastery error: {str(e)}")
 
 
 # ─── Automation Engine Endpoints ──────────────────────────────
