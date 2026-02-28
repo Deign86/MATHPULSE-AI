@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, UserPlus, UserCheck, Users, TrendingUp } from 'lucide-react';
+import { X, Search, UserPlus, UserCheck, Users, TrendingUp, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 
@@ -14,17 +14,17 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
   const [sentRequests, setSentRequests] = useState<string[]>([]);
 
   const classmates = [
-    { id: '4', name: 'Emma Rodriguez', avatar: '👧', level: 15, xp: 1890, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '6', name: 'Olivia Brown', avatar: '👩', level: 13, xp: 1580, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '7', name: 'James Wilson', avatar: '🧑', level: 13, xp: 1520, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '9', name: 'Lucas Martinez', avatar: '👦', level: 11, xp: 1180, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '10', name: 'Ava Taylor', avatar: '👧', level: 10, xp: 1050, section: 'Grade 11 - STEM A', isFriend: false },
+    { id: '4', name: 'Emma Rodriguez', avatar: '', level: 15, xp: 1890, section: 'Grade 11 - STEM A', isFriend: false },
+    { id: '6', name: 'Olivia Brown', avatar: '', level: 13, xp: 1580, section: 'Grade 11 - STEM A', isFriend: false },
+    { id: '7', name: 'James Wilson', avatar: '', level: 13, xp: 1520, section: 'Grade 11 - STEM A', isFriend: false },
+    { id: '9', name: 'Lucas Martinez', avatar: '', level: 11, xp: 1180, section: 'Grade 11 - STEM A', isFriend: false },
+    { id: '10', name: 'Ava Taylor', avatar: '', level: 10, xp: 1050, section: 'Grade 11 - STEM A', isFriend: false },
   ];
 
   const suggested = [
-    { id: '11', name: 'Noah Anderson', avatar: '🧑', level: 14, xp: 1650, section: 'Grade 11 - STEM B', reason: 'Similar progress', isFriend: false },
-    { id: '12', name: 'Isabella Garcia', avatar: '👩', level: 13, xp: 1420, section: 'Grade 11 - STEM B', reason: 'Top performer', isFriend: false },
-    { id: '13', name: 'Ethan Moore', avatar: '👨', level: 12, xp: 1280, section: 'Grade 11 - ABM', reason: 'Active learner', isFriend: false },
+    { id: '11', name: 'Noah Anderson', avatar: '', level: 14, xp: 1650, section: 'Grade 11 - STEM B', reason: 'Similar progress', isFriend: false },
+    { id: '12', name: 'Isabella Garcia', avatar: '', level: 13, xp: 1420, section: 'Grade 11 - STEM B', reason: 'Top performer', isFriend: false },
+    { id: '13', name: 'Ethan Moore', avatar: '', level: 12, xp: 1280, section: 'Grade 11 - ABM', reason: 'Active learner', isFriend: false },
   ];
 
   const handleSendRequest = (id: string) => {
@@ -127,7 +127,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                       className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors"
                     >
                       <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                        {student.avatar}
+                        {student.avatar || <User size={22} className="text-slate-500" />}
                       </div>
 
                       <div className="flex-1">
@@ -188,7 +188,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                       className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors"
                     >
                       <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                        {student.avatar}
+                        {student.avatar || <User size={22} className="text-slate-500" />}
                       </div>
 
                       <div className="flex-1">

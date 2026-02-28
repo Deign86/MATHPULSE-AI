@@ -64,7 +64,7 @@ export async function processQuizSubmission(
   const { studentId, subject, score, quizId } = data;
   const db = admin.firestore();
 
-  functions.logger.info("📝 Processing quiz submission", {
+  functions.logger.info("[QUIZ] Processing quiz submission", {
     studentId,
     subject,
     score,
@@ -138,7 +138,7 @@ export async function processQuizSubmission(
     });
   }
 
-  functions.logger.info("✅ Quiz submission processed", { studentId, subject, newStatus });
+  functions.logger.info("[OK] Quiz submission processed", { studentId, subject, newStatus });
 }
 
 // ─── Build Remedial Quiz Configs ─────────────────────────────

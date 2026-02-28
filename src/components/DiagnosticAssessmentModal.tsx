@@ -127,9 +127,9 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
         });
 
         await triggerDiagnosticCompleted(studentId, diagnosticResults, gradeLevel, questionBreakdown);
-        console.log('✅ Automation: diagnostic pipeline completed');
+        console.log('[OK] Automation: diagnostic pipeline completed');
       } catch (err) {
-        console.error('⚠️ Automation: diagnostic pipeline failed:', err);
+        console.error('[WARN] Automation: diagnostic pipeline failed:', err);
       } finally {
         setAutomationProcessing(false);
       }

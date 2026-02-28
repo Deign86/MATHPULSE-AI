@@ -52,13 +52,13 @@ function generateFallbackResponse(userText: string): string {
 
   // --- Conversational / non-math inputs ---
   if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(lower)) {
-    return "Hello! 👋 I'm your MathPulse AI tutor. I can help you with algebra, calculus, geometry, statistics, and more. What math topic would you like to explore today?";
+    return "Hello! I'm your MathPulse AI tutor. I can help you with algebra, calculus, geometry, statistics, and more. What math topic would you like to explore today?";
   }
   if (lower.includes('thank') || lower.includes('thanks')) {
-    return "You're welcome! 😊 I'm always here to help with math. Feel free to ask about any topic — algebra, calculus, geometry, statistics, or anything else. Keep up the great work! 🌟";
+    return "You're welcome! I'm always here to help with math. Feel free to ask about any topic — algebra, calculus, geometry, statistics, or anything else. Keep up the great work!";
   }
   if (/^(bye|goodbye|see you|later)\b/.test(lower)) {
-    return "Goodbye! 👋 Come back anytime you need math help. Happy studying! 📚";
+    return "Goodbye! Come back anytime you need math help. Happy studying!";
   }
 
   // --- "What is X" / definitional questions ---
@@ -159,7 +159,7 @@ function generateFallbackResponse(userText: string): string {
   }
 
   // --- Default fallback ---
-  return "I'm your **MathPulse AI** math tutor! 🧮\n\nI can help with a wide range of math topics. Try asking:\n\n- **\"What is algebra?\"** — get a clear explanation of any topic\n- **\"How do I solve quadratic equations?\"** — step-by-step instructions\n- **\"Explain the Pythagorean theorem\"** — concept breakdowns\n- **\"What is the derivative of x²?\"** — specific problems\n\n### Topics I cover:\n- Algebra, Geometry, Trigonometry\n- Calculus (derivatives, integrals, limits)\n- Statistics & Probability\n- Arithmetic (fractions, percentages)\n- Logarithms, Exponents, Matrices\n\nWhat would you like to learn about?";
+  return "I'm your **MathPulse AI** math tutor!\n\nI can help with a wide range of math topics. Try asking:\n\n- **\"What is algebra?\"** — get a clear explanation of any topic\n- **\"How do I solve quadratic equations?\"** — step-by-step instructions\n- **\"Explain the Pythagorean theorem\"** — concept breakdowns\n- **\"What is the derivative of x²?\"** — specific problems\n\n### Topics I cover:\n- Algebra, Geometry, Trigonometry\n- Calculus (derivatives, integrals, limits)\n- Statistics & Probability\n- Arithmetic (fractions, percentages)\n- Logarithms, Exponents, Matrices\n\nWhat would you like to learn about?";
 }
 
 export const useChatContext = () => {

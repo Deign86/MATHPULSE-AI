@@ -345,7 +345,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         totalQuestions: questions.length,
         correctAnswers: score,
         timeSpentSeconds: timeSpent,
-      }).catch((err) => console.error('⚠️ Automation: quiz pipeline failed:', err));
+      }).catch((err) => console.error('[WARN] Automation: quiz pipeline failed:', err));
     }
 
     // Save detailed results for AI-generated quizzes
@@ -365,7 +365,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           difficulty: q.difficulty || 'medium',
           bloomLevel: q.bloomLevel || 'understand',
         })),
-      ).catch((err) => console.error('⚠️ Quiz result save failed:', err));
+      ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
     }
 
     playSound('complete');

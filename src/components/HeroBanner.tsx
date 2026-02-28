@@ -1,4 +1,5 @@
 import React from 'react';
+import { Hand } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface HeroBannerProps {
@@ -26,7 +27,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
 
       <div className="relative z-10 flex items-center justify-between">
         <div className="max-w-lg text-white">
-          <h1 className="text-3xl font-bold mb-2">{getGreeting()}, {userName}! 👋</h1>
+          <h1 className="text-3xl font-bold mb-2">{getGreeting()}, {userName}! <Hand size={28} className="inline -mt-1" /></h1>
           <p className="text-blue-100 mb-6 text-lg">Mastery Level {userLevel}</p>
           
           <div className="space-y-2">

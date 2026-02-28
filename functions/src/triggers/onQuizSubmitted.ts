@@ -27,7 +27,7 @@ export const onQuizSubmitted = functions.firestore
       return null;
     }
 
-    functions.logger.info("📝 Quiz result created", {
+    functions.logger.info("[QUIZ] Quiz result created", {
       resultId,
       studentId: quizData.studentId,
       subject: quizData.subject,
@@ -52,12 +52,12 @@ export const onQuizSubmitted = functions.firestore
         answers: quizData.answers,
       });
 
-      functions.logger.info("✅ Quiz submission processed", {
+      functions.logger.info("[OK] Quiz submission processed", {
         resultId,
         studentId: quizData.studentId,
       });
     } catch (error: any) {
-      functions.logger.error("❌ Quiz submission processing failed", {
+      functions.logger.error("[ERROR] Quiz submission processing failed", {
         resultId,
         error: error.message,
       });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, UserPlus, Swords, Eye, Search, Loader2 } from 'lucide-react';
+import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, UserPlus, Swords, Eye, Search, Loader2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import StudentProfileModal from './StudentProfileModal';
@@ -46,7 +46,7 @@ const LeaderboardPage = () => {
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [mockStudents, setMockStudents] = useState<LeaderboardStudent[]>([]);
 
-  const avatars = ['👩', '👨', '🧑', '👧', '👦', '👩', '🧑', '👧'];
+  const avatars = ['', '', '', '', '', '', '', ''];
 
   // Load leaderboard data from Firebase
   useEffect(() => {
@@ -148,7 +148,7 @@ const LeaderboardPage = () => {
       <div className="bg-gradient-to-br from-blue-600 via-cyan-500 to-cyan-600 rounded-3xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold mb-2">🏆 Leaderboard</h1>
+            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3"><Trophy size={28} /> Leaderboard</h1>
             <p className="text-cyan-100">Compete with friends and classmates</p>
           </div>
           <Button 
@@ -261,7 +261,7 @@ const LeaderboardPage = () => {
             >
               <div className="relative mb-4">
                 <div className="w-20 h-20 bg-gradient-to-br from-slate-300 to-slate-500 rounded-2xl flex items-center justify-center text-4xl shadow-lg">
-                  {topThree[1]?.avatar}
+                  {topThree[1]?.avatar ? topThree[1].avatar : <User size={32} className="text-white" />}
                 </div>
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-400 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
                   2
@@ -292,7 +292,7 @@ const LeaderboardPage = () => {
               </motion.div>
               <div className="relative mb-4">
                 <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-5xl shadow-2xl">
-                  {topThree[0]?.avatar}
+                  {topThree[0]?.avatar ? topThree[0].avatar : <User size={40} className="text-white" />}
                 </div>
                 <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
                   1
@@ -320,7 +320,7 @@ const LeaderboardPage = () => {
             >
               <div className="relative mb-4">
                 <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center text-4xl shadow-lg">
-                  {topThree[2]?.avatar}
+                  {topThree[2]?.avatar ? topThree[2].avatar : <User size={32} className="text-white" />}
                 </div>
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
                   3
@@ -372,7 +372,7 @@ const LeaderboardPage = () => {
                   {/* Avatar */}
                   <div className="relative">
                     <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-2xl">
-                      {student.avatar}
+                      {student.avatar ? student.avatar : <User size={22} className="text-slate-500" />}
                     </div>
                     {student.isOnline && (
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>

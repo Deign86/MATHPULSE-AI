@@ -34,7 +34,7 @@ export const onContentUpdated = functions.firestore
     const adminId = data?.updatedBy || data?.createdBy || "system";
     const subjectId = data?.subjectId || null;
 
-    functions.logger.info("📚 Content change detected", {
+    functions.logger.info("[CONTENT] Content change detected", {
       contentId,
       action,
       contentType,
@@ -77,13 +77,13 @@ export const onContentUpdated = functions.firestore
         }
 
         await Promise.all(notifications);
-        functions.logger.info("✅ Teachers notified of content change", {
+        functions.logger.info("[OK] Teachers notified of content change", {
           contentId,
           teachersNotified: notifications.length,
         });
       }
     } catch (error: any) {
-      functions.logger.error("❌ Content update processing failed", {
+      functions.logger.error("[ERROR] Content update processing failed", {
         contentId,
         error: error.message,
       });

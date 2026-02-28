@@ -35,7 +35,7 @@ export async function createNotification(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  functions.logger.info("📬 Notification created", {
+  functions.logger.info("[NOTIFY] Notification created", {
     userId: payload.userId,
     type: payload.type,
     id: notifRef.id,
@@ -70,6 +70,6 @@ export async function sendBatchNotifications(
 
   await batch.commit();
 
-  functions.logger.info(`📬 Batch: ${ids.length} notifications created`);
+  functions.logger.info(`[NOTIFY] Batch: ${ids.length} notifications created`);
   return ids;
 }

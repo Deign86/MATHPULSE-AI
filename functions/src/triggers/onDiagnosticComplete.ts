@@ -18,7 +18,7 @@ export const onDiagnosticComplete = functions.firestore
     const studentId = context.params.studentId;
     const diagnosticData = snapshot.data();
 
-    functions.logger.info("🎯 Diagnostic result created", { studentId });
+    functions.logger.info("[DIAGNOSTIC] Diagnostic result created", { studentId });
 
     try {
       // Idempotency check
@@ -55,9 +55,9 @@ export const onDiagnosticComplete = functions.firestore
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      functions.logger.info("✅ Diagnostic processing complete", { studentId });
+      functions.logger.info("[OK] Diagnostic processing complete", { studentId });
     } catch (error: any) {
-      functions.logger.error("❌ Diagnostic processing failed", {
+      functions.logger.error("[ERROR] Diagnostic processing failed", {
         studentId,
         error: error.message,
         stack: error.stack,

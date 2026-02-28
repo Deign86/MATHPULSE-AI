@@ -34,7 +34,7 @@ export const onAttendanceUpdate = functions.firestore
       return null;
     }
 
-    functions.logger.info("📋 Attendance update", {
+    functions.logger.info("[ATTENDANCE] Attendance update", {
       recordId,
       studentId,
       attendanceRate,
@@ -72,7 +72,7 @@ export const onAttendanceUpdate = functions.firestore
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        functions.logger.warn("⚠️ Critical attendance", { studentId, attendanceRate });
+        functions.logger.warn("[WARN] Critical attendance", { studentId, attendanceRate });
       } else if (
         attendanceRate < LOW_ATTENDANCE_THRESHOLD &&
         previousRate >= LOW_ATTENDANCE_THRESHOLD
@@ -91,10 +91,10 @@ export const onAttendanceUpdate = functions.firestore
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        functions.logger.info("📉 Low attendance flagged", { studentId, attendanceRate });
+        functions.logger.info("[LOW] Low attendance flagged", { studentId, attendanceRate });
       }
     } catch (error: any) {
-      functions.logger.error("❌ Attendance processing failed", {
+      functions.logger.error("[ERROR] Attendance processing failed", {
         recordId,
         error: error.message,
       });

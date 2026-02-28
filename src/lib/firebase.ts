@@ -18,11 +18,11 @@ const firebaseConfig = {
 };
 
 if (!firebaseConfig.apiKey) {
-  console.error('🚨 Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
+  console.error('[ERROR] Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
 }
 
 // Debug logging (no secrets)
-console.log('🔥 Firebase Config:', {
+console.log('[FIREBASE] Config:', {
   projectId: firebaseConfig.projectId,
   authDomain: firebaseConfig.authDomain,
   configured: !!firebaseConfig.apiKey

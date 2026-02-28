@@ -29,7 +29,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
       const welcomeMessage: Message = {
         id: '1',
         sender: 'ai',
-        text: 'Hi! 👋 I\'m your AI math tutor. What would you like to learn about today?',
+        text: 'Hi! I\'m your AI math tutor. What would you like to learn about today?',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       const newSessionId = createNewSession(welcomeMessage);

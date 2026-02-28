@@ -1,6 +1,6 @@
 # MathPulse AI Dashboard - Fixed Frame Layout Architecture
 
-## 📐 Layout Dimensions
+## Layout Dimensions
 
 ### Full Layout Structure (1920px viewport)
 
@@ -8,7 +8,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                         FIXED HEADER (73px height)                                  │
 │  ┌─────────────┐  ┌──────────────────────┐  ┌──────┐ ┌────┐ ┌──────────────────┐  │
-│  │ Dashboard   │  │   Search Bar         │  │  🔔  │ │ 👤 │ │  Alex Johnson    │  │
+│  │ Dashboard   │  │   Search Bar         │  │ Bell │ │ Av │ │  Alex Johnson    │  │
 │  │ Welcome...  │  │                      │  │      │ │    │ │  Student         │  │
 │  └─────────────┘  └──────────────────────┘  └──────┘ └────┘ └──────────────────┘  │
 ├──────────┬──────────────────────────────────────────────────────────┬───────────────┤
@@ -18,20 +18,20 @@
 │ SIDEBAR  │                                                          │   SIDEBAR     │
 │          │                                                          │               │
 │  80/240  │   ┌──────────────────────────────────────────────┐      │     320px     │
-│   px     │   │  🎓 Hero Banner (gradient)                   │      │               │
+│   px     │   │  Hero Banner (gradient)                      │      │               │
 │          │   │  Progress: 75% | Level 4 | 1200/1600 XP     │      │  ┌──────────┐ │
 │  ┌────┐  │   └──────────────────────────────────────────────┘      │  │ Profile  │ │
-│  │ 📊 │  │                                                          │  │ Avatar   │ │
-│  │ 📚 │  │   ┌──────────────────────────────────────────────┐      │  └──────────┘ │
-│  │ 💬 │  │   │  📈 Learning Path                            │      │               │
-│  │ 🎓 │  │   │  - General Mathematics (4 modules)           │      │  ┌──────────┐ │
+│  │ Nav │  │                                                          │  │ Avatar   │ │
+│  │    │  │   ┌──────────────────────────────────────────────┐      │  └──────────┘ │
+│  │    │  │   │  Learning Path                            │      │               │
+│  │    │  │   │  - General Mathematics (4 modules)           │      │  ┌──────────┐ │
 │  └────┘  │   │  - Pre-Calculus (3 modules)                  │      │  │ Level &  │ │
 │          │   │  - Statistics (5 modules)                    │      │  │ XP Info  │ │
 │  [Toggle]│   └──────────────────────────────────────────────┘      │  └──────────┘ │
 │    ◀     │                                                          │               │
 │          │   ┌──────────────────────────────────────────────┐      │  ┌──────────┐ │
-│  ┌────┐  │   │  📋 Recent Activity                          │      │  │ 🔥 12    │ │
-│  │ ⚙️ │  │   │  - Completed "Basic Functions" +50 XP        │      │  │ Streak   │ │
+│  ┌────┐  │   │  Recent Activity                          │      │  │ 12       │ │
+│  │ Gear│  │   │  - Completed "Basic Functions" +50 XP        │      │  │ Streak   │ │
 │  └────┘  │   │  - Asked AI about "Pythagoras"               │      │  └──────────┘ │
 │          │   └──────────────────────────────────────────────┘      │               │
 │          │                                                          │  ┌──────────┐ │
@@ -42,12 +42,12 @@
 └──────────┴──────────────────────────────────────────────────────────┴───────────────┘
                                                                     
                                                         ┌────────┐
-                                                        │   🤖   │  FAB (Chatbot)
+                                                        │  Bot  │  FAB (Chatbot)
                                                         │  Chat  │  32px from edges
                                                         └────────┘
 ```
 
-## 🎯 Positioning Specifications
+## Positioning Specifications
 
 ### 1. Fixed Header
 - **Position**: `fixed` (top: 0, left: 0, right: 0)
@@ -89,7 +89,7 @@
 - **Size**: 64px × 64px
 - **Visibility**: Only on Dashboard page
 
-## 📏 Exact Measurements
+## Exact Measurements
 
 ### Sidebar Widths
 ```
@@ -142,7 +142,7 @@ CHATBOT FAB:
 └─ Shadow: Large shadow for elevation
 ```
 
-## 🎨 Visual Consistency
+## Visual Consistency
 
 ### Alignment Points
 ```
@@ -179,18 +179,18 @@ HORIZONTAL SPACING:
 └─ Right Sidebar Right Padding: 24px
 ```
 
-## 🔄 Scroll Behavior
+## Scroll Behavior
 
 ### What Scrolls:
-✅ **Main Content Area** - Primary scroll container
-✅ **Right Sidebar** - Independent scroll (if content exceeds height)
+[x] **Main Content Area** - Primary scroll container
+[x] **Right Sidebar** - Independent scroll (if content exceeds height)
 
 ### What Doesn't Scroll (Fixed):
-❌ **Header** - Always visible at top
-❌ **Left Sidebar** - Fixed in place
-❌ **FAB Chatbot** - Fixed at bottom-right
+[ ] **Header** - Always visible at top
+[ ] **Left Sidebar** - Fixed in place
+[ ] **FAB Chatbot** - Fixed at bottom-right
 
-## 🎭 Interaction States
+## Interaction States
 
 ### Sidebar Toggle Animation
 ```
@@ -218,7 +218,7 @@ SCROLL POSITION:    OPACITY:    BLUR:    SHADOW:
 300px+              92%         12px     Strong
 ```
 
-## 🎯 Clip Content Implementation
+## Clip Content Implementation
 
 ### Main Content Clipping
 ```css
@@ -233,7 +233,7 @@ main {
 
 **Effect**: Creates a clipping boundary that ensures content stays within the scrollable area.
 
-## ✨ Key Features
+## Key Features
 
 ### 1. Smart Animate Transitions
 - Sidebar: 300ms ease-in-out
@@ -251,7 +251,7 @@ main {
 - All elements maintain proper spacing
 - No content cut-off or overflow issues
 
-## 📱 Breakpoint Considerations
+## Breakpoint Considerations
 
 ### Desktop (1920px)
 ```
@@ -268,7 +268,7 @@ main {
 [104px Sidebar] [1016px Main] [320px Right]
 ```
 
-## 🎨 Design Tokens
+## Design Tokens
 
 ### Shadows
 ```
@@ -298,6 +298,6 @@ Surface: White (#FFFFFF)
 
 ---
 
-**Implementation Status**: ✅ Complete
+**Implementation Status**: Complete
 **Last Updated**: Current Session
 **Framework**: React + TypeScript + Tailwind CSS v4 + Framer Motion

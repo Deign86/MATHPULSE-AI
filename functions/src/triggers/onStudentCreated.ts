@@ -26,7 +26,7 @@ export const onStudentCreated = functions.firestore
       return null;
     }
 
-    functions.logger.info("🆕 New student created", {
+    functions.logger.info("[NEW] New student created", {
       userId,
       name: userData.displayName || userData.name,
     });
@@ -78,9 +78,9 @@ export const onStudentCreated = functions.firestore
         });
       }
 
-      functions.logger.info("✅ Student initialised", { userId });
+      functions.logger.info("[OK] Student initialised", { userId });
     } catch (error: any) {
-      functions.logger.error("❌ Student initialisation failed", {
+      functions.logger.error("[ERROR] Student initialisation failed", {
         userId,
         error: error.message,
       });

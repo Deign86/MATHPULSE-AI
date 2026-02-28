@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Check, ArrowRight, Volume2, RotateCcw, Trophy, Zap, Flag, HelpCircle,
   Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler, 
-  Binary, Atom, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame
+  Binary, Atom, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame,
+  Sparkles, PartyPopper, ThumbsUp, Dumbbell, BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -333,14 +334,14 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   transition={{ duration: 2, repeat: Infinity }}
                   className="absolute top-0 right-1/3 text-xl"
                 >
-                  ✨
+                  <Sparkles size={20} className="text-amber-400" />
                 </motion.div>
                 <motion.div 
                   animate={{ scale: [1, 1.2, 1], rotate: [0, -180, -360] }}
                   transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
                   className="absolute bottom-0 left-1/3 text-xl"
                 >
-                  ✨
+                  <Sparkles size={20} className="text-amber-400" />
                 </motion.div>
              </div>
              
@@ -350,11 +351,11 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 transition={{ delay: 0.3 }}
                 className="text-3xl font-bold text-slate-800 mb-2"
              >
-                {percentage >= 90 ? 'Perfect! 🎉' : 
-                 percentage >= 80 ? 'Excellent Job! 🌟' : 
-                 percentage >= 70 ? 'Great Work! 👏' :
-                 percentage >= 60 ? 'Good Effort! 💪' : 
-                 'Keep Practicing! 📚'}
+                {percentage >= 90 ? 'Perfect!' : 
+                 percentage >= 80 ? 'Excellent Job!' : 
+                 percentage >= 70 ? 'Great Work!' :
+                 percentage >= 60 ? 'Good Effort!' : 
+                 'Keep Practicing!'}
              </motion.h2>
              
              <motion.p 
@@ -582,7 +583,8 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
               animate={{ scale: 1, y: 0 }}
               className="mb-4 bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-lg"
             >
-              🎯 Halfway there! Keep it up!
+                            <Target size={20} className="inline mr-2 text-white" />
+              Halfway there! Keep it up!
             </motion.div>
           )}
 
