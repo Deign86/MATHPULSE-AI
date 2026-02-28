@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, UserPlus, UserCheck, Swords } from 'lucide-react';
+import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, UserPlus, UserCheck, Swords, Star, Crown, User, BadgeCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 
@@ -24,13 +24,23 @@ interface StudentProfileModalProps {
 const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onClose }) => {
   if (!student) return null;
 
+  const achievementIconMap: Record<string, React.ReactNode> = {
+    trophy: <Trophy size={24} className="text-indigo-600" />,
+    flame: <Flame size={24} className="text-orange-500" />,
+    star: <Star size={24} className="text-yellow-500" />,
+    'book-open': <BookOpen size={24} className="text-blue-600" />,
+    'badge-check': <BadgeCheck size={24} className="text-emerald-600" />,
+    crown: <Crown size={24} className="text-amber-500" />,
+    target: <Target size={24} className="text-rose-500" />,
+  };
+
   const achievements = [
-    { id: 1, icon: '🏆', title: 'Math Champion', description: 'Completed 50 quizzes', unlocked: true },
-    { id: 2, icon: '🔥', title: 'Streak Master', description: '30-day streak', unlocked: true },
-    { id: 3, icon: '⭐', title: 'Perfect Score', description: 'Got 100% on a quiz', unlocked: true },
-    { id: 4, icon: '📚', title: 'Knowledge Seeker', description: 'Completed 10 modules', unlocked: true },
-    { id: 5, icon: '💯', title: 'Excellence', description: 'Avg score above 90%', unlocked: false },
-    { id: 6, icon: '👑', title: 'Top 10', description: 'Ranked in top 10', unlocked: false },
+    { id: 1, icon: 'trophy', title: 'Math Champion', description: 'Completed 50 quizzes', unlocked: true },
+    { id: 2, icon: 'flame', title: 'Streak Master', description: '30-day streak', unlocked: true },
+    { id: 3, icon: 'star', title: 'Perfect Score', description: 'Got 100% on a quiz', unlocked: true },
+    { id: 4, icon: 'book-open', title: 'Knowledge Seeker', description: 'Completed 10 modules', unlocked: true },
+    { id: 5, icon: 'badge-check', title: 'Excellence', description: 'Avg score above 90%', unlocked: false },
+    { id: 6, icon: 'crown', title: 'Top 10', description: 'Ranked in top 10', unlocked: false },
   ];
 
   const recentActivity = [
@@ -205,7 +215,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                         : 'bg-slate-50 opacity-50'
                     }`}
                   >
-                    <div className="text-3xl mb-2">{achievement.icon}</div>
+                    <div className="text-3xl mb-2">{achievementIconMap[achievement.icon] || <Award size={24} className="text-slate-500" />}</div>
                     <p className="font-bold text-xs text-slate-800 mb-1">{achievement.title}</p>
                     <p className="text-xs text-slate-500">{achievement.description}</p>
                   </div>

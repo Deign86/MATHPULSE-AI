@@ -53,7 +53,7 @@ export const signUpWithEmail = async (
     return userProfile;
   } catch (error: unknown) {
     const firebaseError = error as { code?: string; message?: string };
-    console.error('🚨 Error signing up:', {
+    console.error('[ERROR] Error signing up:', {
       code: firebaseError.code,
       message: firebaseError.message,
       fullError: error
@@ -73,7 +73,7 @@ const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string }> = {
 // Profile auto-creation is handled exclusively by AuthContext's onAuthStateChanged
 export const signInWithEmail = async (email: string, password: string): Promise<void> => {
   try {
-    console.log('🔐 Attempting sign in...', { email });
+    console.log('[AUTH] Attempting sign in...', { email });
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     
     // Update display name for demo accounts if not set
@@ -82,10 +82,10 @@ export const signInWithEmail = async (email: string, password: string): Promise<
       await updateProfile(userCredential.user, { displayName: demoInfo.name });
     }
     
-    console.log('✅ Sign in successful, AuthContext will handle profile creation');
+    console.log('[OK] Sign in successful, AuthContext will handle profile creation');
   } catch (error: unknown) {
     const firebaseError = error as { code?: string; message?: string };
-    console.error('🚨 Error signing in:', {
+    console.error('[ERROR] Error signing in:', {
       code: firebaseError.code,
       message: firebaseError.message,
       fullError: error

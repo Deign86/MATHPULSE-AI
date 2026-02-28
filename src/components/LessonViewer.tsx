@@ -127,7 +127,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
             <CheckCircle size={40} className="text-white" />
           </motion.div>
 
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">Lesson Complete! 🎉</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-3">Lesson Complete!</h2>
           <p className="text-slate-600 mb-6">
             Great job! You've finished learning about <strong>{lesson.title}</strong>.
           </p>
@@ -291,7 +291,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
                     <p className="text-purple-800 text-lg mb-6">{currentSectionData.content}</p>
                     <div className="bg-white/60 rounded-xl p-4 inline-block">
                       <p className="text-sm text-purple-700">
-                        💡 <strong>Tip:</strong> Complete the practice quizzes after this lesson to reinforce your learning!
+                        <Lightbulb size={14} className="inline mr-1 -mt-0.5" />
+                        <strong>Tip:</strong> Complete the practice quizzes after this lesson to reinforce your learning!
                       </p>
                     </div>
                   </div>

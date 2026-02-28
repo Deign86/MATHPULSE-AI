@@ -53,7 +53,7 @@ export async function processDiagnosticCompletion(
   const { studentId, results, gradeLevel, questionBreakdown } = payload;
   const db = admin.firestore();
 
-  functions.logger.info("📊 Starting diagnostic processing workflow", { studentId });
+  functions.logger.info("[DIAGNOSTIC] Starting diagnostic processing workflow", { studentId });
 
   // STEP 1: Classify per-subject risk
   const riskClassifications = classifySubjectRisks(results);
@@ -128,7 +128,7 @@ export async function processDiagnosticCompletion(
         source: "diagnostic_automation",
       });
 
-      functions.logger.info("✅ Learning path generated", { studentId });
+      functions.logger.info("[OK] Learning path generated", { studentId });
     } catch (error: any) {
       functions.logger.error("Learning path generation failed", {
         error: error.message,
@@ -156,7 +156,7 @@ export async function processDiagnosticCompletion(
     }
     await batch.commit();
 
-    functions.logger.info("✅ Remedial quizzes created", {
+    functions.logger.info("[OK] Remedial quizzes created", {
       count: quizConfigs.length,
     });
   }
@@ -184,7 +184,7 @@ export async function processDiagnosticCompletion(
     message: notifMessage,
   });
 
-  functions.logger.info("✅ Diagnostic processing workflow complete", { studentId });
+  functions.logger.info("[OK] Diagnostic processing workflow complete", { studentId });
 }
 
 // ─── Helper: Teacher Interventions ───────────────────────────
@@ -244,7 +244,7 @@ async function generateAndStoreInterventions(
       });
     }
 
-    functions.logger.info("✅ Teacher interventions created", { studentId });
+    functions.logger.info("[OK] Teacher interventions created", { studentId });
   } catch (error: any) {
     functions.logger.error("Intervention generation failed", {
       error: error.message,

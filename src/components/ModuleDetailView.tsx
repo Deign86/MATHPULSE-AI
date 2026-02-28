@@ -447,7 +447,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trophy size={32} className="text-white" />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Module Completed! 🎉</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Module Completed!</h3>
             <p className="text-slate-600 mb-4">
               Congratulations! You've mastered this module. Keep up the great work!
             </p>

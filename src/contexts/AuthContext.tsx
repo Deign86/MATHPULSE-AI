@@ -55,14 +55,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // If profile doesn't exist, auto-create it
         if (!profile && user.email) {
-          console.log('⚠️ AuthContext: Profile missing, auto-creating...');
+          console.log('[WARN] AuthContext: Profile missing, auto-creating...');
           const demoInfo = DEMO_ACCOUNTS[user.email.toLowerCase()];
           const role: UserRole = demoInfo?.role || 'student';
           const name = demoInfo?.name || user.displayName || 'User';
           
           try {
             profile = await createUserProfile(user, role, { name });
-            console.log('✅ AuthContext: Profile auto-created:', { role, name });
+            console.log('[OK] AuthContext: Profile auto-created:', { role, name });
 
             // Fire automation for new student enrollment
             if (role === 'student') {
@@ -72,11 +72,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 email: user.email || '',
                 gradeLevel: 'Grade 11',
               }).catch((err) =>
-                console.error('⚠️ Automation: enrollment pipeline failed:', err)
+                console.error('[WARN] Automation: enrollment pipeline failed:', err)
               );
             }
           } catch (err) {
-            console.error('🚨 AuthContext: Failed to auto-create profile:', err);
+            console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
           }
         }
         

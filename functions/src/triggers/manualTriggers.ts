@@ -68,7 +68,7 @@ export const manualProcessStudent = functions.https.onCall(
           ([subject, score]) => ({ subject, score: Number(score) }),
         );
 
-    functions.logger.info("🔄 Manual diagnostic reprocessing triggered", {
+    functions.logger.info("[REPROCESS] Manual diagnostic reprocessing triggered", {
       studentId,
       triggeredBy: context.auth.uid,
     });

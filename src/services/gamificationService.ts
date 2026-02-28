@@ -277,7 +277,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
         condition: (progressData.totalLessonsCompleted || 0) >= 1,
         title: 'First Steps',
         description: 'Complete your first lesson',
-        icon: '🎯',
+        icon: 'target',
         xpReward: 50,
       },
       {
@@ -285,7 +285,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
         condition: (progressData.totalLessonsCompleted || 0) >= 10,
         title: 'Dedicated Learner',
         description: 'Complete 10 lessons',
-        icon: '📚',
+        icon: 'book-open',
         xpReward: 200,
       },
       {
@@ -293,7 +293,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
         condition: progressData.quizAttempts?.some((q: { score: number }) => q.score === 100) || false,
         title: 'Perfect Score',
         description: 'Get 100% on a quiz',
-        icon: '⭐',
+        icon: 'star',
         xpReward: 150,
       },
       {
@@ -301,7 +301,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
         condition: (userData.streak || 0) >= 7,
         title: 'Week Warrior',
         description: 'Maintain a 7-day streak',
-        icon: '🔥',
+        icon: 'flame',
         xpReward: 300,
       },
       {
@@ -309,7 +309,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
         condition: (userData.level || 0) >= 5,
         title: 'Rising Star',
         description: 'Reach level 5',
-        icon: '⭐',
+        icon: 'star',
         xpReward: 250,
       },
     ];

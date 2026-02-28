@@ -585,7 +585,7 @@ const LoginPage: React.FC = () => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.2 }}
               >
-                🔒 Demo accounts for testing purposes
+                <Lock size={12} className="inline mr-1 -mt-0.5" /> Demo accounts for testing purposes
               </motion.p>
             </motion.div>
           </motion.div>

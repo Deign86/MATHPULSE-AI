@@ -252,3 +252,61 @@ import { Button } from '@/components/ui/button';
 - Tailwind CSS for all styling
 - CSS variables in `src/styles/globals.css`
 - Framer Motion for animations (`motion.div`, `AnimatePresence`)
+
+---
+
+## Frontend Design Skill
+
+> Adapted from [anthropics/skills — frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design). Generates creative, polished UI code that avoids generic AI aesthetics — applied to **React 18 + TypeScript + Tailwind CSS + Radix UI + Motion for React**.
+
+### Design Thinking
+
+Before coding any new component or page, understand the context and commit to a **bold** aesthetic direction:
+
+- **Purpose**: What problem does this interface solve? Who uses it? (Students, Teachers, Admins — each audience may warrant a different feel.)
+- **Tone**: Pick a clear direction: playful/toy-like for student dashboards, refined/editorial for teacher views, utilitarian/clean for admin panels. Other flavors to draw from: retro-futuristic, organic/natural, luxury/refined, brutalist/raw, art deco/geometric, soft/pastel, maximalist chaos, etc.
+- **Constraints**: Must use the existing stack (React + TS + Tailwind + Radix UI primitives + `motion/react`). Mobile-first responsive. Accessible.
+- **Differentiation**: What makes this **UNFORGETTABLE**? What's the one thing someone will remember about this screen?
+
+**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work — the key is **intentionality**, not intensity.
+
+Then implement working code that is:
+- Production-grade, typed, and functional
+- Visually striking and memorable
+- Cohesive with a clear aesthetic point-of-view
+- Meticulously refined in every detail
+
+### Frontend Aesthetics Guidelines
+
+Focus on:
+
+- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the UI. Pair a distinctive display font with a refined body font. Import via Google Fonts `<link>` in `index.html` or `@import` in `src/styles/globals.css`.
+- **Color & Theme**: Commit to a cohesive aesthetic. Use Tailwind CSS custom properties and `src/styles/globals.css` CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
+- **Motion**: Use `motion/react` (`motion.div`, `AnimatePresence`, staggered `variants`) for animations and micro-interactions. Focus on high-impact moments: one well-orchestrated page load with staggered reveals creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
+- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density. Tailwind's grid/flex utilities + arbitrary values make this easy.
+- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Apply creative forms like gradient meshes (`bg-gradient-to-*`), noise textures, geometric patterns, layered transparencies (`backdrop-blur`, `bg-opacity-*`), dramatic shadows, decorative borders, and grain overlays.
+
+**NEVER** use generic AI-generated aesthetics:
+- Overused font families (Inter, Roboto, Arial, system fonts)
+- Clichéd color schemes (particularly purple gradients on white backgrounds)
+- Predictable layouts and component patterns
+- Cookie-cutter design that lacks context-specific character
+
+Interpret creatively and make unexpected choices that feel genuinely designed for the context. No two pages should look the same. Vary between light and dark themes, different fonts, different aesthetics. **NEVER** converge on common choices (Space Grotesk, for example) across generations.
+
+### Implementation Rules (MathPulse-specific)
+
+1. **Components**: Use Radix UI primitives from `src/components/ui/` as the accessible foundation, then style boldly with Tailwind.
+2. **Animations**: Import from `motion/react` — never raw CSS keyframes when Motion can do it better.
+   ```tsx
+   import { motion, AnimatePresence } from 'motion/react';
+   ```
+3. **Responsive**: Mobile-first with Tailwind breakpoints (`sm:`, `md:`, `lg:`, `xl:`).
+4. **Dark mode**: Respect `dark:` variant classes; the skill should produce designs that look excellent in both modes.
+5. **Conditional classes**: Always use `cn()` (from `src/lib/utils` or `clsx`) — never string concatenation.
+6. **CSS variables**: Extend the existing variables in `src/styles/globals.css`; don't create separate stylesheets.
+7. **Icons**: Use Lucide React icons already in the project.
+
+**IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
+
+Remember: Don't hold back — show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
