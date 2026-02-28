@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trophy, Target, BookOpen, Flame, Clock, Award, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, Trophy, Target, BookOpen, Flame, Clock, Award, TrendingUp, TrendingDown, PartyPopper, Dumbbell, Handshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CompareStudent {
@@ -22,7 +22,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
   // Mock "you" data
   const you = {
     name: 'Alex Johnson',
-    avatar: '🧑',
+    avatar: '',
     level: 12,
     totalXP: 1250,
     currentStreak: 15,
@@ -258,7 +258,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
               <div className="text-center">
                 {yourWins > theirWins ? (
                   <>
-                    <div className="text-4xl mb-3">🎉</div>
+                    <div className="flex justify-center mb-3"><PartyPopper size={36} className="text-amber-500" /></div>
                     <h3 className="text-xl font-bold text-slate-800 mb-2">You're Ahead!</h3>
                     <p className="text-sm text-slate-600">
                       Keep up the great work! You're winning in {yourWins} out of {comparisons.length} categories.
@@ -266,7 +266,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
                   </>
                 ) : theirWins > yourWins ? (
                   <>
-                    <div className="text-4xl mb-3">💪</div>
+                    <div className="flex justify-center mb-3"><Dumbbell size={36} className="text-blue-500" /></div>
                     <h3 className="text-xl font-bold text-slate-800 mb-2">Room to Grow!</h3>
                     <p className="text-sm text-slate-600">
                       {student.name.split(' ')[0]} is ahead in {theirWins} categories. Time to level up!
@@ -274,7 +274,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
                   </>
                 ) : (
                   <>
-                    <div className="text-4xl mb-3">🤝</div>
+                    <div className="flex justify-center mb-3"><Handshake size={36} className="text-indigo-500" /></div>
                     <h3 className="text-xl font-bold text-slate-800 mb-2">Evenly Matched!</h3>
                     <p className="text-sm text-slate-600">
                       You and {student.name.split(' ')[0]} are neck and neck. Great competition!

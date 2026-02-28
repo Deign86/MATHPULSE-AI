@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, UserPlus, Trophy, Flame, ChevronRight } from 'lucide-react';
+import { Users, UserPlus, Trophy, Flame, ChevronRight, User } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface FriendsWidgetProps {
@@ -9,9 +9,9 @@ interface FriendsWidgetProps {
 
 const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }) => {
   const friends = [
-    { id: '1', name: 'Sarah Chen', avatar: '👩', level: 18, xp: 2450, isOnline: true, rank: 1 },
-    { id: '2', name: 'Marcus Kim', avatar: '👨', level: 17, xp: 2380, isOnline: true, rank: 2 },
-    { id: '5', name: 'David Patel', avatar: '👦', level: 14, xp: 1720, isOnline: false, rank: 4 },
+    { id: '1', name: 'Sarah Chen', avatar: '', level: 18, xp: 2450, isOnline: true, rank: 1 },
+    { id: '2', name: 'Marcus Kim', avatar: '', level: 17, xp: 2380, isOnline: true, rank: 2 },
+    { id: '5', name: 'David Patel', avatar: '', level: 14, xp: 1720, isOnline: false, rank: 4 },
   ];
 
   return (
@@ -40,7 +40,7 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
           >
             <div className="relative">
               <div className="w-10 h-10 bg-slate-200 rounded-lg flex items-center justify-center text-lg">
-                {friend.avatar}
+                {friend.avatar || <User size={18} className="text-slate-500" />}
               </div>
               {friend.isOnline && (
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
