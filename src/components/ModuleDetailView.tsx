@@ -184,7 +184,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       >
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-bold mb-4 transition-colors group"
+          className="flex items-center gap-2 text-[#6b687a] hover:text-violet-600 font-bold mb-4 transition-colors group"
         >
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
           Back to Modules
@@ -194,15 +194,15 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <div className={`${module.color} rounded-3xl p-8 border border-white/50 shadow-lg`}>
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-slate-800 mb-2">{module.title}</h1>
-              <p className="text-slate-600 mb-6">{module.description}</p>
+              <h1 className="text-2xl font-bold text-[#1a1625] mb-2">{module.title}</h1>
+              <p className="text-[#6b687a] mb-6">{module.description}</p>
 
               <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2 text-slate-600">
+                <div className="flex items-center gap-2 text-[#6b687a]">
                   <BookOpen size={18} />
                   <span className="font-medium">{module.lessons.length} Lessons</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-600">
+                <div className="flex items-center gap-2 text-[#6b687a]">
                   <Award size={18} />
                   <span className="font-medium">{module.quizzes.length} Quizzes</span>
                 </div>
@@ -239,7 +239,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold text-slate-800">{module.progress}%</span>
+                <span className="text-xl font-bold text-[#1a1625]">{module.progress}%</span>
               </div>
             </div>
           </div>
@@ -247,8 +247,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           {/* Progress Bar */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold text-slate-600">Module Progress</span>
-              <span className="text-xs font-bold text-slate-800">{module.progress}%</span>
+              <span className="text-xs font-bold text-[#6b687a]">Module Progress</span>
+              <span className="text-xs font-bold text-[#1a1625]">{module.progress}%</span>
             </div>
             <div className="h-3 bg-white/60 rounded-full overflow-hidden">
               <motion.div
@@ -266,7 +266,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-6 scrollbar-hide">
         {/* Lessons Section */}
         <div>
-          <h2 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+          <h2 className="font-bold text-lg text-[#1a1625] mb-4 flex items-center gap-2">
             <BookOpen size={20} className={module.iconColor} />
             Lessons ({completedLessons}/{module.lessons.length})
           </h2>
@@ -281,20 +281,20 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
                 className={`bg-white rounded-2xl p-4 border-2 transition-all ${
                   lesson.locked
-                    ? 'border-slate-200 opacity-60 cursor-not-allowed'
+                    ? 'border-[#e8e5de] opacity-60 cursor-not-allowed'
                     : lesson.completed
                     ? 'border-teal-200 hover:border-teal-300 cursor-pointer hover:shadow-md'
-                    : 'border-indigo-200 hover:border-indigo-300 cursor-pointer hover:shadow-md'
+                    : 'border-violet-200 hover:border-violet-300 cursor-pointer hover:shadow-md'
                 } group`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       lesson.locked
-                        ? 'bg-slate-100 text-slate-400'
+                        ? 'bg-[#f0eeea] text-[#a8a5b3]'
                         : lesson.completed
                         ? 'bg-teal-100 text-teal-600'
-                        : 'bg-indigo-100 text-indigo-600'
+                        : 'bg-violet-100 text-violet-600'
                     }`}>
                       {lesson.locked ? (
                         <Lock size={18} />
@@ -307,16 +307,16 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-400">Lesson {index + 1}</span>
+                        <span className="text-xs font-bold text-[#a8a5b3]">Lesson {index + 1}</span>
                       </div>
-                      <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                      <h3 className="font-bold text-[#1a1625] group-hover:text-violet-600 transition-colors">
                         {lesson.title}
                       </h3>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5 text-slate-500 text-sm">
+                    <div className="flex items-center gap-1.5 text-[#6b687a] text-sm">
                       <Clock size={14} />
                       <span>{lesson.duration}</span>
                     </div>
@@ -334,7 +334,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
         {/* Quizzes Section */}
         <div>
-          <h2 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+          <h2 className="font-bold text-lg text-[#1a1625] mb-4 flex items-center gap-2">
             <Award size={20} className={module.iconColor} />
             Quizzes & Assessments ({completedQuizzes}/{module.quizzes.length})
           </h2>
@@ -355,28 +355,28 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                   onClick={() => !isLocked && setSelectedLesson({ quiz, type: 'quiz' })}
                   className={`rounded-2xl p-5 border-2 transition-all ${
                     isLocked
-                      ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                      ? 'bg-[#f0eeea] border-[#e8e5de] opacity-60 cursor-not-allowed'
                       : quiz.completed
                       ? 'bg-gradient-to-br from-teal-50 to-emerald-50 border-teal-200 hover:border-teal-300 cursor-pointer hover:shadow-md'
                       : isFinal
                       ? 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200 hover:border-purple-300 cursor-pointer hover:shadow-md'
                       : isModuleQuiz
                       ? 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 hover:border-orange-300 cursor-pointer hover:shadow-md'
-                      : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 hover:border-blue-300 cursor-pointer hover:shadow-md'
+                      : 'bg-gradient-to-br from-violet-50 to-fuchsia-50 border-violet-200 hover:border-violet-300 cursor-pointer hover:shadow-md'
                   } group`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                         isLocked
-                          ? 'bg-slate-200 text-slate-400'
+                          ? 'bg-[#e8e5de] text-[#a8a5b3]'
                           : quiz.completed
                           ? 'bg-teal-500 text-white'
                           : isFinal
                           ? 'bg-purple-500 text-white'
                           : isModuleQuiz
                           ? 'bg-orange-500 text-white'
-                          : 'bg-blue-500 text-white'
+                          : 'bg-violet-500 text-white'
                       }`}>
                         {isLocked ? (
                           <Lock size={20} />
@@ -394,13 +394,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                               ? 'bg-purple-200 text-purple-700'
                               : isModuleQuiz
                               ? 'bg-orange-200 text-orange-700'
-                              : 'bg-blue-200 text-blue-700'
+                              : 'bg-violet-200 text-violet-700'
                           }`}>
                             {isFinal ? 'Final Exam' : isModuleQuiz ? 'Module Quiz' : 'Practice Quiz'}
                           </span>
                         </div>
-                        <h3 className="font-bold text-slate-800 mb-1">{quiz.title}</h3>
-                        <div className="flex items-center gap-4 text-sm text-slate-600">
+                        <h3 className="font-bold text-[#1a1625] mb-1">{quiz.title}</h3>
+                        <div className="flex items-center gap-4 text-sm text-[#6b687a]">
                           <span>{quiz.questions} questions</span>
                           <span>•</span>
                           <span>{quiz.duration}</span>
@@ -412,7 +412,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       {quiz.score !== undefined && quiz.completed && (
                         <div className="text-right">
                           <div className="text-2xl font-bold text-teal-600">{quiz.score}%</div>
-                          <div className="text-xs text-slate-500">Best Score</div>
+                          <div className="text-xs text-[#6b687a]">Best Score</div>
                         </div>
                       )}
                       {quiz.completed ? (
@@ -423,8 +423,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       ) : (
                         <div className={`px-4 py-2 rounded-xl text-sm font-bold ${
                           isLocked
-                            ? 'bg-slate-300 text-slate-500'
-                            : 'bg-indigo-600 text-white group-hover:bg-indigo-700'
+                            ? 'bg-[#e8e5de] text-[#6b687a]'
+                            : 'bg-violet-600 text-white group-hover:bg-violet-700'
                         }`}>
                           Start Quiz
                         </div>
@@ -447,8 +447,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trophy size={32} className="text-white" />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Module Completed!</h3>
-            <p className="text-slate-600 mb-4">
+            <h3 className="text-xl font-bold text-[#1a1625] mb-2">Module Completed!</h3>
+            <p className="text-[#6b687a] mb-4">
               Congratulations! You've mastered this module. Keep up the great work!
             </p>
             <div className="flex items-center justify-center gap-2 text-amber-600 font-bold">

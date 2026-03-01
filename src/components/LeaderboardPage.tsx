@@ -123,17 +123,17 @@ const LeaderboardPage = () => {
   };
 
   const getRankBadgeColor = (rank: number) => {
-    if (rank === 1) return 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white';
-    if (rank === 2) return 'bg-gradient-to-br from-slate-300 to-slate-500 text-white';
+    if (rank === 1) return 'bg-gradient-to-br from-amber-400 to-amber-600 text-white';
+    if (rank === 2) return 'bg-gradient-to-br from-zinc-300 to-zinc-500 text-white';
     if (rank === 3) return 'bg-gradient-to-br from-orange-400 to-orange-600 text-white';
-    if (rank <= 10) return 'bg-gradient-to-br from-purple-500 to-purple-700 text-white';
-    return 'bg-slate-100 text-slate-600';
+    if (rank <= 10) return 'bg-gradient-to-br from-violet-500 to-violet-700 text-white';
+    return 'bg-[#f0eeea] text-[#6b687a]';
   };
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown size={16} className="text-yellow-300" />;
-    if (rank === 2) return <Medal size={16} className="text-slate-200" />;
-    if (rank === 3) return <Medal size={16} className="text-orange-300" />;
+    if (rank === 1) return <Crown size={16} className="text-amber-200" />;
+    if (rank === 2) return <Medal size={16} className="text-zinc-200" />;
+    if (rank === 3) return <Medal size={16} className="text-orange-200" />;
     return null;
   };
 
@@ -145,41 +145,43 @@ const LeaderboardPage = () => {
   return (
     <div className="space-y-6">
       {/* Header Stats */}
-      <div className="bg-gradient-to-br from-blue-600 via-cyan-500 to-cyan-600 rounded-3xl p-8 text-white shadow-xl">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-[#1a1625] rounded-2xl p-7 text-white card-elevated-lg relative overflow-hidden border border-white/[0.06]">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
+        <div className="absolute top-0 right-0 w-48 h-48 bg-violet-600/8 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3"><Trophy size={28} /> Leaderboard</h1>
-            <p className="text-cyan-100">Compete with friends and classmates</p>
+            <h1 className="text-2xl font-display font-bold mb-1 flex items-center gap-3"><Trophy size={24} className="text-amber-400" /> Leaderboard</h1>
+            <p className="text-zinc-400 font-body text-sm">Compete with friends and classmates</p>
           </div>
           <Button 
             onClick={() => setShowAddFriends(true)}
-            className="bg-white/20 hover:bg-white/30 text-white rounded-xl backdrop-blur-sm"
+            className="bg-white/[0.06] hover:bg-white/[0.1] text-white rounded-lg border border-white/[0.08] font-body font-semibold text-sm"
           >
-            <UserPlus size={18} className="mr-2" />
+            <UserPlus size={16} className="mr-2" />
             Add Friends
           </Button>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-            <Trophy size={24} className="text-yellow-300 mb-2" />
-            <p className="text-2xl font-bold">#{yourRank}</p>
-            <p className="text-sm text-cyan-100">Your Rank</p>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
+            <Trophy size={18} className="text-amber-400 mb-2" />
+            <p className="text-2xl font-display font-bold">#{yourRank}</p>
+            <p className="text-xs text-zinc-500 font-body">Your Rank</p>
           </div>
-          <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-            <Users size={24} className="text-blue-300 mb-2" />
-            <p className="text-2xl font-bold">{studentProfile?.friends?.length || 0}</p>
-            <p className="text-sm text-cyan-100">Friends</p>
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
+            <Users size={18} className="text-violet-400 mb-2" />
+            <p className="text-2xl font-display font-bold">{studentProfile?.friends?.length || 0}</p>
+            <p className="text-xs text-zinc-500 font-body">Friends</p>
           </div>
-          <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-            <Flame size={24} className="text-orange-300 mb-2" />
-            <p className="text-2xl font-bold">{studentProfile?.streak || 0} Days</p>
-            <p className="text-sm text-cyan-100">Current Streak</p>
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
+            <Flame size={18} className="text-orange-400 mb-2" />
+            <p className="text-2xl font-display font-bold">{studentProfile?.streak || 0} Days</p>
+            <p className="text-xs text-zinc-500 font-body">Current Streak</p>
           </div>
-          <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-            <TrendingUp size={24} className="text-green-300 mb-2" />
-            <p className="text-2xl font-bold">+2</p>
-            <p className="text-sm text-cyan-100">Rank Change</p>
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
+            <TrendingUp size={18} className="text-emerald-400 mb-2" />
+            <p className="text-2xl font-display font-bold">+2</p>
+            <p className="text-xs text-zinc-500 font-body">Rank Change</p>
           </div>
         </div>
       </div>
@@ -203,10 +205,10 @@ const LeaderboardPage = () => {
               <button
                 key={view.id}
                 onClick={() => setActiveView(view.id as typeof activeView)}
-                className={`px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${
+                className={`px-4 py-2 rounded-lg font-body font-semibold text-sm flex items-center gap-2 transition-all ${
                   activeView === view.id
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-white text-slate-600 hover:bg-slate-50'
+                    ? 'bg-violet-600 text-white shadow-md'
+                    : 'bg-white text-[#6b687a] hover:bg-[#f0eeea] border border-[#e8e5de]'
                 }`}
               >
                 <Icon size={16} />
@@ -214,7 +216,7 @@ const LeaderboardPage = () => {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   activeView === view.id
                     ? 'bg-white/20'
-                    : 'bg-slate-100'
+                    : 'bg-[#f0eeea]'
                 }`}>
                   {count}
                 </span>
@@ -225,20 +227,20 @@ const LeaderboardPage = () => {
 
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
             <input
               type="text"
               placeholder="Search students..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-600"
+              className="pl-10 pr-4 py-2 border border-[#e8e5de] rounded-lg text-sm font-body text-[#1a1625] bg-white focus:outline-none focus:border-violet-400"
             />
           </div>
 
           <select
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value as typeof timeFilter)}
-            className="px-4 py-2 border border-slate-200 rounded-xl text-sm bg-white"
+            className="px-4 py-2 border border-[#e8e5de] rounded-lg text-sm font-body bg-white text-[#1a1625]"
           >
             <option value="all">All Time</option>
             <option value="month">This Month</option>
@@ -250,7 +252,7 @@ const LeaderboardPage = () => {
 
       {/* Podium for Top 3 */}
       {topThree.length >= 3 && (
-        <div className="bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+        <div className="bg-white rounded-xl p-8 border border-[#e8e5de] card-elevated">
           <div className="flex items-end justify-center gap-6">
             {/* 2nd Place */}
             <motion.div
@@ -260,20 +262,20 @@ const LeaderboardPage = () => {
               className="flex flex-col items-center"
             >
               <div className="relative mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-slate-300 to-slate-500 rounded-2xl flex items-center justify-center text-4xl shadow-lg">
+                <div className="w-20 h-20 bg-gradient-to-br from-zinc-300 to-zinc-500 rounded-xl flex items-center justify-center text-4xl shadow-lg">
                   {topThree[1]?.avatar ? topThree[1].avatar : <User size={32} className="text-white" />}
                 </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-400 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-zinc-400 rounded-full flex items-center justify-center text-white font-display font-bold text-sm shadow-md">
                   2
                 </div>
               </div>
-              <h3 className="font-bold text-slate-800 mb-1">{topThree[1]?.name}</h3>
-              <p className="text-sm text-slate-500 mb-2">Level {topThree[1]?.level}</p>
-              <div className="bg-slate-50 rounded-xl px-4 py-2 mb-3">
-                <p className="text-lg font-bold text-slate-700">{topThree[1]?.totalXP} XP</p>
+              <h3 className="font-display font-bold text-[#1a1625] mb-1">{topThree[1]?.name}</h3>
+              <p className="text-sm text-[#6b687a] font-body mb-2">Level {topThree[1]?.level}</p>
+              <div className="bg-[#f0eeea] rounded-lg px-4 py-2 mb-3">
+                <p className="text-lg font-display font-bold text-[#1a1625]">{topThree[1]?.totalXP} XP</p>
               </div>
-              <div className="h-32 w-32 bg-gradient-to-t from-slate-200 to-slate-100 rounded-t-2xl flex items-center justify-center">
-                <Medal size={32} className="text-slate-400" />
+              <div className="h-32 w-32 bg-gradient-to-t from-zinc-200 to-zinc-100 rounded-t-xl flex items-center justify-center">
+                <Medal size={32} className="text-zinc-400" />
               </div>
             </motion.div>
 
@@ -288,26 +290,26 @@ const LeaderboardPage = () => {
                 transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
                 className="mb-2"
               >
-                <Crown size={32} className="text-yellow-500" />
+                <Crown size={32} className="text-amber-500" />
               </motion.div>
               <div className="relative mb-4">
-                <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-5xl shadow-2xl">
+                <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center text-5xl shadow-2xl">
                   {topThree[0]?.avatar ? topThree[0].avatar : <User size={40} className="text-white" />}
                 </div>
-                <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                <div className="absolute -top-2 -right-2 w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white font-display font-bold shadow-md">
                   1
                 </div>
                 {topThree[0]?.isOnline && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-4 border-white"></div>
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-white"></div>
                 )}
               </div>
-              <h3 className="font-bold text-slate-800 text-lg mb-1">{topThree[0]?.name}</h3>
-              <p className="text-sm text-slate-500 mb-2">Level {topThree[0]?.level}</p>
-              <div className="bg-yellow-50 rounded-xl px-6 py-2 mb-3">
-                <p className="text-xl font-bold text-yellow-700">{topThree[0]?.totalXP} XP</p>
+              <h3 className="font-display font-bold text-[#1a1625] text-lg mb-1">{topThree[0]?.name}</h3>
+              <p className="text-sm text-[#6b687a] font-body mb-2">Level {topThree[0]?.level}</p>
+              <div className="bg-amber-50 rounded-lg px-6 py-2 mb-3">
+                <p className="text-xl font-display font-bold text-amber-700">{topThree[0]?.totalXP} XP</p>
               </div>
-              <div className="h-40 w-32 bg-gradient-to-t from-yellow-300 to-yellow-100 rounded-t-2xl flex items-center justify-center">
-                <Trophy size={40} className="text-yellow-600" />
+              <div className="h-40 w-32 bg-gradient-to-t from-amber-300 to-amber-100 rounded-t-xl flex items-center justify-center">
+                <Trophy size={40} className="text-amber-600" />
               </div>
             </motion.div>
 
@@ -319,19 +321,19 @@ const LeaderboardPage = () => {
               className="flex flex-col items-center"
             >
               <div className="relative mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center text-4xl shadow-lg">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center text-4xl shadow-lg">
                   {topThree[2]?.avatar ? topThree[2].avatar : <User size={32} className="text-white" />}
                 </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-display font-bold text-sm shadow-md">
                   3
                 </div>
               </div>
-              <h3 className="font-bold text-slate-800 mb-1">{topThree[2]?.name}</h3>
-              <p className="text-sm text-slate-500 mb-2">Level {topThree[2]?.level}</p>
-              <div className="bg-orange-50 rounded-xl px-4 py-2 mb-3">
-                <p className="text-lg font-bold text-orange-700">{topThree[2]?.totalXP} XP</p>
+              <h3 className="font-display font-bold text-[#1a1625] mb-1">{topThree[2]?.name}</h3>
+              <p className="text-sm text-[#6b687a] font-body mb-2">Level {topThree[2]?.level}</p>
+              <div className="bg-orange-50 rounded-lg px-4 py-2 mb-3">
+                <p className="text-lg font-display font-bold text-orange-700">{topThree[2]?.totalXP} XP</p>
               </div>
-              <div className="h-28 w-32 bg-gradient-to-t from-orange-200 to-orange-100 rounded-t-2xl flex items-center justify-center">
+              <div className="h-28 w-32 bg-gradient-to-t from-orange-200 to-orange-100 rounded-t-xl flex items-center justify-center">
                 <Medal size={32} className="text-orange-500" />
               </div>
             </motion.div>
@@ -340,9 +342,9 @@ const LeaderboardPage = () => {
       )}
 
       {/* Rest of Rankings */}
-      <div className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#e8e5de] card-elevated overflow-hidden">
         <div className="p-6">
-          <h3 className="font-bold text-lg text-slate-800 mb-4">
+          <h3 className="font-display font-bold text-lg text-[#1a1625] mb-4">
             {activeView === 'section' ? 'Section Rankings' : activeView === 'friends' ? 'Friends Rankings' : 'School Rankings'}
           </h3>
 
@@ -358,45 +360,45 @@ const LeaderboardPage = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`flex items-center gap-4 p-4 rounded-2xl transition-all hover:shadow-md ${
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all hover:shadow-md ${
                     student.isYou 
-                      ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200' 
-                      : 'bg-slate-50 hover:bg-slate-100'
+                      ? 'bg-violet-50/50 border border-violet-200' 
+                      : 'bg-[#f8f7f4] hover:bg-[#f0eeea] border border-transparent'
                   }`}
                 >
                   {/* Rank Badge */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0 ${getRankBadgeColor(displayRank)}`}>
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-display font-bold text-lg flex-shrink-0 ${getRankBadgeColor(displayRank)}`}>
                     {getRankIcon(displayRank) || `#${displayRank}`}
                   </div>
 
                   {/* Avatar */}
                   <div className="relative">
-                    <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-2xl">
-                      {student.avatar ? student.avatar : <User size={22} className="text-slate-500" />}
+                    <div className="w-12 h-12 bg-[#e8e5de] rounded-lg flex items-center justify-center text-2xl">
+                      {student.avatar ? student.avatar : <User size={22} className="text-[#6b687a]" />}
                     </div>
                     {student.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
                     )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-slate-800">
+                      <h4 className="font-body font-semibold text-[#1a1625]">
                         {student.name}
-                        {student.isYou && <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">You</span>}
+                        {student.isYou && <span className="ml-2 text-xs bg-violet-600 text-white px-2 py-0.5 rounded-full font-body">You</span>}
                       </h4>
                       {student.rank.change !== 0 && (
-                        <div className={`flex items-center gap-1 text-xs font-bold ${student.rank.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className={`flex items-center gap-1 text-xs font-body font-bold ${student.rank.change > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                           {student.rank.change > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                           {Math.abs(student.rank.change)}
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-4 mt-1">
-                      <span className="text-xs text-slate-500">Level {student.level}</span>
-                      <span className="text-xs text-slate-500">{student.totalXP} XP</span>
-                      <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <span className="text-xs text-[#6b687a] font-body">Level {student.level}</span>
+                      <span className="text-xs text-[#6b687a] font-body">{student.totalXP} XP</span>
+                      <span className="text-xs text-[#6b687a] font-body flex items-center gap-1">
                         <Flame size={12} className="text-orange-500" />
                         {student.currentStreak} days
                       </span>
@@ -410,7 +412,7 @@ const LeaderboardPage = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-xl"
+                          className="rounded-lg font-body"
                           onClick={() => setSelectedStudent(student)}
                         >
                           <Eye size={14} className="mr-1" />
@@ -419,7 +421,7 @@ const LeaderboardPage = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-xl"
+                          className="rounded-lg font-body"
                           onClick={() => setShowCompare(student)}
                         >
                           <Swords size={14} className="mr-1" />
@@ -428,7 +430,7 @@ const LeaderboardPage = () => {
                         {!student.isFriend && (
                           <Button
                             size="sm"
-                            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                            className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-body font-semibold"
                           >
                             <UserPlus size={14} className="mr-1" />
                             Add

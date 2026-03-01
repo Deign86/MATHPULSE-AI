@@ -73,7 +73,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 mb-4">Explore Modules</h1>
+        <h1 className="text-2xl font-bold text-[#1a1625] mb-4">Explore Modules</h1>
         
         {/* Tabs */}
         <div className="flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-sm">
@@ -81,8 +81,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
             onClick={() => setActiveTab('learning-path')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               activeTab === 'learning-path'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-violet-600 text-white shadow-md'
+                : 'text-[#6b687a] hover:bg-[#f0eeea]'
             }`}
           >
             <GraduationCap size={18} />
@@ -92,8 +92,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
             onClick={() => setActiveTab('all-subjects')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               activeTab === 'all-subjects'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-violet-600 text-white shadow-md'
+                : 'text-[#6b687a] hover:bg-[#f0eeea]'
             }`}
           >
             <BookOpen size={18} />
@@ -103,8 +103,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
             onClick={() => setActiveTab('practice')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               activeTab === 'practice'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-violet-600 text-white shadow-md'
+                : 'text-[#6b687a] hover:bg-[#f0eeea]'
             }`}
           >
             <Target size={18} />
@@ -114,8 +114,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
             onClick={() => setActiveTab('recommended')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               activeTab === 'recommended'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-violet-600 text-white shadow-md'
+                : 'text-[#6b687a] hover:bg-[#f0eeea]'
             }`}
           >
             <TrendingUp size={18} />
@@ -158,7 +158,7 @@ const LearningPathView: React.FC<{ subjects: Subject[]; onSelectSubject: (subjec
     <div className="h-full overflow-y-auto pr-2 pb-4 space-y-6 scrollbar-hide">
       {/* Active Subjects */}
       <div>
-        <h2 className="font-bold text-lg text-slate-800 mb-4">Continue Learning</h2>
+        <h2 className="font-bold text-lg text-[#1a1625] mb-4">Continue Learning</h2>
         <div className="grid grid-cols-2 gap-4">
           {activeSubjects.map((subject, index) => (
             <SubjectCard
@@ -176,7 +176,7 @@ const LearningPathView: React.FC<{ subjects: Subject[]; onSelectSubject: (subjec
       {/* Next Up */}
       {nextSubjects.length > 0 && (
         <div>
-          <h2 className="font-bold text-lg text-slate-800 mb-4">Start Learning</h2>
+          <h2 className="font-bold text-lg text-[#1a1625] mb-4">Start Learning</h2>
           <div className="grid grid-cols-2 gap-4">
             {nextSubjects.map((subject, index) => (
               <SubjectCard
@@ -243,7 +243,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
       {recommendedModules.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-lg text-slate-800">Continue Where You Left Off</h2>
+            <h2 className="font-bold text-lg text-[#1a1625]">Continue Where You Left Off</h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {recommendedModules.slice(0, 6).map((item, index) => (
@@ -265,7 +265,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
       {suggestedModules.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-lg text-slate-800">Suggested Next</h2>
+            <h2 className="font-bold text-lg text-[#1a1625]">Suggested Next</h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {suggestedModules.slice(0, 3).map((item, index) => (
@@ -286,7 +286,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
       {/* Browse All Subjects */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-lg text-slate-800">All Subjects</h2>
+          <h2 className="font-bold text-lg text-[#1a1625]">All Subjects</h2>
         </div>
         <div className="grid grid-cols-2 gap-4">
           {subjects.map((subject, index) => (
@@ -355,17 +355,17 @@ const SubjectCard: React.FC<{
           {showProgress && subject.progress > 0 && (
             <div className="text-right">
               <p className={`text-2xl font-bold ${subject.iconColor}`}>{subject.progress}%</p>
-              <p className="text-xs text-slate-500 font-medium">Complete</p>
+              <p className="text-xs text-[#6b687a] font-medium">Complete</p>
             </div>
           )}
         </div>
 
         {/* Content */}
-        <h3 className="font-bold text-slate-800 mb-2">{subject.title}</h3>
-        <p className="text-sm text-slate-600 mb-4 line-clamp-2">{subject.description}</p>
+        <h3 className="font-bold text-[#1a1625] mb-2">{subject.title}</h3>
+        <p className="text-sm text-[#6b687a] mb-4 line-clamp-2">{subject.description}</p>
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
+        <div className="flex items-center gap-4 text-xs text-[#6b687a] mb-4">
           <div className="flex items-center gap-1">
             <BookOpen size={14} />
             <span className="font-medium">{subject.totalModules} modules</span>
@@ -431,7 +431,7 @@ const ModuleCardCompact: React.FC<{
           {subject.title}
         </div>
         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-          status === 'In Progress' ? 'bg-indigo-100 text-indigo-700' :
+          status === 'In Progress' ? 'bg-violet-100 text-violet-700' :
           status === 'Completed' ? 'bg-teal-100 text-teal-700' :
           'bg-emerald-100 text-emerald-700'
         }`}>
@@ -439,11 +439,11 @@ const ModuleCardCompact: React.FC<{
         </span>
       </div>
 
-      <h3 className="font-bold text-slate-800 text-sm mb-2 line-clamp-2">{module.title}</h3>
-      <p className="text-xs text-slate-600 mb-3 line-clamp-1">{module.description}</p>
+      <h3 className="font-bold text-[#1a1625] text-sm mb-2 line-clamp-2">{module.title}</h3>
+      <p className="text-xs text-[#6b687a] mb-3 line-clamp-1">{module.description}</p>
 
       <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-500 font-medium">
+        <span className="text-[#6b687a] font-medium">
           {module.lessons.length} lessons • {module.quizzes.length} quizzes
         </span>
         {module.progress > 0 && (

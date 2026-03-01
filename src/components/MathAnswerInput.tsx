@@ -161,20 +161,20 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
 
   /* ── Toolbar row helper ─────────────────────────────────── */
   const btnCls =
-    'bg-slate-700 hover:bg-slate-600 text-white text-sm px-2 py-1 rounded-lg transition-colors';
+    'bg-[#1a1625] hover:bg-white/10 text-white text-sm px-2 py-1 rounded-lg transition-colors';
 
   return (
     <div className="relative">
       {/* ── Floating toolbar ──────────────────────────────── */}
       {toolbarVisible && (
         <div
-          className="absolute z-40 left-0 bg-slate-800 border border-cyan-500/30 rounded-xl shadow-lg px-3 py-2 flex flex-col gap-2"
+          className="absolute z-40 left-0 bg-[#1a1625] border border-cyan-500/30 rounded-xl shadow-lg px-3 py-2 flex flex-col gap-2"
           style={{ bottom: 'calc(100% + 8px)' }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {/* Row 1: Powers */}
           <div>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5 block">Powers</span>
+            <span className="text-[10px] text-[#6b687a] uppercase tracking-wider mb-0.5 block">Powers</span>
             <div className="flex gap-1">
               <button type="button" className={btnCls} title="Square" onClick={() => insertAtCursor('²')}>x²</button>
               <button type="button" className={btnCls} title="Cube" onClick={() => insertAtCursor('³')}>x³</button>
@@ -187,7 +187,7 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
 
           {/* Row 2: Inverse Trig */}
           <div>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5 block">Inverse Trig</span>
+            <span className="text-[10px] text-[#6b687a] uppercase tracking-wider mb-0.5 block">Inverse Trig</span>
             <div className="flex gap-1">
               <button type="button" className={btnCls} title="Inverse sine" onClick={() => insertAtCursor('sin⁻¹(')}>sin⁻¹</button>
               <button type="button" className={btnCls} title="Inverse cosine" onClick={() => insertAtCursor('cos⁻¹(')}>cos⁻¹</button>
@@ -197,7 +197,7 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
 
           {/* Row 3: Symbols */}
           <div>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5 block">Symbols</span>
+            <span className="text-[10px] text-[#6b687a] uppercase tracking-wider mb-0.5 block">Symbols</span>
             <div className="flex gap-1">
               <button type="button" className={btnCls} title="Pi" onClick={() => insertAtCursor('π')}>π</button>
               <button type="button" className={btnCls} title="Euler's number" onClick={() => insertAtCursor('e')}>e</button>
@@ -210,13 +210,13 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
 
           {/* Row 4: Other */}
           <div>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5 block">Other</span>
+            <span className="text-[10px] text-[#6b687a] uppercase tracking-wider mb-0.5 block">Other</span>
             <div className="flex gap-1 items-center">
               <button type="button" className={btnCls} title="Fraction" onClick={() => insertAtCursor('(/)')}>a/b</button>
               <div className="ml-auto">
                 <button
                   type="button"
-                  className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1 rounded-lg flex items-center gap-1"
+                  className="bg-cyan-600 hover:bg-fuchsia-500 text-white text-xs px-3 py-1 rounded-lg flex items-center gap-1"
                   onClick={() => onCalculatorOpen?.()}
                 >
                   <Calculator size={12} />
@@ -238,13 +238,13 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder || 'Type your answer... use ^ for powers e.g. x^2 for x²'}
-        className="w-full bg-slate-800 border border-slate-600 focus:border-cyan-500 rounded-xl px-4 py-3 text-white font-mono text-base outline-none transition-colors"
+        className="w-full bg-[#1a1625] border border-white/15 focus:border-violet-500 rounded-xl px-4 py-3 text-white font-mono text-base outline-none transition-colors"
       />
 
       {/* ── Preview ───────────────────────────────────────── */}
       {showPreview && (
         <div
-          className="text-cyan-300 text-sm font-mono mt-1"
+          className="text-fuchsia-300 text-sm font-mono mt-1"
           dangerouslySetInnerHTML={{ __html: preview }}
         />
       )}

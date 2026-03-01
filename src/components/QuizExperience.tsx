@@ -413,34 +413,34 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 <Target size={48} className="text-white" />
               )}
             </motion.div>
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">
+            <h2 className="text-3xl font-bold font-display text-[#1a1625] mb-2">
               {isPassing ? 'Great Job!' : 'Keep Practicing!'}
             </h2>
-            <p className="text-slate-600">{quiz.title}</p>
+            <p className="text-[#6b687a]">{quiz.title}</p>
           </div>
 
           {/* Score */}
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 mb-6">
+          <div className="bg-gradient-to-br from-violet-50 to-fuchsia-50 rounded-2xl p-6 mb-6">
             <div className="text-center mb-4">
-              <div className="text-6xl font-bold text-blue-600 mb-2">{percentage}%</div>
-              <p className="text-slate-600">Final Score</p>
+              <div className="text-6xl font-bold text-violet-600 mb-2">{percentage}%</div>
+              <p className="text-[#6b687a]">Final Score</p>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white rounded-xl p-4 text-center">
                 <CheckCircle size={24} className="mx-auto mb-2 text-teal-600" />
-                <p className="text-2xl font-bold text-slate-800">{score}</p>
-                <p className="text-xs text-slate-500">Correct</p>
+                <p className="text-2xl font-bold text-[#1a1625]">{score}</p>
+                <p className="text-xs text-[#6b687a]">Correct</p>
               </div>
               <div className="bg-white rounded-xl p-4 text-center">
                 <XCircle size={24} className="mx-auto mb-2 text-red-500" />
-                <p className="text-2xl font-bold text-slate-800">{questions.length - score}</p>
-                <p className="text-xs text-slate-500">Incorrect</p>
+                <p className="text-2xl font-bold text-[#1a1625]">{questions.length - score}</p>
+                <p className="text-xs text-[#6b687a]">Incorrect</p>
               </div>
               <div className="bg-white rounded-xl p-4 text-center">
                 <Zap size={24} className="mx-auto mb-2 text-amber-500" />
-                <p className="text-2xl font-bold text-slate-800">+{totalXP}</p>
-                <p className="text-xs text-slate-500">XP Earned</p>
+                <p className="text-2xl font-bold text-[#1a1625]">+{totalXP}</p>
+                <p className="text-xs text-[#6b687a]">XP Earned</p>
               </div>
             </div>
           </div>
@@ -451,17 +451,17 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-center gap-3">
                 <Star size={20} className="text-purple-600" />
                 <div>
-                  <p className="font-bold text-sm text-slate-800">Perfect Score!</p>
-                  <p className="text-xs text-slate-500">+50% Bonus XP</p>
+                  <p className="font-bold text-sm text-[#1a1625]">Perfect Score!</p>
+                  <p className="text-xs text-[#6b687a]">+50% Bonus XP</p>
                 </div>
               </div>
             )}
             {timeRemaining > parseInt(quiz.duration) * 30 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3">
-                <Clock size={20} className="text-blue-600" />
+              <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center gap-3">
+                <Clock size={20} className="text-violet-600" />
                 <div>
-                  <p className="font-bold text-sm text-slate-800">Speed Demon</p>
-                  <p className="text-xs text-slate-500">+20% Bonus XP</p>
+                  <p className="font-bold text-sm text-[#1a1625]">Speed Demon</p>
+                  <p className="text-xs text-[#6b687a]">+20% Bonus XP</p>
                 </div>
               </div>
             )}
@@ -469,8 +469,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center gap-3">
                 <Flame size={20} className="text-orange-600" />
                 <div>
-                  <p className="font-bold text-sm text-slate-800">Hot Streak!</p>
-                  <p className="text-xs text-slate-500">3x Combo Achieved</p>
+                  <p className="font-bold text-sm text-[#1a1625]">Hot Streak!</p>
+                  <p className="text-xs text-[#6b687a]">3x Combo Achieved</p>
                 </div>
               </div>
             )}
@@ -487,7 +487,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           {/* Action Button */}
           <button
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-4 rounded-xl transition-all mt-4"
+            className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:from-violet-700 hover:to-fuchsia-600 text-white font-bold py-4 rounded-xl transition-all mt-4"
           >
             Continue
           </button>
@@ -504,7 +504,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white">
+        <div className="bg-gradient-to-r from-violet-600 to-fuchsia-500 p-6 text-white">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-2xl font-bold">{quiz.title}</h2>
@@ -586,15 +586,15 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-6 overflow-hidden"
               >
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <div className="bg-[#f0eeea] rounded-2xl p-4 border border-[#e8e5de]">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <h4 className="text-sm font-bold text-[#1a1625] flex items-center gap-1.5">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /></svg>
                       Scientific Calculator
                     </h4>
                     <button
                       onClick={() => setShowCalculator(false)}
-                      className="text-slate-400 hover:text-slate-600 transition-colors"
+                      className="text-[#a8a5b3] hover:text-[#6b687a] transition-colors"
                     >
                       <X size={14} />
                     </button>
@@ -623,8 +623,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             >
               {/* Question */}
               <div className="mb-6">
-                <h3 className="text-xl font-bold text-slate-800 mb-2">{currentQuestion.question}</h3>
-                <p className="text-sm text-slate-500">{getPromptForType(currentQuestion.questionType)}</p>
+                <h3 className="text-xl font-bold text-[#1a1625] mb-2">{currentQuestion.question}</h3>
+                <p className="text-sm text-[#6b687a]">{getPromptForType(currentQuestion.questionType)}</p>
               </div>
 
               {/* Answer area */}
@@ -632,7 +632,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 <div className="mb-6">
                   <div className="relative">
                     <div className="absolute left-3 top-3.5">
-                      <Edit3 size={16} className="text-slate-400" />
+                      <Edit3 size={16} className="text-[#a8a5b3]" />
                     </div>
                     {currentQuestion.questionType === 'enumeration' ? (
                       <textarea
@@ -644,7 +644,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                         className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 text-sm outline-none transition-all resize-none ${
                           showExplanation
                             ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
-                            : 'border-slate-200 focus:border-blue-500 bg-white'
+                            : 'border-[#e8e5de] focus:border-violet-500 bg-white'
                         }`}
                       />
                     ) : (currentQuestion.questionType === 'equation_based' || currentQuestion.questionType === 'word_problem') ? (
@@ -668,7 +668,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                         className={`w-full pl-10 pr-4 py-3.5 rounded-xl border-2 text-sm outline-none transition-all ${
                           showExplanation
                             ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
-                            : 'border-slate-200 focus:border-blue-500 bg-white'
+                            : 'border-[#e8e5de] focus:border-violet-500 bg-white'
                         }`}
                       />
                     )}
@@ -686,7 +686,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   const isCorrect = index === currentQuestion.correctAnswer;
                   const showCorrectness = showExplanation;
 
-                  let bgColor = 'bg-slate-50 hover:bg-slate-100 border-slate-200';
+                  let bgColor = 'bg-[#f0eeea] hover:bg-[#e8e5de] border-[#e8e5de]';
                   if (showCorrectness) {
                     if (isCorrect) {
                       bgColor = 'bg-teal-50 border-teal-500';
@@ -694,7 +694,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                       bgColor = 'bg-red-50 border-red-500';
                     }
                   } else if (isSelected) {
-                    bgColor = 'bg-blue-50 border-blue-500';
+                    bgColor = 'bg-violet-50 border-violet-500';
                   }
 
                   return (
@@ -712,12 +712,12 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
                           showCorrectness && isCorrect ? 'bg-teal-500 text-white' :
                           showCorrectness && isSelected && !isCorrect ? 'bg-red-500 text-white' :
-                          isSelected ? 'bg-blue-500 text-white' :
-                          'bg-white text-slate-700'
+                          isSelected ? 'bg-violet-500 text-white' :
+                          'bg-white text-[#1a1625]'
                         }`}>
                           {String.fromCharCode(65 + index)}
                         </div>
-                        <span className="font-medium text-slate-800">{option}</span>
+                        <span className="font-medium text-[#1a1625]">{option}</span>
                         {showCorrectness && isCorrect && (
                           <CheckCircle size={20} className="ml-auto text-teal-600" />
                         )}
@@ -739,20 +739,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   className={`p-4 rounded-xl border-2 ${
                     lastAnswerCorrect
                       ? 'bg-teal-50 border-teal-200'
-                      : 'bg-blue-50 border-blue-200'
+                      : 'bg-violet-50 border-violet-200'
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      lastAnswerCorrect ? 'bg-teal-500' : 'bg-blue-500'
+                      lastAnswerCorrect ? 'bg-teal-500' : 'bg-violet-500'
                     }`}>
                       <Award size={18} className="text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800 mb-1">
+                      <h4 className="font-bold text-[#1a1625] mb-1">
                         {lastAnswerCorrect ? 'Correct!' : 'Not quite'}
                       </h4>
-                      <p className="text-sm text-slate-600">{currentQuestion.explanation}</p>
+                      <p className="text-sm text-[#6b687a]">{currentQuestion.explanation}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -762,9 +762,9 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-slate-50 border-t border-slate-200">
+        <div className="p-6 bg-[#f0eeea] border-t border-[#e8e5de]">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-[#6b687a]">
               {showExplanation ? (
                 <span className="flex items-center gap-2">
                   <TrendingUp size={16} />
@@ -777,7 +777,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             {showExplanation ? (
               <button
                 onClick={handleNextQuestion}
-                className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all"
+                className="bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:from-violet-700 hover:to-fuchsia-600 text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all"
               >
                 {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
                 <ChevronRight size={18} />
@@ -794,8 +794,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   (currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
                     ? textAnswer.trim()
                     : selectedAnswer !== null)
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:from-violet-700 hover:to-fuchsia-600 text-white'
+                    : 'bg-[#e8e5de] text-[#a8a5b3] cursor-not-allowed'
                 }`}
               >
                 Submit Answer

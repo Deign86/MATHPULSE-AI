@@ -159,14 +159,14 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="px-8 py-6 border-b border-[#e8e5de] flex items-center justify-between bg-[#f0eeea]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
+            <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center text-violet-600">
               <Brain size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Diagnostic Assessment</h2>
-              <p className="text-sm text-slate-500">Analyze your strengths & weaknesses</p>
+              <h2 className="text-xl font-bold text-[#1a1625]">Diagnostic Assessment</h2>
+              <p className="text-sm text-[#6b687a]">Analyze your strengths & weaknesses</p>
             </div>
           </div>
           <button
@@ -174,7 +174,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
               onComplete([]);
               onClose();
             }}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#a8a5b3] hover:text-[#6b687a] hover:bg-[#e8e5de] transition-colors"
             title="Skip assessment"
           >
             <X size={20} />
@@ -192,37 +192,37 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                 exit={{ opacity: 0, x: -20 }}
                 className="text-center space-y-6"
               >
-                <div className="w-32 h-32 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Calculator size={64} className="text-indigo-600" />
+                <div className="w-32 h-32 bg-violet-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Calculator size={64} className="text-violet-600" />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-slate-800">Welcome to MathPulse!</h3>
-                <p className="text-slate-600 max-w-md mx-auto leading-relaxed">
+                <h3 className="text-2xl font-bold text-[#1a1625]">Welcome to MathPulse!</h3>
+                <p className="text-[#6b687a] max-w-md mx-auto leading-relaxed">
                   To personalize your learning experience, let's take a quick diagnostic test. 
                   This helps us identify which subjects you might need extra support with.
                 </p>
 
                 <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto text-left">
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-2 font-bold text-slate-700 mb-1">
+                  <div className="bg-[#f0eeea] p-4 rounded-xl border border-[#e8e5de]">
+                    <div className="flex items-center gap-2 font-bold text-[#1a1625] mb-1">
                       <CheckCircle size={16} className="text-teal-500" />
                       Personalized Path
                     </div>
-                    <p className="text-xs text-slate-500 pl-6">Get recommendations based on your level.</p>
+                    <p className="text-xs text-[#6b687a] pl-6">Get recommendations based on your level.</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-2 font-bold text-slate-700 mb-1">
+                  <div className="bg-[#f0eeea] p-4 rounded-xl border border-[#e8e5de]">
+                    <div className="flex items-center gap-2 font-bold text-[#1a1625] mb-1">
                       <AlertTriangle size={16} className="text-amber-500" />
                       Identify Risks
                     </div>
-                    <p className="text-xs text-slate-500 pl-6">Spot areas that need more attention early.</p>
+                    <p className="text-xs text-[#6b687a] pl-6">Spot areas that need more attention early.</p>
                   </div>
                 </div>
 
                 <div className="pt-4 space-y-3">
                   <Button 
                     onClick={handleStart}
-                    className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-8 py-6 rounded-xl text-lg font-bold shadow-lg shadow-indigo-200 w-full max-w-xs mx-auto"
+                    className="bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-700 hover:to-fuchsia-700 text-white px-8 py-6 rounded-xl text-lg font-bold shadow-lg shadow-indigo-200 w-full max-w-xs mx-auto"
                   >
                     Start Assessment
                   </Button>
@@ -231,7 +231,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                       onComplete([]);
                       onClose();
                     }}
-                    className="block mx-auto text-sm text-slate-400 hover:text-slate-600 transition-colors font-medium"
+                    className="block mx-auto text-sm text-[#a8a5b3] hover:text-[#6b687a] transition-colors font-medium"
                   >
                     Skip for now →
                   </button>
@@ -247,20 +247,20 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8"
               >
-                <div className="flex items-center justify-between text-sm font-bold text-slate-500 mb-2">
+                <div className="flex items-center justify-between text-sm font-bold text-[#6b687a] mb-2">
                   <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
                   <span>{Math.round(((currentQuestionIndex) / questions.length) * 100)}% Completed</span>
                 </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-8">
+                <div className="h-2 bg-[#f0eeea] rounded-full overflow-hidden mb-8">
                   <motion.div 
-                    className="h-full bg-indigo-600 rounded-full"
+                    className="h-full bg-violet-600 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${((currentQuestionIndex) / questions.length) * 100}%` }}
                   />
                 </div>
 
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
-                  <h3 className="text-xl font-bold text-slate-800 leading-relaxed">
+                <div className="bg-[#f0eeea] p-6 rounded-2xl border border-[#e8e5de] mb-6">
+                  <h3 className="text-xl font-bold text-[#1a1625] leading-relaxed">
                     {questions[currentQuestionIndex].question}
                   </h3>
                 </div>
@@ -270,15 +270,15 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                     <button
                       key={idx}
                       onClick={() => handleAnswer(idx)}
-                      className="w-full text-left p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-600 hover:bg-indigo-50 transition-all font-medium text-slate-700 group flex items-center justify-between"
+                      className="w-full text-left p-4 rounded-xl border-2 border-[#e8e5de] hover:border-indigo-600 hover:bg-violet-50 transition-all font-medium text-[#1a1625] group flex items-center justify-between"
                     >
                       <span className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-500 group-hover:border-indigo-300 group-hover:text-indigo-600">
+                        <span className="w-8 h-8 rounded-lg bg-white border border-[#e8e5de] flex items-center justify-center text-sm font-bold text-[#6b687a] group-hover:border-violet-300 group-hover:text-violet-600">
                           {String.fromCharCode(65 + idx)}
                         </span>
                         {option}
                       </span>
-                      <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 text-indigo-600 transition-opacity" />
+                      <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 text-violet-600 transition-opacity" />
                     </button>
                   ))}
                 </div>
@@ -296,14 +296,14 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                   <CheckCircle size={48} className="text-teal-600" />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-slate-800">Assessment Completed!</h3>
-                <p className="text-slate-600">
+                <h3 className="text-2xl font-bold text-[#1a1625]">Assessment Completed!</h3>
+                <p className="text-[#6b687a]">
                   We've analyzed your results. Here's what we found:
                 </p>
 
-                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-left space-y-4">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                    <BarChart3 size={18} className="text-indigo-600" />
+                <div className="bg-[#f0eeea] rounded-2xl p-6 border border-[#e8e5de] text-left space-y-4">
+                  <h4 className="font-bold text-[#1a1625] flex items-center gap-2">
+                    <BarChart3 size={18} className="text-violet-600" />
                     Subject Analysis
                   </h4>
                   
@@ -317,8 +317,8 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                         q.subjectId === 'stats-prob' ? 'Statistics and Probability' : 'Basic Calculus';
                       
                       return (
-                        <div key={q.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
-                          <span className="font-medium text-slate-700">{subjectName}</span>
+                        <div key={q.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#e8e5de]">
+                          <span className="font-medium text-[#1a1625]">{subjectName}</span>
                           {isCorrect ? (
                             <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-lg flex items-center gap-1">
                               <TrendingUp size={12} /> Strong
@@ -350,7 +350,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                 <div className="pt-4">
                   <Button 
                     onClick={handleComplete}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl text-lg font-bold w-full"
+                    className="bg-[#0d0b14] hover:bg-[#1a1625] text-white px-8 py-4 rounded-xl text-lg font-bold w-full"
                   >
                     Go to Dashboard
                   </Button>

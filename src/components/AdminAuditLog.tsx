@@ -99,21 +99,21 @@ const AdminAuditLog: React.FC = () => {
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'Info': return <Info size={16} className="text-blue-600" />;
+      case 'Info': return <Info size={16} className="text-violet-600" />;
       case 'Warning': return <AlertTriangle size={16} className="text-amber-600" />;
       case 'Error': return <AlertCircle size={16} className="text-red-600" />;
       case 'Critical': return <AlertCircle size={16} className="text-red-600" />;
-      default: return <Info size={16} className="text-gray-600" />;
+      default: return <Info size={16} className="text-[#6b687a]" />;
     }
   };
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
-      case 'Info': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Info': return 'bg-violet-100 text-violet-700 border-violet-200';
       case 'Warning': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'Error': return 'bg-red-100 text-red-700 border-red-200';
       case 'Critical': return 'bg-red-100 text-red-700 border-red-200 ring-2 ring-red-500';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-[#f0eeea] text-[#1a1625] border-[#e8e5de]';
     }
   };
 
@@ -121,10 +121,10 @@ const AdminAuditLog: React.FC = () => {
     switch (category) {
       case 'Auth': return 'bg-purple-100 text-purple-700';
       case 'Data': return 'bg-amber-100 text-amber-700';
-      case 'User': return 'bg-blue-100 text-blue-700';
-      case 'System': return 'bg-slate-100 text-slate-700';
+      case 'User': return 'bg-violet-100 text-violet-700';
+      case 'System': return 'bg-[#f0eeea] text-[#1a1625]';
       case 'Content': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-700';
+      default: return 'bg-[#f0eeea] text-[#1a1625]';
     }
   };
 
@@ -148,17 +148,17 @@ const AdminAuditLog: React.FC = () => {
     >
       {/* Header Section */}
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-bold text-slate-800">Audit Log</h2>
-        <p className="text-sm text-slate-500">System activity monitoring and security events</p>
+        <h2 className="text-lg font-bold text-[#1a1625]">Audit Log</h2>
+        <p className="text-sm text-[#6b687a]">System activity monitoring and security events</p>
       </div>
 
       {/* Action Bar */}
       <div className="flex items-center gap-3">
-        <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 flex items-center gap-2 text-slate-600 text-sm font-medium">
+        <div className="bg-white px-3 py-2 rounded-xl border border-[#e8e5de] flex items-center gap-2 text-[#6b687a] text-sm font-medium">
           <Calendar size={16} />
           <span>Last 7 days</span>
         </div>
-        <Button variant="outline" className="gap-2 border-slate-200 hover:bg-slate-50">
+        <Button variant="outline" className="gap-2 border-[#e8e5de] hover:bg-[#f0eeea]">
           <Download size={16} />
           Export CSV
         </Button>
@@ -166,48 +166,48 @@ const AdminAuditLog: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-bold text-slate-500 mb-1">Total Events</p>
-          <p className="text-2xl font-bold text-slate-800">12</p>
+        <div className="bg-white p-4 rounded-xl border border-[#e8e5de] shadow-sm">
+          <p className="text-xs font-bold text-[#6b687a] mb-1">Total Events</p>
+          <p className="text-2xl font-bold text-[#1a1625]">12</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
+        <div className="bg-white p-4 rounded-xl border border-violet-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <Info size={14} className="text-blue-600" />
-            <p className="text-xs font-bold text-slate-500">Info</p>
+            <Info size={14} className="text-violet-600" />
+            <p className="text-xs font-bold text-[#6b687a]">Info</p>
           </div>
-          <p className="text-2xl font-bold text-blue-600">8</p>
+          <p className="text-2xl font-bold text-violet-600">8</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={14} className="text-amber-600" />
-            <p className="text-xs font-bold text-slate-500">Warnings</p>
+            <p className="text-xs font-bold text-[#6b687a]">Warnings</p>
           </div>
           <p className="text-2xl font-bold text-amber-600">2</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-red-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <AlertCircle size={14} className="text-red-600" />
-            <p className="text-xs font-bold text-slate-500">Errors</p>
+            <p className="text-xs font-bold text-[#6b687a]">Errors</p>
           </div>
           <p className="text-2xl font-bold text-red-600">2</p>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white p-4 rounded-xl border border-[#e8e5de] shadow-sm space-y-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" size={18} />
           <Input 
             type="text" 
             placeholder="Search by user, action, or details..." 
-            className="pl-10 bg-slate-50 border-slate-200"
+            className="pl-10 bg-[#f0eeea] border-[#e8e5de]"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-3">
           <select 
-            className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="px-3 py-2 rounded-lg border border-[#e8e5de] bg-white text-sm font-medium text-[#6b687a] focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
@@ -219,7 +219,7 @@ const AdminAuditLog: React.FC = () => {
             <option>Content</option>
           </select>
           <select 
-            className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="px-3 py-2 rounded-lg border border-[#e8e5de] bg-white text-sm font-medium text-[#6b687a] focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
           >
@@ -230,7 +230,7 @@ const AdminAuditLog: React.FC = () => {
             <option>Critical</option>
           </select>
           <select 
-            className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="px-3 py-2 rounded-lg border border-[#e8e5de] bg-white text-sm font-medium text-[#6b687a] focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
           >
@@ -243,22 +243,22 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* Audit List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#e8e5de] shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Severity</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Timestamp</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">View</th>
+            <tr className="bg-[#f0eeea] border-b border-[#e8e5de]">
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider">Severity</th>
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider">Timestamp</th>
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider">User</th>
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider">Action</th>
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider">Category</th>
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider">Details</th>
+              <th className="p-4 text-xs font-bold text-[#6b687a] uppercase tracking-wider text-right">View</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[#e8e5de]">
             {filteredLogs.map((log) => (
-              <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+              <tr key={log.id} className="hover:bg-[#f0eeea] transition-colors">
                 <td className="p-4">
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${getSeverityBadge(log.severity)}`}>
                     {getSeverityIcon(log.severity)}
@@ -266,8 +266,8 @@ const AdminAuditLog: React.FC = () => {
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="flex items-center gap-2 text-slate-600 text-sm">
-                    <div className="p-1 bg-slate-100 rounded">
+                  <div className="flex items-center gap-2 text-[#6b687a] text-sm">
+                    <div className="p-1 bg-[#f0eeea] rounded">
                       <Calendar size={12} />
                     </div>
                     {log.timestamp}
@@ -283,24 +283,24 @@ const AdminAuditLog: React.FC = () => {
                       </div>
                     )}
                     <div>
-                      <p className="font-bold text-slate-800 text-sm">{log.user.name}</p>
-                      <p className="text-xs text-slate-500">{log.user.role}</p>
+                      <p className="font-bold text-[#1a1625] text-sm">{log.user.name}</p>
+                      <p className="text-xs text-[#6b687a]">{log.user.role}</p>
                     </div>
                   </div>
                 </td>
                 <td className="p-4">
-                  <p className="font-medium text-slate-800 text-sm">{log.action}</p>
+                  <p className="font-medium text-[#1a1625] text-sm">{log.action}</p>
                 </td>
                 <td className="p-4">
                   <span className={`px-2 py-1 rounded text-xs font-bold ${getCategoryColor(log.category)}`}>
                     {log.category}
                   </span>
                 </td>
-                <td className="p-4 text-sm text-slate-600 max-w-xs truncate" title={log.details}>
+                <td className="p-4 text-sm text-[#6b687a] max-w-xs truncate" title={log.details}>
                   {log.details}
                 </td>
                 <td className="p-4 text-right">
-                  <button className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
+                  <button className="p-2 hover:bg-[#e8e5de] rounded-lg text-[#a8a5b3] hover:text-violet-600 transition-colors">
                     <Eye size={16} />
                   </button>
                 </td>
@@ -310,8 +310,8 @@ const AdminAuditLog: React.FC = () => {
         </table>
 
         {filteredLogs.length === 0 && (
-          <div className="p-12 text-center text-slate-500">
-            <Shield size={48} className="mx-auto mb-4 text-slate-300" />
+          <div className="p-12 text-center text-[#6b687a]">
+            <Shield size={48} className="mx-auto mb-4 text-[#a8a5b3]" />
             <p className="font-medium">No logs found</p>
             <p className="text-sm">Try adjusting your search or filters</p>
           </div>

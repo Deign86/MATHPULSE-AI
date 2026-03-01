@@ -112,7 +112,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
 
   if (showCompletion) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0a0f]/90 backdrop-blur-md p-4">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -127,8 +127,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
             <CheckCircle size={40} className="text-white" />
           </motion.div>
 
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">Lesson Complete!</h2>
-          <p className="text-slate-600 mb-6">
+          <h2 className="text-2xl font-bold text-[#1a1625] mb-3">Lesson Complete!</h2>
+          <p className="text-[#6b687a] mb-6">
             Great job! You've finished learning about <strong>{lesson.title}</strong>.
           </p>
 
@@ -154,30 +154,30 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
+      <header className="bg-white border-b border-[#e8e5de] px-6 py-4 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-all hover:scale-110"
+              className="w-10 h-10 rounded-xl bg-[#f0eeea] hover:bg-[#e8e5de] flex items-center justify-center text-[#6b687a] transition-all hover:scale-110"
             >
               <ArrowLeft size={20} />
             </button>
             <div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1">
+              <div className="flex items-center gap-2 text-xs text-[#6b687a] font-medium mb-1">
                 <BookOpen size={14} />
                 <span>Lesson</span>
               </div>
-              <h1 className="font-bold text-lg text-slate-800">{content.title}</h1>
+              <h1 className="font-bold text-lg text-[#1a1625]">{content.title}</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right mr-3">
-              <p className="text-xs text-slate-500 font-medium">Progress</p>
-              <p className="text-sm font-bold text-slate-700">{Math.round(progress)}%</p>
+              <p className="text-xs text-[#6b687a] font-medium">Progress</p>
+              <p className="text-sm font-bold text-[#1a1625]">{Math.round(progress)}%</p>
             </div>
-            <div className="w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-32 h-2 bg-[#e8e5de] rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
                 initial={{ width: 0 }}
@@ -202,22 +202,22 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
             >
               {/* Section Header */}
               <div className="mb-6">
-                <div className="flex items-center gap-2 text-sm text-slate-500 font-medium mb-2">
+                <div className="flex items-center gap-2 text-sm text-[#6b687a] font-medium mb-2">
                   <span>Section {currentSection + 1} of {totalSections}</span>
                 </div>
                 {currentSectionData.heading && (
-                  <h2 className="text-3xl font-bold text-slate-800 mb-4">
+                  <h2 className="text-3xl font-bold text-[#1a1625] mb-4">
                     {currentSectionData.heading}
                   </h2>
                 )}
               </div>
 
               {/* Content Based on Type */}
-              <div className="bg-white rounded-3xl p-8 shadow-lg border border-slate-100 min-h-[500px]">
+              <div className="bg-white rounded-3xl p-8 shadow-lg border border-[#e8e5de] min-h-[500px]">
                 {/* Text Content */}
                 {currentSectionData.type === 'text' && (
                   <div className="prose prose-slate max-w-none">
-                    <p className="text-lg text-slate-700 leading-relaxed whitespace-pre-line">
+                    <p className="text-lg text-[#1a1625] leading-relaxed whitespace-pre-line">
                       {currentSectionData.content}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
                 {/* Video */}
                 {currentSectionData.type === 'video' && (
                   <div>
-                    <div className="bg-slate-900 rounded-2xl overflow-hidden mb-4 aspect-video flex items-center justify-center">
+                    <div className="bg-[#0d0b14] rounded-2xl overflow-hidden mb-4 aspect-video flex items-center justify-center">
                       <div className="text-center">
                         <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Play size={32} className="text-white ml-1" />
@@ -250,28 +250,28 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
                         <p className="text-white/50 text-xs mt-2">In production, this would show actual video lessons</p>
                       </div>
                     </div>
-                    <p className="text-slate-600">{currentSectionData.content}</p>
+                    <p className="text-[#6b687a]">{currentSectionData.content}</p>
                   </div>
                 )}
 
                 {/* Examples */}
                 {currentSectionData.type === 'example' && (
                   <div>
-                    <p className="text-slate-700 mb-6">{currentSectionData.content}</p>
+                    <p className="text-[#1a1625] mb-6">{currentSectionData.content}</p>
                     <div className="space-y-4">
                       {currentSectionData.examples?.map((example, idx) => (
-                        <div key={idx} className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200">
+                        <div key={idx} className="bg-gradient-to-br from-violet-50 to-fuchsia-50 rounded-2xl p-6 border-2 border-violet-200">
                           <div className="flex items-start gap-3 mb-4">
-                            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center flex-shrink-0">
                               <Calculator size={18} className="text-white" />
                             </div>
                             <div className="flex-1">
-                              <h4 className="font-bold text-blue-900 mb-2">{example.problem}</h4>
+                              <h4 className="font-bold text-violet-900 mb-2">{example.problem}</h4>
                             </div>
                           </div>
-                          <div className="ml-11 bg-white/60 rounded-xl p-4 border border-blue-100">
-                            <p className="text-sm font-bold text-blue-700 mb-2">Solution:</p>
-                            <p className="text-slate-700 whitespace-pre-line text-sm leading-relaxed">
+                          <div className="ml-11 bg-white/60 rounded-xl p-4 border border-violet-100">
+                            <p className="text-sm font-bold text-violet-700 mb-2">Solution:</p>
+                            <p className="text-[#1a1625] whitespace-pre-line text-sm leading-relaxed">
                               {example.solution}
                             </p>
                           </div>
@@ -312,7 +312,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
                     ? 'w-8 bg-teal-500'
                     : idx < currentSection
                     ? 'w-2 bg-teal-300'
-                    : 'w-2 bg-slate-300'
+                    : 'w-2 bg-[#e8e5de]'
                 }`}
               />
             ))}
@@ -321,20 +321,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
       </main>
 
       {/* Footer Navigation */}
-      <footer className="bg-white border-t border-slate-200 px-6 py-4 shadow-lg">
+      <footer className="bg-white border-t border-[#e8e5de] px-6 py-4 shadow-lg">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Button
             onClick={handlePrevious}
             disabled={currentSection === 0}
             variant="outline"
-            className="px-6 py-6 rounded-xl font-bold disabled:opacity-50 hover:bg-slate-50"
+            className="px-6 py-6 rounded-xl font-bold disabled:opacity-50 hover:bg-[#f0eeea]"
           >
             <ArrowLeft size={18} className="mr-2" />
             Previous
           </Button>
 
           <div className="text-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[#6b687a]">
               {currentSection + 1} / {totalSections}
             </p>
           </div>

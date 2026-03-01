@@ -256,39 +256,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   if (dataLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+      <div className="flex h-screen w-full items-center justify-center bg-[#f8f7f4]">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 size={40} className="animate-spin text-blue-600" />
-          <p className="text-slate-600 font-medium">Loading dashboard...</p>
+          <Loader2 size={40} className="animate-spin text-violet-600" />
+          <p className="text-[#6b687a] font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
+    <div className="flex h-screen w-full bg-[#f8f7f4] overflow-hidden">
       {/* Collapsible Sidebar */}
       <motion.aside
         initial={false}
         animate={{ width: sidebarCollapsed ? 80 : 280 }}
-        className="bg-white border-r border-gray-200 flex flex-col shadow-sm"
+        className="bg-[#1a1625] border-r border-white/[0.06] flex flex-col shadow-sm"
       >
         {/* Logo & Toggle */}
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
           {!sidebarCollapsed && (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl flex items-center justify-center">
                 <BookOpen size={20} className="text-white" />
               </div>
               <div>
-                <h1 className="font-bold text-slate-800">MathPulse AI</h1>
-                <p className="text-xs text-slate-500">Teacher Portal</p>
+                <h1 className="font-display font-bold text-white">MathPulse AI</h1>
+                <p className="text-xs text-[#a8a5b3]">Teacher Portal</p>
               </div>
             </div>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/[0.06] rounded-lg transition-colors text-[#a8a5b3]"
           >
             {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
@@ -334,12 +334,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </nav>
 
         {/* User Section */}
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-white/[0.06]">
           {!sidebarCollapsed ? (
             <div className="space-y-2">
               <button
                 onClick={onOpenProfile}
-                className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-all group"
+                className="w-full flex items-center gap-3 p-3 hover:bg-white/[0.06] rounded-xl transition-all group"
               >
                 <img
                   src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
@@ -347,14 +347,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   className="w-10 h-10 rounded-lg object-cover"
                 />
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-bold text-slate-800">{teacherName}</p>
-                  <p className="text-xs text-slate-500">Teacher</p>
+                  <p className="text-sm font-bold text-white">{teacherName}</p>
+                  <p className="text-xs text-[#a8a5b3]">Teacher</p>
                 </div>
               </button>
               <Button
                 onClick={() => setShowLogoutConfirm(true)}
                 variant="outline"
-                className="w-full border-gray-200 hover:border-red-500 hover:text-red-500 font-bold text-sm"
+                className="w-full border-white/[0.1] text-[#a8a5b3] hover:border-red-500 hover:text-red-500 font-bold text-sm"
               >
                 Logout
               </Button>
@@ -373,10 +373,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-[#f8f7f4] border-b border-[#e8e5de] px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">
+              <h1 className="text-2xl font-display font-bold text-[#1a1625]">
                 {activeView === 'dashboard' && 'Teacher Dashboard'}
                 {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
                 {activeView === 'intervention' && 'Student Intervention'}
@@ -384,7 +384,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 {activeView === 'competency' && 'Student Competency'}
                 {activeView === 'import' && 'Data Import'}
               </h1>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <p className="text-sm text-[#6b687a] mt-0.5">
                 {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
                 {activeView === 'analytics' && 'Deep dive into class performance'}
                 {activeView === 'intervention' && selectedStudent?.name}
@@ -401,11 +401,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <ClipboardCheck size={16} />
                 AI Quiz Maker
               </button>
-              <button className="p-3 bg-gray-100 rounded-xl text-slate-600 hover:bg-gray-200 transition-colors relative">
+              <button className="p-3 bg-[#f0eeea] rounded-xl text-[#6b687a] hover:bg-[#e8e5de] transition-colors relative">
                 <Bell size={20} />
                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              <button className="p-3 bg-gray-100 rounded-xl text-slate-600 hover:bg-gray-200 transition-colors">
+              <button className="p-3 bg-[#f0eeea] rounded-xl text-[#6b687a] hover:bg-[#e8e5de] transition-colors">
                 <Calendar size={20} />
               </button>
             </div>
@@ -487,8 +487,8 @@ const NavItem: React.FC<{
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
       active
-        ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md'
-        : 'text-slate-600 hover:bg-gray-100'
+        ? 'bg-violet-600 text-white shadow-md'
+        : 'text-[#a8a5b3] hover:bg-white/[0.06] hover:text-white'
     }`}
   >
     <Icon size={20} />
@@ -518,14 +518,14 @@ const DashboardView: React.FC<{
       className="p-6 space-y-6"
     >
       {/* Daily AI Insight Banner */}
-      <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-8 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-3xl p-8 text-white shadow-lg">
         <div className="flex items-start gap-4 mb-6">
           <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={28} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold mb-2">Daily AI Insight</h2>
-            <p className="text-blue-100 text-lg">
+            <h2 className="text-2xl font-display font-bold mb-2">Daily AI Insight</h2>
+            <p className="text-violet-100 text-lg">
               {insightLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 size={18} className="animate-spin" />
@@ -541,15 +541,15 @@ const DashboardView: React.FC<{
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-            <p className="text-sm text-blue-100 mb-1">Class Average</p>
+            <p className="text-sm text-violet-100 mb-1">Class Average</p>
             <p className="text-3xl font-bold">{avgPerformance}%</p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-            <p className="text-sm text-blue-100 mb-1">Engagement Rate</p>
+            <p className="text-sm text-violet-100 mb-1">Engagement Rate</p>
             <p className="text-3xl font-bold">{engagementRate}%</p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-            <p className="text-sm text-blue-100 mb-1">At Risk Students</p>
+            <p className="text-sm text-violet-100 mb-1">At Risk Students</p>
             <p className="text-3xl font-bold">{totalAtRisk}</p>
           </div>
         </div>
@@ -560,8 +560,8 @@ const DashboardView: React.FC<{
         {/* My Classes - 2 columns */}
         <div className="col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-800">My Classes</h2>
-            <button className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
+            <h2 className="text-xl font-display font-bold text-[#1a1625]">My Classes</h2>
+            <button className="text-sm font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1 group">
               View All
               <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </button>
@@ -572,39 +572,39 @@ const DashboardView: React.FC<{
               <motion.div
                 key={classItem.id}
                 whileHover={{ scale: 1.01 }}
-                className={`bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+                className={`bg-white border border-[#e8e5de] rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer`}
                 onClick={() => onViewClass(classItem)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-bold text-slate-800">{classItem.name}</h3>
+                      <h3 className="text-lg font-display font-bold text-[#1a1625]">{classItem.name}</h3>
                       <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(classItem.riskLevel)}`}>
                         {classItem.riskLevel === 'high' ? 'High Risk' : classItem.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <div className="flex items-center gap-2 text-sm text-[#6b687a]">
                       <Clock size={14} />
                       <span>{classItem.schedule}</span>
                     </div>
                   </div>
-                  <Button className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 text-white font-bold px-6 py-2 rounded-xl">
+                  <Button className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-2 rounded-xl">
                     View Class
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Total Students</p>
-                    <p className="text-xl font-bold text-slate-800">{classItem.studentCount}</p>
+                    <p className="text-xs text-[#6b687a] mb-1">Total Students</p>
+                    <p className="text-xl font-bold text-[#1a1625]">{classItem.studentCount}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">At Risk</p>
+                    <p className="text-xs text-[#6b687a] mb-1">At Risk</p>
                     <p className="text-xl font-bold text-red-600">{classItem.atRiskCount}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Avg Score</p>
-                    <p className="text-xl font-bold text-blue-600">{classItem.avgScore}%</p>
+                    <p className="text-xs text-[#6b687a] mb-1">Avg Score</p>
+                    <p className="text-xl font-bold text-violet-600">{classItem.avgScore}%</p>
                   </div>
                 </div>
               </motion.div>
@@ -615,28 +615,28 @@ const DashboardView: React.FC<{
         {/* Live Classroom Pulse - 1 column */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-cyan-600" />
+            <div className="w-10 h-10 bg-fuchsia-100 rounded-xl flex items-center justify-center">
+              <Zap size={20} className="text-fuchsia-600" />
             </div>
-            <h2 className="text-xl font-bold text-slate-800">Live Classroom Pulse</h2>
+            <h2 className="text-xl font-display font-bold text-[#1a1625]">Live Classroom Pulse</h2>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 space-y-3 max-h-[600px] overflow-y-auto">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e8e5de] space-y-3 max-h-[600px] overflow-y-auto">
             {liveActivity.map((activity) => (
               <div
                 key={activity.id}
                 className={`p-4 rounded-xl border-l-4 ${
                   activity.type === 'success' ? 'bg-green-50 border-green-500' :
                   activity.type === 'warning' ? 'bg-amber-50 border-amber-500' :
-                  'bg-blue-50 border-blue-500'
+                  'bg-violet-50 border-violet-500'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
-                  <p className="font-bold text-slate-800 text-sm">{activity.student}</p>
-                  <span className="text-xs text-slate-500">{activity.time}</span>
+                  <p className="font-bold text-[#1a1625] text-sm">{activity.student}</p>
+                  <span className="text-xs text-[#a8a5b3]">{activity.time}</span>
                 </div>
-                <p className="text-sm text-slate-600">
-                  {activity.action} <span className="font-bold text-slate-800">{activity.topic}</span>
+                <p className="text-sm text-[#6b687a]">
+                  {activity.action} <span className="font-bold text-[#1a1625]">{activity.topic}</span>
                 </p>
               </div>
             ))}
@@ -666,7 +666,7 @@ const AnalyticsView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-slate-600 hover:text-blue-600 font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-[#6b687a] hover:text-violet-600 font-bold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Dashboard
@@ -675,15 +675,15 @@ const AnalyticsView: React.FC<{
       {/* Split View */}
       <div className="grid grid-cols-5 gap-6">
         {/* Left Column - Student List */}
-        <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-[#e8e5de]">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-slate-800">Students ({students.length})</h2>
+            <h2 className="text-lg font-display font-bold text-[#1a1625]">Students ({students.length})</h2>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" size={16} />
               <Input
                 type="text"
                 placeholder="Search..."
-                className="w-40 pl-9 pr-4 py-2 rounded-xl border-gray-200 text-sm"
+                className="w-40 pl-9 pr-4 py-2 rounded-xl border-[#e8e5de] text-sm"
               />
             </div>
           </div>
@@ -703,15 +703,15 @@ const AnalyticsView: React.FC<{
                     className="w-12 h-12 rounded-xl object-cover border-2 border-current"
                   />
                   <div className="flex-1">
-                    <h4 className="font-bold text-slate-800">{student.name}</h4>
-                    <p className="text-xs text-slate-600">{student.lastActive}</p>
+                    <h4 className="font-bold text-[#1a1625]">{student.name}</h4>
+                    <p className="text-xs text-[#6b687a]">{student.lastActive}</p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-500">Avg Score</span>
-                    <span className="text-xs font-bold text-slate-800">{student.avgScore}%</span>
+                    <span className="text-xs font-bold text-[#6b687a]">Avg Score</span>
+                    <span className="text-xs font-bold text-[#1a1625]">{student.avgScore}%</span>
                   </div>
                   <div className="h-2 bg-white rounded-full overflow-hidden">
                     <div
@@ -732,8 +732,8 @@ const AnalyticsView: React.FC<{
         {/* Right Column - Charts */}
         <div className="col-span-3 space-y-6">
           {/* Risk Distribution */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-            <h2 className="text-lg font-bold text-slate-800 mb-5">Risk Distribution</h2>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e5de]">
+            <h2 className="text-lg font-display font-bold text-[#1a1625] mb-5">Risk Distribution</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={riskDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -750,36 +750,36 @@ const AnalyticsView: React.FC<{
           </div>
 
           {/* Topic Performance */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-            <h2 className="text-lg font-bold text-slate-800 mb-5">Topic Performance</h2>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e5de]">
+            <h2 className="text-lg font-display font-bold text-[#1a1625] mb-5">Topic Performance</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={topicPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e5de" />
                 <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip />
-                <Bar dataKey="score" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="score" fill="#7c3aed" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Action Items */}
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-2xl p-6">
+          <div className="bg-gradient-to-br from-violet-50 to-fuchsia-50 border-2 border-violet-200 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center">
                   <Target size={24} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">Validate AI Links</h3>
-                  <p className="text-sm text-slate-600">Review AI-generated interventions</p>
+                  <h3 className="font-display font-bold text-[#1a1625]">Validate AI Links</h3>
+                  <p className="text-sm text-[#6b687a]">Review AI-generated interventions</p>
                 </div>
               </div>
               <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold">
                 Pending
               </span>
             </div>
-            <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 text-white font-bold py-3 rounded-xl">
+            <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl">
               Review Now
             </Button>
           </div>
@@ -831,7 +831,7 @@ const InterventionView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-slate-600 hover:text-blue-600 font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-[#6b687a] hover:text-violet-600 font-bold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Analytics
@@ -839,7 +839,7 @@ const InterventionView: React.FC<{
 
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Student Header */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#e8e5de]">
           <div className="flex items-start gap-6">
             <img
               src={student.avatar}
@@ -848,23 +848,23 @@ const InterventionView: React.FC<{
             />
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-slate-800">{student.name}</h1>
+                <h1 className="text-3xl font-display font-bold text-[#1a1625]">{student.name}</h1>
                 <span className={`px-4 py-1.5 rounded-xl text-sm font-bold border-2 ${getRiskBadge(student.riskLevel)}`}>
                   {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
                 </span>
               </div>
-              <p className="text-slate-600 mb-4">{student.className}</p>
+              <p className="text-[#6b687a] mb-4">{student.className}</p>
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-1">Avg Score</p>
-                  <p className="text-2xl font-bold text-slate-800">{student.avgScore}%</p>
+                <div className="bg-[#f0eeea] rounded-xl p-3">
+                  <p className="text-xs text-[#6b687a] mb-1">Avg Score</p>
+                  <p className="text-2xl font-bold text-[#1a1625]">{student.avgScore}%</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-1">Last Active</p>
-                  <p className="text-sm font-bold text-slate-800">{student.lastActive}</p>
+                <div className="bg-[#f0eeea] rounded-xl p-3">
+                  <p className="text-xs text-[#6b687a] mb-1">Last Active</p>
+                  <p className="text-sm font-bold text-[#1a1625]">{student.lastActive}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-1">Weakest Topic</p>
+                <div className="bg-[#f0eeea] rounded-xl p-3">
+                  <p className="text-xs text-[#6b687a] mb-1">Weakest Topic</p>
                   <p className="text-sm font-bold text-red-600">{student.weakestTopic}</p>
                 </div>
               </div>
@@ -879,14 +879,14 @@ const InterventionView: React.FC<{
               <AlertCircle size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800 mb-2">AI Analysis - Learning Barriers</h2>
+              <h2 className="text-xl font-display font-bold text-[#1a1625] mb-2">AI Analysis - Learning Barriers</h2>
               {pathLoading ? (
-                <div className="flex items-center gap-2 text-slate-600">
+                <div className="flex items-center gap-2 text-[#6b687a]">
                   <Loader2 size={18} className="animate-spin" />
                   <span>Generating AI analysis...</span>
                 </div>
               ) : (
-                <div className="space-y-2 text-slate-700">
+                <div className="space-y-2 text-[#1a1625]">
                   {student.struggles.length > 0 ? (
                     student.struggles.map((s, i) => (
                       <p key={i} className="flex items-start gap-2">
@@ -907,23 +907,23 @@ const InterventionView: React.FC<{
         </div>
 
         {/* AI-Generated Learning Path */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">AI-Generated Learning Path</h2>
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#e8e5de]">
+          <h2 className="text-xl font-display font-bold text-[#1a1625] mb-6">AI-Generated Learning Path</h2>
           
           {pathLoading ? (
-            <div className="flex items-center justify-center py-8 gap-2 text-slate-500">
+            <div className="flex items-center justify-center py-8 gap-2 text-[#6b687a]">
               <Loader2 size={20} className="animate-spin" />
               <span>Generating personalized learning path...</span>
             </div>
           ) : learningPath ? (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 whitespace-pre-wrap text-sm text-slate-700">
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 mb-6 whitespace-pre-wrap text-sm text-[#1a1625]">
               {learningPath}
             </div>
           ) : null}
           
           <div className="space-y-4 relative">
             {/* Vertical Timeline Line */}
-            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gray-200"></div>
+            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-[#e8e5de]"></div>
 
             {remedialSteps.map((step, index) => {
               const Icon = step.icon;
@@ -936,24 +936,24 @@ const InterventionView: React.FC<{
                   className="relative pl-16"
                 >
                   {/* Step Number Circle */}
-                  <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-md">
+                  <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-md">
                     <Icon size={24} className="text-white" />
                   </div>
 
                   {/* Step Content */}
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-5 hover:shadow-md transition-all">
+                  <div className="bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-200 rounded-2xl p-5 hover:shadow-md transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-bold text-slate-800 mb-1">{step.title}</h3>
-                        <p className="text-sm text-slate-600">
+                        <h3 className="font-display font-bold text-[#1a1625] mb-1">{step.title}</h3>
+                        <p className="text-sm text-[#6b687a]">
                           {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
                           {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
                           {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                        step.type === 'video' ? 'bg-purple-100 text-purple-700' :
-                        step.type === 'quiz' ? 'bg-blue-100 text-blue-700' :
+                        step.type === 'video' ? 'bg-fuchsia-100 text-fuchsia-700' :
+                        step.type === 'quiz' ? 'bg-violet-100 text-violet-700' :
                         'bg-green-100 text-green-700'
                       }`}>
                         {step.type === 'video' ? 'Video' : step.type === 'quiz' ? 'Quiz' : 'Assessment'}
@@ -968,13 +968,13 @@ const InterventionView: React.FC<{
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-4">
-          <Button className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
+          <Button className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
             <Send size={20} />
             Schedule One-on-One Session
           </Button>
           <Button
             variant="outline"
-            className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+            className="border-2 border-violet-600 text-violet-600 hover:bg-violet-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
           >
             <Download size={20} />
             Export Printed Materials
@@ -1031,8 +1031,8 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
-          <h2 className="text-xl font-bold text-slate-800">Import Data</h2>
-          <p className="text-slate-500">Upload class records and course materials to enhance AI predictions</p>
+          <h2 className="text-xl font-display font-bold text-[#1a1625]">Import Data</h2>
+          <p className="text-[#6b687a]">Upload class records and course materials to enhance AI predictions</p>
         </div>
 
         {/* Upload Zones */}
@@ -1043,8 +1043,8 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
             onDragLeave={() => setDragOver1(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-blue-400 hover:bg-blue-50 ${
-              dragOver1 ? 'border-blue-600 bg-blue-50 scale-105' : 'border-gray-300'
+            className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-violet-400 hover:bg-violet-50 ${
+              dragOver1 ? 'border-violet-600 bg-violet-50 scale-105' : 'border-[#e8e5de]'
             }`}
           >
             <input
@@ -1054,23 +1054,23 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
               {uploading ? (
-                <Loader2 size={40} className="text-blue-600 animate-spin" />
+                <Loader2 size={40} className="text-violet-600 animate-spin" />
               ) : (
-                <FileSpreadsheet size={40} className="text-blue-600" />
+                <FileSpreadsheet size={40} className="text-violet-600" />
               )}
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Class Records</h3>
-            <p className="text-slate-600 mb-4">
+            <h3 className="text-xl font-display font-bold text-[#1a1625] mb-2">Class Records</h3>
+            <p className="text-[#6b687a] mb-4">
               {uploading ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
             </p>
-            <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
-                <span className="bg-gray-100 px-2 py-1 rounded text-slate-600 font-medium">.csv</span>
-                <span className="bg-gray-100 px-2 py-1 rounded text-slate-600 font-medium">.xlsx</span>
-                <span className="bg-gray-100 px-2 py-1 rounded text-slate-600 font-medium">.pdf</span>
+            <p className="text-xs text-[#6b687a] mb-4 flex items-center justify-center gap-2">
+                <span className="bg-[#f0eeea] px-2 py-1 rounded text-[#6b687a] font-medium">.csv</span>
+                <span className="bg-[#f0eeea] px-2 py-1 rounded text-[#6b687a] font-medium">.xlsx</span>
+                <span className="bg-[#f0eeea] px-2 py-1 rounded text-[#6b687a] font-medium">.pdf</span>
             </p>
-            <Button className="bg-white border-2 border-gray-200 text-slate-600 hover:border-blue-500 hover:text-blue-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-white border-2 border-[#e8e5de] text-[#6b687a] hover:border-violet-500 hover:text-violet-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -1081,47 +1081,47 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
             onDragLeave={() => setDragOver2(false)}
             onDrop={(e) => { e.preventDefault(); setDragOver2(false); }}
             className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-amber-400 hover:bg-amber-50 ${
-              dragOver2 ? 'border-amber-600 bg-amber-50 scale-105' : 'border-gray-300'
+              dragOver2 ? 'border-amber-600 bg-amber-50 scale-105' : 'border-[#e8e5de]'
             }`}
           >
             <div className="w-20 h-20 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <FileText size={40} className="text-amber-600" />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Course Materials</h3>
-            <p className="text-slate-600 mb-4">Upload syllabus, lesson plans, and curriculum documents</p>
-            <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
-                <span className="bg-gray-100 px-2 py-1 rounded text-slate-600 font-medium">.pdf</span>
-                <span className="bg-gray-100 px-2 py-1 rounded text-slate-600 font-medium">.docx</span>
-                <span className="bg-gray-100 px-2 py-1 rounded text-slate-600 font-medium">.txt</span>
+            <h3 className="text-xl font-display font-bold text-[#1a1625] mb-2">Course Materials</h3>
+            <p className="text-[#6b687a] mb-4">Upload syllabus, lesson plans, and curriculum documents</p>
+            <p className="text-xs text-[#a8a5b3] mb-4 flex items-center justify-center gap-2">
+                <span className="bg-[#f0eeea] px-2 py-1 rounded text-[#6b687a] font-medium">.pdf</span>
+                <span className="bg-[#f0eeea] px-2 py-1 rounded text-[#6b687a] font-medium">.docx</span>
+                <span className="bg-[#f0eeea] px-2 py-1 rounded text-[#6b687a] font-medium">.txt</span>
             </p>
-            <Button className="bg-white border-2 border-gray-200 text-slate-600 hover:border-amber-500 hover:text-amber-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-white border-2 border-[#e8e5de] text-[#6b687a] hover:border-amber-500 hover:text-amber-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
         </div>
 
         {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-blue-800 mb-3">How AI Uses Your Data</h3>
-          <div className="space-y-2 text-blue-900/80 text-sm">
+        <div className="bg-violet-50 border border-violet-200 rounded-2xl p-6">
+          <h3 className="text-lg font-display font-bold text-violet-800 mb-3">How AI Uses Your Data</h3>
+          <div className="space-y-2 text-violet-900/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
-              <span><strong className="text-blue-800">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
+              <span className="text-violet-600 font-bold">•</span>
+              <span><strong className="text-violet-800">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
+              <span className="text-violet-600 font-bold">•</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
+              <span className="text-violet-600 font-bold">•</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
+              <span className="text-violet-600 font-bold">•</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
+              <span className="text-violet-600 font-bold">•</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -1135,8 +1135,8 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
         )}
 
         {/* Manage Imported Data */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-bold text-slate-800 mb-4">Manage Imported Data</h3>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#e8e5de]">
+          <h3 className="text-lg font-display font-bold text-[#1a1625] mb-4">Manage Imported Data</h3>
           <button 
             onClick={onEditRecords}
             className="w-full bg-[#00a86b] hover:bg-[#008f5d] text-white rounded-xl p-5 flex items-center justify-between transition-all shadow-sm hover:shadow-md group"
@@ -1203,61 +1203,61 @@ const EditRecordsView: React.FC<{
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-slate-600"
+            className="p-2 hover:bg-[#f0eeea] rounded-lg transition-colors text-[#6b687a]"
           >
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Edit Class Records</h1>
-            <p className="text-slate-500">Review and modify student data manually</p>
+            <h1 className="text-2xl font-display font-bold text-[#1a1625]">Edit Class Records</h1>
+            <p className="text-[#6b687a]">Review and modify student data manually</p>
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onBack} className="border-gray-300">
+          <Button variant="outline" onClick={onBack} className="border-[#e8e5de]">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white gap-2">
+          <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
             {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-           <div className="flex items-center gap-2 text-slate-600">
+      <div className="bg-white border border-[#e8e5de] rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-[#e8e5de] bg-[#f8f7f4] flex items-center justify-between">
+           <div className="flex items-center gap-2 text-[#6b687a]">
              <Info size={18} />
              <span className="text-sm">Click on any field to edit</span>
            </div>
-           <div className="text-sm text-slate-500">
+           <div className="text-sm text-[#6b687a]">
              Showing {students.length} records
            </div>
         </div>
         
         <div className="overflow-auto flex-1">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="bg-[#f8f7f4] sticky top-0 z-10">
               <tr>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">Student Name</th>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">ID</th>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">Class</th>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">Avg Score</th>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">Risk Level</th>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">Weakest Topic</th>
-                <th className="p-4 font-bold text-slate-700 border-b border-gray-200 bg-gray-50">Actions</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">Student Name</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">ID</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">Class</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">Avg Score</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">Risk Level</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">Weakest Topic</th>
+                <th className="p-4 font-bold text-[#6b687a] border-b border-[#e8e5de] bg-[#f8f7f4]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {students.map((student) => (
-                <tr key={student.id} className="border-b border-gray-100 hover:bg-blue-50/30 group transition-colors">
+                <tr key={student.id} className="border-b border-[#e8e5de] hover:bg-violet-50/30 group transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <img src={student.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      <span className="font-medium text-slate-800">{student.name}</span>
+                      <span className="font-medium text-[#1a1625]">{student.name}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-slate-600 font-mono text-sm">{student.id.padStart(6, '0')}</td>
-                  <td className="p-4 text-slate-600">{student.className}</td>
+                  <td className="p-4 text-[#6b687a] font-mono text-sm">{student.id.padStart(6, '0')}</td>
+                  <td className="p-4 text-[#6b687a]">{student.className}</td>
                   <td className="p-4">
                     <span className={`font-bold ${
                       student.avgScore < 60 ? 'text-red-600' : 
@@ -1269,9 +1269,9 @@ const EditRecordsView: React.FC<{
                       {student.riskLevel.toUpperCase()}
                     </span>
                   </td>
-                  <td className="p-4 text-slate-600">{student.weakestTopic}</td>
+                  <td className="p-4 text-[#6b687a]">{student.weakestTopic}</td>
                   <td className="p-4">
-                    <button className="p-2 hover:bg-gray-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
+                    <button className="p-2 hover:bg-[#f0eeea] rounded-lg text-[#a8a5b3] hover:text-violet-600 transition-colors">
                       <Edit3 size={16} />
                     </button>
                   </td>

@@ -11,9 +11,9 @@ const BLOOM_CARDS = [
   {
     level: 'Remember',
     icon: Brain,
-    bgColor: 'bg-blue-500/20',
-    borderColor: 'border-blue-500/40',
-    textColor: 'text-blue-400',
+    bgColor: 'bg-violet-500/20',
+    borderColor: 'border-violet-500/40',
+    textColor: 'text-violet-400',
     description: 'Recall facts, formulas, definitions, and basic procedures.',
     mathExample: 'State the quadratic formula.',
     mapsTo: 'Identification, Enumeration',
@@ -71,11 +71,11 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            className="bg-[#0d0b14] border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="bg-gradient-to-r from-cyan-600 to-fuchsia-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                   <GraduationCap size={22} className="text-white" />
@@ -97,10 +97,10 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Section 1 - What is Bloom's Taxonomy? */}
               <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide mb-2">
+                <h3 className="text-sm font-bold text-fuchsia-400 uppercase tracking-wide mb-2">
                   What is Bloom's Taxonomy?
                 </h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <p className="text-sm text-[#a8a5b3] leading-relaxed">
                   Bloom's Taxonomy is an educational framework developed by Benjamin Bloom in 1956
                   and revised in 2001. It classifies learning objectives into six cognitive levels,
                   from basic recall of facts up to complex evaluation and creation. MathPulse uses
@@ -110,10 +110,10 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
 
               {/* Section 2 - Why MathPulse Uses It */}
               <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide mb-2">
+                <h3 className="text-sm font-bold text-fuchsia-400 uppercase tracking-wide mb-2">
                   Why MathPulse Uses It
                 </h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <p className="text-sm text-[#a8a5b3] leading-relaxed">
                   Using Bloom's Taxonomy ensures that assessments do not only test memorization.
                   A well-balanced math quiz should challenge students at multiple cognitive levels:
                   remembering formulas, understanding concepts, applying procedures, and analyzing
@@ -124,7 +124,7 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
 
               {/* Section 3 - Level-by-Level Breakdown */}
               <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide mb-3">
+                <h3 className="text-sm font-bold text-fuchsia-400 uppercase tracking-wide mb-3">
                   Level-by-Level Breakdown
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -139,16 +139,16 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
                           <Icon size={18} className={card.textColor} />
                           <span className={`font-bold text-sm ${card.textColor}`}>{card.level}</span>
                         </div>
-                        <p className="text-xs text-slate-300">{card.description}</p>
+                        <p className="text-xs text-[#a8a5b3]">{card.description}</p>
                         <div className="bg-black/20 rounded-lg p-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">
+                          <p className="text-[10px] font-semibold text-[#a8a5b3] uppercase tracking-wide mb-0.5">
                             Math Example
                           </p>
-                          <p className="text-xs text-slate-200 italic">{card.mathExample}</p>
+                          <p className="text-xs text-[#e8e5de] italic">{card.mathExample}</p>
                         </div>
                         <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-400">
-                            Maps to: <span className="text-slate-300 font-medium">{card.mapsTo}</span>
+                          <span className="text-[#a8a5b3]">
+                            Maps to: <span className="text-[#a8a5b3] font-medium">{card.mapsTo}</span>
                           </span>
                           <span className="text-green-400 font-medium">{card.defaultWeight}</span>
                         </div>
@@ -159,9 +159,9 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
               </div>
 
               {/* Section 4 - Note */}
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  <span className="font-semibold text-slate-300">Note:</span>{' '}
+              <div className="bg-[#1a1625] border border-white/10 rounded-xl p-4">
+                <p className="text-xs text-[#a8a5b3] leading-relaxed">
+                  <span className="font-semibold text-[#a8a5b3]">Note:</span>{' '}
                   All four levels are selected by default to produce a balanced, HOTS-aligned
                   assessment. Deselecting a level will remove questions of that cognitive depth
                   from the generated quiz.
@@ -170,19 +170,19 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
             </div>
 
             {/* Footer */}
-            <div className="border-t border-slate-700 px-6 py-3 flex items-center justify-between flex-shrink-0 bg-slate-900/80">
+            <div className="border-t border-white/10 px-6 py-3 flex items-center justify-between flex-shrink-0 bg-[#0a0a0f]/80">
               <a
                 href="https://cft.vanderbilt.edu/guides-sub-pages/blooms-taxonomy/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+                className="flex items-center gap-1.5 text-xs text-fuchsia-400 hover:text-fuchsia-300 font-medium transition-colors"
               >
                 <ExternalLink size={12} />
                 Learn More
               </a>
               <button
                 onClick={onClose}
-                className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded-xl transition-colors"
+                className="px-5 py-2 bg-cyan-600 hover:bg-fuchsia-500 text-white text-sm font-bold rounded-xl transition-colors"
               >
                 Got it
               </button>

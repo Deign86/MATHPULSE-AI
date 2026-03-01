@@ -30,7 +30,7 @@ const RISK_COLORS: Record<string, { bg: string; text: string; ring: string }> = 
 
 const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   advanced: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
-  proficient: { bg: 'bg-blue-100', text: 'text-blue-700', bar: 'bg-blue-500' },
+  proficient: { bg: 'bg-violet-100', text: 'text-violet-700', bar: 'bg-violet-500' },
   developing: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
   beginner: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
 };
@@ -203,10 +203,10 @@ const StudentCompetencyTable: React.FC = () => {
   const avgEngagement = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + r.student.engagementScore, 0) / totalStudents) : 0;
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ChevronDown size={14} className="text-slate-300" />;
+    if (sortField !== field) return <ChevronDown size={14} className="text-[#a8a5b3]" />;
     return sortDir === 'asc'
-      ? <ChevronUp size={14} className="text-blue-600" />
-      : <ChevronDown size={14} className="text-blue-600" />;
+      ? <ChevronUp size={14} className="text-violet-600" />
+      : <ChevronDown size={14} className="text-violet-600" />;
   };
 
   // ─── Render ───────────────────────────────────────────────
@@ -214,8 +214,8 @@ const StudentCompetencyTable: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
-        <span className="ml-3 text-slate-500">Loading student data...</span>
+        <Loader2 size={32} className="animate-spin text-violet-500" />
+        <span className="ml-3 text-[#6b687a]">Loading student data...</span>
       </div>
     );
   }
@@ -225,18 +225,18 @@ const StudentCompetencyTable: React.FC = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total Students', value: totalStudents, icon: <User size={20} />, color: 'bg-blue-50 text-blue-600' },
+          { label: 'Total Students', value: totalStudents, icon: <User size={20} />, color: 'bg-violet-50 text-violet-600' },
           { label: 'At-Risk Students', value: highRisk, icon: <AlertTriangle size={20} />, color: 'bg-red-50 text-red-600' },
           { label: 'Class Average', value: `${avgScore}%`, icon: <BarChart3 size={20} />, color: 'bg-emerald-50 text-emerald-600' },
           { label: 'Avg. Engagement', value: `${avgEngagement}%`, icon: <TrendingUp size={20} />, color: 'bg-purple-50 text-purple-600' },
         ].map((card, i) => (
-          <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
+          <div key={i} className="bg-white rounded-xl border border-[#e8e5de] p-4 flex items-center gap-3">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.color}`}>
               {card.icon}
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-800">{card.value}</p>
-              <p className="text-xs text-slate-500">{card.label}</p>
+              <p className="text-2xl font-bold text-[#1a1625]">{card.value}</p>
+              <p className="text-xs text-[#6b687a]">{card.label}</p>
             </div>
           </div>
         ))}
@@ -245,13 +245,13 @@ const StudentCompetencyTable: React.FC = () => {
       {/* Filter Bar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
           <input
             type="text"
             placeholder="Search students..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+            className="w-full pl-9 pr-4 py-2 border border-[#e8e5de] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
           />
         </div>
 
@@ -263,8 +263,8 @@ const StudentCompetencyTable: React.FC = () => {
               onClick={() => setRiskFilter(level)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 riskFilter === level
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-[#f0eeea] text-[#6b687a] hover:bg-[#e8e5de]'
               }`}
             >
               {level === 'all' ? 'All' : `${level} Risk`}
@@ -274,7 +274,7 @@ const StudentCompetencyTable: React.FC = () => {
 
         <button
           onClick={loadStudents}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-600 transition-colors"
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#f0eeea] hover:bg-[#e8e5de] rounded-lg text-xs font-semibold text-[#6b687a] transition-colors"
         >
           <RefreshCw size={14} />
           Refresh
@@ -282,20 +282,20 @@ const StudentCompetencyTable: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#e8e5de] overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-[#f0eeea] border-b border-[#e8e5de] text-xs font-semibold text-[#6b687a] uppercase tracking-wider">
           <div className="col-span-1"></div>
-          <button className="col-span-3 flex items-center gap-1 hover:text-slate-700" onClick={() => handleSort('name')}>
+          <button className="col-span-3 flex items-center gap-1 hover:text-[#1a1625]" onClick={() => handleSort('name')}>
             Student <SortIcon field="name" />
           </button>
-          <button className="col-span-2 flex items-center gap-1 hover:text-slate-700" onClick={() => handleSort('riskLevel')}>
+          <button className="col-span-2 flex items-center gap-1 hover:text-[#1a1625]" onClick={() => handleSort('riskLevel')}>
             Risk Level <SortIcon field="riskLevel" />
           </button>
-          <button className="col-span-2 flex items-center gap-1 hover:text-slate-700" onClick={() => handleSort('avgQuizScore')}>
+          <button className="col-span-2 flex items-center gap-1 hover:text-[#1a1625]" onClick={() => handleSort('avgQuizScore')}>
             Avg. Score <SortIcon field="avgQuizScore" />
           </button>
-          <button className="col-span-2 flex items-center gap-1 hover:text-slate-700" onClick={() => handleSort('engagementScore')}>
+          <button className="col-span-2 flex items-center gap-1 hover:text-[#1a1625]" onClick={() => handleSort('engagementScore')}>
             Engagement <SortIcon field="engagementScore" />
           </button>
           <div className="col-span-2 text-right">Weakest Topic</div>
@@ -303,23 +303,23 @@ const StudentCompetencyTable: React.FC = () => {
 
         {/* Rows */}
         {filteredRows.length === 0 ? (
-          <div className="py-12 text-center text-slate-400">
+          <div className="py-12 text-center text-[#a8a5b3]">
             <User size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No students match the current filters</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[#e8e5de]">
             {filteredRows.map(row => (
               <div key={row.student.id}>
                 {/* Main row */}
                 <button
                   onClick={() => toggleExpand(row.student.id)}
-                  className="w-full grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-left"
+                  className="w-full grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-[#f0eeea] transition-colors text-left"
                 >
                   {/* Expand icon */}
                   <div className="col-span-1">
                     <motion.div animate={{ rotate: row.expanded ? 90 : 0 }}>
-                      <ChevronRight size={16} className="text-slate-400" />
+                      <ChevronRight size={16} className="text-[#a8a5b3]" />
                     </motion.div>
                   </div>
 
@@ -328,11 +328,11 @@ const StudentCompetencyTable: React.FC = () => {
                     <img
                       src={row.student.avatar}
                       alt={row.student.name}
-                      className="w-8 h-8 rounded-full bg-slate-200 object-cover"
+                      className="w-8 h-8 rounded-full bg-[#e8e5de] object-cover"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">{row.student.name}</p>
-                      <p className="text-xs text-slate-400">{row.student.email}</p>
+                      <p className="text-sm font-semibold text-[#1a1625]">{row.student.name}</p>
+                      <p className="text-xs text-[#a8a5b3]">{row.student.email}</p>
                     </div>
                   </div>
 
@@ -349,39 +349,39 @@ const StudentCompetencyTable: React.FC = () => {
                   {/* Avg Score as bar */}
                   <div className="col-span-2">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-[#f0eeea] rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
                             row.student.avgQuizScore >= 80 ? 'bg-emerald-500' :
-                            row.student.avgQuizScore >= 60 ? 'bg-blue-500' :
+                            row.student.avgQuizScore >= 60 ? 'bg-violet-500' :
                             row.student.avgQuizScore >= 40 ? 'bg-amber-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${row.student.avgQuizScore}%` }}
                         />
                       </div>
-                      <span className="text-xs font-bold text-slate-600 w-8 text-right">{row.student.avgQuizScore}%</span>
+                      <span className="text-xs font-bold text-[#6b687a] w-8 text-right">{row.student.avgQuizScore}%</span>
                     </div>
                   </div>
 
                   {/* Engagement */}
                   <div className="col-span-2">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-[#f0eeea] rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
                             row.student.engagementScore >= 75 ? 'bg-purple-500' :
-                            row.student.engagementScore >= 50 ? 'bg-indigo-400' : 'bg-slate-400'
+                            row.student.engagementScore >= 50 ? 'bg-violet-400' : 'bg-[#a8a5b3]'
                           }`}
                           style={{ width: `${row.student.engagementScore}%` }}
                         />
                       </div>
-                      <span className="text-xs font-bold text-slate-600 w-8 text-right">{row.student.engagementScore}%</span>
+                      <span className="text-xs font-bold text-[#6b687a] w-8 text-right">{row.student.engagementScore}%</span>
                     </div>
                   </div>
 
                   {/* Weakest Topic */}
                   <div className="col-span-2 text-right">
-                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
+                    <span className="text-xs font-medium text-[#6b687a] bg-[#f0eeea] px-2 py-1 rounded-md">
                       {row.student.weakestTopic}
                     </span>
                   </div>
@@ -396,11 +396,11 @@ const StudentCompetencyTable: React.FC = () => {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
+                      <div className="px-6 py-4 bg-[#f0eeea] border-t border-[#e8e5de]">
                         {row.loading ? (
                           <div className="flex items-center justify-center py-6">
-                            <Loader2 size={20} className="animate-spin text-blue-500" />
-                            <span className="ml-2 text-sm text-slate-500">Analyzing competency data...</span>
+                            <Loader2 size={20} className="animate-spin text-violet-500" />
+                            <span className="ml-2 text-sm text-[#6b687a]">Analyzing competency data...</span>
                           </div>
                         ) : row.competency ? (
                           <div className="space-y-4">
@@ -446,7 +446,7 @@ const StudentCompetencyTable: React.FC = () => {
                             )}
                           </div>
                         ) : (
-                          <p className="text-sm text-slate-400 text-center py-4">
+                          <p className="text-sm text-[#a8a5b3] text-center py-4">
                             No competency data available. Student needs to complete quizzes first.
                           </p>
                         )}
@@ -469,9 +469,9 @@ const CompetencyCard: React.FC<{ competency: TopicCompetency }> = ({ competency 
   const colors = COMPETENCY_COLORS[competency.competencyLevel] || COMPETENCY_COLORS.developing;
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3">
+    <div className="bg-white rounded-lg border border-[#e8e5de] p-3">
       <div className="flex items-center justify-between mb-2">
-        <h6 className="text-xs font-bold text-slate-700 truncate flex-1">{competency.topic}</h6>
+        <h6 className="text-xs font-bold text-[#1a1625] truncate flex-1">{competency.topic}</h6>
         <span className={`ml-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${colors.bg} ${colors.text}`}>
           {competency.competencyLevel}
         </span>
@@ -480,10 +480,10 @@ const CompetencyCard: React.FC<{ competency: TopicCompetency }> = ({ competency 
       {/* Efficiency bar */}
       <div className="mb-2">
         <div className="flex items-center justify-between text-xs mb-1">
-          <span className="text-slate-400">Efficiency</span>
-          <span className="font-bold text-slate-600">{competency.efficiencyScore}%</span>
+          <span className="text-[#a8a5b3]">Efficiency</span>
+          <span className="font-bold text-[#6b687a]">{competency.efficiencyScore}%</span>
         </div>
-        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-[#f0eeea] rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${competency.efficiencyScore}%` }}
@@ -494,7 +494,7 @@ const CompetencyCard: React.FC<{ competency: TopicCompetency }> = ({ competency 
       </div>
 
       {/* Perspective */}
-      <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">{competency.perspective}</p>
+      <p className="text-[11px] text-[#6b687a] leading-snug line-clamp-2">{competency.perspective}</p>
     </div>
   );
 };

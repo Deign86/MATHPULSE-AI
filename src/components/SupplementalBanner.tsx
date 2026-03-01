@@ -70,7 +70,7 @@ const FullBanner: React.FC<SupplementalBannerProps> = ({ atRiskSubjects = [], on
           exit={{ opacity: 0, y: -10, height: 0 }}
           className="overflow-hidden"
         >
-          <div className="relative bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20">
+          <div className="relative bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-500/20">
             {/* Dismiss button */}
             <button
               onClick={handleDismiss}
@@ -88,7 +88,7 @@ const FullBanner: React.FC<SupplementalBannerProps> = ({ atRiskSubjects = [], on
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-lg mb-1">Supplemental Materials Available</h3>
-                <p className="text-cyan-100 text-sm mb-3">
+                <p className="text-violet-100 text-sm mb-3">
                   Based on your diagnostic assessment, we've identified topics that could use extra practice.
                   Strengthening these areas will improve your overall performance.
                 </p>
@@ -109,7 +109,7 @@ const FullBanner: React.FC<SupplementalBannerProps> = ({ atRiskSubjects = [], on
                 {/* CTA */}
                 <button
                   onClick={onAction}
-                  className="inline-flex items-center gap-2 bg-white text-blue-600 font-bold text-sm px-4 py-2 rounded-xl hover:bg-blue-50 transition-colors"
+                  className="inline-flex items-center gap-2 bg-white text-violet-600 font-bold text-sm px-4 py-2 rounded-xl hover:bg-violet-50 transition-colors"
                 >
                   Review Topics
                   <ChevronRight size={16} />
@@ -190,19 +190,19 @@ const ResultsBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, quizSco
       className="mt-4"
     >
       <div className={`rounded-2xl p-4 border-2 ${
-        isLowScore ? 'bg-orange-50 border-orange-200' : 'bg-cyan-50 border-cyan-200'
+        isLowScore ? 'bg-orange-50 border-orange-200' : 'bg-violet-50 border-violet-200'
       }`}>
         <div className="flex items-start gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            isLowScore ? 'bg-orange-500' : 'bg-cyan-500'
+            isLowScore ? 'bg-orange-500' : 'bg-violet-500'
           }`}>
             <BookOpen size={20} className="text-white" />
           </div>
           <div className="flex-1">
-            <h4 className="font-bold text-slate-800 text-sm mb-1">
+            <h4 className="font-display font-bold text-[#1a1625] text-sm mb-1">
               {isLowScore ? 'Review Recommended' : 'Supplemental Materials'}
             </h4>
-            <p className="text-xs text-slate-600 mb-2">
+            <p className="text-xs text-[#6b687a] mb-2">
               {isLowScore
                 ? `You scored ${quizScore}% on this quiz. We recommend reviewing the following resources to strengthen your understanding.`
                 : 'This topic was identified as an area for growth. Check out these additional resources.'}
@@ -212,12 +212,12 @@ const ResultsBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, quizSco
                 {resources.map((r, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     <span className={`w-5 h-5 rounded flex items-center justify-center ${
-                      isLowScore ? 'bg-orange-100 text-orange-600' : 'bg-cyan-100 text-cyan-600'
+                      isLowScore ? 'bg-orange-100 text-orange-600' : 'bg-violet-100 text-violet-600'
                     }`}>
                       {r.icon}
                     </span>
-                    <span className="font-medium text-slate-700">{r.label}</span>
-                    <span className="text-slate-400">— {r.description}</span>
+                    <span className="font-medium text-[#1a1625]">{r.label}</span>
+                    <span className="text-[#a8a5b3]">— {r.description}</span>
                   </div>
                 ))}
               </div>
@@ -228,7 +228,7 @@ const ResultsBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, quizSco
                 className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
                   isLowScore
                     ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                    : 'bg-violet-500 hover:bg-violet-600 text-white'
                 }`}
               >
                 Open Practice Center

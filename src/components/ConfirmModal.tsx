@@ -57,9 +57,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       case 'info':
       default:
         return {
-          iconBg: 'bg-blue-100',
-          iconColor: 'text-blue-600',
-          buttonBg: 'bg-blue-600 hover:bg-blue-700',
+          iconBg: 'bg-violet-100',
+          iconColor: 'text-violet-600',
+          buttonBg: 'bg-violet-600 hover:bg-violet-700',
           buttonText: 'text-white'
         };
     }
@@ -91,12 +91,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+              className="bg-[#f8f7f4] rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-[#e8e5de]"
             >
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors z-10"
+                className="absolute top-4 right-4 p-2 text-[#a8a5b3] hover:text-[#1a1625] hover:bg-[#e8e5de] rounded-xl transition-colors z-10"
               >
                 <X size={20} />
               </button>
@@ -114,12 +114,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 </motion.div>
 
                 {/* Title */}
-                <h2 className="text-2xl font-bold text-slate-800 mb-3">
+                <h2 className="text-2xl font-display font-bold text-[#1a1625] mb-3">
                   {title}
                 </h2>
 
                 {/* Message */}
-                <p className="text-slate-600 mb-8 leading-relaxed">
+                <p className="text-[#6b687a] mb-8 leading-relaxed">
                   {message}
                 </p>
 
@@ -128,7 +128,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   <Button
                     onClick={onClose}
                     variant="outline"
-                    className="flex-1 px-6 py-3 rounded-xl border-slate-200 hover:border-slate-300 hover:bg-slate-50 font-bold"
+                    className="flex-1 px-6 py-3 rounded-xl border-[#e8e5de] hover:border-[#d1cec6] hover:bg-[#f0eeea] font-bold"
                   >
                     {cancelText}
                   </Button>
