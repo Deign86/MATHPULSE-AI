@@ -104,7 +104,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     <div className="relative w-full max-w-xl">
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a8a5b3]" size={18} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
         <input
           ref={inputRef}
           type="text"
@@ -112,7 +112,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-11 pr-24 py-2.5 bg-white border border-[#e8e5de] rounded-lg text-[#1a1625] placeholder-[#a8a5b3] font-body text-sm focus:bg-white focus:border-violet-400 focus:ring-2 focus:ring-violet-400/15 focus:outline-none transition-all"
+          className="w-full pl-11 pr-24 py-2.5 bg-white border border-[#dde3eb] rounded-lg text-[#0a1628] placeholder-[#a8a5b3] font-body text-sm focus:bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-400/15 focus:outline-none transition-all"
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {query && (
@@ -123,12 +123,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleClear}
-              className="p-1.5 text-[#a8a5b3] hover:text-[#6b687a] hover:bg-[#f0eeea] rounded-md transition-colors"
+              className="p-1.5 text-slate-500 hover:text-[#5a6578] hover:bg-[#edf1f7] rounded-md transition-colors"
             >
               <X size={14} />
             </motion.button>
           )}
-          <kbd className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-body font-semibold text-[#a8a5b3] bg-[#f0eeea] border border-[#e8e5de] rounded-md">
+          <kbd className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-body font-semibold text-slate-500 bg-[#edf1f7] border border-[#dde3eb] rounded-md">
             ⌘K
           </kbd>
         </div>
@@ -150,12 +150,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#e8e5de] z-50 overflow-hidden max-h-96 overflow-y-auto"
+              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#dde3eb] z-50 overflow-hidden max-h-96 overflow-y-auto"
             >
               {query.trim() ? (
                 results.length > 0 ? (
                   <div className="p-2">
-                    <div className="px-3 py-2 text-[10px] font-body font-semibold text-[#a8a5b3] uppercase tracking-wider">
+                    <div className="px-3 py-2 text-[10px] font-body font-semibold text-slate-500 uppercase tracking-wider">
                       Results
                     </div>
                     {results.map((result) => {
@@ -167,15 +167,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
                           onClick={() => handleSelect(result)}
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
                         >
-                          <div className="w-9 h-9 bg-violet-500/10 rounded-lg flex items-center justify-center text-violet-600 flex-shrink-0">
+                          <div className="w-9 h-9 bg-sky-500/10 rounded-lg flex items-center justify-center text-sky-600 flex-shrink-0">
                             <Icon size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-body font-semibold text-[#1a1625] truncate">
+                            <h4 className="text-sm font-body font-semibold text-[#0a1628] truncate">
                               {result.title}
                             </h4>
                             {result.subtitle && (
-                              <p className="text-xs font-body text-[#6b687a] truncate">
+                              <p className="text-xs font-body text-[#5a6578] truncate">
                                 {result.subtitle}
                               </p>
                             )}
@@ -187,13 +187,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 ) : (
                   <div className="p-8 text-center">
                     <Search size={40} className="text-[#d1cec6] mx-auto mb-3" />
-                    <p className="text-[#6b687a] font-body text-sm">No results found</p>
-                    <p className="text-[#a8a5b3] font-body text-xs mt-1">Try a different search term</p>
+                    <p className="text-[#5a6578] font-body text-sm">No results found</p>
+                    <p className="text-slate-500 font-body text-xs mt-1">Try a different search term</p>
                   </div>
                 )
               ) : (
                 <div className="p-2">
-                  <div className="px-3 py-2 text-[10px] font-body font-semibold text-[#a8a5b3] uppercase tracking-wider">
+                  <div className="px-3 py-2 text-[10px] font-body font-semibold text-slate-500 uppercase tracking-wider">
                     Recent Searches
                   </div>
                   {recentSearches.map((search, idx) => (
@@ -203,8 +203,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
                       onClick={() => setQuery(search)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
                     >
-                      <Clock size={16} className="text-[#a8a5b3] flex-shrink-0" />
-                      <span className="text-sm font-body text-[#1a1625]">{search}</span>
+                      <Clock size={16} className="text-slate-500 flex-shrink-0" />
+                      <span className="text-sm font-body text-[#0a1628]">{search}</span>
                     </motion.button>
                   ))}
                 </div>

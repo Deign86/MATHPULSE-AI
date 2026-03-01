@@ -40,7 +40,7 @@ interface InteractiveLessonProps {
 
 // Confetti Component
 const Confetti: React.FC = () => {
-  const colors = ['#4F46E5', '#EC4899', '#F59E0B', '#10B981', '#8B5CF6'];
+  const colors = ['#4F46E5', '#EC4899', '#F59E0B', '#10B981', '#0ea5e9'];
   const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
     id: i,
     left: Math.random() * 100,
@@ -244,12 +244,12 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
 
   const theme = type === 'quiz' 
     ? {
-        gradient: 'bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800',
-        text: 'text-violet-900',
-        bgLight: 'bg-violet-50',
-        border: 'border-violet-200',
-        accent: 'bg-violet-500',
-        iconColor: 'text-violet-200'
+        gradient: 'bg-gradient-to-br from-indigo-600 via-sky-600 to-indigo-800',
+        text: 'text-sky-900',
+        bgLight: 'bg-sky-50',
+        border: 'border-sky-200',
+        accent: 'bg-sky-500',
+        iconColor: 'text-sky-200'
       }
     : {
         gradient: 'bg-gradient-to-br from-teal-500 via-emerald-500 to-teal-700',
@@ -293,7 +293,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
     return (
       <>
         {showConfetti && <Confetti />}
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a0a0f]/90 backdrop-blur-md p-4 animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-500">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -308,7 +308,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 {TopicIcons.map((Icon, i) => (
                   <Icon 
                     key={i} 
-                    className="absolute text-[#1a1625]"
+                    className="absolute text-[#0a1628]"
                     size={30 + (i % 3) * 15}
                     style={{
                       top: `${Math.random() * 100}%`,
@@ -349,7 +349,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="text-3xl font-bold text-[#1a1625] mb-2"
+                className="text-3xl font-bold text-[#0a1628] mb-2"
              >
                 {percentage >= 90 ? 'Perfect!' : 
                  percentage >= 80 ? 'Excellent Job!' : 
@@ -362,7 +362,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="text-[#6b687a] mb-6 font-medium"
+                className="text-[#5a6578] mb-6 font-medium"
              >
                 You answered {score} out of {questions.length} questions correctly
              </motion.p>
@@ -374,12 +374,12 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 transition={{ delay: 0.5 }}
                 className="grid grid-cols-2 gap-3 mb-5"
              >
-                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 border-2 border-violet-200">
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 border-2 border-sky-200">
                   <div className="flex items-center justify-center mb-1">
-                    <Target className="text-violet-600" size={20} />
+                    <Target className="text-sky-600" size={20} />
                   </div>
-                  <p className="text-[10px] text-violet-600 font-bold uppercase mb-1 tracking-wider">Accuracy</p>
-                  <p className="text-3xl font-black text-violet-700">{percentage}%</p>
+                  <p className="text-[10px] text-sky-600 font-bold uppercase mb-1 tracking-wider">Accuracy</p>
+                  <p className="text-3xl font-black text-sky-700">{percentage}%</p>
                 </div>
                 
                 <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-4 border-2 border-orange-200">
@@ -398,12 +398,12 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   <p className="text-3xl font-black text-teal-700">{maxStreak}x</p>
                 </div>
                 
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-4 border-2 border-purple-200">
+                <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-2xl p-4 border-2 border-sky-200">
                   <div className="flex items-center justify-center mb-1">
-                    <Award className="text-purple-600" size={20} />
+                    <Award className="text-sky-600" size={20} />
                   </div>
-                  <p className="text-[10px] text-purple-600 font-bold uppercase mb-1 tracking-wider">Time</p>
-                  <p className="text-3xl font-black text-purple-700">{minutes}:{seconds.toString().padStart(2, '0')}</p>
+                  <p className="text-[10px] text-sky-600 font-bold uppercase mb-1 tracking-wider">Time</p>
+                  <p className="text-3xl font-black text-sky-700">{minutes}:{seconds.toString().padStart(2, '0')}</p>
                 </div>
              </motion.div>
 
@@ -412,29 +412,29 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="bg-[#f0eeea] rounded-2xl p-4 mb-5 text-left"
+                className="bg-[#edf1f7] rounded-2xl p-4 mb-5 text-left"
              >
-                <h3 className="font-bold text-[#1a1625] mb-2 flex items-center gap-2 text-sm">
+                <h3 className="font-bold text-[#0a1628] mb-2 flex items-center gap-2 text-sm">
                   <Star className="text-amber-500" size={16} />
                   XP Breakdown
                 </h3>
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#6b687a] text-xs">Base XP ({type})</span>
-                    <span className="font-bold text-[#1a1625] text-sm">+{baseXP}</span>
+                    <span className="text-[#5a6578] text-xs">Base XP ({type})</span>
+                    <span className="font-bold text-[#0a1628] text-sm">+{baseXP}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#6b687a] text-xs">Score Bonus ({percentage}%)</span>
-                    <span className="font-bold text-[#1a1625] text-sm">+{scoreXP}</span>
+                    <span className="text-[#5a6578] text-xs">Score Bonus ({percentage}%)</span>
+                    <span className="font-bold text-[#0a1628] text-sm">+{scoreXP}</span>
                   </div>
                   {streakBonusXP > 0 && (
                     <div className="flex justify-between items-center">
-                      <span className="text-[#6b687a] text-xs">Streak Bonuses</span>
+                      <span className="text-[#5a6578] text-xs">Streak Bonuses</span>
                       <span className="font-bold text-orange-600 text-sm">+{streakBonusXP}</span>
                     </div>
                   )}
-                  <div className="border-t-2 border-[#e8e5de] pt-1.5 flex justify-between items-center">
-                    <span className="text-[#1a1625] font-bold text-xs">Total XP Earned</span>
+                  <div className="border-t-2 border-[#dde3eb] pt-1.5 flex justify-between items-center">
+                    <span className="text-[#0a1628] font-bold text-xs">Total XP Earned</span>
                     <span className="font-black text-orange-600">+{totalXP}</span>
                   </div>
                 </div>
@@ -491,7 +491,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
         {showStreakNotification && <StreakNotification streak={streak} />}
       </AnimatePresence>
 
-      <div className="fixed inset-0 z-50 flex flex-col bg-[#f0eeea] overflow-hidden font-sans">
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#edf1f7] overflow-hidden font-sans">
         
         {/* Dynamic Background with Wave Shape */}
         <div className={`absolute top-0 left-0 right-0 h-[45vh] ${theme.gradient} rounded-b-[60px] md:rounded-b-[80px] shadow-2xl z-0 overflow-hidden`}>
@@ -527,7 +527,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
           <div className="flex items-center gap-4 flex-1">
             <button 
               onClick={onBack} 
-              className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/10 hover:scale-110 active:scale-95"
+              className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all border border-slate-300 hover:scale-110 active:scale-95"
             >
               <X size={20} />
             </button>
@@ -545,7 +545,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
             <motion.div 
               animate={streak >= 3 ? { scale: [1, 1.1, 1] } : {}}
               transition={{ duration: 0.5, repeat: streak >= 3 ? Infinity : 0 }}
-              className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10"
+              className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-300"
             >
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shadow-sm ${
                 streak >= 3 ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-orange-500'
@@ -598,7 +598,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="w-full max-w-3xl"
             >
-              <div className="bg-white rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#e8e5de] min-h-[450px] flex flex-col relative">
+              <div className="bg-white rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#dde3eb] min-h-[450px] flex flex-col relative">
                 
                 {/* Question Area */}
                 <div className="p-8 md:p-12 flex-1 flex flex-col items-center justify-center text-center">
@@ -606,19 +606,19 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                      {currentQuestion.type === 'multiple-choice' ? 'Multiple Choice' : 
                       currentQuestion.type === 'true-false' ? 'True or False' : 'Fill in the Blank'}
                    </span>
-                   <h2 className="text-2xl md:text-3xl font-bold text-[#1a1625] leading-snug max-w-2xl">
+                   <h2 className="text-2xl md:text-3xl font-bold text-[#0a1628] leading-snug max-w-2xl">
                      {currentQuestion.question}
                    </h2>
                 </div>
 
                 {/* Answer Area */}
-                <div className="p-6 md:p-10 bg-[#f0eeea]/80 backdrop-blur-sm border-t border-[#e8e5de]">
+                <div className="p-6 md:p-10 bg-[#edf1f7]/80 backdrop-blur-sm border-t border-[#dde3eb]">
                   {/* Multiple Choice & True/False */}
                   {(currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'true-false') && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(currentQuestion.type === 'true-false' ? ['True', 'False'] : shuffledOptions).map((option, idx) => {
-                           let stateClasses = "hover:border-[#e8e5de] hover:shadow-lg bg-white border-[#e8e5de] text-[#6b687a] shadow-sm";
+                           let stateClasses = "hover:border-[#dde3eb] hover:shadow-lg bg-white border-[#dde3eb] text-[#5a6578] shadow-sm";
                            
                            if (isAnswered) {
                              if (option === currentQuestion.correctAnswer) {
@@ -626,7 +626,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                              } else if (option === selectedOption) {
                                stateClasses = "bg-red-50 border-red-500 text-red-700 shadow-red-100 ring-2 ring-red-200";
                              } else {
-                               stateClasses = "bg-[#f0eeea] border-[#e8e5de] text-[#a8a5b3] opacity-60 scale-[0.98]";
+                               stateClasses = "bg-[#edf1f7] border-[#dde3eb] text-slate-500 opacity-60 scale-[0.98]";
                              }
                            } else if (selectedOption === option) {
                              stateClasses = `${theme.bgLight} ${theme.border} ${theme.text} ring-2 ring-indigo-100 shadow-md scale-[1.02] z-10`;
@@ -664,7 +664,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                                 </motion.div>
                               )}
                               {!isAnswered && (
-                                <div className={`w-6 h-6 rounded-full border-2 border-[#e8e5de] group-hover:border-[#e8e5de] transition-colors ${selectedOption === option ? `bg-current border-current ${theme.text}` : ''}`}></div>
+                                <div className={`w-6 h-6 rounded-full border-2 border-[#dde3eb] group-hover:border-[#dde3eb] transition-colors ${selectedOption === option ? `bg-current border-current ${theme.text}` : ''}`}></div>
                               )}
                             </motion.button>
                            );
@@ -729,12 +729,12 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                           onChange={(e) => setTextInput(e.target.value)}
                           placeholder="Type your answer here..."
                           className={`
-                            py-8 px-6 text-xl rounded-2xl border-2 font-bold transition-all text-center placeholder:font-medium placeholder:text-[#a8a5b3]
+                            py-8 px-6 text-xl rounded-2xl border-2 font-bold transition-all text-center placeholder:font-medium placeholder:text-slate-500
                             ${isAnswered 
                               ? isCorrect 
                                 ? 'bg-teal-50 border-teal-500 text-teal-800' 
                                 : 'bg-red-50 border-red-500 text-red-800'
-                              : 'bg-white border-[#e8e5de] focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 shadow-sm'
+                              : 'bg-white border-[#dde3eb] focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 shadow-sm'
                             }
                           `}
                         />
@@ -762,7 +762,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                           animate={{ opacity: 1, y: 0 }}
                           className="mt-4 text-center"
                         >
-                          <p className="text-[#a8a5b3] text-xs font-bold uppercase tracking-wider mb-1">Correct answer</p>
+                          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Correct answer</p>
                           <p className="text-teal-600 font-black text-xl">{currentQuestion.correctAnswer}</p>
                         </motion.div>
                       )}
@@ -771,11 +771,11 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 </div>
                 
                 {/* Footer / Controls */}
-                <div className="p-6 border-t border-[#e8e5de] bg-white flex items-center justify-between">
+                <div className="p-6 border-t border-[#dde3eb] bg-white flex items-center justify-between">
                    <Button 
                      variant="ghost" 
                      size="sm"
-                     className="text-[#a8a5b3] hover:text-[#6b687a] hover:bg-[#f0eeea] rounded-xl"
+                     className="text-slate-500 hover:text-[#5a6578] hover:bg-[#edf1f7] rounded-xl"
                    >
                      <Flag size={16} className="mr-2" /> Report
                    </Button>
@@ -794,7 +794,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                        className={`px-10 py-7 rounded-2xl font-bold text-base shadow-xl transition-all flex items-center gap-2 hover:-translate-y-1 ${
                          isCorrect 
                            ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-teal-200' 
-                           : 'bg-[#1a1625] hover:bg-[#0d0b14] text-white shadow-slate-300'
+                            : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
                        }`}
                      >
                        {currentIndex < questions.length - 1 ? 'Next Question' : 'Finish Lesson'}
@@ -806,7 +806,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
               
               {/* Bottom helper text */}
               <div className="text-center mt-6">
-                <button className="text-white/60 text-xs font-semibold hover:text-white transition-colors flex items-center gap-1 mx-auto">
+                <button className="text-white/60 text-xs font-semibold hover:text-sky-700 transition-colors flex items-center gap-1 mx-auto">
                   <HelpCircle size={14} />
                   Press Enter to continue
                 </button>

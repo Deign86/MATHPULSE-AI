@@ -2,7 +2,7 @@
 @plugin "@tailwindcss/typography";
 @import "./styles/globals.css";
 
-/* ─── Markdown Chat Message Styles — Midnight Theorem ───── */
+/* ─── Markdown Chat Message Styles — MathPulse ───── */
 .chat-markdown {
   font-family: var(--font-body);
   font-size: 0.875rem;
