@@ -49,7 +49,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
       yourValue: you.level,
       theirValue: student.level,
       format: (val: number) => val.toString(),
-      color: 'purple'
+      color: 'sky'
     },
     {
       category: 'Current Streak',
@@ -111,14 +111,14 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-[#f8f7f4] rounded-2xl shadow-2xl border border-[#e8e5de] w-full max-w-3xl max-h-[90vh] overflow-hidden"
+          className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-3xl max-h-[90vh] overflow-hidden"
         >
           {/* Header */}
-          <div className="bg-[#1a1625] p-6 text-white relative overflow-hidden">
+          <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 text-white relative overflow-hidden">
             <div className="accent-line absolute top-0 left-0 right-0"></div>
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-xl transition-colors z-10"
+              className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors z-10"
             >
               <X size={20} />
             </button>
@@ -129,13 +129,13 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
               <div className="flex items-center justify-between">
                 {/* You */}
                 <div className="flex flex-col items-center">
-                  <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl mb-3 border border-white/10">
+                  <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl mb-3 border border-slate-300">
                     {you.avatar}
                   </div>
                   <h3 className="font-bold text-lg">{you.name}</h3>
-                  <p className="text-sm text-[#a8a5b3]">Level {you.level}</p>
-                  <div className="mt-3 bg-white/[0.06] backdrop-blur-sm rounded-xl px-4 py-2 border border-white/[0.08]">
-                    <p className="text-sm text-[#a8a5b3]">Wins</p>
+                  <p className="text-sm text-slate-500">Level {you.level}</p>
+                  <div className="mt-3 bg-slate-100 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-200">
+                    <p className="text-sm text-slate-500">Wins</p>
                     <p className="text-2xl font-bold">{yourWins}</p>
                   </div>
                 </div>
@@ -145,13 +145,13 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
 
                 {/* Them */}
                 <div className="flex flex-col items-center">
-                  <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl mb-3 border border-white/10">
+                  <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl mb-3 border border-slate-300">
                     {student.avatar}
                   </div>
                   <h3 className="font-bold text-lg">{student.name}</h3>
-                  <p className="text-sm text-[#a8a5b3]">Level {student.level}</p>
-                  <div className="mt-3 bg-white/[0.06] backdrop-blur-sm rounded-xl px-4 py-2 border border-white/[0.08]">
-                    <p className="text-sm text-[#a8a5b3]">Wins</p>
+                  <p className="text-sm text-slate-500">Level {student.level}</p>
+                  <div className="mt-3 bg-slate-100 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-200">
+                    <p className="text-sm text-slate-500">Wins</p>
                     <p className="text-2xl font-bold">{theirWins}</p>
                   </div>
                 </div>
@@ -159,7 +159,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
             </div>
 
             {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           </div>
 
           {/* Comparisons */}
@@ -179,13 +179,13 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="bg-white rounded-xl border border-[#e8e5de] p-5"
+                    className="bg-white rounded-xl border border-[#dde3eb] p-5"
                   >
                     <div className="flex items-center gap-3 mb-4">
                       <div className={`w-10 h-10 bg-${comparison.color}-100 rounded-xl flex items-center justify-center`}>
                         <Icon size={20} className={`text-${comparison.color}-600`} />
                       </div>
-                      <h4 className="font-bold text-[#1a1625] font-body">{comparison.category}</h4>
+                      <h4 className="font-bold text-[#0a1628] font-body">{comparison.category}</h4>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -193,12 +193,12 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
                       <div className={`flex-1 rounded-xl p-4 transition-all ${
                         winner === 'you' 
                           ? 'bg-emerald-50 border-2 border-emerald-300' 
-                          : 'bg-[#f8f7f4] border-2 border-[#e8e5de]'
+                          : 'bg-[#f7f9fc] border-2 border-[#dde3eb]'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs text-[#a8a5b3] mb-1 font-body">You</p>
-                            <p className="text-2xl font-bold text-[#1a1625]">
+                            <p className="text-xs text-slate-500 mb-1 font-body">You</p>
+                            <p className="text-2xl font-bold text-[#0a1628]">
                               {comparison.format(comparison.yourValue)}
                             </p>
                           </div>
@@ -217,12 +217,12 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
                       <div className={`flex-1 rounded-xl p-4 transition-all ${
                         winner === 'them' 
                           ? 'bg-red-50 border-2 border-red-300' 
-                          : 'bg-[#f8f7f4] border-2 border-[#e8e5de]'
+                          : 'bg-[#f7f9fc] border-2 border-[#dde3eb]'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs text-[#a8a5b3] mb-1 font-body">{student.name.split(' ')[0]}</p>
-                            <p className="text-2xl font-bold text-[#1a1625]">
+                            <p className="text-xs text-slate-500 mb-1 font-body">{student.name.split(' ')[0]}</p>
+                            <p className="text-2xl font-bold text-[#0a1628]">
                               {comparison.format(comparison.theirValue)}
                             </p>
                           </div>
@@ -239,7 +239,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
                     </div>
 
                     {/* Progress bar */}
-                    <div className="mt-3 h-2 bg-[#e8e5de] rounded-full overflow-hidden">
+                    <div className="mt-3 h-2 bg-[#dde3eb] rounded-full overflow-hidden">
                       <div 
                         className={`h-full transition-all ${
                           winner === 'you' ? 'bg-emerald-500' : winner === 'them' ? 'bg-red-500' : 'bg-[#a8a5b3]'
@@ -255,29 +255,29 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
             </div>
 
             {/* Overall verdict */}
-            <div className="mt-6 p-6 bg-white rounded-xl border-2 border-violet-200">
+            <div className="mt-6 p-6 bg-white rounded-xl border-2 border-sky-200">
               <div className="text-center">
                 {yourWins > theirWins ? (
                   <>
                     <div className="flex justify-center mb-3"><PartyPopper size={36} className="text-amber-500" /></div>
-                    <h3 className="text-xl font-display font-bold text-[#1a1625] mb-2">You're Ahead!</h3>
-                    <p className="text-sm text-[#6b687a] font-body">
+                    <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">You're Ahead!</h3>
+                    <p className="text-sm text-[#5a6578] font-body">
                       Keep up the great work! You're winning in {yourWins} out of {comparisons.length} categories.
                     </p>
                   </>
                 ) : theirWins > yourWins ? (
                   <>
-                    <div className="flex justify-center mb-3"><Dumbbell size={36} className="text-violet-500" /></div>
-                    <h3 className="text-xl font-display font-bold text-[#1a1625] mb-2">Room to Grow!</h3>
-                    <p className="text-sm text-[#6b687a] font-body">
+                    <div className="flex justify-center mb-3"><Dumbbell size={36} className="text-sky-500" /></div>
+                    <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Room to Grow!</h3>
+                    <p className="text-sm text-[#5a6578] font-body">
                       {student.name.split(' ')[0]} is ahead in {theirWins} categories. Time to level up!
                     </p>
                   </>
                 ) : (
                   <>
-                    <div className="flex justify-center mb-3"><Handshake size={36} className="text-violet-500" /></div>
-                    <h3 className="text-xl font-display font-bold text-[#1a1625] mb-2">Evenly Matched!</h3>
-                    <p className="text-sm text-[#6b687a] font-body">
+                    <div className="flex justify-center mb-3"><Handshake size={36} className="text-sky-500" /></div>
+                    <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Evenly Matched!</h3>
+                    <p className="text-sm text-[#5a6578] font-body">
                       You and {student.name.split(' ')[0]} are neck and neck. Great competition!
                     </p>
                   </>

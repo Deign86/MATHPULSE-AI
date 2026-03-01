@@ -44,10 +44,10 @@ const ScrollIndicator: React.FC<ScrollIndicatorProps> = ({ scrollContainerRef })
             transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
             className="flex flex-col items-center gap-1"
           >
-            <div className="text-[#a8a5b3] text-xs font-medium bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-[#e8e5de]">
+            <div className="text-slate-500 text-xs font-medium bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-[#dde3eb]">
               Scroll to explore
             </div>
-            <ChevronDown size={20} className="text-[#a8a5b3]" />
+            <ChevronDown size={20} className="text-slate-500" />
           </motion.div>
         </motion.div>
       )}

@@ -104,9 +104,9 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
     switch (type) {
       case 'achievement': return 'bg-amber-500/10 text-amber-600';
       case 'alert': return 'bg-red-500/10 text-red-600';
-      case 'message': return 'bg-violet-500/10 text-violet-600';
+      case 'message': return 'bg-sky-500/10 text-sky-600';
       case 'info': return 'bg-emerald-500/10 text-emerald-600';
-      default: return 'bg-[#f0eeea] text-[#6b687a]';
+      default: return 'bg-[#edf1f7] text-[#5a6578]';
     }
   };
 
@@ -117,14 +117,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-[#f0eeea] rounded-xl text-[#6b687a] hover:bg-[#e8e5de] transition-colors"
+        className="relative p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-violet-600 text-white text-xs font-bold rounded-full flex items-center justify-center"
+            className="absolute -top-1 -right-1 w-5 h-5 bg-sky-600 text-white text-xs font-bold rounded-full flex items-center justify-center"
           >
             {unreadCount}
           </motion.span>
@@ -147,13 +147,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-full mt-2 w-96 bg-[#f8f7f4] rounded-xl shadow-2xl border border-[#e8e5de] z-50 overflow-hidden"
+              className="absolute right-0 top-full mt-2 w-96 bg-[#f7f9fc] rounded-xl shadow-2xl border border-[#dde3eb] z-50 overflow-hidden"
             >
               {/* Header */}
-              <div className="p-4 border-b border-[#e8e5de] flex items-center justify-between bg-[#1a1625]">
+              <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between bg-gradient-to-r from-sky-600 to-sky-500">
                 <div>
                   <h3 className="font-display font-bold text-white">Notifications</h3>
-                  <p className="text-xs text-[#a8a5b3] mt-0.5">
+                  <p className="text-xs text-sky-100 mt-0.5">
                     {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
                   </p>
                 </div>
@@ -163,7 +163,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={markAllAsRead}
-                      className="text-xs text-violet-400 hover:text-violet-300 font-bold"
+                      className="text-xs text-sky-400 hover:text-sky-300 font-bold"
                     >
                       <CheckCheck size={18} />
                     </motion.button>
@@ -172,7 +172,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setIsOpen(false)}
-                    className="text-[#a8a5b3] hover:text-white"
+                    className="text-slate-500 hover:text-sky-700"
                   >
                     <X size={18} />
                   </motion.button>
@@ -184,7 +184,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
                 {notifications.length === 0 ? (
                   <div className="p-8 text-center">
                     <Bell size={48} className="text-[#d1cec6] mx-auto mb-3" />
-                    <p className="text-[#6b687a] text-sm font-body">No notifications yet</p>
+                    <p className="text-[#5a6578] text-sm font-body">No notifications yet</p>
                   </div>
                 ) : (
                   <div>
@@ -195,8 +195,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
                           key={notification.id}
                           whileHover={{ backgroundColor: 'rgba(241, 245, 249, 0.5)' }}
                           onClick={() => markAsRead(notification.id)}
-                          className={`p-4 border-b border-[#e8e5de] cursor-pointer transition-colors ${
-                            !notification.read ? 'bg-violet-50/40' : ''
+                          className={`p-4 border-b border-[#dde3eb] cursor-pointer transition-colors ${
+                            !notification.read ? 'bg-sky-50/40' : ''
                           }`}
                         >
                           <div className="flex gap-3">
@@ -205,17 +205,17 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2 mb-1">
-                                <h4 className="text-sm font-bold text-[#1a1625] line-clamp-1 font-body">
+                                <h4 className="text-sm font-bold text-[#0a1628] line-clamp-1 font-body">
                                   {notification.title}
                                 </h4>
                                 {!notification.read && (
-                                  <span className="w-2 h-2 bg-violet-600 rounded-full flex-shrink-0 mt-1.5"></span>
+                                  <span className="w-2 h-2 bg-sky-600 rounded-full flex-shrink-0 mt-1.5"></span>
                                 )}
                               </div>
-                              <p className="text-xs text-[#6b687a] mb-2 line-clamp-2 font-body">
+                              <p className="text-xs text-[#5a6578] mb-2 line-clamp-2 font-body">
                                 {notification.message}
                               </p>
-                              <p className="text-xs text-[#a8a5b3]">{notification.time}</p>
+                              <p className="text-xs text-slate-500">{notification.time}</p>
                             </div>
                           </div>
                         </motion.div>
@@ -227,8 +227,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
 
               {/* Footer */}
               {notifications.length > 0 && (
-                <div className="p-3 border-t border-[#e8e5de] text-center bg-[#f0eeea]">
-                  <button className="text-xs text-violet-600 hover:text-violet-700 font-bold font-body">
+                <div className="p-3 border-t border-[#dde3eb] text-center bg-[#edf1f7]">
+                  <button className="text-xs text-sky-600 hover:text-sky-700 font-bold font-body">
                     View All Notifications
                   </button>
                 </div>
