@@ -212,7 +212,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                   </div>
                   <div className="bg-[#edf1f7] p-4 rounded-xl border border-[#dde3eb]">
                     <div className="flex items-center gap-2 font-bold text-[#0a1628] mb-1">
-                      <AlertTriangle size={16} className="text-amber-500" />
+                      <AlertTriangle size={16} className="text-rose-500" />
                       Identify Risks
                     </div>
                     <p className="text-xs text-[#5a6578] pl-6">Spot areas that need more attention early.</p>
@@ -335,11 +335,11 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
                 </div>
 
                 {atRiskSubjects.length > 0 && (
-                  <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl text-left">
-                    <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+                  <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-100 rounded-xl text-left">
+                    <AlertTriangle className="text-rose-600 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h5 className="font-bold text-amber-800 text-sm">Attention Needed</h5>
-                      <p className="text-amber-700 text-xs mt-1">
+                      <h5 className="font-bold text-rose-800 text-sm">Attention Needed</h5>
+                      <p className="text-rose-700 text-xs mt-1">
                         We've marked {atRiskSubjects.length} subject{atRiskSubjects.length > 1 ? 's' : ''} as "At Risk". 
                         Look for the warning icons in your dashboard to prioritize these modules.
                       </p>

@@ -1,7 +1,21 @@
-import React, { useState } from 'react';
-import { X, Search, UserPlus, UserCheck, Users, TrendingUp, User } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Search, UserPlus, UserCheck, Users, TrendingUp, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
+import { useAuth } from '../contexts/AuthContext';
+import { searchUsers, sendFriendRequest } from '../services/friendsService';
+import { StudentProfile } from '../types/models';
+
+interface StudentUser {
+  uid: string;
+  name?: string;
+  email?: string;
+  photo?: string;
+  level?: number;
+  totalXP?: number;
+  grade?: string;
+  isFriend: boolean;
+}
 
 interface AddFriendsModalProps {
   isOpen: boolean;
@@ -9,35 +23,72 @@ interface AddFriendsModalProps {
 }
 
 const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'classmates' | 'suggested'>('classmates');
+  const { currentUser, userProfile } = useAuth();
+  const studentProfile = userProfile as StudentProfile;
+  const friendsList: string[] = studentProfile?.friends || [];
+
+  const [activeTab, setActiveTab] = useState<'all' | 'suggested'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sentRequests, setSentRequests] = useState<string[]>([]);
+  const [users, setUsers] = useState<StudentUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const classmates = [
-    { id: '4', name: 'Emma Rodriguez', avatar: '', level: 15, xp: 1890, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '6', name: 'Olivia Brown', avatar: '', level: 13, xp: 1580, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '7', name: 'James Wilson', avatar: '', level: 13, xp: 1520, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '9', name: 'Lucas Martinez', avatar: '', level: 11, xp: 1180, section: 'Grade 11 - STEM A', isFriend: false },
-    { id: '10', name: 'Ava Taylor', avatar: '', level: 10, xp: 1050, section: 'Grade 11 - STEM A', isFriend: false },
-  ];
+  const loadUsers = useCallback(async (query: string) => {
+    if (!currentUser) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const results = await searchUsers(query, currentUser.uid);
+      setUsers(
+        results.map(u => ({
+          uid: u.uid,
+          name: u.name,
+          email: u.email,
+          photo: u.photo,
+          level: u.level,
+          totalXP: u.totalXP,
+          isFriend: friendsList.includes(u.uid),
+        }))
+      );
+    } catch (err) {
+      console.error('Error loading users:', err);
+      setErrorMsg('Failed to load users. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
-  const suggested = [
-    { id: '11', name: 'Noah Anderson', avatar: '', level: 14, xp: 1650, section: 'Grade 11 - STEM B', reason: 'Similar progress', isFriend: false },
-    { id: '12', name: 'Isabella Garcia', avatar: '', level: 13, xp: 1420, section: 'Grade 11 - STEM B', reason: 'Top performer', isFriend: false },
-    { id: '13', name: 'Ethan Moore', avatar: '', level: 12, xp: 1280, section: 'Grade 11 - ABM', reason: 'Active learner', isFriend: false },
-  ];
+  // Load on open and when search changes (debounced)
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      loadUsers(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isOpen, searchQuery, loadUsers]);
 
-  const handleSendRequest = (id: string) => {
-    setSentRequests([...sentRequests, id]);
+  const handleSendRequest = async (toUserId: string) => {
+    if (!currentUser) return;
+    setSentRequests(prev => new Set([...prev, toUserId]));
+    try {
+      await sendFriendRequest(currentUser.uid, toUserId);
+    } catch (err) {
+      // Revert optimistic update on error
+      setSentRequests(prev => { const n = new Set(prev); n.delete(toUserId); return n; });
+      const msg = err instanceof Error ? err.message : 'Failed to send request';
+      setErrorMsg(msg);
+    }
   };
 
-  const filteredClassmates = classmates.filter(student =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Suggested: top-XP students not yet friends
+  const suggestedUsers = [...users]
+    .filter(u => !u.isFriend)
+    .sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0))
+    .slice(0, 10);
 
-  const filteredSuggested = suggested.filter(student =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const displayedUsers = activeTab === 'all' ? users : suggestedUsers;
 
   if (!isOpen) return null;
 
@@ -93,15 +144,15 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
           {/* Tabs */}
           <div className="flex border-b border-[#dde3eb] px-5">
             <button
-              onClick={() => setActiveTab('classmates')}
+              onClick={() => setActiveTab('all')}
               className={`px-4 py-3 font-body font-semibold text-sm transition-all border-b-2 ${
-                activeTab === 'classmates'
+                activeTab === 'all'
                   ? 'text-sky-600 border-sky-600'
                   : 'text-[#5a6578] border-transparent hover:text-[#0a1628]'
               }`}
             >
               <Users size={16} className="inline mr-2" />
-              My Classmates ({classmates.length})
+              All Students ({users.length})
             </button>
             <button
               onClick={() => setActiveTab('suggested')}
@@ -112,126 +163,82 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
               }`}
             >
               <TrendingUp size={16} className="inline mr-2" />
-              Suggested ({suggested.length})
+              Top Learners ({suggestedUsers.length})
             </button>
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-5">
-            {activeTab === 'classmates' ? (
+            {errorMsg && (
+              <div className="mb-3 px-4 py-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-sm font-body">
+                {errorMsg}
+              </div>
+            )}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Loader2 size={32} className="text-sky-500 animate-spin" />
+                <p className="text-sm text-[#5a6578] font-body">Loading students...</p>
+              </div>
+            ) : displayedUsers.length > 0 ? (
               <div className="space-y-2">
-                {filteredClassmates.length > 0 ? (
-                  filteredClassmates.map((student) => (
-                    <motion.div
-                      key={student.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#dde3eb] hover:border-sky-200/50 transition-colors"
-                    >
-                      <div className="w-10 h-10 bg-[#edf1f7] rounded-lg flex items-center justify-center flex-shrink-0">
-                        {student.avatar || <User size={18} className="text-[#5a6578]" />}
-                      </div>
+                {displayedUsers.map((student) => (
+                  <motion.div
+                    key={student.uid}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#dde3eb] hover:border-sky-200/50 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-[#edf1f7] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {student.photo
+                        ? <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
+                        : <User size={18} className="text-[#5a6578]" />
+                      }
+                    </div>
 
-                      <div className="flex-1">
-                        <h4 className="font-body font-semibold text-sm text-[#0a1628]">{student.name}</h4>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-body text-[#5a6578]">Level {student.level}</span>
-                          <span className="text-xs text-[#d1cec6]">·</span>
-                          <span className="text-xs font-body text-[#5a6578]">{student.xp} XP</span>
-                        </div>
+                    <div className="flex-1">
+                      <h4 className="font-body font-semibold text-sm text-[#0a1628]">{student.name || 'Student'}</h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-body text-[#5a6578]">Level {student.level ?? 1}</span>
+                        <span className="text-xs text-[#d1cec6]">·</span>
+                        <span className="text-xs font-body text-[#5a6578]">{student.totalXP ?? 0} XP</span>
+                        {student.grade && (
+                          <>
+                            <span className="text-xs text-[#d1cec6]">·</span>
+                            <span className="text-xs font-body text-[#5a6578]">{student.grade}</span>
+                          </>
+                        )}
                       </div>
+                    </div>
 
-                      {student.isFriend ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg font-body"
-                          disabled
-                        >
-                          <UserCheck size={14} className="mr-1" />
-                          Friends
-                        </Button>
-                      ) : sentRequests.includes(student.id) ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg font-body"
-                          disabled
-                        >
-                          Requested
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
-                          onClick={() => handleSendRequest(student.id)}
-                        >
-                          <UserPlus size={14} className="mr-1" />
-                          Add
-                        </Button>
-                      )}
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <Search size={40} className="text-[#d1cec6] mx-auto mb-3" />
-                    <p className="text-[#5a6578] font-body">No classmates found</p>
-                    <p className="text-sm text-slate-500 font-body mt-1">Try a different search term</p>
-                  </div>
-                )}
+                    {student.isFriend ? (
+                      <Button variant="outline" size="sm" className="rounded-lg font-body" disabled>
+                        <UserCheck size={14} className="mr-1" />
+                        Friends
+                      </Button>
+                    ) : sentRequests.has(student.uid) ? (
+                      <Button variant="outline" size="sm" className="rounded-lg font-body" disabled>
+                        Requested
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
+                        onClick={() => handleSendRequest(student.uid)}
+                      >
+                        <UserPlus size={14} className="mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </motion.div>
+                ))}
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredSuggested.length > 0 ? (
-                  filteredSuggested.map((student) => (
-                    <motion.div
-                      key={student.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#dde3eb] hover:border-sky-200/50 transition-colors"
-                    >
-                      <div className="w-10 h-10 bg-[#edf1f7] rounded-lg flex items-center justify-center flex-shrink-0">
-                        {student.avatar || <User size={18} className="text-[#5a6578]" />}
-                      </div>
-
-                      <div className="flex-1">
-                        <h4 className="font-body font-semibold text-sm text-[#0a1628]">{student.name}</h4>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-body text-[#5a6578]">{student.section}</span>
-                          <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-body font-semibold">
-                            {student.reason}
-                          </span>
-                        </div>
-                      </div>
-
-                      {sentRequests.includes(student.id) ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg font-body"
-                          disabled
-                        >
-                          Requested
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
-                          onClick={() => handleSendRequest(student.id)}
-                        >
-                          <UserPlus size={14} className="mr-1" />
-                          Add
-                        </Button>
-                      )}
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <Search size={40} className="text-[#d1cec6] mx-auto mb-3" />
-                    <p className="text-[#5a6578] font-body">No suggestions found</p>
-                    <p className="text-sm text-slate-500 font-body mt-1">Try a different search term</p>
-                  </div>
-                )}
+              <div className="text-center py-16">
+                <Search size={40} className="text-[#d1cec6] mx-auto mb-3" />
+                <p className="text-[#5a6578] font-body font-semibold">No students found</p>
+                <p className="text-sm text-slate-400 font-body mt-1">
+                  {searchQuery ? 'Try a different search term' : 'No other registered students yet'}
+                </p>
               </div>
             )}
           </div>
@@ -240,7 +247,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
           <div className="p-5 border-t border-[#dde3eb] bg-[#edf1f7]">
             <div className="flex items-center justify-between">
               <p className="text-sm text-[#5a6578] font-body">
-                {sentRequests.length > 0 && `${sentRequests.length} request${sentRequests.length > 1 ? 's' : ''} sent`}
+                {sentRequests.size > 0 && `${sentRequests.size} request${sentRequests.size > 1 ? 's' : ''} sent`}
               </p>
               <Button onClick={onClose} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold">
                 Done
