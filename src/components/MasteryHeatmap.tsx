@@ -20,7 +20,7 @@ interface MasteryHeatmapProps {
 
 const SUBJECTS = [
   { id: 'gen-math', name: 'Gen Math', shortName: 'GM', color: '#3B82F6' },
-  { id: 'stats-prob', name: 'Stats & Prob', shortName: 'SP', color: '#8B5CF6' },
+  { id: 'stats-prob', name: 'Stats & Prob', shortName: 'SP', color: '#0ea5e9' },
   { id: 'pre-calc', name: 'Pre-Calc', shortName: 'PC', color: '#F97316' },
   { id: 'basic-calc', name: 'Basic Calc', shortName: 'BC', color: '#EF4444' },
 ];
@@ -143,16 +143,16 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
   const highestTopic = allData.reduce((max, c) => c.mastery > max.mastery ? c : max, allData[0]);
 
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#e8e5de]">
+    <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb]">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-sky-500 rounded-xl flex items-center justify-center">
             <Grid3X3 size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[#1a1625]">{title}</h2>
-            <p className="text-xs text-[#6b687a]">
+            <h2 className="text-lg font-bold text-[#0a1628]">{title}</h2>
+            <p className="text-xs text-[#5a6578]">
               Aggregated mastery levels across all classes • {allData.length} topic-subject combinations
             </p>
           </div>
@@ -163,26 +163,26 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="appearance-none bg-[#f0eeea] border border-[#e8e5de] rounded-lg px-3 py-1.5 pr-8 text-xs font-semibold text-[#6b687a] focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            className="appearance-none bg-[#edf1f7] border border-[#dde3eb] rounded-lg px-3 py-1.5 pr-8 text-xs font-semibold text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
           >
             <option value="all">All Subjects</option>
             {SUBJECTS.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
-          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#a8a5b3] pointer-events-none" />
+          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
         </div>
       </div>
 
       {/* Summary mini-cards */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-[#f0eeea] rounded-xl p-3 flex items-center gap-3">
+        <div className="bg-[#edf1f7] rounded-xl p-3 flex items-center gap-3">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${platformAvg >= 70 ? 'bg-emerald-100' : 'bg-amber-100'}`}>
             <Minus size={16} className={platformAvg >= 70 ? 'text-emerald-600' : 'text-amber-600'} />
           </div>
           <div>
-            <p className="text-lg font-bold text-[#1a1625]">{platformAvg}%</p>
-            <p className="text-[10px] text-[#6b687a] uppercase tracking-wider">Platform Average</p>
+            <p className="text-lg font-bold text-[#0a1628]">{platformAvg}%</p>
+            <p className="text-[10px] text-[#5a6578] uppercase tracking-wider">Platform Average</p>
           </div>
         </div>
         <div className="bg-red-50 rounded-xl p-3 flex items-center gap-3">
@@ -190,7 +190,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
             <TrendingDown size={16} className="text-red-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#1a1625] truncate">{lowestTopic?.topic}</p>
+            <p className="text-sm font-bold text-[#0a1628] truncate">{lowestTopic?.topic}</p>
             <p className="text-[10px] text-red-600 font-semibold">{lowestTopic?.mastery}% — Lowest</p>
           </div>
         </div>
@@ -199,7 +199,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
             <TrendingUp size={16} className="text-emerald-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#1a1625] truncate">{highestTopic?.topic}</p>
+            <p className="text-sm font-bold text-[#0a1628] truncate">{highestTopic?.topic}</p>
             <p className="text-[10px] text-emerald-600 font-semibold">{highestTopic?.mastery}% — Highest</p>
           </div>
         </div>
@@ -219,8 +219,8 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
               {/* Subject header */}
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: subject.color }} />
-                <span className="text-xs font-bold text-[#1a1625]">{subject.name}</span>
-                <span className="text-[10px] text-[#a8a5b3] ml-1">Avg: {subjectAvg}%</span>
+                <span className="text-xs font-bold text-[#0a1628]">{subject.name}</span>
+                <span className="text-[10px] text-slate-500 ml-1">Avg: {subjectAvg}%</span>
               </div>
 
               {/* Topic grid */}
@@ -228,7 +228,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
                 {/* Labels row */}
                 {topics.map((topic, i) => (
                   <div key={`label-${i}`} className="text-center">
-                    <p className="text-[9px] text-[#a8a5b3] truncate px-0.5 mb-1" title={topic.name}>
+                    <p className="text-[9px] text-slate-500 truncate px-0.5 mb-1" title={topic.name}>
                       {topic.name}
                     </p>
                   </div>
@@ -256,7 +256,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
 
                       {/* Tooltip */}
                       {isHovered && cell && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#1a1625] text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap z-20 shadow-xl pointer-events-none">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-800 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap z-20 shadow-xl pointer-events-none">
                           <p className="font-bold mb-0.5">{cell.topic}</p>
                           <p>Mastery: <strong>{cell.mastery}%</strong></p>
                           <p>Students: <strong>{cell.students}</strong></p>
@@ -273,8 +273,8 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
       </div>
 
       {/* Color Legend */}
-      <div className="flex items-center justify-center gap-4 mt-5 pt-4 border-t border-[#e8e5de]">
-        <div className="flex items-center gap-1 text-[10px] text-[#6b687a]">
+      <div className="flex items-center justify-center gap-4 mt-5 pt-4 border-t border-[#dde3eb]">
+        <div className="flex items-center gap-1 text-[10px] text-[#5a6578]">
           <Info size={10} />
           <span>Color scale:</span>
         </div>
@@ -288,7 +288,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
         ].map((item, i) => (
           <div key={i} className="flex items-center gap-1">
             <div className={`w-3 h-3 rounded-sm ${item.color}`} />
-            <span className="text-[10px] text-[#6b687a]">{item.label}</span>
+            <span className="text-[10px] text-[#5a6578]">{item.label}</span>
           </div>
         ))}
       </div>

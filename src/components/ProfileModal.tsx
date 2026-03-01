@@ -79,11 +79,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'student':
-        return 'bg-violet-100 text-violet-700 border-violet-200';
+        return 'bg-sky-100 text-sky-700 border-sky-200';
       case 'teacher':
         return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'admin':
-        return 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200';
+        return 'bg-amber-100 text-amber-700 border-amber-200';
       default:
         return 'bg-zinc-100 text-zinc-700 border-zinc-200';
     }
@@ -111,12 +111,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#f8f7f4] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-[#e8e5de]">
+            <div className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-[#dde3eb]">
               {/* Header */}
-              <div className="bg-[#1a1625] p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
-                <div className="absolute top-0 right-0 w-48 h-48 bg-violet-600/8 rounded-full -mr-24 -mt-24"></div>
-                <div className="absolute bottom-0 left-0 w-36 h-36 bg-fuchsia-600/5 rounded-full -ml-18 -mb-18"></div>
+              <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
+                <div className="absolute bottom-0 left-0 w-36 h-36 bg-white/5 rounded-full -ml-18 -mb-18"></div>
                 
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="flex-1">
@@ -125,7 +125,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   </div>
                   <button
                     onClick={onClose}
-                    className="text-zinc-500 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all"
+                    className="text-zinc-500 hover:text-sky-700 hover:bg-slate-100 p-2 rounded-lg transition-all"
                   >
                     <X size={20} />
                   </button>
@@ -133,14 +133,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#f0eeea]">
+              <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#edf1f7]">
                 {/* Profile Photo Section */}
                 <div className="flex flex-col items-center mb-8">
                   <div className="relative group">
                     <img
                       src={editedData.photo}
                       alt={editedData.name}
-                      className="w-28 h-28 rounded-xl object-cover shadow-lg border-2 border-[#e8e5de] ring-4 ring-violet-100"
+                      className="w-28 h-28 rounded-xl object-cover shadow-lg border-2 border-[#dde3eb] ring-4 ring-sky-100"
                     />
                     {isEditing && (
                       <button
@@ -155,7 +155,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                     )}
                   </div>
                   <div className="mt-4 text-center">
-                    <h3 className="text-lg font-display font-bold text-[#1a1625]">{editedData.name}</h3>
+                    <h3 className="text-lg font-display font-bold text-[#0a1628]">{editedData.name}</h3>
                     <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-body font-semibold border ${getRoleBadgeColor(editedData.role)}`}>
                       {editedData.role.charAt(0).toUpperCase() + editedData.role.slice(1)}
                     </span>
@@ -166,54 +166,54 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                 <div className="space-y-6">
                   {/* Basic Information */}
                   <div>
-                    <h4 className="text-sm font-display font-bold text-[#1a1625] mb-4 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-violet-600 rounded-full"></div>
+                    <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-sky-600 rounded-full"></div>
                       Basic Information
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Full Name</label>
+                        <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Full Name</label>
                         <div className="relative">
-                          <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                          <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                           <Input
                             value={editedData.name}
                             onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
                             disabled={!isEditing}
-                            className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Email Address</label>
+                        <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Email Address</label>
                         <div className="relative">
-                          <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                          <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                           <Input
                             type="email"
                             value={editedData.email}
                             onChange={(e) => setEditedData({ ...editedData, email: e.target.value })}
                             disabled={!isEditing}
-                            className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Phone Number</label>
+                        <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Phone Number</label>
                         <div className="relative">
-                          <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                          <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                           <Input
                             value={editedData.phone}
                             onChange={(e) => setEditedData({ ...editedData, phone: e.target.value })}
                             disabled={!isEditing}
-                            className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">
+                        <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">
                           {editedData.role === 'student' ? 'School' : editedData.role === 'teacher' ? 'Department' : 'Office Location'}
                         </label>
                         <div className="relative">
-                          <Building size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                          <Building size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                           <Input
                             value={editedData.school || editedData.department || editedData.office || ''}
                             onChange={(e) => {
@@ -226,7 +226,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               }
                             }}
                             disabled={!isEditing}
-                            className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
                         </div>
                       </div>
@@ -236,69 +236,69 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {/* Student-Specific Fields */}
                   {editedData.role === 'student' && (
                     <div>
-                      <h4 className="text-sm font-bold text-[#1a1625] mb-4 flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-[#0a1628] mb-4 flex items-center gap-2">
                         <div className="w-1 h-4 bg-teal-600 rounded-full"></div>
                         Academic Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-[#6b687a] mb-2">Student ID</label>
+                          <label className="block text-xs font-bold text-[#5a6578] mb-2">Student ID</label>
                           <div className="relative">
-                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.studentId || ''}
                               onChange={(e) => setEditedData({ ...editedData, studentId: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-[#f0eeea] border-[#e8e5de] rounded-xl disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-[#edf1f7] border-[#dde3eb] rounded-xl disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Grade Level</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Grade Level</label>
                           <div className="relative">
-                            <BookOpen size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <BookOpen size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.grade || ''}
                               onChange={(e) => setEditedData({ ...editedData, grade: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Major/Focus</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Major/Focus</label>
                           <div className="relative">
-                            <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.major || ''}
                               onChange={(e) => setEditedData({ ...editedData, major: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">GPA</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">GPA</label>
                           <div className="relative">
-                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.gpa || ''}
                               onChange={(e) => setEditedData({ ...editedData, gpa: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Enrollment Date</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Enrollment Date</label>
                           <div className="relative">
-                            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               type="date"
                               value={editedData.enrollmentDate || ''}
                               onChange={(e) => setEditedData({ ...editedData, enrollmentDate: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -309,56 +309,56 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {/* Teacher-Specific Fields */}
                   {editedData.role === 'teacher' && (
                     <div>
-                      <h4 className="text-sm font-display font-bold text-[#1a1625] mb-4 flex items-center gap-2">
+                      <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
                         <div className="w-1 h-4 bg-amber-500 rounded-full"></div>
                         Teaching Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Teacher ID</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Teacher ID</label>
                           <div className="relative">
-                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.teacherId || ''}
                               onChange={(e) => setEditedData({ ...editedData, teacherId: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Subject/Specialization</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Subject/Specialization</label>
                           <div className="relative">
-                            <BookOpen size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <BookOpen size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.subject || ''}
                               onChange={(e) => setEditedData({ ...editedData, subject: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Years of Experience</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Years of Experience</label>
                           <div className="relative">
-                            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.yearsOfExperience || ''}
                               onChange={(e) => setEditedData({ ...editedData, yearsOfExperience: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Qualification</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Qualification</label>
                           <div className="relative">
-                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.qualification || ''}
                               onChange={(e) => setEditedData({ ...editedData, qualification: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -369,44 +369,44 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {/* Admin-Specific Fields */}
                   {editedData.role === 'admin' && (
                     <div>
-                      <h4 className="text-sm font-display font-bold text-[#1a1625] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-fuchsia-600 rounded-full"></div>
+                      <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
+                        <div className="w-1 h-4 bg-amber-600 rounded-full"></div>
                         Administrative Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Admin ID</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Admin ID</label>
                           <div className="relative">
-                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.adminId || ''}
                               onChange={(e) => setEditedData({ ...editedData, adminId: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Position/Title</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Position/Title</label>
                           <div className="relative">
-                            <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.position || ''}
                               onChange={(e) => setEditedData({ ...editedData, position: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-body font-semibold text-[#6b687a] mb-2 uppercase tracking-wider">Access Level/Permissions</label>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Access Level/Permissions</label>
                           <div className="relative">
-                            <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a5b3]" />
+                            <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.permissions || ''}
                               onChange={(e) => setEditedData({ ...editedData, permissions: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#e8e5de] rounded-lg font-body text-[#1a1625] focus:border-violet-400 focus:ring-violet-400/20 disabled:opacity-100 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -417,20 +417,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               </div>
 
               {/* Footer Actions */}
-              <div className="border-t border-[#e8e5de] p-5 bg-[#f0eeea]">
+              <div className="border-t border-[#dde3eb] p-5 bg-[#edf1f7]">
                 <div className="flex gap-3 justify-end">
                   {!isEditing ? (
                     <>
                       <Button
                         onClick={onClose}
                         variant="outline"
-                        className="px-5 py-2 rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#6b687a]"
+                        className="px-5 py-2 rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#5a6578]"
                       >
                         Close
                       </Button>
                       <Button
                         onClick={() => setIsEditing(true)}
-                        className="px-5 py-2 rounded-lg bg-[#1a1625] hover:bg-[#2a2535] text-white font-body font-semibold"
+                        className="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
                       >
                         Edit Profile
                       </Button>
@@ -440,13 +440,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                       <Button
                         onClick={handleCancel}
                         variant="outline"
-                        className="px-5 py-2 rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#6b687a]"
+                        className="px-5 py-2 rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#5a6578]"
                       >
                         Cancel
                       </Button>
                       <Button
                         onClick={handleSave}
-                        className="px-5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-body font-semibold flex items-center gap-2"
+                        className="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold flex items-center gap-2"
                       >
                         <Save size={16} />
                         Save Changes

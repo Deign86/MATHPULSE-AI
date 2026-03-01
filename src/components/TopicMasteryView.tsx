@@ -35,17 +35,17 @@ type SortField = 'topicName' | 'classAverage' | 'studentsAttempted' | 'masterySt
 type SortDir = 'asc' | 'desc';
 
 const SUBJECT_BADGES: Record<string, { label: string; color: string }> = {
-  'gen-math': { label: 'GEN MATH', color: 'bg-violet-100 text-violet-700' },
-  'stats-prob': { label: 'STAT&PROB', color: 'bg-purple-100 text-purple-700' },
+  'gen-math': { label: 'GEN MATH', color: 'bg-sky-100 text-sky-700' },
+  'stats-prob': { label: 'STAT&PROB', color: 'bg-sky-100 text-sky-700' },
   'pre-calc': { label: 'PRE-CALC', color: 'bg-orange-100 text-orange-700' },
   'basic-calc': { label: 'BASIC CALC', color: 'bg-red-100 text-red-700' },
 };
 
 const STATUS_BADGES: Record<string, { label: string; color: string }> = {
   mastered: { label: 'MASTERED BY CLASS', color: 'bg-green-100 text-green-700 border-green-300' },
-  on_track: { label: 'ON TRACK', color: 'bg-violet-100 text-violet-700 border-violet-300' },
+  on_track: { label: 'ON TRACK', color: 'bg-sky-100 text-sky-700 border-sky-300' },
   needs_attention: { label: 'NEEDS ATTENTION', color: 'bg-red-100 text-red-700 border-red-300' },
-  no_data: { label: 'NO DATA YET', color: 'bg-[#f0eeea] text-[#6b687a] border-[#e8e5de]' },
+  no_data: { label: 'NO DATA YET', color: 'bg-[#edf1f7] text-[#5a6578] border-[#dde3eb]' },
 };
 
 const STATUS_ORDER: Record<string, number> = {
@@ -288,10 +288,10 @@ const TopicMasteryView: React.FC = () => {
   };
 
   const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
-    if (sortField !== field) return <ChevronDown size={12} className="text-[#a8a5b3]" />;
+    if (sortField !== field) return <ChevronDown size={12} className="text-slate-500" />;
     return sortDir === 'asc'
-      ? <ChevronUp size={12} className="text-violet-600" />
-      : <ChevronDown size={12} className="text-violet-600" />;
+      ? <ChevronUp size={12} className="text-sky-600" />
+      : <ChevronDown size={12} className="text-sky-600" />;
   };
 
   // ─── Render ───────────────────────────────────────────────
@@ -299,8 +299,8 @@ const TopicMasteryView: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={24} className="animate-spin text-violet-500" />
-        <span className="ml-2 text-[#6b687a]">Loading topic mastery data...</span>
+        <Loader2 size={24} className="animate-spin text-sky-500" />
+        <span className="ml-2 text-[#5a6578]">Loading topic mastery data...</span>
       </div>
     );
   }
@@ -314,22 +314,22 @@ const TopicMasteryView: React.FC = () => {
     >
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-[#1a1625]">Class Topic Mastery</h2>
-        <p className="text-sm text-[#6b687a] mt-1">
+        <h2 className="text-xl font-bold text-[#0a1628]">Class Topic Mastery</h2>
+        <p className="text-sm text-[#5a6578] mt-1">
           Topics where 75% or more of the class scored 85%+ are marked as mastered and can be excluded from future quiz generation.
         </p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e8e5de]">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
-              <BarChart3 size={20} className="text-violet-600" />
+            <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+              <BarChart3 size={20} className="text-sky-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#1a1625]">{summary.totalTopicsTracked}</p>
-          <p className="text-xs text-[#6b687a]">Total Topics Tracked</p>
+          <p className="text-2xl font-bold text-[#0a1628]">{summary.totalTopicsTracked}</p>
+          <p className="text-xs text-[#5a6578]">Total Topics Tracked</p>
         </div>
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-green-200">
           <div className="flex items-center gap-3 mb-2">
@@ -338,7 +338,7 @@ const TopicMasteryView: React.FC = () => {
             </div>
           </div>
           <p className="text-2xl font-bold text-green-600">{summary.masteredCount}</p>
-          <p className="text-xs text-[#6b687a]">Mastered by Class</p>
+          <p className="text-xs text-[#5a6578]">Mastered by Class</p>
         </div>
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-red-200">
           <div className="flex items-center gap-3 mb-2">
@@ -347,35 +347,35 @@ const TopicMasteryView: React.FC = () => {
             </div>
           </div>
           <p className="text-2xl font-bold text-red-600">{summary.needsAttentionCount}</p>
-          <p className="text-xs text-[#6b687a]">Needs Work</p>
+          <p className="text-xs text-[#5a6578]">Needs Work</p>
         </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e8e5de]">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-[#f0eeea] rounded-xl flex items-center justify-center">
-              <EyeOff size={20} className="text-[#6b687a]" />
+            <div className="w-10 h-10 bg-[#edf1f7] rounded-xl flex items-center justify-center">
+              <EyeOff size={20} className="text-[#5a6578]" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#6b687a]">{summary.excludedCount}</p>
-          <p className="text-xs text-[#6b687a]">Excluded Topics</p>
+          <p className="text-2xl font-bold text-[#5a6578]">{summary.excludedCount}</p>
+          <p className="text-xs text-[#5a6578]">Excluded Topics</p>
         </div>
       </div>
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-[#e8e5de]">
-          <Search size={14} className="text-[#a8a5b3]" />
+        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-[#dde3eb]">
+          <Search size={14} className="text-slate-500" />
           <input
             type="text"
             placeholder="Search topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent text-sm outline-none w-40 placeholder:text-[#a8a5b3]"
+            className="bg-transparent text-sm outline-none w-40 placeholder:text-slate-500"
           />
         </div>
         <select
           value={subjectFilter}
           onChange={(e) => setSubjectFilter(e.target.value)}
-          className="bg-white border border-[#e8e5de] rounded-xl px-3 py-2 text-sm outline-none"
+          className="bg-white border border-[#dde3eb] rounded-xl px-3 py-2 text-sm outline-none"
         >
           <option value="all">All Subjects</option>
           <option value="gen-math">General Mathematics</option>
@@ -386,7 +386,7 @@ const TopicMasteryView: React.FC = () => {
         <select
           value={gradeFilter}
           onChange={(e) => setGradeFilter(e.target.value)}
-          className="bg-white border border-[#e8e5de] rounded-xl px-3 py-2 text-sm outline-none"
+          className="bg-white border border-[#dde3eb] rounded-xl px-3 py-2 text-sm outline-none"
         >
           <option value="all">All Grades</option>
           <option value="Grade 11">Grade 11</option>
@@ -401,12 +401,12 @@ const TopicMasteryView: React.FC = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center gap-3 flex-wrap overflow-hidden"
+            className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3 flex-wrap overflow-hidden"
           >
-            <span className="text-sm font-semibold text-violet-700">{selectedTopics.size} topics selected</span>
+            <span className="text-sm font-semibold text-sky-700">{selectedTopics.size} topics selected</span>
             <button
               onClick={handleBulkExclude}
-              className="px-3 py-1.5 bg-[#6b687a] text-white text-xs font-bold rounded-lg hover:bg-[#1a1625] transition-colors"
+              className="px-3 py-1.5 bg-[#5a6578] text-white text-xs font-bold rounded-lg hover:bg-sky-600 transition-colors"
             >
               Exclude Selected Topics
             </button>
@@ -418,7 +418,7 @@ const TopicMasteryView: React.FC = () => {
             </button>
             <button
               onClick={() => setSelectedTopics(new Set())}
-              className="px-3 py-1.5 bg-white border border-[#e8e5de] text-[#6b687a] text-xs font-bold rounded-lg hover:bg-[#f0eeea] transition-colors"
+              className="px-3 py-1.5 bg-white border border-[#dde3eb] text-[#5a6578] text-xs font-bold rounded-lg hover:bg-[#edf1f7] transition-colors"
             >
               Clear Selection
             </button>
@@ -427,51 +427,51 @@ const TopicMasteryView: React.FC = () => {
       </AnimatePresence>
 
       {/* Topic Mastery Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-[#e8e5de] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#dde3eb] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-[#f0eeea] border-b border-[#e8e5de]">
+              <tr className="bg-[#edf1f7] border-b border-[#dde3eb]">
                 <th className="px-4 py-3 w-10">
                   <input
                     type="checkbox"
                     checked={selectedTopics.size === filteredTopics.length && filteredTopics.length > 0}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-[#e8e5de] text-violet-600 focus:ring-violet-500"
+                    className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
                   />
                 </th>
                 <th
-                  className="px-4 py-3 text-xs font-bold text-[#6b687a] uppercase tracking-wide cursor-pointer hover:text-violet-600"
+                  className="px-4 py-3 text-xs font-bold text-[#5a6578] uppercase tracking-wide cursor-pointer hover:text-sky-600"
                   onClick={() => handleSort('topicName')}
                 >
                   <span className="flex items-center gap-1">Topic Name <SortIcon field="topicName" /></span>
                 </th>
-                <th className="px-4 py-3 text-xs font-bold text-[#6b687a] uppercase tracking-wide">Unit</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#5a6578] uppercase tracking-wide">Unit</th>
                 <th
-                  className="px-4 py-3 text-xs font-bold text-[#6b687a] uppercase tracking-wide cursor-pointer hover:text-violet-600"
+                  className="px-4 py-3 text-xs font-bold text-[#5a6578] uppercase tracking-wide cursor-pointer hover:text-sky-600"
                   onClick={() => handleSort('classAverage')}
                 >
                   <span className="flex items-center gap-1">Class Avg % <SortIcon field="classAverage" /></span>
                 </th>
                 <th
-                  className="px-4 py-3 text-xs font-bold text-[#6b687a] uppercase tracking-wide cursor-pointer hover:text-violet-600"
+                  className="px-4 py-3 text-xs font-bold text-[#5a6578] uppercase tracking-wide cursor-pointer hover:text-sky-600"
                   onClick={() => handleSort('studentsAttempted')}
                 >
                   <span className="flex items-center gap-1">Students <SortIcon field="studentsAttempted" /></span>
                 </th>
                 <th
-                  className="px-4 py-3 text-xs font-bold text-[#6b687a] uppercase tracking-wide cursor-pointer hover:text-violet-600"
+                  className="px-4 py-3 text-xs font-bold text-[#5a6578] uppercase tracking-wide cursor-pointer hover:text-sky-600"
                   onClick={() => handleSort('masteryStatus')}
                 >
                   <span className="flex items-center gap-1">Status <SortIcon field="masteryStatus" /></span>
                 </th>
-                <th className="px-4 py-3 text-xs font-bold text-[#6b687a] uppercase tracking-wide">Exclude</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#5a6578] uppercase tracking-wide">Exclude</th>
               </tr>
             </thead>
             <tbody>
               {filteredTopics.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-[#a8a5b3]">
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                     No topics match the current filters.
                   </td>
                 </tr>
@@ -479,11 +479,11 @@ const TopicMasteryView: React.FC = () => {
                 filteredTopics.map((topic) => {
                   const isSelected = selectedTopics.has(topic.topicName);
                   const statusInfo = STATUS_BADGES[topic.masteryStatus];
-                  const subjectInfo = SUBJECT_BADGES[topic.subjectId] || { label: topic.subjectId.toUpperCase(), color: 'bg-[#f0eeea] text-[#6b687a]' };
+                  const subjectInfo = SUBJECT_BADGES[topic.subjectId] || { label: topic.subjectId.toUpperCase(), color: 'bg-[#edf1f7] text-[#5a6578]' };
                   const avgColor = topic.classAverage < 60 ? 'bg-red-500' : topic.classAverage < 85 ? 'bg-amber-500' : 'bg-green-500';
 
                   const rowBg = topic.isExcluded
-                    ? 'bg-[#f0eeea] opacity-60'
+                    ? 'bg-[#edf1f7] opacity-60'
                     : topic.masteryStatus === 'needs_attention'
                     ? 'bg-red-50/30'
                     : topic.masteryStatus === 'mastered'
@@ -493,7 +493,7 @@ const TopicMasteryView: React.FC = () => {
                   return (
                     <tr
                       key={topic.topicName}
-                      className={`border-b border-[#e8e5de] hover:bg-[#f0eeea] transition-colors ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
+                      className={`border-b border-[#dde3eb] hover:bg-[#edf1f7] transition-colors ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
                     >
                       <td className="px-4 py-3">
                         <input
@@ -505,27 +505,27 @@ const TopicMasteryView: React.FC = () => {
                             else next.add(topic.topicName);
                             setSelectedTopics(next);
                           }}
-                          className="w-4 h-4 rounded border-[#e8e5de] text-violet-600 focus:ring-violet-500"
+                          className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
                         />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[#1a1625]">{topic.topicName}</span>
+                          <span className="text-sm font-medium text-[#0a1628]">{topic.topicName}</span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${subjectInfo.color}`}>
                             {subjectInfo.label}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#6b687a]">{topic.unit}</td>
+                      <td className="px-4 py-3 text-xs text-[#5a6578]">{topic.unit}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-[#f0eeea] rounded-full overflow-hidden max-w-20">
+                          <div className="flex-1 h-2 bg-[#edf1f7] rounded-full overflow-hidden max-w-20">
                             <div className={`h-full rounded-full ${avgColor}`} style={{ width: `${topic.classAverage}%` }} />
                           </div>
-                          <span className="text-xs font-bold text-[#1a1625] w-8 text-right">{topic.classAverage}%</span>
+                          <span className="text-xs font-bold text-[#0a1628] w-8 text-right">{topic.classAverage}%</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[#6b687a]">{topic.studentsAttempted}/{topic.totalStudents}</td>
+                      <td className="px-4 py-3 text-xs text-[#5a6578]">{topic.studentsAttempted}/{topic.totalStudents}</td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${statusInfo.color}`}>
                           {statusInfo.label}
@@ -540,9 +540,9 @@ const TopicMasteryView: React.FC = () => {
                               onChange={() => toggleExclude(topic.topicName)}
                               className="sr-only peer"
                             />
-                            <div className="w-9 h-5 bg-[#e8e5de] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-[#e8e5de] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6b687a]" />
+                            <div className="w-9 h-5 bg-[#dde3eb] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-[#dde3eb] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#5a6578]" />
                           </label>
-                          <div className="hidden group-hover:block absolute z-20 bottom-full left-0 mb-1 px-2 py-1 bg-[#1a1625] text-white text-[10px] rounded whitespace-nowrap">
+                          <div className="hidden group-hover:block absolute z-20 bottom-full left-0 mb-1 px-2 py-1 bg-slate-800 text-white text-[10px] rounded whitespace-nowrap">
                             Excluded topics will not appear in AI-generated quizzes for your class
                           </div>
                         </div>

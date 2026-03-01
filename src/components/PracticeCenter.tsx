@@ -141,10 +141,10 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
     switch (type) {
       case 'practice':
         return {
-          bg: 'bg-violet-50',
-          text: 'text-violet-700',
-          border: 'border-violet-200',
-          accent: 'bg-violet-500'
+          bg: 'bg-sky-50',
+          text: 'text-sky-700',
+          border: 'border-sky-200',
+          accent: 'bg-sky-500'
         };
       case 'challenge':
         return {
@@ -155,17 +155,17 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
         };
       case 'mastery':
         return {
-          bg: 'bg-purple-50',
-          text: 'text-purple-700',
-          border: 'border-purple-200',
-          accent: 'bg-purple-500'
+          bg: 'bg-sky-50',
+          text: 'text-sky-700',
+          border: 'border-sky-200',
+          accent: 'bg-sky-500'
         };
       default:
         return {
-          bg: 'bg-[#f0eeea]',
-          text: 'text-[#1a1625]',
-          border: 'border-[#e8e5de]',
-          accent: 'bg-[#6b687a]'
+          bg: 'bg-[#edf1f7]',
+          text: 'text-[#0a1628]',
+          border: 'border-[#dde3eb]',
+          accent: 'bg-[#5a6578]'
         };
     }
   };
@@ -179,7 +179,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
       case 'Hard':
         return 'bg-red-100 text-red-700';
       default:
-        return 'bg-[#f0eeea] text-[#1a1625]';
+        return 'bg-[#edf1f7] text-[#0a1628]';
     }
   };
 
@@ -187,15 +187,15 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#1a1625] mb-2">Practice Center</h1>
-        <p className="text-[#6b687a]">Sharpen your skills with quizzes, challenges, and mastery tests</p>
+        <h1 className="text-2xl font-bold text-[#0a1628] mb-2">Practice Center</h1>
+        <p className="text-[#5a6578]">Sharpen your skills with quizzes, challenges, and mastery tests</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-violet-600 to-fuchsia-700 rounded-2xl p-5 text-white shadow-lg"
+          className="bg-gradient-to-br from-sky-700 to-sky-500 rounded-2xl p-5 text-white shadow-lg"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -203,12 +203,12 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             </div>
             <span className="text-3xl font-bold">12</span>
           </div>
-          <p className="text-sm font-medium text-violet-100">Quizzes Completed</p>
+          <p className="text-sm font-medium text-sky-100">Quizzes Completed</p>
         </motion.div>
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 rounded-2xl p-5 text-white shadow-lg"
+          className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-5 text-white shadow-lg"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -229,7 +229,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             </div>
             <span className="text-3xl font-bold">87%</span>
           </div>
-          <p className="text-sm font-medium text-violet-100">Average Score</p>
+          <p className="text-sm font-medium text-sky-100">Average Score</p>
         </motion.div>
       </div>
 
@@ -240,8 +240,8 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             onClick={() => setSelectedFilter('all')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
               selectedFilter === 'all'
-                ? 'bg-violet-600 text-white shadow-md'
-                : 'text-[#6b687a] hover:bg-[#f0eeea]'
+                ? 'bg-sky-600 text-white shadow-md'
+                : 'text-[#5a6578] hover:bg-[#edf1f7]'
             }`}
           >
             All
@@ -250,8 +250,8 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             onClick={() => setSelectedFilter('practice')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
               selectedFilter === 'practice'
-                ? 'bg-violet-500 text-white shadow-md'
-                : 'text-[#6b687a] hover:bg-[#f0eeea]'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-[#5a6578] hover:bg-[#edf1f7]'
             }`}
           >
             Practice
@@ -261,7 +261,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
               selectedFilter === 'challenge'
                 ? 'bg-orange-500 text-white shadow-md'
-                : 'text-[#6b687a] hover:bg-[#f0eeea]'
+                : 'text-[#5a6578] hover:bg-[#edf1f7]'
             }`}
           >
             Challenge
@@ -270,8 +270,8 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             onClick={() => setSelectedFilter('mastery')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
               selectedFilter === 'mastery'
-                ? 'bg-purple-500 text-white shadow-md'
-                : 'text-[#6b687a] hover:bg-[#f0eeea]'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-[#5a6578] hover:bg-[#edf1f7]'
             }`}
           >
             Mastery
@@ -281,7 +281,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="px-4 py-2.5 bg-white border-2 border-[#e8e5de] rounded-xl text-sm font-bold text-[#1a1625] focus:border-indigo-600 focus:outline-none"
+          className="px-4 py-2.5 bg-white border-2 border-[#dde3eb] rounded-xl text-sm font-bold text-[#0a1628] focus:border-indigo-600 focus:outline-none"
         >
           <option value="all">All Subjects</option>
           <option value="General Mathematics">General Mathematics</option>
@@ -314,7 +314,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
                     {quiz.type}
                   </div>
                   {quiz.locked ? (
-                    <Lock size={18} className="text-[#a8a5b3]" />
+                    <Lock size={18} className="text-slate-500" />
                   ) : quiz.completed ? (
                     <CheckCircle size={18} className="text-teal-600" />
                   ) : (
@@ -323,11 +323,11 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
                 </div>
 
                 {/* Title */}
-                <h3 className="font-bold text-[#1a1625] mb-2">{quiz.title}</h3>
-                <p className="text-xs text-[#6b687a] mb-4">{quiz.subject}</p>
+                <h3 className="font-bold text-[#0a1628] mb-2">{quiz.title}</h3>
+                <p className="text-xs text-[#5a6578] mb-4">{quiz.subject}</p>
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 mb-4 text-xs text-[#6b687a]">
+                <div className="flex items-center gap-4 mb-4 text-xs text-[#5a6578]">
                   <div className="flex items-center gap-1">
                     <Award size={14} />
                     <span>{quiz.questions} questions</span>
@@ -361,7 +361,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
         </div>
 
         {filteredQuizzes.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 text-[#a8a5b3]">
+          <div className="flex flex-col items-center justify-center h-64 text-slate-500">
             <Target size={48} className="mb-3" />
             <p className="font-medium">No quizzes found</p>
             <p className="text-sm">Try adjusting your filters</p>

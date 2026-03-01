@@ -50,11 +50,11 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
         backdropFilter: `blur(${blur}px)`,
         boxShadow: shadow,
       }}
-      className="w-full border-b border-[#e8e5de] px-6 py-4 flex items-center justify-between transition-all duration-200"
+      className="w-full border-b border-[#dde3eb] px-6 py-4 flex items-center justify-between transition-all duration-200"
     >
       <div>
-        <h1 className="text-xl font-display font-bold text-[#1a1625] tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-[#6b687a] mt-0.5 font-body">{subtitle}</p>}
+        <h1 className="text-xl font-display font-bold text-[#0a1628] tracking-tight">{title}</h1>
+        {subtitle && <p className="text-sm text-[#5a6578] mt-0.5 font-body">{subtitle}</p>}
       </div>
 
       <div className="flex items-center gap-3">
@@ -67,18 +67,18 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
         
         <button 
           onClick={onOpenProfile}
-          className="flex items-center gap-3 bg-white/60 hover:bg-white p-1.5 pr-4 rounded-lg cursor-pointer transition-all group border border-[#e8e5de] card-elevated"
+          className="flex items-center gap-3 bg-white/60 hover:bg-white p-1.5 pr-4 rounded-lg cursor-pointer transition-all group border border-[#dde3eb] card-elevated"
         >
           <img 
             src={userAvatar}
             alt={userName}
-            className="w-9 h-9 rounded-lg object-cover ring-2 ring-violet-500/10"
+            className="w-9 h-9 rounded-lg object-cover ring-2 ring-sky-500/10"
           />
           <div className="text-left">
-            <p className="text-sm font-body font-semibold text-[#1a1625] leading-none group-hover:text-violet-600 transition-colors">
+            <p className="text-sm font-body font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors">
               {userName}
             </p>
-            <p className="text-xs text-[#6b687a] mt-0.5 capitalize font-body">{userRole}</p>
+            <p className="text-xs text-[#5a6578] mt-0.5 capitalize font-body">{userRole}</p>
           </div>
         </button>
       </div>

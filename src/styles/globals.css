@@ -1,8 +1,8 @@
 @custom-variant dark (&:is(.dark *));
 
-/* ─── Midnight Theorem Design System ─────────────────────── */
+/* ─── MathPulse Design System ────────────────────────────── */
 /* Typography: Syne (display) + Outfit (body)                  */
-/* Palette: Deep violet primary, warm amber accent             */
+/* Palette: Navy Blue, Light Blue, Red Orange, Golden Yellow   */
 /* ──────────────────────────────────────────────────────────── */
 
 :root {
@@ -11,103 +11,103 @@
   --font-body: 'Outfit', ui-sans-serif, system-ui, sans-serif;
 
   /* Surface & Background */
-  --background: #f8f7f4;
-  --foreground: #1a1625;
+  --background: #f7f9fc;
+  --foreground: #0a1628;
   --card: #ffffff;
-  --card-foreground: #1a1625;
+  --card-foreground: #0a1628;
   --popover: #ffffff;
-  --popover-foreground: #1a1625;
+  --popover-foreground: #0a1628;
 
-  /* Primary — Violet */
-  --primary: #7c3aed;
+  /* Primary — Light Blue */
+  --primary: #0284c7;
   --primary-foreground: #ffffff;
 
-  /* Secondary — Soft violet wash */
-  --secondary: #ede9fe;
-  --secondary-foreground: #4c1d95;
+  /* Secondary — Soft sky wash */
+  --secondary: #e0f2fe;
+  --secondary-foreground: #0c4a6e;
 
-  /* Muted — Warm neutral */
-  --muted: #f0ede8;
-  --muted-foreground: #6b687a;
+  /* Muted — Cool neutral */
+  --muted: #edf1f7;
+  --muted-foreground: #5a6578;
 
-  /* Accent — Amber / Gold (achievements, XP, CTAs) */
+  /* Accent — Golden Yellow (achievements, XP, CTAs) */
   --accent: #fef3c7;
   --accent-foreground: #92400e;
 
-  /* Destructive — Rose */
-  --destructive: #e11d48;
+  /* Destructive — Red Orange */
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
   /* Borders & Inputs */
-  --border: #e8e5de;
+  --border: #dde3eb;
   --input: transparent;
-  --input-background: #f5f3ef;
-  --switch-background: #d4d0c8;
+  --input-background: #f0f4f9;
+  --switch-background: #c8d0da;
 
   /* Typography weights */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
 
   /* Focus ring */
-  --ring: #a78bfa;
+  --ring: #38bdf8;
 
   /* Charts — vibrant distinct hues */
-  --chart-1: #7c3aed;
+  --chart-1: #0284c7;
   --chart-2: #f59e0b;
   --chart-3: #059669;
-  --chart-4: #e11d48;
+  --chart-4: #ff5c3a;
   --chart-5: #06b6d4;
 
   --radius: 0.75rem;
 
-  /* Sidebar — Always dark for visual anchor */
-  --sidebar: #1a1625;
-  --sidebar-foreground: #e8e5f0;
-  --sidebar-primary: #a78bfa;
+  /* Sidebar — Clean white with sky accent (light mode) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a1628;
+  --sidebar-primary: #0284c7;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2a2540;
-  --sidebar-accent-foreground: #e8e5f0;
-  --sidebar-border: #2a2540;
-  --sidebar-ring: #7c3aed;
+  --sidebar-accent: #f0f7ff;
+  --sidebar-accent-foreground: #0c4a6e;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #0284c7;
 }
 
 .dark {
-  --background: #0a0a0f;
-  --foreground: #f5f3ff;
-  --card: #16151f;
-  --card-foreground: #f5f3ff;
-  --popover: #16151f;
-  --popover-foreground: #f5f3ff;
-  --primary: #8b5cf6;
+  --background: #050d18;
+  --foreground: #f0f7ff;
+  --card: #0a1628;
+  --card-foreground: #f0f7ff;
+  --popover: #0a1628;
+  --popover-foreground: #f0f7ff;
+  --primary: #0ea5e9;
   --primary-foreground: #ffffff;
-  --secondary: #1e1b2e;
-  --secondary-foreground: #c4b5fd;
-  --muted: #1e1b2e;
-  --muted-foreground: #9f9bae;
-  --accent: #2a2540;
+  --secondary: #0d1f35;
+  --secondary-foreground: #7dd3fc;
+  --muted: #0d1f35;
+  --muted-foreground: #8a9bb0;
+  --accent: #0f2440;
   --accent-foreground: #fbbf24;
-  --destructive: #fb7185;
-  --destructive-foreground: #1a1625;
-  --border: #2a2838;
-  --input: #1e1b2e;
-  --input-background: #1e1b2e;
-  --switch-background: #3a3650;
-  --ring: #8b5cf6;
+  --destructive: #ff5c3a;
+  --destructive-foreground: #0a1628;
+  --border: #152a42;
+  --input: #0d1f35;
+  --input-background: #0d1f35;
+  --switch-background: #1a3555;
+  --ring: #0ea5e9;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #a78bfa;
+  --chart-1: #38bdf8;
   --chart-2: #fbbf24;
   --chart-3: #34d399;
-  --chart-4: #fb7185;
+  --chart-4: #ff5c3a;
   --chart-5: #22d3ee;
-  --sidebar: #0f0e17;
-  --sidebar-foreground: #e8e5f0;
-  --sidebar-primary: #a78bfa;
+  --sidebar: #050d18;
+  --sidebar-foreground: #dce6f0;
+  --sidebar-primary: #38bdf8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e1b2e;
-  --sidebar-accent-foreground: #e8e5f0;
-  --sidebar-border: #1e1b2e;
-  --sidebar-ring: #8b5cf6;
+  --sidebar-accent: #0d1f35;
+  --sidebar-accent-foreground: #dce6f0;
+  --sidebar-border: #0d1f35;
+  --sidebar-ring: #0ea5e9;
 }
 
 @theme inline {
@@ -235,26 +235,30 @@ html {
 }
 
 /* ─── Glow Utilities ─────────────────────────────────── */
+.glow-blue {
+  box-shadow: 0 0 24px rgba(2, 132, 199, 0.12), 0 0 64px rgba(2, 132, 199, 0.04);
+}
+
 .glow-violet {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.15), 0 0 60px rgba(124, 58, 237, 0.05);
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.12), 0 0 64px rgba(124, 58, 237, 0.04);
 }
 
 .glow-amber {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15), 0 0 60px rgba(245, 158, 11, 0.05);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12), 0 0 64px rgba(245, 158, 11, 0.04);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 20px rgba(5, 150, 105, 0.15), 0 0 60px rgba(5, 150, 105, 0.05);
+  box-shadow: 0 0 24px rgba(5, 150, 105, 0.12), 0 0 64px rgba(5, 150, 105, 0.04);
 }
 
 /* ─── Dot Grid Background Pattern ────────────────────── */
 .bg-dot-pattern {
-  background-image: radial-gradient(circle, rgba(124, 58, 237, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(2, 132, 199, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .dark .bg-dot-pattern {
-  background-image: radial-gradient(circle, rgba(139, 92, 246, 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(14, 165, 233, 0.12) 1px, transparent 1px);
 }
 
 /* ─── Noise Texture Overlay ──────────────────────────── */
@@ -275,14 +279,16 @@ html {
 /* ─── Card Elevation System ──────────────────────────── */
 .card-elevated {
   box-shadow:
-    0 1px 2px rgba(26, 22, 37, 0.04),
-    0 4px 16px rgba(26, 22, 37, 0.06);
+    0 1px 3px rgba(10, 22, 40, 0.05),
+    0 4px 16px rgba(10, 22, 40, 0.04),
+    0 0 0 1px rgba(10, 22, 40, 0.03);
 }
 
 .card-elevated-lg {
   box-shadow:
-    0 2px 4px rgba(26, 22, 37, 0.04),
-    0 8px 32px rgba(26, 22, 37, 0.08);
+    0 2px 6px rgba(10, 22, 40, 0.06),
+    0 12px 40px rgba(10, 22, 40, 0.06),
+    0 0 0 1px rgba(10, 22, 40, 0.03);
 }
 
 .dark .card-elevated {
@@ -304,7 +310,7 @@ html {
 }
 
 *:hover {
-  scrollbar-color: rgba(124, 58, 237, 0.2) transparent;
+  scrollbar-color: rgba(2, 132, 199, 0.2) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -323,11 +329,11 @@ html {
 }
 
 *:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(124, 58, 237, 0.2);
+  background-color: rgba(2, 132, 199, 0.2);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(124, 58, 237, 0.4);
+  background-color: rgba(2, 132, 199, 0.4);
 }
 
 /* Scrollbar Hide Utility */
@@ -352,6 +358,30 @@ html {
   left: 0;
   width: 48px;
   height: 3px;
-  background: linear-gradient(90deg, #7c3aed, #c026d3);
+  background: linear-gradient(90deg, #0284c7, #f59e0b);
   border-radius: 2px;
+}
+
+/* ─── Light Surface Patterns ─────────────────────────── */
+.surface-raised {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.surface-inset {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e8eef6 100%);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+}
+
+/* ─── Accent Border Cards ────────────────────────────── */
+.card-accent-sky {
+  border-left: 3px solid #0284c7;
+}
+
+.card-accent-amber {
+  border-left: 3px solid #f59e0b;
+}
+
+.card-accent-emerald {
+  border-left: 3px solid #059669;
 }

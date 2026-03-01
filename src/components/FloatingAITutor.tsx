@@ -63,33 +63,33 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
     <div className="pointer-events-none">
       {/* Chat Window (Popup) */}
       <div 
-        className={`pointer-events-auto mb-4 w-80 bg-[#f8f7f4] rounded-3xl shadow-2xl border border-[#e8e5de] flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right select-none ${
+        className={`pointer-events-auto mb-4 w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right select-none ${
           isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10 pointer-events-none h-0'
         }`}
         style={{ maxHeight: isOpen ? '32rem' : '0' }}  
       >
         {/* Chat Header - Fixed */}
-        <div className="bg-[#1a1625] p-4 flex items-center justify-between flex-shrink-0">
+        <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <Bot size={20} className="text-white" />
             </div>
             <div>
               <h3 className="text-white font-bold text-sm">AI Math Tutor</h3>
-              <p className="text-violet-300 text-xs">Always here to help</p>
+              <p className="text-sky-100 text-xs">Always here to help</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleFullScreenClick}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
               title="Open fullscreen"
             >
               <Maximize2 size={16} className="text-white" />
             </button>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
             >
               <X size={16} className="text-white" />
             </button>
@@ -97,7 +97,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         </div>
 
         {/* Messages Area - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f0eeea]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#edf1f7]">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -106,8 +106,8 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
                   message.sender === 'user'
-                    ? 'bg-violet-600 text-white'
-                    : 'bg-white text-[#1a1625] shadow-sm border border-[#e8e5de]'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-white text-[#0a1628] shadow-sm border border-[#dde3eb]'
                 }`}
               >
                 {message.sender === 'user' ? (
@@ -116,7 +116,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
                   <ChatMarkdown>{message.text}</ChatMarkdown>
                 )}
                 <p className={`text-[10px] mt-1 ${
-                  message.sender === 'user' ? 'text-violet-200' : 'text-[#a8a5b3]'
+                  message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
                 }`}>
                   {message.timestamp}
                 </p>
@@ -126,11 +126,11 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
           
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white text-[#1a1625] shadow-sm border border-[#e8e5de] rounded-2xl px-4 py-2.5 max-w-[75%]">
+              <div className="bg-white text-[#0a1628] shadow-sm border border-[#dde3eb] rounded-2xl px-4 py-2.5 max-w-[75%]">
                 <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
-                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
+                  <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
+                  <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
                 </div>
               </div>
             </div>
@@ -139,7 +139,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         </div>
 
         {/* Input Area - Fixed */}
-        <div className="p-4 border-t border-[#e8e5de] bg-white flex-shrink-0">
+        <div className="p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
           <div className="flex gap-2">
             <input
               type="text"
@@ -147,11 +147,11 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               onChange={(e) => setCurrentMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="Ask me anything..."
-              className="flex-1 px-4 py-2.5 rounded-xl border border-[#e8e5de] focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm bg-[#f8f7f4]"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-[#f7f9fc]"
             />
             <button
               onClick={handleSendMessage}
-              className="p-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!currentMessage.trim() || isLoading}
             >
               <Send size={18} />
@@ -165,7 +165,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="pointer-events-auto w-16 h-16 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-violet-300/50 transition-all"
+        className="pointer-events-auto w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
       >
         {isOpen ? <X size={28} /> : <Bot size={28} />}
       </motion.button>
