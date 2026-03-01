@@ -584,21 +584,21 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
     switch (variant) {
       case 'number':
-        return `${base} ${sizeNum} bg-slate-700 hover:bg-slate-600 text-white shadow-md shadow-slate-900/30`;
+        return `${base} ${sizeNum} bg-[#1a1625] hover:bg-white/10 text-white shadow-md shadow-black/30`;
       case 'op':
-        return `${base} ${sizeNum} bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
+        return `${base} ${sizeNum} bg-gradient-to-br from-fuchsia-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
       case 'func':
-        return `${base} ${sizeFunc} bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-900/30`;
+        return `${base} ${sizeFunc} bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-blue-900/30`;
       case 'del':
         return `${base} ${sizeNum} ${label === 'AC' ? 'bg-red-600 hover:bg-red-500' : 'bg-red-500/80 hover:bg-red-500'} text-white shadow-md shadow-red-900/30 font-bold`;
       case 'equals':
         return `${base} ${sizeNum} bg-gradient-to-br from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-white shadow-lg shadow-cyan-900/40 font-bold text-base`;
       case 'shift':
-        return `${base} ${sizeFunc} bg-slate-800 hover:bg-slate-700 text-white shadow-md shadow-slate-900/30 font-bold`;
+        return `${base} ${sizeFunc} bg-[#1a1625] hover:bg-[#1a1625] text-white shadow-md shadow-black/30 font-bold`;
       case 'mode':
-        return `${base} ${sizeFunc} bg-slate-800 hover:bg-slate-700 text-blue-300 shadow-md shadow-slate-900/30`;
+        return `${base} ${sizeFunc} bg-[#1a1625] hover:bg-[#1a1625] text-violet-300 shadow-md shadow-black/30`;
       default:
-        return `${base} ${sizeNum} bg-slate-700 text-white`;
+        return `${base} ${sizeNum} bg-[#1a1625] text-white`;
     }
   };
 
@@ -635,13 +635,13 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   const calculator = (
     <div className="flex flex-col w-full select-none">
       {/* ── Display ────────────────────────────────────────── */}
-      <div className="bg-slate-900 rounded-t-2xl p-4 border border-slate-700 border-b-0">
+      <div className="bg-[#0d0b14] rounded-t-2xl p-4 border border-white/10 border-b-0">
         {/* Mode badges */}
         <div className="flex items-center gap-2 mb-2">
           <span className={`
             text-[10px] font-bold px-2 py-0.5 rounded-full
             ${angleMode === 'DEG' 
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+              ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-cyan-500/30' 
               : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}
           `}>
             {angleMode}
@@ -652,12 +652,12 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
             </span>
           )}
           {alphaActive && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-indigo-500/30">
               ALPHA
             </span>
           )}
           {sympyVerifying && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30 animate-pulse">
               Verifying…
             </span>
           )}
@@ -666,7 +666,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         {/* Expression line (top) */}
         <div
           ref={expressionRef}
-          className="text-right text-slate-400 text-[14px] font-mono h-6 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
+          className="text-right text-[#a8a5b3] text-[14px] font-mono h-6 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
         >
           {prevExpression || '\u00A0'}
         </div>
@@ -686,20 +686,20 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-2 pt-2 border-t border-slate-700"
+              className="mt-2 pt-2 border-t border-white/10"
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                <span className="text-[10px] text-cyan-400 font-semibold uppercase tracking-wider">SymPy Verified</span>
+                <span className="text-[10px] text-fuchsia-400 font-semibold uppercase tracking-wider">SymPy Verified</span>
               </div>
-              <p className="text-xs text-slate-300 font-mono">{sympyResult.result}</p>
+              <p className="text-xs text-[#a8a5b3] font-mono">{sympyResult.result}</p>
               {sympyResult.latex && (
-                <p className="text-[10px] text-slate-500 font-mono mt-0.5">LaTeX: {sympyResult.latex}</p>
+                <p className="text-[10px] text-[#6b687a] font-mono mt-0.5">LaTeX: {sympyResult.latex}</p>
               )}
               {sympyResult.steps.length > 1 && (
                 <div className="mt-1 space-y-0.5">
                   {sympyResult.steps.slice(1).map((step, i) => (
-                    <p key={i} className="text-[10px] text-slate-500">{step}</p>
+                    <p key={i} className="text-[10px] text-[#6b687a]">{step}</p>
                   ))}
                 </div>
               )}
@@ -713,8 +713,8 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         onClick={verifySympyExpression}
         disabled={sympyVerifying}
         className="
-          w-full py-1.5 bg-slate-800 border-x border-slate-700
-          text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 hover:bg-slate-750
+          w-full py-1.5 bg-[#1a1625] border-x border-white/10
+          text-[11px] font-semibold text-fuchsia-400 hover:text-fuchsia-300 hover:bg-white/10
           transition-colors disabled:opacity-50 disabled:cursor-not-allowed
           flex items-center justify-center gap-1.5
         "
@@ -726,7 +726,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       </button>
 
       {/* ── Button grid ────────────────────────────────────── */}
-      <div className="bg-slate-800 rounded-b-2xl p-4 border border-slate-700 border-t-0 space-y-1.5">
+      <div className="bg-[#1a1625] rounded-b-2xl p-4 border border-white/10 border-t-0 space-y-1.5">
         {rows.map((row, ri) => (
           <div key={ri} className="grid grid-cols-5 gap-1.5">
             {row.map((btn, bi) => {
@@ -744,7 +744,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                       ? '!bg-amber-600 ring-2 ring-amber-400/50'
                       : ''}
                     ${btn.variant === 'shift' && btn.label === 'ALPHA' && alphaActive
-                      ? '!bg-indigo-600 ring-2 ring-indigo-400/50'
+                      ? '!bg-violet-600 ring-2 ring-indigo-400/50'
                       : ''}
                     ${btn.colSpan ? `col-span-${btn.colSpan}` : ''}
                     relative
@@ -769,24 +769,24 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
       {/* ── Keyboard shortcuts panel ──────────────────────── */}
       {showShortcuts && (
-        <div className="bg-slate-900 border-t border-slate-700 text-xs text-slate-400 p-3 rounded-b-2xl">
+        <div className="bg-[#0d0b14] border-t border-white/10 text-xs text-[#a8a5b3] p-3 rounded-b-2xl">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <div className="flex justify-between"><span className="text-slate-500">Alt+S</span><span>sin(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+Shift+S</span><span>sin⁻¹(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+C</span><span>cos(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+Shift+C</span><span>cos⁻¹(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+T</span><span>tan(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+Shift+T</span><span>tan⁻¹(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+L</span><span>log(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+N</span><span>ln(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+R</span><span>√(</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+P</span><span>π</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+E</span><span>e</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+2</span><span>²</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+3</span><span>³</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+^</span><span>^</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+A</span><span>Ans</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Alt+D</span><span>DEG/RAD</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+S</span><span>sin(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+Shift+S</span><span>sin⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+C</span><span>cos(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+Shift+C</span><span>cos⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+T</span><span>tan(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+Shift+T</span><span>tan⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+L</span><span>log(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+N</span><span>ln(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+R</span><span>√(</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+P</span><span>π</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+E</span><span>e</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+2</span><span>²</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+3</span><span>³</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+^</span><span>^</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+A</span><span>Ans</span></div>
+            <div className="flex justify-between"><span className="text-[#6b687a]">Alt+D</span><span>DEG/RAD</span></div>
           </div>
         </div>
       )}
@@ -810,7 +810,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
           >
             {/* Header bar – draggable */}
             <div
-              className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-t-2xl px-4 py-2.5 flex items-center justify-between"
+              className="bg-gradient-to-r from-violet-600 to-fuchsia-500 rounded-t-2xl px-4 py-2.5 flex items-center justify-between"
               style={{ cursor: 'move' }}
               onMouseDown={handleDragStart}
             >
@@ -846,7 +846,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
             {/* Minimized preview */}
             {isMinimized && (
-              <div className="bg-slate-900 rounded-b-2xl p-3 border border-slate-700 border-t-0">
+              <div className="bg-[#0d0b14] rounded-b-2xl p-3 border border-white/10 border-t-0">
                 <p className="text-right text-white font-mono font-bold text-lg">{result}</p>
               </div>
             )}

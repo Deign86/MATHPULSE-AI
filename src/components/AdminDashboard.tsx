@@ -25,8 +25,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       value: '1,247',
       change: '+12%',
       icon: Users,
-      color: 'bg-indigo-100',
-      iconColor: 'text-indigo-600',
+      color: 'bg-violet-100',
+      iconColor: 'text-violet-600',
       trend: 'up'
     },
     {
@@ -70,8 +70,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       value: '892',
       change: '+45',
       icon: Target,
-      color: 'bg-blue-100',
-      iconColor: 'text-blue-600',
+      color: 'bg-violet-100',
+      iconColor: 'text-violet-600',
       trend: 'up'
     }
   ];
@@ -101,8 +101,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       message: 'System backup completed successfully',
       time: '2 hours ago',
       icon: Shield,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50'
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50'
     },
     {
       id: 4,
@@ -143,16 +143,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   ];
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-screen w-full bg-[#f0eeea] overflow-hidden">
       {/* Sidebar */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole="admin" />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-[#e8e5de] px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">
+            <h1 className="text-2xl font-bold text-[#1a1625]">
               {activeTab === 'Overview' && 'Admin Dashboard'}
               {activeTab === 'Content' && 'Content'}
               {activeTab === 'Audit Log' && 'Audit Log'}
@@ -160,7 +160,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               {activeTab === 'Analytics' && 'Analytics'}
               {activeTab === 'Settings' && 'Settings'}
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-[#6b687a] mt-0.5">
               {activeTab === 'Overview' && 'System Overview & Management'}
               {activeTab === 'Content' && 'Manage and monitor your MathPulse AI system'}
               {activeTab === 'Audit Log' && 'Manage and monitor your MathPulse AI system'}
@@ -170,25 +170,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative p-3 bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors">
+            <button className="relative p-3 bg-[#f0eeea] rounded-xl text-[#6b687a] hover:bg-[#e8e5de] transition-colors">
               <Settings size={20} />
             </button>
             <button 
               onClick={onOpenProfile}
-              className="flex items-center gap-3 bg-slate-100 p-1.5 pr-4 rounded-xl cursor-pointer hover:bg-slate-200 hover:shadow-md transition-all group"
+              className="flex items-center gap-3 bg-[#f0eeea] p-1.5 pr-4 rounded-xl cursor-pointer hover:bg-[#e8e5de] hover:shadow-md transition-all group"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Shield size={20} className="text-white" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-blue-600 transition-colors">Administrator</p>
-                <p className="text-xs text-slate-500 mt-1">System Admin</p>
+                <p className="text-sm font-bold text-[#1a1625] leading-none group-hover:text-violet-600 transition-colors">Administrator</p>
+                <p className="text-xs text-[#6b687a] mt-1">System Admin</p>
               </div>
             </button>
             <Button
               onClick={() => setShowLogoutConfirm(true)}
               variant="outline"
-              className="px-4 py-2 rounded-xl border-slate-200 hover:border-red-500 hover:text-red-500 font-bold text-sm"
+              className="px-4 py-2 rounded-xl border-[#e8e5de] hover:border-red-500 hover:text-red-500 font-bold text-sm"
             >
               Logout
             </Button>
@@ -208,7 +208,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   return (
                     <div
                       key={index}
-                      className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-all"
+                      className="bg-white rounded-2xl p-5 shadow-sm border border-[#e8e5de] hover:shadow-md transition-all"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center`}>
@@ -224,23 +224,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           {stat.change}
                         </span>
                       </div>
-                      <h3 className="text-2xl font-bold text-slate-800 mb-1">{stat.value}</h3>
-                      <p className="text-sm text-slate-500 font-medium">{stat.label}</p>
+                      <h3 className="text-2xl font-bold text-[#1a1625] mb-1">{stat.value}</h3>
+                      <p className="text-sm text-[#6b687a] font-medium">{stat.label}</p>
                     </div>
                   );
                 })}
               </div>
 
               {/* Performance Chart Placeholder */}
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#e8e5de]">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-800 mb-1">System Performance Overview</h2>
-                    <p className="text-sm text-slate-500">Last 30 days</p>
+                    <h2 className="text-lg font-bold text-[#1a1625] mb-1">System Performance Overview</h2>
+                    <p className="text-sm text-[#6b687a]">Last 30 days</p>
                   </div>
                   <Button
                     variant="outline"
-                    className="px-4 py-2 rounded-xl border-slate-200 hover:border-indigo-600 hover:text-indigo-600 font-bold text-sm"
+                    className="px-4 py-2 rounded-xl border-[#e8e5de] hover:border-indigo-600 hover:text-violet-600 font-bold text-sm"
                   >
                     View Report
                   </Button>
@@ -258,7 +258,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between text-xs text-slate-500">
+                  <div className="flex justify-between text-xs text-[#6b687a]">
                     <span>Jan</span>
                     <span>Feb</span>
                     <span>Mar</span>
@@ -279,22 +279,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               <MasteryHeatmap />
 
               {/* Recent Activity */}
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                <h2 className="text-lg font-bold text-slate-800 mb-5">Recent System Activity</h2>
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#e8e5de]">
+                <h2 className="text-lg font-bold text-[#1a1625] mb-5">Recent System Activity</h2>
                 <div className="space-y-3">
                   {recentActivity.map((activity) => {
                     const Icon = activity.icon;
                     return (
                       <div
                         key={activity.id}
-                        className={`${activity.bgColor} border border-slate-100 rounded-2xl p-4 flex items-start gap-4`}
+                        className={`${activity.bgColor} border border-[#e8e5de] rounded-2xl p-4 flex items-start gap-4`}
                       >
                         <div className={`w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0`}>
                           <Icon size={20} className={activity.color} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-bold text-slate-800 mb-1">{activity.message}</p>
-                          <p className="text-xs text-slate-500">{activity.time}</p>
+                          <p className="text-sm font-bold text-[#1a1625] mb-1">{activity.message}</p>
+                          <p className="text-xs text-[#6b687a]">{activity.time}</p>
                         </div>
                       </div>
                     );
@@ -311,30 +311,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 <div className="space-y-2">
                   <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl p-3 text-left transition-all">
                     <p className="text-sm font-bold">Add New Teacher</p>
-                    <p className="text-xs text-indigo-100">Create teacher account</p>
+                    <p className="text-xs text-violet-100">Create teacher account</p>
                   </button>
                   <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl p-3 text-left transition-all">
                     <p className="text-sm font-bold">Add New Student</p>
-                    <p className="text-xs text-indigo-100">Register new student</p>
+                    <p className="text-xs text-violet-100">Register new student</p>
                   </button>
                   <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl p-3 text-left transition-all">
                     <p className="text-sm font-bold">System Settings</p>
-                    <p className="text-xs text-indigo-100">Configure platform</p>
+                    <p className="text-xs text-violet-100">Configure platform</p>
                   </button>
                   <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl p-3 text-left transition-all">
                     <p className="text-sm font-bold">Generate Report</p>
-                    <p className="text-xs text-indigo-100">Export analytics</p>
+                    <p className="text-xs text-violet-100">Export analytics</p>
                   </button>
                 </div>
               </div>
 
               {/* Top Performers */}
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#e8e5de]">
                 <div className="flex items-center gap-2 mb-5">
                   <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
                     <Award size={20} className="text-amber-600" />
                   </div>
-                  <h2 className="text-lg font-bold text-slate-800">Top Performers</h2>
+                  <h2 className="text-lg font-bold text-[#1a1625]">Top Performers</h2>
                 </div>
 
                 <div className="space-y-3">
@@ -355,19 +355,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           </span>
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm font-bold text-slate-800">{student.name}</h4>
-                          <p className="text-xs text-slate-600">{student.class}</p>
+                          <h4 className="text-sm font-bold text-[#1a1625]">{student.name}</h4>
+                          <p className="text-xs text-[#6b687a]">{student.class}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-white rounded-xl p-2">
-                          <p className="text-[10px] text-slate-500 mb-1">Performance</p>
+                          <p className="text-[10px] text-[#6b687a] mb-1">Performance</p>
                           <p className="text-lg font-bold text-teal-600">{student.performance}%</p>
                         </div>
                         <div className="bg-white rounded-xl p-2">
-                          <p className="text-[10px] text-slate-500 mb-1">Level</p>
-                          <p className="text-lg font-bold text-indigo-600">{student.level}</p>
+                          <p className="text-[10px] text-[#6b687a] mb-1">Level</p>
+                          <p className="text-lg font-bold text-violet-600">{student.level}</p>
                         </div>
                       </div>
                     </div>
@@ -376,22 +376,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               </div>
 
               {/* AI Model Status */}
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                <h2 className="text-lg font-bold text-slate-800 mb-5">AI Model Status</h2>
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#e8e5de]">
+                <h2 className="text-lg font-bold text-[#1a1625] mb-5">AI Model Status</h2>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Prediction Accuracy</span>
+                    <span className="text-sm text-[#6b687a]">Prediction Accuracy</span>
                     <span className="text-sm font-bold text-teal-600">94.2%</span>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#f0eeea] rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full" style={{ width: '94.2%' }}></div>
                   </div>
 
                   <div className="flex items-center justify-between mt-4">
-                    <span className="text-sm text-slate-600">Model Performance</span>
-                    <span className="text-sm font-bold text-indigo-600">Excellent</span>
+                    <span className="text-sm text-[#6b687a]">Model Performance</span>
+                    <span className="text-sm font-bold text-violet-600">Excellent</span>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#f0eeea] rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full" style={{ width: '92%' }}></div>
                   </div>
 

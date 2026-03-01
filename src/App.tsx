@@ -192,10 +192,10 @@ const App = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f7f4]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading MathPulse AI...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-violet-600 mx-auto"></div>
+          <p className="mt-4 text-[#6b687a] font-body">Loading MathPulse AI...</p>
         </div>
       </div>
     );
@@ -294,7 +294,7 @@ const App = () => {
   return (
     <>
     <ChatProvider>
-      <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+      <div className="flex h-screen w-full bg-[#f8f7f4] overflow-hidden">
         {/* Sidebar */}
         <Sidebar 
           activeTab={activeTab} 
@@ -307,10 +307,10 @@ const App = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {/* Header */}
-          <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+          <header className="bg-[#f8f7f4] border-b border-[#e8e5de] px-6 py-4 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">{activeTab}</h1>
-              <p className="text-sm text-slate-500 mt-0.5">Welcome back, {profileData.name.split(' ')[0]}!</p>
+              <h1 className="text-2xl font-display font-bold text-[#1a1625]">{activeTab}</h1>
+              <p className="text-sm text-[#a8a5b3] mt-0.5 font-body">Welcome back, {profileData.name.split(' ')[0]}!</p>
             </div>
             <div className="flex items-center gap-3">
               <SearchBar
@@ -321,7 +321,7 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
-                className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-blue-600 transition-all group relative"
+                className="p-2.5 rounded-xl bg-[#f0eeea] hover:bg-[#e8e5de] text-[#6b687a] hover:text-violet-600 transition-all group relative"
                 title="Scientific Calculator (Alt+K)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
@@ -330,7 +330,7 @@ const App = () => {
               
               <button 
                 onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-3 bg-slate-100 hover:bg-slate-200 p-1.5 pr-4 rounded-xl cursor-pointer transition-all group"
+                className="flex items-center gap-3 bg-[#f0eeea] hover:bg-[#e8e5de] p-1.5 pr-4 rounded-xl cursor-pointer transition-all group"
               >
                 <img 
                   src={profileData.photo}
@@ -338,10 +338,10 @@ const App = () => {
                   className="w-10 h-10 rounded-lg object-cover"
                 />
                 <div className="text-left">
-                  <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-indigo-600 transition-colors">
+                  <p className="text-sm font-bold text-[#1a1625] leading-none group-hover:text-violet-600 transition-colors font-body">
                     {profileData.name}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1 capitalize">{userRole}</p>
+                  <p className="text-xs text-[#a8a5b3] mt-1 capitalize font-body">{userRole}</p>
                 </div>
               </button>
             </div>
@@ -390,7 +390,7 @@ const App = () => {
                     ) : activeTab === 'Grades' ? (
                       <GradesPage />
                     ) : (
-                      <div className="flex-1 flex items-center justify-center text-slate-400 font-medium">
+                      <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                         {activeTab} Content Coming Soon
                       </div>
                     )}

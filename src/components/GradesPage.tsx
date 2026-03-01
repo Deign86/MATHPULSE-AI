@@ -112,9 +112,9 @@ const GradesPage = () => {
   };
 
   const getGradeColor = (score: number) => {
-    if (score >= 90) return 'text-green-600 bg-green-50';
-    if (score >= 80) return 'text-blue-600 bg-blue-50';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-50';
+    if (score >= 90) return 'text-emerald-600 bg-emerald-50';
+    if (score >= 80) return 'text-violet-600 bg-violet-50';
+    if (score >= 70) return 'text-amber-600 bg-amber-50';
     return 'text-red-600 bg-red-50';
   };
 
@@ -129,49 +129,51 @@ const GradesPage = () => {
   return (
     <div className="space-y-6">
       {/* Overall Performance Card */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 rounded-3xl p-8 text-white shadow-xl">
-        <div className="grid grid-cols-4 gap-6">
-          <div>
+      <div className="bg-[#1a1625] rounded-2xl p-7 text-white card-elevated-lg relative overflow-hidden border border-white/[0.06]">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
+        <div className="absolute top-0 right-0 w-48 h-48 bg-violet-600/8 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
             <div className="flex items-center gap-2 mb-2">
-              <Award size={20} className="text-yellow-300" />
-              <span className="text-sm text-blue-100">Overall GPA</span>
+              <Award size={18} className="text-amber-400" />
+              <span className="text-xs text-zinc-500 font-body">Overall GPA</span>
             </div>
-            <p className="text-4xl font-bold">{overallStats.gpa}</p>
+            <p className="text-3xl font-display font-bold">{overallStats.gpa}</p>
             <div className="flex items-center gap-1 mt-2">
               {overallStats.trend === 'up' ? (
-                <TrendingUp size={16} className="text-green-300" />
+                <TrendingUp size={14} className="text-emerald-400" />
               ) : (
-                <TrendingDown size={16} className="text-red-300" />
+                <TrendingDown size={14} className="text-red-400" />
               )}
-              <span className="text-xs text-blue-100">+{overallStats.trendValue}% this month</span>
+              <span className="text-xs text-zinc-500 font-body">+{overallStats.trendValue}% this month</span>
             </div>
           </div>
 
-          <div>
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
             <div className="flex items-center gap-2 mb-2">
-              <Target size={20} className="text-yellow-300" />
-              <span className="text-sm text-blue-100">Average Score</span>
+              <Target size={18} className="text-violet-400" />
+              <span className="text-xs text-zinc-500 font-body">Average Score</span>
             </div>
-            <p className="text-4xl font-bold">{overallStats.averageScore}%</p>
-            <p className="text-xs text-blue-100 mt-2">Across all subjects</p>
+            <p className="text-3xl font-display font-bold">{overallStats.averageScore}%</p>
+            <p className="text-xs text-zinc-500 font-body mt-2">Across all subjects</p>
           </div>
 
-          <div>
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
             <div className="flex items-center gap-2 mb-2">
-              <Calendar size={20} className="text-yellow-300" />
-              <span className="text-sm text-blue-100">Total Quizzes</span>
+              <Calendar size={18} className="text-fuchsia-400" />
+              <span className="text-xs text-zinc-500 font-body">Total Quizzes</span>
             </div>
-            <p className="text-4xl font-bold">{overallStats.totalQuizzes}</p>
-            <p className="text-xs text-blue-100 mt-2">Completed</p>
+            <p className="text-3xl font-display font-bold">{overallStats.totalQuizzes}</p>
+            <p className="text-xs text-zinc-500 font-body mt-2">Completed</p>
           </div>
 
-          <div>
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.06]">
             <div className="flex items-center gap-2 mb-2">
-              <Award size={20} className="text-yellow-300" />
-              <span className="text-sm text-blue-100">Grade Rank</span>
+              <Award size={18} className="text-amber-400" />
+              <span className="text-xs text-zinc-500 font-body">Grade Rank</span>
             </div>
-            <p className="text-4xl font-bold">Top 15%</p>
-            <p className="text-xs text-blue-100 mt-2">In your class</p>
+            <p className="text-3xl font-display font-bold">Top 15%</p>
+            <p className="text-xs text-zinc-500 font-body mt-2">In your class</p>
           </div>
         </div>
       </div>
@@ -179,8 +181,8 @@ const GradesPage = () => {
       {/* Subject Performance */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-800">Subject Performance</h2>
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExportReport}>
+          <h2 className="text-lg font-display font-bold text-[#1a1625]">Subject Performance</h2>
+          <Button variant="outline" size="sm" className="rounded-lg font-body border-[#e8e5de] text-[#6b687a]" onClick={handleExportReport}>
             <Download size={16} className="mr-2" />
             Export Report
           </Button>
@@ -191,15 +193,15 @@ const GradesPage = () => {
             <motion.div
               key={subject.subject}
               whileHover={{ scale: 1.02 }}
-              className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] cursor-pointer"
+              className="bg-white rounded-xl p-5 border border-[#e8e5de] card-elevated cursor-pointer"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="font-bold text-slate-800 mb-1">{subject.subject}</h3>
-                  <p className="text-xs text-slate-500">{subject.quizzes} quizzes completed</p>
+                  <h3 className="font-display font-bold text-[#1a1625] mb-1">{subject.subject}</h3>
+                  <p className="text-xs text-[#6b687a] font-body">{subject.quizzes} quizzes completed</p>
                 </div>
-                <div className={`w-14 h-14 rounded-xl bg-${subject.color}-50 flex items-center justify-center`}>
-                  <span className={`text-xl font-bold text-${subject.color}-600`}>
+                <div className={`w-14 h-14 rounded-lg bg-${subject.color}-50 flex items-center justify-center`}>
+                  <span className={`text-xl font-display font-bold text-${subject.color}-600`}>
                     {getGradeLetter(subject.average)}
                   </span>
                 </div>
@@ -207,8 +209,8 @@ const GradesPage = () => {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-slate-900">{subject.average}%</p>
-                  <p className="text-xs text-slate-500 mt-1">Average</p>
+                  <p className="text-3xl font-display font-bold text-[#1a1625]">{subject.average}%</p>
+                  <p className="text-xs text-[#6b687a] font-body mt-1">Average</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {subject.trend === 'up' ? (
@@ -216,7 +218,7 @@ const GradesPage = () => {
                   ) : (
                     <TrendingDown size={18} className="text-red-500" />
                   )}
-                  <ChevronRight size={16} className="text-slate-400" />
+                  <ChevronRight size={16} className="text-[#d1cec6]" />
                 </div>
               </div>
             </motion.div>
@@ -227,12 +229,12 @@ const GradesPage = () => {
       {/* Quiz History */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-800">Quiz History</h2>
+          <h2 className="text-lg font-display font-bold text-[#1a1625]">Quiz History</h2>
           <div className="flex items-center gap-2">
             <select
               value={filterSubject}
               onChange={(e) => setFilterSubject(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
+              className="px-3 py-2 border border-[#e8e5de] rounded-lg text-sm font-body bg-white text-[#1a1625]"
             >
               <option value="all">All Subjects</option>
               <option value="General Mathematics">General Mathematics</option>
@@ -244,7 +246,7 @@ const GradesPage = () => {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
+              className="px-3 py-2 border border-[#e8e5de] rounded-lg text-sm font-body bg-white text-[#1a1625]"
             >
               <option value="all">All Types</option>
               <option value="practice">Practice</option>
@@ -253,42 +255,42 @@ const GradesPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#e8e5de] card-elevated overflow-hidden">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[#f8f7f4] border-b border-[#e8e5de]">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Quiz</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Subject</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Type</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Score</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Date</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase">Action</th>
+                <th className="px-6 py-3 text-left text-[10px] font-body font-semibold text-[#6b687a] uppercase tracking-wider">Quiz</th>
+                <th className="px-6 py-3 text-left text-[10px] font-body font-semibold text-[#6b687a] uppercase tracking-wider">Subject</th>
+                <th className="px-6 py-3 text-left text-[10px] font-body font-semibold text-[#6b687a] uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-[10px] font-body font-semibold text-[#6b687a] uppercase tracking-wider">Score</th>
+                <th className="px-6 py-3 text-left text-[10px] font-body font-semibold text-[#6b687a] uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-[10px] font-body font-semibold text-[#6b687a] uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredQuizzes.map((quiz) => (
-                <tr key={quiz.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <tr key={quiz.id} className="border-b border-[#f0eeea] hover:bg-[#f8f7f4] transition-colors">
                   <td className="px-6 py-4">
-                    <p className="font-bold text-slate-800 text-sm">{quiz.title}</p>
+                    <p className="font-body font-semibold text-[#1a1625] text-sm">{quiz.title}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-slate-600">{quiz.subject}</span>
+                    <span className="text-sm text-[#6b687a] font-body">{quiz.subject}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg capitalize">
+                    <span className="px-2.5 py-1 bg-[#f0eeea] text-[#6b687a] text-xs font-body font-semibold rounded-md capitalize">
                       {quiz.type}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-lg text-sm font-bold ${getGradeColor(quiz.score)}`}>
+                      <span className={`px-2.5 py-1 rounded-md text-sm font-body font-semibold ${getGradeColor(quiz.score)}`}>
                         {quiz.score}%
                       </span>
-                      <span className="text-xs text-slate-400">({quiz.score}/{quiz.total})</span>
+                      <span className="text-xs text-[#a8a5b3] font-body">({quiz.score}/{quiz.total})</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-slate-500">{quiz.date}</span>
+                    <span className="text-sm text-[#6b687a] font-body">{quiz.date}</span>
                   </td>
                   <td className="px-6 py-4">
                     <Button variant="outline" size="sm" className="rounded-lg">
@@ -302,9 +304,9 @@ const GradesPage = () => {
 
           {filteredQuizzes.length === 0 && (
             <div className="text-center py-12">
-              <Filter size={48} className="text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">No quizzes found with current filters</p>
-              <p className="text-xs text-slate-400 mt-1">Try adjusting your filters</p>
+              <Filter size={40} className="text-[#d1cec6] mx-auto mb-3" />
+              <p className="text-[#6b687a] font-body">No quizzes found with current filters</p>
+              <p className="text-xs text-[#a8a5b3] font-body mt-1">Try adjusting your filters</p>
             </div>
           )}
         </div>
