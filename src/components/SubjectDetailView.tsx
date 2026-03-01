@@ -23,7 +23,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
       >
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-bold mb-4 transition-colors group"
+          className="flex items-center gap-2 text-[#6b687a] hover:text-violet-600 font-bold mb-4 transition-colors group"
         >
           <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
           Back to Subjects
@@ -42,7 +42,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                   <Icon size={20} className={subject.iconColor} />
                   <span className={`text-sm font-bold ${subject.iconColor}`}>{subject.title}</span>
                 </div>
-                <p className="text-slate-600 max-w-2xl leading-relaxed">
+                <p className="text-[#6b687a] max-w-2xl leading-relaxed">
                   {subject.description}
                 </p>
               </div>
@@ -53,33 +53,33 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <BookOpen size={18} className={subject.iconColor} />
-                  <span className="text-xs font-bold text-slate-500">Total Modules</span>
+                  <span className="text-xs font-bold text-[#6b687a]">Total Modules</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-800">{subject.totalModules}</p>
+                <p className="text-2xl font-bold text-[#1a1625]">{subject.totalModules}</p>
               </div>
               
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Trophy size={18} className="text-teal-600" />
-                  <span className="text-xs font-bold text-slate-500">Completed</span>
+                  <span className="text-xs font-bold text-[#6b687a]">Completed</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-800">{subject.completedModules}</p>
+                <p className="text-2xl font-bold text-[#1a1625]">{subject.completedModules}</p>
               </div>
               
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Star size={18} className="text-amber-600" />
-                  <span className="text-xs font-bold text-slate-500">Progress</span>
+                  <span className="text-xs font-bold text-[#6b687a]">Progress</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-800">{subject.progress}%</p>
+                <p className="text-2xl font-bold text-[#1a1625]">{subject.progress}%</p>
               </div>
             </div>
 
             {/* Progress Bar */}
             <div className="mt-6">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-slate-600">Overall Progress</span>
-                <span className="text-xs font-bold text-slate-800">{subject.progress}%</span>
+                <span className="text-xs font-bold text-[#6b687a]">Overall Progress</span>
+                <span className="text-xs font-bold text-[#1a1625]">{subject.progress}%</span>
               </div>
               <div className="h-3 bg-white/60 rounded-full overflow-hidden">
                 <motion.div
@@ -96,7 +96,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
 
       {/* Modules List */}
       <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-4 scrollbar-hide">
-        <h2 className="font-bold text-lg text-slate-800 mb-4">Modules ({subject.modules.length})</h2>
+        <h2 className="font-bold text-lg text-[#1a1625] mb-4">Modules ({subject.modules.length})</h2>
         
         {subject.modules.map((module, index) => {
           const completedLessons = module.lessons.filter(l => l.completed).length;
@@ -124,17 +124,17 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                       </div>
                     )}
                     {module.progress > 0 && module.progress < 100 && (
-                      <div className="flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold">
+                      <div className="flex items-center gap-1 px-2 py-1 bg-violet-100 text-violet-700 rounded-lg text-xs font-bold">
                         <Play size={12} />
                         In Progress
                       </div>
                     )}
                   </div>
-                  <h3 className="font-bold text-slate-800 mb-2">{module.title}</h3>
-                  <p className="text-sm text-slate-600 mb-4">{module.description}</p>
+                  <h3 className="font-bold text-[#1a1625] mb-2">{module.title}</h3>
+                  <p className="text-sm text-[#6b687a] mb-4">{module.description}</p>
 
                   {/* Module Stats */}
-                  <div className="flex items-center gap-6 text-xs text-slate-500">
+                  <div className="flex items-center gap-6 text-xs text-[#6b687a]">
                     <div className="flex items-center gap-1.5">
                       <BookOpen size={14} />
                       <span className="font-medium">
@@ -176,7 +176,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm font-bold text-slate-800">{module.progress}%</span>
+                    <span className="text-sm font-bold text-[#1a1625]">{module.progress}%</span>
                   </div>
                 </div>
               </div>
