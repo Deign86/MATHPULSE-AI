@@ -58,44 +58,46 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+          className="relative bg-[#f8f7f4] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col border border-[#e8e5de]"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white">
+          <div className="bg-[#1a1625] p-5 text-white relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
+            <div className="absolute top-0 right-0 w-36 h-36 bg-violet-600/8 rounded-full -mr-18 -mt-18"></div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-2xl font-bold">Add Friends</h2>
-                <p className="text-cyan-100 text-sm mt-1">Connect with classmates and compete together</p>
+                <h2 className="text-lg font-display font-bold">Add Friends</h2>
+                <p className="text-zinc-400 text-sm font-body mt-0.5">Connect with classmates and compete together</p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-500 hover:text-white"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Search */}
             <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input
                 type="text"
                 placeholder="Search students..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white placeholder-white/60 focus:outline-none focus:border-white/50"
+                className="w-full pl-10 pr-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-lg text-white placeholder-zinc-500 text-sm font-body focus:outline-none focus:border-violet-500/40 transition-colors"
               />
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-200 px-6">
+          <div className="flex border-b border-[#e8e5de] px-5">
             <button
               onClick={() => setActiveTab('classmates')}
-              className={`px-4 py-3 font-medium text-sm transition-all border-b-2 ${
+              className={`px-4 py-3 font-body font-semibold text-sm transition-all border-b-2 ${
                 activeTab === 'classmates'
-                  ? 'text-blue-600 border-blue-600'
-                  : 'text-slate-500 border-transparent'
+                  ? 'text-violet-600 border-violet-600'
+                  : 'text-[#6b687a] border-transparent hover:text-[#1a1625]'
               }`}
             >
               <Users size={16} className="inline mr-2" />
@@ -103,10 +105,10 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
             </button>
             <button
               onClick={() => setActiveTab('suggested')}
-              className={`px-4 py-3 font-medium text-sm transition-all border-b-2 ${
+              className={`px-4 py-3 font-body font-semibold text-sm transition-all border-b-2 ${
                 activeTab === 'suggested'
-                  ? 'text-blue-600 border-blue-600'
-                  : 'text-slate-500 border-transparent'
+                  ? 'text-violet-600 border-violet-600'
+                  : 'text-[#6b687a] border-transparent hover:text-[#1a1625]'
               }`}
             >
               <TrendingUp size={16} className="inline mr-2" />
@@ -115,26 +117,27 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-5">
             {activeTab === 'classmates' ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {filteredClassmates.length > 0 ? (
                   filteredClassmates.map((student) => (
                     <motion.div
                       key={student.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#e8e5de] hover:border-violet-200/50 transition-colors"
                     >
-                      <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                        {student.avatar || <User size={22} className="text-slate-500" />}
+                      <div className="w-10 h-10 bg-[#f0eeea] rounded-lg flex items-center justify-center flex-shrink-0">
+                        {student.avatar || <User size={18} className="text-[#6b687a]" />}
                       </div>
 
                       <div className="flex-1">
-                        <h4 className="font-bold text-slate-800">{student.name}</h4>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-slate-500">Level {student.level}</span>
-                          <span className="text-xs text-slate-500">{student.xp} XP</span>
+                        <h4 className="font-body font-semibold text-sm text-[#1a1625]">{student.name}</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-body text-[#6b687a]">Level {student.level}</span>
+                          <span className="text-xs text-[#d1cec6]">·</span>
+                          <span className="text-xs font-body text-[#6b687a]">{student.xp} XP</span>
                         </div>
                       </div>
 
@@ -142,7 +145,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-xl"
+                          className="rounded-lg font-body"
                           disabled
                         >
                           <UserCheck size={14} className="mr-1" />
@@ -152,7 +155,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-xl"
+                          className="rounded-lg font-body"
                           disabled
                         >
                           Requested
@@ -160,7 +163,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                       ) : (
                         <Button
                           size="sm"
-                          className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                          className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-body font-semibold"
                           onClick={() => handleSendRequest(student.id)}
                         >
                           <UserPlus size={14} className="mr-1" />
@@ -171,9 +174,9 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <Search size={48} className="text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500">No classmates found</p>
-                    <p className="text-sm text-slate-400 mt-1">Try a different search term</p>
+                    <Search size={40} className="text-[#d1cec6] mx-auto mb-3" />
+                    <p className="text-[#6b687a] font-body">No classmates found</p>
+                    <p className="text-sm text-[#a8a5b3] font-body mt-1">Try a different search term</p>
                   </div>
                 )}
               </div>
@@ -185,17 +188,17 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                       key={student.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#e8e5de] hover:border-violet-200/50 transition-colors"
                     >
-                      <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                        {student.avatar || <User size={22} className="text-slate-500" />}
+                      <div className="w-10 h-10 bg-[#f0eeea] rounded-lg flex items-center justify-center flex-shrink-0">
+                        {student.avatar || <User size={18} className="text-[#6b687a]" />}
                       </div>
 
                       <div className="flex-1">
-                        <h4 className="font-bold text-slate-800">{student.name}</h4>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-slate-500">{student.section}</span>
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">
+                        <h4 className="font-body font-semibold text-sm text-[#1a1625]">{student.name}</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-body text-[#6b687a]">{student.section}</span>
+                          <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-body font-semibold">
                             {student.reason}
                           </span>
                         </div>
@@ -205,7 +208,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-xl"
+                          className="rounded-lg font-body"
                           disabled
                         >
                           Requested
@@ -213,7 +216,7 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                       ) : (
                         <Button
                           size="sm"
-                          className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+                          className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-body font-semibold"
                           onClick={() => handleSendRequest(student.id)}
                         >
                           <UserPlus size={14} className="mr-1" />
@@ -224,9 +227,9 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <Search size={48} className="text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500">No suggestions found</p>
-                    <p className="text-sm text-slate-400 mt-1">Try a different search term</p>
+                    <Search size={40} className="text-[#d1cec6] mx-auto mb-3" />
+                    <p className="text-[#6b687a] font-body">No suggestions found</p>
+                    <p className="text-sm text-[#a8a5b3] font-body mt-1">Try a different search term</p>
                   </div>
                 )}
               </div>
@@ -234,12 +237,12 @@ const AddFriendsModal: React.FC<AddFriendsModalProps> = ({ isOpen, onClose }) =>
           </div>
 
           {/* Footer */}
-          <div className="p-6 border-t border-slate-200 bg-slate-50">
+          <div className="p-5 border-t border-[#e8e5de] bg-[#f0eeea]">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[#6b687a] font-body">
                 {sentRequests.length > 0 && `${sentRequests.length} request${sentRequests.length > 1 ? 's' : ''} sent`}
               </p>
-              <Button onClick={onClose} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">
+              <Button onClick={onClose} className="rounded-lg bg-[#1a1625] hover:bg-[#2a2535] text-white font-body font-semibold">
                 Done
               </Button>
             </div>

@@ -15,67 +15,69 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
   ];
 
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+    <div className="bg-white rounded-xl border border-[#e8e5de] p-5 card-elevated">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Users size={20} className="text-indigo-600" />
-          <h3 className="font-bold text-slate-800">Friends</h3>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-violet-500/10 rounded-lg flex items-center justify-center">
+            <Users size={16} className="text-violet-600" />
+          </div>
+          <h3 className="font-display font-bold text-sm text-[#1a1625]">Friends</h3>
         </div>
         <button
           onClick={onAddFriends}
-          className="p-2 hover:bg-indigo-50 rounded-xl transition-colors"
+          className="p-2 hover:bg-violet-50 rounded-lg transition-colors"
         >
-          <UserPlus size={18} className="text-indigo-600" />
+          <UserPlus size={16} className="text-violet-600" />
         </button>
       </div>
 
-      <div className="space-y-3 mb-4">
+      <div className="space-y-2 mb-4">
         {friends.map((friend, idx) => (
           <motion.div
             key={friend.id}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+            className="flex items-center gap-3 p-2.5 bg-[#f8f7f4] rounded-lg hover:bg-violet-50/50 transition-colors cursor-pointer border border-transparent hover:border-violet-200/50"
           >
             <div className="relative">
-              <div className="w-10 h-10 bg-slate-200 rounded-lg flex items-center justify-center text-lg">
-                {friend.avatar || <User size={18} className="text-slate-500" />}
+              <div className="w-9 h-9 bg-[#e8e5de] rounded-lg flex items-center justify-center">
+                {friend.avatar || <User size={16} className="text-[#6b687a]" />}
               </div>
               {friend.isOnline && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white"></div>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="font-bold text-sm text-slate-800 truncate">{friend.name}</h4>
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-body font-semibold text-sm text-[#1a1625] truncate">{friend.name}</h4>
                 {friend.rank <= 3 && (
                   <Trophy 
-                    size={12} 
+                    size={11} 
                     className={
-                      friend.rank === 1 ? 'text-yellow-500' : 
-                      friend.rank === 2 ? 'text-slate-400' : 
+                      friend.rank === 1 ? 'text-amber-500' : 
+                      friend.rank === 2 ? 'text-zinc-400' : 
                       'text-orange-500'
                     } 
                   />
                 )}
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span>Level {friend.level}</span>
-                <span>•</span>
+              <div className="flex items-center gap-1.5 text-xs text-[#6b687a] font-body">
+                <span>Lv.{friend.level}</span>
+                <span className="text-[#d1cec6]">·</span>
                 <span>{friend.xp} XP</span>
               </div>
             </div>
 
-            <ChevronRight size={16} className="text-slate-400" />
+            <ChevronRight size={14} className="text-[#d1cec6]" />
           </motion.div>
         ))}
       </div>
 
       <button
         onClick={onViewAll}
-        className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium text-sm rounded-xl transition-colors"
+        className="w-full py-2 bg-violet-500/8 hover:bg-violet-500/15 text-violet-600 font-body font-semibold text-xs rounded-lg transition-colors border border-violet-200/40"
       >
         View All Friends
       </button>
