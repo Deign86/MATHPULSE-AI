@@ -2,6 +2,15 @@
 @plugin "@tailwindcss/typography";
 @import "./styles/globals.css";
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
 /* ─── Markdown Chat Message Styles — MathPulse ───── */
 .chat-markdown {
   font-family: var(--font-body);

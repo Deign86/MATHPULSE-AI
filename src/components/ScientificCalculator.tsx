@@ -586,7 +586,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       case 'number':
         return `${base} ${sizeNum} bg-white hover:bg-slate-50 text-[#0a1628] border border-slate-200 shadow-sm`;
       case 'op':
-        return `${base} ${sizeNum} bg-gradient-to-br from-amber-500 to-teal-500 hover:from-sky-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
+        return `${base} ${sizeNum} bg-gradient-to-br from-rose-500 to-teal-500 hover:from-sky-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
       case 'func':
         return `${base} ${sizeFunc} bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-blue-900/30`;
       case 'del':
@@ -641,13 +641,13 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
           <span className={`
             text-[10px] font-bold px-2 py-0.5 rounded-full
             ${angleMode === 'DEG' 
-              ? 'bg-amber-500/20 text-amber-400 border border-sky-500/30' 
-              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}
+              ? 'bg-rose-500/20 text-rose-400 border border-sky-500/30' 
+              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}
           `}>
             {angleMode}
           </span>
           {shiftActive && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
               SHIFT
             </span>
           )}
@@ -690,7 +690,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                <span className="text-[10px] text-amber-400 font-semibold uppercase tracking-wider">SymPy Verified</span>
+                <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider">SymPy Verified</span>
               </div>
               <p className="text-xs text-slate-500 font-mono">{sympyResult.result}</p>
               {sympyResult.latex && (
@@ -714,7 +714,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         disabled={sympyVerifying}
         className="
           w-full py-1.5 bg-slate-50 border-x border-slate-200
-          text-[11px] font-semibold text-amber-600 hover:text-amber-700 hover:bg-slate-100
+          text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-slate-100
           transition-colors disabled:opacity-50 disabled:cursor-not-allowed
           flex items-center justify-center gap-1.5
         "
@@ -741,7 +741,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                   className={`
                     ${getButtonClasses(btn.variant, btn.label)}
                     ${btn.variant === 'shift' && btn.label === 'SHIFT' && shiftActive
-                      ? '!bg-amber-600 ring-2 ring-amber-400/50'
+                      ? '!bg-rose-600 ring-2 ring-rose-400/50'
                       : ''}
                     ${btn.variant === 'shift' && btn.label === 'ALPHA' && alphaActive
                       ? '!bg-sky-600 ring-2 ring-indigo-400/50'
@@ -753,11 +753,11 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                 >
                   {/* Shift label above */}
                   {btn.shiftLabel && !shiftActive && (
-                    <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[9px] text-amber-400 font-semibold whitespace-nowrap drop-shadow-[0_0_3px_rgba(251,191,36,0.4)]">
+                    <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[9px] text-rose-400 font-semibold whitespace-nowrap drop-shadow-[0_0_3px_rgba(251,113,133,0.4)]">
                       {btn.shiftLabel}
                     </span>
                   )}
-                  <span className={showShift ? 'text-amber-200' : ''}>
+                  <span className={showShift ? 'text-rose-200' : ''}>
                     {displayLabel}
                   </span>
                 </button>

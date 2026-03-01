@@ -102,7 +102,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
 
   const getColor = (type: string) => {
     switch (type) {
-      case 'achievement': return 'bg-amber-500/10 text-amber-600';
+      case 'achievement': return 'bg-rose-500/10 text-rose-600';
       case 'alert': return 'bg-red-500/10 text-red-600';
       case 'message': return 'bg-sky-500/10 text-sky-600';
       case 'info': return 'bg-emerald-500/10 text-emerald-600';

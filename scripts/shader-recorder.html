@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>MathPulse Shader Recorder</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { overflow: hidden; background: #f0f9ff; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="shader-canvas"></canvas>
+  <script>
+    /**
+     * Standalone shader renderer for frame capture via Puppeteer.
+     * Renders one frame per call to window.__renderFrame(time).
+     * Uses raw WebGL to avoid three.js CDN dependency.
+     *
+     * Aesthetic: Soft flowing silk — pale sky-blue, lavender, rose-pink
+     * washes drifting across a near-white canvas. Matches the LoginPage's
+     * light frosted-glass design language.
+     */
+    const canvas = document.getElementById('shader-canvas');
+    const WIDTH = 1920;
+    const HEIGHT = 1080;
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    canvas.style.width = WIDTH + 'px';
+    canvas.style.height = HEIGHT + 'px';
+
+    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: true });
+
+    // ── Vertex shader ──────────────────────────────────
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, `
+      attribute vec2 pos;
+      void main() { gl_Position = vec4(pos, 0.0, 1.0); }
+    `);
+    gl.compileShader(vs);
+
+    // ── Fragment shader — flowing silk / liquid marble ──
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, `
+      precision highp float;
+      uniform float iTime;
+      uniform vec2 iResolution;
+
+      /* ── Noise helpers ──────────────────────────── */
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);          // smoothstep
+        return mix(
+          mix(hash(i),               hash(i + vec2(1.0, 0.0)), f.x),
+          mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+          f.y
+        );
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0, a = 0.5;
+        mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+        for (int i = 0; i < 5; i++) {
+          v += a * noise(p);
+          p = rot * p * 2.0 + vec2(100.0);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      /* ── Warped domain for organic flow ──────── */
+      float warpedFbm(vec2 p, float t) {
+        vec2 q = vec2(
+          fbm(p + vec2(0.0, 0.0) + t * 0.12),
+          fbm(p + vec2(5.2, 1.3) + t * 0.10)
+        );
+        vec2 r = vec2(
+          fbm(p + 4.0 * q + vec2(1.7, 9.2) + t * 0.08),
+          fbm(p + 4.0 * q + vec2(8.3, 2.8) + t * 0.06)
+        );
+        return fbm(p + 4.0 * r);
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy / iResolution.xy;
+        float aspect = iResolution.x / iResolution.y;
+        vec2 p = vec2(uv.x * aspect, uv.y) * 3.0;
+
+        float t = iTime;
+
+        /* Two independent warped layers */
+        float f1 = warpedFbm(p * 0.8, t);
+        float f2 = warpedFbm(p * 0.6 + vec2(3.0, 7.0), t * 0.7);
+
+        /* — Colour palette matching LoginPage —
+           Sky:     rgb(0.055, 0.647, 0.914)  #0ea5e9
+           Cyan:    rgb(0.078, 0.804, 0.820)  #14cdd1
+           Rose:    rgb(0.957, 0.247, 0.369)  #f43f5e
+           Lavender:rgb(0.643, 0.537, 0.925)  #a489ec
+           Base:    rgb(0.94, 0.97, 1.0)      near-white blue
+        */
+
+        /* Sky-blue to cyan wash */
+        vec3 colA = mix(
+          vec3(0.82, 0.93, 1.0),       // pale ice blue
+          vec3(0.055, 0.647, 0.914),    // sky-500
+          smoothstep(0.25, 0.65, f1)
+        );
+
+        /* Rose to lavender wash */
+        vec3 colB = mix(
+          vec3(1.0, 0.92, 0.94),       // pale blush
+          vec3(0.72, 0.52, 0.88),       // soft lavender
+          smoothstep(0.3, 0.7, f2)
+        );
+
+        /* Blend the two washes based on position + noise */
+        float blend = smoothstep(0.35, 0.65, uv.x + (f1 - f2) * 0.35);
+        vec3 col = mix(colA, colB, blend);
+
+        /* Soft highlight streaks — the silk shimmer */
+        float streak = smoothstep(0.58, 0.62, f1) * 0.35
+                     + smoothstep(0.60, 0.64, f2) * 0.25;
+        col += streak * vec3(1.0, 1.0, 1.0);
+
+        /* Gentle rose accent coming from lower right */
+        float roseAccent = smoothstep(0.55, 0.75, f2) * smoothstep(0.3, 0.9, uv.x) * smoothstep(0.0, 0.6, 1.0 - uv.y);
+        col = mix(col, vec3(0.96, 0.60, 0.68), roseAccent * 0.25);
+
+        /* Near-white base tint — keeps it airy */
+        vec3 base = vec3(0.945, 0.968, 1.0);
+        col = mix(base, col, 0.55);
+
+        /* Subtle vignette — slightly warmer at edges */
+        float vig = 1.0 - smoothstep(0.4, 1.5, length(uv - 0.5) * 1.4);
+        col = mix(col * 0.96, col, vig);
+
+        /* Clamp to maintain light feel */
+        col = clamp(col, 0.0, 1.0);
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `);
+    gl.compileShader(fs);
+
+    // Check for shader compilation errors
+    const fsLog = gl.getShaderInfoLog(fs);
+    if (fsLog && fsLog.length > 0) {
+      console.error('Fragment shader error:', fsLog);
+    }
+    const vsLog = gl.getShaderInfoLog(vs);
+    if (vsLog && vsLog.length > 0) {
+      console.error('Vertex shader error:', vsLog);
+    }
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.error('Program link error:', gl.getProgramInfoLog(prog));
+    }
+
+    gl.useProgram(prog);
+
+    // Full-screen quad
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+    const posLoc = gl.getAttribLocation(prog, 'pos');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const timeLoc = gl.getUniformLocation(prog, 'iTime');
+    const resLoc = gl.getUniformLocation(prog, 'iResolution');
+    gl.uniform2f(resLoc, WIDTH, HEIGHT);
+    gl.viewport(0, 0, WIDTH, HEIGHT);
+
+    // Expose a function for Puppeteer to call per frame
+    window.__renderFrame = function(time) {
+      gl.uniform1f(timeLoc, time);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      return true;
+    };
+
+    // Render initial frame
+    window.__renderFrame(0);
+    window.__ready = true;
+  </script>
+</body>
+</html>
