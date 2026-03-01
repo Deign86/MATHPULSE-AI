@@ -114,7 +114,7 @@ const GradesPage = () => {
   const getGradeColor = (score: number) => {
     if (score >= 90) return 'text-emerald-600 bg-emerald-50';
     if (score >= 80) return 'text-sky-600 bg-sky-50';
-    if (score >= 70) return 'text-amber-600 bg-amber-50';
+    if (score >= 70) return 'text-rose-600 bg-rose-50';
     return 'text-red-600 bg-red-50';
   };
 
@@ -135,7 +135,7 @@ const GradesPage = () => {
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
-              <Award size={18} className="text-amber-500" />
+              <Award size={18} className="text-rose-500" />
               <span className="text-xs text-slate-500 font-body">Overall GPA</span>
             </div>
             <p className="text-3xl font-display font-bold text-[#0a1628]">{overallStats.gpa}</p>
@@ -160,7 +160,7 @@ const GradesPage = () => {
 
           <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
-              <Calendar size={18} className="text-amber-500" />
+              <Calendar size={18} className="text-rose-500" />
               <span className="text-xs text-slate-500 font-body">Total Quizzes</span>
             </div>
             <p className="text-3xl font-display font-bold text-[#0a1628]">{overallStats.totalQuizzes}</p>
@@ -169,7 +169,7 @@ const GradesPage = () => {
 
           <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
-              <Award size={18} className="text-amber-500" />
+              <Award size={18} className="text-rose-500" />
               <span className="text-xs text-slate-500 font-body">Grade Rank</span>
             </div>
             <p className="text-3xl font-display font-bold text-[#0a1628]">Top 15%</p>

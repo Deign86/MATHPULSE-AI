@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Users, GraduationCap, BookOpen, TrendingUp, AlertCircle, Settings, BarChart3, Target, Award, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, GraduationCap, BookOpen, AlertCircle, Settings, BarChart3, Target, Award, Shield, Loader2, BookMarked } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import Sidebar from './Sidebar';
@@ -8,190 +8,153 @@ import AdminContent from './AdminContent';
 import AdminAuditLog from './AdminAuditLog';
 import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
+import AdminAnalytics from './AdminAnalytics';
 import MasteryHeatmap from './MasteryHeatmap';
+import {
+  getDashboardStats,
+  getAuditLogs,
+  getTopPerformers,
+  type DashboardStats,
+  type AuditLogEntry,
+  type TopPerformer,
+} from '../services/adminService';
 
 interface AdminDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
 }
 
+interface SystemStats {
+  totalStudents: number;
+  activeTeachers: number;
+  totalClassrooms: number;
+  loading: boolean;
+}
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
+  const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
+  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
+  const [loadingOverview, setLoadingOverview] = useState(true);
+
+  useEffect(() => {
+    if (activeTab !== 'Overview') return;
+    let cancelled = false;
+    setLoadingOverview(true);
+    Promise.all([
+      getDashboardStats(),
+      getAuditLogs(),
+      getTopPerformers(3),
+    ]).then(([stats, logs, performers]) => {
+      if (cancelled) return;
+      setDashStats(stats);
+      setRecentActivity(logs.slice(0, 4));
+      setTopPerformers(performers);
+    }).catch(console.error).finally(() => {
+      if (!cancelled) setLoadingOverview(false);
+    });
+    return () => { cancelled = true; };
+  }, [activeTab]);
 
   const systemStats = [
     {
       label: 'Total Students',
-      value: '1,247',
-      change: '+12%',
+      value: loadingOverview ? '...' : (dashStats?.totalStudents ?? 0).toLocaleString(),
       icon: Users,
       color: 'bg-sky-100',
       iconColor: 'text-sky-600',
-      trend: 'up'
     },
     {
       label: 'Active Teachers',
-      value: '48',
-      change: '+3',
+      value: loadingOverview ? '...' : (dashStats?.activeTeachers ?? 0).toString(),
       icon: GraduationCap,
       color: 'bg-teal-100',
       iconColor: 'text-teal-600',
-      trend: 'up'
     },
     {
       label: 'Total Classes',
-      value: '156',
-      change: '+8',
+      value: loadingOverview ? '...' : (dashStats?.totalClasses ?? 0).toString(),
       icon: BookOpen,
       color: 'bg-sky-100',
       iconColor: 'text-sky-600',
-      trend: 'up'
     },
     {
       label: 'At-Risk Students',
-      value: '243',
-      change: '-5%',
+      value: loadingOverview ? '...' : (dashStats?.atRiskStudents ?? 0).toString(),
       icon: AlertCircle,
       color: 'bg-red-100',
       iconColor: 'text-red-600',
-      trend: 'down'
     },
     {
       label: 'Avg Performance',
-      value: '76%',
-      change: '+2%',
+      value: loadingOverview ? '...' : `${dashStats?.avgPerformance ?? 0}%`,
       icon: BarChart3,
       color: 'bg-orange-100',
       iconColor: 'text-orange-600',
-      trend: 'up'
     },
     {
-      label: 'AI Predictions',
-      value: '892',
-      change: '+45',
+      label: 'AI Interactions',
+      value: loadingOverview ? '...' : (dashStats?.aiPredictions ?? 0).toLocaleString(),
       icon: Target,
       color: 'bg-sky-100',
       iconColor: 'text-sky-600',
-      trend: 'up'
-    }
+    },
   ];
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'alert',
-      message: '15 new students identified as at-risk',
-      time: '5 minutes ago',
-      icon: AlertCircle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50'
-    },
-    {
-      id: 2,
-      type: 'success',
-      message: 'Teacher "Prof. Anderson" added new module',
-      time: '1 hour ago',
-      icon: BookOpen,
-      color: 'text-teal-600',
-      bgColor: 'bg-teal-50'
-    },
-    {
-      id: 3,
-      type: 'info',
-      message: 'System backup completed successfully',
-      time: '2 hours ago',
-      icon: Shield,
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-50'
-    },
-    {
-      id: 4,
-      type: 'achievement',
-      message: '50 students completed their learning paths',
-      time: '3 hours ago',
-      icon: Award,
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-50'
-    }
-  ];
-
-  const topPerformers = [
-    {
-      id: 1,
-      name: 'Alex Johnson',
-      avatar: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop',
-      class: 'Math 101',
-      performance: 98,
-      level: 12
-    },
-    {
-      id: 2,
-      name: 'Sarah Williams',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-      class: 'Math 102',
-      performance: 96,
-      level: 11
-    },
-    {
-      id: 3,
-      name: 'David Chen',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
-      class: 'Math 101',
-      performance: 94,
-      level: 10
-    }
-  ];
+  // Map audit severity to display colors
+  const severityColor = (s: string) => {
+    if (s === 'Error' || s === 'Critical') return { text: 'text-red-600', bg: 'bg-red-50' };
+    if (s === 'Warning') return { text: 'text-rose-600', bg: 'bg-rose-50' };
+    return { text: 'text-sky-600', bg: 'bg-sky-50' };
+  };
 
   return (
     <div className="flex h-screen w-full bg-[#edf1f7] overflow-hidden">
       {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole="admin" />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole="admin" onLogout={() => setShowLogoutConfirm(true)} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white border-b border-[#dde3eb] px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[#0a1628]">
-              {activeTab === 'Overview' && 'Admin Dashboard'}
-              {activeTab === 'Content' && 'Content'}
-              {activeTab === 'Audit Log' && 'Audit Log'}
-              {activeTab === 'User Management' && 'User Management'}
-              {activeTab === 'Analytics' && 'Analytics'}
-              {activeTab === 'Settings' && 'Settings'}
-            </h1>
-            <p className="text-sm text-[#5a6578] mt-0.5">
-              {activeTab === 'Overview' && 'System Overview & Management'}
-              {activeTab === 'Content' && 'Manage and monitor your MathPulse AI system'}
-              {activeTab === 'Audit Log' && 'Manage and monitor your MathPulse AI system'}
-              {activeTab === 'User Management' && 'Manage students, teachers, and administrators'}
-              {activeTab === 'Analytics' && 'Detailed system performance metrics'}
-              {activeTab === 'Settings' && 'Configure platform settings'}
-            </p>
+        <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
+                {activeTab === 'Overview' && 'Admin Dashboard'}
+                {activeTab === 'Content' && 'Content'}
+                {activeTab === 'Audit Log' && 'Audit Log'}
+                {activeTab === 'User Management' && 'User Management'}
+                {activeTab === 'Analytics' && 'Analytics'}
+                {activeTab === 'Settings' && 'Settings'}
+              </h1>
+              <p className="text-xs text-[#5a6578] font-body">
+                {activeTab === 'Overview' && 'System Overview & Management'}
+                {activeTab === 'Content' && 'Manage platform content'}
+                {activeTab === 'Audit Log' && 'Monitor system activity'}
+                {activeTab === 'User Management' && 'Manage all user accounts'}
+                {activeTab === 'Analytics' && 'Detailed performance metrics'}
+                {activeTab === 'Settings' && 'Configure platform settings'}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
-              <Settings size={20} />
+          <div className="flex items-center gap-2">
+            <button className="relative p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
+              <Settings size={18} />
             </button>
             <button 
               onClick={onOpenProfile}
-              className="flex items-center gap-3 bg-[#edf1f7] p-1.5 pr-4 rounded-xl cursor-pointer hover:bg-[#dde3eb] hover:shadow-md transition-all group"
+              className="flex items-center gap-2.5 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-sky-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <Shield size={20} className="text-white" />
+              <div className="w-8 h-8 bg-gradient-to-br from-sky-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                <Shield size={16} className="text-white" />
               </div>
-              <div>
-                <p className="text-sm font-bold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors">Administrator</p>
-                <p className="text-xs text-[#5a6578] mt-1">System Admin</p>
+              <div className="hidden lg:block">
+                <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors">Admin</p>
               </div>
             </button>
-            <Button
-              onClick={() => setShowLogoutConfirm(true)}
-              variant="outline"
-              className="px-4 py-2 rounded-xl border-[#dde3eb] hover:border-red-500 hover:text-red-500 font-bold text-sm"
-            >
-              Logout
-            </Button>
+
           </div>
         </header>
 
@@ -214,92 +177,66 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center`}>
                           <Icon size={24} className={stat.iconColor} />
                         </div>
-                        <span
-                          className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                            stat.trend === 'up'
-                              ? 'bg-teal-100 text-teal-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}
-                        >
-                          {stat.change}
-                        </span>
                       </div>
-                      <h3 className="text-2xl font-bold text-[#0a1628] mb-1">{stat.value}</h3>
+                      <h3 className="text-2xl font-bold text-[#0a1628] mb-1">
+                        {loadingOverview ? <Loader2 size={20} className="animate-spin text-slate-400" /> : stat.value}
+                      </h3>
                       <p className="text-sm text-[#5a6578] font-medium">{stat.label}</p>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Performance Chart Placeholder */}
+              {/* Performance Chart - empty until data imported */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb]">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-lg font-bold text-[#0a1628] mb-1">System Performance Overview</h2>
                     <p className="text-sm text-[#5a6578]">Last 30 days</p>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="px-4 py-2 rounded-xl border-[#dde3eb] hover:border-indigo-600 hover:text-sky-600 font-bold text-sm"
-                  >
-                    View Report
-                  </Button>
                 </div>
-
-                {/* Simplified Chart Visual */}
-                <div className="space-y-4">
-                  <div className="flex items-end gap-2 h-48">
-                    {[65, 72, 68, 78, 85, 82, 88, 92, 87, 90, 95, 89].map((value, idx) => (
-                      <div key={idx} className="flex-1 flex flex-col justify-end">
-                        <div
-                          className="bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-lg hover:opacity-80 transition-all cursor-pointer"
-                          style={{ height: `${value}%` }}
-                        ></div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-between text-xs text-[#5a6578]">
-                    <span>Jan</span>
-                    <span>Feb</span>
-                    <span>Mar</span>
-                    <span>Apr</span>
-                    <span>May</span>
-                    <span>Jun</span>
-                    <span>Jul</span>
-                    <span>Aug</span>
-                    <span>Sep</span>
-                    <span>Oct</span>
-                    <span>Nov</span>
-                    <span>Dec</span>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <BarChart3 size={32} className="text-[#dde3eb]" />
+                  <p className="text-sm font-medium text-[#5a6578]">No performance data yet</p>
+                  <p className="text-xs text-[#a0aec0]">Import class records to populate analytics.</p>
                 </div>
               </div>
 
               {/* Platform-Wide Subject Mastery Heatmap */}
               <MasteryHeatmap />
 
-              {/* Recent Activity */}
+              {/* Recent Activity - real audit log */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb]">
                 <h2 className="text-lg font-bold text-[#0a1628] mb-5">Recent System Activity</h2>
-                <div className="space-y-3">
-                  {recentActivity.map((activity) => {
-                    const Icon = activity.icon;
-                    return (
-                      <div
-                        key={activity.id}
-                        className={`${activity.bgColor} border border-[#dde3eb] rounded-2xl p-4 flex items-start gap-4`}
-                      >
-                        <div className={`w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0`}>
-                          <Icon size={20} className={activity.color} />
+                {loadingOverview ? (
+                  <div className="flex justify-center py-8"><Loader2 className="animate-spin text-sky-500" /></div>
+                ) : recentActivity.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <BookMarked size={28} className="text-[#dde3eb]" />
+                    <p className="text-sm text-[#5a6578]">No audit events yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentActivity.map((entry) => {
+                      const sc = severityColor(entry.severity);
+                      return (
+                        <div
+                          key={entry.id}
+                          className={`${sc.bg} border border-[#dde3eb] rounded-2xl p-4 flex items-start gap-4`}
+                        >
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Shield size={18} className={sc.text} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-[#0a1628] mb-0.5">{entry.action}</p>
+                            <p className="text-xs text-[#5a6578] truncate">{entry.details}</p>
+                            <p className="text-xs text-[#5a6578] mt-1">{entry.timestamp} · {entry.user.name}</p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-[#0a1628] mb-1">{activity.message}</p>
-                          <p className="text-xs text-[#5a6578]">{activity.time}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -328,51 +265,59 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 </div>
               </div>
 
-              {/* Top Performers */}
+              {/* Top Performers - real student data */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb]">
                 <div className="flex items-center gap-2 mb-5">
-                  <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                    <Award size={20} className="text-amber-600" />
+                  <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+                    <Award size={20} className="text-rose-600" />
                   </div>
                   <h2 className="text-lg font-bold text-[#0a1628]">Top Performers</h2>
                 </div>
-
-                <div className="space-y-3">
-                  {topPerformers.map((student, idx) => (
-                    <div
-                      key={student.id}
-                      className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="relative">
-                          <img
-                            src={student.avatar}
-                            alt={student.name}
-                            className="w-12 h-12 rounded-xl object-cover"
-                          />
-                          <span className="absolute -top-1 -right-1 w-6 h-6 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                            {idx + 1}
-                          </span>
+                {loadingOverview ? (
+                  <div className="flex justify-center py-8"><Loader2 className="animate-spin text-sky-500" /></div>
+                ) : topPerformers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <Award size={28} className="text-[#dde3eb]" />
+                    <p className="text-sm text-[#5a6578]">No student data yet</p>
+                    <p className="text-xs text-[#a0aec0]">Students will appear here as they progress.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {topPerformers.map((student, idx) => (
+                      <div
+                        key={student.id}
+                        className="bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 rounded-2xl p-4"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="relative">
+                            <img
+                              src={student.avatar}
+                              alt={student.name}
+                              className="w-12 h-12 rounded-xl object-cover"
+                            />
+                            <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-bold text-[#0a1628]">{student.name}</h4>
+                            <p className="text-xs text-[#5a6578]">{student.class}</p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-bold text-[#0a1628]">{student.name}</h4>
-                          <p className="text-xs text-[#5a6578]">{student.class}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white rounded-xl p-2">
+                            <p className="text-[10px] text-[#5a6578] mb-1">Performance</p>
+                            <p className="text-lg font-bold text-teal-600">{student.performance}%</p>
+                          </div>
+                          <div className="bg-white rounded-xl p-2">
+                            <p className="text-[10px] text-[#5a6578] mb-1">Level</p>
+                            <p className="text-lg font-bold text-sky-600">{student.level}</p>
+                          </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white rounded-xl p-2">
-                          <p className="text-[10px] text-[#5a6578] mb-1">Performance</p>
-                          <p className="text-lg font-bold text-teal-600">{student.performance}%</p>
-                        </div>
-                        <div className="bg-white rounded-xl p-2">
-                          <p className="text-[10px] text-[#5a6578] mb-1">Level</p>
-                          <p className="text-lg font-bold text-sky-600">{student.level}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* AI Model Status */}
@@ -381,23 +326,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-[#5a6578]">Prediction Accuracy</span>
-                    <span className="text-sm font-bold text-teal-600">94.2%</span>
+                    <span className="text-sm font-bold text-[#5a6578]">No data</span>
                   </div>
                   <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full" style={{ width: '94.2%' }}></div>
+                    <div className="h-full bg-[#dde3eb] rounded-full" style={{ width: '0%' }}></div>
                   </div>
-
                   <div className="flex items-center justify-between mt-4">
                     <span className="text-sm text-[#5a6578]">Model Performance</span>
-                    <span className="text-sm font-bold text-sky-600">Excellent</span>
+                    <span className="text-sm font-bold text-[#5a6578]">Untrained</span>
                   </div>
                   <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full" style={{ width: '92%' }}></div>
+                    <div className="h-full bg-[#dde3eb] rounded-full" style={{ width: '0%' }}></div>
                   </div>
-
-                  <div className="mt-4 p-3 bg-teal-50 border border-teal-200 rounded-xl">
-                    <p className="text-xs text-teal-800">
-                      <strong>Status:</strong> All systems operational. Last trained 2 days ago.
+                  <div className="mt-4 p-3 bg-sky-50 border border-sky-200 rounded-xl">
+                    <p className="text-xs text-sky-800">
+                      <strong>Status:</strong> Import student data to enable AI predictions.
                     </p>
                   </div>
                 </div>
@@ -408,6 +351,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           {activeTab === 'Content' && <AdminContent />}
           {activeTab === 'Audit Log' && <AdminAuditLog />}
           {activeTab === 'User Management' && <AdminUserManagement />}
+          {activeTab === 'Analytics' && <AdminAnalytics />}
           {activeTab === 'Settings' && <AdminSettings />}
         </main>
       </div>

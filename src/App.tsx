@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Sidebar from './components/Sidebar';
-import DynamicHeader from './components/DynamicHeader';
-import ScrollIndicator from './components/ScrollIndicator';
 import HeroBanner from './components/HeroBanner';
 import LearningPath from './components/LearningPath';
 import RightSidebar from './components/RightSidebar';
@@ -305,14 +303,42 @@ const App = () => {
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="bg-[#f7f9fc] border-b border-[#dde3eb] px-6 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-display font-bold text-[#0a1628]">{activeTab}</h1>
-              <p className="text-sm text-[#a8a5b3] mt-0.5 font-body">Welcome back, {profileData.name.split(' ')[0]}!</p>
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header — compact with inline gamification stats */}
+          <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">{activeTab}</h1>
+                <p className="text-xs text-[#5a6578] font-body">Welcome back, {profileData.name.split(' ')[0]}!</p>
+              </div>
+              {/* Inline gamification badges — always visible */}
+              <div className="hidden md:flex items-center gap-2 ml-2">
+                <button
+                  onClick={() => setShowRewardsModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group"
+                  title="View Rewards & Progress"
+                >
+                  <span className="text-rose-500 text-xs">👑</span>
+                  <span className="text-xs font-display font-bold text-rose-700">Lv {userLevel}</span>
+                </button>
+                <button
+                  onClick={() => setShowRewardsModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200/60 rounded-lg transition-colors cursor-pointer"
+                  title={`${currentXP}/${xpToNextLevel} XP to next level`}
+                >
+                  <span className="text-sky-500 text-xs">⚡</span>
+                  <span className="text-xs font-display font-bold text-sky-700">{currentXP} XP</span>
+                  <div className="w-12 h-1.5 bg-sky-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
+                  </div>
+                </button>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
+                  <span className="text-orange-500 text-xs">🔥</span>
+                  <span className="text-xs font-display font-bold text-orange-700">{streak} day{streak !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <SearchBar
                 onSelect={(result) => {
                   // TODO: Navigate to selected search result
@@ -321,96 +347,97 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
-                className="p-2.5 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-sky-600 transition-all group relative"
+                className="p-2 rounded-lg bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-sky-600 transition-all group"
                 title="Scientific Calculator (Alt+K)"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
               </button>
               <NotificationCenter userRole={userRole} />
               
               <button 
                 onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-3 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-4 rounded-xl cursor-pointer transition-all group"
+                className="flex items-center gap-2.5 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
+                aria-label={`Profile: ${profileData.name}`}
               >
                 <img 
                   src={profileData.photo}
                   alt={profileData.name}
-                  className="w-10 h-10 rounded-lg object-cover"
+                  className="w-8 h-8 rounded-lg object-cover"
                 />
-                <div className="text-left">
-                  <p className="text-sm font-bold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors font-body">
-                    {profileData.name}
+                <div className="text-left hidden lg:block">
+                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors font-body">
+                    {profileData.name.split(' ')[0]}
                   </p>
-                  <p className="text-xs text-[#a8a5b3] mt-1 capitalize font-body">{userRole}</p>
                 </div>
               </button>
             </div>
           </header>
 
-          {/* Main Grid */}
-          <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6">
-            <div className="grid grid-cols-12 gap-6">
-              {/* Left Column - Main Content */}
-              <div className={
-                activeTab === 'Dashboard' 
-                  ? 'col-span-7 space-y-6' 
-                  : 'col-span-12'
-              }>
-                {/* Page Content with Transitions */}
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {activeTab === 'Dashboard' ? (
-                      <div className="space-y-6 pb-6">
-                        <HeroBanner 
-                          userName={profileData.name.split(' ')[0]} 
-                          userLevel={userLevel}
-                          onContinueLearning={() => setActiveTab('Modules')} 
-                        />
-                        <SupplementalBanner
-                          variant="full"
-                          atRiskSubjects={atRiskSubjects}
-                          onAction={() => setActiveTab('Modules')}
-                        />
+          {/* Main Content Area */}
+          <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 lg:p-4">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {activeTab === 'Dashboard' ? (
+                  <div className="space-y-3 pb-3">
+                    {/* Row 1: Hero Banner — full width */}
+                    <HeroBanner 
+                      userName={profileData.name.split(' ')[0]} 
+                      userLevel={userLevel}
+                      onContinueLearning={() => setActiveTab('Modules')} 
+                    />
+
+                    {/* Row 2: Quick Stats — full width */}
+                    <QuickStatsWidget />
+
+                    {/* Row 3: Supplemental Banner if at-risk */}
+                    <SupplementalBanner
+                      variant="full"
+                      atRiskSubjects={atRiskSubjects}
+                      onAction={() => setActiveTab('Modules')}
+                    />
+
+                    {/* Row 4: Main grid — Learning Path + Right sidebar */}
+                    <div className="grid grid-cols-12 gap-3">
+                      {/* Learning Path — wider, primary focus */}
+                      <div className="col-span-12 lg:col-span-8">
                         {profileReady && (
                           <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
                         )}
                       </div>
-                    ) : activeTab === 'Modules' ? (
-                      <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} />
-                    ) : activeTab === 'Leaderboard' ? (
-                      <LeaderboardPage />
-                    ) : activeTab === 'AI Chat' ? (
-                      <AIChatPage />
-                    ) : activeTab === 'Grades' ? (
-                      <GradesPage />
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
-                        {activeTab} Content Coming Soon
-                      </div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
 
-              {/* Right Column - Sidebar (5 cols) - Only on Dashboard */}
-              {activeTab === 'Dashboard' && (
-                <div className="col-span-5">
-                  <RightSidebar 
-                    onOpenRewards={() => setShowRewardsModal(true)}
-                    userLevel={userLevel}
-                    currentXP={currentXP}
-                    xpToNextLevel={xpToNextLevel}
-                    streak={streak}
-                  />
-                </div>
-              )}
-            </div>
+                      {/* Right column — Tasks + Friends */}
+                      <div className="col-span-12 lg:col-span-4">
+                        <RightSidebar 
+                          onOpenRewards={() => setShowRewardsModal(true)}
+                          userLevel={userLevel}
+                          currentXP={currentXP}
+                          xpToNextLevel={xpToNextLevel}
+                          streak={streak}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : activeTab === 'Modules' ? (
+                  <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} />
+                ) : activeTab === 'Leaderboard' ? (
+                  <LeaderboardPage />
+                ) : activeTab === 'AI Chat' ? (
+                  <AIChatPage />
+                ) : activeTab === 'Grades' ? (
+                  <GradesPage />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
+                    {activeTab} Content Coming Soon
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </main>
 
           {/* Floating AI Tutor - FAB positioned at bottom-right with 32px padding */}
@@ -420,10 +447,7 @@ const App = () => {
             </div>
           )}
 
-          {/* Scroll Indicator */}
-          {activeTab === 'Dashboard' && (
-            <ScrollIndicator scrollContainerRef={scrollContainerRef} />
-          )}
+
 
           {/* XP Notification */}
           <XPNotification

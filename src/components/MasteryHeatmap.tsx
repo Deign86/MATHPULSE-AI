@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Grid3X3, ChevronDown, Info, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Grid3X3, ChevronDown, Info, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -77,7 +79,7 @@ const TOPICS_BY_SUBJECT: Record<string, { name: string; unit: string }[]> = {
 function getMasteryColor(mastery: number): string {
   if (mastery >= 85) return 'bg-emerald-500';
   if (mastery >= 70) return 'bg-emerald-300';
-  if (mastery >= 55) return 'bg-amber-300';
+  if (mastery >= 55) return 'bg-rose-300';
   if (mastery >= 40) return 'bg-orange-400';
   if (mastery >= 20) return 'bg-red-400';
   return 'bg-red-600';
@@ -98,49 +100,94 @@ function getMasteryBgHex(mastery: number): string {
   return '#DC2626';
 }
 
-// ─── Generate mock platform data ────────────────────────────
-
-function generateMockData(): HeatmapCell[] {
-  const cells: HeatmapCell[] = [];
-  // Seed for consistent display
-  let seed = 42;
-  const pseudoRandom = () => {
-    seed = (seed * 16807 + 0) % 2147483647;
-    return (seed - 1) / 2147483646;
-  };
-
-  for (const subject of SUBJECTS) {
-    const topics = TOPICS_BY_SUBJECT[subject.id] || [];
-    for (const topic of topics) {
-      const mastery = Math.round(pseudoRandom() * 60 + 30); // 30-90 range
-      const students = Math.round(pseudoRandom() * 200 + 50); // 50-250
-      cells.push({
-        subject: subject.id,
-        topic: topic.name,
-        mastery,
-        students,
-      });
-    }
-  }
-  return cells;
-}
-
 // ─── Component ──────────────────────────────────────────────
 
 const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide Subject Mastery' }) => {
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [allData, setAllData] = useState<HeatmapCell[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const allData = useMemo(generateMockData, []);
+  // Fetch and aggregate progress data from Firebase
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const snapshot = await getDocs(collection(db, 'progress'));
+
+        // Aggregate: topicKey -> { totalMastery, count }
+        const aggMap: Record<string, { totalMastery: number; count: number }> = {};
+
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const subjects = data.subjects as Record<string, { subjectId: string; progress: number }> || {};
+
+          for (const [subjectId, subjectProg] of Object.entries(subjects)) {
+            const topics = TOPICS_BY_SUBJECT[subjectId] || [];
+            const mastery = subjectProg?.progress ?? 0;
+
+            for (const topic of topics) {
+              const key = `${subjectId}::${topic.name}`;
+              if (!aggMap[key]) aggMap[key] = { totalMastery: 0, count: 0 };
+              aggMap[key].totalMastery += mastery;
+              aggMap[key].count += 1;
+            }
+          }
+        });
+
+        // Build HeatmapCell array
+        const cells: HeatmapCell[] = [];
+        for (const subject of SUBJECTS) {
+          const topics = TOPICS_BY_SUBJECT[subject.id] || [];
+          for (const topic of topics) {
+            const key = `${subject.id}::${topic.name}`;
+            const agg = aggMap[key];
+            cells.push({
+              subject: subject.id,
+              topic: topic.name,
+              mastery: agg && agg.count > 0 ? Math.round(agg.totalMastery / agg.count) : 0,
+              students: agg?.count ?? 0,
+            });
+          }
+        }
+
+        setAllData(cells);
+      } catch (err) {
+        console.error('[MasteryHeatmap] Error fetching progress data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredSubjects = selectedSubject === 'all'
     ? SUBJECTS
     : SUBJECTS.filter(s => s.id === selectedSubject);
 
   // Compute platform-level aggregates
-  const platformAvg = Math.round(allData.reduce((s, c) => s + c.mastery, 0) / allData.length);
-  const lowestTopic = allData.reduce((min, c) => c.mastery < min.mastery ? c : min, allData[0]);
-  const highestTopic = allData.reduce((max, c) => c.mastery > max.mastery ? c : max, allData[0]);
+  const activeData = allData.filter(c => c.students > 0);
+  const platformAvg = activeData.length > 0
+    ? Math.round(activeData.reduce((s, c) => s + c.mastery, 0) / activeData.length)
+    : 0;
+  const lowestTopic = activeData.length > 0
+    ? activeData.reduce((min, c) => c.mastery < min.mastery ? c : min, activeData[0])
+    : null;
+  const highestTopic = activeData.length > 0
+    ? activeData.reduce((max, c) => c.mastery > max.mastery ? c : max, activeData[0])
+    : null;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb] flex items-center justify-center min-h-[200px]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={28} className="text-sky-500 animate-spin" />
+          <p className="text-sm text-[#5a6578]">Loading mastery data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb]">
@@ -153,7 +200,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
           <div>
             <h2 className="text-lg font-bold text-[#0a1628]">{title}</h2>
             <p className="text-xs text-[#5a6578]">
-              Aggregated mastery levels across all classes • {allData.length} topic-subject combinations
+              Aggregated mastery levels across all classes • {allData.filter(c => c.students > 0).length} tracked combinations
             </p>
           </div>
         </div>
@@ -177,8 +224,8 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
       {/* Summary mini-cards */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-[#edf1f7] rounded-xl p-3 flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${platformAvg >= 70 ? 'bg-emerald-100' : 'bg-amber-100'}`}>
-            <Minus size={16} className={platformAvg >= 70 ? 'text-emerald-600' : 'text-amber-600'} />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${platformAvg >= 70 ? 'bg-emerald-100' : 'bg-rose-100'}`}>
+            <Minus size={16} className={platformAvg >= 70 ? 'text-emerald-600' : 'text-rose-600'} />
           </div>
           <div>
             <p className="text-lg font-bold text-[#0a1628]">{platformAvg}%</p>
@@ -282,7 +329,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
           { label: '0-19%', color: 'bg-red-600' },
           { label: '20-39%', color: 'bg-red-400' },
           { label: '40-54%', color: 'bg-orange-400' },
-          { label: '55-69%', color: 'bg-amber-300' },
+          { label: '55-69%', color: 'bg-rose-300' },
           { label: '70-84%', color: 'bg-emerald-300' },
           { label: '85-100%', color: 'bg-emerald-500' },
         ].map((item, i) => (

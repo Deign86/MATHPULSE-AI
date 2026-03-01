@@ -60,7 +60,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
   };
 
   return (
-    <div className="pointer-events-none">
+    <div className="pointer-events-none flex flex-col items-end">
       {/* Chat Window (Popup) */}
       <div 
         className={`pointer-events-auto mb-4 w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right select-none ${
@@ -142,6 +142,9 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         <div className="p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
           <div className="flex gap-2">
             <input
+              id="ai-tutor-input"
+              name="ai-tutor-input"
+              aria-label="Ask AI tutor a question"
               type="text"
               value={currentMessage}
               onChange={(e) => setCurrentMessage(e.target.value)}
@@ -165,7 +168,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="pointer-events-auto w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
+        className="pointer-events-auto w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all self-end"
       >
         {isOpen ? <X size={28} /> : <Bot size={28} />}
       </motion.button>

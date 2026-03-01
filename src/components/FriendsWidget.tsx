@@ -15,8 +15,8 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-[#dde3eb] p-5 card-elevated">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-xl border border-[#dde3eb] p-3 card-elevated">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-sky-500/10 rounded-lg flex items-center justify-center">
             <Users size={16} className="text-sky-600" />
@@ -31,17 +31,17 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
         </button>
       </div>
 
-      <div className="space-y-2 mb-4">
+      <div className="space-y-1.5 mb-3">
         {friends.map((friend, idx) => (
           <motion.div
             key={friend.id}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="flex items-center gap-3 p-2.5 bg-[#f7f9fc] rounded-lg hover:bg-sky-50/50 transition-colors cursor-pointer border border-transparent hover:border-sky-200/50"
+            className="flex items-center gap-2.5 p-2 bg-[#f7f9fc] rounded-lg hover:bg-sky-50/50 transition-colors cursor-pointer border border-transparent hover:border-sky-200/50"
           >
             <div className="relative">
-              <div className="w-9 h-9 bg-[#dde3eb] rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#dde3eb] rounded-lg flex items-center justify-center">
                 {friend.avatar || <User size={16} className="text-[#5a6578]" />}
               </div>
               {friend.isOnline && (
@@ -56,7 +56,7 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
                   <Trophy 
                     size={11} 
                     className={
-                      friend.rank === 1 ? 'text-amber-500' : 
+                      friend.rank === 1 ? 'text-rose-500' : 
                       friend.rank === 2 ? 'text-zinc-400' : 
                       'text-orange-500'
                     } 

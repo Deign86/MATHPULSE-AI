@@ -361,7 +361,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       : isFinal
                       ? 'bg-gradient-to-br from-sky-50 to-cyan-50 border-sky-200 hover:border-sky-300 cursor-pointer hover:shadow-md'
                       : isModuleQuiz
-                      ? 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 hover:border-orange-300 cursor-pointer hover:shadow-md'
+                      ? 'bg-gradient-to-br from-orange-50 to-rose-50 border-orange-200 hover:border-orange-300 cursor-pointer hover:shadow-md'
                       : 'bg-gradient-to-br from-sky-50 to-cyan-50 border-sky-200 hover:border-sky-300 cursor-pointer hover:shadow-md'
                   } group`}
                 >
@@ -442,16 +442,16 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 border-2 border-amber-200 text-center"
+            className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-3xl p-8 border-2 border-rose-200 text-center"
           >
-            <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trophy size={32} className="text-white" />
             </div>
             <h3 className="text-xl font-bold text-[#0a1628] mb-2">Module Completed!</h3>
             <p className="text-[#5a6578] mb-4">
               Congratulations! You've mastered this module. Keep up the great work!
             </p>
-            <div className="flex items-center justify-center gap-2 text-amber-600 font-bold">
+            <div className="flex items-center justify-center gap-2 text-rose-600 font-bold">
               <Star size={20} />
               <span>+200 XP Earned</span>
             </div>

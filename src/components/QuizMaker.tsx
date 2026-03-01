@@ -43,7 +43,7 @@ const STATUS_COLORS: Record<GeneratedQuizStatus, string> = {
   draft: 'bg-[#edf1f7] text-[#5a6578]',
   published: 'bg-green-100 text-green-700',
   assigned: 'bg-sky-100 text-sky-700',
-  completed: 'bg-amber-100 text-amber-700',
+  completed: 'bg-rose-100 text-rose-700',
 };
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.ReactNode; description: string }> = {
@@ -57,8 +57,8 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.Re
 const BLOOM_LABELS: Record<BloomLevel, { label: string; color: string; description: string }> = {
   remember: { label: 'Remember', color: 'bg-sky-100 text-sky-700 border-sky-300', description: 'Recall facts & formulas' },
   understand: { label: 'Understand', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', description: 'Explain concepts' },
-  apply: { label: 'Apply', color: 'bg-amber-100 text-amber-700 border-amber-300', description: 'Use in new contexts' },
-  analyze: { label: 'Analyze', color: 'bg-amber-100 text-amber-700 border-amber-300', description: 'Examine & compare' },
+  apply: { label: 'Apply', color: 'bg-rose-100 text-rose-700 border-rose-300', description: 'Use in new contexts' },
+  analyze: { label: 'Analyze', color: 'bg-rose-100 text-rose-700 border-rose-300', description: 'Examine & compare' },
 };
 
 const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
@@ -69,7 +69,7 @@ const MAX_TOPICS_LIMIT = 8;
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   easy: 'text-green-600',
-  medium: 'text-amber-600',
+  medium: 'text-rose-600',
   hard: 'text-red-600',
 };
 
@@ -498,9 +498,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
   const BLOOM_BADGE_COLORS: Record<string, string> = {
     remember: 'bg-sky-100 text-sky-700 border-sky-300',
-    understand: 'bg-amber-100 text-amber-700 border-amber-300',
+    understand: 'bg-rose-100 text-rose-700 border-rose-300',
     apply: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-    analyze: 'bg-amber-100 text-amber-700 border-amber-300',
+    analyze: 'bg-rose-100 text-rose-700 border-rose-300',
   };
 
   const renderQuestionCard = (q: QuizQuestionGenerated, index: number, showAnswer: boolean) => {
@@ -875,7 +875,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     ))
                   )}
                   {selectedTopics.length > 0 && (
-                    <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-amber-600 font-medium' : 'text-sky-600'}`}>
+                    <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-rose-600 font-medium' : 'text-sky-600'}`}>
                       {selectedTopics.filter(t => !excludeTopics.includes(t)).length} topic{selectedTopics.filter(t => !excludeTopics.includes(t)).length !== 1 ? 's' : ''} selected
                       {selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT && ` (only first ${MAX_TOPICS_LIMIT} will be used — model limit)`}
                     </p>
@@ -973,7 +973,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                         <motion.div
                           animate={{ width: `${pct}%` }}
                           className={`h-full rounded-full ${
-                            level === 'easy' ? 'bg-green-500' : level === 'medium' ? 'bg-amber-500' : 'bg-red-500'
+                            level === 'easy' ? 'bg-green-500' : level === 'medium' ? 'bg-rose-500' : 'bg-red-500'
                           }`}
                         />
                       </div>
@@ -1005,11 +1005,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
           {/* ─── STEP: PREVIEW ─── */}
           {step === 'preview' && previewResult && (
             <div className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                <Eye size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
+                <Eye size={18} className="text-rose-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-amber-800">Preview Mode</p>
-                  <p className="text-xs text-amber-600">
+                  <p className="text-sm font-semibold text-rose-800">Preview Mode</p>
+                  <p className="text-xs text-rose-600">
                     Showing {previewResult.questions.length} sample questions.
                     Click each question to reveal its answer and explanation. Review quality before generating the full quiz.
                   </p>
@@ -1059,11 +1059,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     <p className="text-xs text-[#5a6578]">Questions</p>
                   </div>
                   <div className="bg-white rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-amber-600">{quizResult.totalPoints}</p>
+                    <p className="text-2xl font-bold text-rose-600">{quizResult.totalPoints}</p>
                     <p className="text-xs text-[#5a6578]">Total Points</p>
                   </div>
                   <div className="bg-white rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-amber-600">
+                    <p className="text-2xl font-bold text-rose-600">
                       {Object.keys(quizResult.metadata.topicsCovered).length}
                     </p>
                     <p className="text-xs text-[#5a6578]">Topics</p>

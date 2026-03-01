@@ -42,8 +42,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'First Steps',
       description: 'Complete your first video lesson',
       unlocked: true,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50'
     },
     {
       id: '2',
@@ -82,8 +82,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'Knowledge Seeker',
       description: 'Watch 20 video lessons',
       unlocked: true,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50'
     },
     {
       id: '6',
@@ -91,8 +91,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'Speed Learner',
       description: 'Complete 5 lessons in one day',
       unlocked: true,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50'
     },
     {
       id: '7',
@@ -111,8 +111,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'XP Hunter',
       description: 'Earn 1000 XP',
       unlocked: true,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50'
     },
     {
       id: '9',
@@ -177,14 +177,14 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-100 backdrop-blur-sm rounded-xl p-4 border border-slate-200">
               <div className="flex items-center gap-2 mb-1">
-                <Crown size={18} className="text-amber-400" />
+                <Crown size={18} className="text-rose-400" />
                 <span className="text-xs font-medium text-slate-500 font-body">Level</span>
               </div>
               <p className="text-2xl font-bold">{userLevel}</p>
             </div>
             <div className="bg-slate-100 backdrop-blur-sm rounded-xl p-4 border border-slate-200">
               <div className="flex items-center gap-2 mb-1">
-                <Star size={18} className="text-amber-400" />
+                <Star size={18} className="text-rose-400" />
                 <span className="text-xs font-medium text-slate-500 font-body">Total XP</span>
               </div>
               <p className="text-2xl font-bold">{totalXP.toLocaleString()}</p>
@@ -229,7 +229,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                 return (
                   <div
                     key={achievement.id}
-                    className={`${achievement.unlocked ? 'bg-white border-amber-200' : 'bg-[#edf1f7] border-[#dde3eb]'} border-2 rounded-xl p-4 transition-all ${
+                    className={`${achievement.unlocked ? 'bg-white border-rose-200' : 'bg-[#edf1f7] border-[#dde3eb]'} border-2 rounded-xl p-4 transition-all ${
                       achievement.unlocked ? 'shadow-md' : 'opacity-60'
                     }`}
                   >

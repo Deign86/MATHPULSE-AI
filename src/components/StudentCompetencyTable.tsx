@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
 import { apiService, type StudentCompetencyResponse, type TopicCompetency } from '../services/apiService';
+import { getUserProgress } from '../services/progressService';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -24,14 +25,14 @@ type SortDir = 'asc' | 'desc';
 
 const RISK_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
   High: { bg: 'bg-red-100', text: 'text-red-700', ring: 'ring-red-300' },
-  Medium: { bg: 'bg-amber-100', text: 'text-amber-700', ring: 'ring-amber-300' },
+  Medium: { bg: 'bg-rose-100', text: 'text-rose-700', ring: 'ring-rose-300' },
   Low: { bg: 'bg-green-100', text: 'text-green-700', ring: 'ring-green-300' },
 };
 
 const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   advanced: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
   proficient: { bg: 'bg-sky-100', text: 'text-sky-700', bar: 'bg-sky-500' },
-  developing: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
+  developing: { bg: 'bg-rose-100', text: 'text-rose-700', bar: 'bg-rose-500' },
   beginner: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
 };
 
@@ -62,30 +63,7 @@ const StudentCompetencyTable: React.FC = () => {
       })));
     } catch (err) {
       console.error('Failed to load students:', err);
-      // Fallback mock data for demo
-      const mockStudents: StudentRow[] = Array.from({ length: 8 }, (_, i) => ({
-        student: {
-          id: `mock-${i}`,
-          name: ['Maria Santos', 'Juan Dela Cruz', 'Ana Reyes', 'Carlo Rivera', 'Sofia Garcia', 'Miguel Torres', 'Isabella Cruz', 'Rafael Mendoza'][i],
-          email: `student${i + 1}@school.edu.ph`,
-          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=S${i}`,
-          riskLevel: (['High', 'Medium', 'Low', 'Low', 'Medium', 'High', 'Low', 'Medium'] as const)[i],
-          engagementScore: [45, 72, 88, 91, 65, 38, 82, 70][i],
-          avgQuizScore: [52, 68, 85, 92, 71, 44, 79, 66][i],
-          weakestTopic: ['Derivatives', 'Hypothesis Testing', 'Conic Sections', 'Integration', 'Normal Distribution', 'Limits', 'Trigonometry', 'Sequences'][i],
-          classroomId: 'class-1',
-          attendance: [60, 85, 95, 98, 75, 55, 90, 80][i],
-          assignmentCompletion: [50, 70, 90, 95, 68, 42, 85, 72][i],
-          lastActive: null,
-          struggles: [],
-          createdAt: null as any,
-          updatedAt: null as any,
-        },
-        competency: null,
-        loading: false,
-        expanded: false,
-      }));
-      setRows(mockStudents);
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -114,16 +92,19 @@ const StudentCompetencyTable: React.FC = () => {
 
   const fetchCompetency = async (studentId: string) => {
     try {
-      // Build mock quiz history from student data for the API call
       const row = rows.find(r => r.student.id === studentId);
       if (!row) return;
 
-      const mockHistory = [
-        { topic: row.student.weakestTopic, score: Math.round(row.student.avgQuizScore * 0.6), total: 100, timeTaken: 300 },
-        { topic: 'General Review', score: row.student.avgQuizScore, total: 100, timeTaken: 250 },
-      ];
+      // Fetch real quiz history from Firestore progress data
+      const progress = await getUserProgress(studentId);
+      const quizHistory = (progress?.quizAttempts ?? []).map(attempt => ({
+        topic: attempt.quizId,
+        score: attempt.score,
+        total: 100,
+        timeTaken: attempt.timeSpent,
+      }));
 
-      const competency = await apiService.getStudentCompetency(studentId, mockHistory);
+      const competency = await apiService.getStudentCompetency(studentId, quizHistory.length > 0 ? quizHistory : undefined);
 
       setRows(prev => prev.map(r =>
         r.student.id === studentId
@@ -354,7 +335,7 @@ const StudentCompetencyTable: React.FC = () => {
                           className={`h-full rounded-full ${
                             row.student.avgQuizScore >= 80 ? 'bg-emerald-500' :
                             row.student.avgQuizScore >= 60 ? 'bg-sky-500' :
-                            row.student.avgQuizScore >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                            row.student.avgQuizScore >= 40 ? 'bg-rose-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${row.student.avgQuizScore}%` }}
                         />
@@ -413,14 +394,14 @@ const StudentCompetencyTable: React.FC = () => {
 
                             {/* Recommendations */}
                             {row.competency.recommendedTopics.length > 0 && (
-                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                <h5 className="text-xs font-bold text-amber-800 mb-1.5 flex items-center gap-1">
+                              <div className="bg-rose-50 border border-rose-200 rounded-lg p-3">
+                                <h5 className="text-xs font-bold text-rose-800 mb-1.5 flex items-center gap-1">
                                   <BookOpen size={12} />
                                   Recommended Focus Areas
                                 </h5>
                                 <div className="flex flex-wrap gap-1.5">
                                   {row.competency.recommendedTopics.map((topic, i) => (
-                                    <span key={i} className="inline-flex items-center bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-medium">
+                                    <span key={i} className="inline-flex items-center bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-medium">
                                       {topic}
                                     </span>
                                   ))}

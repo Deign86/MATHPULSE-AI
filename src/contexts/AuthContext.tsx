@@ -5,13 +5,6 @@ import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '..
 import { getUserProfile, createUserProfile } from '../services/authService';
 import { triggerStudentEnrolled } from '../services/automationService';
 
-// Demo account configuration
-const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string }> = {
-  'demo-student@mathpulse.ai': { role: 'student', name: 'Alex Johnson' },
-  'demo-teacher@mathpulse.ai': { role: 'teacher', name: 'Prof. Anderson' },
-  'demo-admin@mathpulse.ai': { role: 'admin', name: 'Administrator' },
-};
-
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   userProfile: User | null;
@@ -56,9 +49,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // If profile doesn't exist, auto-create it
         if (!profile && user.email) {
           console.log('[WARN] AuthContext: Profile missing, auto-creating...');
-          const demoInfo = DEMO_ACCOUNTS[user.email.toLowerCase()];
-          const role: UserRole = demoInfo?.role || 'student';
-          const name = demoInfo?.name || user.displayName || 'User';
+          const role: UserRole = 'student';
+          const name = user.displayName || 'User';
           
           try {
             profile = await createUserProfile(user, role, { name });
@@ -70,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 studentId: user.uid,
                 name,
                 email: user.email || '',
-                gradeLevel: 'Grade 11',
+                gradeLevel: '',
               }).catch((err) =>
                 console.error('[WARN] Automation: enrollment pipeline failed:', err)
               );

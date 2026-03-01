@@ -68,7 +68,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
               
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Star size={18} className="text-amber-600" />
+                  <Star size={18} className="text-rose-600" />
                   <span className="text-xs font-bold text-[#5a6578]">Progress</span>
                 </div>
                 <p className="text-2xl font-bold text-[#0a1628]">{subject.progress}%</p>

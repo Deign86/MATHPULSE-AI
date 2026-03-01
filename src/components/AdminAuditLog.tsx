@@ -1,106 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { 
   Search, Shield, AlertTriangle, AlertCircle, Info, Download, 
-  Calendar, Eye, User, FileText, Settings, Database, Lock
+  Calendar, Eye, Loader2, RefreshCw
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { getAuditLogs, type AuditLogEntry } from '../services/adminService';
+import { toast } from 'sonner';
 
 const AdminAuditLog: React.FC = () => {
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedSeverity, setSelectedSeverity] = useState('All Severity');
   const [selectedRole, setSelectedRole] = useState('All Roles');
 
-  const logs = [
-    {
-      id: 1,
-      severity: 'Info',
-      timestamp: '2025-01-18 09:30:00',
-      user: { name: 'Dr. Maria Santos', role: 'Admin', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop' },
-      action: 'User Login',
-      category: 'Auth',
-      details: 'Admin logged in successfully'
-    },
-    {
-      id: 2,
-      severity: 'Info',
-      timestamp: '2025-01-18 08:50:00',
-      user: { name: 'Prof. Anderson', role: 'Teacher', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop' },
-      action: 'Uploaded Class Records',
-      category: 'Data',
-      details: 'Uploaded sample_grades.csv with 25 student records'
-    },
-    {
-      id: 3,
-      severity: 'Warning',
-      timestamp: '2025-01-17 16:00:00',
-      user: { name: 'Dr. Maria Santos', role: 'Admin', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop' },
-      action: 'User Status Changed',
-      category: 'User',
-      details: 'Suspended user: james.park@student.edu - Reason: Policy violation'
-    },
-    {
-      id: 4,
-      severity: 'Info',
-      timestamp: '2025-01-18 03:00:00',
-      user: { name: 'System', role: 'Admin', avatar: null },
-      action: 'Automatic Backup',
-      category: 'System',
-      details: 'Daily automatic backup completed successfully - 1.2GB'
-    },
-    {
-      id: 5,
-      severity: 'Info',
-      timestamp: '2025-01-17 14:22:00',
-      user: { name: 'Sarah Chen', role: 'Student', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop' },
-      action: 'Password Reset Request',
-      category: 'Auth',
-      details: 'Password reset email sent to sarah.chen@student.edu'
-    },
-    {
-      id: 6,
-      severity: 'Warning',
-      timestamp: '2025-01-17 12:00:00',
-      user: { name: 'Dr. Robert Chen', role: 'Admin', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop' },
-      action: 'System Settings Updated',
-      category: 'System',
-      details: 'Changed maintenance mode: disabled → enabled (scheduled)'
-    },
-    {
-      id: 7,
-      severity: 'Info',
-      timestamp: '2025-01-16 15:30:00',
-      user: { name: 'Ms. Rebecca Johnson', role: 'Teacher', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop' },
-      action: 'Module Published',
-      category: 'Content',
-      details: 'Published new module: "Quadratic Equations Practice"'
-    },
-    {
-      id: 8,
-      severity: 'Error',
-      timestamp: '2025-01-16 22:15:00',
-      user: { name: 'System', role: 'Admin', avatar: null },
-      action: 'Failed Login Attempt',
-      category: 'Auth',
-      details: 'Multiple failed login attempts for: unknown@email.com - IP blocked'
-    },
-    {
-      id: 9,
-      severity: 'Info',
-      timestamp: '2024-07-15 09:00:00',
-      user: { name: 'Dr. Maria Santos', role: 'Admin', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop' },
-      action: 'Created New User',
-      category: 'User',
-      details: 'Created new teacher account: Ms. Rebecca Johnson (johnson@school.edu)'
+  const loadLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getAuditLogs();
+      setLogs(data);
+    } catch {
+      toast.error('Failed to load audit logs');
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, []);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
+
+  // Computed stats from real data
+  const infoCount = logs.filter(l => l.severity === 'Info').length;
+  const warningCount = logs.filter(l => l.severity === 'Warning').length;
+  const errorCount = logs.filter(l => l.severity === 'Error' || l.severity === 'Critical').length;
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'Info': return <Info size={16} className="text-sky-600" />;
-      case 'Warning': return <AlertTriangle size={16} className="text-amber-600" />;
+      case 'Warning': return <AlertTriangle size={16} className="text-rose-600" />;
       case 'Error': return <AlertCircle size={16} className="text-red-600" />;
       case 'Critical': return <AlertCircle size={16} className="text-red-600" />;
       default: return <Info size={16} className="text-[#5a6578]" />;
@@ -110,7 +51,7 @@ const AdminAuditLog: React.FC = () => {
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case 'Info': return 'bg-sky-100 text-sky-700 border-sky-200';
-      case 'Warning': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'Warning': return 'bg-rose-100 text-rose-700 border-rose-200';
       case 'Error': return 'bg-red-100 text-red-700 border-red-200';
       case 'Critical': return 'bg-red-100 text-red-700 border-red-200 ring-2 ring-red-500';
       default: return 'bg-[#edf1f7] text-[#0a1628] border-[#dde3eb]';
@@ -120,7 +61,7 @@ const AdminAuditLog: React.FC = () => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'Auth': return 'bg-sky-100 text-sky-700';
-      case 'Data': return 'bg-amber-100 text-amber-700';
+      case 'Data': return 'bg-rose-100 text-rose-700';
       case 'User': return 'bg-sky-100 text-sky-700';
       case 'System': return 'bg-[#edf1f7] text-[#0a1628]';
       case 'Content': return 'bg-green-100 text-green-700';
@@ -156,40 +97,45 @@ const AdminAuditLog: React.FC = () => {
       <div className="flex items-center gap-3">
         <div className="bg-white px-3 py-2 rounded-xl border border-[#dde3eb] flex items-center gap-2 text-[#5a6578] text-sm font-medium">
           <Calendar size={16} />
-          <span>Last 7 days</span>
+          <span>Last 100 events</span>
         </div>
-        <Button variant="outline" className="gap-2 border-[#dde3eb] hover:bg-[#edf1f7]">
-          <Download size={16} />
-          Export CSV
+        <Button variant="outline" className="gap-2 border-[#dde3eb] hover:bg-[#edf1f7]" onClick={loadLogs}>
+          <RefreshCw size={16} />
+          Refresh
         </Button>
       </div>
 
       {/* Stats Cards */}
+      {loading ? (
+        <div className="flex items-center justify-center h-24">
+          <Loader2 size={24} className="animate-spin text-sky-500" />
+        </div>
+      ) : null}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
           <p className="text-xs font-bold text-[#5a6578] mb-1">Total Events</p>
-          <p className="text-2xl font-bold text-[#0a1628]">12</p>
+          <p className="text-2xl font-bold text-[#0a1628]">{logs.length}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-sky-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <Info size={14} className="text-sky-600" />
             <p className="text-xs font-bold text-[#5a6578]">Info</p>
           </div>
-          <p className="text-2xl font-bold text-sky-600">8</p>
+          <p className="text-2xl font-bold text-sky-600">{infoCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm">
+        <div className="bg-white p-4 rounded-xl border border-rose-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle size={14} className="text-amber-600" />
+            <AlertTriangle size={14} className="text-rose-600" />
             <p className="text-xs font-bold text-[#5a6578]">Warnings</p>
           </div>
-          <p className="text-2xl font-bold text-amber-600">2</p>
+          <p className="text-2xl font-bold text-rose-600">{warningCount}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-red-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <AlertCircle size={14} className="text-red-600" />
             <p className="text-xs font-bold text-[#5a6578]">Errors</p>
           </div>
-          <p className="text-2xl font-bold text-red-600">2</p>
+          <p className="text-2xl font-bold text-red-600">{errorCount}</p>
         </div>
       </div>
 
@@ -309,11 +255,11 @@ const AdminAuditLog: React.FC = () => {
           </tbody>
         </table>
 
-        {filteredLogs.length === 0 && (
+        {filteredLogs.length === 0 && !loading && (
           <div className="p-12 text-center text-[#5a6578]">
             <Shield size={48} className="mx-auto mb-4 text-slate-500" />
             <p className="font-medium">No logs found</p>
-            <p className="text-sm">Try adjusting your search or filters</p>
+            <p className="text-sm">{logs.length === 0 ? 'Audit events will appear here as actions are performed' : 'Try adjusting your search or filters'}</p>
           </div>
         )}
       </div>

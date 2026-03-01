@@ -28,6 +28,10 @@ dist-ssr
 .env.*.local
 .env
 
+# Firebase service account keys (NEVER commit these)
+**/serviceAccountKey.json
+serviceAccountKey.json
+
 # Firebase
 .firebase/
 firebase-debug.log

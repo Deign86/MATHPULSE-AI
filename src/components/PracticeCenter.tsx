@@ -175,7 +175,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
       case 'Easy':
         return 'bg-green-100 text-green-700';
       case 'Medium':
-        return 'bg-amber-100 text-amber-700';
+        return 'bg-rose-100 text-rose-700';
       case 'Hard':
         return 'bg-red-100 text-red-700';
       default:
@@ -208,7 +208,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-5 text-white shadow-lg"
+          className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -350,7 +350,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 text-amber-600 font-bold text-sm">
+                  <div className="flex items-center gap-1 text-rose-600 font-bold text-sm">
                     <Trophy size={14} />
                     <span>+{quiz.xpReward} XP</span>
                   </div>

@@ -231,9 +231,9 @@ export const subjects: Subject[] = [
     color: 'bg-indigo-50',
     iconColor: 'text-indigo-600',
     accentColor: 'bg-indigo-600',
-    progress: 45,
+    progress: 0,
     totalModules: 3,
-    completedModules: 1,
+    completedModules: 0,
     modules: [
       {
         id: 'gm-1',
@@ -242,20 +242,20 @@ export const subjects: Subject[] = [
         color: 'bg-indigo-50',
         iconColor: 'text-indigo-600',
         accentColor: 'bg-indigo-600',
-        progress: 100,
+        progress: 0,
         lessons: [
-          { id: 'gm-1-l1', title: 'Functions and Relations', duration: '15 min', completed: true, locked: false },
-          { id: 'gm-1-l2', title: 'Evaluating Functions', duration: '15 min', completed: true, locked: false },
-          { id: 'gm-1-l3', title: 'Operations on Functions', duration: '18 min', completed: true, locked: false },
-          { id: 'gm-1-l4', title: 'Composite Functions', duration: '18 min', completed: true, locked: false },
-          { id: 'gm-1-l5', title: 'Inverse Functions', duration: '16 min', completed: true, locked: false },
-          { id: 'gm-1-l6', title: 'Rational Functions', duration: '20 min', completed: true, locked: false },
-          { id: 'gm-1-l7', title: 'Exponential Functions', duration: '20 min', completed: true, locked: false },
-          { id: 'gm-1-l8', title: 'Logarithmic Functions', duration: '22 min', completed: true, locked: false },
+          { id: 'gm-1-l1', title: 'Functions and Relations', duration: '15 min', completed: false, locked: false },
+          { id: 'gm-1-l2', title: 'Evaluating Functions', duration: '15 min', completed: false, locked: false },
+          { id: 'gm-1-l3', title: 'Operations on Functions', duration: '18 min', completed: false, locked: false },
+          { id: 'gm-1-l4', title: 'Composite Functions', duration: '18 min', completed: false, locked: false },
+          { id: 'gm-1-l5', title: 'Inverse Functions', duration: '16 min', completed: false, locked: false },
+          { id: 'gm-1-l6', title: 'Rational Functions', duration: '20 min', completed: false, locked: false },
+          { id: 'gm-1-l7', title: 'Exponential Functions', duration: '20 min', completed: false, locked: false },
+          { id: 'gm-1-l8', title: 'Logarithmic Functions', duration: '22 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'gm-1-q1', title: 'Practice Quiz: Functions', questions: 10, duration: '15 min', completed: true, score: 90, locked: false, type: 'practice' },
-          { id: 'gm-1-q2', title: 'Module Quiz: Functions and Graphs', questions: 15, duration: '20 min', completed: true, score: 85, locked: false, type: 'module' },
+          { id: 'gm-1-q1', title: 'Practice Quiz: Functions', questions: 10, duration: '15 min', completed: false, locked: false, type: 'practice' },
+          { id: 'gm-1-q2', title: 'Module Quiz: Functions and Graphs', questions: 15, duration: '20 min', completed: false, locked: false, type: 'module' },
         ]
       },
       {
@@ -265,16 +265,16 @@ export const subjects: Subject[] = [
         color: 'bg-indigo-50',
         iconColor: 'text-indigo-600',
         accentColor: 'bg-indigo-600',
-        progress: 50,
+        progress: 0,
         lessons: [
-          { id: 'gm-2-l1', title: 'Simple Interest', duration: '16 min', completed: true, locked: false },
-          { id: 'gm-2-l2', title: 'Compound Interest', duration: '18 min', completed: true, locked: false },
+          { id: 'gm-2-l1', title: 'Simple Interest', duration: '16 min', completed: false, locked: false },
+          { id: 'gm-2-l2', title: 'Compound Interest', duration: '18 min', completed: false, locked: false },
           { id: 'gm-2-l3', title: 'Annuities', duration: '20 min', completed: false, locked: false },
           { id: 'gm-2-l4', title: 'Loans and Amortization', duration: '18 min', completed: false, locked: false },
           { id: 'gm-2-l5', title: 'Stocks and Bonds', duration: '18 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'gm-2-q1', title: 'Practice Quiz: Interest', questions: 12, duration: '18 min', completed: true, score: 75, locked: false, type: 'practice' },
+          { id: 'gm-2-q1', title: 'Practice Quiz: Interest', questions: 12, duration: '18 min', completed: false, locked: false, type: 'practice' },
           { id: 'gm-2-q2', title: 'Module Quiz: Business Math', questions: 15, duration: '20 min', completed: false, locked: false, type: 'module' },
         ]
       },
@@ -309,9 +309,9 @@ export const subjects: Subject[] = [
     color: 'bg-teal-50',
     iconColor: 'text-teal-600',
     accentColor: 'bg-teal-500',
-    progress: 65,
+    progress: 0,
     totalModules: 3,
-    completedModules: 1,
+    completedModules: 0,
     modules: [
       {
         id: 'pc-1',
@@ -320,17 +320,17 @@ export const subjects: Subject[] = [
         color: 'bg-teal-50',
         iconColor: 'text-teal-600',
         accentColor: 'bg-teal-500',
-        progress: 100,
+        progress: 0,
         lessons: [
-          { id: 'pc-1-l1', title: 'Conic Sections - Parabola', duration: '22 min', completed: true, locked: false },
-          { id: 'pc-1-l2', title: 'Conic Sections - Ellipse', duration: '24 min', completed: true, locked: false },
-          { id: 'pc-1-l3', title: 'Conic Sections - Hyperbola', duration: '24 min', completed: true, locked: false },
-          { id: 'pc-1-l4', title: 'Conic Sections - Circle', duration: '18 min', completed: true, locked: false },
-          { id: 'pc-1-l5', title: 'Systems of Nonlinear Equations', duration: '20 min', completed: true, locked: false },
+          { id: 'pc-1-l1', title: 'Conic Sections - Parabola', duration: '22 min', completed: false, locked: false },
+          { id: 'pc-1-l2', title: 'Conic Sections - Ellipse', duration: '24 min', completed: false, locked: false },
+          { id: 'pc-1-l3', title: 'Conic Sections - Hyperbola', duration: '24 min', completed: false, locked: false },
+          { id: 'pc-1-l4', title: 'Conic Sections - Circle', duration: '18 min', completed: false, locked: false },
+          { id: 'pc-1-l5', title: 'Systems of Nonlinear Equations', duration: '20 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'pc-1-q1', title: 'Practice Quiz: Conics', questions: 14, duration: '20 min', completed: true, score: 95, locked: false, type: 'practice' },
-          { id: 'pc-1-q2', title: 'Module Quiz: Analytic Geometry', questions: 18, duration: '25 min', completed: true, score: 88, locked: false, type: 'module' },
+          { id: 'pc-1-q1', title: 'Practice Quiz: Conics', questions: 14, duration: '20 min', completed: false, locked: false, type: 'practice' },
+          { id: 'pc-1-q2', title: 'Module Quiz: Analytic Geometry', questions: 18, duration: '25 min', completed: false, locked: false, type: 'module' },
         ]
       },
       {
@@ -340,16 +340,16 @@ export const subjects: Subject[] = [
         color: 'bg-teal-50',
         iconColor: 'text-teal-600',
         accentColor: 'bg-teal-500',
-        progress: 55,
+        progress: 0,
         lessons: [
-          { id: 'pc-2-l1', title: 'Sequences and Series', duration: '18 min', completed: true, locked: false },
-          { id: 'pc-2-l2', title: 'Arithmetic Sequences', duration: '18 min', completed: true, locked: false },
-          { id: 'pc-2-l3', title: 'Geometric Sequences', duration: '20 min', completed: true, locked: false },
+          { id: 'pc-2-l1', title: 'Sequences and Series', duration: '18 min', completed: false, locked: false },
+          { id: 'pc-2-l2', title: 'Arithmetic Sequences', duration: '18 min', completed: false, locked: false },
+          { id: 'pc-2-l3', title: 'Geometric Sequences', duration: '20 min', completed: false, locked: false },
           { id: 'pc-2-l4', title: 'Mathematical Induction', duration: '24 min', completed: false, locked: false },
           { id: 'pc-2-l5', title: 'Binomial Theorem', duration: '22 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'pc-2-q1', title: 'Practice Quiz: Sequences & Series', questions: 12, duration: '18 min', completed: true, score: 82, locked: false, type: 'practice' },
+          { id: 'pc-2-q1', title: 'Practice Quiz: Sequences & Series', questions: 12, duration: '18 min', completed: false, locked: false, type: 'practice' },
           { id: 'pc-2-q2', title: 'Module Quiz: Series and Induction', questions: 16, duration: '24 min', completed: false, locked: false, type: 'module' },
         ]
       },
@@ -386,9 +386,9 @@ export const subjects: Subject[] = [
     color: 'bg-sky-50',
     iconColor: 'text-sky-600',
     accentColor: 'bg-sky-500',
-    progress: 30,
+    progress: 0,
     totalModules: 4,
-    completedModules: 1,
+    completedModules: 0,
     modules: [
       {
         id: 'sp-1',
@@ -397,15 +397,15 @@ export const subjects: Subject[] = [
         color: 'bg-sky-50',
         iconColor: 'text-sky-600',
         accentColor: 'bg-sky-500',
-        progress: 100,
+        progress: 0,
         lessons: [
-          { id: 'sp-1-l1', title: 'Random Variables', duration: '16 min', completed: true, locked: false },
-          { id: 'sp-1-l2', title: 'Discrete Probability Distributions', duration: '18 min', completed: true, locked: false },
-          { id: 'sp-1-l3', title: 'Mean and Variance of Discrete RV', duration: '20 min', completed: true, locked: false },
+          { id: 'sp-1-l1', title: 'Random Variables', duration: '16 min', completed: false, locked: false },
+          { id: 'sp-1-l2', title: 'Discrete Probability Distributions', duration: '18 min', completed: false, locked: false },
+          { id: 'sp-1-l3', title: 'Mean and Variance of Discrete RV', duration: '20 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'sp-1-q1', title: 'Practice Quiz: Random Variables', questions: 10, duration: '15 min', completed: true, score: 92, locked: false, type: 'practice' },
-          { id: 'sp-1-q2', title: 'Module Quiz: Probability Distributions', questions: 15, duration: '20 min', completed: true, score: 86, locked: false, type: 'module' },
+          { id: 'sp-1-q1', title: 'Practice Quiz: Random Variables', questions: 10, duration: '15 min', completed: false, locked: false, type: 'practice' },
+          { id: 'sp-1-q2', title: 'Module Quiz: Probability Distributions', questions: 15, duration: '20 min', completed: false, locked: false, type: 'module' },
         ]
       },
       {
@@ -415,15 +415,15 @@ export const subjects: Subject[] = [
         color: 'bg-sky-50',
         iconColor: 'text-sky-600',
         accentColor: 'bg-sky-500',
-        progress: 50,
+        progress: 0,
         lessons: [
-          { id: 'sp-2-l1', title: 'Normal Distribution', duration: '16 min', completed: true, locked: false },
-          { id: 'sp-2-l2', title: 'Standard Normal Distribution and Z-scores', duration: '18 min', completed: true, locked: false },
+          { id: 'sp-2-l1', title: 'Normal Distribution', duration: '16 min', completed: false, locked: false },
+          { id: 'sp-2-l2', title: 'Standard Normal Distribution and Z-scores', duration: '18 min', completed: false, locked: false },
           { id: 'sp-2-l3', title: 'Areas Under the Normal Curve', duration: '18 min', completed: false, locked: false },
         ],
         quizzes: [
           { id: 'sp-2-q1', title: 'Practice Quiz: Normal Distribution', questions: 12, duration: '18 min', completed: false, locked: false, type: 'practice' },
-          { id: 'sp-2-q2', title: 'Module Quiz: Z-Scores & Normal Curve', questions: 14, duration: '20 min', completed: false, locked: true, type: 'module' },
+          { id: 'sp-2-q2', title: 'Module Quiz: Z-Scores & Normal Curve', questions: 14, duration: '20 min', completed: false, locked: false, type: 'module' },
         ]
       },
       {
@@ -476,9 +476,9 @@ export const subjects: Subject[] = [
     color: 'bg-orange-50',
     iconColor: 'text-orange-600',
     accentColor: 'bg-orange-500',
-    progress: 55,
+    progress: 0,
     totalModules: 3,
-    completedModules: 1,
+    completedModules: 0,
     modules: [
       {
         id: 'bc-1',
@@ -487,17 +487,17 @@ export const subjects: Subject[] = [
         color: 'bg-orange-50',
         iconColor: 'text-orange-600',
         accentColor: 'bg-orange-500',
-        progress: 100,
+        progress: 0,
         lessons: [
-          { id: 'bc-1-l1', title: 'Limits of Functions', duration: '20 min', completed: true, locked: false },
-          { id: 'bc-1-l2', title: 'Limit Theorems', duration: '22 min', completed: true, locked: false },
-          { id: 'bc-1-l3', title: 'One-Sided Limits', duration: '18 min', completed: true, locked: false },
-          { id: 'bc-1-l4', title: 'Infinite Limits and Limits at Infinity', duration: '20 min', completed: true, locked: false },
-          { id: 'bc-1-l5', title: 'Continuity of Functions', duration: '20 min', completed: true, locked: false },
+          { id: 'bc-1-l1', title: 'Limits of Functions', duration: '20 min', completed: false, locked: false },
+          { id: 'bc-1-l2', title: 'Limit Theorems', duration: '22 min', completed: false, locked: false },
+          { id: 'bc-1-l3', title: 'One-Sided Limits', duration: '18 min', completed: false, locked: false },
+          { id: 'bc-1-l4', title: 'Infinite Limits and Limits at Infinity', duration: '20 min', completed: false, locked: false },
+          { id: 'bc-1-l5', title: 'Continuity of Functions', duration: '20 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'bc-1-q1', title: 'Practice Quiz: Limits', questions: 12, duration: '20 min', completed: true, score: 88, locked: false, type: 'practice' },
-          { id: 'bc-1-q2', title: 'Module Quiz: Limits & Continuity', questions: 16, duration: '25 min', completed: true, score: 92, locked: false, type: 'module' },
+          { id: 'bc-1-q1', title: 'Practice Quiz: Limits', questions: 12, duration: '20 min', completed: false, locked: false, type: 'practice' },
+          { id: 'bc-1-q2', title: 'Module Quiz: Limits & Continuity', questions: 16, duration: '25 min', completed: false, locked: false, type: 'module' },
         ]
       },
       {
@@ -507,11 +507,11 @@ export const subjects: Subject[] = [
         color: 'bg-orange-50',
         iconColor: 'text-orange-600',
         accentColor: 'bg-orange-500',
-        progress: 60,
+        progress: 0,
         lessons: [
-          { id: 'bc-2-l1', title: 'Definition of the Derivative', duration: '22 min', completed: true, locked: false },
-          { id: 'bc-2-l2', title: 'Differentiation Rules', duration: '20 min', completed: true, locked: false },
-          { id: 'bc-2-l3', title: 'Chain Rule', duration: '24 min', completed: true, locked: false },
+          { id: 'bc-2-l1', title: 'Definition of the Derivative', duration: '22 min', completed: false, locked: false },
+          { id: 'bc-2-l2', title: 'Differentiation Rules', duration: '20 min', completed: false, locked: false },
+          { id: 'bc-2-l3', title: 'Chain Rule', duration: '24 min', completed: false, locked: false },
           { id: 'bc-2-l4', title: 'Implicit Differentiation', duration: '26 min', completed: false, locked: false },
           { id: 'bc-2-l5', title: 'Higher-Order Derivatives', duration: '20 min', completed: false, locked: false },
           { id: 'bc-2-l6', title: 'Related Rates', duration: '26 min', completed: false, locked: false },
@@ -520,7 +520,7 @@ export const subjects: Subject[] = [
           { id: 'bc-2-l9', title: 'Optimization Problems', duration: '24 min', completed: false, locked: false },
         ],
         quizzes: [
-          { id: 'bc-2-q1', title: 'Practice Quiz: Derivatives', questions: 14, duration: '22 min', completed: true, score: 85, locked: false, type: 'practice' },
+          { id: 'bc-2-q1', title: 'Practice Quiz: Derivatives', questions: 14, duration: '22 min', completed: false, locked: false, type: 'practice' },
           { id: 'bc-2-q2', title: 'Module Quiz: Differentiation', questions: 18, duration: '28 min', completed: false, locked: false, type: 'module' },
         ]
       },

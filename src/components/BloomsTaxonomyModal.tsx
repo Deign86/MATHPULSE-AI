@@ -97,7 +97,7 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Section 1 - What is Bloom's Taxonomy? */}
               <div>
-                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-2">
+                <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wide mb-2">
                   What is Bloom's Taxonomy?
                 </h3>
                 <p className="text-sm text-slate-500 leading-relaxed">
@@ -110,7 +110,7 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
 
               {/* Section 2 - Why MathPulse Uses It */}
               <div>
-                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-2">
+                <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wide mb-2">
                   Why MathPulse Uses It
                 </h3>
                 <p className="text-sm text-slate-500 leading-relaxed">
@@ -124,7 +124,7 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
 
               {/* Section 3 - Level-by-Level Breakdown */}
               <div>
-                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">
+                <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wide mb-3">
                   Level-by-Level Breakdown
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -175,14 +175,14 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
                 href="https://cft.vanderbilt.edu/guides-sub-pages/blooms-taxonomy/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors"
+                className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-medium transition-colors"
               >
                 <ExternalLink size={12} />
                 Learn More
               </a>
               <button
                 onClick={onClose}
-                className="px-5 py-2 bg-sky-600 hover:bg-amber-500 text-white text-sm font-bold rounded-xl transition-colors"
+                className="px-5 py-2 bg-sky-600 hover:bg-rose-500 text-white text-sm font-bold rounded-xl transition-colors"
               >
                 Got it
               </button>

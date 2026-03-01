@@ -81,9 +81,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
       case 'student':
         return 'bg-sky-100 text-sky-700 border-sky-200';
       case 'teacher':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
+        return 'bg-rose-100 text-rose-700 border-rose-200';
       case 'admin':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
+        return 'bg-rose-100 text-rose-700 border-rose-200';
       default:
         return 'bg-zinc-100 text-zinc-700 border-zinc-200';
     }
@@ -310,7 +310,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {editedData.role === 'teacher' && (
                     <div>
                       <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-amber-500 rounded-full"></div>
+                        <div className="w-1 h-4 bg-rose-500 rounded-full"></div>
                         Teaching Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -370,7 +370,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {editedData.role === 'admin' && (
                     <div>
                       <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-amber-600 rounded-full"></div>
+                        <div className="w-1 h-4 bg-rose-600 rounded-full"></div>
                         Administrative Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
