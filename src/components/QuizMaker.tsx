@@ -40,10 +40,10 @@ type Step = 'configure' | 'preview' | 'results';
 type MakerTab = 'create' | 'bank';
 
 const STATUS_COLORS: Record<GeneratedQuizStatus, string> = {
-  draft: 'bg-[#f0eeea] text-[#6b687a]',
+  draft: 'bg-[#edf1f7] text-[#5a6578]',
   published: 'bg-green-100 text-green-700',
-  assigned: 'bg-violet-100 text-violet-700',
-  completed: 'bg-fuchsia-100 text-fuchsia-700',
+  assigned: 'bg-sky-100 text-sky-700',
+  completed: 'bg-amber-100 text-amber-700',
 };
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.ReactNode; description: string }> = {
@@ -55,10 +55,10 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.Re
 };
 
 const BLOOM_LABELS: Record<BloomLevel, { label: string; color: string; description: string }> = {
-  remember: { label: 'Remember', color: 'bg-violet-100 text-violet-700 border-violet-300', description: 'Recall facts & formulas' },
+  remember: { label: 'Remember', color: 'bg-sky-100 text-sky-700 border-sky-300', description: 'Recall facts & formulas' },
   understand: { label: 'Understand', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', description: 'Explain concepts' },
   apply: { label: 'Apply', color: 'bg-amber-100 text-amber-700 border-amber-300', description: 'Use in new contexts' },
-  analyze: { label: 'Analyze', color: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300', description: 'Examine & compare' },
+  analyze: { label: 'Analyze', color: 'bg-amber-100 text-amber-700 border-amber-300', description: 'Examine & compare' },
 };
 
 const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
@@ -468,16 +468,16 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   const renderSection = (id: string, title: React.ReactNode, icon: React.ReactNode, children: React.ReactNode) => {
     const isOpen = expandedSection === id;
     return (
-      <div className="border border-[#e8e5de] rounded-xl overflow-hidden">
+      <div className="border border-[#dde3eb] rounded-xl overflow-hidden">
         <button
           onClick={() => setExpandedSection(isOpen ? null : id)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-[#f0eeea] hover:bg-[#e8e5de] transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 bg-[#edf1f7] hover:bg-[#dde3eb] transition-colors"
         >
-          <div className="flex items-center gap-2 font-semibold text-[#1a1625]">
+          <div className="flex items-center gap-2 font-semibold text-[#0a1628]">
             {icon}
             {title}
           </div>
-          {isOpen ? <ChevronUp size={18} className="text-[#a8a5b3]" /> : <ChevronDown size={18} className="text-[#a8a5b3]" />}
+          {isOpen ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
         </button>
         <AnimatePresence>
           {isOpen && (
@@ -497,48 +497,48 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   };
 
   const BLOOM_BADGE_COLORS: Record<string, string> = {
-    remember: 'bg-violet-100 text-violet-700 border-violet-300',
-    understand: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300',
+    remember: 'bg-sky-100 text-sky-700 border-sky-300',
+    understand: 'bg-amber-100 text-amber-700 border-amber-300',
     apply: 'bg-emerald-100 text-emerald-700 border-emerald-300',
     analyze: 'bg-amber-100 text-amber-700 border-amber-300',
   };
 
   const renderQuestionCard = (q: QuizQuestionGenerated, index: number, showAnswer: boolean) => {
     const isExpanded = expandedQuestion === index;
-    const bloomBadge = BLOOM_BADGE_COLORS[q.bloomLevel] || 'bg-[#f0eeea] text-[#6b687a] border-[#e8e5de]';
+    const bloomBadge = BLOOM_BADGE_COLORS[q.bloomLevel] || 'bg-[#edf1f7] text-[#5a6578] border-[#dde3eb]';
     return (
       <motion.div
         key={index}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
-        className="border border-[#e8e5de] rounded-xl overflow-hidden relative"
+        className="border border-[#dde3eb] rounded-xl overflow-hidden relative"
       >
         {/* Bloom Level Badge - top right */}
         <div className={`absolute top-2 right-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${bloomBadge} z-10`}>
           {q.bloomLevel}
         </div>
         <div
-          className="p-4 cursor-pointer hover:bg-[#f0eeea] transition-colors"
+          className="p-4 cursor-pointer hover:bg-[#edf1f7] transition-colors"
           onClick={() => setExpandedQuestion(isExpanded ? null : index)}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-xs font-bold text-white bg-[#1a1625] px-2 py-0.5 rounded">Q{index + 1}</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded border ${BLOOM_LABELS[q.bloomLevel as BloomLevel]?.color || 'bg-[#f0eeea] text-[#6b687a]'}`}>
+                <span className="text-xs font-bold text-white bg-sky-600 px-2 py-0.5 rounded">Q{index + 1}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded border ${BLOOM_LABELS[q.bloomLevel as BloomLevel]?.color || 'bg-[#edf1f7] text-[#5a6578]'}`}>
                   {q.bloomLevel}
                 </span>
-                <span className={`text-xs font-medium ${DIFFICULTY_COLORS[q.difficulty as DifficultyLevel] || 'text-[#6b687a]'}`}>
+                <span className={`text-xs font-medium ${DIFFICULTY_COLORS[q.difficulty as DifficultyLevel] || 'text-[#5a6578]'}`}>
                   {q.difficulty}
                 </span>
-                <span className="text-xs text-[#a8a5b3]">{q.points} pts</span>
-                <span className="text-xs bg-[#f0eeea] text-[#6b687a] px-2 py-0.5 rounded">{q.topic}</span>
+                <span className="text-xs text-slate-500">{q.points} pts</span>
+                <span className="text-xs bg-[#edf1f7] text-[#5a6578] px-2 py-0.5 rounded">{q.topic}</span>
               </div>
-              <p className="text-sm text-[#1a1625] font-medium">{q.question}</p>
+              <p className="text-sm text-[#0a1628] font-medium">{q.question}</p>
             </div>
             <div className="flex-shrink-0 mt-1">
-              {isExpanded ? <ChevronUp size={16} className="text-[#a8a5b3]" /> : <ChevronDown size={16} className="text-[#a8a5b3]" />}
+              {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
             </div>
           </div>
         </div>
@@ -549,12 +549,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-[#e8e5de] overflow-hidden"
+              className="border-t border-[#dde3eb] overflow-hidden"
             >
-              <div className="p-4 space-y-3 bg-[#f0eeea]/50">
+              <div className="p-4 space-y-3 bg-[#edf1f7]/50">
                 {q.options && (
                   <div>
-                    <p className="text-xs font-semibold text-[#6b687a] mb-1">Options:</p>
+                    <p className="text-xs font-semibold text-[#5a6578] mb-1">Options:</p>
                     <div className="space-y-1">
                       {q.options.map((opt, oi) => (
                         <div
@@ -562,7 +562,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                           className={`text-sm px-3 py-1.5 rounded-lg ${
                             showAnswer && opt.includes(q.correctAnswer)
                               ? 'bg-green-100 text-green-800 font-medium'
-                              : 'bg-white text-[#1a1625]'
+                              : 'bg-white text-[#0a1628]'
                           }`}
                         >
                           {opt}
@@ -577,13 +577,13 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       <p className="text-xs font-semibold text-green-700 mb-1">Correct Answer:</p>
                       <p className="text-sm text-green-800 font-medium">{q.correctAnswer}</p>
                     </div>
-                    <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-violet-700 mb-1">Explanation:</p>
-                      <p className="text-sm text-violet-800">{q.explanation}</p>
+                    <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-sky-700 mb-1">Explanation:</p>
+                      <p className="text-sm text-sky-800">{q.explanation}</p>
                     </div>
                   </>
                 )}
-                <div className="flex items-center gap-3 text-xs text-[#a8a5b3]">
+                <div className="flex items-center gap-3 text-xs text-slate-500">
                   <span>Type: {QUESTION_TYPE_LABELS[q.questionType as QuestionType]?.label || q.questionType}</span>
                   <span>Bloom: {q.bloomLevel}</span>
                 </div>
@@ -601,10 +601,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-[#f8f7f4] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-[#e8e5de]"
+        className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-[#dde3eb]"
       >
         {/* Header */}
-        <div className="bg-[#1a1625] px-6 py-4 text-white flex-shrink-0">
+        <div className="bg-gradient-to-r from-sky-600 to-sky-500 px-6 py-4 text-white flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -612,7 +612,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               </div>
               <div>
                 <h2 className="text-xl font-display font-bold">AI Quiz Maker</h2>
-                <p className="text-violet-300 text-sm">Generate AI-powered assessments with Bloom's Taxonomy</p>
+                <p className="text-sky-300 text-sm">Generate AI-powered assessments with Bloom's Taxonomy</p>
               </div>
             </div>
             <button onClick={onClose} className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
@@ -625,7 +625,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
             <button
               onClick={() => setActiveTab('create')}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                activeTab === 'create' ? 'bg-white text-violet-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
+                activeTab === 'create' ? 'bg-white text-sky-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
               }`}
             >
               <Wand2 size={14} /> Create Quiz
@@ -633,7 +633,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
             <button
               onClick={() => setActiveTab('bank')}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                activeTab === 'bank' ? 'bg-white text-violet-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
+                activeTab === 'bank' ? 'bg-white text-sky-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
               }`}
             >
               <Library size={14} /> Quiz Bank
@@ -652,11 +652,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       if (s === 'results' && quizResult) setStep('results');
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      step === s ? 'bg-white/90 text-violet-700' : 'bg-white/15 text-white/70 hover:bg-white/25'
+                      step === s ? 'bg-white/90 text-sky-700' : 'bg-white/15 text-white/70 hover:bg-white/25'
                     }`}
                   >
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      step === s ? 'bg-violet-600 text-white' : 'bg-white/30'
+                      step === s ? 'bg-sky-600 text-white' : 'bg-white/30'
                     }`}>{i + 1}</span>
                     {s === 'configure' ? 'Configure' : s === 'preview' ? 'Preview' : 'Full Quiz'}
                   </button>
@@ -680,7 +680,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     key={f}
                     onClick={() => setBankFilter(f)}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors ${
-                      bankFilter === f ? 'bg-violet-100 text-violet-700 border border-violet-300' : 'bg-[#f0eeea] text-[#6b687a] hover:bg-[#e8e5de]'
+                      bankFilter === f ? 'bg-sky-100 text-sky-700 border border-sky-300' : 'bg-[#edf1f7] text-[#5a6578] hover:bg-[#dde3eb]'
                     }`}
                   >
                     {f}
@@ -690,11 +690,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
               {bankLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 size={24} className="animate-spin text-violet-500" />
-                  <span className="ml-2 text-sm text-[#6b687a]">Loading quiz bank…</span>
+                  <Loader2 size={24} className="animate-spin text-sky-500" />
+                  <span className="ml-2 text-sm text-[#5a6578]">Loading quiz bank…</span>
                 </div>
               ) : filteredBankQuizzes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-[#a8a5b3]">
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
                   <Library size={40} className="mb-3" />
                   <p className="font-medium">No quizzes found</p>
                   <p className="text-xs mt-1">Generate your first quiz in the Create tab</p>
@@ -706,20 +706,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       key={q.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="border border-[#e8e5de] rounded-xl p-4 hover:shadow-md transition-shadow"
+                      className="border border-[#dde3eb] rounded-xl p-4 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-bold text-[#1a1625] leading-tight">{q.title}</h4>
+                        <h4 className="text-sm font-bold text-[#0a1628] leading-tight">{q.title}</h4>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[q.status]}`}>
                           {q.status}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-3">
                         {q.metadata.topicsCovered.slice(0, 3).map((t) => (
-                          <span key={t} className="text-[10px] bg-[#f0eeea] text-[#6b687a] px-2 py-0.5 rounded">{t}</span>
+                          <span key={t} className="text-[10px] bg-[#edf1f7] text-[#5a6578] px-2 py-0.5 rounded">{t}</span>
                         ))}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-[#6b687a] mb-3">
+                      <div className="flex items-center gap-3 text-xs text-[#5a6578] mb-3">
                         <span>{q.questions.length} questions</span>
                         <span>{q.totalPoints} pts</span>
                         <span>{q.gradeLevel}</span>
@@ -727,7 +727,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleOpenAssign(q.id)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors"
                         >
                           <Send size={12} /> Assign
                         </button>
@@ -769,15 +769,15 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
           {step === 'configure' && (
             <div className="space-y-4">
               {/* Supplemental notice */}
-              <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 flex items-start gap-3">
-                <Lightbulb size={18} className="text-violet-500 flex-shrink-0 mt-0.5" />
+              <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 flex items-start gap-3">
+                <Lightbulb size={18} className="text-sky-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-violet-800">Supplemental Assessment Tool</p>
-                  <p className="text-xs text-violet-600">
+                  <p className="text-sm font-semibold text-sky-800">Supplemental Assessment Tool</p>
+                  <p className="text-xs text-sky-600">
                     This quiz maker generates supplemental assessments to support your classroom instruction — 
                     it does not replace teacher-led learning. Questions follow Bloom's Taxonomy for comprehensive skill evaluation.
                   </p>
-                  <p className="text-[11px] text-violet-400 mt-1 flex items-center gap-1">
+                  <p className="text-[11px] text-sky-400 mt-1 flex items-center gap-1">
                     <AlertCircle size={11} />
                     Temporary limit: max {MAX_QUESTIONS_LIMIT} questions, {MAX_TOPICS_LIMIT} topics per quiz (model context constraint).
                   </p>
@@ -787,12 +787,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               {/* Grade + Question Count */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="quiz-grade-level" className="text-sm font-semibold text-[#1a1625] mb-1.5 block">Grade Level</label>
+                  <label htmlFor="quiz-grade-level" className="text-sm font-semibold text-[#0a1628] mb-1.5 block">Grade Level</label>
                   <select
                     id="quiz-grade-level"
                     value={selectedGrade}
                     onChange={e => setSelectedGrade(e.target.value)}
-                    className="w-full border border-[#e8e5de] rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none bg-white"
+                    className="w-full border border-[#dde3eb] rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none bg-white"
                   >
                     {GRADE_LEVELS.map(g => (
                       <option key={g} value={g}>{g}</option>
@@ -800,11 +800,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="quiz-num-questions" className="text-sm font-semibold text-[#1a1625] mb-1.5 block">Number of Questions</label>
+                  <label htmlFor="quiz-num-questions" className="text-sm font-semibold text-[#0a1628] mb-1.5 block">Number of Questions</label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
-                      className="w-9 h-9 border border-[#e8e5de] rounded-lg flex items-center justify-center hover:bg-[#f0eeea] transition-colors"
+                      className="w-9 h-9 border border-[#dde3eb] rounded-lg flex items-center justify-center hover:bg-[#edf1f7] transition-colors"
                     >
                       <Minus size={14} />
                     </button>
@@ -815,11 +815,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       max={MAX_QUESTIONS_LIMIT}
                       value={numQuestions}
                       onChange={e => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, Math.max(1, parseInt(e.target.value) || 1)))}
-                      className="w-20 text-center border border-[#e8e5de] rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                      className="w-20 text-center border border-[#dde3eb] rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-sky-500 outline-none bg-white"
                     />
                     <button
                       onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
-                      className="w-9 h-9 border border-[#e8e5de] rounded-lg flex items-center justify-center hover:bg-[#f0eeea] transition-colors"
+                      className="w-9 h-9 border border-[#dde3eb] rounded-lg flex items-center justify-center hover:bg-[#edf1f7] transition-colors"
                     >
                       <Plus size={14} />
                     </button>
@@ -831,13 +831,13 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               {renderSection('topics', 'Topics', <BookOpen size={16} />, (
                 <div className="space-y-3">
                   {topicsLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-[#6b687a]">
+                    <div className="flex items-center gap-2 text-sm text-[#5a6578]">
                       <Loader2 size={14} className="animate-spin" /> Loading topics...
                     </div>
                   ) : (
                     Object.entries(availableTopics).map(([category, subtopics]) => (
                       <div key={category}>
-                        <p className="text-xs font-bold text-[#6b687a] uppercase tracking-wide mb-2">{category}</p>
+                        <p className="text-xs font-bold text-[#5a6578] uppercase tracking-wide mb-2">{category}</p>
                         <div className="flex flex-wrap gap-2">
                           {subtopics.map(topic => {
                             const isSelected = selectedTopics.includes(topic);
@@ -848,10 +848,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                                   onClick={() => toggleTopic(topic)}
                                   className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                                     isSelected
-                                      ? 'bg-violet-100 border-violet-400 text-violet-700 font-medium'
+                                      ? 'bg-sky-100 border-sky-400 text-sky-700 font-medium'
                                       : isExcluded
                                       ? 'bg-red-50 border-red-200 text-red-400 line-through'
-                                      : 'bg-white border-[#e8e5de] text-[#6b687a] hover:border-violet-300'
+                                      : 'bg-white border-[#dde3eb] text-[#5a6578] hover:border-sky-300'
                                   }`}
                                 >
                                   {topic}
@@ -862,7 +862,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors ${
                                     isExcluded
                                       ? 'bg-red-500 text-white'
-                                      : 'bg-[#f0eeea] text-[#a8a5b3] hover:bg-red-100 hover:text-red-500'
+                                      : 'bg-[#edf1f7] text-slate-500 hover:bg-red-100 hover:text-red-500'
                                   }`}
                                 >
                                   <X size={10} />
@@ -875,7 +875,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     ))
                   )}
                   {selectedTopics.length > 0 && (
-                    <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-amber-600 font-medium' : 'text-violet-600'}`}>
+                    <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-amber-600 font-medium' : 'text-sky-600'}`}>
                       {selectedTopics.filter(t => !excludeTopics.includes(t)).length} topic{selectedTopics.filter(t => !excludeTopics.includes(t)).length !== 1 ? 's' : ''} selected
                       {selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT && ` (only first ${MAX_TOPICS_LIMIT} will be used — model limit)`}
                     </p>
@@ -897,34 +897,34 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       onClick={() => toggleType(type)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
                         selectedTypes.includes(type)
-                          ? 'bg-violet-50 border-violet-300 text-violet-700'
-                          : 'bg-white border-[#e8e5de] text-[#6b687a] hover:border-violet-200'
+                          ? 'bg-sky-50 border-sky-300 text-sky-700'
+                          : 'bg-white border-[#dde3eb] text-[#5a6578] hover:border-sky-200'
                       }`}
                     >
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        selectedTypes.includes(type) ? 'bg-violet-200' : 'bg-[#f0eeea]'
+                        selectedTypes.includes(type) ? 'bg-sky-200' : 'bg-[#edf1f7]'
                       }`}>
                         {info.icon}
                       </div>
                       <div className="flex-1">
                         <span className="text-sm font-medium">{info.label}</span>
-                        <p className="text-xs text-[#a8a5b3]">{info.description}</p>
+                        <p className="text-xs text-slate-500">{info.description}</p>
                       </div>
-                      {selectedTypes.includes(type) && <Check size={16} className="text-violet-600" />}
+                      {selectedTypes.includes(type) && <Check size={16} className="text-sky-600" />}
                     </button>
                   ))}
 
                   {/* Graph toggle */}
-                  <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#e8e5de] cursor-pointer hover:bg-[#f0eeea] transition-colors mt-3">
+                  <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#dde3eb] cursor-pointer hover:bg-[#edf1f7] transition-colors mt-3">
                     <input
                       type="checkbox"
                       checked={includeGraphs}
                       onChange={e => setIncludeGraphs(e.target.checked)}
-                      className="w-4 h-4 rounded border-[#e8e5de] text-violet-600 focus:ring-violet-500"
+                      className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-[#1a1625]">Include Graph Questions</span>
-                      <p className="text-xs text-[#a8a5b3]">
+                      <span className="text-sm font-medium text-[#0a1628]">Include Graph Questions</span>
+                      <p className="text-xs text-slate-500">
                         Generates identification-type questions about graphs (text-described, as graphing is challenging for students)
                       </p>
                     </div>
@@ -933,12 +933,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               ))}
 
               {/* Bloom's Taxonomy */}
-              {renderSection('bloom', <span className="flex items-center gap-2">Bloom's Taxonomy Levels<span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setShowBloomsModal(true); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setShowBloomsModal(true); } }} className="w-5 h-5 rounded-full bg-cyan-100 hover:bg-cyan-200 flex items-center justify-center transition-colors cursor-pointer" title="What is Bloom's Taxonomy?"><Info size={12} className="text-cyan-600" /></span></span>, <GraduationCap size={16} />, (
+              {renderSection('bloom', <span className="flex items-center gap-2">Bloom's Taxonomy Levels<span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setShowBloomsModal(true); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setShowBloomsModal(true); } }} className="w-5 h-5 rounded-full bg-cyan-100 hover:bg-cyan-200 flex items-center justify-center transition-colors cursor-pointer" title="What is Bloom's Taxonomy?"><Info size={12} className="text-sky-600" /></span></span>, <GraduationCap size={16} />, (
                 <div className="space-y-3">
-                  <div className="bg-[#f0eeea] rounded-lg p-3 mb-3">
+                  <div className="bg-[#edf1f7] rounded-lg p-3 mb-3">
                     <div className="flex items-start gap-2">
-                      <Info size={14} className="text-[#a8a5b3] flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-[#6b687a]">
+                      <Info size={14} className="text-slate-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-[#5a6578]">
                         Bloom's Taxonomy ensures questions assess different cognitive levels — from basic fact recall
                         to complex analysis — providing comprehensive skill evaluation.
                       </p>
@@ -952,11 +952,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                         className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
                           selectedBlooms.includes(level)
                             ? info.color + ' font-medium'
-                            : 'bg-white border-[#e8e5de] text-[#6b687a]'
+                            : 'bg-white border-[#dde3eb] text-[#5a6578]'
                         }`}
                       >
                         <span className="text-sm">{info.label}</span>
-                        <span className="text-[10px] text-[#a8a5b3] ml-auto">{info.description}</span>
+                        <span className="text-[10px] text-slate-500 ml-auto">{info.description}</span>
                       </button>
                     ))}
                   </div>
@@ -969,7 +969,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   {(Object.entries(difficultyDist) as [DifficultyLevel, number][]).map(([level, pct]) => (
                     <div key={level} className="flex items-center gap-4">
                       <span className={`text-sm font-medium w-16 capitalize ${DIFFICULTY_COLORS[level]}`}>{level}</span>
-                      <div className="flex-1 h-2 bg-[#f0eeea] rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-[#edf1f7] rounded-full overflow-hidden">
                         <motion.div
                           animate={{ width: `${pct}%` }}
                           className={`h-full rounded-full ${
@@ -980,21 +980,21 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => adjustDifficulty(level, -5)}
-                          className="w-6 h-6 rounded border border-[#e8e5de] flex items-center justify-center hover:bg-[#f0eeea] text-[#a8a5b3]"
+                          className="w-6 h-6 rounded border border-[#dde3eb] flex items-center justify-center hover:bg-[#edf1f7] text-slate-500"
                         >
                           <Minus size={10} />
                         </button>
                         <span className="text-sm font-bold w-10 text-center">{pct}%</span>
                         <button
                           onClick={() => adjustDifficulty(level, 5)}
-                          className="w-6 h-6 rounded border border-[#e8e5de] flex items-center justify-center hover:bg-[#f0eeea] text-[#a8a5b3]"
+                          className="w-6 h-6 rounded border border-[#dde3eb] flex items-center justify-center hover:bg-[#edf1f7] text-slate-500"
                         >
                           <Plus size={10} />
                         </button>
                       </div>
                     </div>
                   ))}
-                  <p className="text-xs text-[#a8a5b3] text-center">
+                  <p className="text-xs text-slate-500 text-center">
                     Total: {Object.values(difficultyDist).reduce((a, b) => a + b, 0)}%
                   </p>
                 </div>
@@ -1018,9 +1018,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
               {previewResult.questions.map((q, i) => renderQuestionCard(q, i, true))}
 
-              <div className="bg-[#f0eeea] rounded-xl p-4">
-                <p className="text-xs font-semibold text-[#6b687a] mb-2">Preview Metadata</p>
-                <div className="grid grid-cols-2 gap-2 text-xs text-[#6b687a]">
+              <div className="bg-[#edf1f7] rounded-xl p-4">
+                <p className="text-xs font-semibold text-[#5a6578] mb-2">Preview Metadata</p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-[#5a6578]">
                   <span>Topics: {Object.keys(previewResult.metadata.topicsCovered).join(', ')}</span>
                   <span>Total Points: {previewResult.totalPoints}</span>
                 </div>
@@ -1032,20 +1032,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
           {step === 'results' && quizResult && (
             <div className="space-y-4">
               {/* Summary */}
-              <div className="bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-200 rounded-xl p-5">
+              <div className="bg-gradient-to-br from-sky-50 to-cyan-50 border border-sky-200 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold font-display text-[#1a1625]">Quiz Generated</h3>
+                  <h3 className="text-lg font-bold font-display text-[#0a1628]">Quiz Generated</h3>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleCopyQuiz}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e8e5de] rounded-lg text-xs font-medium text-[#6b687a] hover:bg-[#f0eeea] transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#dde3eb] rounded-lg text-xs font-medium text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                     >
                       {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                       {copied ? 'Copied!' : 'Copy All'}
                     </button>
                     <button
                       onClick={handleExportJSON}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e8e5de] rounded-lg text-xs font-medium text-[#6b687a] hover:bg-[#f0eeea] transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#dde3eb] rounded-lg text-xs font-medium text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                     >
                       <Download size={14} />
                       Export JSON
@@ -1055,40 +1055,40 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-white rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-violet-600">{quizResult.questions.length}</p>
-                    <p className="text-xs text-[#6b687a]">Questions</p>
+                    <p className="text-2xl font-bold text-sky-600">{quizResult.questions.length}</p>
+                    <p className="text-xs text-[#5a6578]">Questions</p>
                   </div>
                   <div className="bg-white rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-fuchsia-600">{quizResult.totalPoints}</p>
-                    <p className="text-xs text-[#6b687a]">Total Points</p>
+                    <p className="text-2xl font-bold text-amber-600">{quizResult.totalPoints}</p>
+                    <p className="text-xs text-[#5a6578]">Total Points</p>
                   </div>
                   <div className="bg-white rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-amber-600">
                       {Object.keys(quizResult.metadata.topicsCovered).length}
                     </p>
-                    <p className="text-xs text-[#6b687a]">Topics</p>
+                    <p className="text-xs text-[#5a6578]">Topics</p>
                   </div>
                   <div className="bg-white rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-emerald-600">
                       {Object.keys(quizResult.metadata.bloomTaxonomyDistribution).length}
                     </p>
-                    <p className="text-xs text-[#6b687a]">Bloom Levels</p>
+                    <p className="text-xs text-[#5a6578]">Bloom Levels</p>
                   </div>
                 </div>
 
                 {/* Distribution breakdowns */}
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-white rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#6b687a] mb-2">Difficulty</p>
+                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Difficulty</p>
                     {Object.entries(quizResult.metadata.difficultyBreakdown).map(([d, c]) => (
                       <div key={d} className="flex justify-between text-xs">
-                        <span className={`capitalize ${DIFFICULTY_COLORS[d as DifficultyLevel] || 'text-[#6b687a]'}`}>{d}</span>
+                        <span className={`capitalize ${DIFFICULTY_COLORS[d as DifficultyLevel] || 'text-[#5a6578]'}`}>{d}</span>
                         <span className="font-medium">{c}</span>
                       </div>
                     ))}
                   </div>
                   <div className="bg-white rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#6b687a] mb-2">Bloom's Taxonomy</p>
+                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Bloom's Taxonomy</p>
                     {Object.entries(quizResult.metadata.bloomTaxonomyDistribution).map(([b, c]) => (
                       <div key={b} className="flex justify-between text-xs">
                         <span className="capitalize">{b}</span>
@@ -1097,7 +1097,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     ))}
                   </div>
                   <div className="bg-white rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#6b687a] mb-2">Question Types</p>
+                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Question Types</p>
                     {Object.entries(quizResult.metadata.questionTypeBreakdown).map(([t, c]) => (
                       <div key={t} className="flex justify-between text-xs">
                         <span>{QUESTION_TYPE_LABELS[t as QuestionType]?.label || t}</span>
@@ -1108,16 +1108,16 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                 </div>
 
                 {/* Supplemental purpose */}
-                <div className="mt-3 bg-violet-50 rounded-lg p-3 flex items-start gap-2">
-                  <Info size={14} className="text-violet-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-violet-600">{quizResult.metadata.supplementalPurpose}</p>
+                <div className="mt-3 bg-sky-50 rounded-lg p-3 flex items-start gap-2">
+                  <Info size={14} className="text-sky-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-sky-600">{quizResult.metadata.supplementalPurpose}</p>
                 </div>
 
                 {/* Teacher recommendations */}
                 {quizResult.metadata.recommendedTeacherActions && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold text-[#6b687a] mb-1">Recommended Actions:</p>
-                    <ul className="list-disc list-inside text-xs text-[#6b687a] space-y-0.5">
+                    <p className="text-xs font-semibold text-[#5a6578] mb-1">Recommended Actions:</p>
+                    <ul className="list-disc list-inside text-xs text-[#5a6578] space-y-0.5">
                       {quizResult.metadata.recommendedTeacherActions.map((action, i) => (
                         <li key={i}>{action}</li>
                       ))}
@@ -1137,8 +1137,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
         {/* Footer (Create tab only) */}
         {activeTab === 'create' && (
-        <div className="border-t border-[#e8e5de] px-6 py-4 bg-[#f0eeea] flex items-center justify-between flex-shrink-0">
-          <div className="text-xs text-[#a8a5b3]">
+        <div className="border-t border-[#dde3eb] px-6 py-4 bg-[#edf1f7] flex items-center justify-between flex-shrink-0">
+          <div className="text-xs text-slate-500">
             {step === 'configure' && (
               <span className="flex items-center gap-1">
                 <Sparkles size={12} /> Powered by Meta-Llama-3-8B-Instruct
@@ -1156,8 +1156,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   disabled={!isFormValid || previewing}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isFormValid && !previewing
-                      ? 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'
-                      : 'bg-[#f0eeea] text-[#a8a5b3] cursor-not-allowed'
+                      ? 'bg-white border border-sky-300 text-sky-700 hover:bg-sky-50'
+                      : 'bg-[#edf1f7] text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   {previewing ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
@@ -1168,8 +1168,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   disabled={!isFormValid || generating}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                     isFormValid && !generating
-                      ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-200'
-                      : 'bg-[#e8e5de] text-[#a8a5b3] cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white shadow-lg shadow-sky-200'
+                      : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
@@ -1182,14 +1182,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               <>
                 <button
                   onClick={() => setStep('configure')}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#e8e5de] text-[#6b687a] hover:bg-[#f0eeea] transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                 >
                   Back to Configure
                 </button>
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-200 transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white shadow-lg shadow-sky-200 transition-all"
                 >
                   {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
                   Generate Full Quiz ({numQuestions} Qs)
@@ -1206,7 +1206,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     setPreviewResult(null);
                     setSavedQuizId(null);
                   }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#e8e5de] text-[#6b687a] hover:bg-[#f0eeea] transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                 >
                   Create Another
                 </button>
@@ -1233,7 +1233,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                     </button>
                     <button
                       onClick={() => handleOpenAssign()}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-violet-50 border border-violet-300 text-violet-700 hover:bg-violet-100 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-sky-50 border border-sky-300 text-sky-700 hover:bg-sky-100 transition-colors"
                     >
                       <Send size={16} /> Assign
                     </button>
@@ -1242,7 +1242,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
                 <button
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white transition-all"
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
                 >
                   Done
                 </button>
@@ -1270,28 +1270,28 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#f8f7f4] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden border border-[#e8e5de]"
+              className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden border border-[#dde3eb]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-5 py-4 border-b border-[#e8e5de] flex items-center justify-between">
-                <h3 className="text-base font-bold font-display text-[#1a1625] flex items-center gap-2">
-                  <Users size={18} className="text-violet-600" />
+              <div className="px-5 py-4 border-b border-[#dde3eb] flex items-center justify-between">
+                <h3 className="text-base font-bold font-display text-[#0a1628] flex items-center gap-2">
+                  <Users size={18} className="text-sky-600" />
                   Assign to Student
                 </h3>
-                <button onClick={() => setShowAssignModal(false)} className="p-1 hover:bg-[#f0eeea] rounded-lg transition-colors">
-                  <X size={16} className="text-[#a8a5b3]" />
+                <button onClick={() => setShowAssignModal(false)} className="p-1 hover:bg-[#edf1f7] rounded-lg transition-colors">
+                  <X size={16} className="text-slate-500" />
                 </button>
               </div>
 
-              <div className="px-5 py-3 border-b border-[#e8e5de]">
-                <div className="flex items-center gap-2 bg-[#f0eeea] rounded-xl px-3 py-2">
-                  <Search size={14} className="text-[#a8a5b3]" />
+              <div className="px-5 py-3 border-b border-[#dde3eb]">
+                <div className="flex items-center gap-2 bg-[#edf1f7] rounded-xl px-3 py-2">
+                  <Search size={14} className="text-slate-500" />
                   <input
                     type="text"
                     placeholder="Search students…"
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-[#a8a5b3]"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -1299,10 +1299,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               <div className="flex-1 overflow-y-auto p-3 space-y-1">
                 {studentsLoading ? (
                   <div className="flex items-center justify-center py-10">
-                    <Loader2 size={20} className="animate-spin text-violet-500" />
+                    <Loader2 size={20} className="animate-spin text-sky-500" />
                   </div>
                 ) : filteredStudents.length === 0 ? (
-                  <p className="text-center text-sm text-[#a8a5b3] py-10">No students found</p>
+                  <p className="text-center text-sm text-slate-500 py-10">No students found</p>
                 ) : (
                   filteredStudents.map((s) => (
                     <button
@@ -1310,8 +1310,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                       onClick={() => setSelectedStudentId(s.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
                         selectedStudentId === s.id
-                          ? 'bg-violet-50 border border-violet-300'
-                          : 'hover:bg-[#f0eeea] border border-transparent'
+                          ? 'bg-sky-50 border border-sky-300'
+                          : 'hover:bg-[#edf1f7] border border-transparent'
                       }`}
                     >
                       <img
@@ -1320,19 +1320,19 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                         className="w-8 h-8 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#1a1625] truncate">{s.name}</p>
-                        <p className="text-xs text-[#a8a5b3] truncate">{s.email}</p>
+                        <p className="text-sm font-semibold text-[#0a1628] truncate">{s.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{s.email}</p>
                       </div>
-                      {selectedStudentId === s.id && <Check size={16} className="text-violet-600 flex-shrink-0" />}
+                      {selectedStudentId === s.id && <Check size={16} className="text-sky-600 flex-shrink-0" />}
                     </button>
                   ))
                 )}
               </div>
 
-              <div className="px-5 py-3 border-t border-[#e8e5de] flex justify-end gap-2">
+              <div className="px-5 py-3 border-t border-[#dde3eb] flex justify-end gap-2">
                 <button
                   onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-[#6b687a] hover:bg-[#f0eeea] rounded-xl transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-[#5a6578] hover:bg-[#edf1f7] rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
@@ -1341,8 +1341,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   disabled={!selectedStudentId || assigning}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                     selectedStudentId && !assigning
-                      ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm'
-                      : 'bg-[#e8e5de] text-[#a8a5b3] cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-sky-600 to-sky-500 text-white shadow-sm'
+                      : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   {assigning ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

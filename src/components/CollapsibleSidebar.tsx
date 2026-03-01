@@ -50,12 +50,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     <motion.div 
       animate={{ width: isCollapsed ? '80px' : '240px' }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="h-full bg-[#1a1625] rounded-2xl border border-white/[0.06] flex flex-col justify-between overflow-hidden relative"
+      className="h-full bg-white rounded-2xl border border-slate-200/80 flex flex-col justify-between overflow-hidden relative"
     >
       {/* Collapse Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-8 z-10 w-6 h-6 bg-violet-600 hover:bg-violet-700 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+        className="absolute -right-3 top-8 z-10 w-6 h-6 bg-sky-600 hover:bg-sky-700 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -64,7 +64,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       <div className="p-6">
         {/* Logo */}
         <div className={`flex items-center gap-3 mb-10 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
-          <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-sky-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-lg">M</span>
           </div>
           <AnimatePresence>
@@ -74,7 +74,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 animate={{ opacity: 1, width: 'auto' }}
                 exit={{ opacity: 0, width: 0 }}
                 transition={{ duration: 0.2 }}
-                className="font-display font-bold text-xl text-white whitespace-nowrap overflow-hidden"
+                className="font-display font-bold text-xl text-[#0a1628] whitespace-nowrap overflow-hidden"
               >
                 MathPulse
               </motion.span>
@@ -90,8 +90,8 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
               onClick={() => setActiveTab(item.label)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group ${
                 activeTab === item.label
-                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
-                  : 'text-[#a8a5b3] hover:bg-white/[0.06] hover:text-white'
+                  ? 'bg-sky-50 text-sky-700 shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-sky-700'
               } ${isCollapsed ? 'justify-center' : ''}`}
               title={isCollapsed ? item.label : ''}
             >
@@ -112,7 +112,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
 
               {/* Tooltip for collapsed state */}
               {isCollapsed && (
-                <div className="absolute left-full ml-2 px-3 py-2 bg-[#2a2535] text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                <div className="absolute left-full ml-2 px-3 py-2 bg-slate-100 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
                   {item.label}
                   <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-4 border-transparent border-r-[#2a2535]"></div>
                 </div>
@@ -125,7 +125,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       {/* Settings */}
       <div className="p-6 space-y-2">
         <button 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[#a8a5b3] hover:bg-white/[0.06] hover:text-white transition-colors relative group ${
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-sky-700 transition-colors relative group ${
             isCollapsed ? 'justify-center' : ''
           }`}
           title={isCollapsed ? 'Settings' : ''}
@@ -147,7 +147,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
 
           {/* Tooltip for collapsed state */}
           {isCollapsed && (
-            <div className="absolute left-full ml-2 px-3 py-2 bg-[#2a2535] text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+            <div className="absolute left-full ml-2 px-3 py-2 bg-slate-100 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
               Settings
               <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-4 border-transparent border-r-[#2a2535]"></div>
             </div>

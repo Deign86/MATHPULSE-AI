@@ -15,9 +15,9 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
       subtitle: 'Functions, Business Math & Logic',
       duration: '45 mins',
       icon: Calculator,
-      color: 'bg-violet-50',
-      iconColor: 'text-violet-600',
-      accentColor: 'bg-violet-500',
+      color: 'bg-sky-50',
+      iconColor: 'text-sky-600',
+      accentColor: 'bg-sky-500',
       status: 'In Progress',
       progress: 60
     },
@@ -28,9 +28,9 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
       subtitle: 'Random Variables & Distributions',
       duration: '50 mins',
       icon: BarChart3,
-      color: 'bg-fuchsia-50',
-      iconColor: 'text-fuchsia-600',
-      accentColor: 'bg-fuchsia-500',
+      color: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      accentColor: 'bg-amber-500',
       status: 'In Progress',
       progress: 30
     },
@@ -72,7 +72,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
     // If locked, keep locked status
     if (module.status === 'Locked') {
       return (
-        <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#e8e5de] text-[#6b687a]">
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#dde3eb] text-[#5a6578]">
           Locked
         </span>
       );
@@ -100,10 +100,10 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-display font-bold text-[#1a1625]">Your Learning Path</h2>
+        <h2 className="text-xl font-display font-bold text-[#0a1628]">Your Learning Path</h2>
         <button 
           onClick={onNavigateToModules}
-          className="text-violet-600 font-medium text-sm flex items-center gap-1 hover:gap-2 transition-all"
+          className="text-sky-600 font-medium text-sm flex items-center gap-1 hover:gap-2 transition-all"
         >
           View All <ArrowRight size={16} />
         </button>
@@ -117,7 +117,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
             className={`${module.color} p-6 rounded-3xl transition-all duration-300 hover:shadow-[0_10px_30px_rgba(0,0,0,0.05)] hover:-translate-y-1 group ${
               module.status === 'Locked' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
             } border ${
-               atRiskSubjects.includes(module.subjectId) && module.status !== 'Locked' ? 'border-red-200 ring-1 ring-red-100' : 'border-white/50'
+               atRiskSubjects.includes(module.subjectId) && module.status !== 'Locked' ? 'border-red-200 ring-1 ring-red-100' : 'border-slate-300'
             } flex flex-col`}
           >
             <div className="flex justify-between items-start mb-6">
@@ -128,10 +128,10 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
             </div>
 
             <div className="mb-6">
-              <h3 className="text-lg font-display font-bold text-[#1a1625] mb-1">{module.title}</h3>
-              <p className="text-[#6b687a] text-sm mb-3">{module.subtitle}</p>
+              <h3 className="text-lg font-display font-bold text-[#0a1628] mb-1">{module.title}</h3>
+              <p className="text-[#5a6578] text-sm mb-3">{module.subtitle}</p>
               
-              <div className="flex items-center gap-1.5 text-[#a8a5b3] text-xs font-medium">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
                 <Clock size={14} />
                 <span>{module.duration} lesson</span>
               </div>
@@ -139,8 +139,8 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
 
             <div className="mt-auto">
               <div className="flex justify-between items-end mb-2">
-                 <span className="text-xs font-bold text-[#6b687a]">Progress</span>
-                 <span className="text-xs font-bold text-[#1a1625]">{module.progress}%</span>
+                 <span className="text-xs font-bold text-[#5a6578]">Progress</span>
+                 <span className="text-xs font-bold text-[#0a1628]">{module.progress}%</span>
               </div>
               
               <div className="flex items-center justify-between gap-4">

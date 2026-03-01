@@ -27,8 +27,8 @@ const LoginPage: React.FC = () => {
       label: 'Student Portal',
       description: 'Access your personalized learning journey',
       icon: Brain,
-      iconBg: 'bg-violet-500/10',
-      iconColor: 'text-violet-400',
+      iconBg: 'bg-sky-500/10',
+      iconColor: 'text-sky-400',
     },
     {
       type: 'teacher' as const,
@@ -134,20 +134,20 @@ const LoginPage: React.FC = () => {
   const mathSymbols = ['∫', 'π', '∑', 'Δ', '∞', 'φ', '√', 'λ', 'θ', '∂'];
 
   return (
-    <div className="min-h-screen w-full bg-[#0a0a0f] flex items-center justify-center p-6 overflow-hidden relative">
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#f7f9fc] via-white to-sky-50/40 flex items-center justify-center p-6 overflow-hidden relative">
       {/* Dot grid background pattern */}
-      <div className="absolute inset-0 bg-dot-pattern opacity-40" />
+      <div className="absolute inset-0 bg-dot-pattern opacity-50" />
       
-      {/* Gradient ambient orbs */}
+      {/* Gradient ambient orbs — soft pastels for light mode */}
       <motion.div
-        className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-20"
-        style={{ background: 'radial-gradient(circle, rgba(124, 58, 237, 0.4) 0%, transparent 70%)' }}
+        className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-40"
+        style={{ background: 'radial-gradient(circle, rgba(2, 132, 199, 0.15) 0%, transparent 70%)' }}
         animate={{ scale: [1, 1.15, 1], x: [0, 40, 0], y: [0, 30, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-15"
-        style={{ background: 'radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, transparent 70%)' }}
+        className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-30"
+        style={{ background: 'radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%)' }}
         animate={{ scale: [1, 1.2, 1], x: [0, -50, 0], y: [0, -30, 0] }}
         transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
       />
@@ -156,7 +156,7 @@ const LoginPage: React.FC = () => {
       {mathSymbols.map((symbol, i) => (
         <motion.span
           key={i}
-          className="absolute text-violet-500/10 font-display select-none pointer-events-none"
+          className="absolute text-sky-300/20 font-display select-none pointer-events-none"
           style={{
             fontSize: `${20 + Math.random() * 40}px`,
             left: `${5 + (i * 9.5)}%`,
@@ -179,8 +179,8 @@ const LoginPage: React.FC = () => {
       ))}
 
       {/* Geometric accent lines */}
-      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-violet-500/10 to-transparent" />
-      <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-amber-500/5 to-transparent" />
+      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-sky-300/20 to-transparent" />
+      <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-amber-300/15 to-transparent" />
 
       <div className="relative z-10 w-full max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -194,22 +194,22 @@ const LoginPage: React.FC = () => {
             {/* Logo */}
             <motion.div className="flex items-center gap-4">
               <motion.div
-                className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center relative"
-                animate={{ boxShadow: ['0 0 20px rgba(124,58,237,0.3)', '0 0 40px rgba(124,58,237,0.5)', '0 0 20px rgba(124,58,237,0.3)'] }}
+                className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-600 to-sky-500 flex items-center justify-center relative shadow-lg shadow-sky-500/25"
+                animate={{ boxShadow: ['0 0 20px rgba(2,132,199,0.2)', '0 0 36px rgba(2,132,199,0.35)', '0 0 20px rgba(2,132,199,0.2)'] }}
                 transition={{ duration: 3, repeat: Infinity }}
               >
                 <span className="text-white font-display font-extrabold text-2xl">M</span>
                 <motion.div
-                  className="absolute inset-0 rounded-xl border-2 border-violet-400/30"
+                  className="absolute inset-0 rounded-xl border-2 border-sky-400/30"
                   animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
               </motion.div>
               <div>
-                <h1 className="text-2xl font-display font-extrabold tracking-tight text-white">MathPulse<span className="text-violet-400">AI</span></h1>
+                <h1 className="text-2xl font-display font-extrabold tracking-tight text-[#0a1628]">MathPulse<span className="text-sky-500">AI</span></h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <Sparkles size={12} className="text-amber-400" />
-                  <span className="text-xs text-zinc-500 font-body font-medium tracking-wide">Powered by Machine Learning</span>
+                  <Sparkles size={12} className="text-amber-500" />
+                  <span className="text-xs text-slate-500 font-body font-medium tracking-wide">Powered by Machine Learning</span>
                 </div>
               </div>
             </motion.div>
@@ -221,11 +221,11 @@ const LoginPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
             >
-              <h2 className="text-5xl xl:text-6xl font-display font-extrabold leading-[1.1] tracking-tight text-white">
+              <h2 className="text-5xl xl:text-6xl font-display font-extrabold leading-[1.1] tracking-tight text-[#0a1628]">
                 Transform Your<br />
-                <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">Math Journey</span>
+                <span className="bg-gradient-to-r from-sky-600 via-sky-500 to-sky-500 bg-clip-text text-transparent">Math Journey</span>
               </h2>
-              <p className="text-base text-zinc-400 leading-relaxed max-w-md font-body">
+              <p className="text-base text-slate-500 leading-relaxed max-w-md font-body">
                 AI-powered predictive system designed to identify at-risk students and provide personalized learning recommendations.
               </p>
             </motion.div>
@@ -233,35 +233,35 @@ const LoginPage: React.FC = () => {
             {/* Feature Cards — Geometric style */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: Brain, label: 'AI Predictions', desc: 'Smart detection', color: 'violet' },
+                { icon: Brain, label: 'AI Predictions', desc: 'Smart detection', color: 'sky' },
                 { icon: TrendingUp, label: 'Analytics', desc: 'Real-time data', color: 'amber' },
                 { icon: Award, label: 'Gamified', desc: 'Learn & earn', color: 'emerald' }
               ].map((feature, index) => {
                 const Icon = feature.icon;
                 const colorMap: Record<string, string> = {
-                  violet: 'border-violet-500/20 hover:border-violet-500/40',
-                  amber: 'border-amber-500/20 hover:border-amber-500/40',
-                  emerald: 'border-emerald-500/20 hover:border-emerald-500/40',
+                  sky: 'border-sky-200 hover:border-sky-300',
+                  amber: 'border-amber-200 hover:border-amber-300',
+                  emerald: 'border-emerald-200 hover:border-emerald-300',
                 };
                 const iconColorMap: Record<string, string> = {
-                  violet: 'text-violet-400',
-                  amber: 'text-amber-400',
-                  emerald: 'text-emerald-400',
+                  sky: 'text-sky-600',
+                  amber: 'text-amber-600',
+                  emerald: 'text-emerald-600',
                 };
                 return (
                   <motion.div
                     key={index}
-                    className={`bg-white/[0.03] backdrop-blur-sm border ${colorMap[feature.color]} rounded-xl p-4 transition-all cursor-pointer group`}
+                    className={`bg-white/80 backdrop-blur-sm border ${colorMap[feature.color]} rounded-xl p-4 transition-all cursor-pointer group shadow-sm`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
                     whileHover={{ scale: 1.03, y: -4 }}
                   >
-                    <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center mb-3">
                       <Icon size={18} className={iconColorMap[feature.color]} />
                     </div>
-                    <h3 className="text-sm font-display font-semibold text-zinc-200 mb-0.5">{feature.label}</h3>
-                    <p className="text-xs text-zinc-500 font-body">{feature.desc}</p>
+                    <h3 className="text-sm font-display font-semibold text-[#0a1628] mb-0.5">{feature.label}</h3>
+                    <p className="text-xs text-slate-500 font-body">{feature.desc}</p>
                   </motion.div>
                 );
               })}
@@ -275,14 +275,14 @@ const LoginPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex justify-center lg:justify-end"
           >
-            <div className="bg-[#16151f]/90 backdrop-blur-2xl border border-white/[0.06] rounded-2xl p-8 w-full max-w-md card-elevated-lg relative overflow-hidden">
+            <div className="bg-white/90 backdrop-blur-2xl border border-slate-200/80 rounded-2xl p-8 w-full max-w-md card-elevated-lg relative overflow-hidden">
               {/* Subtle top accent line */}
-              <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+              <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" />
 
               {/* Form Header */}
               <div className="text-center mb-8">
                 <motion.h3
-                  className="text-2xl font-display font-bold text-white mb-2"
+                  className="text-2xl font-display font-bold text-[#0a1628] mb-2"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}
@@ -290,7 +290,7 @@ const LoginPage: React.FC = () => {
                   {isSignUp ? 'Create Account' : 'Welcome Back'}
                 </motion.h3>
                 <motion.p
-                  className="text-sm text-zinc-500 font-body"
+                  className="text-sm text-slate-500 font-body"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}
@@ -305,7 +305,7 @@ const LoginPage: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-lg text-sm font-body"
+                    className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-lg text-sm font-body"
                   >
                     {error}
                   </motion.div>
@@ -318,17 +318,17 @@ const LoginPage: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <label className="block text-xs font-body font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-body font-semibold text-slate-600 mb-2 uppercase tracking-wider">
                       Full Name
                     </label>
                     <div className="relative">
-                      <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                      <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
                         type="text"
                         placeholder="Your Name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 text-sm font-body transition-all"
+                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-50 border-slate-200 text-[#0a1628] placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 text-sm font-body transition-all"
                         required
                       />
                     </div>
@@ -341,17 +341,17 @@ const LoginPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <label className="block text-xs font-body font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-body font-semibold text-slate-600 mb-2 uppercase tracking-wider">
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                    <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <Input
                       type="email"
                       placeholder="your.email@school.edu"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 rounded-lg bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 text-sm font-body transition-all"
+                      className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-50 border-slate-200 text-[#0a1628] placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 text-sm font-body transition-all"
                       required
                     />
                   </div>
@@ -363,24 +363,24 @@ const LoginPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
                 >
-                  <label className="block text-xs font-body font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-body font-semibold text-slate-600 mb-2 uppercase tracking-wider">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                    <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <Input
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-11 pr-11 py-3 rounded-lg bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 text-sm font-body transition-all"
+                      className="w-full pl-11 pr-11 py-3 rounded-lg bg-slate-50 border-slate-200 text-[#0a1628] placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 text-sm font-body transition-all"
                       required
                       minLength={6}
                     />
                     <motion.button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                       whileTap={{ scale: 0.9 }}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -397,7 +397,7 @@ const LoginPage: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-body font-semibold py-3 rounded-lg shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400 text-white font-body font-semibold py-3 rounded-lg shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <motion.span
                       className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0"
@@ -416,7 +416,7 @@ const LoginPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
-                    className="text-sm text-zinc-500 hover:text-violet-400 font-body font-medium transition-colors"
+                    className="text-sm text-slate-500 hover:text-sky-600 font-body font-medium transition-colors"
                   >
                     {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
                   </button>
@@ -430,9 +430,9 @@ const LoginPage: React.FC = () => {
                   className="w-full flex items-center justify-between px-4 py-3 mb-3 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] rounded-lg transition-all group"
                   whileTap={{ scale: 0.99 }}
                 >
-                  <span className="text-sm font-body font-semibold text-zinc-400">Quick Access Demo</span>
+                  <span className="text-sm font-body font-semibold text-slate-600">Quick Access Demo</span>
                   <motion.div animate={{ rotate: showQuickAccess ? 180 : 0 }} transition={{ duration: 0.3 }}>
-                    <ChevronDown size={18} className="text-zinc-600" />
+                    <ChevronDown size={18} className="text-slate-400" />
                   </motion.div>
                 </motion.button>
 
@@ -467,8 +467,8 @@ const LoginPage: React.FC = () => {
                                 <Icon size={18} className={account.iconColor} />
                               </div>
                               <div className="flex-1">
-                                <h4 className="text-sm font-body font-semibold text-zinc-200">{account.label}</h4>
-                                <p className="text-xs text-zinc-600 font-body">{account.description}</p>
+                                <h4 className="text-sm font-body font-semibold text-[#0a1628]">{account.label}</h4>
+                                <p className="text-xs text-slate-500 font-body">{account.description}</p>
                               </div>
                               <motion.div
                                 animate={{ x: hoveredCard === account.type ? 4 : 0, opacity: hoveredCard === account.type ? 1 : 0 }}
@@ -487,7 +487,7 @@ const LoginPage: React.FC = () => {
 
               {/* Footer */}
               <motion.p
-                className="text-xs text-zinc-600 text-center mt-6 font-body"
+                className="text-xs text-slate-400 text-center mt-6 font-body"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}

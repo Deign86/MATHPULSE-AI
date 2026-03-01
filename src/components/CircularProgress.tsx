@@ -64,13 +64,13 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
-                className="text-2xl font-bold text-[#1a1625]"
+                className="text-2xl font-bold text-[#0a1628]"
               >
                 {Math.round(percentage)}%
               </motion.span>
             )}
             {label && (
-              <span className="text-xs text-[#6b687a] mt-1">{label}</span>
+              <span className="text-xs text-[#5a6578] mt-1">{label}</span>
             )}
           </>
         )}
