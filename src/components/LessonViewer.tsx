@@ -225,14 +225,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
 
                 {/* Key Point */}
                 {currentSectionData.type === 'key-point' && (
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200">
+                  <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-6 border-2 border-rose-200">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-rose-500 rounded-xl flex items-center justify-center flex-shrink-0">
                         <Lightbulb size={24} className="text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-amber-900 mb-2 text-lg">Important!</h3>
-                        <p className="text-amber-800 leading-relaxed">{currentSectionData.content}</p>
+                        <h3 className="font-bold text-rose-900 mb-2 text-lg">Important!</h3>
+                        <p className="text-rose-800 leading-relaxed">{currentSectionData.content}</p>
                       </div>
                     </div>
                   </div>

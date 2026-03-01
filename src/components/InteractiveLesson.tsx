@@ -40,7 +40,7 @@ interface InteractiveLessonProps {
 
 // Confetti Component
 const Confetti: React.FC = () => {
-  const colors = ['#4F46E5', '#EC4899', '#F59E0B', '#10B981', '#0ea5e9'];
+  const colors = ['#4F46E5', '#EC4899', '#f43f5e', '#10B981', '#0ea5e9'];
   const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
     id: i,
     left: Math.random() * 100,
@@ -324,7 +324,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', delay: 0.2 }}
-                  className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-amber-200"
+                  className="w-20 h-20 bg-gradient-to-br from-rose-400 to-orange-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-rose-200"
                 >
                   <Trophy size={40} fill="currentColor" />
                 </motion.div>
@@ -334,14 +334,14 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   transition={{ duration: 2, repeat: Infinity }}
                   className="absolute top-0 right-1/3 text-xl"
                 >
-                  <Sparkles size={20} className="text-amber-400" />
+                  <Sparkles size={20} className="text-rose-400" />
                 </motion.div>
                 <motion.div 
                   animate={{ scale: [1, 1.2, 1], rotate: [0, -180, -360] }}
                   transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
                   className="absolute bottom-0 left-1/3 text-xl"
                 >
-                  <Sparkles size={20} className="text-amber-400" />
+                  <Sparkles size={20} className="text-rose-400" />
                 </motion.div>
              </div>
              
@@ -415,7 +415,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 className="bg-[#edf1f7] rounded-2xl p-4 mb-5 text-left"
              >
                 <h3 className="font-bold text-[#0a1628] mb-2 flex items-center gap-2 text-sm">
-                  <Star className="text-amber-500" size={16} />
+                  <Star className="text-rose-500" size={16} />
                   XP Breakdown
                 </h3>
                 <div className="space-y-1.5 text-sm">

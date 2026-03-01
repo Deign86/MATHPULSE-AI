@@ -1,58 +1,43 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, ArrowRight, Sparkles, Brain, TrendingUp, Users, Lock, Mail, Award, ChevronDown } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Eye, EyeOff, ArrowRight, Sparkles, Brain, TrendingUp, Users, Lock, Mail, Award, GraduationCap, ShieldCheck, BookOpen, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { motion, AnimatePresence } from 'motion/react';
 import { signInWithEmail, signInWithGoogle, signUpWithEmail } from '../services/authService';
 import { UserRole } from '../types/models';
+import shaderBgVideo from '../assets/shader-bg.mp4';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [showQuickAccess, setShowQuickAccess] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    // Ensure video plays on mount
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
 
   const demoAccounts = [
-    {
-      type: 'student' as const,
-      email: 'demo-student@mathpulse.ai',
-      password: 'Demo@123456',
-      name: 'Alex Johnson',
-      label: 'Student Portal',
-      description: 'Access your personalized learning journey',
-      icon: Brain,
-      iconBg: 'bg-sky-500/10',
-      iconColor: 'text-sky-400',
-    },
-    {
-      type: 'teacher' as const,
-      email: 'demo-teacher@mathpulse.ai',
-      password: 'Demo@123456',
-      name: 'Prof. Anderson',
-      label: 'Teacher Portal',
-      description: 'Monitor and guide your students',
-      icon: Users,
-      iconBg: 'bg-amber-500/10',
-      iconColor: 'text-amber-400',
-    },
-    {
-      type: 'admin' as const,
-      email: 'demo-admin@mathpulse.ai',
-      password: 'Demo@123456',
-      name: 'Administrator',
-      label: 'Admin Portal',
-      description: 'Manage system and analytics',
-      icon: TrendingUp,
-      iconBg: 'bg-emerald-500/10',
-      iconColor: 'text-emerald-400',
-    }
+    { label: 'Student', email: 'teststudent@school.edu', password: 'TestPass123!', icon: GraduationCap, color: 'sky' },
+    { label: 'Teacher', email: 'testteacher@school.edu', password: 'TestPass123!', icon: BookOpen, color: 'emerald' },
+    { label: 'Admin', email: 'testadmin@school.edu', password: 'TestPass123!', icon: ShieldCheck, color: 'rose' },
   ];
+
+  const fillDemoAccount = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setIsSignUp(false);
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,73 +75,49 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = async (type: 'student' | 'teacher' | 'admin', demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError(null);
-    setLoading(true);
-    
-    try {
-      // Try to sign in first (signInWithEmail now auto-creates profile if missing)
-      await signInWithEmail(demoEmail, demoPassword);
-    } catch (err: unknown) {
-      // If sign in fails because account doesn't exist at all, create it
-      const errMsg = err instanceof Error ? err.message : '';
-      if (errMsg.includes('user-not-found') || errMsg.includes('invalid-credential')) {
-        try {
-          const demoAccount = demoAccounts.find(acc => acc.type === type);
-          if (demoAccount) {
-            await signUpWithEmail(demoEmail, demoPassword, demoAccount.name, type);
-          }
-        } catch (signUpErr: unknown) {
-          // If sign-up fails because email already in use, try signing in again
-          const signUpMsg = signUpErr instanceof Error ? signUpErr.message : '';
-          if (signUpMsg.includes('email-already-in-use')) {
-            try {
-              await signInWithEmail(demoEmail, demoPassword);
-            } catch (finalErr: unknown) {
-              setError(finalErr instanceof Error ? finalErr.message : 'Authentication failed');
-              setLoading(false);
-            }
-          } else {
-            setError(signUpMsg || 'Demo account creation failed');
-            setLoading(false);
-          }
-        }
-      } else {
-        setError(errMsg || 'Authentication failed');
-        setLoading(false);
-      }
-    }
-  };
-
   // Mathematical symbols for floating background decoration
   const mathSymbols = ['∫', 'π', '∑', 'Δ', '∞', 'φ', '√', 'λ', 'θ', '∂'];
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#f7f9fc] via-white to-sky-50/40 flex items-center justify-center p-6 overflow-hidden relative">
-      {/* Dot grid background pattern */}
-      <div className="absolute inset-0 bg-dot-pattern opacity-50" />
-      
-      {/* Gradient ambient orbs — soft pastels for light mode */}
-      <motion.div
-        className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-40"
-        style={{ background: 'radial-gradient(circle, rgba(2, 132, 199, 0.15) 0%, transparent 70%)' }}
-        animate={{ scale: [1, 1.15, 1], x: [0, 40, 0], y: [0, 30, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-30"
-        style={{ background: 'radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%)' }}
-        animate={{ scale: [1, 1.2, 1], x: [0, -50, 0], y: [0, -30, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
+    <div className="h-screen w-full flex items-center justify-center px-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #f8fafc 30%, #fff1f2 60%, #f0f9ff 100%)' }}>
+      {/* ─── Video Background ─── */}
+      <video
+        ref={videoRef}
+        autoPlay
+        loop
+        muted
+        playsInline
+        onCanPlay={() => setVideoLoaded(true)}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-40' : 'opacity-0'}`}
+        src={shaderBgVideo}
       />
 
-      {/* Floating math symbols */}
+      {/* Light frosted overlay — lets video breathe through */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 30% 50%, rgba(240,249,255,0.4) 0%, rgba(248,250,252,0.65) 50%, rgba(255,241,242,0.5) 80%, rgba(248,250,252,0.85) 100%)',
+        }}
+      />
+
+      {/* Decorative gradient orbs for depth */}
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.12) 0%, transparent 70%)' }} />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, transparent 70%)' }} />
+
+      {/* Subtle dot grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.4) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }}
+      />
+
+      {/* Floating math symbols — soft on light */}
       {mathSymbols.map((symbol, i) => (
         <motion.span
           key={i}
-          className="absolute text-sky-300/20 font-display select-none pointer-events-none"
+          className="absolute text-sky-700/[0.08] font-display select-none pointer-events-none"
           style={{
             fontSize: `${20 + Math.random() * 40}px`,
             left: `${5 + (i * 9.5)}%`,
@@ -164,7 +125,7 @@ const LoginPage: React.FC = () => {
           }}
           animate={{
             y: [0, -30, 0],
-            opacity: [0.05, 0.15, 0.05],
+            opacity: [0.04, 0.1, 0.04],
             rotate: [0, 10, 0],
           }}
           transition={{
@@ -179,36 +140,36 @@ const LoginPage: React.FC = () => {
       ))}
 
       {/* Geometric accent lines */}
-      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-sky-300/20 to-transparent" />
-      <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-amber-300/15 to-transparent" />
+      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-sky-400/15 to-transparent" />
+      <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-rose-300/10 to-transparent" />
 
       <div className="relative z-10 w-full max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left Side — Branding */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col justify-center space-y-10"
+            className="flex flex-col justify-center space-y-8"
           >
             {/* Logo */}
             <motion.div className="flex items-center gap-4">
               <motion.div
-                className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-600 to-sky-500 flex items-center justify-center relative shadow-lg shadow-sky-500/25"
-                animate={{ boxShadow: ['0 0 20px rgba(2,132,199,0.2)', '0 0 36px rgba(2,132,199,0.35)', '0 0 20px rgba(2,132,199,0.2)'] }}
+                className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center relative shadow-xl shadow-sky-500/30"
+                animate={{ boxShadow: ['0 0 20px rgba(14,165,233,0.15)', '0 0 40px rgba(14,165,233,0.3)', '0 0 20px rgba(14,165,233,0.15)'] }}
                 transition={{ duration: 3, repeat: Infinity }}
               >
                 <span className="text-white font-display font-extrabold text-2xl">M</span>
                 <motion.div
-                  className="absolute inset-0 rounded-xl border-2 border-sky-400/30"
-                  animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0, 0.5] }}
+                  className="absolute inset-0 rounded-xl border-2 border-sky-300/30"
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
               </motion.div>
               <div>
-                <h1 className="text-2xl font-display font-extrabold tracking-tight text-[#0a1628]">MathPulse<span className="text-sky-500">AI</span></h1>
+                <h1 className="text-2xl font-display font-extrabold tracking-tight text-slate-900">MathPulse<span className="text-sky-500">AI</span></h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <Sparkles size={12} className="text-amber-500" />
+                  <Sparkles size={12} className="text-rose-500" />
                   <span className="text-xs text-slate-500 font-body font-medium tracking-wide">Powered by Machine Learning</span>
                 </div>
               </div>
@@ -221,47 +182,52 @@ const LoginPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
             >
-              <h2 className="text-5xl xl:text-6xl font-display font-extrabold leading-[1.1] tracking-tight text-[#0a1628]">
+              <h2 className="text-4xl lg:text-5xl xl:text-[3.4rem] font-display font-extrabold leading-[1.1] tracking-tight text-slate-900">
                 Transform Your<br />
-                <span className="bg-gradient-to-r from-sky-600 via-sky-500 to-sky-500 bg-clip-text text-transparent">Math Journey</span>
+                <span className="bg-gradient-to-r from-sky-600 via-cyan-500 to-sky-500 bg-clip-text text-transparent">Math Journey</span>
               </h2>
               <p className="text-base text-slate-500 leading-relaxed max-w-md font-body">
                 AI-powered predictive system designed to identify at-risk students and provide personalized learning recommendations.
               </p>
             </motion.div>
 
-            {/* Feature Cards — Geometric style */}
+            {/* Feature Cards — Frosted glass on light */}
             <div className="grid grid-cols-3 gap-3">
               {[
                 { icon: Brain, label: 'AI Predictions', desc: 'Smart detection', color: 'sky' },
-                { icon: TrendingUp, label: 'Analytics', desc: 'Real-time data', color: 'amber' },
+                { icon: TrendingUp, label: 'Analytics', desc: 'Real-time data', color: 'rose' },
                 { icon: Award, label: 'Gamified', desc: 'Learn & earn', color: 'emerald' }
               ].map((feature, index) => {
                 const Icon = feature.icon;
-                const colorMap: Record<string, string> = {
-                  sky: 'border-sky-200 hover:border-sky-300',
-                  amber: 'border-amber-200 hover:border-amber-300',
-                  emerald: 'border-emerald-200 hover:border-emerald-300',
+                const borderMap: Record<string, string> = {
+                  sky: 'border-sky-200/60 hover:border-sky-300',
+                  rose: 'border-rose-200/60 hover:border-rose-300',
+                  emerald: 'border-emerald-200/60 hover:border-emerald-300',
                 };
                 const iconColorMap: Record<string, string> = {
                   sky: 'text-sky-600',
-                  amber: 'text-amber-600',
+                  rose: 'text-rose-500',
                   emerald: 'text-emerald-600',
+                };
+                const glowMap: Record<string, string> = {
+                  sky: 'bg-sky-100',
+                  rose: 'bg-rose-100',
+                  emerald: 'bg-emerald-100',
                 };
                 return (
                   <motion.div
                     key={index}
-                    className={`bg-white/80 backdrop-blur-sm border ${colorMap[feature.color]} rounded-xl p-4 transition-all cursor-pointer group shadow-sm`}
+                    className={`bg-white/80 backdrop-blur-xl border ${borderMap[feature.color]} rounded-xl p-4 transition-all cursor-pointer group shadow-md shadow-slate-900/[0.04]`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
                     whileHover={{ scale: 1.03, y: -4 }}
                   >
-                    <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center mb-3">
+                    <div className={`w-9 h-9 rounded-lg ${glowMap[feature.color]} flex items-center justify-center mb-3`}>
                       <Icon size={18} className={iconColorMap[feature.color]} />
                     </div>
-                    <h3 className="text-sm font-display font-semibold text-[#0a1628] mb-0.5">{feature.label}</h3>
-                    <p className="text-xs text-slate-500 font-body">{feature.desc}</p>
+                    <h3 className="text-sm font-display font-semibold text-slate-800 mb-0.5">{feature.label}</h3>
+                    <p className="text-xs text-slate-400 font-body">{feature.desc}</p>
                   </motion.div>
                 );
               })}
@@ -275,14 +241,16 @@ const LoginPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex justify-center lg:justify-end"
           >
-            <div className="bg-white/90 backdrop-blur-2xl border border-slate-200/80 rounded-2xl p-8 w-full max-w-md card-elevated-lg relative overflow-hidden">
-              {/* Subtle top accent line */}
-              <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" />
+            <div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-2xl p-7 w-full max-w-md relative overflow-hidden shadow-2xl shadow-slate-900/[0.08]">
+              {/* Top accent glow line */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-sky-500/50 to-transparent" />
+              {/* Subtle inner glow */}
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-36 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
 
               {/* Form Header */}
-              <div className="text-center mb-8">
+              <div className="text-center mb-6 relative">
                 <motion.h3
-                  className="text-2xl font-display font-bold text-[#0a1628] mb-2"
+                  className="text-2xl font-display font-bold text-slate-900 mb-2"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}
@@ -300,7 +268,7 @@ const LoginPage: React.FC = () => {
               </div>
 
               {/* Login Form */}
-              <form onSubmit={handleSubmit} className="space-y-5 mb-6">
+              <form onSubmit={handleSubmit} className="space-y-4 mb-5 relative">
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -318,7 +286,7 @@ const LoginPage: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <label className="block text-xs font-body font-semibold text-slate-600 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                       Full Name
                     </label>
                     <div className="relative">
@@ -328,7 +296,7 @@ const LoginPage: React.FC = () => {
                         placeholder="Your Name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-50 border-slate-200 text-[#0a1628] placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 text-sm font-body transition-all"
+                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                         required
                       />
                     </div>
@@ -341,7 +309,7 @@ const LoginPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <label className="block text-xs font-body font-semibold text-slate-600 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                     Email Address
                   </label>
                   <div className="relative">
@@ -351,7 +319,7 @@ const LoginPage: React.FC = () => {
                       placeholder="your.email@school.edu"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-50 border-slate-200 text-[#0a1628] placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 text-sm font-body transition-all"
+                      className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                       required
                     />
                   </div>
@@ -363,7 +331,7 @@ const LoginPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
                 >
-                  <label className="block text-xs font-body font-semibold text-slate-600 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                     Password
                   </label>
                   <div className="relative">
@@ -373,7 +341,7 @@ const LoginPage: React.FC = () => {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-11 pr-11 py-3 rounded-lg bg-slate-50 border-slate-200 text-[#0a1628] placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 text-sm font-body transition-all"
+                      className="w-full pl-11 pr-11 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                       required
                       minLength={6}
                     />
@@ -397,10 +365,10 @@ const LoginPage: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400 text-white font-body font-semibold py-3 rounded-lg shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-cyan-400 text-white font-body font-semibold py-3 rounded-xl shadow-lg shadow-sky-600/25 hover:shadow-sky-500/35 hover:scale-[1.01] transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <motion.span
-                      className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0"
+                      className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0"
                       animate={{ x: ['-100%', '100%'] }}
                       transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
                     />
@@ -416,83 +384,71 @@ const LoginPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
-                    className="text-sm text-slate-500 hover:text-sky-600 font-body font-medium transition-colors"
+                    className="text-sm text-slate-400 hover:text-sky-500 font-body font-medium transition-colors"
                   >
                     {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
                   </button>
                 </div>
               </form>
 
-              {/* Quick Access Demo Accounts */}
-              <div>
-                <motion.button
-                  onClick={() => setShowQuickAccess(!showQuickAccess)}
-                  className="w-full flex items-center justify-between px-4 py-3 mb-3 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] rounded-lg transition-all group"
-                  whileTap={{ scale: 0.99 }}
+              {/* Demo Accounts Quick Access */}
+              {!isSignUp && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.85 }}
+                  className="mb-4 relative"
                 >
-                  <span className="text-sm font-body font-semibold text-slate-600">Quick Access Demo</span>
-                  <motion.div animate={{ rotate: showQuickAccess ? 180 : 0 }} transition={{ duration: 0.3 }}>
-                    <ChevronDown size={18} className="text-slate-400" />
-                  </motion.div>
-                </motion.button>
-
-                <AnimatePresence>
-                  {showQuickAccess && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="space-y-2 overflow-hidden"
-                    >
-                      {demoAccounts.map((account, index) => {
-                        const Icon = account.icon;
-                        return (
-                          <motion.button
-                            key={account.type}
-                            onClick={() => handleQuickLogin(account.type, account.email, account.password)}
-                            onHoverStart={() => setHoveredCard(account.type)}
-                            onHoverEnd={() => setHoveredCard(null)}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ delay: index * 0.05 }}
-                            whileHover={{ scale: 1.01, x: 3 }}
-                            whileTap={{ scale: 0.98 }}
-                            disabled={loading}
-                            className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.1] rounded-lg p-3.5 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 ${account.iconBg} rounded-lg flex items-center justify-center`}>
-                                <Icon size={18} className={account.iconColor} />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="text-sm font-body font-semibold text-[#0a1628]">{account.label}</h4>
-                                <p className="text-xs text-slate-500 font-body">{account.description}</p>
-                              </div>
-                              <motion.div
-                                animate={{ x: hoveredCard === account.type ? 4 : 0, opacity: hoveredCard === account.type ? 1 : 0 }}
-                                transition={{ duration: 0.2 }}
-                              >
-                                <ArrowRight size={16} className={account.iconColor} />
-                              </motion.div>
-                            </div>
-                          </motion.button>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                  <div className="relative flex items-center gap-3 mb-4">
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <span className="text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Quick Demo Access</span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {demoAccounts.map((account) => {
+                      const Icon = account.icon;
+                      const iconBgMap: Record<string, string> = {
+                        sky: 'bg-sky-100',
+                        emerald: 'bg-emerald-100',
+                        rose: 'bg-rose-100',
+                      };
+                      const iconClrMap: Record<string, string> = {
+                        sky: 'text-sky-600',
+                        emerald: 'text-emerald-600',
+                        rose: 'text-rose-500',
+                      };
+                      return (
+                        <motion.button
+                          key={account.label}
+                          type="button"
+                          onClick={() => fillDemoAccount(account.email, account.password)}
+                          className="group flex items-center gap-3 w-full px-4 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/70 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-sm transition-all text-left"
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                        >
+                          <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${iconBgMap[account.color]}`}>
+                            <Icon size={15} className={iconClrMap[account.color]} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-body font-semibold text-slate-700 group-hover:text-sky-600 transition-colors">{account.label} Account</p>
+                            <p className="text-[10px] text-slate-400 font-body truncate">{account.email}</p>
+                          </div>
+                          <ArrowRight size={14} className="text-slate-300 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Footer */}
               <motion.p
-                className="text-xs text-slate-400 text-center mt-6 font-body"
+                className="text-xs text-slate-400 text-center mt-4 font-body relative"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
               >
-                <Lock size={10} className="inline mr-1 -mt-0.5" /> Demo accounts for testing purposes
+                <Lock size={10} className="inline mr-1 -mt-0.5" /> Your data is encrypted and secure
               </motion.p>
             </div>
           </motion.div>

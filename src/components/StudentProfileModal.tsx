@@ -1,9 +1,12 @@
-import React from 'react';
-import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, UserPlus, UserCheck, Swords, Star, Crown, User, BadgeCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, UserPlus, UserCheck, Swords, Star, Crown, User, BadgeCheck, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
+import { getUserAchievements } from '../services/gamificationService';
+import { Achievement } from '../types/models';
 
 interface StudentData {
+  uid?: string;
   avatar: string;
   isOnline: boolean;
   name: string;
@@ -22,32 +25,29 @@ interface StudentProfileModalProps {
 }
 
 const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onClose }) => {
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!student?.uid) return;
+    setAchievementsLoading(true);
+    getUserAchievements(student.uid)
+      .then(setAchievements)
+      .catch(err => console.error('Failed to load achievements:', err))
+      .finally(() => setAchievementsLoading(false));
+  }, [student?.uid]);
+
   if (!student) return null;
 
   const achievementIconMap: Record<string, React.ReactNode> = {
-    trophy: <Trophy size={24} className="text-amber-500" />,
+    trophy: <Trophy size={24} className="text-rose-500" />,
     flame: <Flame size={24} className="text-orange-500" />,
-    star: <Star size={24} className="text-amber-400" />,
+    star: <Star size={24} className="text-rose-400" />,
     'book-open': <BookOpen size={24} className="text-sky-600" />,
     'badge-check': <BadgeCheck size={24} className="text-emerald-600" />,
-    crown: <Crown size={24} className="text-amber-500" />,
+    crown: <Crown size={24} className="text-rose-500" />,
     target: <Target size={24} className="text-rose-500" />,
   };
-
-  const achievements = [
-    { id: 1, icon: 'trophy', title: 'Math Champion', description: 'Completed 50 quizzes', unlocked: true },
-    { id: 2, icon: 'flame', title: 'Streak Master', description: '30-day streak', unlocked: true },
-    { id: 3, icon: 'star', title: 'Perfect Score', description: 'Got 100% on a quiz', unlocked: true },
-    { id: 4, icon: 'book-open', title: 'Knowledge Seeker', description: 'Completed 10 modules', unlocked: true },
-    { id: 5, icon: 'badge-check', title: 'Excellence', description: 'Avg score above 90%', unlocked: false },
-    { id: 6, icon: 'crown', title: 'Top 10', description: 'Ranked in top 10', unlocked: false },
-  ];
-
-  const recentActivity = [
-    { action: 'Completed "Advanced Calculus" quiz', score: 95, time: '2 hours ago' },
-    { action: 'Achieved 30-day streak milestone', score: null, time: '1 day ago' },
-    { action: 'Completed "Functions" module', score: 88, time: '3 days ago' },
-  ];
 
   return (
     <AnimatePresence>
@@ -135,7 +135,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
 
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-500/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-rose-500/5 rounded-full translate-y-1/2 -translate-x-1/2"></div>
           </div>
 
           {/* Content */}
@@ -155,12 +155,12 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                   <p className="text-xs text-slate-500 mt-1 font-body">Avg Score</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#dde3eb] p-4 text-center">
-                  <Award size={24} className="text-amber-600 mx-auto mb-2" />
+                  <Award size={24} className="text-rose-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-[#0a1628]">{student.stats.modulesCompleted}</p>
                   <p className="text-xs text-slate-500 mt-1 font-body">Modules</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#dde3eb] p-4 text-center">
-                  <Clock size={24} className="text-amber-600 mx-auto mb-2" />
+                  <Clock size={24} className="text-rose-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-[#0a1628]">{student.stats.studyHours}</p>
                   <p className="text-xs text-slate-500 mt-1 font-body">Hours</p>
                 </div>
@@ -171,19 +171,19 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
             <div className="mb-6">
               <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4">Rankings</h3>
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <Trophy size={20} className="text-amber-600 mb-2" />
-                  <p className="text-2xl font-bold text-amber-900">#{student.rank.global}</p>
-                  <p className="text-xs text-amber-700 mt-1 font-body">School</p>
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+                  <Trophy size={20} className="text-rose-600 mb-2" />
+                  <p className="text-2xl font-bold text-rose-900">#{student.rank.global}</p>
+                  <p className="text-xs text-rose-700 mt-1 font-body">School</p>
                 </div>
                 <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
                   <Trophy size={20} className="text-sky-600 mb-2" />
                   <p className="text-2xl font-bold text-sky-900">#{student.rank.section}</p>
                   <p className="text-xs text-sky-700 mt-1 font-body">Section</p>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <Trophy size={20} className="text-amber-600 mb-2" />
-                  <p className="text-2xl font-bold text-amber-900">
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+                  <Trophy size={20} className="text-rose-600 mb-2" />
+                  <p className="text-2xl font-bold text-rose-900">
                     {student.rank.change > 0 ? (
                       <span className="flex items-center gap-1 text-emerald-600">
                         <TrendingUp size={20} />
@@ -198,7 +198,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                       '0'
                     )}
                   </p>
-                  <p className="text-xs text-amber-700 mt-1 font-body">This Week</p>
+                  <p className="text-xs text-rose-700 mt-1 font-body">This Week</p>
                 </div>
               </div>
             </div>
@@ -206,48 +206,37 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
             {/* Achievements */}
             <div className="mb-6">
               <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4">Achievements</h3>
-              <div className="grid grid-cols-3 gap-3">
-                {achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className={`rounded-xl p-4 text-center transition-all ${
-                      achievement.unlocked
-                        ? 'bg-white border-2 border-sky-200'
-                        : 'bg-[#edf1f7] opacity-50'
-                    }`}
-                  >
-                    <div className="text-3xl mb-2">{achievementIconMap[achievement.icon] || <Award size={24} className="text-slate-500" />}</div>
-                    <p className="font-bold text-xs text-[#0a1628] mb-1 font-body">{achievement.title}</p>
-                    <p className="text-xs text-[#5a6578]">{achievement.description}</p>
-                  </div>
-                ))}
-              </div>
+              {achievementsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={24} className="text-sky-500 animate-spin" />
+                </div>
+              ) : achievements.length > 0 ? (
+                <div className="grid grid-cols-3 gap-3">
+                  {achievements.map((achievement) => (
+                    <div
+                      key={achievement.id}
+                      className="rounded-xl p-4 text-center transition-all bg-white border-2 border-sky-200"
+                    >
+                      <div className="text-3xl mb-2">{achievementIconMap[achievement.icon] || <Award size={24} className="text-slate-500 mx-auto" />}</div>
+                      <p className="font-bold text-xs text-[#0a1628] mb-1 font-body">{achievement.title}</p>
+                      <p className="text-xs text-[#5a6578]">{achievement.description}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center py-8 gap-2">
+                  <Award size={32} className="text-[#d1cec6]" />
+                  <p className="text-sm text-[#5a6578] font-body">No achievements unlocked yet</p>
+                </div>
+              )}
             </div>
 
-            {/* Recent Activity */}
+            {/* Recent Activity — loaded from quiz history when available */}
             <div>
               <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4">Recent Activity</h3>
-              <div className="space-y-3">
-                {recentActivity.map((activity, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-[#dde3eb]">
-                    <div className="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      {activity.score ? (
-                        <Target size={18} className="text-sky-600" />
-                      ) : (
-                        <Flame size={18} className="text-orange-600" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-[#0a1628] font-body">{activity.action}</p>
-                      <p className="text-xs text-slate-500">{activity.time}</p>
-                    </div>
-                    {activity.score && (
-                      <div className="px-3 py-1 bg-emerald-500/10 text-emerald-700 rounded-lg font-bold text-sm">
-                        {activity.score}%
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="flex flex-col items-center py-8 gap-2">
+                <BookOpen size={32} className="text-[#d1cec6]" />
+                <p className="text-sm text-[#5a6578] font-body">Activity history coming soon</p>
               </div>
             </div>
           </div>

@@ -211,7 +211,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-3 block font-body uppercase tracking-wider text-xs">Theme Color</label>
                     <div className="grid grid-cols-5 gap-3">
-                      {['sky', 'cyan', 'amber', 'orange', 'emerald'].map((color) => (
+                      {['sky', 'cyan', 'rose', 'orange', 'emerald'].map((color) => (
                         <button
                           key={color}
                           className={`w-12 h-12 rounded-xl bg-${color}-600 hover:scale-110 transition-transform shadow-md`}
@@ -362,10 +362,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
                     </Button>
                   </div>
 
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                    <h4 className="text-sm font-bold text-yellow-900 mb-1">Reset Progress</h4>
-                    <p className="text-xs text-yellow-700 mb-3">Start fresh by resetting all your progress</p>
-                    <Button variant="outline" size="sm" className="rounded-xl text-yellow-700 border-yellow-300">
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                    <h4 className="text-sm font-bold text-rose-900 mb-1">Reset Progress</h4>
+                    <p className="text-xs text-rose-700 mb-3">Start fresh by resetting all your progress</p>
+                    <Button variant="outline" size="sm" className="rounded-xl text-rose-700 border-rose-300">
                       Reset All Progress
                     </Button>
                   </div>

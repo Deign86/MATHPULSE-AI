@@ -62,26 +62,12 @@ export const signUpWithEmail = async (
   }
 };
 
-// Demo account configuration - maps emails to roles and names
-const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string }> = {
-  'demo-student@mathpulse.ai': { role: 'student', name: 'Alex Johnson' },
-  'demo-teacher@mathpulse.ai': { role: 'teacher', name: 'Prof. Anderson' },
-  'demo-admin@mathpulse.ai': { role: 'admin', name: 'Administrator' },
-};
-
 // Sign in with email and password
 // Profile auto-creation is handled exclusively by AuthContext's onAuthStateChanged
 export const signInWithEmail = async (email: string, password: string): Promise<void> => {
   try {
     console.log('[AUTH] Attempting sign in...', { email });
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    
-    // Update display name for demo accounts if not set
-    const demoInfo = DEMO_ACCOUNTS[email.toLowerCase()];
-    if (!userCredential.user.displayName && demoInfo?.name) {
-      await updateProfile(userCredential.user, { displayName: demoInfo.name });
-    }
-    
+    await signInWithEmailAndPassword(auth, email, password);
     console.log('[OK] Sign in successful, AuthContext will handle profile creation');
   } catch (error: unknown) {
     const firebaseError = error as { code?: string; message?: string };

@@ -213,7 +213,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   const riskDistribution = [
     { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#ef4444' },
-    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#f59e0b' },
+    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#f43f5e' },
     { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#10b981' },
   ];
 
@@ -295,42 +295,62 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          <NavItem
-            icon={Home}
-            label="Dashboard"
-            active={activeView === 'dashboard'}
-            collapsed={sidebarCollapsed}
-            onClick={handleBackToDashboard}
-          />
-          <NavItem
-            icon={BarChart3}
-            label="Class Analytics"
-            active={activeView === 'analytics'}
-            collapsed={sidebarCollapsed}
-            onClick={() => setActiveView('analytics')}
-          />
-          <NavItem
-            icon={Target}
-            label="Topic Mastery"
-            active={activeView === 'topic_mastery'}
-            collapsed={sidebarCollapsed}
-            onClick={() => setActiveView('topic_mastery')}
-          />
-          <NavItem
-            icon={Users}
-            label="Competency"
-            active={activeView === 'competency'}
-            collapsed={sidebarCollapsed}
-            onClick={() => setActiveView('competency')}
-          />
-          <NavItem
-            icon={Database}
-            label="Data Import"
-            active={activeView === 'import'}
-            collapsed={sidebarCollapsed}
-            onClick={() => setActiveView('import')}
-          />
+        <nav className="flex-1 p-4 space-y-4">
+          {/* Overview Section */}
+          <div>
+            <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Overview</p>
+            <div className="space-y-1">
+              <NavItem
+                icon={Home}
+                label="Dashboard"
+                active={activeView === 'dashboard'}
+                collapsed={sidebarCollapsed}
+                onClick={handleBackToDashboard}
+              />
+              <NavItem
+                icon={BarChart3}
+                label="Class Analytics"
+                active={activeView === 'analytics'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('analytics')}
+              />
+            </div>
+          </div>
+
+          {/* Students Section */}
+          <div>
+            <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Students</p>
+            <div className="space-y-1">
+              <NavItem
+                icon={Target}
+                label="Topic Mastery"
+                active={activeView === 'topic_mastery'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('topic_mastery')}
+              />
+              <NavItem
+                icon={Users}
+                label="Competency"
+                active={activeView === 'competency'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('competency')}
+              />
+            </div>
+          </div>
+
+          {/* Tools Section */}
+          <div>
+            <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Tools</p>
+            <div className="space-y-1">
+              <NavItem
+                icon={Database}
+                label="Data Import"
+                active={activeView === 'import'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('import')}
+              />
+            </div>
+          </div>
         </nav>
 
         {/* User Section */}
@@ -373,40 +393,59 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-[#f7f9fc] border-b border-[#dde3eb] px-6 py-4">
+        <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 sticky top-0 z-30">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-display font-bold text-[#0a1628]">
-                {activeView === 'dashboard' && 'Teacher Dashboard'}
-                {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
-                {activeView === 'intervention' && 'Student Intervention'}
-                {activeView === 'topic_mastery' && 'Topic Mastery'}
-                {activeView === 'competency' && 'Student Competency'}
-                {activeView === 'import' && 'Data Import'}
-              </h1>
-              <p className="text-sm text-[#5a6578] mt-0.5">
-                {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                {activeView === 'analytics' && 'Deep dive into class performance'}
-                {activeView === 'intervention' && selectedStudent?.name}
-                {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
-                {activeView === 'competency' && 'Per-student topic-level competency breakdown'}
-                {activeView === 'import' && 'Upload class records and materials'}
-              </p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
+                  {activeView === 'dashboard' && 'Teacher Dashboard'}
+                  {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
+                  {activeView === 'intervention' && 'Student Intervention'}
+                  {activeView === 'topic_mastery' && 'Topic Mastery'}
+                  {activeView === 'competency' && 'Student Competency'}
+                  {activeView === 'import' && 'Data Import'}
+                </h1>
+                <p className="text-xs text-[#5a6578] font-body">
+                  {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
+                  {activeView === 'analytics' && 'Deep dive into class performance'}
+                  {activeView === 'intervention' && selectedStudent?.name}
+                  {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
+                  {activeView === 'competency' && 'Per-student topic-level breakdown'}
+                  {activeView === 'import' && 'Upload class records and materials'}
+                </p>
+              </div>
+              {/* Quick teacher stats */}
+              {activeView === 'dashboard' && (
+                <div className="hidden md:flex items-center gap-2 ml-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 border border-sky-200/60 rounded-lg">
+                    <Users size={13} className="text-sky-600" />
+                    <span className="text-xs font-display font-bold text-sky-700">{totalStudents} students</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 border border-rose-200/60 rounded-lg">
+                    <AlertTriangle size={13} className="text-rose-600" />
+                    <span className="text-xs font-display font-bold text-rose-700">{totalAtRisk} at risk</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200/60 rounded-lg">
+                    <TrendingUp size={13} className="text-emerald-600" />
+                    <span className="text-xs font-display font-bold text-emerald-700">{avgPerformance}% avg</span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowQuizMaker(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-sm text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold rounded-lg transition-all shadow-sm text-sm"
               >
                 <ClipboardCheck size={16} />
                 AI Quiz Maker
               </button>
-              <button className="p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors relative">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+              <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors relative">
+                <Bell size={18} />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              <button className="p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
-                <Calendar size={20} />
+              <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
+                <Calendar size={18} />
               </button>
             </div>
           </div>
@@ -517,18 +556,18 @@ const DashboardView: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="p-6 space-y-6"
     >
-      {/* Daily AI Insight Banner */}
-      <div className="bg-gradient-to-br from-sky-600 to-sky-500 rounded-3xl p-8 text-white shadow-lg">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <AlertTriangle size={28} />
+      {/* Daily AI Insight Banner — compact, not dominating */}
+      <div className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl p-5 text-white shadow-md">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <AlertTriangle size={20} />
           </div>
-          <div>
-            <h2 className="text-2xl font-display font-bold mb-2">Daily AI Insight</h2>
-            <p className="text-sky-100 text-lg">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-display font-bold mb-1">AI Insight</h2>
+            <p className="text-sky-100 text-sm leading-relaxed">
               {insightLoading ? (
                 <span className="flex items-center gap-2">
-                  <Loader2 size={18} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                   Generating AI insight...
                 </span>
               ) : (
@@ -537,21 +576,25 @@ const DashboardView: React.FC<{
             </p>
           </div>
         </div>
+      </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white/10 backdrop-blur-sm border border-slate-300 rounded-2xl p-4">
-            <p className="text-sm text-sky-100 mb-1">Class Average</p>
-            <p className="text-3xl font-bold">{avgPerformance}%</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm border border-slate-300 rounded-2xl p-4">
-            <p className="text-sm text-sky-100 mb-1">Engagement Rate</p>
-            <p className="text-3xl font-bold">{engagementRate}%</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm border border-slate-300 rounded-2xl p-4">
-            <p className="text-sm text-sky-100 mb-1">At Risk Students</p>
-            <p className="text-3xl font-bold">{totalAtRisk}</p>
-          </div>
+      {/* Quick Stats Row — moved from inside the banner for better visibility */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-4 border border-[#dde3eb] shadow-sm">
+          <p className="text-xs text-[#5a6578] font-body mb-1">Total Students</p>
+          <p className="text-2xl font-display font-bold text-[#0a1628]">{totalStudents}</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-[#dde3eb] shadow-sm">
+          <p className="text-xs text-[#5a6578] font-body mb-1">Class Average</p>
+          <p className="text-2xl font-display font-bold text-sky-600">{avgPerformance}%</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-[#dde3eb] shadow-sm">
+          <p className="text-xs text-[#5a6578] font-body mb-1">Engagement Rate</p>
+          <p className="text-2xl font-display font-bold text-emerald-600">{engagementRate}%</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-red-200/60 shadow-sm">
+          <p className="text-xs text-[#5a6578] font-body mb-1">At Risk</p>
+          <p className="text-2xl font-display font-bold text-red-600">{totalAtRisk}</p>
         </div>
       </div>
 
@@ -615,8 +658,8 @@ const DashboardView: React.FC<{
         {/* Live Classroom Pulse - 1 column */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-amber-600" />
+            <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+              <Zap size={20} className="text-rose-600" />
             </div>
             <h2 className="text-xl font-display font-bold text-[#0a1628]">Live Classroom Pulse</h2>
           </div>
@@ -627,7 +670,7 @@ const DashboardView: React.FC<{
                 key={activity.id}
                 className={`p-4 rounded-xl border-l-4 ${
                   activity.type === 'success' ? 'bg-green-50 border-green-500' :
-                  activity.type === 'warning' ? 'bg-amber-50 border-amber-500' :
+                  activity.type === 'warning' ? 'bg-rose-50 border-rose-500' :
                   'bg-sky-50 border-sky-500'
                 }`}
               >
@@ -717,7 +760,7 @@ const AnalyticsView: React.FC<{
                     <div
                       className={`h-full rounded-full ${
                         student.riskLevel === 'high' ? 'bg-red-500' :
-                        student.riskLevel === 'medium' ? 'bg-amber-500' :
+                        student.riskLevel === 'medium' ? 'bg-rose-500' :
                         'bg-green-500'
                       }`}
                       style={{ width: `${student.avgScore}%` }}
@@ -775,7 +818,7 @@ const AnalyticsView: React.FC<{
                   <p className="text-sm text-[#5a6578]">Review AI-generated interventions</p>
                 </div>
               </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold">
+              <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold">
                 Pending
               </span>
             </div>
@@ -952,7 +995,7 @@ const InterventionView: React.FC<{
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                        step.type === 'video' ? 'bg-amber-100 text-amber-700' :
+                        step.type === 'video' ? 'bg-rose-100 text-rose-700' :
                         step.type === 'quiz' ? 'bg-sky-100 text-sky-700' :
                         'bg-green-100 text-green-700'
                       }`}>
@@ -1080,12 +1123,12 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
             onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
             onDragLeave={() => setDragOver2(false)}
             onDrop={(e) => { e.preventDefault(); setDragOver2(false); }}
-            className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-amber-400 hover:bg-amber-50 ${
-              dragOver2 ? 'border-amber-600 bg-amber-50 scale-105' : 'border-[#dde3eb]'
+            className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-rose-400 hover:bg-rose-50 ${
+              dragOver2 ? 'border-rose-600 bg-rose-50 scale-105' : 'border-[#dde3eb]'
             }`}
           >
-            <div className="w-20 h-20 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <FileText size={40} className="text-amber-600" />
+            <div className="w-20 h-20 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <FileText size={40} className="text-rose-600" />
             </div>
             <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Course Materials</h3>
             <p className="text-[#5a6578] mb-4">Upload syllabus, lesson plans, and curriculum documents</p>
@@ -1094,7 +1137,7 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.docx</span>
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.txt</span>
             </p>
-            <Button className="bg-white border-2 border-[#dde3eb] text-[#5a6578] hover:border-amber-500 hover:text-amber-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-white border-2 border-[#dde3eb] text-[#5a6578] hover:border-rose-500 hover:text-rose-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -1261,7 +1304,7 @@ const EditRecordsView: React.FC<{
                   <td className="p-4">
                     <span className={`font-bold ${
                       student.avgScore < 60 ? 'text-red-600' : 
-                      student.avgScore < 80 ? 'text-amber-600' : 'text-green-600'
+                      student.avgScore < 80 ? 'text-rose-600' : 'text-green-600'
                     }`}>{student.avgScore}%</span>
                   </td>
                   <td className="p-4">
@@ -1289,7 +1332,7 @@ const EditRecordsView: React.FC<{
 function getRiskBadge(level: 'high' | 'medium' | 'low') {
   switch (level) {
     case 'high': return 'bg-red-100 text-red-700 border-red-200';
-    case 'medium': return 'bg-amber-100 text-amber-700 border-amber-200';
+    case 'medium': return 'bg-rose-100 text-rose-700 border-rose-200';
     case 'low': return 'bg-green-100 text-green-700 border-green-200';
   }
 }
@@ -1297,7 +1340,7 @@ function getRiskBadge(level: 'high' | 'medium' | 'low') {
 function getRiskColor(level: 'high' | 'medium' | 'low') {
   switch (level) {
     case 'high': return 'border-red-500 bg-red-50';
-    case 'medium': return 'border-amber-500 bg-amber-50';
+    case 'medium': return 'border-rose-500 bg-rose-50';
     case 'low': return 'border-green-500 bg-green-50';
   }
 }

@@ -2396,57 +2396,15 @@ async def topic_mastery_analytics(
     Aggregate per-topic mastery statistics for a teacher's class.
     Returns topic-level averages, attempt counts, and mastery status.
     """
-    import random
-
     try:
-        # In production, this would query Firestore quiz submissions.
-        # For now, generate realistic mock data seeded by teacherId.
-        rng = random.Random(hash(teacherId))
-        total_students = 30
-
-        topics_out = []
-        mastered_count = 0
-        needs_attention_count = 0
-        excluded_count = 0
-
-        for subj_id, subj_data in _SHS_TOPICS.items():
-            for topic_name, unit in subj_data["topics"]:
-                attempted = rng.randint(3, total_students)
-                class_avg = round(rng.uniform(35, 95), 1)
-                above_85 = int(attempted * (rng.uniform(0.6, 0.95) if class_avg >= 85 else rng.uniform(0.05, 0.35)))
-                mastery_pct = round((above_85 / total_students) * 100, 1)
-
-                if attempted < 3:
-                    status = "no_data"
-                elif mastery_pct >= 75:
-                    status = "mastered"
-                    mastered_count += 1
-                elif class_avg >= 60:
-                    status = "on_track"
-                else:
-                    status = "needs_attention"
-                    needs_attention_count += 1
-
-                topics_out.append({
-                    "topicName": topic_name,
-                    "subjectId": subj_id,
-                    "unit": unit,
-                    "classAverage": class_avg,
-                    "studentsAttempted": attempted,
-                    "totalStudents": total_students,
-                    "studentsAbove85": above_85,
-                    "masteryPercentage": mastery_pct,
-                    "masteryStatus": status,
-                    "isExcluded": False,
-                })
-
+        # No real student data imported yet — return empty state.
         return {
-            "topics": topics_out,
+            "topics": [],
             "summary": {
-                "totalTopicsTracked": len(topics_out),
-                "masteredCount": mastered_count,
-                "needsAttentionCount": needs_attention_count,
-                "excludedCount": excluded_count,
+                "totalTopicsTracked": 0,
+                "masteredCount": 0,
+                "needsAttentionCount": 0,
+                "excludedCount": 0,
             },
         }
     except Exception as e:

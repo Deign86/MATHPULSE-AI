@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Search, Plus, Filter, Download, MoreVertical, 
+  Search, Plus, Download, 
   Edit, Trash2, Shield, Ban, Users, UserCheck, 
-  GraduationCap, School
+  GraduationCap, School, Loader2, RefreshCw
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -28,145 +22,156 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-
-// Mock Data
-const initialUsers = [
-  {
-    id: 1,
-    name: 'Sarah Chen',
-    email: 'sarah.chen@student.edu',
-    role: 'Student',
-    status: 'Active',
-    department: 'Grade 12',
-    lastLogin: 'Never',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop'
-  },
-  {
-    id: 2,
-    name: 'Alex Johnson',
-    email: 'alex.j@student.edu',
-    role: 'Student',
-    status: 'Active',
-    department: 'Grade 11',
-    lastLogin: 'Invalid Date',
-    avatar: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop'
-  },
-  {
-    id: 3,
-    name: 'Prof. Michael Brown',
-    email: 'm.brown@mathpulse.edu',
-    role: 'Teacher',
-    status: 'Active',
-    department: 'Mathematics',
-    lastLogin: '2 hours ago',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
-  },
-  {
-    id: 4,
-    name: 'Emily Davis',
-    email: 'emily.d@student.edu',
-    role: 'Student',
-    status: 'Inactive',
-    department: 'Grade 11',
-    lastLogin: '5 days ago',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop'
-  },
-  {
-    id: 5,
-    name: 'James Wilson',
-    email: 'j.wilson@admin.edu',
-    role: 'Admin',
-    status: 'Active',
-    department: 'IT Dept',
-    lastLogin: 'Just now',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop'
-  }
-];
+import {
+  getAllUsers,
+  updateAdminUser,
+  deleteAdminUser,
+  createAdminUser,
+  addAuditLog,
+  type AdminUser,
+} from '../services/adminService';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'sonner';
 
 const AdminUserManagement: React.FC = () => {
-  const [users, setUsers] = useState(initialUsers);
+  const { userProfile } = useAuth();
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<(typeof initialUsers)[number] | null>(null);
-  
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+
   // Form State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: 'Student',
     status: 'Active',
-    department: ''
+    department: '',
   });
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getAllUsers();
+      setUsers(data);
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleOpenAddModal = () => {
     setEditingUser(null);
-    setFormData({
-      name: '',
-      email: '',
-      role: 'Student',
-      status: 'Active',
-      department: ''
-    });
+    setFormData({ name: '', email: '', role: 'Student', status: 'Active', department: '' });
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (user: (typeof initialUsers)[number]) => {
+  const handleOpenEditModal = (user: AdminUser) => {
     setEditingUser(user);
     setFormData({
       name: user.name,
       email: user.email,
       role: user.role,
       status: user.status,
-      department: user.department
+      department: user.department,
     });
     setIsModalOpen(true);
   };
 
-  const handleSaveUser = () => {
-    if (editingUser) {
-      // Edit existing
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...formData } : u));
-    } else {
-      // Add new
-      const newUser = {
-        id: users.length + 1,
-        ...formData,
-        lastLogin: 'Never',
-        avatar: `https://ui-avatars.com/api/?name=${formData.name}&background=random`
-      };
-      setUsers([...users, newUser]);
+  const handleSaveUser = async () => {
+    if (!formData.name.trim() || !formData.email.trim()) {
+      toast.error('Name and email are required');
+      return;
     }
-    setIsModalOpen(false);
-  };
-
-  const handleDeleteUser = (id: number) => {
-    setUsers(users.filter(u => u.id !== id));
-  };
-
-  const handleToggleStatus = (id: number) => {
-    setUsers(users.map(u => {
-      if (u.id === id) {
-        return { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' };
+    setSaving(true);
+    try {
+      if (editingUser) {
+        await updateAdminUser(editingUser.id, formData);
+        await addAuditLog(
+          'User Updated',
+          'User',
+          'Info',
+          `Updated user: ${formData.name} (${formData.email})`,
+          { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
+        );
+        toast.success('User updated successfully');
+      } else {
+        await createAdminUser(formData.email, formData.name, formData.role, formData.department);
+        await addAuditLog(
+          'Created New User',
+          'User',
+          'Info',
+          `Created new ${formData.role.toLowerCase()} account: ${formData.name} (${formData.email})`,
+          { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
+        );
+        toast.success('User created successfully');
       }
-      return u;
-    }));
+      await loadUsers();
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (id: string, name: string) => {
+    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+    try {
+      await deleteAdminUser(id);
+      await addAuditLog(
+        'User Deleted',
+        'User',
+        'Warning',
+        `Deleted user account: ${name}`,
+        { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
+      );
+      toast.success('User deleted');
+      setUsers(prev => prev.filter(u => u.id !== id));
+    } catch (err) {
+      toast.error('Failed to delete user');
+    }
+  };
+
+  const handleToggleStatus = async (user: AdminUser) => {
+    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await updateAdminUser(user.id, { status: newStatus });
+      await addAuditLog(
+        'User Status Changed',
+        'User',
+        'Warning',
+        `${newStatus === 'Active' ? 'Activated' : 'Deactivated'} user: ${user.email}`,
+        { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
+      );
+      toast.success(`User ${newStatus === 'Active' ? 'activated' : 'deactivated'}`);
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+    } catch (err) {
+      toast.error('Failed to update user status');
+    }
   };
 
   // Filter Logic
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = roleFilter === 'All Roles' || user.role === roleFilter;
     const matchesStatus = statusFilter === 'All Status' || user.status === statusFilter;
-    
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  // Stats
+  // Stats — derived from real Firestore data
   const stats = [
     { label: 'Total Users', value: users.length, color: 'text-[#0a1628]' },
     { label: 'Active', value: users.filter(u => u.status === 'Active').length, color: 'text-green-600' },
@@ -178,6 +183,11 @@ const AdminUserManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
+      {loading ? (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 size={28} className="animate-spin text-sky-500" />
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {stats.map((stat, idx) => (
           <div key={idx} className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
@@ -226,9 +236,9 @@ const AdminUserManagement: React.FC = () => {
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" className="gap-2 border-[#dde3eb] text-[#5a6578]">
-              <Download size={16} />
-              Export
+            <Button variant="outline" className="gap-2 border-[#dde3eb] text-[#5a6578]" onClick={loadUsers}>
+              <RefreshCw size={16} />
+              Refresh
             </Button>
             <Button 
               className="gap-2 bg-sky-500 hover:bg-sky-600 text-white"
@@ -262,7 +272,7 @@ const AdminUserManagement: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={user.avatar} />
+                          <AvatarImage src={user.photo} />
                           <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -308,18 +318,18 @@ const AdminUserManagement: React.FC = () => {
                           <Edit size={16} />
                         </button>
                         <button 
-                          onClick={() => handleToggleStatus(user.id)}
+                          onClick={() => handleToggleStatus(user)}
                           className={`p-1.5 rounded-lg transition-colors ${
                             user.status === 'Active' 
                               ? 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
                               : 'text-orange-500 hover:text-green-600 hover:bg-green-50'
                           }`}
-                          title={user.status === 'Active' ? "Deactivate User" : "Activate User"}
+                          title={user.status === 'Active' ? 'Deactivate User' : 'Activate User'}
                         >
                           {user.status === 'Active' ? <Ban size={16} /> : <UserCheck size={16} />}
                         </button>
                         <button 
-                          onClick={() => handleDeleteUser(user.id)}
+                          onClick={() => handleDeleteUser(user.id, user.name)}
                           className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />
@@ -423,8 +433,9 @@ const AdminUserManagement: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveUser} className="bg-sky-600 hover:bg-sky-700 text-white">
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSaveUser} className="bg-sky-600 hover:bg-sky-700 text-white" disabled={saving}>
+              {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
               {editingUser ? 'Save Changes' : 'Create User'}
             </Button>
           </DialogFooter>

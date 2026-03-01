@@ -28,7 +28,7 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, message, show, onCo
           exit={{ opacity: 0, y: -20, scale: 0.9 }}
           className="fixed top-8 left-1/2 -translate-x-1/2 z-50"
         >
-          <div className="bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-amber-300 flex items-center gap-3">
+          <div className="bg-gradient-to-r from-rose-400 via-orange-500 to-rose-500 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-rose-300 flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                 <Star size={20} className="text-white" fill="currentColor" />
@@ -38,7 +38,7 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, message, show, onCo
                 animate={{ rotate: [0, 360] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
-                <Sparkles size={16} className="text-amber-200" />
+                <Sparkles size={16} className="text-rose-200" />
               </motion.div>
             </div>
             <div>

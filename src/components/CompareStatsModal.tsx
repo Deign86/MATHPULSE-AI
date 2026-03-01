@@ -259,7 +259,7 @@ const CompareStatsModal: React.FC<CompareStatsModalProps> = ({ student, onClose 
               <div className="text-center">
                 {yourWins > theirWins ? (
                   <>
-                    <div className="flex justify-center mb-3"><PartyPopper size={36} className="text-amber-500" /></div>
+                    <div className="flex justify-center mb-3"><PartyPopper size={36} className="text-rose-500" /></div>
                     <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">You're Ahead!</h3>
                     <p className="text-sm text-[#5a6578] font-body">
                       Keep up the great work! You're winning in {yourWins} out of {comparisons.length} categories.

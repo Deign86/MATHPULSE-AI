@@ -2,7 +2,7 @@
 
 /* ─── MathPulse Design System ────────────────────────────── */
 /* Typography: Syne (display) + Outfit (body)                  */
-/* Palette: Navy Blue, Light Blue, Red Orange, Golden Yellow   */
+/* Palette: Navy Blue, Light Blue, Red Orange, Rose           */
 /* ──────────────────────────────────────────────────────────── */
 
 :root {
@@ -30,9 +30,9 @@
   --muted: #edf1f7;
   --muted-foreground: #5a6578;
 
-  /* Accent — Golden Yellow (achievements, XP, CTAs) */
-  --accent: #fef3c7;
-  --accent-foreground: #92400e;
+  /* Accent — Rose (achievements, XP, CTAs) */
+  --accent: #fff1f2;
+  --accent-foreground: #881337;
 
   /* Destructive — Red Orange */
   --destructive: #ef4444;
@@ -53,7 +53,7 @@
 
   /* Charts — vibrant distinct hues */
   --chart-1: #0284c7;
-  --chart-2: #f59e0b;
+  --chart-2: #f43f5e;
   --chart-3: #059669;
   --chart-4: #ff5c3a;
   --chart-5: #06b6d4;
@@ -85,7 +85,7 @@
   --muted: #0d1f35;
   --muted-foreground: #8a9bb0;
   --accent: #0f2440;
-  --accent-foreground: #fbbf24;
+  --accent-foreground: #fb7185;
   --destructive: #ff5c3a;
   --destructive-foreground: #0a1628;
   --border: #152a42;
@@ -96,7 +96,7 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --chart-1: #38bdf8;
-  --chart-2: #fbbf24;
+  --chart-2: #fb7185;
   --chart-3: #34d399;
   --chart-4: #ff5c3a;
   --chart-5: #22d3ee;
@@ -243,8 +243,8 @@ html {
   box-shadow: 0 0 24px rgba(124, 58, 237, 0.12), 0 0 64px rgba(124, 58, 237, 0.04);
 }
 
-.glow-amber {
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12), 0 0 64px rgba(245, 158, 11, 0.04);
+.glow-rose {
+  box-shadow: 0 0 24px rgba(244, 63, 94, 0.12), 0 0 64px rgba(244, 63, 94, 0.04);
 }
 
 .glow-emerald {
@@ -358,7 +358,7 @@ html {
   left: 0;
   width: 48px;
   height: 3px;
-  background: linear-gradient(90deg, #0284c7, #f59e0b);
+  background: linear-gradient(90deg, #0284c7, #f43f5e);
   border-radius: 2px;
 }
 
@@ -378,8 +378,8 @@ html {
   border-left: 3px solid #0284c7;
 }
 
-.card-accent-amber {
-  border-left: 3px solid #f59e0b;
+.card-accent-rose {
+  border-left: 3px solid #f43f5e;
 }
 
 .card-accent-emerald {

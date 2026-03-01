@@ -142,20 +142,20 @@ const CompactBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, atRiskS
       animate={{ opacity: 1, height: 'auto' }}
       className="mb-4 overflow-hidden"
     >
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3">
+      <div className="bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 rounded-xl p-3">
         <div className="flex items-center gap-2 mb-1.5">
-          <AlertTriangle size={14} className="text-amber-600" />
-          <span className="text-xs font-bold text-amber-800">
+          <AlertTriangle size={14} className="text-rose-600" />
+          <span className="text-xs font-bold text-rose-800">
             Supplemental Focus Area — {subjectKey}
           </span>
         </div>
-        <p className="text-xs text-amber-700 mb-2">
+        <p className="text-xs text-rose-700 mb-2">
           This topic was flagged in your diagnostic. Take your time and review the explanations carefully.
         </p>
         {resources.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {resources.slice(0, 2).map((r, i) => (
-              <span key={i} className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-xs font-medium">
+              <span key={i} className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md text-xs font-medium">
                 {r.icon}
                 {r.label}
               </span>

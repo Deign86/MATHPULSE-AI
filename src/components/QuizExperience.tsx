@@ -438,7 +438,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 <p className="text-xs text-[#5a6578]">Incorrect</p>
               </div>
               <div className="bg-white rounded-xl p-4 text-center">
-                <Zap size={24} className="mx-auto mb-2 text-amber-500" />
+                <Zap size={24} className="mx-auto mb-2 text-rose-500" />
                 <p className="text-2xl font-bold text-[#0a1628]">+{totalXP}</p>
                 <p className="text-xs text-[#5a6578]">XP Earned</p>
               </div>
@@ -568,7 +568,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 <span className="text-sm font-bold">Score: {score}/{questions.length}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-amber-500/30 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-2 bg-rose-500/30 px-3 py-1 rounded-full">
               <Trophy size={16} />
               <span className="text-sm font-bold">+{quiz.xpReward} XP</span>
             </div>

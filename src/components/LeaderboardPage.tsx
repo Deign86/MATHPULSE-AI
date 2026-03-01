@@ -11,6 +11,7 @@ import { StudentProfile } from '../types/models';
 
 interface LeaderboardStudent {
   id: string;
+  uid: string;
   name: string;
   avatar: string;
   level: number;
@@ -44,7 +45,7 @@ const LeaderboardPage = () => {
   const [showCompare, setShowCompare] = useState<LeaderboardStudent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
-  const [mockStudents, setMockStudents] = useState<LeaderboardStudent[]>([]);
+  const [students, setStudents] = useState<LeaderboardStudent[]>([]);
 
   const avatars = ['', '', '', '', '', '', '', ''];
 
@@ -55,8 +56,9 @@ const LeaderboardPage = () => {
       setLeaderboardLoading(true);
       try {
         const entries = await getLeaderboard(currentUser.uid, false, timeFilter === 'today' ? 'week' : timeFilter, 20);
-        const students: LeaderboardStudent[] = entries.map((entry, index) => ({
+        const leaderboardData: LeaderboardStudent[] = entries.map((entry, index) => ({
           id: entry.userId,
+          uid: entry.userId,
           name: entry.name,
           avatar: entry.photo || avatars[index % avatars.length],
           level: entry.level,
@@ -79,7 +81,7 @@ const LeaderboardPage = () => {
           isOnline: false,
           isYou: entry.userId === currentUser.uid,
         }));
-        setMockStudents(students);
+        setStudents(leaderboardData);
       } catch (err) {
         console.error('Error loading leaderboard:', err);
       } finally {
@@ -91,7 +93,7 @@ const LeaderboardPage = () => {
   }, [currentUser, timeFilter]);
 
   const getCurrentRank = () => {
-    const you = mockStudents.find(s => s.isYou);
+    const you = students.find(s => s.isYou);
     if (!you) return 0;
     switch(activeView) {
       case 'school': return you.rank.global;
@@ -102,12 +104,16 @@ const LeaderboardPage = () => {
   };
 
   const getFilteredStudents = () => {
-    let filtered = mockStudents;
+    let filtered = students;
     
     if (activeView === 'friends') {
       filtered = filtered.filter(s => s.isFriend || s.isYou);
     } else if (activeView === 'section') {
-      filtered = filtered.filter(s => s.section === 'Grade 11 - STEM A');
+      // Filter to same grade/section as the current student
+      const mySection = studentProfile?.grade || '';
+      if (mySection) {
+        filtered = filtered.filter(s => s.section === mySection);
+      }
     }
 
     if (searchQuery) {
@@ -123,7 +129,7 @@ const LeaderboardPage = () => {
   };
 
   const getRankBadgeColor = (rank: number) => {
-    if (rank === 1) return 'bg-gradient-to-br from-amber-400 to-amber-600 text-white';
+    if (rank === 1) return 'bg-gradient-to-br from-rose-400 to-rose-600 text-white';
     if (rank === 2) return 'bg-gradient-to-br from-zinc-300 to-zinc-500 text-white';
     if (rank === 3) return 'bg-gradient-to-br from-orange-400 to-orange-600 text-white';
     if (rank <= 10) return 'bg-gradient-to-br from-sky-500 to-sky-700 text-white';
@@ -131,15 +137,16 @@ const LeaderboardPage = () => {
   };
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown size={16} className="text-amber-200" />;
+    if (rank === 1) return <Crown size={16} className="text-rose-200" />;
     if (rank === 2) return <Medal size={16} className="text-zinc-200" />;
     if (rank === 3) return <Medal size={16} className="text-orange-200" />;
     return null;
   };
 
-  const students = getFilteredStudents();
-  const topThree = students.slice(0, 3);
-  const restOfList = students.slice(3);
+  const filteredStudents = getFilteredStudents();
+  const showPodium = filteredStudents.length >= 3;
+  const topThree = showPodium ? filteredStudents.slice(0, 3) : [];
+  const restOfList = showPodium ? filteredStudents.slice(3) : filteredStudents;
   const yourRank = getCurrentRank();
 
   return (
@@ -150,7 +157,7 @@ const LeaderboardPage = () => {
         <div className="absolute top-0 right-0 w-48 h-48 bg-sky-100/40 rounded-full -translate-y-1/2 translate-x-1/2"></div>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-display font-bold mb-1 flex items-center gap-3 text-[#0a1628]"><Trophy size={24} className="text-amber-500" /> Leaderboard</h1>
+            <h1 className="text-2xl font-display font-bold mb-1 flex items-center gap-3 text-[#0a1628]"><Trophy size={24} className="text-rose-500" /> Leaderboard</h1>
             <p className="text-slate-500 font-body text-sm">Compete with friends and classmates</p>
           </div>
           <Button 
@@ -164,7 +171,7 @@ const LeaderboardPage = () => {
 
         <div className="grid grid-cols-4 gap-3">
           <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
-            <Trophy size={18} className="text-amber-500 mb-2" />
+            <Trophy size={18} className="text-rose-500 mb-2" />
             <p className="text-2xl font-display font-bold text-[#0a1628]">#{yourRank}</p>
             <p className="text-xs text-slate-500 font-body">Your Rank</p>
           </div>
@@ -196,10 +203,10 @@ const LeaderboardPage = () => {
           ].map((view) => {
             const Icon = view.icon;
             const count = view.id === 'friends' 
-              ? mockStudents.filter(s => s.isFriend).length 
+              ? filteredStudents.filter(s => s.isFriend).length 
               : view.id === 'section'
-              ? mockStudents.filter(s => s.section === 'Grade 11 - STEM A').length
-              : mockStudents.length;
+              ? filteredStudents.filter(s => studentProfile?.grade && s.section === studentProfile.grade).length
+              : filteredStudents.length;
             
             return (
               <button
@@ -229,6 +236,9 @@ const LeaderboardPage = () => {
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
+              id="leaderboard-search"
+              name="leaderboard-search"
+              aria-label="Search students"
               type="text"
               placeholder="Search students..."
               value={searchQuery}
@@ -238,6 +248,9 @@ const LeaderboardPage = () => {
           </div>
 
           <select
+            id="time-filter"
+            name="time-filter"
+            aria-label="Filter by time period"
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value as typeof timeFilter)}
             className="px-4 py-2 border border-[#dde3eb] rounded-lg text-sm font-body bg-white text-[#0a1628]"
@@ -251,7 +264,7 @@ const LeaderboardPage = () => {
       </div>
 
       {/* Podium for Top 3 */}
-      {topThree.length >= 3 && (
+      {showPodium && (
         <div className="bg-white rounded-xl p-8 border border-[#dde3eb] card-elevated">
           <div className="flex items-end justify-center gap-6">
             {/* 2nd Place */}
@@ -290,13 +303,13 @@ const LeaderboardPage = () => {
                 transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
                 className="mb-2"
               >
-                <Crown size={32} className="text-amber-500" />
+                <Crown size={32} className="text-rose-500" />
               </motion.div>
               <div className="relative mb-4">
-                <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center text-5xl shadow-2xl">
+                <div className="w-24 h-24 bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl flex items-center justify-center text-5xl shadow-2xl">
                   {topThree[0]?.avatar ? topThree[0].avatar : <User size={40} className="text-white" />}
                 </div>
-                <div className="absolute -top-2 -right-2 w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white font-display font-bold shadow-md">
+                <div className="absolute -top-2 -right-2 w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white font-display font-bold shadow-md">
                   1
                 </div>
                 {topThree[0]?.isOnline && (
@@ -305,11 +318,11 @@ const LeaderboardPage = () => {
               </div>
               <h3 className="font-display font-bold text-[#0a1628] text-lg mb-1">{topThree[0]?.name}</h3>
               <p className="text-sm text-[#5a6578] font-body mb-2">Level {topThree[0]?.level}</p>
-              <div className="bg-amber-50 rounded-lg px-6 py-2 mb-3">
-                <p className="text-xl font-display font-bold text-amber-700">{topThree[0]?.totalXP} XP</p>
+              <div className="bg-rose-50 rounded-lg px-6 py-2 mb-3">
+                <p className="text-xl font-display font-bold text-rose-700">{topThree[0]?.totalXP} XP</p>
               </div>
-              <div className="h-40 w-32 bg-gradient-to-t from-amber-300 to-amber-100 rounded-t-xl flex items-center justify-center">
-                <Trophy size={40} className="text-amber-600" />
+              <div className="h-40 w-32 bg-gradient-to-t from-rose-300 to-rose-100 rounded-t-xl flex items-center justify-center">
+                <Trophy size={40} className="text-rose-600" />
               </div>
             </motion.div>
 
@@ -350,7 +363,7 @@ const LeaderboardPage = () => {
 
           <div className="space-y-2">
             {restOfList.map((student, index) => {
-              const actualRank = index + 4;
+              const actualRank = showPodium ? index + 4 : index + 1;
               const rankKey = activeView === 'friends' ? 'friends' : activeView === 'section' ? 'section' : 'global';
               const displayRank = student.rank[rankKey];
 

@@ -49,9 +49,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         };
       case 'warning':
         return {
-          iconBg: 'bg-amber-100',
-          iconColor: 'text-amber-600',
-          buttonBg: 'bg-amber-600 hover:bg-amber-700',
+          iconBg: 'bg-rose-100',
+          iconColor: 'text-rose-600',
+          buttonBg: 'bg-rose-600 hover:bg-rose-700',
           buttonText: 'text-white'
         };
       case 'info':

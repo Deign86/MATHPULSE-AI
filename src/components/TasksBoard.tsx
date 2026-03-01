@@ -178,10 +178,10 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
   const completedTasks = tasks.filter(t => t.completed);
 
   return (
-    <div className="bg-white rounded-xl border border-[#dde3eb] p-6 card-elevated">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-xl border border-[#dde3eb] p-3 card-elevated">
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="font-display font-bold text-[#0a1628] text-lg">Tasks Board</h3>
+          <h3 className="font-display font-bold text-[#0a1628] text-base">Tasks Board</h3>
           <p className="text-xs text-slate-500 mt-1 font-body">
             {incompleteTasks.length} active • {completedTasks.length} completed
           </p>

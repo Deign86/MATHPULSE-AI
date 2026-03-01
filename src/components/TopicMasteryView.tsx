@@ -106,67 +106,18 @@ const TopicMasteryView: React.FC = () => {
         setTopics(topicsWithExclude);
         setSummary(data.summary || { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length });
       } else {
-        // Use fallback mock data if API unavailable
-        generateFallbackData(excluded);
+        // API unavailable — show empty state, no mock data
+        setTopics([]);
+        setSummary({ totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length });
       }
     } catch {
-      // Use fallback data
-      generateFallbackData(excludedTopics);
+      // API unavailable — show empty state
+      setTopics([]);
+      setSummary({ totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excludedTopics.length });
     } finally {
       setLoading(false);
     }
   }, [currentUser]);
-
-  const generateFallbackData = (excluded: string[]) => {
-    // Generate topic mastery data from SHS subjects structure
-    const subjects = [
-      { id: 'gen-math', topics: ['Functions and Relations', 'Evaluating Functions', 'Operations on Functions', 'Rational Functions', 'Exponential Functions', 'Simple Interest', 'Compound Interest', 'Propositions and Connectives', 'Truth Tables'], units: ['Functions and Their Graphs', 'Functions and Their Graphs', 'Functions and Their Graphs', 'Functions and Their Graphs', 'Functions and Their Graphs', 'Business Mathematics', 'Business Mathematics', 'Logic', 'Logic'] },
-      { id: 'stats-prob', topics: ['Random Variables', 'Normal Distribution', 'Z-scores', 'Sampling Distributions', 'Central Limit Theorem', 'Hypothesis Testing Concepts', 'T-test', 'Correlation and Regression'], units: ['Random Variables', 'Normal Distribution', 'Normal Distribution', 'Sampling and Estimation', 'Sampling and Estimation', 'Hypothesis Testing', 'Hypothesis Testing', 'Correlation and Regression'] },
-      { id: 'pre-calc', topics: ['Conic Sections - Parabola', 'Conic Sections - Ellipse', 'Sequences and Series', 'Mathematical Induction', 'Trigonometric Functions', 'Trigonometric Identities'], units: ['Analytic Geometry', 'Analytic Geometry', 'Series and Induction', 'Series and Induction', 'Trigonometry', 'Trigonometry'] },
-      { id: 'basic-calc', topics: ['Limits of Functions', 'Limit Theorems', 'Continuity of Functions', 'Definition of the Derivative', 'Differentiation Rules', 'Chain Rule', 'Optimization Problems'], units: ['Limits', 'Limits', 'Limits', 'Derivatives', 'Derivatives', 'Derivatives', 'Derivatives'] },
-    ];
-
-    const mockTopics: TopicMasteryData[] = [];
-    subjects.forEach((subj) => {
-      subj.topics.forEach((topic, i) => {
-        const classAvg = Math.round(Math.random() * 60 + 30); // 30-90
-        const attempted = Math.floor(Math.random() * 25 + 5);
-        const total = 30;
-        const above85 = Math.floor(attempted * (classAvg >= 85 ? 0.8 : classAvg >= 60 ? 0.3 : 0.1));
-        const masteryPct = total > 0 ? (above85 / total) * 100 : 0;
-
-        let status: TopicMasteryData['masteryStatus'] = 'no_data';
-        if (attempted >= 3) {
-          if (masteryPct >= 75) status = 'mastered';
-          else if (classAvg >= 60) status = 'on_track';
-          else status = 'needs_attention';
-        }
-
-        mockTopics.push({
-          topicName: topic,
-          subjectId: subj.id,
-          unit: subj.units[i],
-          classAverage: classAvg,
-          studentsAttempted: attempted,
-          totalStudents: total,
-          studentsAbove85: above85,
-          masteryPercentage: Math.round(masteryPct),
-          masteryStatus: status,
-          isExcluded: excluded.includes(topic),
-        });
-      });
-    });
-
-    setTopics(mockTopics);
-    const masteredCount = mockTopics.filter(t => t.masteryStatus === 'mastered').length;
-    const needsAttentionCount = mockTopics.filter(t => t.masteryStatus === 'needs_attention').length;
-    setSummary({
-      totalTopicsTracked: mockTopics.length,
-      masteredCount,
-      needsAttentionCount,
-      excludedCount: excluded.length,
-    });
-  };
 
   useEffect(() => {
     loadMasteryData();
@@ -471,8 +422,16 @@ const TopicMasteryView: React.FC = () => {
             <tbody>
               {filteredTopics.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                    No topics match the current filters.
+                  <td colSpan={7} className="px-4 py-16 text-center">
+                    {topics.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <BarChart3 size={32} className="text-[#dde3eb]" />
+                        <p className="text-sm font-medium text-[#5a6578]">No topic data available yet</p>
+                        <p className="text-xs text-[#a0aec0]">Import student quiz data to see class topic mastery analytics.</p>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-500">No topics match the current filters.</span>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -480,7 +439,7 @@ const TopicMasteryView: React.FC = () => {
                   const isSelected = selectedTopics.has(topic.topicName);
                   const statusInfo = STATUS_BADGES[topic.masteryStatus];
                   const subjectInfo = SUBJECT_BADGES[topic.subjectId] || { label: topic.subjectId.toUpperCase(), color: 'bg-[#edf1f7] text-[#5a6578]' };
-                  const avgColor = topic.classAverage < 60 ? 'bg-red-500' : topic.classAverage < 85 ? 'bg-amber-500' : 'bg-green-500';
+                  const avgColor = topic.classAverage < 60 ? 'bg-red-500' : topic.classAverage < 85 ? 'bg-rose-500' : 'bg-green-500';
 
                   const rowBg = topic.isExcluded
                     ? 'bg-[#edf1f7] opacity-60'

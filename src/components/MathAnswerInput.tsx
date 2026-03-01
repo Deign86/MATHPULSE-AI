@@ -216,7 +216,7 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
               <div className="ml-auto">
                 <button
                   type="button"
-                  className="bg-sky-600 hover:bg-amber-500 text-white text-xs px-3 py-1 rounded-lg flex items-center gap-1"
+                  className="bg-sky-600 hover:bg-rose-500 text-white text-xs px-3 py-1 rounded-lg flex items-center gap-1"
                   onClick={() => onCalculatorOpen?.()}
                 >
                   <Calculator size={12} />
@@ -244,7 +244,7 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
       {/* ── Preview ───────────────────────────────────────── */}
       {showPreview && (
         <div
-          className="text-amber-300 text-sm font-mono mt-1"
+          className="text-rose-300 text-sm font-mono mt-1"
           dangerouslySetInnerHTML={{ __html: preview }}
         />
       )}
