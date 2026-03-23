@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
-import { getUserProfile, createUserProfile, consumePendingAuthRole } from '../services/authService';
+import { getUserProfile, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService';
 import { triggerStudentEnrolled } from '../services/automationService';
 
 interface AuthContextType {
@@ -37,19 +37,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedRole, setResolvedRole] = useState<UserRole>('student');
+
+  const inferRoleFromKnownDemoEmail = (email: string | null | undefined): UserRole | null => {
+    if (!email) return null;
+    const normalized = email.trim().toLowerCase();
+    if (normalized === 'testteacher@school.edu') return 'teacher';
+    if (normalized === 'testadmin@school.edu') return 'admin';
+    if (normalized === 'teststudent@school.edu') return 'student';
+    return null;
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       
       if (user) {
+        const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
+
         // Fetch user profile from Firestore
         let profile = await getUserProfile(user.uid);
         
         // If profile doesn't exist, auto-create it
         if (!profile && user.email) {
           console.log('[WARN] AuthContext: Profile missing, auto-creating...');
-          const role: UserRole = consumePendingAuthRole() || 'student';
+          const role: UserRole = requestedRole;
           const name = user.displayName || 'User';
           
           try {
@@ -71,9 +83,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
           }
         }
-        
-        setUserProfile(profile);
+
+        if (profile) {
+          setResolvedRole(profile.role);
+          setUserProfile(profile);
+        } else {
+          setResolvedRole(requestedRole);
+          // Keep login functional when profile storage is temporarily unavailable.
+          setUserProfile({
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || 'User',
+            role: requestedRole,
+            photo: user.photoURL || '',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as User);
+        }
       } else {
+        setResolvedRole('student');
         setUserProfile(null);
       }
       
@@ -88,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userProfile,
     loading,
     isLoggedIn: !!currentUser,
-    userRole: (userProfile?.role as UserRole) || 'student',
+    userRole: (userProfile?.role as UserRole) || resolvedRole,
   };
 
   return (
