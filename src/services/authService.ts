@@ -248,7 +248,13 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
 };
 
 // Update user profile
-export const updateUserProfile = async (uid: string, updates: Partial<User>): Promise<void> => {
+export const updateUserProfile = async (
+  uid: string,
+  updates: Partial<User> &
+    Partial<Omit<StudentProfile, keyof User | 'role'>> &
+    Partial<Omit<TeacherProfile, keyof User | 'role'>> &
+    Partial<Omit<AdminProfile, keyof User | 'role'>>
+): Promise<void> => {
   try {
     const docRef = doc(db, 'users', uid);
     await setDoc(docRef, { ...updates, updatedAt: serverTimestamp() }, { merge: true });

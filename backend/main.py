@@ -1172,13 +1172,13 @@ async def upload_class_records(file: UploadFile = File(...)):
 
 Map each column to one of these standard fields (respond as JSON only):
 - name (student full name)
-- studentId (student ID number)
+- lrn (learner reference number)
 - email (email address)
 - engagementScore (engagement percentage)
 - avgQuizScore (average quiz/test score)
 - attendance (attendance percentage)
 
-If a column doesn't match any field, skip it. Respond ONLY with a JSON object mapping original column names to field names. Example: {{"Student Name": "name", "ID": "studentId"}}"""
+If a column doesn't match any field, skip it. Respond ONLY with a JSON object mapping original column names to field names. Example: {{"Student Name": "name", "LRN": "lrn"}}"""
 
         mapping_text = call_hf_chat(
             messages=[{"role": "user", "content": prompt}],

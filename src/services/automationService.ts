@@ -25,7 +25,7 @@ export interface DiagnosticResult {
 export interface AutomationResult {
   success: boolean;
   event: string;
-  studentId?: string;
+  lrn?: string;
   message: string;
   riskClassifications?: Record<string, {
     status: 'At Risk' | 'On Track';
@@ -43,7 +43,7 @@ export interface AutomationResult {
 }
 
 export interface QuizSubmissionPayload {
-  studentId: string;
+  lrn: string;
   quizId: string;
   subject: string;
   score: number;
@@ -54,7 +54,7 @@ export interface QuizSubmissionPayload {
 }
 
 export interface StudentEnrollmentPayload {
-  studentId: string;
+  lrn: string;
   name: string;
   email: string;
   gradeLevel?: string;
@@ -91,14 +91,14 @@ export interface ContentUpdatePayload {
  * The frontend no longer needs to orchestrate these steps.
  */
 export async function triggerDiagnosticCompleted(
-  studentId: string,
+  lrn: string,
   results: DiagnosticResult[],
   gradeLevel: string = 'Grade 11',
   questionBreakdown?: Record<string, { correct: boolean }[]>,
 ): Promise<AutomationResult> {
   // Write to diagnosticResults — Cloud Function triggers from here
-  await setDoc(doc(db, 'diagnosticResults', studentId), {
-    studentId,
+  await setDoc(doc(db, 'diagnosticResults', lrn), {
+    lrn,
     results,
     gradeLevel,
     questionBreakdown: questionBreakdown || null,
@@ -112,8 +112,8 @@ export async function triggerDiagnosticCompleted(
   return {
     success: true,
     event: 'diagnostic_completed',
-    studentId,
-    message: `Diagnostic submitted for ${studentId}. Processing will begin automatically.`,
+    lrn,
+    message: `Diagnostic submitted for ${lrn}. Processing will begin automatically.`,
     remedialQuizzesCreated: 0,
     notifications: ['Your diagnostic results are being processed. Check back shortly!'],
   };
@@ -130,7 +130,7 @@ export async function triggerQuizSubmitted(
 ): Promise<AutomationResult> {
   // Write to quizResults — Cloud Function triggers from here
   await addDoc(collection(db, 'quizResults'), {
-    studentId: payload.studentId,
+    lrn: payload.lrn,
     quizId: payload.quizId,
     subject: payload.subject,
     score: payload.score,
@@ -144,8 +144,8 @@ export async function triggerQuizSubmitted(
   return {
     success: true,
     event: 'quiz_submitted',
-    studentId: payload.studentId,
-    message: `Quiz submitted for ${payload.studentId}. Risk recalculation will run automatically.`,
+    lrn: payload.lrn,
+    message: `Quiz submitted for ${payload.lrn}. Risk recalculation will run automatically.`,
     remedialQuizzesCreated: 0,
     notifications: [`Quiz result recorded for ${payload.subject}.`],
   };
@@ -166,10 +166,10 @@ export async function triggerStudentEnrolled(
 ): Promise<AutomationResult> {
   // The Cloud Function handles everything automatically when the user
   // document is created.  This is a fallback for safety.
-  await initializeUserProgress(payload.studentId);
+  await initializeUserProgress(payload.lrn);
 
   await createNotification(
-    payload.studentId,
+    payload.lrn,
     'reminder',
     'Welcome to MathPulse!',
     'Complete your diagnostic assessment to get started with personalised learning.',
@@ -187,7 +187,7 @@ export async function triggerStudentEnrolled(
   return {
     success: true,
     event: 'student_enrolled',
-    studentId: payload.studentId,
+    lrn: payload.lrn,
     message: `Student ${payload.name} enrolled and initialised`,
     remedialQuizzesCreated: 0,
     notifications: [
