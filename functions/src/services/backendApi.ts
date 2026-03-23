@@ -42,7 +42,7 @@ export interface LearningPathResponse {
 export interface InterventionRequest {
   riskClassifications: Record<string, any>;
   weakTopics: any[];
-  studentId: string;
+  lrn: string;
 }
 
 // ─── Generic caller with retry ────────────────────────────────

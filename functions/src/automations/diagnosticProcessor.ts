@@ -39,7 +39,7 @@ import {
 // ─── Payload Type ─────────────────────────────────────────────
 
 export interface DiagnosticPayload {
-  studentId: string;
+  lrn: string;
   results: SubjectScore[];
   gradeLevel: string;
   questionBreakdown?: Record<string, { correct: boolean }[]>;
@@ -50,10 +50,10 @@ export interface DiagnosticPayload {
 export async function processDiagnosticCompletion(
   payload: DiagnosticPayload,
 ): Promise<void> {
-  const { studentId, results, gradeLevel, questionBreakdown } = payload;
+  const { lrn, results, gradeLevel, questionBreakdown } = payload;
   const db = admin.firestore();
 
-  functions.logger.info("[DIAGNOSTIC] Starting diagnostic processing workflow", { studentId });
+  functions.logger.info("[DIAGNOSTIC] Starting diagnostic processing workflow", { lrn });
 
   // STEP 1: Classify per-subject risk
   const riskClassifications = classifySubjectRisks(results);
@@ -76,7 +76,7 @@ export async function processDiagnosticCompletion(
   functions.logger.info("Overall risk level", { overallRisk });
 
   // Update student profile
-  await db.collection("users").doc(studentId).update({
+  await db.collection("users").doc(lrn).update({
     hasTakenDiagnostic: true,
     subjectBadges: badges,
     riskClassifications,
@@ -95,7 +95,7 @@ export async function processDiagnosticCompletion(
       assignmentCompletion: 0, // New student hasn't completed anything
     });
 
-    await db.collection("users").doc(studentId).update({
+    await db.collection("users").doc(lrn).update({
       mlRiskLevel: riskPrediction.riskLevel,
       mlRiskConfidence: riskPrediction.confidence,
     });
@@ -118,8 +118,8 @@ export async function processDiagnosticCompletion(
         learningStyle: "visual", // Default
       });
 
-      await db.collection("learningPaths").doc(studentId).set({
-        studentId,
+      await db.collection("learningPaths").doc(lrn).set({
+        lrn,
         content: learningPathResponse.learningPath,
         weaknesses: atRiskSubjects,
         generatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -128,7 +128,7 @@ export async function processDiagnosticCompletion(
         source: "diagnostic_automation",
       });
 
-      functions.logger.info("[OK] Learning path generated", { studentId });
+      functions.logger.info("[OK] Learning path generated", { lrn });
     } catch (error: any) {
       functions.logger.error("Learning path generation failed", {
         error: error.message,
@@ -139,7 +139,7 @@ export async function processDiagnosticCompletion(
   // STEP 7: Auto-generate remedial quizzes
   if (atRiskSubjects.length > 0) {
     const quizConfigs = buildRemedialQuizConfigs(
-      studentId,
+      lrn,
       atRiskSubjects,
       overallRisk,
       gradeLevel,
@@ -165,7 +165,7 @@ export async function processDiagnosticCompletion(
   if (overallRisk === "High" || overallRisk === "Medium") {
     await generateAndStoreInterventions(
       db,
-      studentId,
+      lrn,
       riskClassifications,
       weakTopics,
       overallRisk,
@@ -178,20 +178,20 @@ export async function processDiagnosticCompletion(
     : "Diagnostic complete — all subjects On Track!";
 
   await createNotification({
-    userId: studentId,
+    userId: lrn,
     type: NOTIFICATION_TYPES.GRADE,
     title: "Diagnostic Assessment Complete",
     message: notifMessage,
   });
 
-  functions.logger.info("[OK] Diagnostic processing workflow complete", { studentId });
+  functions.logger.info("[OK] Diagnostic processing workflow complete", { lrn });
 }
 
 // ─── Helper: Teacher Interventions ───────────────────────────
 
 async function generateAndStoreInterventions(
   db: admin.firestore.Firestore,
-  studentId: string,
+  lrn: string,
   riskClassifications: Record<string, any>,
   weakTopics: WeakTopic[],
   overallRisk: OverallRisk,
@@ -219,7 +219,7 @@ async function generateAndStoreInterventions(
       "- Consider peer tutoring for collaborative learning";
 
     await db.collection("interventions").add({
-      studentId,
+      lrn,
       content: interventionContent,
       overallRisk,
       riskClassifications,
@@ -230,10 +230,10 @@ async function generateAndStoreInterventions(
     });
 
     // Notify teachers (look up assigned teacher)
-    const studentDoc = await db.collection("users").doc(studentId).get();
+    const studentDoc = await db.collection("users").doc(lrn).get();
     const studentData = studentDoc.data();
     const teacherId = studentData?.teacherId;
-    const studentName = studentData?.displayName || studentData?.name || studentId;
+    const studentName = studentData?.displayName || studentData?.name || lrn;
 
     if (teacherId) {
       await createNotification({
@@ -244,7 +244,7 @@ async function generateAndStoreInterventions(
       });
     }
 
-    functions.logger.info("[OK] Teacher interventions created", { studentId });
+    functions.logger.info("[OK] Teacher interventions created", { lrn });
   } catch (error: any) {
     functions.logger.error("Intervention generation failed", {
       error: error.message,
