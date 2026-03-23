@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
 
@@ -13,7 +13,7 @@ interface SidebarProps {
 
 interface NavSection {
   label?: string;
-  items: { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string }[];
+  items: { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string; displayLabel?: string }[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = 'student', onOpenSettings, onLogout }) => {
@@ -68,8 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
         {
           label: 'Progress',
           items: [
-            { icon: GraduationCap, label: 'Grades' },
-            { icon: Trophy, label: 'Leaderboard' },
+            { icon: GraduationCap, label: 'Grades', displayLabel: 'Assessment' },
           ],
         },
       ];
@@ -112,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
                     }`}
                   >
                     <item.icon size={18} strokeWidth={activeTab === item.label ? 2.5 : 1.5} />
-                    <span className="font-body font-medium text-sm">{item.label}</span>
+                    <span className="font-body font-medium text-sm">{item.displayLabel || item.label}</span>
                     {activeTab === item.label && (
                       <motion.div
                         layoutId="sidebar-active-indicator"

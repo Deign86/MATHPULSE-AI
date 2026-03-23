@@ -1,38 +1,92 @@
-import React from 'react';
-import { Users, UserPlus, Trophy, Flame, ChevronRight, User } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Trophy, ChevronRight, User } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserFriends } from '../services/friendsService';
 
 interface FriendsWidgetProps {
   onViewAll: () => void;
   onAddFriends: () => void;
 }
 
+interface FriendItem {
+  id: string;
+  name: string;
+  avatar?: string;
+  level: number;
+  xp: number;
+  isOnline: boolean;
+  rank: number;
+}
+
 const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }) => {
-  const friends = [
-    { id: '1', name: 'Sarah Chen', avatar: '', level: 18, xp: 2450, isOnline: true, rank: 1 },
-    { id: '2', name: 'Marcus Kim', avatar: '', level: 17, xp: 2380, isOnline: true, rank: 2 },
-    { id: '5', name: 'David Patel', avatar: '', level: 14, xp: 1720, isOnline: false, rank: 4 },
-  ];
+  const { userProfile, isLoggedIn } = useAuth();
+  const [friends, setFriends] = useState<FriendItem[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+
+  useEffect(() => {
+    const loadFriends = async () => {
+      if (!isLoggedIn || !userProfile?.uid) {
+        setFriends([]);
+        return;
+      }
+
+      setLoadingFriends(true);
+      try {
+        const friendData = await getUserFriends(userProfile.uid);
+        const mappedFriends = friendData
+          .map((friend) => ({
+            id: friend.uid,
+            name: friend.name || 'Unknown User',
+            avatar: friend.photo,
+            level: friend.level || 1,
+            xp: friend.totalXP || 0,
+            isOnline: false,
+            rank: 0,
+          }))
+          .sort((a, b) => b.xp - a.xp)
+          .map((friend, index) => ({
+            ...friend,
+            rank: index + 1,
+          }))
+          .slice(0, 3);
+
+        setFriends(mappedFriends);
+      } catch (error) {
+        console.error('Failed to load friends for widget:', error);
+        setFriends([]);
+      } finally {
+        setLoadingFriends(false);
+      }
+    };
+
+    loadFriends();
+  }, [isLoggedIn, userProfile?.uid]);
 
   return (
     <div className="bg-white rounded-xl border border-[#dde3eb] p-3 card-elevated">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-sky-500/10 rounded-lg flex items-center justify-center">
-            <Users size={16} className="text-sky-600" />
+          <div className="w-8 h-8 bg-rose-500/10 rounded-lg flex items-center justify-center">
+            <Trophy size={16} className="text-rose-500" />
           </div>
-          <h3 className="font-display font-bold text-sm text-[#0a1628]">Friends</h3>
+          <h3 className="font-display font-bold text-sm text-[#0a1628]">Leaderboards</h3>
         </div>
-        <button
-          onClick={onAddFriends}
-          className="p-2 hover:bg-sky-50 rounded-lg transition-colors"
-        >
-          <UserPlus size={16} className="text-sky-600" />
-        </button>
+        <Trophy size={15} className="text-rose-500/70" />
       </div>
 
       <div className="space-y-1.5 mb-3">
-        {friends.map((friend, idx) => (
+        {loadingFriends && (
+          <div className="text-xs font-body text-[#5a6578] px-2 py-3">Loading leaderboard...</div>
+        )}
+
+        {!loadingFriends && friends.length === 0 && (
+          <div className="text-xs font-body text-[#5a6578] px-2 py-3">
+            No leaderboard data yet. Complete lessons and earn XP to rank.
+          </div>
+        )}
+
+        {!loadingFriends && friends.map((friend, idx) => (
           <motion.div
             key={friend.id}
             initial={{ opacity: 0, x: -10 }}
@@ -42,7 +96,15 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
           >
             <div className="relative">
               <div className="w-8 h-8 bg-[#dde3eb] rounded-lg flex items-center justify-center">
-                {friend.avatar || <User size={16} className="text-[#5a6578]" />}
+                {friend.avatar ? (
+                  <img
+                    src={friend.avatar}
+                    alt={friend.name}
+                    className="w-8 h-8 rounded-lg object-cover"
+                  />
+                ) : (
+                  <User size={16} className="text-[#5a6578]" />
+                )}
               </div>
               {friend.isOnline && (
                 <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white"></div>
@@ -77,9 +139,9 @@ const FriendsWidget: React.FC<FriendsWidgetProps> = ({ onViewAll, onAddFriends }
 
       <button
         onClick={onViewAll}
-        className="w-full py-2 bg-sky-500/8 hover:bg-sky-500/15 text-sky-600 font-body font-semibold text-xs rounded-lg transition-colors border border-sky-200/40"
+        className="w-full py-2 bg-rose-500/8 hover:bg-rose-500/15 text-rose-600 font-body font-semibold text-xs rounded-lg transition-colors border border-rose-200/40"
       >
-        View All Friends
+        View Leaderboards
       </button>
     </div>
   );

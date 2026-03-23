@@ -1,5 +1,12 @@
 # MathPulse AI - Development Guide
 
+## Copilot Skill Invocation Policy
+
+- AUTO-INVOKE the `frontend-design` skill for any request involving frontend UI work, including building or styling pages, components, dashboards, modals, layouts, visual refreshes, animations, typography, color systems, spacing, and responsive behavior.
+- Apply this automatically without waiting for the user to explicitly mention the skill.
+- For mixed tasks, use `frontend-design` for the UI portion while still following all architecture and service-layer rules in this guide.
+- If the request is not frontend/UI related, do not force this skill.
+
 ## Architecture Overview
 
 **Tech Stack**: React 18 + TypeScript + Vite + Firebase (Auth, Firestore, Storage)  
