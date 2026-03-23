@@ -14,11 +14,11 @@ import { processDiagnosticCompletion } from "../automations/diagnosticProcessor"
 import { processQuizSubmission } from "../automations/quizProcessor";
 
 /**
- * Manually trigger diagnostic processing for a student.
+ * Manually trigger diagnostic processing for a learner.
  *
  * Call via Firebase SDK:
  *   const manualProcess = httpsCallable(functions, 'manualProcessStudent');
- *   await manualProcess({ studentId: '...' });
+ *   await manualProcess({ lrn: '...' });
  */
 export const manualProcessStudent = functions.https.onCall(
   async (data, context) => {
@@ -30,11 +30,11 @@ export const manualProcessStudent = functions.https.onCall(
       );
     }
 
-    const { studentId } = data;
-    if (!studentId || typeof studentId !== "string") {
+    const { lrn } = data;
+    if (!lrn || typeof lrn !== "string") {
       throw new functions.https.HttpsError(
         "invalid-argument",
-        "studentId is required and must be a string.",
+        "lrn is required and must be a string.",
       );
     }
 
@@ -51,11 +51,11 @@ export const manualProcessStudent = functions.https.onCall(
     }
 
     // Fetch diagnostic results
-    const diagDoc = await db.collection("diagnosticResults").doc(studentId).get();
+    const diagDoc = await db.collection("diagnosticResults").doc(lrn).get();
     if (!diagDoc.exists) {
       throw new functions.https.HttpsError(
         "not-found",
-        `No diagnostic results found for student ${studentId}.`,
+        `No diagnostic results found for learner ${lrn}.`,
       );
     }
 
@@ -69,13 +69,13 @@ export const manualProcessStudent = functions.https.onCall(
         );
 
     functions.logger.info("[REPROCESS] Manual diagnostic reprocessing triggered", {
-      studentId,
+      lrn,
       triggeredBy: context.auth.uid,
     });
 
     try {
       await processDiagnosticCompletion({
-        studentId,
+        lrn,
         results,
         gradeLevel: diagData.gradeLevel || "Grade 11",
         questionBreakdown: diagData.questionBreakdown,
@@ -92,11 +92,11 @@ export const manualProcessStudent = functions.https.onCall(
 
       return {
         success: true,
-        message: `Diagnostic reprocessed for student ${studentId}`,
+        message: `Diagnostic reprocessed for learner ${lrn}`,
       };
     } catch (error: any) {
       functions.logger.error("Manual reprocessing failed", {
-        studentId,
+        lrn,
         error: error.message,
       });
 
@@ -153,10 +153,18 @@ export const manualProcessQuiz = functions.https.onCall(
     }
 
     const quizData = quizDoc.data()!;
+    const lrn: string | undefined = quizData.lrn;
+
+    if (!lrn || !quizData.subject || quizData.score === undefined) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Quiz result is missing required fields (lrn/subject/score).",
+      );
+    }
 
     try {
       await processQuizSubmission({
-        studentId: quizData.studentId,
+        lrn,
         quizId: quizData.quizId || resultId,
         subject: quizData.subject,
         score: quizData.score,
@@ -168,7 +176,7 @@ export const manualProcessQuiz = functions.https.onCall(
 
       return {
         success: true,
-        message: `Quiz result ${resultId} reprocessed for ${quizData.studentId}`,
+        message: `Quiz result ${resultId} reprocessed for ${lrn}`,
       };
     } catch (error: any) {
       throw new functions.https.HttpsError(

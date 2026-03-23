@@ -13,17 +13,17 @@ import * as admin from "firebase-admin";
 import { processDiagnosticCompletion } from "../automations/diagnosticProcessor";
 
 export const onDiagnosticComplete = functions.firestore
-  .document("diagnosticResults/{studentId}")
+  .document("diagnosticResults/{lrn}")
   .onCreate(async (snapshot, context) => {
-    const studentId = context.params.studentId;
+    const lrn = context.params.lrn;
     const diagnosticData = snapshot.data();
 
-    functions.logger.info("[DIAGNOSTIC] Diagnostic result created", { studentId });
+    functions.logger.info("[DIAGNOSTIC] Diagnostic result created", { lrn });
 
     try {
       // Idempotency check
       if (diagnosticData.processed) {
-        functions.logger.info("Already processed, skipping", { studentId });
+        functions.logger.info("Already processed, skipping", { lrn });
         return null;
       }
 
@@ -42,7 +42,7 @@ export const onDiagnosticComplete = functions.firestore
 
       // Run the workflow
       await processDiagnosticCompletion({
-        studentId,
+        lrn,
         results,
         gradeLevel: diagnosticData.gradeLevel || "Grade 11",
         questionBreakdown: diagnosticData.questionBreakdown,
@@ -55,10 +55,10 @@ export const onDiagnosticComplete = functions.firestore
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      functions.logger.info("[OK] Diagnostic processing complete", { studentId });
+      functions.logger.info("[OK] Diagnostic processing complete", { lrn });
     } catch (error: any) {
       functions.logger.error("[ERROR] Diagnostic processing failed", {
-        studentId,
+        lrn,
         error: error.message,
         stack: error.stack,
       });

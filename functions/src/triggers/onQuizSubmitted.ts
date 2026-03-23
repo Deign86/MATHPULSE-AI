@@ -15,12 +15,13 @@ export const onQuizSubmitted = functions.firestore
   .onCreate(async (snapshot, context) => {
     const resultId = context.params.resultId;
     const quizData = snapshot.data();
+    const lrn: string | undefined = quizData.lrn;
 
     // Validate required fields
-    if (!quizData.studentId || !quizData.subject || quizData.score === undefined) {
+    if (!lrn || !quizData.subject || quizData.score === undefined) {
       functions.logger.warn("Quiz result missing required fields, skipping", {
         resultId,
-        hasStudentId: !!quizData.studentId,
+        hasLrn: !!quizData.lrn,
         hasSubject: !!quizData.subject,
         hasScore: quizData.score !== undefined,
       });
@@ -29,7 +30,7 @@ export const onQuizSubmitted = functions.firestore
 
     functions.logger.info("[QUIZ] Quiz result created", {
       resultId,
-      studentId: quizData.studentId,
+      lrn,
       subject: quizData.subject,
       score: quizData.score,
     });
@@ -42,7 +43,7 @@ export const onQuizSubmitted = functions.firestore
       });
 
       await processQuizSubmission({
-        studentId: quizData.studentId,
+        lrn,
         quizId: quizData.quizId || resultId,
         subject: quizData.subject,
         score: quizData.score,
@@ -54,7 +55,7 @@ export const onQuizSubmitted = functions.firestore
 
       functions.logger.info("[OK] Quiz submission processed", {
         resultId,
-        studentId: quizData.studentId,
+        lrn,
       });
     } catch (error: any) {
       functions.logger.error("[ERROR] Quiz submission processing failed", {
