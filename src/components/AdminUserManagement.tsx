@@ -52,6 +52,9 @@ const AdminUserManagement: React.FC = () => {
     role: 'Student',
     status: 'Active',
     department: '',
+    grade: 'Grade 11',
+    section: 'Section A',
+    lrn: '',
   });
 
   const loadUsers = useCallback(async () => {
@@ -72,7 +75,7 @@ const AdminUserManagement: React.FC = () => {
 
   const handleOpenAddModal = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', role: 'Student', status: 'Active', department: '' });
+    setFormData({ name: '', email: '', role: 'Student', status: 'Active', department: '', grade: 'Grade 11', section: 'Section A', lrn: '' });
     setIsModalOpen(true);
   };
 
@@ -84,6 +87,9 @@ const AdminUserManagement: React.FC = () => {
       role: user.role,
       status: user.status,
       department: user.department,
+      grade: user.grade || 'Grade 11',
+      section: user.section || 'Section A',
+      lrn: user.lrn || '',
     });
     setIsModalOpen(true);
   };
@@ -106,7 +112,15 @@ const AdminUserManagement: React.FC = () => {
         );
         toast.success('User updated successfully');
       } else {
-        await createAdminUser(formData.email, formData.name, formData.role, formData.department);
+        await createAdminUser(
+          formData.email,
+          formData.name,
+          formData.role,
+          formData.role === 'Student' ? formData.grade : formData.department,
+          formData.role === 'Student'
+            ? { grade: formData.grade, section: formData.section, lrn: formData.lrn }
+            : undefined
+        );
         await addAuditLog(
           'Created New User',
           'User',
@@ -260,7 +274,7 @@ const AdminUserManagement: React.FC = () => {
                 <th className="px-6 py-4 font-semibold">User</th>
                 <th className="px-6 py-4 font-semibold">Role</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Department/Grade</th>
+                <th className="px-6 py-4 font-semibold">Class/Department</th>
                 <th className="px-6 py-4 font-semibold">Last Login</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
@@ -307,7 +321,7 @@ const AdminUserManagement: React.FC = () => {
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-[#5a6578]">{user.department}</td>
+                    <td className="px-6 py-4 text-[#5a6578]">{user.role === 'Student' ? (user.classSection || user.department) : user.department}</td>
                     <td className="px-6 py-4 text-[#5a6578]">{user.lastLogin}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -421,16 +435,51 @@ const AdminUserManagement: React.FC = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="department" className="text-right text-sm font-medium text-[#0a1628]">Dept/Grade</label>
-              <Input
-                id="department"
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                placeholder="e.g. Grade 12 or Mathematics"
-                className="col-span-3"
-              />
-            </div>
+            {formData.role === 'Student' ? (
+              <>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="lrn" className="text-right text-sm font-medium text-[#0a1628]">LRN</label>
+                  <Input
+                    id="lrn"
+                    value={formData.lrn}
+                    onChange={(e) => setFormData({ ...formData, lrn: e.target.value })}
+                    placeholder="12-digit learner reference"
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="grade" className="text-right text-sm font-medium text-[#0a1628]">Grade</label>
+                  <Input
+                    id="grade"
+                    value={formData.grade}
+                    onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                    placeholder="e.g. Grade 11"
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="section" className="text-right text-sm font-medium text-[#0a1628]">Section</label>
+                  <Input
+                    id="section"
+                    value={formData.section}
+                    onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+                    placeholder="e.g. STEM A"
+                    className="col-span-3"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="department" className="text-right text-sm font-medium text-[#0a1628]">Department</label>
+                <Input
+                  id="department"
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  placeholder="e.g. Mathematics"
+                  className="col-span-3"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>

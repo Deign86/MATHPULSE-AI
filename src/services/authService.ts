@@ -17,7 +17,13 @@ import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '..
 /** Role-specific additional data passed during signup / profile creation. */
 interface AdditionalProfileData {
   name?: string;
+  lrn?: string;
   grade?: string;
+  section?: string;
+  classSectionId?: string;
+  adviserTeacherId?: string;
+  adviserTeacherName?: string;
+  schoolYear?: string;
   school?: string;
   major?: string;
   gpa?: string;
@@ -163,6 +169,7 @@ export const createUserProfile = async (
   role: UserRole,
   additionalData: AdditionalProfileData
 ): Promise<User> => {
+  const generatedLrn = `${Date.now()}`.slice(-12).padStart(12, '0');
   const baseProfile = {
     uid: firebaseUser.uid,
     email: firebaseUser.email || '',
@@ -180,8 +187,13 @@ export const createUserProfile = async (
     switch (role) {
       case 'student':
         return {
-          studentId: `STU-${Date.now()}`,
+          lrn: additionalData.lrn || generatedLrn,
           grade: additionalData.grade || 'Grade 11',
+          section: additionalData.section || 'Section A',
+          classSectionId: additionalData.classSectionId || '',
+          adviserTeacherId: additionalData.adviserTeacherId || '',
+          adviserTeacherName: additionalData.adviserTeacherName || '',
+          schoolYear: additionalData.schoolYear || '',
           school: additionalData.school || '',
           enrollmentDate: new Date().toISOString().split('T')[0],
           major: additionalData.major || 'General',

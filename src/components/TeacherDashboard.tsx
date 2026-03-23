@@ -19,6 +19,8 @@ import {
   getStudentsByTeacher,
   subscribeToActivityFeed,
   updateStudentRisk,
+  assignStudentToClassSection,
+  updateManagedStudentSectionAssignment,
   addManagedStudentsBatch,
   deleteManagedStudent,
   type Classroom,
@@ -51,6 +53,7 @@ interface ClassView {
 
 interface StudentView {
   id: string;
+  lrn?: string;
   name: string;
   avatar: string;
   avgScore: number;
@@ -58,6 +61,9 @@ interface StudentView {
   weakestTopic: string;
   classroomId: string;
   className: string;
+  grade: string;
+  section: string;
+  classSectionId?: string;
   lastActive: string;
   struggles: string[];
   engagementScore: number;
@@ -83,15 +89,22 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
   const lastActiveStr = s.lastActive
     ? formatRelativeTime(s.lastActive.toDate())
     : 'Unknown';
+  const [derivedGrade = '', derivedSection = ''] = className.split(' - ');
+  const grade = s.grade || derivedGrade || 'Grade 11';
+  const section = s.section || derivedSection || 'Section A';
   return {
     id: s.id,
+    lrn: s.lrn,
     name: s.name,
     avatar: s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'N/A',
     classroomId: s.classroomId,
-    className,
+    className: [grade, section].filter(Boolean).join(' - ') || className,
+    grade,
+    section,
+    classSectionId: s.classSectionId,
     lastActive: lastActiveStr,
     struggles: s.struggles || [],
     engagementScore: s.engagementScore,
@@ -475,6 +488,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'intervention' && selectedStudent && (
               <InterventionView
                 student={selectedStudent}
+                teacherId={currentUser?.uid || ''}
+                teacherName={teacherName}
+                onStudentUpdated={(updatedStudent) => {
+                  setSelectedStudent(updatedStudent);
+                  setStudents((prev) => prev.map((item) => (item.id === updatedStudent.id ? updatedStudent : item)));
+                }}
                 onBack={handleBackToAnalytics}
               />
             )}
@@ -484,6 +503,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'edit_records' && (
               <EditRecordsView
                 students={students}
+                teacherId={currentUser?.uid || ''}
+                teacherName={teacherName}
                 onBack={() => setActiveView('import')}
               />
             )}
@@ -831,10 +852,21 @@ const AnalyticsView: React.FC<{
 // Intervention View
 const InterventionView: React.FC<{
   student: StudentView;
+  teacherId: string;
+  teacherName: string;
+  onStudentUpdated: (student: StudentView) => void;
   onBack: () => void;
-}> = ({ student, onBack }) => {
+}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack }) => {
   const [learningPath, setLearningPath] = useState<string>('');
   const [pathLoading, setPathLoading] = useState(true);
+  const [gradeDraft, setGradeDraft] = useState(student.grade || 'Grade 11');
+  const [sectionDraft, setSectionDraft] = useState(student.section || 'Section A');
+  const [savingSection, setSavingSection] = useState(false);
+
+  useEffect(() => {
+    setGradeDraft(student.grade || 'Grade 11');
+    setSectionDraft(student.section || 'Section A');
+  }, [student.grade, student.section]);
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -859,6 +891,41 @@ const InterventionView: React.FC<{
     { id: 2, type: 'quiz', title: `${student.weakestTopic} Practice`, questions: 10, icon: ClipboardCheck },
     { id: 3, type: 'assessment', title: 'Final Check', questions: 5, icon: CheckCircle }
   ];
+
+  const handleSaveSectionAssignment = async () => {
+    if (!teacherId) {
+      toast.error('Unable to update section: teacher context missing');
+      return;
+    }
+
+    setSavingSection(true);
+    try {
+      await assignStudentToClassSection(
+        student.id,
+        gradeDraft,
+        sectionDraft,
+        teacherId,
+        new Date().getFullYear().toString(),
+        teacherName
+      );
+      await updateManagedStudentSectionAssignment(student.id, gradeDraft, sectionDraft);
+
+      const updatedStudent: StudentView = {
+        ...student,
+        grade: gradeDraft,
+        section: sectionDraft,
+        className: [gradeDraft, sectionDraft].filter(Boolean).join(' - '),
+      };
+
+      onStudentUpdated(updatedStudent);
+      toast.success('Student section assignment updated');
+    } catch (error) {
+      console.error('Failed to update student section assignment:', error);
+      toast.error('Failed to update section assignment');
+    } finally {
+      setSavingSection(false);
+    }
+  };
 
   return (
     <motion.div
@@ -905,6 +972,31 @@ const InterventionView: React.FC<{
                 <div className="bg-[#edf1f7] rounded-xl p-3">
                   <p className="text-xs text-[#5a6578] mb-1">Weakest Topic</p>
                   <p className="text-sm font-bold text-red-600">{student.weakestTopic}</p>
+                </div>
+              </div>
+
+              <div className="mt-5 p-4 bg-sky-50 border border-sky-200 rounded-xl">
+                <p className="text-xs font-semibold text-sky-700 mb-3 uppercase tracking-wider">Section Assignment</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Input
+                    value={gradeDraft}
+                    onChange={(e) => setGradeDraft(e.target.value)}
+                    placeholder="Grade"
+                    className="h-10"
+                  />
+                  <Input
+                    value={sectionDraft}
+                    onChange={(e) => setSectionDraft(e.target.value)}
+                    placeholder="Section"
+                    className="h-10"
+                  />
+                  <Button
+                    onClick={handleSaveSectionAssignment}
+                    disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
+                    className="bg-sky-600 hover:bg-sky-700 text-white h-10"
+                  >
+                    {savingSection ? <Loader2 size={16} className="animate-spin" /> : 'Save Section'}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1200,16 +1292,48 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
 // Edit Records View
 const EditRecordsView: React.FC<{
   students: StudentView[];
+  teacherId: string;
+  teacherName: string;
   onBack: () => void;
-}> = ({ students: initialStudents, onBack }) => {
+}> = ({ students: initialStudents, teacherId, teacherName, onBack }) => {
   const [students, setStudents] = useState(initialStudents);
   const [saving, setSaving] = useState(false);
+  const [sectionDrafts, setSectionDrafts] = useState<Record<string, { grade: string; section: string }>>(() =>
+    Object.fromEntries(
+      initialStudents.map((student) => [student.id, { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
+    )
+  );
+
+  useEffect(() => {
+    setStudents(initialStudents);
+    setSectionDrafts(
+      Object.fromEntries(
+        initialStudents.map((student) => [student.id, { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
+      )
+    );
+  }, [initialStudents]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       // Update risk levels for all students via AI
       for (const student of students) {
+        const draft = sectionDrafts[student.id];
+        const updatedGrade = draft?.grade || student.grade;
+        const updatedSection = draft?.section || student.section;
+
+        if (teacherId && (updatedGrade !== student.grade || updatedSection !== student.section)) {
+          await assignStudentToClassSection(
+            student.id,
+            updatedGrade,
+            updatedSection,
+            teacherId,
+            new Date().getFullYear().toString(),
+            teacherName
+          );
+          await updateManagedStudentSectionAssignment(student.id, updatedGrade, updatedSection);
+        }
+
         try {
           const prediction = await apiService.predictRisk({
             engagementScore: student.engagementScore,
@@ -1222,6 +1346,20 @@ const EditRecordsView: React.FC<{
           // Continue with other students if one fails
         }
       }
+
+      setStudents((prev) =>
+        prev.map((student) => {
+          const draft = sectionDrafts[student.id];
+          if (!draft) return student;
+          return {
+            ...student,
+            grade: draft.grade,
+            section: draft.section,
+            className: [draft.grade, draft.section].filter(Boolean).join(' - '),
+          };
+        })
+      );
+
       toast.success('Records saved and risk levels updated');
       onBack();
     } catch (err) {
@@ -1278,8 +1416,9 @@ const EditRecordsView: React.FC<{
             <thead className="bg-[#f7f9fc] sticky top-0 z-10">
               <tr>
                 <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Student Name</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">ID</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Class</th>
+                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">LRN</th>
+                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Grade</th>
+                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Section</th>
                 <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Avg Score</th>
                 <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Risk Level</th>
                 <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Weakest Topic</th>
@@ -1295,8 +1434,31 @@ const EditRecordsView: React.FC<{
                       <span className="font-medium text-[#0a1628]">{student.name}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-[#5a6578] font-mono text-sm">{student.id.padStart(6, '0')}</td>
-                  <td className="p-4 text-[#5a6578]">{student.className}</td>
+                  <td className="p-4 text-[#5a6578] font-mono text-sm">{student.lrn || 'Not set'}</td>
+                  <td className="p-4 min-w-[140px]">
+                    <Input
+                      value={sectionDrafts[student.id]?.grade || student.grade}
+                      onChange={(e) =>
+                        setSectionDrafts((prev) => ({
+                          ...prev,
+                          [student.id]: { ...prev[student.id], grade: e.target.value },
+                        }))
+                      }
+                      className="h-9 text-sm"
+                    />
+                  </td>
+                  <td className="p-4 min-w-[140px]">
+                    <Input
+                      value={sectionDrafts[student.id]?.section || student.section}
+                      onChange={(e) =>
+                        setSectionDrafts((prev) => ({
+                          ...prev,
+                          [student.id]: { ...prev[student.id], section: e.target.value },
+                        }))
+                      }
+                      className="h-9 text-sm"
+                    />
+                  </td>
                   <td className="p-4">
                     <span className={`font-bold ${
                       student.avgScore < 60 ? 'text-red-600' : 

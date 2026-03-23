@@ -171,8 +171,9 @@ const App = () => {
     photo: userProfile.photo || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
     role: userProfile.role,
     ...(userRole === 'student' && studentProfile ? {
-      studentId: studentProfile.studentId,
+      lrn: studentProfile.lrn,
       grade: studentProfile.grade,
+      section: studentProfile.section,
       school: studentProfile.school,
       enrollmentDate: studentProfile.enrollmentDate,
       major: studentProfile.major,
