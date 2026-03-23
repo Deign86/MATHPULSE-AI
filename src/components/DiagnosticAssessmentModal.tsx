@@ -9,7 +9,7 @@ interface DiagnosticAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (atRiskSubjectIds: string[]) => void;
-  studentId?: string;
+  lrn?: string;
   gradeLevel?: string;
 }
 
@@ -45,7 +45,7 @@ const questions = [
   }
 ];
 
-const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ isOpen, onClose, onComplete, studentId, gradeLevel = 'Grade 11' }) => {
+const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ isOpen, onClose, onComplete, lrn, gradeLevel = 'Grade 11' }) => {
   const [step, setStep] = useState<'intro' | 'test' | 'results'>('intro');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]); // Store selected indices
@@ -108,8 +108,8 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
     setAtRiskSubjects(riskList);
     setStep('results');
 
-    // Fire automation pipeline if studentId is available
-    if (studentId) {
+    // Fire automation pipeline if LRN is available
+    if (lrn) {
       setAutomationProcessing(true);
       try {
         const diagnosticResults: DiagnosticResult[] = Object.entries(subjectScores).map(
@@ -126,7 +126,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({ i
           questionBreakdown[q.subjectId].push({ correct: finalAnswers[index] === q.correct });
         });
 
-        await triggerDiagnosticCompleted(studentId, diagnosticResults, gradeLevel, questionBreakdown);
+        await triggerDiagnosticCompleted(lrn, diagnosticResults, gradeLevel, questionBreakdown);
         console.log('[OK] Automation: diagnostic pipeline completed');
       } catch (err) {
         console.error('[WARN] Automation: diagnostic pipeline failed:', err);
