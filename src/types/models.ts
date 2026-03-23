@@ -14,7 +14,6 @@ export interface User {
 
 export interface StudentProfile extends User {
   role: 'student';
-  studentId: string;
   lrn?: string;
   grade: string;
   section?: string;
@@ -226,7 +225,7 @@ export interface SystemStats {
 // Automation Types
 export interface AssignedQuiz {
   id: string;
-  studentId: string;
+  lrn: string;
   subject: string;
   quizConfig?: Record<string, unknown>;
   status: 'pending' | 'completed' | 'expired';
@@ -240,7 +239,7 @@ export interface AssignedQuiz {
 
 export interface LearningPathRecord {
   id?: string;
-  studentId: string;
+  lrn: string;
   content: string;
   generatedAt: Date;
   source: 'diagnostic_automation' | 'manual' | 'ai_recommendation';
@@ -248,7 +247,7 @@ export interface LearningPathRecord {
 
 export interface InterventionRecord {
   id?: string;
-  studentId: string;
+  lrn: string;
   content: string;
   source: 'diagnostic_automation' | 'teacher_initiated' | 'ai_recommendation';
   createdAt: Date;

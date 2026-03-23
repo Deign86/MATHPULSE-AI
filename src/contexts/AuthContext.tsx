@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Fire automation for new student enrollment
             if (role === 'student') {
               triggerStudentEnrolled({
-                studentId: user.uid,
+                lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
                 name,
                 email: user.email || '',
                 gradeLevel: '',

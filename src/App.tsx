@@ -24,13 +24,18 @@ import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
-import { signOutUser } from './services/authService';
+import { signOutUser, updateUserProfile } from './services/authService';
 import { updateStreak, awardXP } from './services/gamificationService';
 import { getUserProgress } from './services/progressService';
-import { StudentProfile } from './types/models';
+import { AdminProfile, StudentProfile, TeacherProfile, User } from './types/models';
 import { triggerStudentEnrolled } from './services/automationService';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { Crown, Flame, Zap } from 'lucide-react';
+
+type ProfileSaveData = Partial<User> &
+  Partial<Omit<StudentProfile, keyof User | 'role'>> &
+  Partial<Omit<TeacherProfile, keyof User | 'role'>> &
+  Partial<Omit<AdminProfile, keyof User | 'role'>>;
 
 const App = () => {
   // Get authentication state from context
@@ -56,6 +61,7 @@ const App = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
 
   // Diagnostic State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
@@ -99,6 +105,10 @@ const App = () => {
       });
     }
   }, [isLoggedIn, userRole, userProfile]);
+
+  useEffect(() => {
+    setProfileOverrides({});
+  }, [userProfile?.uid]);
 
   // Trigger diagnostic on first student login
   useEffect(() => {
@@ -150,6 +160,7 @@ const App = () => {
   const handleLogout = async () => {
     try {
       await signOutUser();
+      setProfileOverrides({});
       setActiveTab('Dashboard');
       setShowLogoutConfirm(false);
     } catch (error) {
@@ -157,9 +168,49 @@ const App = () => {
     }
   };
 
-  const handleSaveProfile = (data: { name?: string; email?: string; phone?: string; photo?: string }) => {
-    // TODO: Save to Firebase (update user profile)
-    setShowProfileModal(false);
+  const handleSaveProfile = async (data: ProfileSaveData) => {
+    if (!userProfile) {
+      setShowProfileModal(false);
+      setShowSettingsModal(false);
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    const allowedKeys: Array<keyof ProfileSaveData> = [
+      'name',
+      'email',
+      'phone',
+      'photo',
+      'lrn',
+      'grade',
+      'section',
+      'school',
+      'enrollmentDate',
+      'major',
+      'gpa',
+      'department',
+      'subject',
+      'yearsOfExperience',
+      'qualification',
+      'position',
+    ];
+
+    allowedKeys.forEach((key) => {
+      if (data[key] !== undefined) {
+        updates[key] = data[key];
+      }
+    });
+
+    try {
+      await updateUserProfile(userProfile.uid, updates as ProfileSaveData);
+      setProfileOverrides((prev) => ({ ...prev, ...(updates as ProfileSaveData) }));
+      setShowProfileModal(false);
+      setShowSettingsModal(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast.error('Failed to update profile');
+    }
   };
 
   // Get profile data from userProfile or use defaults
@@ -179,6 +230,7 @@ const App = () => {
       major: studentProfile.major,
       gpa: computedGpa,
     } : {}),
+    ...profileOverrides,
   } : {
     uid: undefined,
     name: 'User',
@@ -506,7 +558,7 @@ const App = () => {
             isOpen={showDiagnosticModal}
             onClose={() => setShowDiagnosticModal(false)}
             onComplete={handleDiagnosticComplete}
-            studentId={userProfile?.uid}
+            lrn={(studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid}
             gradeLevel={(studentProfile as StudentProfile)?.grade}
           />
         </div>

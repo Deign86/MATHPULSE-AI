@@ -338,7 +338,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     // Fire automation: quiz submitted
     if (studentId) {
       triggerQuizSubmitted({
-        studentId,
+        lrn: studentId,
         quizId: quiz.id,
         subject: quiz.subject,
         score: percentage,

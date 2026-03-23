@@ -57,13 +57,13 @@ export async function deleteGeneratedQuiz(quizId: string): Promise<void> {
 
 export async function assignQuizToStudent(
   quizId: string,
-  studentId: string,
+  lrn: string,
   teacherId: string,
 ): Promise<void> {
   // Update quiz status
   await updateDoc(doc(db, 'generatedQuizzes', quizId), {
     status: 'assigned' as GeneratedQuizStatus,
-    'metadata.assignedTo': studentId,
+    'metadata.assignedTo': lrn,
     assignedBy: teacherId,
     assignedAt: serverTimestamp(),
   });
@@ -72,7 +72,7 @@ export async function assignQuizToStudent(
   const assignmentRef = doc(collection(db, 'quizAssignments'));
   await setDoc(assignmentRef, {
     quizId,
-    studentId,
+    lrn,
     teacherId,
     status: 'pending',
     assignedAt: serverTimestamp(),
@@ -82,7 +82,7 @@ export async function assignQuizToStudent(
   // Send notification to student
   const notificationRef = doc(collection(db, 'notifications'));
   await setDoc(notificationRef, {
-    userId: studentId,
+    userId: lrn,
     type: 'quiz_assigned',
     title: 'New Quiz Assigned',
     message: 'Your teacher has assigned you a new quiz. Complete it to earn XP!',
@@ -163,10 +163,10 @@ export function toPlayableQuiz(gen: GeneratedQuiz): PlayableQuiz {
 
 // ─── FETCH PENDING QUIZZES FOR STUDENT ───────────────────────
 
-export async function fetchPendingQuizzesForStudent(studentId: string): Promise<PlayableQuiz[]> {
+export async function fetchPendingQuizzesForStudent(lrn: string): Promise<PlayableQuiz[]> {
   const assignmentsQuery = query(
     collection(db, 'quizAssignments'),
-    where('studentId', '==', studentId),
+    where('lrn', '==', lrn),
     where('status', '==', 'pending'),
     orderBy('assignedAt', 'desc'),
   );
@@ -186,21 +186,21 @@ export async function fetchPendingQuizzesForStudent(studentId: string): Promise<
 // ─── FETCH ADAPTIVE QUIZ ────────────────────────────────────
 
 export async function fetchAdaptiveQuiz(
-  studentId: string,
+  lrn: string,
   subject: string,
 ): Promise<PlayableQuiz | null> {
   try {
     const response = await fetch(`${API_URL}/api/quiz/adaptive-select`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, topicId: subject, numQuestions: 10 }),
+      body: JSON.stringify({ lrn, topicId: subject, numQuestions: 10 }),
     });
 
     if (!response.ok) return null;
     const data = await response.json();
 
     return {
-      id: `adaptive_${studentId}_${Date.now()}`,
+      id: `adaptive_${lrn}_${Date.now()}`,
       title: `Adaptive ${subject} Quiz`,
       subject,
       difficulty: 'Medium',
@@ -222,7 +222,7 @@ export async function fetchAdaptiveQuiz(
 // ─── SAVE QUIZ RESULTS ──────────────────────────────────────
 
 export async function saveQuizResults(
-  studentId: string,
+  lrn: string,
   quizId: string,
   generatedQuizId: string | undefined,
   subject: string,
@@ -237,7 +237,7 @@ export async function saveQuizResults(
 
   await setDoc(submissionRef, {
     submissionId: submissionRef.id,
-    studentId,
+    lrn,
     quizId,
     generatedQuizId: generatedQuizId ?? null,
     subject,
@@ -264,9 +264,10 @@ export async function saveQuizResults(
     const assignmentsQuery = query(
       collection(db, 'quizAssignments'),
       where('quizId', '==', generatedQuizId),
-      where('studentId', '==', studentId),
+      where('lrn', '==', lrn),
     );
     const snap = await getDocs(assignmentsQuery);
+
     for (const d of snap.docs) {
       await updateDoc(d.ref, {
         status: 'completed',
@@ -288,11 +289,11 @@ export async function saveQuizResults(
 
 // ─── GET STUDENT COMPETENCY ─────────────────────────────────
 
-export async function getStudentCompetency(studentId: string) {
+export async function getStudentCompetency(lrn: string) {
   const response = await fetch(`${API_URL}/api/quiz/student-competency`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ studentId }),
+    body: JSON.stringify({ lrn }),
   });
   if (!response.ok) return null;
   return response.json();

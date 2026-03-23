@@ -88,7 +88,7 @@ export interface UploadResponse {
   success: boolean;
   students: {
     name: string;
-    studentId: string;
+    lrn?: string;
     email: string;
     engagementScore: number;
     avgQuizScore: number;
@@ -152,7 +152,7 @@ export interface TopicCompetency {
 }
 
 export interface StudentCompetencyResponse {
-  studentId: string;
+  lrn: string;
   competencies: TopicCompetency[];
   recommendedTopics: string[];
   excludeTopics: string[];
@@ -525,14 +525,14 @@ export const apiService = {
 
   /** Get student competency assessment */
   async getStudentCompetency(
-    studentId: string,
+    lrn: string,
     quizHistory?: { topic: string; score: number; total: number; timeTaken?: number }[],
   ): Promise<StudentCompetencyResponse> {
-    validateRequired('/api/quiz/student-competency', { studentId });
+    validateRequired('/api/quiz/student-competency', { lrn });
 
     return apiFetch<StudentCompetencyResponse>('/api/quiz/student-competency', {
       method: 'POST',
-      body: JSON.stringify({ studentId, quizHistory }),
+      body: JSON.stringify({ lrn, quizHistory }),
     });
   },
 
@@ -559,13 +559,13 @@ export const apiService = {
 
   /** Trigger diagnostic completion automation */
   async automationDiagnosticCompleted(payload: {
-    studentId: string;
+    lrn: string;
     results: { subject: string; score: number }[];
     gradeLevel?: string;
     questionBreakdown?: Record<string, { correct: boolean }[]>;
   }): Promise<unknown> {
     validateRequired('/api/automation/diagnostic-completed', {
-      studentId: payload.studentId,
+      lrn: payload.lrn,
       results: payload.results,
     });
 
@@ -577,7 +577,7 @@ export const apiService = {
 
   /** Trigger quiz submission automation */
   async automationQuizSubmitted(payload: {
-    studentId: string;
+    lrn: string;
     quizId: string;
     subject: string;
     score: number;
@@ -586,7 +586,7 @@ export const apiService = {
     timeSpentSeconds: number;
   }): Promise<unknown> {
     validateRequired('/api/automation/quiz-submitted', {
-      studentId: payload.studentId,
+      lrn: payload.lrn,
       quizId: payload.quizId,
       subject: payload.subject,
     });
@@ -599,14 +599,14 @@ export const apiService = {
 
   /** Trigger student enrollment automation */
   async automationStudentEnrolled(payload: {
-    studentId: string;
+    lrn: string;
     name: string;
     email: string;
     gradeLevel?: string;
     teacherId?: string;
   }): Promise<unknown> {
     validateRequired('/api/automation/student-enrolled', {
-      studentId: payload.studentId,
+      lrn: payload.lrn,
       name: payload.name,
       email: payload.email,
     });

@@ -10,13 +10,18 @@ interface ProfileData {
   email?: string;
   phone?: string;
   photo?: string;
+  role?: 'student' | 'teacher' | 'admin';
+  lrn?: string;
+  grade?: string;
+  section?: string;
+  school?: string;
 }
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   profileData?: ProfileData;
-  onSave?: (data: ProfileData) => void;
+  onSave?: (data: ProfileData) => void | Promise<void>;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileData, onSave }) => {
@@ -27,6 +32,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoPlayLessons, setAutoPlayLessons] = useState(false);
   const [showHints, setShowHints] = useState(true);
+  const [accountData, setAccountData] = useState<ProfileData>({});
 
   // Escape key handler
   useEffect(() => {
@@ -39,6 +45,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setAccountData({
+      name: profileData?.name || '',
+      email: profileData?.email || '',
+      phone: profileData?.phone || '',
+      photo: profileData?.photo || '',
+      role: profileData?.role,
+      lrn: profileData?.lrn || '',
+      grade: profileData?.grade || '',
+      section: profileData?.section || '',
+      school: profileData?.school || '',
+    });
+  }, [isOpen, profileData]);
+
+  const handleSaveChanges = async () => {
+    if (onSave && activeSection === 'account') {
+      await onSave(accountData);
+      return;
+    }
+    onClose();
+  };
 
   const sections = [
     { id: 'account', label: 'Account', icon: User },
@@ -119,12 +148,77 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
               {activeSection === 'account' && (
                 <div className="space-y-6">
                   <div>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Full Name</label>
+                    <Input
+                      type="text"
+                      value={accountData.name || ''}
+                      onChange={(e) => setAccountData((prev) => ({ ...prev, name: e.target.value }))}
+                      className="max-w-md"
+                    />
+                  </div>
+                  <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Email Address</label>
-                    <Input type="email" defaultValue="alex.johnson@student.edu" className="max-w-md" />
+                    <Input
+                      type="email"
+                      value={accountData.email || ''}
+                      onChange={(e) => setAccountData((prev) => ({ ...prev, email: e.target.value }))}
+                      className="max-w-md"
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Phone Number</label>
-                    <Input type="tel" defaultValue="+1 (555) 123-4567" className="max-w-md" />
+                    <Input
+                      type="tel"
+                      value={accountData.phone || ''}
+                      onChange={(e) => setAccountData((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="max-w-md"
+                    />
+                  </div>
+                  {accountData.role === 'student' && (
+                    <>
+                      <div>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">LRN</label>
+                        <Input
+                          type="text"
+                          value={accountData.lrn || ''}
+                          onChange={(e) => setAccountData((prev) => ({ ...prev, lrn: e.target.value }))}
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Grade Level</label>
+                        <Input
+                          type="text"
+                          value={accountData.grade || ''}
+                          onChange={(e) => setAccountData((prev) => ({ ...prev, grade: e.target.value }))}
+                          className="max-w-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Section</label>
+                        <Input
+                          type="text"
+                          value={accountData.section || ''}
+                          onChange={(e) => setAccountData((prev) => ({ ...prev, section: e.target.value }))}
+                          className="max-w-md"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {accountData.role === 'student' && (
+                    <div>
+                      <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">School</label>
+                      <Input
+                        type="text"
+                        value={accountData.school || ''}
+                        onChange={(e) => setAccountData((prev) => ({ ...prev, school: e.target.value }))}
+                        className="max-w-md"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Role</label>
+                    <Input type="text" value={accountData.role || ''} className="max-w-md bg-slate-100" disabled />
                   </div>
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Change Password</label>
@@ -389,7 +483,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
                 <Button variant="outline" onClick={onClose} className="rounded-lg border-[#dde3eb]">
                   Cancel
                 </Button>
-                <Button onClick={onClose} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white">
+                <Button onClick={handleSaveChanges} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white">
                   Save Changes
                 </Button>
               </div>
