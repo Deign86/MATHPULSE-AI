@@ -1,6 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, LogOut, Users, BarChart3, Shield, Trophy } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy } from 'lucide-react';
 import { motion } from 'motion/react';
+import LogoutActionButton from './LogoutActionButton';
 
 interface SidebarProps {
   activeTab: string;
@@ -137,13 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
         </button>
 
         {onLogout && (
-          <button
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition-colors"
-            onClick={onLogout}
-          >
-            <LogOut size={18} strokeWidth={1.5} />
-            <span className="font-body font-medium text-sm">Log Out</span>
-          </button>
+          <LogoutActionButton onClick={onLogout} />
         )}
       </div>
     </div>

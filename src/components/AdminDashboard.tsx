@@ -145,13 +145,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </button>
             <button 
               onClick={onOpenProfile}
-              className="flex items-center gap-2.5 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
+              className="flex items-center gap-2.5 w-[152px] h-11 shrink-0 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
             >
               <div className="w-8 h-8 bg-gradient-to-br from-sky-600 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Shield size={16} className="text-white" />
               </div>
-              <div className="hidden lg:block">
-                <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors">Admin</p>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors truncate">Admin</p>
               </div>
             </button>
 
