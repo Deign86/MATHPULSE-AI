@@ -33,6 +33,7 @@ import { getUserProgress } from './services/progressService';
 import { StudentProfile } from './types/models';
 import { triggerStudentEnrolled } from './services/automationService';
 import { Toaster } from 'sonner';
+import { Crown, Flame, Zap } from 'lucide-react';
 
 const App = () => {
   // Get authentication state from context
@@ -324,7 +325,7 @@ const App = () => {
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group"
                   title="View Rewards & Progress"
                 >
-                  <span className="text-rose-500 text-xs">👑</span>
+                  <Crown className="h-3.5 w-3.5 text-rose-500" aria-hidden="true" />
                   <span className="text-xs font-display font-bold text-rose-700">Lv {userLevel}</span>
                 </button>
                 <button
@@ -332,14 +333,14 @@ const App = () => {
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200/60 rounded-lg transition-colors cursor-pointer"
                   title={`${currentXP}/${xpToNextLevel} XP to next level`}
                 >
-                  <span className="text-sky-500 text-xs">⚡</span>
+                  <Zap className="h-3.5 w-3.5 text-sky-500" aria-hidden="true" />
                   <span className="text-xs font-display font-bold text-sky-700">{currentXP} XP</span>
                   <div className="w-12 h-1.5 bg-sky-100 rounded-full overflow-hidden">
                     <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
-                  <span className="text-orange-500 text-xs">🔥</span>
+                  <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
                   <span className="text-xs font-display font-bold text-orange-700">{streak} day{streak !== 1 ? 's' : ''}</span>
                 </div>
               </div>
