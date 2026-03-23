@@ -23,6 +23,10 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
   scrollContainerRef
 }) => {
   const [scrollY, setScrollY] = useState(0);
+  const firstName = userName
+    .trim()
+    .split(/\s+/)
+    .find((part) => /\p{L}/u.test(part)) || userName.trim() || 'User';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -67,18 +71,18 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
         
         <button 
           onClick={onOpenProfile}
-          className="flex items-center gap-3 bg-white/60 hover:bg-white p-1.5 pr-4 rounded-lg cursor-pointer transition-all group border border-[#dde3eb] card-elevated"
+          className="flex items-center gap-3 w-[168px] h-11 shrink-0 bg-white/60 hover:bg-white p-1.5 pr-4 rounded-lg cursor-pointer transition-all group border border-[#dde3eb] card-elevated"
         >
           <img 
             src={userAvatar}
             alt={userName}
             className="w-9 h-9 rounded-lg object-cover ring-2 ring-sky-500/10"
           />
-          <div className="text-left">
-            <p className="text-sm font-body font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors">
-              {userName}
+          <div className="text-left min-w-0 flex-1">
+            <p className="text-sm font-body font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors truncate">
+              {firstName}
             </p>
-            <p className="text-xs text-[#5a6578] mt-0.5 capitalize font-body">{userRole}</p>
+            <p className="text-xs text-[#5a6578] mt-0.5 capitalize font-body truncate">{userRole}</p>
           </div>
         </button>
       </div>
