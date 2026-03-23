@@ -1,135 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Quiz } from './QuizExperience';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserProgress } from '../services/progressService';
+import { UserProgress } from '../types/models';
+import { subjects } from '../data/subjects';
 
 interface PracticeCenterProps {
   onStartQuiz?: (quiz: Quiz) => void;
 }
 
 const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
+  const { userProfile } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'practice' | 'challenge' | 'mastery'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [progress, setProgress] = useState<UserProgress | null>(null);
 
-  const quizzes: Quiz[] = [
-    // Practice Quizzes
-    {
-      id: 'p1',
-      title: 'Functions Fundamentals Practice',
-      subject: 'Pre-Calculus',
-      difficulty: 'Easy',
-      questions: 10,
-      duration: '15 min',
-      xpReward: 50,
-      type: 'practice',
-      completed: true,
-      bestScore: 90,
-      locked: false
-    },
-    {
-      id: 'p2',
-      title: 'Polynomial Operations Review',
-      subject: 'General Mathematics',
-      difficulty: 'Medium',
-      questions: 15,
-      duration: '20 min',
-      xpReward: 75,
-      type: 'practice',
-      completed: false,
-      locked: false
-    },
-    {
-      id: 'p3',
-      title: 'Probability Basics Practice',
-      subject: 'Statistics and Probability',
-      difficulty: 'Easy',
-      questions: 12,
-      duration: '18 min',
-      xpReward: 60,
-      type: 'practice',
-      completed: true,
-      bestScore: 85,
-      locked: false
-    },
-    {
-      id: 'p4',
-      title: 'Derivatives Practice Set',
-      subject: 'Basic Calculus',
-      difficulty: 'Hard',
-      questions: 20,
-      duration: '30 min',
-      xpReward: 100,
-      type: 'practice',
-      completed: false,
-      locked: false
-    },
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    getUserProgress(userProfile.uid).then(setProgress).catch(console.error);
+  }, [userProfile?.uid]);
 
-    // Challenge Mode
-    {
-      id: 'c1',
-      title: 'Speed Math Challenge',
-      subject: 'General Mathematics',
-      difficulty: 'Medium',
-      questions: 20,
-      duration: '10 min',
-      xpReward: 150,
-      type: 'challenge',
-      completed: false,
-      locked: false
-    },
-    {
-      id: 'c2',
-      title: 'Trigonometry Blitz',
-      subject: 'Pre-Calculus',
-      difficulty: 'Hard',
-      questions: 15,
-      duration: '12 min',
-      xpReward: 200,
-      type: 'challenge',
-      completed: true,
-      bestScore: 95,
-      locked: false
-    },
-    {
-      id: 'c3',
-      title: 'Limits & Continuity Sprint',
-      subject: 'Basic Calculus',
-      difficulty: 'Hard',
-      questions: 18,
-      duration: '15 min',
-      xpReward: 250,
-      type: 'challenge',
-      completed: false,
-      locked: true
-    },
+  // Derive stats from real Firebase data
+  const totalQuizzesCompleted = progress?.totalQuizzesCompleted || 0;
+  const totalXPEarned = (userProfile as any)?.totalXP || 0;
+  const avgScore = progress?.averageScore ? Math.round(progress.averageScore) : 0;
 
-    // Mastery Tests
-    {
-      id: 'm1',
-      title: 'Pre-Calculus Mastery Exam',
-      subject: 'Pre-Calculus',
-      difficulty: 'Hard',
-      questions: 50,
-      duration: '90 min',
-      xpReward: 500,
-      type: 'mastery',
-      completed: false,
-      locked: false
-    },
-    {
-      id: 'm2',
-      title: 'Statistics & Probability Final',
-      subject: 'Statistics and Probability',
-      difficulty: 'Hard',
-      questions: 45,
-      duration: '75 min',
-      xpReward: 450,
-      type: 'mastery',
-      completed: false,
-      locked: true
+  // Build quizzes from subjects data + merge with progress
+  const completedQuizIds = new Set(
+    progress?.quizAttempts?.map(a => a.quizId) || []
+  );
+  const bestScores: Record<string, number> = {};
+  if (progress?.quizAttempts) {
+    for (const attempt of progress.quizAttempts) {
+      if (!bestScores[attempt.quizId] || attempt.score > bestScores[attempt.quizId]) {
+        bestScores[attempt.quizId] = attempt.score;
+      }
     }
-  ];
+  }
+
+  const quizzes: Quiz[] = subjects.flatMap((subject) =>
+    subject.modules.flatMap((mod) =>
+      mod.quizzes.map((q) => ({
+        id: q.id,
+        title: q.title,
+        subject: subject.title,
+        difficulty: (q.type === 'module' ? 'Medium' : 'Easy') as 'Easy' | 'Medium' | 'Hard',
+        questions: q.questions,
+        duration: q.duration,
+        xpReward: q.questions * 5,
+        type: (q.type === 'module' ? 'challenge' : 'practice') as Quiz['type'],
+        completed: completedQuizIds.has(q.id),
+        bestScore: bestScores[q.id],
+        locked: q.locked,
+      }))
+    )
+  );
 
   const filteredQuizzes = quizzes.filter(quiz => {
     const typeMatch = selectedFilter === 'all' || quiz.type === selectedFilter;
@@ -201,7 +129,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <Award size={24} />
             </div>
-            <span className="text-3xl font-bold">12</span>
+            <span className="text-3xl font-bold">{totalQuizzesCompleted}</span>
           </div>
           <p className="text-sm font-medium text-sky-100">Quizzes Completed</p>
         </motion.div>
@@ -214,7 +142,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <Zap size={24} />
             </div>
-            <span className="text-3xl font-bold">850</span>
+            <span className="text-3xl font-bold">{totalXPEarned.toLocaleString()}</span>
           </div>
           <p className="text-sm font-medium text-cyan-100">Total XP Earned</p>
         </motion.div>
@@ -227,7 +155,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <Target size={24} />
             </div>
-            <span className="text-3xl font-bold">87%</span>
+            <span className="text-3xl font-bold">{avgScore}%</span>
           </div>
           <p className="text-sm font-medium text-sky-100">Average Score</p>
         </motion.div>
