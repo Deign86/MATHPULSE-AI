@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
-import { getUserProfile, createUserProfile } from '../services/authService';
+import { getUserProfile, createUserProfile, consumePendingAuthRole } from '../services/authService';
 import { triggerStudentEnrolled } from '../services/automationService';
 
 interface AuthContextType {
@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // If profile doesn't exist, auto-create it
         if (!profile && user.email) {
           console.log('[WARN] AuthContext: Profile missing, auto-creating...');
-          const role: UserRole = 'student';
+          const role: UserRole = consumePendingAuthRole() || 'student';
           const name = user.displayName || 'User';
           
           try {
