@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
+import LogoutActionButton from './LogoutActionButton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -356,36 +357,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         {/* User Section */}
         <div className="p-4 border-t border-slate-200">
           {!sidebarCollapsed ? (
-            <div className="space-y-2">
-              <button
-                onClick={onOpenProfile}
-                className="w-full flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl transition-all group"
-              >
-                <img
-                  src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
-                  alt="Teacher"
-                  className="w-10 h-10 rounded-lg object-cover"
-                />
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-bold text-[#0a1628]">{teacherName}</p>
-                  <p className="text-xs text-slate-500">Teacher</p>
-                </div>
-              </button>
-              <Button
-                onClick={() => setShowLogoutConfirm(true)}
-                variant="outline"
-                className="w-full border-slate-300 text-slate-500 hover:border-red-500 hover:text-red-500 font-bold text-sm"
-              >
-                Logout
-              </Button>
+            <div>
+              <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} />
             </div>
           ) : (
-            <button
+            <LogoutActionButton
               onClick={() => setShowLogoutConfirm(true)}
-              className="w-full p-3 hover:bg-red-50 rounded-xl transition-all"
-            >
-              <X size={20} className="text-red-500 mx-auto" />
-            </button>
+              collapsed
+              className="py-3"
+            />
           )}
         </div>
       </motion.aside>
@@ -446,6 +426,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               </button>
               <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
                 <Calendar size={18} />
+              </button>
+              <button
+                onClick={onOpenProfile}
+                className="flex items-center gap-2.5 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group max-w-[220px]"
+              >
+                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-sky-200/70 bg-white flex items-center justify-center">
+                  <img
+                    src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
+                    alt={teacherName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="hidden md:block min-w-0 text-left">
+                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors truncate">{teacherName}</p>
+                  <p className="text-xs text-[#5a6578] mt-0.5 leading-none">Teacher</p>
+                </div>
               </button>
             </div>
           </div>

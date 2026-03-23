@@ -128,18 +128,18 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   <Button
                     onClick={onClose}
                     variant="outline"
-                    className="flex-1 px-6 py-3 rounded-xl border-[#dde3eb] hover:border-[#d1cec6] hover:bg-[#edf1f7] font-bold"
+                    size="lg"
+                    className="flex-1 h-12 rounded-xl border-[#dde3eb] hover:border-[#d1cec6] hover:bg-[#edf1f7] font-bold"
                   >
                     {cancelText}
                   </Button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <Button
                     onClick={handleConfirm}
-                    className={`flex-1 px-6 py-3 rounded-xl font-bold ${colors.buttonBg} ${colors.buttonText} transition-colors shadow-lg`}
+                    size="lg"
+                    className={`flex-1 h-12 rounded-xl font-bold ${colors.buttonBg} ${colors.buttonText} transition-colors shadow-lg`}
                   >
                     {confirmText}
-                  </motion.button>
+                  </Button>
                 </div>
               </div>
             </motion.div>

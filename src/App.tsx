@@ -188,6 +188,11 @@ const App = () => {
     role: userRole,
   };
 
+  const firstName = profileData.name
+    .trim()
+    .split(/\s+/)
+    .find((part) => /\p{L}/u.test(part)) || profileData.name.trim() || 'User';
+
   // Show loading state
   if (loading) {
     return (
@@ -357,7 +362,7 @@ const App = () => {
               
               <button 
                 onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-2.5 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
+                className="flex items-center gap-2.5 w-[152px] h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
                 aria-label={`Profile: ${profileData.name}`}
               >
                 <img 
@@ -365,9 +370,9 @@ const App = () => {
                   alt={profileData.name}
                   className="w-8 h-8 rounded-lg object-cover"
                 />
-                <div className="text-left hidden lg:block">
-                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors font-body">
-                    {profileData.name.split(' ')[0]}
+                <div className="text-left min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors font-body truncate">
+                    {firstName}
                   </p>
                 </div>
               </button>
@@ -388,7 +393,7 @@ const App = () => {
                   <div className="space-y-3 pb-3">
                     {/* Row 1: Hero Banner — full width */}
                     <HeroBanner 
-                      userName={profileData.name.split(' ')[0]} 
+                      userName={firstName} 
                       userLevel={userLevel}
                       onContinueLearning={() => setActiveTab('Modules')} 
                     />
