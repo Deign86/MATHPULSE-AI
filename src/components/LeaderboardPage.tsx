@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, UserPlus, Swords, Eye, Search, Loader2, User } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, Eye, Search, Loader2, User } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import StudentProfileModal from './StudentProfileModal';
-import AddFriendsModal from './AddFriendsModal';
-import CompareStatsModal from './CompareStatsModal';
 import { useAuth } from '../contexts/AuthContext';
 import { getLeaderboard } from '../services/gamificationService';
 import { StudentProfile } from '../types/models';
@@ -21,7 +19,6 @@ interface LeaderboardStudent {
   rank: {
     global: number;
     section: number;
-    friends: number;
     change: number;
   };
   stats: {
@@ -30,19 +27,16 @@ interface LeaderboardStudent {
     modulesCompleted: number;
     studyHours: number;
   };
-  isFriend: boolean;
   isOnline: boolean;
   isYou?: boolean;
 }
 
 const LeaderboardPage = () => {
-  const { currentUser, userProfile, userRole } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const studentProfile = userProfile as StudentProfile;
-  const [activeView, setActiveView] = useState<'school' | 'section' | 'friends' | 'subject'>('section');
+  const [activeView, setActiveView] = useState<'school' | 'section'>('section');
   const [timeFilter, setTimeFilter] = useState<'all' | 'month' | 'week' | 'today'>('week');
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardStudent | null>(null);
-  const [showAddFriends, setShowAddFriends] = useState(false);
-  const [showCompare, setShowCompare] = useState<LeaderboardStudent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [students, setStudents] = useState<LeaderboardStudent[]>([]);
@@ -68,7 +62,6 @@ const LeaderboardPage = () => {
           rank: {
             global: entry.rank,
             section: entry.rank,
-            friends: entry.rank,
             change: 0,
           },
           stats: {
@@ -77,7 +70,6 @@ const LeaderboardPage = () => {
             modulesCompleted: 0,
             studyHours: 0,
           },
-          isFriend: studentProfile?.friends?.includes(entry.userId) || false,
           isOnline: false,
           isYou: entry.userId === currentUser.uid,
         }));
@@ -98,17 +90,14 @@ const LeaderboardPage = () => {
     switch(activeView) {
       case 'school': return you.rank.global;
       case 'section': return you.rank.section;
-      case 'friends': return you.rank.friends;
       default: return you.rank.section;
     }
   };
 
   const getFilteredStudents = () => {
     let filtered = students;
-    
-    if (activeView === 'friends') {
-      filtered = filtered.filter(s => s.isFriend || s.isYou);
-    } else if (activeView === 'section') {
+
+    if (activeView === 'section') {
       // Filter to same grade/section as the current student
       const mySection = studentProfile?.grade || '';
       if (mySection) {
@@ -123,7 +112,7 @@ const LeaderboardPage = () => {
     }
 
     return filtered.sort((a, b) => {
-      const rankKey = activeView === 'friends' ? 'friends' : activeView === 'section' ? 'section' : 'global';
+      const rankKey = activeView === 'section' ? 'section' : 'global';
       return (a.rank[rankKey] || 999) - (b.rank[rankKey] || 999);
     });
   };
@@ -158,15 +147,8 @@ const LeaderboardPage = () => {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-display font-bold mb-1 flex items-center gap-3 text-[#0a1628]"><Trophy size={24} className="text-rose-500" /> Leaderboard</h1>
-            <p className="text-slate-500 font-body text-sm">Compete with friends and classmates</p>
+            <p className="text-slate-500 font-body text-sm">Track your standing across section and school</p>
           </div>
-          <Button 
-            onClick={() => setShowAddFriends(true)}
-            className="bg-sky-600 hover:bg-sky-700 text-white rounded-lg border border-sky-700 font-body font-semibold text-sm"
-          >
-            <UserPlus size={16} className="mr-2" />
-            Add Friends
-          </Button>
         </div>
 
         <div className="grid grid-cols-4 gap-3">
@@ -177,8 +159,8 @@ const LeaderboardPage = () => {
           </div>
           <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
             <Users size={18} className="text-sky-500 mb-2" />
-            <p className="text-2xl font-display font-bold text-[#0a1628]">{studentProfile?.friends?.length || 0}</p>
-            <p className="text-xs text-slate-500 font-body">Friends</p>
+            <p className="text-2xl font-display font-bold text-[#0a1628]">{filteredStudents.length}</p>
+            <p className="text-xs text-slate-500 font-body">Participants</p>
           </div>
           <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
             <Flame size={18} className="text-orange-500 mb-2" />
@@ -199,12 +181,9 @@ const LeaderboardPage = () => {
           {[
             { id: 'section', label: 'My Section', icon: Users },
             { id: 'school', label: 'School', icon: Trophy },
-            { id: 'friends', label: 'Friends', icon: Flame },
           ].map((view) => {
             const Icon = view.icon;
-            const count = view.id === 'friends' 
-              ? filteredStudents.filter(s => s.isFriend).length 
-              : view.id === 'section'
+            const count = view.id === 'section'
               ? filteredStudents.filter(s => studentProfile?.grade && s.section === studentProfile.grade).length
               : filteredStudents.length;
             
@@ -358,13 +337,12 @@ const LeaderboardPage = () => {
       <div className="bg-white rounded-xl border border-[#dde3eb] card-elevated overflow-hidden">
         <div className="p-6">
           <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4">
-            {activeView === 'section' ? 'Section Rankings' : activeView === 'friends' ? 'Friends Rankings' : 'School Rankings'}
+            {activeView === 'section' ? 'Section Rankings' : 'School Rankings'}
           </h3>
 
           <div className="space-y-2">
             {restOfList.map((student, index) => {
-              const actualRank = showPodium ? index + 4 : index + 1;
-              const rankKey = activeView === 'friends' ? 'friends' : activeView === 'section' ? 'section' : 'global';
+              const rankKey = activeView === 'section' ? 'section' : 'global';
               const displayRank = student.rank[rankKey];
 
               return (
@@ -431,24 +409,6 @@ const LeaderboardPage = () => {
                           <Eye size={14} className="mr-1" />
                           View
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg font-body"
-                          onClick={() => setShowCompare(student)}
-                        >
-                          <Swords size={14} className="mr-1" />
-                          Compare
-                        </Button>
-                        {!student.isFriend && (
-                          <Button
-                            size="sm"
-                            className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
-                          >
-                            <UserPlus size={14} className="mr-1" />
-                            Add
-                          </Button>
-                        )}
                       </>
                     )}
                   </div>
@@ -463,16 +423,6 @@ const LeaderboardPage = () => {
       <StudentProfileModal
         student={selectedStudent}
         onClose={() => setSelectedStudent(null)}
-      />
-
-      <AddFriendsModal
-        isOpen={showAddFriends}
-        onClose={() => setShowAddFriends(false)}
-      />
-
-      <CompareStatsModal
-        student={showCompare}
-        onClose={() => setShowCompare(null)}
       />
     </div>
   );

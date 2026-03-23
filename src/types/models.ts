@@ -24,7 +24,6 @@ export interface StudentProfile extends User {
   currentXP: number;
   totalXP: number;
   streak: number;
-  friends: string[]; // Array of user IDs
   atRiskSubjects: string[];
   hasTakenDiagnostic: boolean;
   // Automation fields
@@ -147,30 +146,11 @@ export interface LeaderboardEntry {
   monthlyXP: number;
 }
 
-// Friends Types
-export interface FriendRequest {
-  id: string;
-  fromUserId: string;
-  fromUserName: string;
-  fromUserPhoto?: string;
-  toUserId: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  createdAt: Date;
-  respondedAt?: Date;
-}
-
-export interface Friendship {
-  id: string;
-  user1Id: string;
-  user2Id: string;
-  createdAt: Date;
-}
-
 // Notification Types
 export interface Notification {
   id: string;
   userId: string;
-  type: 'friend_request' | 'achievement' | 'message' | 'grade' | 'reminder' | 'risk_alert' | 'automation';
+  type: 'achievement' | 'message' | 'grade' | 'reminder' | 'risk_alert' | 'automation';
   title: string;
   message: string;
   read: boolean;

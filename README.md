@@ -33,13 +33,12 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
 - **XP Notifications** — Real-time animated XP gain notifications
 - **Rewards & Achievements** — Track and showcase unlocked achievements with XP rewards
-- **Leaderboard** — Compete with peers via global and friend-based rankings
-- **Friends & Social** — Add friends, compare stats side-by-side, and learn together
+- **Leaderboard** — Compete with peers via global and section-based rankings
 - **Grades Page** — View academic performance and grade breakdowns
 - **Tasks Board** — Manage assigned tasks with priority levels and status tracking (todo/in-progress/completed)
 - **Module & Subject Views** — Detailed module breakdowns and subject overviews with progress indicators
 - **Profile Customization** — Edit profile with avatar selection
-- **Notification Center** — Receive and manage in-app notifications (friend requests, achievements, reminders)
+- **Notification Center** — Receive and manage in-app notifications (achievements, reminders, alerts)
 - **Search** — Quick search across platform content
 - **Settings** — Personalize app preferences
 
@@ -177,8 +176,8 @@ MATHPULSE-AI/
 │   ├── index.css                # Global CSS imports
 │   ├── components/              # React components (40+ files)
 │   │   ├── *Page.tsx            # Full-page views (Modules, AI Chat, Grades, Leaderboard)
-│   │   ├── *Modal.tsx           # Dialog overlays (Profile, Settings, Rewards, Friends, Diagnostic)
-│   │   ├── *Widget.tsx          # Small reusable blocks (QuickStats, Friends)
+│   │   ├── *Modal.tsx           # Dialog overlays (Profile, Settings, Rewards, Diagnostic)
+│   │   ├── *Widget.tsx          # Small reusable blocks (QuickStats)
 │   │   ├── *Dashboard.tsx       # Role-based dashboards (Teacher, Admin)
 │   │   ├── LoginPage.tsx        # Firebase authentication (email/password + Google)
 │   │   ├── InteractiveLesson.tsx # Lesson renderer
@@ -198,7 +197,6 @@ MATHPULSE-AI/
 │   │   ├── authService.ts       # Auth operations (sign in/up/out, profiles)
 │   │   ├── progressService.ts   # Learning progress tracking
 │   │   ├── gamificationService.ts # XP, levels, streaks, achievements
-│   │   ├── friendsService.ts    # Social features (requests, search)
 │   │   ├── chatService.ts       # AI chat session management
 │   │   ├── notificationService.ts # User notifications
 │   │   ├── taskService.ts       # Task CRUD operations
@@ -238,9 +236,7 @@ users/              → User profiles (role-discriminated: student | teacher | a
 progress/           → Learning progress per user (lessons, quizzes, modules)
 xpActivities/       → XP earning history (lesson_complete, quiz_complete, streak_bonus)
 achievements/       → User achievements (12+ types with conditions)
-friendRequests/     → Pending friend requests (pending/accepted/rejected)
-friendships/        → Active friendships (bidirectional)
-notifications/      → User notifications (friend_request, achievement, grade, reminder)
+notifications/      → User notifications (achievement, message, grade, reminder, alerts)
 tasks/              → Student tasks (priority levels, kanban statuses)
 chatSessions/       → AI chat sessions (per user)
 chatMessages/       → Chat message history (user/assistant/system roles)
@@ -302,7 +298,7 @@ The `/api/verify-solution` endpoint runs all three methods and returns an aggreg
 | **Leveling** | Exponential curve: `XP_needed = 100 × 1.5^(level - 1)` |
 | **Streaks** | Daily login tracking with bonus XP (5 XP × streak days, max 50) |
 | **Achievements** | Unlocked via specific user actions and milestones |
-| **Leaderboard** | Global and friend-based rankings |
+| **Leaderboard** | Global and section-based rankings |
 
 ## 🐳 Docker
 
