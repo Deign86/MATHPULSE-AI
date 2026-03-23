@@ -31,10 +31,12 @@ interface AdditionalProfileData {
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
+const LAST_AUTH_ROLE_KEY = 'mathpulse.lastAuthRole';
 
 export const setPendingAuthRole = (role: UserRole): void => {
   try {
     localStorage.setItem(PENDING_AUTH_ROLE_KEY, role);
+    localStorage.setItem(LAST_AUTH_ROLE_KEY, role);
   } catch {
     // Ignore storage failures; auth can still proceed with fallback role.
   }
@@ -44,6 +46,18 @@ export const consumePendingAuthRole = (): UserRole | null => {
   try {
     const role = localStorage.getItem(PENDING_AUTH_ROLE_KEY);
     localStorage.removeItem(PENDING_AUTH_ROLE_KEY);
+    if (role === 'student' || role === 'teacher' || role === 'admin') {
+      return role;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+export const getLastAuthRole = (): UserRole | null => {
+  try {
+    const role = localStorage.getItem(LAST_AUTH_ROLE_KEY);
     if (role === 'student' || role === 'teacher' || role === 'admin') {
       return role;
     }
