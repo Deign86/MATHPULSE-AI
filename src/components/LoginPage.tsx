@@ -3,7 +3,7 @@ import { Eye, EyeOff, ArrowRight, Sparkles, Brain, TrendingUp, Users, Lock, Mail
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { motion, AnimatePresence } from 'motion/react';
-import { signInWithEmail, signInWithGoogle, signUpWithEmail } from '../services/authService';
+import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole } from '../services/authService';
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
 
@@ -27,14 +27,15 @@ const LoginPage: React.FC = () => {
   }, []);
 
   const demoAccounts = [
-    { label: 'Student', email: 'teststudent@school.edu', password: 'TestPass123!', icon: GraduationCap, color: 'sky' },
-    { label: 'Teacher', email: 'testteacher@school.edu', password: 'TestPass123!', icon: BookOpen, color: 'emerald' },
-    { label: 'Admin', email: 'testadmin@school.edu', password: 'TestPass123!', icon: ShieldCheck, color: 'rose' },
+    { label: 'Student', role: 'student' as UserRole, email: 'teststudent@school.edu', password: 'TestPass123!', icon: GraduationCap, color: 'sky' },
+    { label: 'Teacher', role: 'teacher' as UserRole, email: 'testteacher@school.edu', password: 'TestPass123!', icon: BookOpen, color: 'emerald' },
+    { label: 'Admin', role: 'admin' as UserRole, email: 'testadmin@school.edu', password: 'TestPass123!', icon: ShieldCheck, color: 'rose' },
   ];
 
-  const fillDemoAccount = (demoEmail: string, demoPassword: string) => {
+  const fillDemoAccount = (demoEmail: string, demoPassword: string, role: UserRole) => {
     setEmail(demoEmail);
     setPassword(demoPassword);
+    setSelectedRole(role);
     setIsSignUp(false);
     setError(null);
   };
@@ -52,9 +53,11 @@ const LoginPage: React.FC = () => {
           setLoading(false);
           return;
         }
+        setPendingAuthRole(selectedRole);
         await signUpWithEmail(email, password, name, selectedRole);
       } else {
         // Sign in existing user
+        setPendingAuthRole(selectedRole);
         await signInWithEmail(email, password);
       }
     } catch (err: unknown) {
@@ -68,6 +71,7 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     
     try {
+      setPendingAuthRole(selectedRole);
       await signInWithGoogle(selectedRole);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed');
@@ -307,6 +311,36 @@ const LoginPage: React.FC = () => {
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.45 }}
+                >
+                  <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    Account Type
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { role: 'student', label: 'Student' },
+                      { role: 'teacher', label: 'Teacher' },
+                      { role: 'admin', label: 'Admin' },
+                    ] as { role: UserRole; label: string }[]).map((roleOption) => {
+                      const isActive = selectedRole === roleOption.role;
+                      return (
+                        <button
+                          key={roleOption.role}
+                          type="button"
+                          onClick={() => setSelectedRole(roleOption.role)}
+                          className={`rounded-lg border px-3 py-2 text-xs font-body font-semibold transition-all ${isActive ? 'border-sky-400 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'}`}
+                        >
+                          {roleOption.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+
+                {/* Email Field */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
                   <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
@@ -421,7 +455,7 @@ const LoginPage: React.FC = () => {
                         <motion.button
                           key={account.label}
                           type="button"
-                          onClick={() => fillDemoAccount(account.email, account.password)}
+                          onClick={() => fillDemoAccount(account.email, account.password, account.role)}
                           className="group flex items-center gap-3 w-full px-4 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/70 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-sm transition-all text-left"
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
