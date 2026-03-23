@@ -1,5 +1,9 @@
-import React from 'react';
-import { Calculator, Sigma, TrendingUp, BarChart3, ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserProgress } from '../services/progressService';
+import { subjects } from '../data/subjects';
+import { UserProgress } from '../types/models';
 
 interface LearningPathProps {
   onNavigateToModules?: () => void;
@@ -7,60 +11,56 @@ interface LearningPathProps {
 }
 
 const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRiskSubjects = [] }) => {
-  const modules = [
-    {
-      id: 1,
-      subjectId: 'gen-math',
-      title: 'General Mathematics',
-      subtitle: 'Functions, Business Math & Logic',
-      duration: '45 mins',
-      icon: Calculator,
-      color: 'bg-sky-50',
-      iconColor: 'text-sky-600',
-      accentColor: 'bg-sky-500',
-      status: 'Not Started',
-      progress: 0
-    },
-    {
-      id: 2,
-      subjectId: 'stats-prob',
-      title: 'Statistics & Probability',
-      subtitle: 'Random Variables & Distributions',
-      duration: '50 mins',
-      icon: BarChart3,
-      color: 'bg-rose-50',
-      iconColor: 'text-rose-600',
-      accentColor: 'bg-rose-500',
-      status: 'Not Started',
-      progress: 0
-    },
-    {
-      id: 3,
-      subjectId: 'pre-calc',
-      title: 'Pre-Calculus',
-      subtitle: 'Analytic Geometry & Trigonometry',
-      duration: '60 mins',
-      icon: TrendingUp,
-      color: 'bg-emerald-50',
-      iconColor: 'text-emerald-600',
-      accentColor: 'bg-emerald-500',
-      status: 'Not Started',
-      progress: 0
-    },
-    {
-      id: 4,
-      subjectId: 'basic-calc',
-      title: 'Basic Calculus',
-      subtitle: 'Limits, Derivatives & Integrals',
-      duration: '30 mins',
-      icon: Sigma,
-      color: 'bg-rose-50',
-      iconColor: 'text-rose-600',
-      accentColor: 'bg-rose-500',
-      status: 'Not Started',
-      progress: 0
-    }
-  ];
+  const { userProfile } = useAuth();
+  const [progress, setProgress] = useState<UserProgress | null>(null);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    getUserProgress(userProfile.uid).then(setProgress).catch(console.error);
+  }, [userProfile?.uid]);
+
+  // Derive learning path modules from subjects data + real Firebase progress
+  const modules = subjects.map((subject) => {
+    const subjectProgress = progress?.subjects?.[subject.id];
+
+    // Count total lessons across all modules in this subject
+    const totalLessons = subject.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+
+    // Count completed lessons from Firebase
+    const completedLessons = subjectProgress
+      ? Object.values(subjectProgress.modulesProgress || {}).reduce(
+          (sum, mp) => sum + (mp.lessonsCompleted?.length || 0),
+          0
+        )
+      : 0;
+
+    const progressPct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+    // Estimate total duration from lesson data
+    const totalMinutes = subject.modules.reduce(
+      (sum, m) => sum + m.lessons.reduce((ls, l) => {
+        const mins = parseInt(l.duration) || 0;
+        return ls + mins;
+      }, 0),
+      0
+    );
+
+    const status = progressPct === 100 ? 'Completed' : progressPct > 0 ? 'In Progress' : 'Not Started';
+
+    return {
+      id: subject.id,
+      subjectId: subject.id,
+      title: subject.title,
+      subtitle: subject.description.split('.')[0], // First sentence
+      duration: `${totalMinutes} mins`,
+      icon: subject.icon,
+      color: subject.color,
+      iconColor: subject.iconColor,
+      accentColor: subject.accentColor,
+      status,
+      progress: progressPct,
+    };
+  });
 
   const handleModuleClick = (module: typeof modules[0]) => {
     if (module.status !== 'Locked') {
@@ -69,11 +69,19 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   };
 
   const getStatusBadge = (module: typeof modules[0]) => {
-    // If locked, keep locked status
     if (module.status === 'Locked') {
       return (
         <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#dde3eb] text-[#5a6578]">
           Locked
+        </span>
+      );
+    }
+
+    if (module.status === 'Completed') {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700 flex items-center gap-1">
+          <CheckCircle size={12} />
+          Completed
         </span>
       );
     }

@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Hand, ArrowRight, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserProgress } from '../services/progressService';
+import { subjects } from '../data/subjects';
 
 interface HeroBannerProps {
   userName?: string;
@@ -10,6 +13,24 @@ interface HeroBannerProps {
 }
 
 const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel = 1, onContinueLearning }) => {
+  const { userProfile } = useAuth();
+  const [weeklyProgress, setWeeklyProgress] = useState(0);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    getUserProgress(userProfile.uid).then((progress) => {
+      if (!progress) return;
+
+      // Calculate overall progress across all subjects
+      const totalLessons = subjects.reduce(
+        (sum, s) => sum + s.modules.reduce((ms, m) => ms + m.lessons.length, 0),
+        0
+      );
+      const completedLessons = progress.totalLessonsCompleted || 0;
+      const pct = totalLessons > 0 ? Math.min(Math.round((completedLessons / totalLessons) * 100), 100) : 0;
+      setWeeklyProgress(pct);
+    }).catch(console.error);
+  }, [userProfile?.uid]);
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -53,17 +74,17 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm font-body">
               <span className="text-slate-500 font-medium">Weekly Goal Progress</span>
-              <span className="text-sky-600 font-semibold">0%</span>
+              <span className="text-sky-600 font-semibold">{weeklyProgress}%</span>
             </div>
             <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: '0%' }}
+                animate={{ width: `${weeklyProgress}%` }}
                 transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
                 className="h-full bg-gradient-to-r from-sky-500 to-sky-400 rounded-full shadow-[0_0_12px_rgba(2,132,199,0.3)]"
               />
             </div>
-            <p className="text-xs text-slate-400 font-body">Complete lessons to start building your weekly streak!</p>
+            <p className="text-xs text-slate-400 font-body">{weeklyProgress > 0 ? `You've completed ${weeklyProgress}% of your lessons — keep it up!` : 'Complete lessons to start building your weekly streak!'}</p>
           </div>
           
           <motion.button

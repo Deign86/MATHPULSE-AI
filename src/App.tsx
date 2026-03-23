@@ -24,6 +24,7 @@ import AddFriendsModal from './components/AddFriendsModal';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
 import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
+import RecentActivityWidget from './components/RecentActivityWidget';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { signOutUser } from './services/authService';
@@ -409,6 +410,7 @@ const App = () => {
                         {profileReady && (
                           <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
                         )}
+                        <RecentActivityWidget />
                       </div>
 
                       {/* Right column — Tasks + Friends */}
