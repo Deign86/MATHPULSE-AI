@@ -19,7 +19,6 @@ import SearchBar from './components/SearchBar';
 import GradesPage from './components/GradesPage';
 import SettingsModal from './components/SettingsModal';
 import LeaderboardPage from './components/LeaderboardPage';
-import AddFriendsModal from './components/AddFriendsModal';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
 import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
@@ -55,7 +54,6 @@ const App = () => {
   const [xpNotification, setXpNotification] = useState({ show: false, xp: 0, message: '' });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showAddFriendsModal, setShowAddFriendsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
 
@@ -414,12 +412,10 @@ const App = () => {
                       <div className="col-span-12 xl:col-span-3">
                         <RightSidebar 
                           onOpenRewards={() => setShowRewardsModal(true)}
-                          onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                           userLevel={userLevel}
                           currentXP={currentXP}
                           xpToNextLevel={xpToNextLevel}
                           streak={streak}
-                          showFriendsWidget={false}
                         />
                       </div>
                     </div>
@@ -496,12 +492,6 @@ const App = () => {
             onClose={() => setShowSettingsModal(false)}
             profileData={profileData}
             onSave={handleSaveProfile}
-          />
-
-          {/* Add Friends Modal */}
-          <AddFriendsModal
-            isOpen={showAddFriendsModal}
-            onClose={() => setShowAddFriendsModal(false)}
           />
 
           {/* Scientific Calculator */}

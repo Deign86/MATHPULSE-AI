@@ -127,75 +127,39 @@ export const awardXP = async (
   }
 };
 
-// Get leaderboard (global or friends)
+// Get leaderboard (global student rankings)
 export const getLeaderboard = async (
   userId?: string,
-  friendsOnly: boolean = false,
+  scopedOnly: boolean = false,
   timeRange: 'all' | 'week' | 'month' = 'all',
   limitCount: number = 10
 ): Promise<LeaderboardEntry[]> => {
   try {
-    let leaderboardQuery;
+    void userId;
+    void scopedOnly;
+    void timeRange;
 
-    if (friendsOnly && userId) {
-      // Get user's friends first
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const friends = userDoc.data()?.friends || [];
-      friends.push(userId); // Include current user
+    const leaderboardQuery = query(
+      collection(db, 'users'),
+      where('role', '==', 'student'),
+      orderBy('totalXP', 'desc'),
+      limit(limitCount)
+    );
 
-      // This is a simplified version - in production, you'd want to batch this
-      const usersSnapshot = await getDocs(collection(db, 'users'));
-      interface LeaderboardUser {
-        uid: string;
-        name?: string;
-        photo?: string;
-        totalXP?: number;
-        level?: number;
-        weeklyXP?: number;
-        monthlyXP?: number;
-      }
-
-      const allUsers = usersSnapshot.docs
-        .map(doc => ({ ...doc.data(), uid: doc.id }) as LeaderboardUser)
-        .filter((user) => friends.includes(user.uid));
-
-      return allUsers
-        .sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0))
-        .slice(0, limitCount)
-        .map((user, index: number) => ({
-          userId: user.uid,
-          name: user.name || 'Unknown',
-          photo: user.photo,
-          xp: user.totalXP || 0,
-          level: user.level || 1,
-          rank: index + 1,
-          weeklyXP: user.weeklyXP || 0,
-          monthlyXP: user.monthlyXP || 0,
-        }));
-    } else {
-      // Global leaderboard
-      leaderboardQuery = query(
-        collection(db, 'users'),
-        where('role', '==', 'student'),
-        orderBy('totalXP', 'desc'),
-        limit(limitCount)
-      );
-
-      const snapshot = await getDocs(leaderboardQuery);
-      return snapshot.docs.map((doc, index) => {
-        const data = doc.data();
-        return {
-          userId: doc.id,
-          name: data.name || 'Unknown',
-          photo: data.photo,
-          xp: data.totalXP || 0,
-          level: data.level || 1,
-          rank: index + 1,
-          weeklyXP: data.weeklyXP || 0,
-          monthlyXP: data.monthlyXP || 0,
-        };
-      });
-    }
+    const snapshot = await getDocs(leaderboardQuery);
+    return snapshot.docs.map((doc, index) => {
+      const data = doc.data();
+      return {
+        userId: doc.id,
+        name: data.name || 'Unknown',
+        photo: data.photo,
+        xp: data.totalXP || 0,
+        level: data.level || 1,
+        rank: index + 1,
+        weeklyXP: data.weeklyXP || 0,
+        monthlyXP: data.monthlyXP || 0,
+      };
+    });
   } catch (error) {
     console.error('Error getting leaderboard:', error);
     return [];

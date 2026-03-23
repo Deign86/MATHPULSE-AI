@@ -190,7 +190,6 @@ export const createUserProfile = async (
           currentXP: 0,
           totalXP: 0,
           streak: 0,
-          friends: [] as string[],
           atRiskSubjects: [] as string[],
           hasTakenDiagnostic: false,
         };

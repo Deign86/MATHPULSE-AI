@@ -256,7 +256,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
                     </div>
                     <select className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628]">
                       <option>Everyone</option>
-                      <option>Friends Only</option>
+                      <option>Students and Staff</option>
                       <option>Private</option>
                     </select>
                   </div>

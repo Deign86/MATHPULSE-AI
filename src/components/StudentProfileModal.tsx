@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, UserPlus, UserCheck, Swords, Star, Crown, User, BadgeCheck, Loader2 } from 'lucide-react';
+import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, Star, Crown, User, BadgeCheck, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Button } from './ui/button';
 import { getUserAchievements } from '../services/gamificationService';
 import { Achievement } from '../types/models';
 
@@ -14,8 +13,7 @@ interface StudentData {
   level: number;
   totalXP: number;
   currentStreak: number;
-  isFriend: boolean;
-  rank: { global: number; section: number; friends: number; change: number };
+  rank: { global: number; section: number; change: number };
   stats: { quizzesCompleted: number; averageScore: number; modulesCompleted: number; studyHours: number };
 }
 
@@ -111,25 +109,6 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-2 mt-6">
-                {student.isFriend ? (
-                  <Button className="bg-white/[0.08] hover:bg-slate-200/70 text-white rounded-xl backdrop-blur-sm border border-slate-300">
-                    <UserCheck size={16} className="mr-2" />
-                    Friends
-                  </Button>
-                ) : (
-                  <Button className="bg-sky-600 text-white hover:bg-sky-700 rounded-xl">
-                    <UserPlus size={16} className="mr-2" />
-                    Add Friend
-                  </Button>
-                )}
-                <Button className="bg-white/[0.08] hover:bg-slate-200/70 text-white rounded-xl backdrop-blur-sm border border-slate-300">
-                  <Swords size={16} className="mr-2" />
-                  Challenge
-                </Button>
               </div>
             </div>
 

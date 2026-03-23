@@ -39,7 +39,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'stu
           let type: Notification['type'] = 'info';
           if (n.type === 'achievement') type = 'achievement';
           else if (n.type === 'risk_alert' || n.type === 'reminder') type = 'alert';
-          else if (n.type === 'message' || n.type === 'friend_request') type = 'message';
+          else if (n.type === 'message') type = 'message';
           else type = 'info';
 
           // Format time as relative

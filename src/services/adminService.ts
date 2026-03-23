@@ -195,7 +195,6 @@ export async function createAdminUser(
       currentXP: 0,
       totalXP: 0,
       streak: 0,
-      friends: [],
       atRiskSubjects: [],
       hasTakenDiagnostic: false,
     });
