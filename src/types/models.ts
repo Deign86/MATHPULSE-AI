@@ -15,7 +15,9 @@ export interface User {
 export interface StudentProfile extends User {
   role: 'student';
   studentId: string;
+  lrn?: string;
   grade: string;
+  section?: string;
   school: string;
   enrollmentDate: string;
   major: string;
@@ -158,16 +160,16 @@ export interface Notification {
   createdAt: Date;
 }
 
-// Task Types
-export interface Task {
+// Leadership Goal Types
+export interface LeadershipGoal {
   id: string;
   userId: string;
   title: string;
   description: string;
   dueDate: Date;
   priority: 'low' | 'medium' | 'high';
-  status: 'todo' | 'in-progress' | 'completed';
-  category: string;
+  status: 'planned' | 'active' | 'completed';
+  category: 'rank' | 'streak' | 'xp' | 'mastery' | 'engagement';
   createdAt: Date;
   completedAt?: Date;
 }
