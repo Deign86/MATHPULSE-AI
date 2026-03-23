@@ -14,8 +14,9 @@ interface ProfileData {
   photo: string;
   role: 'student' | 'teacher' | 'admin';
   // Student-specific
-  studentId?: string;
+  lrn?: string;
   grade?: string;
+  section?: string;
   school?: string;
   enrollmentDate?: string;
   major?: string;
@@ -279,8 +280,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           <div className="relative">
                             <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
-                              value={editedData.studentId || ''}
-                              onChange={(e) => setEditedData({ ...editedData, studentId: e.target.value })}
+                              value={editedData.lrn || ''}
+                              onChange={(e) => setEditedData({ ...editedData, lrn: e.target.value })}
                               disabled={!isEditing}
                               className="pl-10 bg-[#edf1f7] border-[#dde3eb] rounded-xl disabled:opacity-100 disabled:cursor-default"
                             />
@@ -305,6 +306,18 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             <Input
                               value={editedData.major || ''}
                               onChange={(e) => setEditedData({ ...editedData, major: e.target.value })}
+                              disabled={!isEditing}
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Section</label>
+                          <div className="relative">
+                            <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Input
+                              value={editedData.section || ''}
+                              onChange={(e) => setEditedData({ ...editedData, section: e.target.value })}
                               disabled={!isEditing}
                               className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />

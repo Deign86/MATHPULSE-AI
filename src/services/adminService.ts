@@ -27,6 +27,10 @@ export interface AdminUser {
   role: string;
   status: string;
   department: string;
+  grade?: string;
+  section?: string;
+  classSection?: string;
+  lrn?: string;
   photo?: string;
   lastLogin: string;
 }
@@ -81,7 +85,11 @@ function capitalizeRole(role: string): string {
 }
 
 function getDepartmentFromProfile(data: Record<string, unknown>): string {
-  if (data.role === 'student') return (data.grade as string) || 'Student';
+  if (data.role === 'student') {
+    const grade = (data.grade as string) || '';
+    const section = (data.section as string) || '';
+    return [grade, section].filter(Boolean).join(' - ') || 'Student';
+  }
   if (data.role === 'teacher') return (data.department as string) || 'Mathematics';
   if (data.role === 'admin') return (data.department as string) || 'System';
   return '';
@@ -128,6 +136,10 @@ export async function getAllUsers(): Promise<AdminUser[]> {
         role: capitalizeRole(data.role as string),
         status: (data.status as string) || 'Active',
         department: getDepartmentFromProfile(data),
+        grade: (data.grade as string) || '',
+        section: (data.section as string) || '',
+        classSection: [(data.grade as string) || '', (data.section as string) || ''].filter(Boolean).join(' - '),
+        lrn: (data.lrn as string) || '',
         photo: (data.photo as string) || (data.photoURL as string) || '',
         lastLogin: formatLastLogin(data.lastLogin as { toDate?: () => Date } | null),
       };
@@ -156,6 +168,20 @@ export async function updateAdminUser(uid: string, updates: Partial<AdminUser>):
       firestoreUpdates.grade = updates.department;
     }
   }
+  if (updates.grade !== undefined) {
+    firestoreUpdates.grade = updates.grade;
+  }
+  if (updates.section !== undefined) {
+    firestoreUpdates.section = updates.section;
+  }
+  if (updates.lrn !== undefined) {
+    firestoreUpdates.lrn = updates.lrn;
+  }
+  if (firestoreUpdates.grade || firestoreUpdates.section) {
+    const grade = (firestoreUpdates.grade as string) || '';
+    const section = (firestoreUpdates.section as string) || '';
+    firestoreUpdates.classSectionId = [grade, section].filter(Boolean).join('_').replace(/\s+/g, '_').toLowerCase();
+  }
   await updateDoc(ref, firestoreUpdates);
 }
 
@@ -173,7 +199,8 @@ export async function createAdminUser(
   email: string,
   name: string,
   role: string,
-  department: string
+  department: string,
+  studentMeta?: { grade?: string; section?: string; lrn?: string }
 ): Promise<string> {
   const roleLower = role.toLowerCase() as 'student' | 'teacher' | 'admin';
   const baseProfile: Record<string, unknown> = {
@@ -188,9 +215,13 @@ export async function createAdminUser(
   };
 
   if (roleLower === 'student') {
+    const grade = studentMeta?.grade || department || 'Grade 11';
+    const section = studentMeta?.section || 'Section A';
     Object.assign(baseProfile, {
-      studentId: `STU-${Date.now()}`,
-      grade: department,
+      lrn: studentMeta?.lrn || `${Date.now()}`.slice(-12).padStart(12, '0'),
+      grade,
+      section,
+      classSectionId: [grade, section].join('_').replace(/\s+/g, '_').toLowerCase(),
       level: 1,
       currentXP: 0,
       totalXP: 0,

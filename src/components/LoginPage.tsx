@@ -9,6 +9,10 @@ import shaderBgVideo from '../assets/shader-bg.mp4';
 
 const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11', 'Grade 12'];
+  const SECTION_OPTIONS: Record<string, string[]> = {
+    'Grade 11': ['STEM A', 'STEM B', 'ABM A', 'HUMSS A'],
+    'Grade 12': ['STEM A', 'STEM B', 'ABM A', 'HUMSS A'],
+  };
   const DEPARTMENT_OPTIONS: Record<Exclude<UserRole, 'student'>, string[]> = {
     teacher: ['Mathematics', 'Science', 'English', 'Technology', 'Humanities'],
     admin: ['System', 'Academic Affairs', 'Student Services', 'Operations', 'IT Support'],
@@ -21,6 +25,7 @@ const LoginPage: React.FC = () => {
   const [name, setName] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [selectedGrade, setSelectedGrade] = useState('Grade 11');
+  const [selectedSection, setSelectedSection] = useState(SECTION_OPTIONS['Grade 11'][0]);
   const [selectedDepartment, setSelectedDepartment] = useState('Mathematics');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +47,13 @@ const LoginPage: React.FC = () => {
       setSelectedDepartment(DEPARTMENT_OPTIONS.admin[0]);
     }
   }, [selectedDepartment, selectedRole]);
+
+  useEffect(() => {
+    const gradeSections = SECTION_OPTIONS[selectedGrade] || [];
+    if (gradeSections.length > 0 && !gradeSections.includes(selectedSection)) {
+      setSelectedSection(gradeSections[0]);
+    }
+  }, [selectedGrade, selectedSection]);
 
   const demoAccounts = [
     { label: 'Student', role: 'student' as UserRole, email: 'teststudent@school.edu', password: 'TestPass123!', icon: GraduationCap, color: 'sky' },
@@ -99,12 +111,11 @@ const LoginPage: React.FC = () => {
           name,
           selectedRole,
           selectedRole === 'student'
-            ? { grade: selectedGrade }
+            ? { grade: selectedGrade, section: selectedSection }
             : { department: selectedDepartment }
         );
       } else {
         // Sign in existing user
-        setPendingAuthRole(selectedRole);
         await signInWithEmail(email, password);
       }
     } catch (err: unknown) {
@@ -118,8 +129,10 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     
     try {
-      setPendingAuthRole(selectedRole);
-      await signInWithGoogle(selectedRole);
+      if (isSignUp) {
+        setPendingAuthRole(selectedRole);
+      }
+      await signInWithGoogle(isSignUp ? selectedRole : undefined);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setLoading(false);
@@ -354,35 +367,36 @@ const LoginPage: React.FC = () => {
                   </motion.div>
                 )}
 
-                {/* Email Field */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.45 }}
-                >
-                  <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                    Account Type
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { role: 'student', label: 'Student' },
-                      { role: 'teacher', label: 'Teacher' },
-                      { role: 'admin', label: 'Admin' },
-                    ] as { role: UserRole; label: string }[]).map((roleOption) => {
-                      const isActive = selectedRole === roleOption.role;
-                      return (
-                        <button
-                          key={roleOption.role}
-                          type="button"
-                          onClick={() => setSelectedRole(roleOption.role)}
-                          className={`rounded-lg border px-3 py-2 text-xs font-body font-semibold transition-all ${isActive ? 'border-sky-400 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'}`}
-                        >
-                          {roleOption.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
+                {isSignUp && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.45 }}
+                  >
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                      Account Type
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { role: 'student', label: 'Student' },
+                        { role: 'teacher', label: 'Teacher' },
+                        { role: 'admin', label: 'Admin' },
+                      ] as { role: UserRole; label: string }[]).map((roleOption) => {
+                        const isActive = selectedRole === roleOption.role;
+                        return (
+                          <button
+                            key={roleOption.role}
+                            type="button"
+                            onClick={() => setSelectedRole(roleOption.role)}
+                            className={`rounded-lg border px-3 py-2 text-xs font-body font-semibold transition-all ${isActive ? 'border-sky-400 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'}`}
+                          >
+                            {roleOption.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
 
                 {isSignUp && selectedRole === 'student' && (
                   <motion.div
@@ -403,6 +417,31 @@ const LoginPage: React.FC = () => {
                       >
                         {GRADE_OPTIONS.map((grade) => (
                           <option key={grade} value={grade}>{grade}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </motion.div>
+                )}
+
+                {isSignUp && selectedRole === 'student' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                      Section
+                    </label>
+                    <div className="relative">
+                      <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <select
+                        value={selectedSection}
+                        onChange={(e) => setSelectedSection(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
+                        required
+                      >
+                        {(SECTION_OPTIONS[selectedGrade] || []).map((section) => (
+                          <option key={section} value={section}>{section}</option>
                         ))}
                       </select>
                     </div>

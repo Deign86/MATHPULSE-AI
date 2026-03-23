@@ -22,9 +22,13 @@ import { db } from '../lib/firebase';
 // Types for the teacher's student management
 export interface ManagedStudent {
   id: string;
+  lrn?: string;
   name: string;
   email: string;
   avatar: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
   riskLevel: 'High' | 'Medium' | 'Low';
   engagementScore: number;
   avgQuizScore: number;
@@ -42,6 +46,9 @@ export interface Classroom {
   id: string;
   name: string;
   teacherId: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
   schedule: string;
   studentCount: number;
   avgScore: number;
@@ -67,6 +74,19 @@ export interface Announcement {
   classroomId: string;
   teacherId: string;
   createdAt: Timestamp;
+}
+
+export interface ClassSectionOwnershipRecord {
+  id: string;
+  classSectionId: string;
+  grade: string;
+  section: string;
+  schoolYear: string;
+  ownerTeacherId: string;
+  ownerTeacherName?: string;
+  studentUids: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 // ─── Student Operations ───────────────────────────────────────
@@ -111,6 +131,21 @@ export async function updateStudentRisk(
   });
 }
 
+export async function updateManagedStudentSectionAssignment(
+  studentId: string,
+  grade: string,
+  section: string
+): Promise<void> {
+  const classSectionId = buildClassSectionId(grade, section);
+  const studentRef = doc(db, 'managedStudents', studentId);
+  await updateDoc(studentRef, {
+    grade,
+    section,
+    classSectionId,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function addManagedStudent(student: Omit<ManagedStudent, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   const studentsRef = collection(db, 'managedStudents');
   const docRef = await addDoc(studentsRef, {
@@ -136,6 +171,10 @@ export async function deleteManagedStudent(studentId: string): Promise<void> {
   await deleteDoc(doc(db, 'managedStudents', studentId));
 }
 
+export function buildClassSectionId(grade: string, section: string): string {
+  return [grade, section].filter(Boolean).join('_').replace(/\s+/g, '_').toLowerCase();
+}
+
 // ─── Classroom Operations ─────────────────────────────────────
 
 export async function getClassroomsByTeacher(teacherId: string): Promise<Classroom[]> {
@@ -151,11 +190,83 @@ export async function getClassroomsByTeacher(teacherId: string): Promise<Classro
 
 export async function createClassroom(classroom: Omit<Classroom, 'id' | 'createdAt'>): Promise<string> {
   const classroomsRef = collection(db, 'classrooms');
+  const classSectionId = classroom.classSectionId || buildClassSectionId(classroom.grade || '', classroom.section || '');
   const docRef = await addDoc(classroomsRef, {
     ...classroom,
+    classSectionId,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
+}
+
+export async function upsertClassSectionOwnership(
+  payload: Omit<ClassSectionOwnershipRecord, 'id' | 'createdAt' | 'updatedAt' | 'studentUids'> & { studentUids?: string[] }
+): Promise<string> {
+  const classSectionId = payload.classSectionId || buildClassSectionId(payload.grade, payload.section);
+  const ref = doc(db, 'classSectionOwnership', classSectionId);
+  const existing = await getDoc(ref);
+  const existingStudentUids = existing.exists() ? (((existing.data() as { studentUids?: string[] }).studentUids) || []) : [];
+  const mergedStudentUids = Array.from(new Set([...(payload.studentUids || []), ...existingStudentUids]));
+
+  if (existing.exists()) {
+    await updateDoc(ref, {
+      ...payload,
+      classSectionId,
+      studentUids: mergedStudentUids,
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    await setDoc(ref, {
+      ...payload,
+      classSectionId,
+      studentUids: mergedStudentUids,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  return classSectionId;
+}
+
+export async function assignStudentToClassSection(
+  studentUid: string,
+  grade: string,
+  section: string,
+  ownerTeacherId: string,
+  schoolYear: string,
+  ownerTeacherName?: string
+): Promise<void> {
+  const classSectionId = buildClassSectionId(grade, section);
+
+  await upsertClassSectionOwnership({
+    classSectionId,
+    grade,
+    section,
+    schoolYear,
+    ownerTeacherId,
+    ownerTeacherName,
+    studentUids: [studentUid],
+  });
+
+  await setDoc(
+    doc(db, 'users', studentUid),
+    {
+      grade,
+      section,
+      classSectionId,
+      adviserTeacherId: ownerTeacherId,
+      adviserTeacherName: ownerTeacherName || '',
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export async function getClassSectionOwnershipByTeacher(teacherId: string): Promise<ClassSectionOwnershipRecord[]> {
+  const ref = collection(db, 'classSectionOwnership');
+  const q = query(ref, where('ownerTeacherId', '==', teacherId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })) as ClassSectionOwnershipRecord[];
 }
 
 // ─── Activity Feed ────────────────────────────────────────────

@@ -40,6 +40,7 @@ const LeaderboardPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [students, setStudents] = useState<LeaderboardStudent[]>([]);
+  const myClassSection = [studentProfile?.grade, studentProfile?.section].filter(Boolean).join(' - ');
 
   const avatars = ['', '', '', '', '', '', '', ''];
 
@@ -58,7 +59,7 @@ const LeaderboardPage = () => {
           level: entry.level,
           totalXP: entry.xp,
           currentStreak: 0,
-          section: studentProfile?.grade || 'Grade 11 - STEM A',
+          section: myClassSection || 'Grade 11 - STEM A',
           rank: {
             global: entry.rank,
             section: entry.rank,
@@ -82,7 +83,7 @@ const LeaderboardPage = () => {
     };
 
     loadLeaderboard();
-  }, [currentUser, timeFilter]);
+  }, [currentUser, myClassSection, timeFilter]);
 
   const getCurrentRank = () => {
     const you = students.find(s => s.isYou);
@@ -99,7 +100,7 @@ const LeaderboardPage = () => {
 
     if (activeView === 'section') {
       // Filter to same grade/section as the current student
-      const mySection = studentProfile?.grade || '';
+      const mySection = myClassSection || '';
       if (mySection) {
         filtered = filtered.filter(s => s.section === mySection);
       }
@@ -146,8 +147,8 @@ const LeaderboardPage = () => {
         <div className="absolute top-0 right-0 w-48 h-48 bg-sky-100/40 rounded-full -translate-y-1/2 translate-x-1/2"></div>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-display font-bold mb-1 flex items-center gap-3 text-[#0a1628]"><Trophy size={24} className="text-rose-500" /> Leaderboard</h1>
-            <p className="text-slate-500 font-body text-sm">Track your standing across section and school</p>
+            <h1 className="text-2xl font-display font-bold mb-1 flex items-center gap-3 text-[#0a1628]"><Trophy size={24} className="text-rose-500" /> Leadership Board</h1>
+            <p className="text-slate-500 font-body text-sm">Track leadership standing across section and school</p>
           </div>
         </div>
 
@@ -184,7 +185,7 @@ const LeaderboardPage = () => {
           ].map((view) => {
             const Icon = view.icon;
             const count = view.id === 'section'
-              ? filteredStudents.filter(s => studentProfile?.grade && s.section === studentProfile.grade).length
+              ? filteredStudents.filter(s => myClassSection && s.section === myClassSection).length
               : filteredStudents.length;
             
             return (
