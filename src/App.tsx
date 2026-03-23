@@ -18,13 +18,11 @@ import ConfirmModal from './components/ConfirmModal';
 import SearchBar from './components/SearchBar';
 import GradesPage from './components/GradesPage';
 import SettingsModal from './components/SettingsModal';
-import QuickStatsWidget from './components/QuickStatsWidget';
 import LeaderboardPage from './components/LeaderboardPage';
 import AddFriendsModal from './components/AddFriendsModal';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
 import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
-import RecentActivityWidget from './components/RecentActivityWidget';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { signOutUser } from './services/authService';
@@ -168,6 +166,7 @@ const App = () => {
 
   // Get profile data from userProfile or use defaults
   const profileData = userProfile ? {
+    uid: userProfile.uid,
     name: userProfile.name,
     email: userProfile.email,
     phone: userProfile.phone || '',
@@ -182,6 +181,7 @@ const App = () => {
       gpa: computedGpa,
     } : {}),
   } : {
+    uid: undefined,
     name: 'User',
     email: '',
     phone: '',
@@ -391,42 +391,35 @@ const App = () => {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="space-y-3 pb-3">
-                    {/* Row 1: Hero Banner — full width */}
+                  <div className="space-y-4 pb-4">
                     <HeroBanner 
                       userName={firstName} 
                       userLevel={userLevel}
                       onContinueLearning={() => setActiveTab('Modules')} 
                     />
 
-                    {/* Row 2: Quick Stats — full width */}
-                    <QuickStatsWidget />
-
-                    {/* Row 3: Supplemental Banner if at-risk */}
                     <SupplementalBanner
                       variant="full"
                       atRiskSubjects={atRiskSubjects}
                       onAction={() => setActiveTab('Modules')}
                     />
 
-                    {/* Row 4: Main grid — Learning Path + Right sidebar */}
-                    <div className="grid grid-cols-12 gap-3">
-                      {/* Learning Path — wider, primary focus */}
-                      <div className="col-span-12 lg:col-span-8">
+                    <div className="grid grid-cols-12 gap-4">
+                      <div className="col-span-12 xl:col-span-9">
                         {profileReady && (
                           <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
                         )}
-                        <RecentActivityWidget />
                       </div>
 
-                      {/* Right column — Tasks + Friends */}
-                      <div className="col-span-12 lg:col-span-4">
+                      <div className="col-span-12 xl:col-span-3">
                         <RightSidebar 
                           onOpenRewards={() => setShowRewardsModal(true)}
+                          onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                           userLevel={userLevel}
                           currentXP={currentXP}
                           xpToNextLevel={xpToNextLevel}
                           streak={streak}
+                          showFriendsWidget={false}
                         />
                       </div>
                     </div>
@@ -448,8 +441,8 @@ const App = () => {
             </AnimatePresence>
           </main>
 
-          {/* Floating AI Tutor - FAB positioned at bottom-right with 32px padding */}
-          {activeTab === 'Dashboard' && (
+          {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page */}
+          {activeTab !== 'AI Chat' && (
             <div className="fixed bottom-8 right-8 z-50">
               <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
             </div>

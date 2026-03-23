@@ -8,12 +8,20 @@ import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
 
 const LoginPage: React.FC = () => {
+  const GRADE_OPTIONS = ['Grade 11', 'Grade 12'];
+  const DEPARTMENT_OPTIONS: Record<Exclude<UserRole, 'student'>, string[]> = {
+    teacher: ['Mathematics', 'Science', 'English', 'Technology', 'Humanities'],
+    admin: ['System', 'Academic Affairs', 'Student Services', 'Operations', 'IT Support'],
+  };
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
+  const [selectedGrade, setSelectedGrade] = useState('Grade 11');
+  const [selectedDepartment, setSelectedDepartment] = useState('Mathematics');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -26,18 +34,36 @@ const LoginPage: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (selectedRole === 'teacher' && !DEPARTMENT_OPTIONS.teacher.includes(selectedDepartment)) {
+      setSelectedDepartment(DEPARTMENT_OPTIONS.teacher[0]);
+    }
+    if (selectedRole === 'admin' && !DEPARTMENT_OPTIONS.admin.includes(selectedDepartment)) {
+      setSelectedDepartment(DEPARTMENT_OPTIONS.admin[0]);
+    }
+  }, [selectedDepartment, selectedRole]);
+
   const demoAccounts = [
     { label: 'Student', role: 'student' as UserRole, email: 'teststudent@school.edu', password: 'TestPass123!', icon: GraduationCap, color: 'sky' },
     { label: 'Teacher', role: 'teacher' as UserRole, email: 'testteacher@school.edu', password: 'TestPass123!', icon: BookOpen, color: 'emerald' },
     { label: 'Admin', role: 'admin' as UserRole, email: 'testadmin@school.edu', password: 'TestPass123!', icon: ShieldCheck, color: 'rose' },
   ];
 
-  const fillDemoAccount = (demoEmail: string, demoPassword: string, role: UserRole) => {
+  const fillDemoAccount = async (demoEmail: string, demoPassword: string, role: UserRole) => {
+    setError(null);
+    setLoading(true);
     setEmail(demoEmail);
     setPassword(demoPassword);
     setSelectedRole(role);
     setIsSignUp(false);
-    setError(null);
+
+    try {
+      setPendingAuthRole(role);
+      await signInWithEmail(demoEmail, demoPassword);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Demo sign-in failed');
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,8 +79,29 @@ const LoginPage: React.FC = () => {
           setLoading(false);
           return;
         }
+
+        if (selectedRole === 'student' && !selectedGrade) {
+          setError('Please select a grade level');
+          setLoading(false);
+          return;
+        }
+
+        if (selectedRole !== 'student' && !selectedDepartment) {
+          setError('Please select a department');
+          setLoading(false);
+          return;
+        }
+
         setPendingAuthRole(selectedRole);
-        await signUpWithEmail(email, password, name, selectedRole);
+        await signUpWithEmail(
+          email,
+          password,
+          name,
+          selectedRole,
+          selectedRole === 'student'
+            ? { grade: selectedGrade }
+            : { department: selectedDepartment }
+        );
       } else {
         // Sign in existing user
         setPendingAuthRole(selectedRole);
@@ -336,6 +383,56 @@ const LoginPage: React.FC = () => {
                     })}
                   </div>
                 </motion.div>
+
+                {isSignUp && selectedRole === 'student' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                      Grade Level
+                    </label>
+                    <div className="relative">
+                      <GraduationCap size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <select
+                        value={selectedGrade}
+                        onChange={(e) => setSelectedGrade(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
+                        required
+                      >
+                        {GRADE_OPTIONS.map((grade) => (
+                          <option key={grade} value={grade}>{grade}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </motion.div>
+                )}
+
+                {isSignUp && selectedRole !== 'student' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                      Department
+                    </label>
+                    <div className="relative">
+                      <BookOpen size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <select
+                        value={selectedDepartment}
+                        onChange={(e) => setSelectedDepartment(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
+                        required
+                      >
+                        {DEPARTMENT_OPTIONS[selectedRole as Exclude<UserRole, 'student'>].map((department) => (
+                          <option key={department} value={department}>{department}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Email Field */}
                 <motion.div

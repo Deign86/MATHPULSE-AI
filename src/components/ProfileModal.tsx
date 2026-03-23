@@ -3,8 +3,11 @@ import { X, Camera, Mail, Phone, MapPin, Calendar, BookOpen, Award, Users, Build
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { getLeaderboard, getUserRank } from '../services/gamificationService';
+import { LeaderboardEntry } from '../types/models';
 
 interface ProfileData {
+  uid?: string;
   name: string;
   email: string;
   phone: string;
@@ -40,6 +43,9 @@ interface ProfileModalProps {
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileData, onSave }) => {
   const [editedData, setEditedData] = useState<ProfileData>(profileData);
   const [isEditing, setIsEditing] = useState(false);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [studentRank, setStudentRank] = useState<number>(0);
 
   // Escape key handler
   useEffect(() => {
@@ -52,6 +58,30 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen || editedData.role !== 'student' || !editedData.uid) return;
+
+    const loadLeaderboardData = async () => {
+      setLeaderboardLoading(true);
+      try {
+        const [topEntries, rank] = await Promise.all([
+          getLeaderboard(undefined, false, 'all', 5),
+          getUserRank(editedData.uid),
+        ]);
+        setLeaderboardEntries(topEntries);
+        setStudentRank(rank);
+      } catch (err) {
+        console.error('Failed to load leaderboard for profile modal:', err);
+        setLeaderboardEntries([]);
+        setStudentRank(0);
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+
+    loadLeaderboardData();
+  }, [isOpen, editedData.role, editedData.uid]);
 
   const handlePhotoChange = () => {
     // In a real app, this would open a file picker
@@ -88,6 +118,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
         return 'bg-zinc-100 text-zinc-700 border-zinc-200';
     }
   };
+
+  const currentUserLeaderboardEntry = leaderboardEntries.find((entry) => entry.userId === editedData.uid);
 
   return (
     <AnimatePresence>
@@ -235,6 +267,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
 
                   {/* Student-Specific Fields */}
                   {editedData.role === 'student' && (
+                    <>
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] mb-4 flex items-center gap-2">
                         <div className="w-1 h-4 bg-teal-600 rounded-full"></div>
@@ -242,7 +275,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-[#5a6578] mb-2">Student ID</label>
+                          <label className="block text-xs font-bold text-[#5a6578] mb-2">LRN</label>
                           <div className="relative">
                             <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
@@ -304,6 +337,68 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                         </div>
                       </div>
                     </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-[#0a1628] mb-4 flex items-center gap-2">
+                        <div className="w-1 h-4 bg-rose-600 rounded-full"></div>
+                        Leaderboard Overview
+                      </h4>
+
+                      {leaderboardLoading ? (
+                        <div className="rounded-lg border border-[#dde3eb] bg-white p-4 text-sm font-body text-[#5a6578]">
+                          Loading leaderboard data...
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+                              <p className="text-xs font-body font-semibold text-rose-700 uppercase tracking-wider">Your Rank</p>
+                              <p className="text-2xl font-display font-bold text-rose-800 mt-1">{studentRank > 0 ? `#${studentRank}` : 'Unranked'}</p>
+                            </div>
+                            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
+                              <p className="text-xs font-body font-semibold text-sky-700 uppercase tracking-wider">Total XP</p>
+                              <p className="text-2xl font-display font-bold text-sky-800 mt-1">{currentUserLeaderboardEntry?.xp ?? 0}</p>
+                            </div>
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                              <p className="text-xs font-body font-semibold text-emerald-700 uppercase tracking-wider">Level</p>
+                              <p className="text-2xl font-display font-bold text-emerald-800 mt-1">{currentUserLeaderboardEntry?.level ?? '-'}</p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg border border-[#dde3eb] bg-white overflow-hidden">
+                            <div className="px-4 py-2 border-b border-[#dde3eb] bg-[#f7f9fc]">
+                              <p className="text-xs font-body font-semibold text-[#5a6578] uppercase tracking-wider">Top Students</p>
+                            </div>
+                            <div className="divide-y divide-[#edf1f7]">
+                              {leaderboardEntries.length > 0 ? (
+                                leaderboardEntries.map((entry) => (
+                                  <div key={entry.userId} className="px-4 py-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="w-7 h-7 rounded-full bg-[#edf1f7] text-[#0a1628] text-xs font-display font-bold flex items-center justify-center">
+                                        {entry.rank}
+                                      </div>
+                                      <p className="text-sm font-body font-semibold text-[#0a1628] truncate">
+                                        {entry.name}
+                                        {entry.userId === editedData.uid ? ' (You)' : ''}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-body font-semibold text-[#0a1628]">{entry.xp} XP</p>
+                                      <p className="text-xs font-body text-[#5a6578]">Lv {entry.level}</p>
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="px-4 py-6 text-center text-sm font-body text-[#5a6578]">
+                                  No leaderboard data available yet.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    </>
                   )}
 
                   {/* Teacher-Specific Fields */}

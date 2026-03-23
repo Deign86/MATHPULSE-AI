@@ -6,10 +6,13 @@ import FriendsWidget from './FriendsWidget';
 
 interface RightSidebarProps {
   onOpenRewards: () => void;
+  onOpenLeaderboard: () => void;
   userLevel: number;
   currentXP: number;
   xpToNextLevel: number;
   streak: number;
+  showFriendsWidget?: boolean;
+  showConnectedTaskBoard?: boolean;
   onLogout?: () => void;
   onOpenProfile?: () => void;
   onAddFriends?: () => void;
@@ -19,10 +22,13 @@ interface RightSidebarProps {
 
 const RightSidebar: React.FC<RightSidebarProps> = ({ 
   onOpenRewards, 
+  onOpenLeaderboard,
   userLevel, 
   currentXP, 
   xpToNextLevel,
   streak,
+  showFriendsWidget = true,
+  showConnectedTaskBoard = false,
   onAddFriends,
 }) => {
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
@@ -84,26 +90,28 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         </div>
       </motion.div>
 
-      {/* Tasks Board — primary action area */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <TasksBoard />
-      </motion.div>
+      {showConnectedTaskBoard && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <TasksBoard />
+        </motion.div>
+      )}
 
-      {/* Friends Widget — social connection */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <FriendsWidget 
-          onViewAll={() => {}} 
-          onAddFriends={onAddFriends || (() => {})} 
-        />
-      </motion.div>
+      {showFriendsWidget && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <FriendsWidget 
+            onViewAll={onOpenLeaderboard}
+            onAddFriends={onAddFriends || (() => {})} 
+          />
+        </motion.div>
+      )}
     </div>
   );
 };
