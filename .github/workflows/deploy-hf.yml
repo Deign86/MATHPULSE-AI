@@ -133,6 +133,9 @@ jobs:
           
           # Commit and push
           cd hf-frontend
+          # Store large media as LFS pointers so HF accepts static Space pushes.
+          git lfs install --local
+          git lfs track "*.mp4" "*.webm" "*.mov"
           git add -A
           git diff --staged --quiet && echo "No changes to deploy" && exit 0
           git commit -m "🚀 Auto-deploy frontend from GitHub (${GITHUB_SHA::7})"
