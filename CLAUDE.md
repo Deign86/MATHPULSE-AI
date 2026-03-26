@@ -1,0 +1,29 @@
+# lean-ctx — Token Optimization
+
+lean-ctx is configured as an MCP server. Use lean-ctx MCP tools instead of built-in tools:
+
+| Built-in | Use instead | Why |
+|----------|-------------|-----|
+| Read / cat / head | `ctx_read` | Session caching, 6 compression modes, re-reads cost ~13 tokens |
+| Bash (shell commands) | `ctx_shell` | Pattern-based compression for git, npm, cargo, docker, tsc |
+| Grep / rg | `ctx_search` | Compact context, token-efficient results |
+| ls / find | `ctx_tree` | Compact directory maps with file counts |
+
+For shell commands that don't have MCP equivalents, prefix with `lean-ctx -c`:
+
+```bash
+lean-ctx -c git status    # compressed output
+lean-ctx -c cargo test    # compressed output
+lean-ctx -c npm install   # compressed output
+```
+
+## ctx_read Modes
+
+- `full` — cached read (use for files you will edit)
+- `map` — deps + API signatures (use for context-only files)
+- `signatures` — API surface only
+- `diff` — changed lines only (after edits)
+- `aggressive` — syntax stripped
+- `entropy` — Shannon + Jaccard filtering
+
+Write, StrReplace, Delete have no lean-ctx equivalent — use them normally.
