@@ -1,0 +1,7 @@
+{
+  "servers": {
+    "lean-ctx": {
+      "command": "C:/Users/Deign/.cargo/bin/lean-ctx.exe"
+    }
+  }
+}
