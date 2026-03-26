@@ -26,6 +26,7 @@ import {
   MAX_RETRIES,
   type RetryFetchOptions,
 } from './apiUtils';
+import { auth } from '../lib/firebase';
 
 // Re-export error classes so consumers can catch them
 export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
@@ -255,12 +256,26 @@ async function apiFetch<T>(
 
   logApiInfo(endpoint, method, 'Starting request');
 
+  const headers = new Headers(options?.headers ?? {});
+  if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken();
+      if (idToken) {
+        headers.set('Authorization', `Bearer ${idToken}`);
+      }
+    } catch (err) {
+      logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
+    }
+  }
+
   const fetchOptions: RequestInit = {
     ...options,
-    headers: {
-      ...(options?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...options?.headers,
-    },
+    headers,
   };
 
   try {

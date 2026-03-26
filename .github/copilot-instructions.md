@@ -1,5 +1,13 @@
 # MathPulse AI - Development Guide
 
+## Lean-CTX Enforcement Policy
+
+- For every prompt that needs context gathering, tool use must start with lean-ctx MCP tools.
+- Always prefer `lean-ctx` MCP tools for read/search/shell/tree operations when available.
+- For shell commands without a dedicated MCP tool, run them through `lean-ctx -c "<command>"`.
+- Do not use raw `cat`, `head`, `grep`, `find`, or `ls` when the `lean-ctx` equivalent can serve the same task.
+- Keep using normal file edit tools for write operations (`Write`, `Edit`, `Delete`) because lean-ctx is read/analysis focused.
+
 ## Copilot Skill Invocation Policy
 
 - AUTO-INVOKE the `frontend-design` skill for any request involving frontend UI work, including building or styling pages, components, dashboards, modals, layouts, visual refreshes, animations, typography, color systems, spacing, and responsive behavior.

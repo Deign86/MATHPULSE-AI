@@ -2,10 +2,167 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Temporary dev rule: require authentication for all app data.
-    // This prevents full public access while avoiding total outage from expiry.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return isSignedIn() ? userDoc().data.role : null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && role() == 'admin';
+    }
+
+    function isTeacher() {
+      return isSignedIn() && role() == 'teacher';
+    }
+
+    function isStudent() {
+      return isSignedIn() && role() == 'student';
+    }
+
+    function isTeacherOrAdmin() {
+      return isTeacher() || isAdmin();
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function ownerInExisting(field) {
+      return resource != null && resource.data[field] == request.auth.uid;
+    }
+
+    function ownerInIncoming(field) {
+      return request.resource != null && request.resource.data[field] == request.auth.uid;
+    }
+
+    function ownerByField(field) {
+      return isSignedIn() && (ownerInExisting(field) || ownerInIncoming(field));
+    }
+
+    match /users/{userId} {
+      allow create: if isSelf(userId);
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow update: if isSelf(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /progress/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /xpActivities/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /achievements/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if ownerByField('userId') || isAdmin();
+    }
+
+    match /tasks/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if ownerByField('userId') || isAdmin();
+    }
+
+    match /chatSessions/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if ownerByField('userId') || isAdmin();
+    }
+
+    match /chatMessages/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if ownerByField('userId') || isAdmin();
+    }
+
+    match /friendRequests/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow create, update: if isSignedIn() && (
+        request.resource.data.senderId == request.auth.uid ||
+        request.resource.data.receiverId == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /friendships/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.user1Id == request.auth.uid ||
+        resource.data.user2Id == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow create, update: if isSignedIn() && (
+        request.resource.data.user1Id == request.auth.uid ||
+        request.resource.data.user2Id == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.user1Id == request.auth.uid ||
+        resource.data.user2Id == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /managedStudents/{studentId} {
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /diagnosticResults/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('studentId');
+      allow create, update: if isTeacherOrAdmin() || ownerByField('studentId');
+      allow delete: if isAdmin();
+    }
+
+    match /quizResults/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('studentId');
+      allow create, update: if isTeacherOrAdmin() || ownerByField('studentId');
+      allow delete: if isAdmin();
+    }
+
+    match /attendance/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('studentId');
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /curriculumContent/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Deny-by-default for unknown collections.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
