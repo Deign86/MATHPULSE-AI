@@ -19,7 +19,7 @@ import json
 import math
 import logging
 import traceback
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 from collections import Counter
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
@@ -30,8 +30,22 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 import time
 import uuid
+import sys
+import tempfile
+import subprocess
 import requests as http_requests
 import uvicorn
+
+try:
+    import firebase_admin  # type: ignore[import-not-found]
+    from firebase_admin import auth as firebase_auth  # type: ignore[import-not-found]
+    from firebase_admin import firestore as firebase_firestore  # type: ignore[import-not-found]
+    HAS_FIREBASE_ADMIN = True
+except Exception:
+    firebase_admin = None  # type: ignore[assignment]
+    firebase_auth = None  # type: ignore[assignment]
+    firebase_firestore = None  # type: ignore[assignment]
+    HAS_FIREBASE_ADMIN = False
 
 # Event-driven automation engine
 from automation_engine import (
@@ -107,6 +121,69 @@ CHAT_MODEL = HF_MATH_MODEL_ID
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
+ENABLE_DEV_ENDPOINTS = os.getenv("ENABLE_DEV_ENDPOINTS", "false").strip().lower() in {"1", "true", "yes", "on"}
+UPLOAD_MAX_BYTES = int(os.getenv("UPLOAD_MAX_BYTES", str(5 * 1024 * 1024)))
+UPLOAD_MAX_ROWS = int(os.getenv("UPLOAD_MAX_ROWS", "2000"))
+UPLOAD_MAX_COLS = int(os.getenv("UPLOAD_MAX_COLS", "60"))
+UPLOAD_MAX_PDF_PAGES = int(os.getenv("UPLOAD_MAX_PDF_PAGES", "20"))
+UPLOAD_RATE_LIMIT_PER_MIN = int(os.getenv("UPLOAD_RATE_LIMIT_PER_MIN", "12"))
+
+ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
+ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
+    "text/csv",
+    "application/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/pdf",
+    "application/octet-stream",
+}
+
+VALID_ROLES: Set[str] = {"student", "teacher", "admin"}
+ALL_APP_ROLES: Set[str] = {"student", "teacher", "admin"}
+TEACHER_OR_ADMIN: Set[str] = {"teacher", "admin"}
+ADMIN_ONLY: Set[str] = {"admin"}
+
+PUBLIC_PATHS: Set[str] = {
+    "/",
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+}
+PUBLIC_API_PATHS: Set[str] = {
+    "/api/quiz/topics",
+}
+
+ROLE_POLICIES: Dict[str, Set[str]] = {
+    "/api/chat": ALL_APP_ROLES,
+    "/api/verify-solution": ALL_APP_ROLES,
+    "/api/predict-risk": TEACHER_OR_ADMIN,
+    "/api/predict-risk/batch": TEACHER_OR_ADMIN,
+    "/api/learning-path": ALL_APP_ROLES,
+    "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
+    "/api/upload/class-records": TEACHER_OR_ADMIN,
+    "/api/quiz/generate": TEACHER_OR_ADMIN,
+    "/api/quiz/preview": TEACHER_OR_ADMIN,
+    "/api/quiz/student-competency": TEACHER_OR_ADMIN,
+    "/api/calculator/evaluate": ALL_APP_ROLES,
+    "/api/student/competency-analysis": TEACHER_OR_ADMIN,
+    "/api/risk/train-model": ADMIN_ONLY,
+    "/api/predict-risk/enhanced": TEACHER_OR_ADMIN,
+    "/api/quiz/calibrate-difficulty": TEACHER_OR_ADMIN,
+    "/api/quiz/adaptive-select": TEACHER_OR_ADMIN,
+    "/api/learning/recommend-topics": TEACHER_OR_ADMIN,
+    "/api/analytics/student-summary": ALL_APP_ROLES,
+    "/api/analytics/class-insights": TEACHER_OR_ADMIN,
+    "/api/analytics/refresh-cache": ADMIN_ONLY,
+    "/api/dev/generate-mock-data": ADMIN_ONLY,
+    "/api/analytics/config": TEACHER_OR_ADMIN,
+    "/api/analytics/topic-mastery": TEACHER_OR_ADMIN,
+    "/api/automation/diagnostic-completed": ADMIN_ONLY,
+    "/api/automation/quiz-submitted": ADMIN_ONLY,
+    "/api/automation/student-enrolled": ADMIN_ONLY,
+    "/api/automation/data-imported": ADMIN_ONLY,
+    "/api/automation/content-updated": ADMIN_ONLY,
+}
 
 if not HF_TOKEN:
     logger.warning(
@@ -121,6 +198,168 @@ app = FastAPI(
     description="AI-powered math tutoring and student analytics backend",
     version="1.0.0",
 )
+
+
+class AuthenticatedUser(BaseModel):
+    uid: str
+    email: Optional[str] = None
+    role: str
+    claims: Dict[str, Any] = Field(default_factory=dict)
+
+
+_firebase_ready = False
+_role_cache: Dict[str, Dict[str, Any]] = {}
+_ROLE_CACHE_TTL_SECONDS = 60
+_rate_limit_buckets: Dict[str, List[float]] = {}
+
+
+def _init_firebase_admin() -> None:
+    global _firebase_ready
+    if _firebase_ready:
+        return
+    if not HAS_FIREBASE_ADMIN:
+        logger.warning("firebase-admin is not available; protected API endpoints will reject requests.")
+        return
+
+    try:
+        if not firebase_admin._apps:  # type: ignore[attr-defined]
+            firebase_admin.initialize_app()  # type: ignore[union-attr]
+        _firebase_ready = True
+        logger.info("Firebase Admin SDK initialized for API auth verification")
+    except Exception as e:
+        logger.warning(f"Firebase Admin SDK init failed: {e}")
+
+
+def _get_role_from_firestore(uid: str) -> Optional[str]:
+    now = time.time()
+    cached = _role_cache.get(uid)
+    if cached and now - float(cached.get("ts", 0)) < _ROLE_CACHE_TTL_SECONDS:
+        return cached.get("role")
+
+    if not (_firebase_ready and firebase_firestore):
+        return None
+
+    try:
+        doc = firebase_firestore.client().collection("users").document(uid).get()
+        role = doc.to_dict().get("role") if doc.exists else None
+        if isinstance(role, str):
+            _role_cache[uid] = {"role": role, "ts": now}
+            return role
+    except Exception as e:
+        logger.warning(f"Failed to resolve role from Firestore for {uid}: {e}")
+
+    return None
+
+
+def _resolve_user_role(decoded: Dict[str, Any]) -> str:
+    role_claim = decoded.get("role")
+    if isinstance(role_claim, str) and role_claim in VALID_ROLES:
+        return role_claim
+
+    uid = str(decoded.get("uid", ""))
+    if uid:
+        firestore_role = _get_role_from_firestore(uid)
+        if isinstance(firestore_role, str) and firestore_role in VALID_ROLES:
+            return firestore_role
+
+    return "student"
+
+
+def _parse_bearer_token(authorization: str) -> Optional[str]:
+    if not authorization:
+        return None
+    parts = authorization.strip().split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+    return parts[1].strip()
+
+
+def get_current_user(request: Request) -> AuthenticatedUser:
+    user = getattr(request.state, "user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
+
+def require_student_self_or_staff(request: Request, student_id: str) -> AuthenticatedUser:
+    user = get_current_user(request)
+    if user.role in {"teacher", "admin"}:
+        return user
+    if user.role == "student" and user.uid == student_id:
+        return user
+    raise HTTPException(status_code=403, detail="Insufficient permissions for requested student")
+
+
+def enforce_rate_limit(request: Request, bucket_name: str, limit: int, window_seconds: int) -> None:
+    user = getattr(request.state, "user", None)
+    actor_id = user.uid if user else ((request.client.host if request.client else "unknown"))
+    key = f"{bucket_name}:{actor_id}"
+    now = time.time()
+    start = now - window_seconds
+    hits = [ts for ts in _rate_limit_buckets.get(key, []) if ts >= start]
+    if len(hits) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded for {bucket_name}. Try again later.",
+        )
+    hits.append(now)
+    _rate_limit_buckets[key] = hits
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        request.state.user = None
+
+        if request.method == "OPTIONS" or path in PUBLIC_PATHS:
+            return await call_next(request)
+
+        if path in PUBLIC_API_PATHS:
+            return await call_next(request)
+
+        if not path.startswith("/api/"):
+            return await call_next(request)
+
+        if path == "/api/dev/generate-mock-data" and not ENABLE_DEV_ENDPOINTS:
+            return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+        _init_firebase_admin()
+        if not _firebase_ready:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Authentication service unavailable"},
+            )
+
+        token = _parse_bearer_token(request.headers.get("Authorization", ""))
+        if not token:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Missing or invalid Authorization bearer token"},
+            )
+
+        try:
+            decoded = firebase_auth.verify_id_token(token)  # type: ignore[union-attr]
+        except Exception as e:
+            logger.warning(f"Token verification failed for {path}: {e}")
+            return JSONResponse(status_code=401, content={"detail": "Invalid or expired auth token"})
+
+        uid = str(decoded.get("uid", ""))
+        if not uid:
+            return JSONResponse(status_code=401, content={"detail": "Token missing uid"})
+
+        role = _resolve_user_role(decoded)
+        request.state.user = AuthenticatedUser(
+            uid=uid,
+            email=decoded.get("email"),
+            role=role,
+            claims=decoded,
+        )
+
+        required_roles = ROLE_POLICIES.get(path)
+        if required_roles and role not in required_roles:
+            return JSONResponse(status_code=403, content={"detail": "Forbidden for this role"})
+
+        return await call_next(request)
 
 
 # ─── Middleware: Request ID + Logging + Timeout ────────────────
@@ -174,6 +413,7 @@ class RequestMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RequestMiddleware)
+app.add_middleware(AuthMiddleware)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -686,56 +926,145 @@ Respond with ONLY the Python code, no markdown fences, no explanation."""
         if not code:
             return {"verified": False, "code": "", "output": "", "error": "No code generated"}
 
-        logger.info(f"Executing verification code:\n{code}")
+        logger.info("Executing verification code in isolated subprocess sandbox")
 
-        # Execute safely with restricted builtins
-        import math as _math
-
-        safe_globals: Dict[str, Any] = {
-            "__builtins__": {
-                "print": print,
-                "range": range,
-                "len": len,
-                "abs": abs,
-                "round": round,
-                "int": int,
-                "float": float,
-                "str": str,
-                "sum": sum,
-                "min": min,
-                "max": max,
-                "enumerate": enumerate,
-                "zip": zip,
-                "map": map,
-                "list": list,
-                "tuple": tuple,
-                "dict": dict,
-                "set": set,
-                "sorted": sorted,
-                "pow": pow,
-                "isinstance": isinstance,
-                "True": True,
-                "False": False,
-                "None": None,
-            },
-            "math": _math,
-        }
-
-        # Capture stdout
-        import contextlib
-
-        stdout_capture = io.StringIO()
-        try:
-            with contextlib.redirect_stdout(stdout_capture):
-                exec(code, safe_globals)  # noqa: S102
-            output = stdout_capture.getvalue().strip()
-        except Exception as exec_err:
-            output = ""
+        code_blocklist = re.compile(
+            r"(__\w+__|\bimport\b|exec\s*\(|eval\s*\(|open\s*\(|os\.|sys\.|subprocess|socket|pathlib|shutil|input\s*\(|compile\s*\(|globals\s*\(|locals\s*\(|__builtins__)",
+            re.IGNORECASE,
+        )
+        if code_blocklist.search(code):
             return {
                 "verified": False,
                 "code": code,
                 "output": "",
-                "error": f"Code execution error: {str(exec_err)}",
+                "error": "Generated code contains disallowed operations",
+            }
+        if len(code) > 3000:
+            return {
+                "verified": False,
+                "code": code,
+                "output": "",
+                "error": "Generated code exceeded maximum allowed length",
+            }
+
+        wrapper_script = f"""
+import io
+import json
+import math
+import contextlib
+
+try:
+    import resource
+    _max_mem = 256 * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
+    resource.setrlimit(resource.RLIMIT_AS, (_max_mem, _max_mem))
+except Exception:
+    pass
+
+SAFE_BUILTINS = {{
+    "print": print,
+    "range": range,
+    "len": len,
+    "abs": abs,
+    "round": round,
+    "int": int,
+    "float": float,
+    "str": str,
+    "sum": sum,
+    "min": min,
+    "max": max,
+    "enumerate": enumerate,
+    "zip": zip,
+    "map": map,
+    "list": list,
+    "tuple": tuple,
+    "dict": dict,
+    "set": set,
+    "sorted": sorted,
+    "pow": pow,
+    "isinstance": isinstance,
+    "True": True,
+    "False": False,
+    "None": None,
+}}
+
+payload = {{"ok": False, "output": "", "error": None}}
+stdout_capture = io.StringIO()
+source = {json.dumps(code)}
+try:
+    compiled = compile(source, "<verification>", "exec")
+    with contextlib.redirect_stdout(stdout_capture):
+        exec(compiled, {{"__builtins__": SAFE_BUILTINS, "math": math}}, {{}})
+    payload["ok"] = True
+except Exception as exc:
+    payload["error"] = str(exc)
+
+payload["output"] = stdout_capture.getvalue().strip()
+print(json.dumps(payload))
+""".strip()
+
+        temp_path = ""
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as tf:
+                tf.write(wrapper_script)
+                temp_path = tf.name
+
+            completed = subprocess.run(
+                [sys.executable, "-I", "-S", temp_path],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "verified": False,
+                "code": code,
+                "output": "",
+                "error": "Code execution timed out",
+            }
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+
+        if completed.returncode != 0:
+            stderr_text = (completed.stderr or "").strip()
+            return {
+                "verified": False,
+                "code": code,
+                "output": "",
+                "error": f"Sandbox execution failed: {stderr_text[:300]}",
+            }
+
+        lines = (completed.stdout or "").strip().splitlines()
+        if not lines:
+            return {
+                "verified": False,
+                "code": code,
+                "output": "",
+                "error": "Sandbox execution produced no output",
+            }
+
+        try:
+            payload = json.loads(lines[-1])
+        except json.JSONDecodeError:
+            return {
+                "verified": False,
+                "code": code,
+                "output": "",
+                "error": "Sandbox returned malformed payload",
+            }
+
+        output = str(payload.get("output", "")).strip()
+        sandbox_error = payload.get("error")
+        if sandbox_error:
+            return {
+                "verified": False,
+                "code": code,
+                "output": output,
+                "error": f"Code execution error: {sandbox_error}",
             }
 
         verified = output.upper().startswith("VERIFIED")
@@ -1129,24 +1458,49 @@ Keep the response under 200 words. Be specific and practical."""
 
 
 @app.post("/api/upload/class-records")
-async def upload_class_records(file: UploadFile = File(...)):
+async def upload_class_records(request: Request, file: UploadFile = File(...)):
     """Upload and parse class records (CSV, Excel, PDF) with AI column detection"""
     try:
         import pandas as pd  # type: ignore[import-not-found]
 
+        enforce_rate_limit(request, "upload_class_records", UPLOAD_RATE_LIMIT_PER_MIN, 60)
+
         filename = file.filename or ""
-        contents = await file.read()
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file format: {filename}. Use .csv, .xlsx, .xls, or .pdf",
+            )
+
+        if (file.content_type or "").lower() not in ALLOWED_UPLOAD_MIME_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported content type: {file.content_type}",
+            )
+
+        contents = await file.read(UPLOAD_MAX_BYTES + 1)
+        if len(contents) > UPLOAD_MAX_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
+            )
 
         df = None
 
-        if filename.endswith(".csv"):
-            df = pd.read_csv(io.BytesIO(contents))
-        elif filename.endswith((".xlsx", ".xls")):
+        if ext == ".csv":
+            df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip")
+        elif ext in {".xlsx", ".xls"}:
             import openpyxl
             df = pd.read_excel(io.BytesIO(contents))
-        elif filename.endswith(".pdf"):
+        elif ext == ".pdf":
             import pdfplumber
             with pdfplumber.open(io.BytesIO(contents)) as pdf:
+                if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
+                    )
                 tables = []
                 for page in pdf.pages:
                     page_tables = page.extract_tables()
@@ -1164,6 +1518,18 @@ async def upload_class_records(file: UploadFile = File(...)):
 
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="No data found in uploaded file")
+
+        if df.shape[0] > UPLOAD_MAX_ROWS:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Too many rows ({df.shape[0]}). Max allowed: {UPLOAD_MAX_ROWS}",
+            )
+
+        if df.shape[1] > UPLOAD_MAX_COLS:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Too many columns ({df.shape[1]}). Max allowed: {UPLOAD_MAX_COLS}",
+            )
 
         # AI-powered column mapping
         columns_text = ", ".join(df.columns.tolist())
@@ -2214,7 +2580,7 @@ async def recommend_learning_topics(request: TopicRecommendationRequest):
 
 
 @app.get("/api/analytics/student-summary", response_model=StudentSummaryResponse)
-async def student_analytics_summary(studentId: str = Query(..., description="Firebase user ID")):
+async def student_analytics_summary(request: Request, studentId: str = Query(..., description="Firebase user ID")):
     """
     Aggregate all ML-powered metrics for a student:
     competency distribution, risk assessment, recommendations,
@@ -2222,6 +2588,7 @@ async def student_analytics_summary(studentId: str = Query(..., description="Fir
     and engagement pattern analysis.
     """
     try:
+        require_student_self_or_staff(request, studentId)
         logger.info(f"Student summary requested for {studentId}")
         result = await get_student_summary(studentId)
         return result

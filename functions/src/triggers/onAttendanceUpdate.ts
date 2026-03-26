@@ -27,16 +27,16 @@ export const onAttendanceUpdate = functions.firestore
     const data = change.after.data()!;
     const previousData = change.before.exists ? change.before.data()! : null;
 
-    const studentId: string | undefined = data.studentId;
+    const lrn: string | undefined = data.lrn;
     const attendanceRate: number | undefined = data.attendanceRate;
 
-    if (!studentId || attendanceRate === undefined) {
+    if (!lrn || attendanceRate === undefined) {
       return null;
     }
 
     functions.logger.info("[ATTENDANCE] Attendance update", {
       recordId,
-      studentId,
+      lrn,
       attendanceRate,
     });
 
@@ -51,10 +51,10 @@ export const onAttendanceUpdate = functions.firestore
         previousRate >= CRITICAL_ATTENDANCE_THRESHOLD
       ) {
         // Critical attendance — notify teacher
-        const studentDoc = await db.collection("users").doc(studentId).get();
+        const studentDoc = await db.collection("users").doc(lrn).get();
         const studentData = studentDoc.data();
         const teacherId = studentData?.teacherId;
-        const name = studentData?.displayName || studentData?.name || studentId;
+        const name = studentData?.displayName || studentData?.name || lrn;
 
         if (teacherId) {
           await createNotification({
@@ -66,32 +66,32 @@ export const onAttendanceUpdate = functions.firestore
         }
 
         // Also update user risk factors
-        await db.collection("users").doc(studentId).update({
+        await db.collection("users").doc(lrn).update({
           attendanceAlert: "critical",
           lastAttendanceRate: attendanceRate,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        functions.logger.warn("[WARN] Critical attendance", { studentId, attendanceRate });
+        functions.logger.warn("[WARN] Critical attendance", { lrn, attendanceRate });
       } else if (
         attendanceRate < LOW_ATTENDANCE_THRESHOLD &&
         previousRate >= LOW_ATTENDANCE_THRESHOLD
       ) {
         // Low attendance — send reminder to student
         await createNotification({
-          userId: studentId,
+          userId: lrn,
           type: NOTIFICATION_TYPES.REMINDER,
           title: "Attendance Reminder",
           message: `Your attendance is at ${attendanceRate}%. Regular attendance helps you stay on track!`,
         });
 
-        await db.collection("users").doc(studentId).update({
+        await db.collection("users").doc(lrn).update({
           attendanceAlert: "low",
           lastAttendanceRate: attendanceRate,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        functions.logger.info("[LOW] Low attendance flagged", { studentId, attendanceRate });
+        functions.logger.info("[LOW] Low attendance flagged", { lrn, attendanceRate });
       }
     } catch (error: any) {
       functions.logger.error("[ERROR] Attendance processing failed", {

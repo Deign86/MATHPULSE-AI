@@ -58,7 +58,7 @@ export interface Classroom {
 
 export interface ClassActivity {
   id: string;
-  studentId: string;
+  lrn: string;
   studentName: string;
   action: string;
   topic: string;
@@ -119,11 +119,11 @@ export async function getStudentsByClassroom(classroomId: string): Promise<Manag
 }
 
 export async function updateStudentRisk(
-  studentId: string,
+  lrn: string,
   riskLevel: 'High' | 'Medium' | 'Low',
   confidence?: number
 ): Promise<void> {
-  const studentRef = doc(db, 'managedStudents', studentId);
+  const studentRef = doc(db, 'managedStudents', lrn);
   await updateDoc(studentRef, {
     riskLevel,
     ...(confidence !== undefined ? { riskConfidence: confidence } : {}),
@@ -132,12 +132,12 @@ export async function updateStudentRisk(
 }
 
 export async function updateManagedStudentSectionAssignment(
-  studentId: string,
+  lrn: string,
   grade: string,
   section: string
 ): Promise<void> {
   const classSectionId = buildClassSectionId(grade, section);
-  const studentRef = doc(db, 'managedStudents', studentId);
+  const studentRef = doc(db, 'managedStudents', lrn);
   await updateDoc(studentRef, {
     grade,
     section,
@@ -167,8 +167,8 @@ export async function addManagedStudentsBatch(
   return ids;
 }
 
-export async function deleteManagedStudent(studentId: string): Promise<void> {
-  await deleteDoc(doc(db, 'managedStudents', studentId));
+export async function deleteManagedStudent(lrn: string): Promise<void> {
+  await deleteDoc(doc(db, 'managedStudents', lrn));
 }
 
 export function buildClassSectionId(grade: string, section: string): string {
