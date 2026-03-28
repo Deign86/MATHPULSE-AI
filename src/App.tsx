@@ -17,6 +17,7 @@ import NotificationCenter from './components/NotificationCenter';
 import ConfirmModal from './components/ConfirmModal';
 import SearchBar from './components/SearchBar';
 import GradesPage from './components/GradesPage';
+import AvatarShop from './components/AvatarShop';
 import SettingsModal from './components/SettingsModal';
 import LeaderboardPage from './components/LeaderboardPage';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
@@ -481,6 +482,8 @@ const App = () => {
                   <AIChatPage />
                 ) : activeTab === 'Grades' ? (
                   <GradesPage />
+                ) : activeTab === 'Avatar Shop' ? (
+                  <AvatarShop />
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
