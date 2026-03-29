@@ -1,16 +1,18 @@
-import React from 'react';
+﻿import React from 'react';
 import { Hand, ArrowRight, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { AvatarLayers } from './CompositeAvatar';
 import DashboardAvatar from './DashboardAvatar';
 
 interface HeroBannerProps {
   userName?: string;
   userLevel?: number;
+  avatarLayers?: AvatarLayers;
   onContinueLearning?: () => void;
 }
 
-const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel = 1, onContinueLearning }) => {
+const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel = 1, avatarLayers, onContinueLearning }) => {
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -44,7 +46,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
               <span className="text-xs md:text-sm font-body font-bold text-sky-700">Level {userLevel}</span>
             </div>
             <div className="px-3 md:px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200">
-              <Zap size={14} className="inline -mt-0.5 text-rose-500 mr-1" />
+              <Zap size={14} className="inline -mt-0.5 text-rose-500 mr-1" />   
               <span className="text-xs md:text-sm font-body font-bold text-rose-700">Active</span>
             </div>
           </div>
@@ -54,12 +56,12 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
           </h1>
           <p className="text-slate-500 mb-1 text-xs md:text-sm font-body font-bold">Today is a great day to move one step forward in math mastery.</p>
           <p className="text-[11px] md:text-xs text-slate-400 font-body mb-4">Focus on your next recommended lesson and keep your momentum.</p>
-          
+
           <motion.button
             onClick={onContinueLearning}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-2 rounded-xl font-body font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex items-center gap-2 group"
+            className="mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-2 rounded-xl font-body font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex items-center gap-2 group"   
           >
             Continue Learning
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -68,12 +70,12 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
       </div>
 
       {/* Avatar Container: Anchored to the exact bottom of the banner, clipped directly at the banner's baseline */}
-      <div 
-        className="hidden md:block absolute right-0 lg:right-10 bottom-0 w-[160px] lg:w-[250px] pointer-events-none z-20"
+      <div
+        className="hidden md:block absolute right-0 lg:right-10 bottom-0 w-[150px] lg:w-[270px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
          <div className="relative w-full aspect-[4/5] translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
-           <DashboardAvatar className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />
+           <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />
          </div>
       </div>
     </motion.div>

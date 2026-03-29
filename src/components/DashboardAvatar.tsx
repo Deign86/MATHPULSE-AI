@@ -1,36 +1,57 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { AvatarLayers } from './CompositeAvatar';
+import { getAvatarSrc } from '../data/avatarData';
 
 interface DashboardAvatarProps {
   className?: string;
+  layers?: AvatarLayers;
 }
 
-export const DashboardAvatar: React.FC<DashboardAvatarProps> = ({ className = "w-full h-full" }) => {
+export const DashboardAvatar: React.FC<DashboardAvatarProps> = ({ className = "w-full h-full", layers }) => {
   const imageClass = "absolute inset-0 w-full h-full object-contain object-bottom";
+
+  const topSrc = getAvatarSrc(layers?.top);
+  const bottomSrc = getAvatarSrc(layers?.bottom);
+  const shoesSrc = getAvatarSrc(layers?.shoes);
+  const accSrc = getAvatarSrc(layers?.accessory);
 
   return (
     <div className={`relative flex items-end justify-center ${className}`}>
       {/* Static Body */}
-      <img 
-        src="/avatar/avatar_body_base.png" 
+      <img
+        src="/avatar/avatar_body_base.png"
         alt="Avatar Body"
-        className={`${imageClass} z-10`} 
+        className={`${imageClass} z-10`}
       />
-      <img
-        src="/avatar/pants_black.png"
-        alt="Pants"
-        className={`${imageClass} z-[12]`}
-      />
-      <img
-        src="/avatar/shoes_black.png"
-        alt="Shoes"
-        className={`${imageClass} z-[11]`}
-      />
-      <img
-        src="/avatar/uniform_blue.png"
-        alt="Uniform"
-        className={`${imageClass} z-[13]`}
-      />
+      {bottomSrc && (
+        <img
+          src={bottomSrc}
+          alt="Pants"
+          className={`${imageClass} z-[12]`}
+        />
+      )}
+      {shoesSrc && (
+        <img
+          src={shoesSrc}
+          alt="Shoes"
+          className={`${imageClass} z-[11]`}
+        />
+      )}
+      {topSrc && (
+        <img
+          src={topSrc}
+          alt="Uniform"
+          className={`${imageClass} z-[13]`}
+        />
+      )}
+      {accSrc && (
+        <img
+          src={accSrc}
+          alt="Accessory"
+          className={`${imageClass} z-[14]`}
+        />
+      )}
 
       {/* Swinging Head Container */}
       <motion.div
@@ -44,15 +65,15 @@ export const DashboardAvatar: React.FC<DashboardAvatarProps> = ({ className = "w
         }}
       >
         {/* Head Base */}
-        <img 
-          src="/avatar/avatar_head_base.png" 
+        <img
+          src="/avatar/avatar_head_base.png"
           alt="Avatar Head"
-          className={`${imageClass} z-[1]`} 
+          className={`${imageClass} z-[1]`}
         />
 
         {/* Blinking Eyes */}
-        <motion.img 
-          src="/avatar/eyes_default.png" 
+        <motion.img
+          src="/avatar/eyes_default.png"
           alt="Avatar Eyes"
           className={`${imageClass} z-[2]`}
           style={{ originY: "50%" }}
@@ -76,15 +97,15 @@ export const DashboardAvatar: React.FC<DashboardAvatarProps> = ({ className = "w
             repeat: Infinity,
           }}
         >
-          <img 
-            src="/avatar/left_horn.png" 
+          <img
+            src="/avatar/left_horn.png"
             alt="Left Horn"
-            className={imageClass} 
+            className={imageClass}
           />
-          <img 
-            src="/avatar/right_horn.png" 
+          <img
+            src="/avatar/right_horn.png"
             alt="Right Horn"
-            className={imageClass} 
+            className={imageClass}
           />
         </motion.div>
       </motion.div>

@@ -1,12 +1,20 @@
 // User Types
 export type UserRole = 'student' | 'teacher' | 'admin';
 
+export interface AvatarLayers {
+  top?: string;
+  bottom?: string;
+  shoes?: string;
+  accessory?: string;
+}
+
 export interface User {
   uid: string;
   email: string;
   name: string;
   role: UserRole;
   photo?: string;
+  avatarLayers?: AvatarLayers;
   phone?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -141,6 +149,7 @@ export interface LeaderboardEntry {
   userId: string;
   name: string;
   photo?: string;
+  avatarLayers?: AvatarLayers;
   xp: number;
   level: number;
   rank: number;
