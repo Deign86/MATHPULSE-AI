@@ -21,6 +21,7 @@ These notes were considered while describing behavior-level impacts and deployme
 ## Backend API (FastAPI) Changes
 ### backend/main.py
 - Added role policy coverage for `/api/upload/course-materials`.
+- Added role policy coverage for `/api/predict-risk/v2`.
 - Added full `POST /api/upload/course-materials` endpoint with:
   - extension allow-list: `.pdf`, `.docx`, `.txt`
   - MIME checks and request size limits
@@ -30,6 +31,15 @@ These notes were considered while describing behavior-level impacts and deployme
     - PDF extraction via `pdfplumber` with page-limit guard
   - text normalization, section inference, topic suggestion extraction, and preview payload
   - robust error handling for parse failures and protected PDFs
+- Added `POST /api/predict-risk/v2` endpoint that returns normalized risk payload:
+  - `risk_level` in `low|medium|high`
+  - `risk_score` in `[0, 1]`
+  - `top_factors` as teacher-readable explanations
+
+### backend/analytics.py
+- Added `StudentRiskPredictionV2` response model.
+- Added `_humanize_risk_factor()` to convert raw model factors into actionable teacher language.
+- Added `predict_risk_v2()` that reuses enhanced risk inference and normalizes outputs for downstream consumers.
 
 ### src/services/apiService.ts
 - Added `CourseMaterialUploadResponse` type.
@@ -174,6 +184,7 @@ Additional session artifact:
 ## Exact File Inventory (Status + Numstat)
 ```
 M  backend/main.py                                           +179  -0
+M  backend/analytics.py
 D  backend/tests/__init__.py                                 +0    -0
 D  backend/tests/test_api.py                                 +0    -513
 D  color_update.py                                           +0    -20
