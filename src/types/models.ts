@@ -342,3 +342,61 @@ export interface SubjectStats {
   totalReviews: number;
   updatedAt: Date;
 }
+
+// Curriculum Types
+export type QuarterKey = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+export type CurriculumConfidence = 'high' | 'medium' | 'low';
+
+export interface CurriculumSourceReference {
+  id: string;
+  title: string;
+  url: string;
+  tier: 'official_primary' | 'official_secondary' | 'supplemental_mirror' | 'inferred' | string;
+  confidence: CurriculumConfidence;
+  notes?: string;
+}
+
+export interface CurriculumVersionSet {
+  id: string;
+  label: string;
+  program: string;
+  effectiveSchoolYear: string;
+  gradeLevel: string;
+  isActive: boolean;
+  sourceReferenceIds: string[];
+  assumptions?: string[];
+}
+
+export interface CompetencyMapping {
+  code: string;
+  description: string;
+  confidence: CurriculumConfidence;
+  sourceReferenceIds: string[];
+}
+
+export interface CurriculumTopicGroup {
+  id: string;
+  gradeLevel: string;
+  subjectId: string;
+  subjectName: string;
+  quarter: QuarterKey;
+  sequence: number;
+  topicGroup: string;
+  minHours: number;
+  maxHours: number;
+  competencies: CompetencyMapping[];
+  prerequisiteTopicGroupIds?: string[];
+  [key: string]: unknown;
+}
+
+export interface CurriculumDescriptor {
+  id: string;
+  versionSetId: string;
+  gradeLevel: string;
+  isCore: boolean;
+  subjectName: string;
+  totalHours: number;
+  quarterHourAllocation: Record<QuarterKey, number>;
+  topicGroups: CurriculumTopicGroup[];
+  [key: string]: unknown;
+}

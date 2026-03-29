@@ -88,3 +88,11 @@ export const MAX_RETRIES = 2;
 
 /** Days until a remedial quiz is due */
 export const REMEDIAL_QUIZ_DUE_DAYS = 7;
+
+// ─── Reassessment Sweep Configuration ───────────────────────
+
+/** Days of inactivity before a reassessment can be queued */
+export const REASSESSMENT_INACTIVITY_DAYS = 30;
+
+/** Maximum student profiles scanned per scheduled sweep */
+export const REASSESSMENT_SCAN_BATCH_LIMIT = 500;
