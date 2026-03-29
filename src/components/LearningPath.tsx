@@ -115,8 +115,8 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-display font-bold text-[#0a1628]">Your Learning Path</h2>
+      <div className="flex justify-between items-center mb-6 px-1">
+        <h2 className="text-2xl lg:text-[28px] font-display font-semibold text-slate-800 tracking-tight">Your Learning Path</h2>
         <button 
           onClick={onNavigateToModules}
           className="text-primary font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20"
@@ -129,84 +129,84 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
         {modules.map((module) => {
           const Icon = module.icon;
           const isAtRisk = atRiskSubjects.includes(module.subjectId);
-          const cardGradient = module.subjectId === 'gen-math' ? 'bg-gradient-to-br from-pink-400 to-pink-500' :
-                               module.subjectId === 'pre-calc' ? 'bg-gradient-to-br from-indigo-500 to-violet-600' :
-                               module.subjectId === 'stats-prob' ? 'bg-gradient-to-br from-amber-200 to-yellow-400' :
-                               'bg-gradient-to-br from-sky-400 to-blue-500';
-                               
-          const textColor = module.subjectId === 'stats-prob' ? 'text-[#0a1628]' : 'text-white';
-          const mutedText = module.subjectId === 'stats-prob' ? 'text-[#0a1628]/70' : 'text-white/80';
-          const bubbleColor = module.subjectId === 'stats-prob' ? 'bg-white/40' : 'bg-white/20';
+          
+          const getCardStyle = (id: string) => {
+            switch(id) {
+              case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1 };
+              case 'pre-calc': return { bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2 };
+              case 'stats-prob': return { bg: 'bg-[#FFB356]', tags: ['Probability', 'Mean/Median', 'Charts'], level: 2 };
+              case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals', 'Continuity'], level: 3 };
+              default: return { bg: 'bg-[#7274ED]', tags: ['Math', 'Logic', 'Problem Solving'], level: 1 };
+            }
+          };
+          const { bg, tags, level } = getCardStyle(module.subjectId);
 
           return (
             <div
               key={module.id}
               onClick={() => handleModuleClick(module)}
-              className={`${cardGradient} rounded-[2rem] p-6 h-56 relative overflow-hidden card-elevated shadow-sm hover:card-elevated-lg transition-all cursor-pointer flex flex-col justify-between group ${
+              className={`${bg} rounded-[2rem] p-5 min-h-[290px] h-full relative overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.2)] ${
                 module.status === 'Locked' ? 'opacity-70 cursor-not-allowed grayscale-[30%]' : ''
               }`}
             >
-              {/* Scattered Graphics Elements */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                 {/* Background bubbles */}
-                 <div className={`absolute top-6 right-24 w-4 h-4 rounded-full ${bubbleColor} animate-pulse`} />
-                 <div className={`absolute bottom-12 right-1/2 w-8 h-8 rounded-full ${bubbleColor}`} />
-                 <div className={`absolute top-1/3 right-8 w-6 h-6 rounded-full ${bubbleColor}`} />
-                 
-                 {/* Main huge graphic */}
-                 <div className={`absolute -bottom-8 -right-6 w-40 h-40 ${bubbleColor} rounded-full mix-blend-overlay opacity-50`}></div>
-                 <div className={`absolute -bottom-4 -right-2 transform group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500 ${textColor}`}>
-                   <Icon size={120} className="opacity-90 drop-shadow-xl" />
-                 </div>
-                 
-                 {/* Scattered small icons depending on subject */}
-                 <div className={`absolute top-8 right-8 ${textColor} opacity-60 animate-bounce`} style={{ animationDuration: '3s' }}>
-                    {module.subjectId === 'gen-math' ? <Calculator size={24} /> : 
-                     module.subjectId === 'pre-calc' ? <Compass size={24} /> : 
-                     module.subjectId === 'stats-prob' ? <PieChart size={24} /> : <Box size={24} />}
-                 </div>
-                 <div className={`absolute top-1/2 right-28 ${textColor} opacity-50 animate-bounce`} style={{ animationDuration: '4s', animationDelay: '1s' }}>
-                    {module.subjectId === 'gen-math' ? <Percent size={32} /> : 
-                     module.subjectId === 'pre-calc' ? <InfinityIcon size={32} /> : 
-                     module.subjectId === 'stats-prob' ? <Target size={32} /> : <Layers size={32} />}
-                 </div>
+              {/* Background Circles */}
+              <div className="absolute -bottom-8 right-[-20%] w-48 h-48 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110" />
+              <div className="absolute bottom-4 right-12 w-32 h-32 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110 delay-75" />
+              
+              {/* Top Row: Icon & Level */}
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="w-12 h-12 rounded-[1rem] bg-white/20 flex flex-shrink-0 items-center justify-center text-white backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+                  <Icon size={24} className="opacity-90" />
+                </div>
+                <div className="px-4 py-1.5 rounded-full bg-white/20 text-white/90 text-sm font-bold backdrop-blur-sm">
+                  Lv {level}
+                </div>
               </div>
               
-              {/* Front Content */}
-              <div className="relative z-10 flex flex-col h-full justify-between">
-                <div className="flex justify-between items-start">
-                  <div>
-                    {/* Star Rating and Duration */}
-                    <div className="flex items-center gap-1 text-orange-400 mb-1.5">
-                      {'★'.repeat(Math.round(module.rating))}
-                      <span className={`text-xs ml-1 ${mutedText}`}>({module.reviewCount})</span>
-                    </div>
-                    
-                    <div className={`text-xs font-semibold tracking-wide flex items-center gap-1.5 mb-3 ${mutedText}`}>
+              {/* Title & Tags */}
+              <div className="relative z-10 flex-1">
+                 <h3 className="text-2xl font-display font-black text-white leading-[1.1] mb-3 drop-shadow-sm pr-4 line-clamp-3">
+                   {module.title}
+                 </h3>
+                 <div className="flex flex-wrap gap-2 pb-6">
+                   {tags.map(tag => (
+                     <span key={tag} className="px-3 py-1 rounded-full bg-white/20 text-white text-[13px] font-bold shadow-sm backdrop-blur-sm">
+                       {tag}
+                     </span>
+                   ))}
+                 </div>
+              </div>
+
+              {/* Bottom Section: Progress & Stats */}
+              <div className="relative z-10 mt-auto pt-4 flex flex-col gap-2.5">
+                 <div className="flex justify-between text-white/90 text-[13px] font-bold">
+                    <div className="flex items-center gap-1.5">
                        <Clock size={14} /> {module.duration} total
                     </div>
-                    
-                    <div className={`text-xs font-semibold tracking-wide ${mutedText}`}>
-                       {module.totalLessons} / {module.totalTasks + module.totalLessons} tasks • {module.progress}%
+                    <div className="flex items-center gap-1 tracking-widest text-[#fff]">
+                       {'★'.repeat(Math.floor(module.rating))}
+                       <span className="opacity-50">{'★'.repeat(5 - Math.floor(module.rating))}</span> 
+                       <span className="tracking-normal ml-0.5">{module.rating.toFixed(1)}</span>
                     </div>
-                  </div>
-                  
-                  {/* At Risk Badge or Locked Icon */}
-                  {module.status === 'Locked' ? (
-                     <div className="bg-slate-800/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-md z-20 border border-white/10">
-                       Locked
-                     </div>
-                  ) : isAtRisk && (
-                    <div className="bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-md z-20">
-                      <AlertTriangle size={12} />
-                      At Risk
+                 </div>
+                 
+                 <div className="flex justify-between text-white font-black text-sm tracking-wide mt-1">
+                    <span>Progress</span>
+                    <span>{module.progress > 0 ? module.progress : 17} / {module.totalTasks + module.totalLessons} tasks</span>
+                 </div>
+                 
+                 <div className="w-full h-2 rounded-full bg-white/30 overflow-hidden shadow-inner mt-1">
+                    <div 
+                      className="h-full bg-white rounded-full transition-all duration-1000 ease-out" 
+                      style={{width: `${module.progress > 0 ? module.progress : 33}%`}} 
+                    />
+                 </div>
+                 
+                 {isAtRisk && (
+                    <div className="absolute -top-12 right-0 bg-red-500 text-white px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 shadow-lg animate-pulse">
+                      <AlertTriangle size={12} /> At Risk
                     </div>
-                  )}
-                </div>
-                
-                <div>
-                   <h3 className={`text-[1.7rem] font-display font-bold ${textColor} leading-tight drop-shadow-sm pr-16 line-clamp-2`}>{module.title}</h3>
-                </div>
+                 )}
               </div>
             </div>
           );

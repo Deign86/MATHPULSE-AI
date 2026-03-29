@@ -7,8 +7,8 @@
 
 :root {
   --font-size: 16px;
-  --font-display: 'Syne', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Nunito', ui-sans-serif, system-ui, sans-serif;
 
   /* Surface & Background */
   --background: #f7f9fc;

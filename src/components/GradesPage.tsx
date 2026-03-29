@@ -127,7 +127,7 @@ const GradesPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
       {/* Overall Performance Card */}
       <div className="bg-gradient-to-br from-white via-sky-50/30 to-white rounded-2xl p-7 card-elevated-lg relative overflow-hidden border border-slate-200/80">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent"></div>

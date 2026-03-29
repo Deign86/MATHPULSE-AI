@@ -154,7 +154,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <header className="bg-white border-b border-[#dde3eb] px-6 py-4 shadow-sm">
+        <header className="bg-white border-b border-[#dde3eb] px-6 sm:px-10 lg:px-16 py-4 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -190,7 +190,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-6 py-8">
+        <main className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-16 py-10">
         <div className="max-w-4xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
