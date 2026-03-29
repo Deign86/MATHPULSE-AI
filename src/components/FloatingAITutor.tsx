@@ -71,12 +71,12 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         {/* Chat Header - Fixed */}
         <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <Bot size={20} className="text-white" />
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-9 h-9 object-contain drop-shadow-md" />
             </div>
             <div>
-              <h3 className="text-white font-bold text-sm">AI Math Tutor</h3>
-              <p className="text-sky-100 text-xs">Always here to help</p>
+              <h3 className="text-white font-bold text-sm">L.O.L.I.</h3>
+              <p className="text-sky-100 text-[10px] leading-tight">Logical Operations &<br/>Learning Intelligence</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -164,14 +164,23 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
       </div>
 
       {/* Floating Button */}
-      <motion.button
-        onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="pointer-events-auto w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all self-end"
-      >
-        {isOpen ? <X size={28} /> : <Bot size={28} />}
-      </motion.button>
+      <div className="pointer-events-auto relative group self-end">
+        {/* Tooltip */}
+        {!isOpen && (
+          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-800 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-xl z-50">
+            Hello! I'm L.O.L.I., how may I help you?
+            <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-slate-800 rotate-45" />
+          </div>
+        )}
+        <motion.button
+          onClick={() => setIsOpen(!isOpen)}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
+        >
+          {isOpen ? <X size={28} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-14 h-14 object-contain drop-shadow-lg" />}
+        </motion.button>
+      </div>
     </div>
   );
 };

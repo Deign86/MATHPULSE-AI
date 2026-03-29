@@ -133,6 +133,14 @@ const LeaderboardPage = () => {
     return null;
   };
 
+  const renderAvatar = (avatar: string | undefined, fallbackIcon: React.ReactNode) => {
+    if (!avatar) return fallbackIcon;
+    if (avatar.startsWith('http')) {
+      return <img src={avatar} alt="Avatar" className="w-full h-full object-cover rounded-[inherit]" />;
+    }
+    return avatar;
+  };
+
   const filteredStudents = getFilteredStudents();
   const showPodium = filteredStudents.length >= 3;
   const topThree = showPodium ? filteredStudents.slice(0, 3) : [];
@@ -140,7 +148,7 @@ const LeaderboardPage = () => {
   const yourRank = getCurrentRank();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
       {/* Header Stats */}
       <div className="bg-gradient-to-br from-white via-sky-50/30 to-white rounded-2xl p-7 card-elevated-lg relative overflow-hidden border border-slate-200/80">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent"></div>
@@ -255,8 +263,8 @@ const LeaderboardPage = () => {
               className="flex flex-col items-center"
             >
               <div className="relative mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-zinc-300 to-zinc-500 rounded-xl flex items-center justify-center text-4xl shadow-lg">
-                  {topThree[1]?.avatar ? topThree[1].avatar : <User size={32} className="text-white" />}
+                <div className="w-20 h-20 bg-gradient-to-br from-zinc-300 to-zinc-500 rounded-xl flex items-center justify-center text-4xl shadow-lg relative">
+                  {renderAvatar(topThree[1]?.avatar, <User size={32} className="text-white" />)}
                 </div>
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-zinc-400 rounded-full flex items-center justify-center text-white font-display font-bold text-sm shadow-md">
                   2
@@ -286,14 +294,14 @@ const LeaderboardPage = () => {
                 <Crown size={32} className="text-rose-500" />
               </motion.div>
               <div className="relative mb-4">
-                <div className="w-24 h-24 bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl flex items-center justify-center text-5xl shadow-2xl">
-                  {topThree[0]?.avatar ? topThree[0].avatar : <User size={40} className="text-white" />}
+                <div className="w-24 h-24 bg-gradient-to-br from-rose-400 to-rose-600 rounded-xl flex items-center justify-center text-5xl shadow-2xl relative">
+                  {renderAvatar(topThree[0]?.avatar, <User size={40} className="text-white" />)}
                 </div>
-                <div className="absolute -top-2 -right-2 w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white font-display font-bold shadow-md">
+                <div className="absolute -top-2 -right-2 w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white font-display font-bold shadow-md z-10">
                   1
                 </div>
                 {topThree[0]?.isOnline && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-white"></div>
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-white z-10"></div>
                 )}
               </div>
               <h3 className="font-display font-bold text-[#0a1628] text-lg mb-1">{topThree[0]?.name}</h3>
@@ -314,10 +322,10 @@ const LeaderboardPage = () => {
               className="flex flex-col items-center"
             >
               <div className="relative mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center text-4xl shadow-lg">
-                  {topThree[2]?.avatar ? topThree[2].avatar : <User size={32} className="text-white" />}
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center text-4xl shadow-lg relative">
+                  {renderAvatar(topThree[2]?.avatar, <User size={32} className="text-white" />)}
                 </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-display font-bold text-sm shadow-md">
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-display font-bold text-sm shadow-md z-10">
                   3
                 </div>
               </div>
@@ -365,11 +373,11 @@ const LeaderboardPage = () => {
 
                   {/* Avatar */}
                   <div className="relative">
-                    <div className="w-12 h-12 bg-[#dde3eb] rounded-lg flex items-center justify-center text-2xl">
-                      {student.avatar ? student.avatar : <User size={22} className="text-[#5a6578]" />}
+                    <div className="w-12 h-12 bg-[#dde3eb] rounded-lg flex items-center justify-center text-2xl relative">
+                      {renderAvatar(student.avatar, <User size={22} className="text-[#5a6578]" />)}
                     </div>
                     {student.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white z-10"></div>
                     )}
                   </div>
 

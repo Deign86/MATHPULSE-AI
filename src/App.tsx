@@ -444,9 +444,9 @@ const App = () => {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="pb-4">
-                    <div className="grid grid-cols-12 gap-4">
-                      <div className="col-span-12 xl:col-span-9 space-y-4">
+                  <div className="pb-8">
+                    <div className="grid grid-cols-12 gap-8 lg:gap-10">
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-2">
                         <HeroBanner 
                           userName={firstName} 
                           userLevel={userLevel}
@@ -460,13 +460,16 @@ const App = () => {
                         />
 
                         {profileReady && (
-                          <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
+                          <div className="pb-4">
+                            <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
+                          </div>
                         )}
                       </div>
 
-                      <div className="col-span-12 xl:col-span-3">
+                      <div className="col-span-12 xl:col-span-3 pt-2">
                         <RightSidebar 
                           onOpenRewards={() => setShowRewardsModal(true)}
+                          onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                           userLevel={userLevel}
                           currentXP={currentXP}
                           xpToNextLevel={xpToNextLevel}

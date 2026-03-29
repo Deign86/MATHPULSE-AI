@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star } from 'lucide-react';
+import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import InteractiveLesson, { Question } from './InteractiveLesson';
@@ -175,103 +175,120 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
+    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8 lg:overflow-hidden">
+      {/* Header Back Button */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-[#5a6578] hover:text-sky-600 font-bold mb-4 transition-colors group w-max shrink-0"
+      >
+        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+        Back to Modules
+      </button>
+
+      {/* Book Cover / Hero Banner */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
+        className={`relative mb-6 lg:mb-8 rounded-[2rem] ${module.accentColor} shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] shrink-0 overflow-hidden`}
       >
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-[#5a6578] hover:text-sky-600 font-bold mb-4 transition-colors group"
-        >
-          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          Back to Modules
-        </button>
-
-        {/* Module Hero */}
-        <div className={`${module.color} rounded-3xl p-8 border border-slate-300 shadow-lg`}>
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-[#0a1628] mb-2">{module.title}</h1>
-              <p className="text-[#5a6578] mb-6">{module.description}</p>
-
-              <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2 text-[#5a6578]">
-                  <BookOpen size={18} />
-                  <span className="font-medium">{module.lessons.length} Lessons</span>
-                </div>
-                <div className="flex items-center gap-2 text-[#5a6578]">
-                  <Award size={18} />
-                  <span className="font-medium">{module.quizzes.length} Quizzes</span>
-                </div>
-                <div className="flex items-center gap-2 text-teal-600">
-                  <CheckCircle2 size={18} />
-                  <span className="font-medium">{completedItems}/{totalItems} Completed</span>
-                </div>
+        {/* Simple black overlay to darken the specific module color */}
+        <div className="absolute inset-0 bg-black/60 pointer-events-none z-0" />
+        {/* Decorative Textbook Background */}
+        <div 
+          className="absolute inset-0 opacity-10 pointer-events-none" 
+          style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px)' }}
+        />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
+        
+        <div className="relative p-7 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+          <div className="flex-1 text-white">
+            <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-5">
+              <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1.5">
+                <Bookmark size={14} /> Chapter {module.id.split('-').pop() || '1'}
+              </div>
+              <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-400/30">
+                Lv {module.level || 1}
               </div>
             </div>
 
-            {/* Progress Circle */}
-            <div className="relative">
-              <svg width="100" height="100" className="transform -rotate-90">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke="#E2E8F0"
-                  strokeWidth="8"
-                  fill="none"
-                />
-                <motion.circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke={module.accentColor.replace('bg-', '#')}
-                  strokeWidth="8"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 42}`}
-                  initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
-                  animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - module.progress / 100) }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold text-[#0a1628]">{module.progress}%</span>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-black text-white mb-3 md:mb-4 tracking-[-0.02em] leading-tight">
+              {module.title}
+            </h1>
+            <p className="text-slate-300 text-sm md:text-[15px] max-w-2xl font-medium leading-relaxed mb-6 md:mb-8">
+              {module.description}
+            </p>
+
+            {/* Elegant Linear Progress instead of redundant circles/bars */}
+            <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/10 max-w-xl">
+              <div className="flex justify-between items-end mb-3">
+                <div className="flex items-center gap-2.5">
+                  <Award size={20} className="text-emerald-400" />
+                  <span className="text-[12px] md:text-[13px] font-black text-white uppercase tracking-wider">Module Mastery</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[12px] md:text-[13px] font-bold text-slate-400 mb-0.5">{completedItems}/{totalItems} steps</span>
+                  <span className="text-xl md:text-2xl font-black text-white shrink-0 leading-none">{module.progress}%</span>
+                </div>
+              </div>
+              <div className="h-3 bg-black/40 rounded-full overflow-hidden shadow-inner ring-1 ring-white/10 p-0.5">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${module.progress}%` }}
+                  transition={{ duration: 1.5, ease: 'easeOut', delay: 0.2 }}
+                  className={`h-full rounded-full relative ${module.progress === 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-300' : module.accentColor}`}
+                >
+                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=')] opacity-30 mix-blend-overlay" />
+                </motion.div>
               </div>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold text-[#5a6578]">Module Progress</span>
-              <span className="text-xs font-bold text-[#0a1628]">{module.progress}%</span>
-            </div>
-            <div className="h-3 bg-white/60 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${module.progress}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-                className={`h-full ${module.accentColor} rounded-full`}
-              />
-            </div>
+          <div className="hidden lg:flex w-48 h-48 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md items-center justify-center transform rotate-[-3deg] shadow-2xl relative group hover:rotate-0 transition-all duration-500 shrink-0">
+            <div className={`absolute inset-0 opacity-40 rounded-[2rem] ${module.progress === 100 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : module.accentColor}`} />
+            
+            {module.progress === 100 ? (
+              <Trophy size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
+            ) : (
+              <BookOpen size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
+            )}
+            
+            <motion.div animate={{y:[-5,5,-5], rotate:[-10,10,-10]}} transition={{duration:4, repeat:Infinity}} className="absolute top-6 left-6 text-emerald-300 z-20">
+              <Star size={20} fill="currentColor" />
+            </motion.div>
+            <motion.div animate={{y:[5,-5,5], rotate:[10,-10,10]}} transition={{duration:3.5, repeat:Infinity}} className="absolute bottom-8 right-6 text-sky-300 z-20">
+              <Hash size={24} />
+            </motion.div>
           </div>
         </div>
       </motion.div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-6 scrollbar-hide">
-        {/* Lessons Section */}
-        <div>
-          <h2 className="font-bold text-lg text-[#0a1628] mb-4 flex items-center gap-2">
-            <BookOpen size={20} className={module.iconColor} />
-            Lessons ({completedLessons}/{module.lessons.length})
-          </h2>
+      {/* 2-Column Notebook Grid Area */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 lg:min-h-0 pb-6 lg:pb-0">
+        
+        {/* LEFT COLUMN: Lessons */}
+        <div className="relative flex flex-col bg-[#FAFAFA] rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden lg:h-full">
+          {/* Notebook binding / margin line */}
+          <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/60 pointer-events-none z-0"></div>
+          <div className="absolute left-[54px] top-0 bottom-0 w-px bg-rose-100/40 pointer-events-none z-0"></div>
           
-          <div className="space-y-2">
+          <div className="px-6 md:px-8 py-5 md:py-6 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm relative z-10 flex items-center justify-between sticky top-0 shrink-0">
+            <h2 className="font-display font-black text-xl md:text-2xl text-slate-800 flex items-center gap-3">
+              <BookOpen size={24} className="text-sky-500" />
+              Study Notes
+            </h2>
+            <div className="text-xs md:text-sm font-bold bg-sky-100 text-sky-600 px-3 py-1 rounded-full shadow-sm border border-sky-200/50">
+              {completedLessons}/{module.lessons.length}
+            </div>
+          </div>
+
+          <div 
+            className="flex-1 overflow-y-auto px-5 md:px-8 py-5 md:py-6 space-y-4 scrollbar-hide relative z-10" 
+            style={{ 
+              backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #f1f5f9 31px, #f1f5f9 32px)', 
+              backgroundAttachment: 'local', 
+              lineHeight: '32px' 
+            }}
+          >
             {module.lessons.map((lesson, index) => (
               <motion.div
                 key={lesson.id}
@@ -279,72 +296,83 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
-                className={`bg-white rounded-2xl p-4 border-2 transition-all ${
+                className={`bg-white rounded-xl p-3 md:p-4 border relative overflow-hidden group transition-all duration-300 ${
                   lesson.locked
-                    ? 'border-[#dde3eb] opacity-60 cursor-not-allowed'
+                    ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
                     : lesson.completed
-                    ? 'border-teal-200 hover:border-teal-300 cursor-pointer hover:shadow-md'
-                    : 'border-sky-200 hover:border-sky-300 cursor-pointer hover:shadow-md'
-                } group`}
+                    ? 'border-teal-200 hover:border-teal-300 hover:shadow-md cursor-pointer'
+                    : 'border-sky-200 hover:border-sky-300 hover:shadow-md cursor-pointer'
+                }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      lesson.locked
-                        ? 'bg-[#edf1f7] text-slate-500'
-                        : lesson.completed
-                        ? 'bg-teal-100 text-teal-600'
-                        : 'bg-sky-100 text-sky-600'
+                <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${
+                  lesson.locked ? 'bg-slate-300' :
+                  lesson.completed ? 'bg-teal-400' : 'bg-sky-400'
+                }`} />
+
+                <div className="flex items-center justify-between pl-3 relative z-10">
+                  <div className="flex items-center gap-3 md:gap-4 flex-1">
+                    <div className={`w-9 h-9 md:w-10 md:h-10 rounded-[10px] flex items-center justify-center shrink-0 shadow-sm ${
+                      lesson.locked ? 'bg-slate-100 text-slate-400' :
+                      lesson.completed ? 'bg-teal-50 text-teal-600' : 'bg-sky-50 text-sky-600'
                     }`}>
-                      {lesson.locked ? (
-                        <Lock size={18} />
-                      ) : lesson.completed ? (
-                        <CheckCircle2 size={18} />
-                      ) : (
-                        <Play size={18} />
-                      )}
+                      {lesson.locked ? <Lock size={16} /> :
+                       lesson.completed ? <CheckCircle2 size={16} /> : 
+                       <Play size={16} className="ml-1" />}
                     </div>
 
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-500">Lesson {index + 1}</span>
-                      </div>
-                      <h3 className="font-bold text-[#0a1628] group-hover:text-sky-600 transition-colors">
+                      <div className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Lesson {index + 1}</div>
+                      <h3 className={`font-bold text-[14px] md:text-[15px] leading-tight transition-colors ${
+                        lesson.locked ? 'text-slate-600' : 'text-[#0a1628] group-hover:text-sky-600'
+                      }`}>
                         {lesson.title}
                       </h3>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5 text-[#5a6578] text-sm">
-                      <Clock size={14} />
+                  <div className="flex items-center gap-3 shrink-0 ml-3 md:ml-4">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[11px] md:text-xs font-bold bg-slate-50 px-2 py-1 rounded-md">
+                      <Clock size={12} />
                       <span>{lesson.duration}</span>
                     </div>
-                    {lesson.completed && (
-                      <div className="px-3 py-1 bg-teal-100 text-teal-700 rounded-lg text-xs font-bold">
-                        Completed
-                      </div>
-                    )}
                   </div>
                 </div>
               </motion.div>
             ))}
+            
+            {/* Spacer for bottom padding */}
+            <div className="h-4 pointer-events-none"></div>
           </div>
         </div>
 
-        {/* Quizzes Section */}
-        <div>
-          <h2 className="font-bold text-lg text-[#0a1628] mb-4 flex items-center gap-2">
-            <Award size={20} className={module.iconColor} />
-            Quizzes & Assessments ({completedQuizzes}/{module.quizzes.length})
-          </h2>
+        {/* RIGHT COLUMN: Assessments */}
+        <div className="relative flex flex-col bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden lg:h-full">
+          <div className="h-5 bg-slate-200/50 border-b border-slate-200 w-full flex items-center justify-center pointer-events-none sticky top-0 z-20">
+            <div className="w-16 h-1.5 bg-slate-300 rounded-full"></div>
+          </div>
           
-          <div className="space-y-3">
+          <div className="px-6 md:px-8 py-4 md:py-5 border-b-2 border-dashed border-slate-200 bg-white relative z-10 flex items-center justify-between sticky top-5 shrink-0">
+            <h2 className="font-display font-black text-xl md:text-2xl text-slate-800 flex items-center gap-3">
+              <PenTool size={24} className="text-rose-500" />
+              Assessments
+            </h2>
+            <div className="text-xs md:text-sm font-bold bg-rose-100 text-rose-600 px-3 py-1 rounded-full shadow-sm border border-rose-200/50">
+              {completedQuizzes}/{module.quizzes.length}
+            </div>
+          </div>
+
+          <div 
+            className="flex-1 overflow-y-auto px-5 md:px-8 py-5 md:py-6 space-y-4 md:space-y-5 scrollbar-hide relative z-10"
+            style={{
+              backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+              backgroundPosition: '-12px -12px'
+            }}
+          >
             {module.quizzes.map((quiz, index) => {
               const isLocked = quiz.locked;
-              const isPractice = quiz.type === 'practice';
-              const isModuleQuiz = quiz.type === 'module';
               const isFinal = quiz.type === 'final';
+              const isModuleQuiz = quiz.type === 'module';
 
               return (
                 <motion.div
@@ -353,80 +381,68 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: (module.lessons.length + index) * 0.05 }}
                   onClick={() => !isLocked && setSelectedLesson({ quiz, type: 'quiz' })}
-                  className={`rounded-2xl p-5 border-2 transition-all ${
+                  className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${
                     isLocked
-                      ? 'bg-[#edf1f7] border-[#dde3eb] opacity-60 cursor-not-allowed'
+                      ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
                       : quiz.completed
-                      ? 'bg-gradient-to-br from-teal-50 to-emerald-50 border-teal-200 hover:border-teal-300 cursor-pointer hover:shadow-md'
+                      ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
                       : isFinal
-                      ? 'bg-gradient-to-br from-sky-50 to-cyan-50 border-sky-200 hover:border-sky-300 cursor-pointer hover:shadow-md'
-                      : isModuleQuiz
-                      ? 'bg-gradient-to-br from-orange-50 to-rose-50 border-orange-200 hover:border-orange-300 cursor-pointer hover:shadow-md'
-                      : 'bg-gradient-to-br from-sky-50 to-cyan-50 border-sky-200 hover:border-sky-300 cursor-pointer hover:shadow-md'
+                      ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
+                      : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
                   } group`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        isLocked
-                          ? 'bg-[#dde3eb] text-slate-500'
-                          : quiz.completed
-                          ? 'bg-teal-500 text-white'
-                          : isFinal
-                          ? 'bg-sky-500 text-white'
-                          : isModuleQuiz
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-sky-500 text-white'
+                  <div className="flex items-center justify-between gap-3 md:gap-4">
+                    <div className="flex items-center gap-3 md:gap-4 flex-1">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${
+                        isLocked ? 'bg-slate-100 text-slate-400' :
+                        quiz.completed ? 'bg-teal-500 text-white' :
+                        isFinal ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
                       }`}>
-                        {isLocked ? (
-                          <Lock size={20} />
-                        ) : quiz.completed ? (
-                          <Trophy size={20} />
-                        ) : (
-                          <PenTool size={20} />
-                        )}
+                        {isLocked ? <Lock size={18} /> :
+                         quiz.completed ? <Trophy size={18} /> :
+                         <PenTool size={18} />}
                       </div>
 
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
-                            isFinal
-                              ? 'bg-sky-200 text-sky-700'
-                              : isModuleQuiz
-                              ? 'bg-orange-200 text-orange-700'
-                              : 'bg-sky-200 text-sky-700'
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${
+                            isFinal ? 'bg-indigo-100 text-indigo-700' :
+                            isModuleQuiz ? 'bg-orange-100 text-orange-700' :
+                            'bg-sky-100 text-sky-700'
                           }`}>
-                            {isFinal ? 'Final Exam' : isModuleQuiz ? 'Module Quiz' : 'Practice Quiz'}
+                            {isFinal ? 'Final Exam' : isModuleQuiz ? 'Module Task' : 'Quiz'}
                           </span>
+                          {!isLocked && !quiz.completed && (
+                            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                          )}
                         </div>
-                        <h3 className="font-bold text-[#0a1628] mb-1">{quiz.title}</h3>
-                        <div className="flex items-center gap-4 text-sm text-[#5a6578]">
-                          <span>{quiz.questions} questions</span>
-                          <span>•</span>
-                          <span>{quiz.duration}</span>
+                        <h3 className={`font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 transition-colors ${
+                          isLocked ? 'text-slate-600' : 'text-[#0a1628]'
+                        }`}>
+                          {quiz.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-bold text-slate-400">
+                          <span className="flex items-center gap-1"><BookOpen size={12}/> {quiz.questions} Qs</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="flex items-center gap-1"><Clock size={12}/> {quiz.duration}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-end gap-2 shrink-0">
                       {quiz.score !== undefined && quiz.completed && (
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-teal-600">{quiz.score}%</div>
-                          <div className="text-xs text-[#5a6578]">Best Score</div>
+                          <div className="text-xl md:text-2xl font-black text-teal-600 leading-none">{quiz.score}%</div>
                         </div>
                       )}
-                      {quiz.completed ? (
-                        <div className="px-4 py-2 bg-teal-500 text-white rounded-xl text-sm font-bold flex items-center gap-1">
-                          <CheckCircle2 size={16} />
-                          Retake
-                        </div>
-                      ) : (
-                        <div className={`px-4 py-2 rounded-xl text-sm font-bold ${
-                          isLocked
-                            ? 'bg-[#dde3eb] text-[#5a6578]'
-                            : 'bg-sky-600 text-white group-hover:bg-sky-700'
+                      
+                      {!isLocked && (
+                        <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
+                          quiz.completed 
+                            ? 'bg-white border border-slate-200 text-slate-600 group-hover:bg-slate-50' 
+                            : 'bg-slate-900 text-white group-hover:bg-slate-600'
                         }`}>
-                          Start Quiz
+                          {quiz.completed ? 'Review' : 'Start'}
                         </div>
                       )}
                     </div>
@@ -434,29 +450,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 </motion.div>
               );
             })}
+
+            {/* Spacer for bottom padding */}
+            <div className="h-4 pointer-events-none"></div>
           </div>
         </div>
-
-        {/* Module Completion Reward */}
-        {module.progress === 100 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-3xl p-8 border-2 border-rose-200 text-center"
-          >
-            <div className="w-16 h-16 bg-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trophy size={32} className="text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-[#0a1628] mb-2">Module Completed!</h3>
-            <p className="text-[#5a6578] mb-4">
-              Congratulations! You've mastered this module. Keep up the great work!
-            </p>
-            <div className="flex items-center justify-center gap-2 text-rose-600 font-bold">
-              <Star size={20} />
-              <span>+200 XP Earned</span>
-            </div>
-          </motion.div>
-        )}
       </div>
     </div>
   );
