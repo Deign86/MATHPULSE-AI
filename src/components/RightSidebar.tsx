@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, Trophy, Flame, Star, Crown } from 'lucide-react';
 import { motion } from 'motion/react';
+import DailyChallengeWidget from './DailyChallengeWidget';
 
 interface RightSidebarProps {
   onOpenRewards: () => void;
@@ -8,6 +9,7 @@ interface RightSidebarProps {
   currentXP: number;
   xpToNextLevel: number;
   streak: number;
+  streakHistory?: string[];
   onLogout?: () => void;
   onOpenProfile?: () => void;
   userName?: string;
@@ -20,6 +22,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   currentXP, 
   xpToNextLevel,
   streak,
+  streakHistory = [],
 }) => {
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
 
@@ -78,6 +81,15 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             />
           </div>
         </div>
+      </motion.div>
+
+      {/* Daily Challenge & Streak Calendar Widget */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <DailyChallengeWidget streakHistory={streakHistory} />
       </motion.div>
 
     </div>

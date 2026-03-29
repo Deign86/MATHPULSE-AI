@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { BookOpen, GraduationCap, Target, TrendingUp, ChevronRight, Lock, CheckCircle, Play, AlertTriangle } from 'lucide-react';
+import {
+  BookOpen, Play, CheckCircle, ChevronDown, ChevronRight, Lock, GraduationCap, Award, Clock, Star, TrendingUp, AlertTriangle, Target, Calculator, Compass, PieChart, Box, Percent, Infinity as InfinityIcon, Layers
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import SubjectDetailView from './SubjectDetailView';
@@ -7,7 +9,7 @@ import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
 import QuizExperience from './QuizExperience';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
-import { subjects, Subject, Module } from '../data/subjects';
+import { subjects, type Subject, type Module } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ModulesPageProps {
@@ -74,49 +76,45 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#0a1628] mb-4">Explore Modules</h1>
-        
+
         {/* Tabs */}
         <div className="flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-sm">
           <button
             onClick={() => setActiveTab('learning-path')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'learning-path'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'learning-path'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground hover:bg-muted'
+              }`}
           >
             <GraduationCap size={18} />
             My Learning Path
           </button>
           <button
             onClick={() => setActiveTab('all-subjects')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'all-subjects'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'all-subjects'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground hover:bg-muted'
+              }`}
           >
             <BookOpen size={18} />
             All Subjects
           </button>
           <button
             onClick={() => setActiveTab('practice')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'practice'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'practice'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground hover:bg-muted'
+              }`}
           >
             <Target size={18} />
             Practice & Quizzes
           </button>
           <button
             onClick={() => setActiveTab('recommended')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'recommended'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'recommended'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground hover:bg-muted'
+              }`}
           >
             <TrendingUp size={18} />
             Recommended
@@ -219,7 +217,7 @@ const AllSubjectsView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
 const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject: Subject) => void; onSelectModule: (module: Module) => void; atRiskSubjects?: string[] }> = ({ subjects, onSelectSubject, onSelectModule, atRiskSubjects = [] }) => {
   // Get recommended modules (in progress modules from different subjects)
   const recommendedModules: { subject: Subject; module: Module }[] = [];
-  
+
   subjects.forEach(subject => {
     const inProgressModules = subject.modules.filter(m => m.progress > 0 && m.progress < 100);
     inProgressModules.forEach(module => {
@@ -229,7 +227,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
 
   // Get suggested next modules (first incomplete module from subjects with progress)
   const suggestedModules: { subject: Subject; module: Module }[] = [];
-  
+
   subjects.filter(s => s.progress > 0).forEach(subject => {
     const nextModule = subject.modules.find(m => m.progress === 0);
     if (nextModule) {
@@ -315,89 +313,77 @@ const SubjectCard: React.FC<{
 }> = ({ subject, onClick, index, showProgress, isAtRisk }) => {
   const Icon = subject.icon;
 
+  const cardGradient = subject.id === 'gen-math' ? 'bg-gradient-to-br from-pink-400 to-pink-500' :
+    subject.id === 'pre-calc' ? 'bg-gradient-to-br from-indigo-500 to-violet-600' :
+      subject.id === 'stats-prob' ? 'bg-gradient-to-br from-amber-200 to-yellow-400' :
+        'bg-gradient-to-br from-sky-400 to-blue-500';
+
+  const textColor = subject.id === 'stats-prob' ? 'text-[#0a1628]' : 'text-white';
+  const mutedText = subject.id === 'stats-prob' ? 'text-[#0a1628]/70' : 'text-white/80';
+  const bubbleColor = subject.id === 'stats-prob' ? 'bg-white/40' : 'bg-white/20';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ y: -4, scale: 1.01 }}
       onClick={onClick}
-      className={`${subject.color} rounded-2xl p-6 border ${isAtRisk ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-300'} shadow-sm hover:shadow-lg transition-all cursor-pointer group relative overflow-hidden`}
+      className={`${cardGradient} rounded-[2rem] p-6 h-56 relative overflow-hidden card-elevated hover:card-elevated-lg transition-all cursor-pointer flex flex-col justify-between group`}
     >
-      {/* Background Icon */}
-      <div className="absolute right-4 bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-        <Icon size={80} />
+      {/* Scattered Graphics Elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Background bubbles */}
+        <div className={`absolute top-6 right-24 w-4 h-4 rounded-full ${bubbleColor} animate-pulse`} />
+        <div className={`absolute bottom-12 right-1/2 w-8 h-8 rounded-full ${bubbleColor}`} />
+        <div className={`absolute top-1/3 right-8 w-6 h-6 rounded-full ${bubbleColor}`} />
+
+        {/* Main huge graphic */}
+        <div className={`absolute -bottom-8 -right-6 w-40 h-40 ${bubbleColor} rounded-full mix-blend-overlay opacity-50`}></div>
+        <div className={`absolute -bottom-4 -right-2 transform group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500 ${textColor}`}>
+          <Icon size={120} className="opacity-90 drop-shadow-xl" />
+        </div>
+
+        {/* Scattered small icons depending on subject */}
+        <div className={`absolute top-8 right-8 ${textColor} opacity-60 animate-bounce`} style={{ animationDuration: '3s' }}>
+          {subject.id === 'gen-math' ? <Calculator size={24} /> :
+            subject.id === 'pre-calc' ? <Compass size={24} /> :
+              subject.id === 'stats-prob' ? <PieChart size={24} /> : <Box size={24} />}
+        </div>
+        <div className={`absolute top-1/2 right-28 ${textColor} opacity-50 animate-bounce`} style={{ animationDuration: '4s', animationDelay: '1s' }}>
+          {subject.id === 'gen-math' ? <Percent size={32} /> :
+            subject.id === 'pre-calc' ? <InfinityIcon size={32} /> :
+              subject.id === 'stats-prob' ? <Target size={32} /> : <Layers size={32} />}
+        </div>
       </div>
 
-      {/* At Risk/On Track Badge */}
-      {showProgress && subject.progress > 0 && (
-        <div className="absolute top-4 right-4 z-20">
-          {isAtRisk ? (
-            <div className="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-red-200">
+      {/* Front Content */}
+      <div className="relative z-10 flex flex-col h-full justify-between">
+        <div className="flex justify-between items-start">
+          <div>
+            {/* Star Rating and Duration */}
+            <div className="flex items-center gap-1 text-orange-400 mb-3">
+              {'★'.repeat(5)}
+              <span className={`text-xs ml-1 ${mutedText}`}>({subject.totalModules * 12})</span>
+            </div>
+
+            <div className={`text-xs font-semibold tracking-wide ${mutedText}`}>
+              {subject.totalModules * 5} / {subject.totalModules * 15} tasks • {subject.progress}%
+            </div>
+          </div>
+
+          {/* At Risk Badge over image graphics space */}
+          {isAtRisk && (
+            <div className="bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-md z-20">
               <AlertTriangle size={12} />
               At Risk
             </div>
-          ) : (
-             <div className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-emerald-200">
-              <CheckCircle size={12} />
-              On Track
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-14 h-14 ${subject.color} brightness-95 rounded-xl flex items-center justify-center ${subject.iconColor}`}>
-            <Icon size={28} />
-          </div>
-          {showProgress && subject.progress > 0 && (
-            <div className="text-right">
-              <p className={`text-2xl font-bold ${subject.iconColor}`}>{subject.progress}%</p>
-              <p className="text-xs text-[#5a6578] font-medium">Complete</p>
-            </div>
           )}
         </div>
 
-        {/* Content */}
-        <h3 className="font-bold text-[#0a1628] mb-2">{subject.title}</h3>
-        <p className="text-sm text-[#5a6578] mb-4 line-clamp-2">{subject.description}</p>
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-[#5a6578] mb-4">
-          <div className="flex items-center gap-1">
-            <BookOpen size={14} />
-            <span className="font-medium">{subject.totalModules} modules</span>
-          </div>
-          {subject.completedModules > 0 && (
-            <div className="flex items-center gap-1 text-teal-600">
-              <CheckCircle size={14} />
-              <span className="font-medium">{subject.completedModules} done</span>
-            </div>
-          )}
+        <div>
+          <h3 className={`text-[1.7rem] font-display font-bold ${textColor} leading-tight drop-shadow-sm pr-16`}>{subject.title}</h3>
         </div>
-
-        {/* Progress Bar */}
-        {showProgress && (
-          <div className="h-2 bg-white/60 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${subject.progress}%` }}
-              transition={{ duration: 1, ease: 'easeOut', delay: index * 0.1 }}
-              className={`h-full ${subject.accentColor} rounded-full`}
-            />
-          </div>
-        )}
-
-        {/* CTA */}
-        {!showProgress || subject.progress === 0 && (
-          <Button
-            className={`w-full ${subject.accentColor} hover:opacity-90 text-white font-bold py-3 rounded-xl text-sm mt-4`}
-          >
-            Start Learning
-          </Button>
-        )}
       </div>
     </motion.div>
   );
@@ -417,50 +403,57 @@ const ModuleCardCompact: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ y: -2 }}
       onClick={onClick}
-      className={`${module.color} rounded-2xl p-4 border ${isAtRisk ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-300'} shadow-sm hover:shadow-lg transition-all cursor-pointer relative`}
+      className={`bg-white rounded-3xl border border-slate-100 card-elevated hover:card-elevated-lg transition-all cursor-pointer relative overflow-hidden flex flex-col`}
     >
-      {isAtRisk && (
-        <div className="absolute top-2 right-2 z-20">
-          <AlertTriangle size={14} className="text-red-500" />
+      <div className={`h-20 relative ${module.accentColor} overflow-hidden`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-black/10" />
+        {isAtRisk && (
+          <div className="absolute top-2 right-2 z-20">
+            <AlertTriangle size={14} className="text-white drop-shadow-md" />
+          </div>
+        )}
+        <div className="absolute inset-0 opacity-20 bg-pattern" />
+        <div className="absolute -bottom-3 left-4">
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm border border-white/50 ${status === 'In Progress' ? 'bg-orange-100 text-orange-700' :
+            status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
+              'bg-violet-100 text-violet-700'
+            }`}>
+            {status}
+          </span>
         </div>
-      )}
-      <div className="flex items-start justify-between mb-3">
-        <div className={`px-2 py-1 rounded-lg text-xs font-bold ${subject.iconColor} ${subject.color} brightness-95`}>
+      </div>
+
+      <div className="p-4 pt-5 flex-1 flex flex-col">
+        <div className={`text-xs font-bold text-primary mb-1 uppercase tracking-wide truncate`}>
           {subject.title}
         </div>
-        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-          status === 'In Progress' ? 'bg-sky-100 text-sky-700' :
-          status === 'Completed' ? 'bg-teal-100 text-teal-700' :
-          'bg-emerald-100 text-emerald-700'
-        }`}>
-          {status}
-        </span>
-      </div>
+        <h3 className="font-bold text-[#0a1628] text-sm mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">{module.title}</h3>
 
-      <h3 className="font-bold text-[#0a1628] text-sm mb-2 line-clamp-2">{module.title}</h3>
-      <p className="text-xs text-[#5a6578] mb-3 line-clamp-1">{module.description}</p>
+        <div className="mt-auto">
+          <div className="flex items-center justify-between text-[10px] mt-3">
+            <span className="text-slate-500 font-bold flex items-center gap-1 border border-slate-100 px-1.5 py-0.5 rounded bg-slate-50">
+              <BookOpen size={10} className="text-orange-500" />
+              {module.lessons.length} Lessons
+            </span>
+            {module.progress > 0 && (
+              <span className={`font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20`}>{module.progress}%</span>
+            )}
+          </div>
 
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-[#5a6578] font-medium">
-          {module.lessons.length} lessons • {module.quizzes.length} quizzes
-        </span>
-        {module.progress > 0 && (
-          <span className={`font-bold ${module.iconColor}`}>{module.progress}%</span>
-        )}
-      </div>
-
-      {module.progress > 0 && (
-        <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mt-3">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${module.progress}%` }}
-            transition={{ duration: 1, ease: 'easeOut', delay: index * 0.1 }}
-            className={`h-full ${module.accentColor} rounded-full`}
-          />
+          {module.progress > 0 && (
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${module.progress}%` }}
+                transition={{ duration: 1, ease: 'easeOut', delay: index * 0.1 }}
+                className={`h-full bg-primary rounded-full`}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </motion.div>
   );
 };

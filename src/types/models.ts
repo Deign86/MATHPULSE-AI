@@ -25,6 +25,7 @@ export interface StudentProfile extends User {
   currentXP: number;
   totalXP: number;
   streak: number;
+  streakHistory?: string[]; // Array of YYYY-MM-DD strings
   atRiskSubjects: string[];
   hasTakenDiagnostic: boolean;
   // Automation fields
@@ -312,4 +313,23 @@ export interface QuizAnswerRecord {
   answer: string;
   correct: boolean;
   timeSpent: number;
+}
+
+// Review Types
+export interface SubjectReview {
+  id: string;
+  subjectId: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: Date;
+}
+
+export interface SubjectStats {
+  subjectId: string;
+  averageRating: number;
+  totalReviews: number;
+  updatedAt: Date;
 }

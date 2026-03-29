@@ -11,6 +11,7 @@ import {
   updateDoc,
   serverTimestamp,
   increment,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
@@ -55,8 +56,13 @@ export const updateStreak = async (userId: string): Promise<number> => {
       }
     }
 
+    // Generate local date string YYYY-MM-DD
+    const localNow = new Date();
+    const todayDateStr = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, '0')}-${String(localNow.getDate()).padStart(2, '0')}`;
+
     await updateDoc(userRef, {
       streak: newStreak,
+      streakHistory: arrayUnion(todayDateStr),
       lastActivityDate: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });

@@ -215,6 +215,8 @@ export interface Subject {
   progress: number;
   totalModules: number;
   completedModules: number;
+  rating?: number;
+  reviewCount?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,6 +236,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 3,
     completedModules: 0,
+    rating: 4.9,
+    reviewCount: 204,
     modules: [
       {
         id: 'gm-1',
@@ -312,6 +316,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 3,
     completedModules: 0,
+    rating: 4.7,
+    reviewCount: 192,
     modules: [
       {
         id: 'pc-1',
@@ -389,6 +395,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 4,
     completedModules: 0,
+    rating: 4.8,
+    reviewCount: 160,
     modules: [
       {
         id: 'sp-1',
@@ -479,6 +487,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 3,
     completedModules: 0,
+    rating: 4.9,
+    reviewCount: 216,
     modules: [
       {
         id: 'bc-1',
