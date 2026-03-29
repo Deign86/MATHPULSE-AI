@@ -558,7 +558,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
         </header>
 
         {/* Main Content */}
-        <main className="relative z-10 flex-1 flex flex-col items-center justify-start px-4 pb-8 pt-4 md:pt-8 overflow-y-auto">
+        <main className="relative z-10 flex-1 flex flex-col items-center justify-start px-4 sm:px-6 xl:px-10 pb-8 pt-4 md:pt-8 overflow-y-auto">
           
           {/* Progress Bar */}
           <div className="w-full max-w-md mb-8 px-2">
