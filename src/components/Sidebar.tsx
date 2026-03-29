@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
 
@@ -70,6 +70,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
           items: [
             { icon: GraduationCap, label: 'Grades', displayLabel: 'Assessment' },
             { icon: Trophy, label: 'Leaderboard', displayLabel: 'Leadership Board' },
+          ],
+        },
+        {
+          label: 'Customization',
+          items: [
+            { icon: Shirt, label: 'Avatar Studio', displayLabel: 'Avatar Studio' },
           ],
         },
       ];
@@ -146,3 +152,4 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
 };
 
 export default Sidebar;
+

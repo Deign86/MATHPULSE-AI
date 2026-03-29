@@ -5,6 +5,8 @@ import HeroBanner from './components/HeroBanner';
 import LearningPath from './components/LearningPath';
 import RightSidebar from './components/RightSidebar';
 import ModulesPage from './components/ModulesPage';
+import AvatarShop from './components/AvatarShop';
+import CompositeAvatar from './components/CompositeAvatar';
 import AIChatPage from './components/AIChatPage';
 import FloatingAITutor from './components/FloatingAITutor';
 import XPNotification from './components/XPNotification';
@@ -219,8 +221,9 @@ const App = () => {
     name: userProfile.name,
     email: userProfile.email,
     phone: userProfile.phone || '',
-    photo: userProfile.photo || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
-    role: userProfile.role,
+      photo: userProfile.photo || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
+      avatarLayers: userProfile.avatarLayers,
+      role: userProfile.role,
     ...(userRole === 'student' && studentProfile ? {
       lrn: studentProfile.lrn,
       grade: studentProfile.grade,
@@ -419,11 +422,7 @@ const App = () => {
                 className="flex items-center gap-2.5 w-[152px] h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
                 aria-label={`Profile: ${profileData.name}`}
               >
-                <img 
-                  src={profileData.photo}
-                  alt={profileData.name}
-                  className="w-8 h-8 rounded-lg object-cover"
-                />
+                <CompositeAvatar layers={profileData.avatarLayers} className="w-8 h-8 rounded-lg bg-[#0B1021] shrink-0" fallbackSrc={profileData.photo} />
                 <div className="text-left min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
                     {firstName}
@@ -450,6 +449,7 @@ const App = () => {
                         <HeroBanner 
                           userName={firstName} 
                           userLevel={userLevel}
+                            avatarLayers={profileData.avatarLayers}
                           onContinueLearning={() => setActiveTab('Modules')} 
                         />
 
@@ -471,6 +471,7 @@ const App = () => {
                           onOpenRewards={() => setShowRewardsModal(true)}
                           onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                           userLevel={userLevel}
+                            avatarLayers={profileData.avatarLayers}
                           currentXP={currentXP}
                           xpToNextLevel={xpToNextLevel}
                           streak={streak}
@@ -483,6 +484,8 @@ const App = () => {
                   <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} />
                 ) : activeTab === 'Leaderboard' ? (
                   <LeaderboardPage />
+                ) : activeTab === 'Avatar Studio' ? (
+                  <AvatarShop onSaveProfile={(layers) => setProfileOverrides(prev => ({ ...prev, avatarLayers: layers }))} />
                 ) : activeTab === 'AI Chat' ? (
                   <AIChatPage />
                 ) : activeTab === 'Grades' ? (
@@ -518,6 +521,7 @@ const App = () => {
             isOpen={showRewardsModal}
             onClose={() => setShowRewardsModal(false)}
             userLevel={userLevel}
+                            avatarLayers={profileData.avatarLayers}
             currentXP={currentXP}
             xpToNextLevel={xpToNextLevel}
             totalXP={totalXP}
@@ -576,3 +580,7 @@ const App = () => {
 };
 
 export default App;
+
+
+
+

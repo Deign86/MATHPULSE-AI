@@ -10,6 +10,7 @@ interface ProfileData {
   email?: string;
   phone?: string;
   photo?: string;
+  avatarLayers?: { top?: string; bottom?: string; shoes?: string; accessory?: string; };
   role?: 'student' | 'teacher' | 'admin';
   lrn?: string;
   grade?: string;
@@ -53,6 +54,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
       email: profileData?.email || '',
       phone: profileData?.phone || '',
       photo: profileData?.photo || '',
+      avatarLayers: profileData?.avatarLayers,
       role: profileData?.role,
       lrn: profileData?.lrn || '',
       grade: profileData?.grade || '',
@@ -177,7 +179,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
                   {accountData.role === 'student' && (
                     <>
                       <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">LRN</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Learner's Reference Number (LRN)</label>
                         <Input
                           type="text"
                           value={accountData.lrn || ''}
