@@ -9,8 +9,9 @@ import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
 import QuizExperience from './QuizExperience';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
-import { subjects, type Subject, type Module } from '../data/subjects';
+import { subjects, getActiveSubjectIdsForGrade, type Subject, type Module, type SubjectId } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
+import { type StudentProfile } from '../types/models';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -24,9 +25,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const studentGrade = (userProfile as StudentProfile | null)?.grade;
+  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+  const gradeScopedSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
 
   // Filter subjects based on search query
-  const filteredSubjects = subjects.map(subject => {
+  const filteredSubjects = gradeScopedSubjects.map(subject => {
     const query = searchQuery.toLowerCase();
     const subjectMatches = subject.title.toLowerCase().includes(query);
     const matchedModules = subject.modules.filter(m => 
@@ -214,7 +218,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
           className="flex-1 overflow-y-auto"
         >
           {activeTab === 'practice' ? (
-            <PracticeCenter onStartQuiz={handleStartQuiz} searchQuery={searchQuery} />
+            <PracticeCenter onStartQuiz={handleStartQuiz} searchQuery={searchQuery} allowedSubjectIds={allowedSubjectIds} />
           ) : activeTab === 'all-subjects' ? (
             <AllSubjectsView subjects={filteredSubjects} onSelectSubject={setSelectedSubject} atRiskSubjects={atRiskSubjects} />
           ) : (

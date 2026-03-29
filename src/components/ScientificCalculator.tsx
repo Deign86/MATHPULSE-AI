@@ -35,7 +35,38 @@ function tokenize(expr: string): string[] {
     // skip whitespace
     if (ch === ' ') { i++; continue; }
 
-    // number (incl. decimals and leading minus for negative after operator / start)
+    // unary minus: treat as signed number or negation function
+    if (ch === '-') {
+      const prev = tokens[tokens.length - 1];
+      const isUnary = !prev || ['+', '-', '×', '÷', '*', '/', '%', '^', '('].includes(prev);
+      if (isUnary) {
+        const next = expr[i + 1];
+        if (next && (/\d/.test(next) || next === '.')) {
+          let num = '-';
+          i++;
+          while (i < expr.length && (/[\d.]/.test(expr[i]))) { num += expr[i]; i++; }
+          if (
+            i < expr.length &&
+            (expr[i] === 'e' || expr[i] === 'E') &&
+            (i + 1 < expr.length) &&
+            /[\d+-]/.test(expr[i + 1])
+          ) {
+            num += expr[i];
+            i++;
+            if (expr[i] === '+' || expr[i] === '-') { num += expr[i]; i++; }
+            while (i < expr.length && /\d/.test(expr[i])) { num += expr[i]; i++; }
+          }
+          tokens.push(num);
+          continue;
+        }
+        // Example: -(2+3) or -sin(30)
+        tokens.push('neg');
+        i++;
+        continue;
+      }
+    }
+
+    // number (incl. decimals)
     if (/\d/.test(ch) || (ch === '.' && i + 1 < expr.length && /\d/.test(expr[i + 1]))) {
       let num = '';
       while (i < expr.length && (/[\d.]/.test(expr[i]))) { num += expr[i]; i++; }
@@ -95,7 +126,7 @@ function toPostfix(tokens: string[], mode: AngleMode): string[] {
   }
 
   for (const token of expanded) {
-    if (/^[\d.]+([eE][+-]?\d+)?$/.test(token)) {
+    if (/^-?[\d.]+([eE][+-]?\d+)?$/.test(token)) {
       output.push(token);
     } else if (token === 'π') {
       output.push(String(Math.PI));
@@ -159,7 +190,7 @@ function evaluatePostfix(postfix: string[], mode: AngleMode, ans: number): numbe
     }
 
     const num = parseFloat(token);
-    if (!isNaN(num) && /^[\d.eE+-]+$/.test(token)) {
+    if (!isNaN(num) && /^-?[\d.]+([eE][+-]?\d+)?$/.test(token)) {
       stack.push(num);
       continue;
     }
@@ -674,7 +705,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         {/* Result line (bottom) */}
         <div className={`
           text-right font-mono font-bold text-[32px] leading-tight h-10 overflow-hidden whitespace-nowrap
-          ${isError ? 'text-red-400' : 'text-white'}
+          ${isError ? 'text-red-400' : 'text-[#0a1628]'}
         `}>
           {expression || result}
         </div>
