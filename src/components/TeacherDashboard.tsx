@@ -4,7 +4,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   Play, FileText, Target, Zap, Award, Upload, FileSpreadsheet, 
   Video, ClipboardCheck, Info, Bell, Search, Home, Database,
-  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Loader2
+  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Loader2, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -36,9 +36,19 @@ import StudentCompetencyTable from './StudentCompetencyTable';
 interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
 }
 
-type View = 'dashboard' | 'analytics' | 'intervention' | 'import' | 'edit_records' | 'topic_mastery' | 'competency';
+type View =
+  | 'dashboard'
+  | 'analytics'
+  | 'intervention'
+  | 'import'
+  | 'edit_records'
+  | 'topic_mastery'
+  | 'competency'
+  | 'notifications'
+  | 'calendar';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -124,7 +134,7 @@ function formatRelativeTime(date: Date): string {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -363,12 +373,46 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('import')}
               />
+              <NavItem
+                icon={ClipboardCheck}
+                label="AI Quiz Maker"
+                active={showQuizMaker}
+                collapsed={sidebarCollapsed}
+                onClick={() => setShowQuizMaker(true)}
+              />
+              <NavItem
+                icon={Bell}
+                label="Notifications"
+                active={activeView === 'notifications'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('notifications')}
+              />
+              <NavItem
+                icon={Calendar}
+                label="Calendar"
+                active={activeView === 'calendar'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('calendar')}
+              />
             </div>
           </div>
         </nav>
 
         {/* User Section */}
         <div className="p-4 border-t border-slate-200">
+          <button
+            onClick={onOpenSettings}
+            className={`w-full mb-2 px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${
+              sidebarCollapsed
+                ? 'justify-center text-slate-500 hover:bg-slate-50 hover:text-sky-700'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-sky-700'
+            }`}
+            title={sidebarCollapsed ? 'Settings' : ''}
+          >
+            <Settings size={20} />
+            {!sidebarCollapsed && <span>Settings</span>}
+          </button>
+
           {!sidebarCollapsed ? (
             <div>
               <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} />
@@ -397,6 +441,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'topic_mastery' && 'Topic Mastery'}
                   {activeView === 'competency' && 'Student Competency'}
                   {activeView === 'import' && 'Data Import'}
+                  {activeView === 'notifications' && 'Notifications'}
+                  {activeView === 'calendar' && 'Calendar'}
                 </h1>
                 <p className="text-xs text-[#5a6578] font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -405,6 +451,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
                   {activeView === 'import' && 'Upload class records and materials'}
+                  {activeView === 'notifications' && 'View classroom alerts and updates'}
+                  {activeView === 'calendar' && 'Check upcoming class events and schedule'}
                 </p>
               </div>
               {/* Quick teacher stats */}
@@ -426,20 +474,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowQuizMaker(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold rounded-lg transition-all shadow-sm text-sm"
-              >
-                <ClipboardCheck size={16} />
-                AI Quiz Maker
-              </button>
-              <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors relative">
-                <Bell size={18} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
-                <Calendar size={18} />
-              </button>
               <button
                 onClick={onOpenProfile}
                 className="flex items-center gap-2.5 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group max-w-[220px]"
@@ -500,6 +534,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'topic_mastery' && <TopicMasteryView />}
             {activeView === 'competency' && <StudentCompetencyTable />}
             {activeView === 'import' && <ImportView onEditRecords={() => setActiveView('edit_records')} />}
+            {activeView === 'notifications' && (
+              <ToolsPlaceholderView
+                icon={Bell}
+                title="Notifications"
+                description="Teacher alerts and classroom updates will appear here."
+              />
+            )}
+            {activeView === 'calendar' && (
+              <ToolsPlaceholderView
+                icon={Calendar}
+                title="Calendar"
+                description="Your class schedule and upcoming events will appear here."
+              />
+            )}
             {activeView === 'edit_records' && (
               <EditRecordsView
                 students={students}
@@ -550,6 +598,27 @@ const NavItem: React.FC<{
     <Icon size={20} />
     {!collapsed && <span>{label}</span>}
   </button>
+);
+
+const ToolsPlaceholderView: React.FC<{
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  title: string;
+  description: string;
+}> = ({ icon: Icon, title, description }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    className="p-6"
+  >
+    <div className="bg-white border border-[#dde3eb] rounded-2xl p-8 shadow-sm max-w-2xl">
+      <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
+        <Icon size={24} />
+      </div>
+      <h2 className="text-2xl font-display font-bold text-[#0a1628] mb-2">{title}</h2>
+      <p className="text-sm text-[#5a6578] font-body leading-relaxed">{description}</p>
+    </div>
+  </motion.div>
 );
 
 // Dashboard View
@@ -1120,12 +1189,14 @@ const InterventionView: React.FC<{
 const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) => {
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
+  const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const classFileInputRef = useRef<HTMLInputElement>(null);
+  const courseFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (file: File) => {
-    setUploading(true);
+  const handleClassFileUpload = async (file: File) => {
+    setUploadingClassRecords(true);
     setUploadResult('');
     try {
       const result = await apiService.uploadClassRecords(file);
@@ -1137,20 +1208,53 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
       toast.error(err instanceof Error ? err.message : 'Upload failed');
       setUploadResult('Upload failed. Please check the file format and try again.');
     } finally {
-      setUploading(false);
+      setUploadingClassRecords(false);
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleCourseMaterialUpload = async (file: File) => {
+    setUploadingCourseMaterials(true);
+    setUploadResult('');
+    try {
+      const result = await apiService.uploadCourseMaterials(file);
+      if (result.success) {
+        toast.success(`Course material imported: ${result.fileName}`);
+        setUploadResult(
+          `Imported ${result.fileName} (${result.wordCount} words). Suggested topics: ${
+            result.suggestedTopics.length > 0 ? result.suggestedTopics.join(', ') : 'none detected'
+          }`,
+        );
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Course material upload failed');
+      setUploadResult('Course material upload failed. Please check the file format and try again.');
+    } finally {
+      setUploadingCourseMaterials(false);
+    }
+  };
+
+  const handleClassDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver1(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFileUpload(file);
+    if (file) handleClassFileUpload(file);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleClassFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFileUpload(file);
+    if (file) handleClassFileUpload(file);
+  };
+
+  const handleCourseDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver2(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleCourseMaterialUpload(file);
+  };
+
+  const handleCourseFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleCourseMaterialUpload(file);
   };
 
   return (
@@ -1172,21 +1276,21 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
             onDragLeave={() => setDragOver1(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleClassDrop}
+            onClick={() => classFileInputRef.current?.click()}
             className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-sky-400 hover:bg-sky-50 ${
               dragOver1 ? 'border-sky-600 bg-sky-50 scale-105' : 'border-[#dde3eb]'
             }`}
           >
             <input
-              ref={fileInputRef}
+              ref={classFileInputRef}
               type="file"
               accept=".csv,.xlsx,.pdf"
-              onChange={handleFileSelect}
+              onChange={handleClassFileSelect}
               className="hidden"
             />
             <div className="w-20 h-20 bg-sky-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              {uploading ? (
+              {uploadingClassRecords ? (
                 <Loader2 size={40} className="text-sky-600 animate-spin" />
               ) : (
                 <FileSpreadsheet size={40} className="text-sky-600" />
@@ -1194,7 +1298,7 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
             </div>
             <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Class Records</h3>
             <p className="text-[#5a6578] mb-4">
-              {uploading ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
+              {uploadingClassRecords ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
             </p>
             <p className="text-xs text-[#5a6578] mb-4 flex items-center justify-center gap-2">
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.csv</span>
@@ -1210,16 +1314,30 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
             onDragLeave={() => setDragOver2(false)}
-            onDrop={(e) => { e.preventDefault(); setDragOver2(false); }}
+            onDrop={handleCourseDrop}
+            onClick={() => courseFileInputRef.current?.click()}
             className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-rose-400 hover:bg-rose-50 ${
               dragOver2 ? 'border-rose-600 bg-rose-50 scale-105' : 'border-[#dde3eb]'
             }`}
           >
+            <input
+              ref={courseFileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={handleCourseFileSelect}
+              className="hidden"
+            />
             <div className="w-20 h-20 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <FileText size={40} className="text-rose-600" />
+              {uploadingCourseMaterials ? (
+                <Loader2 size={40} className="text-rose-600 animate-spin" />
+              ) : (
+                <FileText size={40} className="text-rose-600" />
+              )}
             </div>
             <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Course Materials</h3>
-            <p className="text-[#5a6578] mb-4">Upload syllabus, lesson plans, and curriculum documents</p>
+            <p className="text-[#5a6578] mb-4">
+              {uploadingCourseMaterials ? 'Uploading and extracting topics...' : 'Upload syllabus, lesson plans, and curriculum documents'}
+            </p>
             <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.pdf</span>
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.docx</span>

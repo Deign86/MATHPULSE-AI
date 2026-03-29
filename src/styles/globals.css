@@ -7,8 +7,8 @@
 
 :root {
   --font-size: 16px;
-  --font-display: 'Syne', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Nunito', ui-sans-serif, system-ui, sans-serif;
 
   /* Surface & Background */
   --background: #f7f9fc;
@@ -18,57 +18,57 @@
   --popover: #ffffff;
   --popover-foreground: #0a1628;
 
-  /* Primary — Light Blue */
-  --primary: #0284c7;
+  /* Primary — Purple / Violet */
+  --primary: #7c3aed;
   --primary-foreground: #ffffff;
 
-  /* Secondary — Soft sky wash */
-  --secondary: #e0f2fe;
-  --secondary-foreground: #0c4a6e;
+  /* Secondary — Soft purple wash */
+  --secondary: #f3f0ff;
+  --secondary-foreground: #5b21b6;
 
   /* Muted — Cool neutral */
-  --muted: #edf1f7;
-  --muted-foreground: #5a6578;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
 
-  /* Accent — Rose (achievements, XP, CTAs) */
+  /* Accent — Rose/Orange (achievements, XP, CTAs) */
   --accent: #fff1f2;
-  --accent-foreground: #881337;
+  --accent-foreground: #be123c;
 
   /* Destructive — Red Orange */
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
   /* Borders & Inputs */
-  --border: #dde3eb;
+  --border: #e4e4e7;
   --input: transparent;
-  --input-background: #f0f4f9;
-  --switch-background: #c8d0da;
+  --input-background: #f4f4f5;
+  --switch-background: #d4d4d8;
 
   /* Typography weights */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
 
   /* Focus ring */
-  --ring: #38bdf8;
+  --ring: #a78bfa;
 
   /* Charts — vibrant distinct hues */
-  --chart-1: #0284c7;
+  --chart-1: #7c3aed;
   --chart-2: #f43f5e;
-  --chart-3: #059669;
-  --chart-4: #ff5c3a;
-  --chart-5: #06b6d4;
+  --chart-3: #10b981;
+  --chart-4: #fb923c;
+  --chart-5: #0ea5e9;
 
-  --radius: 0.75rem;
+  --radius: 1.25rem; /* Increased from 0.75rem to 1.25rem for pronounced rounded corners */
 
-  /* Sidebar — Clean white with sky accent (light mode) */
+  /* Sidebar — Clean white with purple accent (light mode) */
   --sidebar: #ffffff;
-  --sidebar-foreground: #0a1628;
-  --sidebar-primary: #0284c7;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #7c3aed;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0f7ff;
-  --sidebar-accent-foreground: #0c4a6e;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #0284c7;
+  --sidebar-accent: #f3f0ff;
+  --sidebar-accent-foreground: #5b21b6;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #7c3aed;
 }
 
 .dark {
@@ -78,36 +78,36 @@
   --card-foreground: #f0f7ff;
   --popover: #0a1628;
   --popover-foreground: #f0f7ff;
-  --primary: #0ea5e9;
+  --primary: #a78bfa;
   --primary-foreground: #ffffff;
-  --secondary: #0d1f35;
-  --secondary-foreground: #7dd3fc;
-  --muted: #0d1f35;
-  --muted-foreground: #8a9bb0;
-  --accent: #0f2440;
-  --accent-foreground: #fb7185;
-  --destructive: #ff5c3a;
-  --destructive-foreground: #0a1628;
-  --border: #152a42;
-  --input: #0d1f35;
-  --input-background: #0d1f35;
-  --switch-background: #1a3555;
-  --ring: #0ea5e9;
+  --secondary: #2e1065;
+  --secondary-foreground: #c4b5fd;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #f43f5e;
+  --destructive: #ef4444;
+  --destructive-foreground: #09090b;
+  --border: #27272a;
+  --input: #27272a;
+  --input-background: #27272a;
+  --switch-background: #3f3f46;
+  --ring: #a78bfa;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #38bdf8;
+  --chart-1: #a78bfa;
   --chart-2: #fb7185;
   --chart-3: #34d399;
-  --chart-4: #ff5c3a;
-  --chart-5: #22d3ee;
-  --sidebar: #050d18;
-  --sidebar-foreground: #dce6f0;
-  --sidebar-primary: #38bdf8;
+  --chart-4: #fb923c;
+  --chart-5: #38bdf8;
+  --sidebar: #09090b;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #a78bfa;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #0d1f35;
-  --sidebar-accent-foreground: #dce6f0;
-  --sidebar-border: #0d1f35;
-  --sidebar-ring: #0ea5e9;
+  --sidebar-accent: #27272a;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #a78bfa;
 }
 
 @theme inline {
@@ -149,6 +149,19 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ALIAS SKY TO VIOLET FOR UNIVERSAL PURPLE THEME */
+  --color-sky-50: var(--color-violet-50);
+  --color-sky-100: var(--color-violet-100);
+  --color-sky-200: var(--color-violet-200);
+  --color-sky-300: var(--color-violet-300);
+  --color-sky-400: var(--color-violet-400);
+  --color-sky-500: var(--color-violet-500);
+  --color-sky-600: var(--color-violet-600);
+  --color-sky-700: var(--color-violet-700);
+  --color-sky-800: var(--color-violet-800);
+  --color-sky-900: var(--color-violet-900);
+  --color-sky-950: var(--color-violet-950);
 }
 
 @layer base {
@@ -251,14 +264,20 @@ html {
   box-shadow: 0 0 24px rgba(5, 150, 105, 0.12), 0 0 64px rgba(5, 150, 105, 0.04);
 }
 
-/* ─── Dot Grid Background Pattern ────────────────────── */
+/* ─── Dot Grid and Math Pattern Background ────────────────────── */
 .bg-dot-pattern {
-  background-image: radial-gradient(circle, rgba(2, 132, 199, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(124, 58, 237, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .dark .bg-dot-pattern {
-  background-image: radial-gradient(circle, rgba(14, 165, 233, 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(167, 139, 250, 0.12) 1px, transparent 1px);
+}
+
+.bg-math-pattern {
+  background-color: var(--background);
+  background-image: url("data:image/svg+xml,%3Csvg width='150' height='150' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='rgba(124, 58, 237, 0.05)' font-family='sans-serif' font-weight='bold' font-size='28'%3E%3Ctext x='20' y='40'%3E%2B%3C/text%3E%3Ctext x='90' y='60'%3E%3D%3C/text%3E%3Ctext x='40' y='110'%3E%25%3C/text%3E%3Ctext x='110' y='130'%3E%C3%97%3C/text%3E%3Ctext x='130' y='30'%3E%C3%B7%3C/text%3E%3C/g%3E%3C/svg%3E");
+  background-size: 150px 150px;
 }
 
 /* ─── Noise Texture Overlay ──────────────────────────── */
@@ -279,16 +298,20 @@ html {
 /* ─── Card Elevation System ──────────────────────────── */
 .card-elevated {
   box-shadow:
-    0 1px 3px rgba(10, 22, 40, 0.05),
-    0 4px 16px rgba(10, 22, 40, 0.04),
-    0 0 0 1px rgba(10, 22, 40, 0.03);
+    0 16px 40px -8px rgba(124, 58, 237, 0.15),
+    0 0 24px -5px rgba(124, 58, 237, 0.08);
 }
 
 .card-elevated-lg {
   box-shadow:
-    0 2px 6px rgba(10, 22, 40, 0.06),
-    0 12px 40px rgba(10, 22, 40, 0.06),
-    0 0 0 1px rgba(10, 22, 40, 0.03);
+    0 24px 60px -12px rgba(124, 58, 237, 0.2),
+    0 0 32px -10px rgba(124, 58, 237, 0.1);
+}
+
+.shadow-3d-button {
+  box-shadow: 
+    0 12px 24px -6px var(--tw-shadow-color, rgba(249, 115, 22, 0.4)),
+    0 6px 12px -4px var(--tw-shadow-color, rgba(249, 115, 22, 0.3));
 }
 
 .dark .card-elevated {

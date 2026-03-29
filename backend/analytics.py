@@ -18,7 +18,7 @@ import random
 import logging
 import hashlib
 import traceback
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Literal
 from datetime import datetime, timedelta
 from functools import lru_cache
 from collections import defaultdict
@@ -185,6 +185,14 @@ class EnhancedRiskRequest(BaseModel):
     quizScoreVariance: Optional[float] = None
     consecutiveAbsences: Optional[int] = 0
     daysSinceLastActivity: Optional[int] = 0
+
+
+class StudentRiskPredictionV2(BaseModel):
+    risk_level: Literal["low", "medium", "high"]
+    risk_score: float = Field(..., ge=0.0, le=1.0)
+    top_factors: List[str]
+    probabilities: Dict[str, float]
+    model_used: str
 
 
 class RiskTrainRequest(BaseModel):
@@ -977,6 +985,74 @@ async def predict_risk_enhanced(data: EnhancedRiskRequest) -> EnhancedRiskPredic
         logger.error(f"ML risk prediction failed: {e}\n{traceback.format_exc()}")
         logger.info("Falling back to rule-based prediction")
         return _rule_based_risk(data)
+
+
+def _humanize_risk_factor(factor: Dict[str, Any]) -> str:
+    """Convert raw factor payloads into teacher-friendly explanations."""
+    feature = str(factor.get("feature", "overall"))
+    value = factor.get("value", None)
+
+    if feature == "attendance":
+        if value is not None:
+            return f"Low attendance rate ({value:.0f}%) over recent sessions."
+        return "Low attendance rate over recent sessions."
+    if feature == "avgQuizScore":
+        if value is not None:
+            return f"Consistently low quiz performance (average {value:.0f}%)."
+        return "Consistently low quiz performance."
+    if feature == "assignmentCompletion":
+        if value is not None:
+            return f"Missing or incomplete assignments ({value:.0f}% completion)."
+        return "Missing or incomplete assignments."
+    if feature == "engagementScore":
+        if value is not None:
+            return f"Low learning engagement indicators ({value:.0f}%)."
+        return "Low learning engagement indicators."
+    if feature == "consecutiveAbsences":
+        if value is not None:
+            return f"Frequent recent absences ({int(value)} in a row)."
+        return "Frequent recent absences."
+    if feature == "daysSinceLastActivity":
+        if value is not None:
+            return f"Long inactivity window ({int(value)} days since last activity)."
+        return "Long inactivity window since last activity."
+
+    detail = str(factor.get("detail", "")).strip()
+    if detail:
+        return detail
+    return "Multiple performance indicators suggest elevated support needs."
+
+
+async def predict_risk_v2(data: EnhancedRiskRequest) -> StudentRiskPredictionV2:
+    """Return normalized risk payload while reusing the existing enhanced ML model."""
+    enhanced = await predict_risk_enhanced(data)
+
+    risk_level_map: Dict[str, Literal["low", "medium", "high"]] = {
+        "High": "high",
+        "Medium": "medium",
+        "Low": "low",
+    }
+    normalized_level: Literal["low", "medium", "high"] = risk_level_map.get(enhanced.riskLevel, "medium")
+
+    high_prob = float(enhanced.probabilities.get("High", 0.0))
+    medium_prob = float(enhanced.probabilities.get("Medium", 0.0))
+    risk_score = max(0.0, min(1.0, round(high_prob + (0.5 * medium_prob), 4)))
+
+    factor_texts = [_humanize_risk_factor(f) for f in enhanced.contributingFactors]
+    if not factor_texts:
+        factor_texts = ["Limited data available; monitor student trends after next assessments."]
+
+    return StudentRiskPredictionV2(
+        risk_level=normalized_level,
+        risk_score=risk_score,
+        top_factors=factor_texts[:3],
+        probabilities={
+            "high": round(high_prob, 4),
+            "medium": round(medium_prob, 4),
+            "low": round(float(enhanced.probabilities.get("Low", 0.0)), 4),
+        },
+        model_used=enhanced.modelUsed,
+    )
 
 
 async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:

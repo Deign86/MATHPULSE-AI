@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
+import { toast } from 'sonner';
 
 interface ProfileData {
   name?: string;
@@ -22,9 +23,10 @@ interface SettingsModalProps {
   onClose: () => void;
   profileData?: ProfileData;
   onSave?: (data: ProfileData) => void | Promise<void>;
+  onResetData?: () => Promise<void>;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileData, onSave }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileData, onSave, onResetData }) => {
   const [activeSection, setActiveSection] = useState('account');
   const [darkMode, setDarkMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -33,6 +35,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
   const [autoPlayLessons, setAutoPlayLessons] = useState(false);
   const [showHints, setShowHints] = useState(true);
   const [accountData, setAccountData] = useState<ProfileData>({});
+  const [isResetting, setIsResetting] = useState(false);
 
   // Escape key handler
   useEffect(() => {
@@ -67,6 +70,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
       return;
     }
     onClose();
+  };
+
+  const handleResetData = async () => {
+    if (!onResetData || isResetting) return;
+
+    const role = accountData.role || 'student';
+    const confirmed = window.confirm(
+      `Reset ${role} testing data? This action is for QA/demo use and cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setIsResetting(true);
+    try {
+      await onResetData();
+      toast.success('Testing data reset completed');
+    } catch (error) {
+      console.error('Error resetting testing data:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to reset testing data');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const sections = [
@@ -303,18 +328,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
                   </div>
 
                   <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-3 block font-body uppercase tracking-wider text-xs">Theme Color</label>
-                    <div className="grid grid-cols-5 gap-3">
-                      {['sky', 'cyan', 'rose', 'orange', 'emerald'].map((color) => (
-                        <button
-                          key={color}
-                          className={`w-12 h-12 rounded-xl bg-${color}-600 hover:scale-110 transition-transform shadow-md`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-3 block font-body uppercase tracking-wider text-xs">Font Size</label>
                     <div className="flex items-center gap-4">
                       <span className="text-xs text-slate-500">Small</span>
@@ -458,20 +471,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, profileD
 
                   <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
                     <h4 className="text-sm font-bold text-rose-900 mb-1">Reset Progress</h4>
-                    <p className="text-xs text-rose-700 mb-3">Start fresh by resetting all your progress</p>
-                    <Button variant="outline" size="sm" className="rounded-xl text-rose-700 border-rose-300">
-                      Reset All Progress
+                    <p className="text-xs text-rose-700 mb-3">
+                      {(accountData.role || 'student') === 'student' && 'Reset quizzes, diagnostic state, XP, and learning progress for retesting.'}
+                      {accountData.role === 'teacher' && 'Reset imported records, managed classrooms, and teacher-generated quiz artifacts for retesting.'}
+                      {accountData.role === 'admin' && 'Reset admin testing artifacts like personal audit/content update records for QA loops.'}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-rose-700 border-rose-300"
+                      disabled={!onResetData || isResetting}
+                      onClick={handleResetData}
+                    >
+                      {isResetting ? 'Resetting...' : 'Reset Testing Data'}
                     </Button>
                   </div>
 
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <h4 className="text-sm font-bold text-red-900 mb-1">Delete Account</h4>
-                    <p className="text-xs text-red-700 mb-3">Permanently delete your account and all data</p>
-                    <Button variant="outline" size="sm" className="rounded-xl text-red-700 border-red-300">
-                      <Trash2 size={16} className="mr-2" />
-                      Delete Account
-                    </Button>
-                  </div>
+                  {accountData.role === 'admin' ? (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <h4 className="text-sm font-bold text-red-900 mb-1">Delete Account</h4>
+                      <p className="text-xs text-red-700 mb-3">Permanently delete your account and all data</p>
+                      <Button variant="outline" size="sm" className="rounded-xl text-red-700 border-red-300">
+                        <Trash2 size={16} className="mr-2" />
+                        Delete Account
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <h4 className="text-sm font-bold text-emerald-900 mb-1 font-body">Protected Account Controls</h4>
+                      <p className="text-xs text-emerald-700">
+                        Account deletion is restricted to administrator accounts.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

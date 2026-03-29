@@ -137,6 +137,39 @@ export const SUBJECTS_BY_GRADE: Record<GradeLevel, typeof SHS_MATH_SUBJECTS[numb
   'Grade 12': SHS_MATH_SUBJECTS.filter(s => s.gradeLevel === 'Grade 12'),
 };
 
+// Active subject visibility for the strengthened SHS rollout.
+// Based on current curriculum assumptions used in previous curriculum template work:
+// - Grade 11: General Mathematics core only
+// - Grade 12: broader elective-facing set available in-app
+export const ACTIVE_SUBJECT_IDS_BY_GRADE: Record<GradeLevel, SubjectId[]> = {
+  'Grade 11': ['gen-math'],
+  'Grade 12': ['gen-math', 'pre-calc', 'stats-prob', 'basic-calc'],
+};
+
+export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null {
+  if (!rawGrade) return null;
+  const normalized = rawGrade.trim().toLowerCase();
+
+  if (normalized === 'grade 11' || normalized === '11' || normalized.includes('11')) {
+    return 'Grade 11';
+  }
+
+  if (normalized === 'grade 12' || normalized === '12' || normalized.includes('12')) {
+    return 'Grade 12';
+  }
+
+  return null;
+}
+
+export function getActiveSubjectIdsForGrade(rawGrade?: string | null): SubjectId[] {
+  const gradeLevel = normalizeGradeLevel(rawGrade);
+  if (!gradeLevel) {
+    return SHS_MATH_SUBJECTS.map((subject) => subject.id as SubjectId);
+  }
+
+  return ACTIVE_SUBJECT_IDS_BY_GRADE[gradeLevel];
+}
+
 export function getSubjectById(id: SubjectId) {
   return SHS_MATH_SUBJECTS.find(s => s.id === id);
 }
@@ -215,6 +248,8 @@ export interface Subject {
   progress: number;
   totalModules: number;
   completedModules: number;
+  rating?: number;
+  reviewCount?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,6 +269,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 3,
     completedModules: 0,
+    rating: 4.9,
+    reviewCount: 204,
     modules: [
       {
         id: 'gm-1',
@@ -312,6 +349,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 3,
     completedModules: 0,
+    rating: 4.7,
+    reviewCount: 192,
     modules: [
       {
         id: 'pc-1',
@@ -389,6 +428,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 4,
     completedModules: 0,
+    rating: 4.8,
+    reviewCount: 160,
     modules: [
       {
         id: 'sp-1',
@@ -479,6 +520,8 @@ export const subjects: Subject[] = [
     progress: 0,
     totalModules: 3,
     completedModules: 0,
+    rating: 4.9,
+    reviewCount: 216,
     modules: [
       {
         id: 'bc-1',

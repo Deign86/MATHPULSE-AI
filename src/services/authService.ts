@@ -204,6 +204,9 @@ export const createUserProfile = async (
           streak: 0,
           atRiskSubjects: [] as string[],
           hasTakenDiagnostic: false,
+          iarAssessmentState: 'not_started' as const,
+          startingQuarterG11: 'Q1' as const,
+          recommendedPace: 'normal' as const,
         };
       case 'teacher':
         return {
