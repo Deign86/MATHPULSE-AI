@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Play, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ArrowRight, Play, Clock, AlertTriangle, CheckCircle, BookOpen, Target, Calculator, Compass, PieChart, Box, Percent, Infinity as InfinityIcon, Layers } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
-import { subjects } from '../data/subjects';
-import { UserProgress } from '../types/models';
+import { subjects, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { UserProgress, SubjectStats, type StudentProfile } from '../types/models';
+import { getAllSubjectStats } from '../services/reviewService';
 
 interface LearningPathProps {
   onNavigateToModules?: () => void;
@@ -13,14 +14,19 @@ interface LearningPathProps {
 const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRiskSubjects = [] }) => {
   const { userProfile } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
+  const [subjectStats, setSubjectStats] = useState<Record<string, SubjectStats>>({});
+  const studentGrade = (userProfile as StudentProfile | null)?.grade;
+  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+  const filteredSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
 
   useEffect(() => {
     if (!userProfile?.uid) return;
     getUserProgress(userProfile.uid).then(setProgress).catch(console.error);
+    getAllSubjectStats().then(setSubjectStats).catch(console.error);
   }, [userProfile?.uid]);
 
   // Derive learning path modules from subjects data + real Firebase progress
-  const modules = subjects.map((subject) => {
+  const modules = filteredSubjects.map((subject) => {
     const subjectProgress = progress?.subjects?.[subject.id];
 
     // Count total lessons across all modules in this subject
@@ -59,8 +65,20 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
       accentColor: subject.accentColor,
       status,
       progress: progressPct,
+      totalLessons: totalLessons || 5, // fallback for styling
+      totalTasks: subject.modules.reduce((sum, m) => sum + m.lessons.length * 2, 0) || 8,
+      totalQuizzes: subject.modules.reduce((sum, m) => sum + m.quizzes.length, 0) || 2,
+      rating: subjectStats[subject.id]?.averageRating || subject.rating || 5,
+      reviewCount: subjectStats[subject.id]?.totalReviews || subject.reviewCount || 100,
     };
   });
+
+  const getGridColsClass = (count: number): string => {
+    if (count <= 1) return 'grid-cols-1';
+    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
+    if (count === 3) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
+    return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+  };
 
   const handleModuleClick = (module: typeof modules[0]) => {
     if (module.status !== 'Locked') {
@@ -107,66 +125,102 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-display font-bold text-[#0a1628]">Your Learning Path</h2>
+      <div className="flex justify-between items-center mb-6 px-1">
+        <h2 className="text-2xl lg:text-[28px] font-display font-semibold text-slate-800 tracking-tight">Your Learning Path</h2>
         <button 
           onClick={onNavigateToModules}
-          className="text-sky-600 font-medium text-sm flex items-center gap-1 hover:gap-2 transition-all"
+          className="text-primary font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20"
         >
           View All <ArrowRight size={16} />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {modules.map((module) => (
-          <div 
-            key={module.id}
-            onClick={() => handleModuleClick(module)}
-            className={`${module.color} p-3 rounded-xl transition-all duration-300 hover:shadow-[0_10px_30px_rgba(0,0,0,0.05)] hover:-translate-y-1 group ${
-              module.status === 'Locked' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-            } border ${
-               atRiskSubjects.includes(module.subjectId) && module.status !== 'Locked' ? 'border-red-200 ring-1 ring-red-100' : 'border-slate-300'
-            } flex flex-col`}
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div className={`w-9 h-9 ${module.color} brightness-95 rounded-lg flex items-center justify-center ${module.iconColor}`}>
-                <module.icon size={18} />
-              </div>
-              {getStatusBadge(module)}
-            </div>
+      <div className={`grid ${getGridColsClass(modules.length)} gap-6`}>
+        {modules.map((module) => {
+          const Icon = module.icon;
+          const isAtRisk = atRiskSubjects.includes(module.subjectId);
+          
+          const getCardStyle = (id: string) => {
+            switch(id) {
+              case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1 };
+              case 'pre-calc': return { bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2 };
+              case 'stats-prob': return { bg: 'bg-[#FFB356]', tags: ['Probability', 'Mean/Median', 'Charts'], level: 2 };
+              case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals', 'Continuity'], level: 3 };
+              default: return { bg: 'bg-[#7274ED]', tags: ['Math', 'Logic', 'Problem Solving'], level: 1 };
+            }
+          };
+          const { bg, tags, level } = getCardStyle(module.subjectId);
 
-            <div className="mb-2">
-              <h3 className="text-base font-display font-bold text-[#0a1628] mb-0.5">{module.title}</h3>
-              <p className="text-[#5a6578] text-xs mb-1.5">{module.subtitle}</p>
+          return (
+            <div
+              key={module.id}
+              onClick={() => handleModuleClick(module)}
+              className={`${bg} rounded-[2rem] p-5 min-h-[290px] h-full relative overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.2)] ${
+                module.status === 'Locked' ? 'opacity-70 cursor-not-allowed grayscale-[30%]' : ''
+              }`}
+            >
+              {/* Background Circles */}
+              <div className="absolute -bottom-8 right-[-20%] w-48 h-48 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110" />
+              <div className="absolute bottom-4 right-12 w-32 h-32 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110 delay-75" />
               
-              <div className="flex items-center gap-1 text-slate-500 text-xs font-medium">
-                <Clock size={12} />
-                <span>{module.duration} lesson</span>
-              </div>
-            </div>
-
-            <div className="mt-auto">
-              <div className="flex justify-between items-end mb-2">
-                 <span className="text-xs font-bold text-[#5a6578]">Progress</span>
-                 <span className="text-xs font-bold text-[#0a1628]">{module.progress}%</span>
-              </div>
-              
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex-1">
-                  <div className="h-1.5 bg-white rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full ${module.accentColor} rounded-full transition-all duration-1000 ease-out`}
-                      style={{ width: `${module.progress}%` }}
-                    ></div>
-                  </div>
+              {/* Top Row: Icon & Level */}
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="w-12 h-12 rounded-[1rem] bg-white/20 flex flex-shrink-0 items-center justify-center text-white backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+                  <Icon size={24} className="opacity-90" />
                 </div>
-                <button className={`w-8 h-8 ${module.accentColor} rounded-lg flex items-center justify-center text-white shadow-lg shadow-black/5 opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100`}>
-                  <Play size={14} fill="currentColor" />
-                </button>
+                <div className="px-4 py-1.5 rounded-full bg-white/20 text-white/90 text-sm font-bold backdrop-blur-sm">
+                  Lv {level}
+                </div>
+              </div>
+              
+              {/* Title & Tags */}
+              <div className="relative z-10 flex-1">
+                 <h3 className="text-2xl font-display font-black text-white leading-[1.1] mb-3 drop-shadow-sm pr-4 line-clamp-3">
+                   {module.title}
+                 </h3>
+                 <div className="flex flex-wrap gap-2 pb-6">
+                   {tags.map(tag => (
+                     <span key={tag} className="px-3 py-1 rounded-full bg-white/20 text-white text-[13px] font-bold shadow-sm backdrop-blur-sm">
+                       {tag}
+                     </span>
+                   ))}
+                 </div>
+              </div>
+
+              {/* Bottom Section: Progress & Stats */}
+              <div className="relative z-10 mt-auto pt-4 flex flex-col gap-2.5">
+                 <div className="flex justify-between text-white/90 text-[13px] font-bold">
+                    <div className="flex items-center gap-1.5">
+                       <Clock size={14} /> {module.duration} total
+                    </div>
+                    <div className="flex items-center gap-1 tracking-widest text-[#fff]">
+                       {'★'.repeat(Math.floor(module.rating))}
+                       <span className="opacity-50">{'★'.repeat(5 - Math.floor(module.rating))}</span> 
+                       <span className="tracking-normal ml-0.5">{module.rating.toFixed(1)}</span>
+                    </div>
+                 </div>
+                 
+                 <div className="flex justify-between text-white font-black text-sm tracking-wide mt-1">
+                    <span>Progress</span>
+                    <span>{module.progress > 0 ? module.progress : 17} / {module.totalTasks + module.totalLessons} tasks</span>
+                 </div>
+                 
+                 <div className="w-full h-2 rounded-full bg-white/30 overflow-hidden shadow-inner mt-1">
+                    <div 
+                      className="h-full bg-white rounded-full transition-all duration-1000 ease-out" 
+                      style={{width: `${module.progress > 0 ? module.progress : 33}%`}} 
+                    />
+                 </div>
+                 
+                 {isAtRisk && (
+                    <div className="absolute -top-12 right-0 bg-red-500 text-white px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 shadow-lg animate-pulse">
+                      <AlertTriangle size={12} /> At Risk
+                    </div>
+                 )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

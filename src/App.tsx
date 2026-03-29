@@ -20,17 +20,20 @@ import GradesPage from './components/GradesPage';
 import SettingsModal from './components/SettingsModal';
 import LeaderboardPage from './components/LeaderboardPage';
 import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
+import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal';
 import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { signOutUser, updateUserProfile } from './services/authService';
+import { createNotification } from './services/notificationService';
 import { updateStreak, awardXP } from './services/gamificationService';
 import { getUserProgress } from './services/progressService';
 import { AdminProfile, StudentProfile, TeacherProfile, User } from './types/models';
-import { triggerStudentEnrolled } from './services/automationService';
+import { triggerStudentEnrolled, getPendingDeepDiagnosticCount } from './services/automationService';
+import { resetTestingDataForRole } from './services/testResetService';
 import { Toaster, toast } from 'sonner';
-import { Crown, Flame, Zap } from 'lucide-react';
+import { Crown, Flame, Zap, Brain } from 'lucide-react';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -65,9 +68,21 @@ const App = () => {
 
   // Diagnostic State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const [diagnosticAssessmentType, setDiagnosticAssessmentType] = useState<'initial_assessment' | 'followup_diagnostic'>('initial_assessment');
   const [hasTakenDiagnostic, setHasTakenDiagnostic] = useState(studentProfile?.hasTakenDiagnostic || false);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0.00');
+  const [learningPathState, setLearningPathState] = useState<StudentProfile['learningPathState']>(
+    studentProfile?.learningPathState || 'unlocked',
+  );
+  const [iarAssessmentState, setIarAssessmentState] = useState<StudentProfile['iarAssessmentState']>(
+    studentProfile?.iarAssessmentState || 'not_started',
+  );
+  const [pendingDeepDiagnosticCount, setPendingDeepDiagnosticCount] = useState(0);
+  const iarWorkflowMode =
+    import.meta.env.VITE_IAR_WORKFLOW_MODE === 'iar_plus_diagnostic'
+      ? 'iar_plus_diagnostic'
+      : 'iar_only';
 
   // Load computed GPA from progress data
   useEffect(() => {
@@ -91,11 +106,68 @@ const App = () => {
       setStreak(studentProfile.streak || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
       setHasTakenDiagnostic(studentProfile.hasTakenDiagnostic || false);
+      setLearningPathState(studentProfile.learningPathState || 'unlocked');
+      setIarAssessmentState(studentProfile.iarAssessmentState || 'not_started');
       setProfileReady(true);
     } else if (userRole !== 'student') {
       setProfileReady(true);
     }
   }, [userProfile, userRole]);
+
+  useEffect(() => {
+    const loadPendingDiagnostics = async () => {
+      if (!isLoggedIn || userRole !== 'student') {
+        setPendingDeepDiagnosticCount(0);
+        return;
+      }
+
+      const lrn = (studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid;
+      if (!lrn || learningPathState !== 'locked_pending_deep_diagnostic') {
+        setPendingDeepDiagnosticCount(0);
+        return;
+      }
+
+      try {
+        const count = await getPendingDeepDiagnosticCount(lrn);
+        setPendingDeepDiagnosticCount(count);
+      } catch (error) {
+        console.error('Error loading deep diagnostic assignments:', error);
+      }
+    };
+
+    void loadPendingDiagnostics();
+  }, [isLoggedIn, userRole, userProfile?.uid, studentProfile?.lrn, learningPathState]);
+
+  const isLearningPathLocked =
+    userRole === 'student' &&
+    (learningPathState === 'locked_pending_deep_diagnostic' ||
+      iarAssessmentState === 'deep_diagnostic_required' ||
+      iarAssessmentState === 'deep_diagnostic_in_progress') &&
+    (pendingDeepDiagnosticCount > 0 ||
+      iarAssessmentState === 'deep_diagnostic_required' ||
+      iarAssessmentState === 'deep_diagnostic_in_progress');
+
+  const showInitialAssessmentCTA =
+    userRole === 'student' && iarAssessmentState === 'skipped_unassessed';
+
+  const handleOpenInitialAssessment = () => {
+    setDiagnosticAssessmentType('initial_assessment');
+    setShowDiagnosticModal(true);
+  };
+
+  const handleStudentNavigation = (tab: string) => {
+    if (tab === 'Modules' && isLearningPathLocked) {
+      toast.info(
+        `Complete your deep diagnostic (${pendingDeepDiagnosticCount} outstanding) to unlock modules and regular practice.`,
+      );
+      setDiagnosticAssessmentType('followup_diagnostic');
+      setShowDiagnosticModal(true);
+      setActiveTab('Dashboard');
+      return;
+    }
+
+    setActiveTab(tab);
+  };
 
   // Update streak when user logs in (students only)
   useEffect(() => {
@@ -115,17 +187,87 @@ const App = () => {
     if (isLoggedIn && userRole === 'student' && !hasTakenDiagnostic) {
       // Small delay for better UX
       const timer = setTimeout(() => {
+        setDiagnosticAssessmentType('initial_assessment');
         setShowDiagnosticModal(true);
       }, 1000);
       return () => clearTimeout(timer);
     }
   }, [isLoggedIn, userRole, hasTakenDiagnostic]);
 
-  const handleDiagnosticComplete = (riskSubjects: string[]) => {
-    setAtRiskSubjects(riskSubjects);
+  const handleDiagnosticComplete = async (payload: DiagnosticCompletionPayload) => {
+    const lrn = (studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid;
+
+    if (payload.status === 'skipped') {
+      setAtRiskSubjects([]);
+      setHasTakenDiagnostic(true);
+      setLearningPathState('unlocked');
+      setIarAssessmentState('skipped_unassessed');
+
+      if (userProfile?.uid) {
+        try {
+          await updateUserProfile(userProfile.uid, {
+            hasTakenDiagnostic: true,
+            atRiskSubjects: [],
+            learningPathState: 'unlocked',
+            remediationState: 'not_required',
+            iarAssessmentState: 'skipped_unassessed',
+            recommendedNextTopicGroupId: 'g11-q1-functions-foundations',
+            recommendationRationale: 'Default Grade 11 Q1 path after explicit IAR skip.',
+            recommendedPace: 'normal',
+            startingQuarterG11: 'Q1',
+            currentCurriculumVersionSetId:
+              (studentProfile as StudentProfile | undefined)?.currentCurriculumVersionSetId ||
+              'g11-core-genmath-legacy-detail-strengthened-structure',
+          });
+
+          await createNotification(
+            userProfile.uid,
+            'reminder',
+            'IAR Skipped: You are on default path',
+            'You are currently marked as Unassessed and placed on Grade 11 Quarter 1 default flow. Take the Initial Assessment anytime for personalized placement.',
+          );
+        } catch (error) {
+          console.error('Failed to persist skipped IAR state:', error);
+        }
+      }
+
+      toast.message('Assessment skipped. Default Grade 11 Q1 path applied.', {
+        description: 'You can take the Initial Assessment later for personalized recommendations.',
+      });
+      setShowDiagnosticModal(false);
+      setActiveTab('Dashboard');
+      return;
+    }
+
+    setAtRiskSubjects(payload.atRiskSubjectIds || []);
     setHasTakenDiagnostic(true);
+    setIarAssessmentState('in_progress');
+
+    if (userProfile?.uid) {
+      try {
+        await updateUserProfile(userProfile.uid, {
+          hasTakenDiagnostic: true,
+          iarAssessmentState: 'in_progress',
+          iarQuestionSetVersion: payload.questionSetVersion,
+        });
+      } catch (error) {
+        console.error('Failed to persist completed IAR payload:', error);
+      }
+    }
+
+    if (diagnosticAssessmentType === 'followup_diagnostic') {
+      toast.success('Deep diagnostic submitted. Module unlock will update after assignment-state verification.');
+    }
+
+    if (diagnosticAssessmentType === 'initial_assessment' && lrn) {
+      if ((payload.atRiskSubjectIds || []).length > 0 && iarWorkflowMode === 'iar_plus_diagnostic') {
+        toast.info('Initial assessment submitted. Deep diagnostics for weak areas will run before full module unlock.');
+      } else {
+        toast.success('Initial assessment completed. Personalized path is now active.');
+      }
+    }
+
     setShowDiagnosticModal(false);
-    // Navigate to Dashboard after completing diagnostic
     setActiveTab('Dashboard');
   };
 
@@ -213,6 +355,38 @@ const App = () => {
     }
   };
 
+  const handleResetTestingData = async () => {
+    if (!userProfile) {
+      throw new Error('No active profile found.');
+    }
+
+    const lrn = userRole === 'student'
+      ? (studentProfile as StudentProfile | undefined)?.lrn || userProfile.uid
+      : undefined;
+
+    const result = await resetTestingDataForRole({
+      uid: userProfile.uid,
+      role: userRole,
+      lrn,
+    });
+
+    if (userRole === 'student') {
+      setUserLevel(1);
+      setCurrentXP(0);
+      setTotalXP(0);
+      setStreak(0);
+      setAtRiskSubjects([]);
+      setHasTakenDiagnostic(false);
+      setLearningPathState('unlocked');
+      setIarAssessmentState('not_started');
+      setComputedGpa('0.00');
+      setPendingDeepDiagnosticCount(0);
+      setActiveTab('Dashboard');
+    }
+
+    toast.success(result.summary);
+  };
+
   // Get profile data from userProfile or use defaults
   const profileData = userProfile ? {
     uid: userProfile.uid,
@@ -250,7 +424,7 @@ const App = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fc]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-[#5a6578] font-body">Loading MathPulse AI...</p>
         </div>
       </div>
@@ -267,19 +441,19 @@ const App = () => {
         switch(e.key.toLowerCase()) {
           case 'd':
             e.preventDefault();
-            setActiveTab('Dashboard');
+            handleStudentNavigation('Dashboard');
             break;
           case 'm':
             e.preventDefault();
-            setActiveTab('Modules');
+            handleStudentNavigation('Modules');
             break;
           case 'c':
             e.preventDefault();
-            setActiveTab('AI Chat');
+            handleStudentNavigation('AI Chat');
             break;
           case 'g':
             e.preventDefault();
-            setActiveTab('Grades');
+            handleStudentNavigation('Grades');
             break;
           case 's':
             e.preventDefault();
@@ -301,7 +475,7 @@ const App = () => {
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isLoggedIn, userRole]);
+  }, [isLoggedIn, userRole, isLearningPathLocked, pendingDeepDiagnosticCount]);
 
   // Show login page if not logged in
   if (!isLoggedIn) {
@@ -315,12 +489,20 @@ const App = () => {
         <TeacherDashboard 
           onLogout={handleLogout}
           onOpenProfile={() => setShowProfileModal(true)}
+          onOpenSettings={() => setShowSettingsModal(true)}
         />
         <ProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           profileData={profileData}
           onSave={handleSaveProfile}
+        />
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          profileData={profileData}
+          onSave={handleSaveProfile}
+          onResetData={handleResetTestingData}
         />
         <Toaster position="top-right" richColors closeButton />
       </>
@@ -334,12 +516,20 @@ const App = () => {
         <AdminDashboard 
           onLogout={handleLogout}
           onOpenProfile={() => setShowProfileModal(true)}
+          onOpenSettings={() => setShowSettingsModal(true)}
         />
         <ProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           profileData={profileData}
           onSave={handleSaveProfile}
+        />
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          profileData={profileData}
+          onSave={handleSaveProfile}
+          onResetData={handleResetTestingData}
         />
         <Toaster position="top-right" richColors closeButton />
       </>
@@ -350,20 +540,22 @@ const App = () => {
   return (
     <>
     <ChatProvider>
-      <div className="flex h-screen w-full bg-[#f7f9fc] overflow-hidden">
+      <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
         {/* Sidebar */}
         <Sidebar 
           activeTab={activeTab} 
-          setActiveTab={setActiveTab}
+          setActiveTab={handleStudentNavigation}
           userRole={userRole}
           onOpenSettings={() => setShowSettingsModal(true)}
           onLogout={() => setShowLogoutConfirm(true)}
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-indigo-200 via-fuchsia-50 to-orange-100 relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
+          <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
+          
           {/* Header — compact with inline gamification stats */}
-          <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">{activeTab}</h1>
@@ -381,13 +573,13 @@ const App = () => {
                 </button>
                 <button
                   onClick={() => setShowRewardsModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200/60 rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer"
                   title={`${currentXP}/${xpToNextLevel} XP to next level`}
                 >
-                  <Zap className="h-3.5 w-3.5 text-sky-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-sky-700">{currentXP} XP</span>
-                  <div className="w-12 h-1.5 bg-sky-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
+                  <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
+                  <span className="text-xs font-display font-bold text-violet-700">{currentXP} XP</span>
+                  <div className="w-12 h-1.5 bg-violet-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
@@ -397,6 +589,16 @@ const App = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {showInitialAssessmentCTA && (
+                <button
+                  onClick={handleOpenInitialAssessment}
+                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors"
+                  title="Initial assessment is required"
+                >
+                  <Brain className="h-4 w-4" />
+                  <span className="text-xs font-semibold">Take Initial Assessment</span>
+                </button>
+              )}
               <SearchBar
                 onSelect={(result) => {
                   // TODO: Navigate to selected search result
@@ -405,7 +607,7 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
-                className="p-2 rounded-lg bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-sky-600 transition-all group"
+                className="p-2 rounded-lg bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group"
                 title="Scientific Calculator (Alt+K)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
@@ -423,7 +625,7 @@ const App = () => {
                   className="w-8 h-8 rounded-lg object-cover"
                 />
                 <div className="text-left min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors font-body truncate">
+                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
                     {firstName}
                   </p>
                 </div>
@@ -442,33 +644,55 @@ const App = () => {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="space-y-4 pb-4">
-                    <HeroBanner 
-                      userName={firstName} 
-                      userLevel={userLevel}
-                      onContinueLearning={() => setActiveTab('Modules')} 
-                    />
+                  <div className="pb-8">
+                    <div className="grid grid-cols-12 gap-8 lg:gap-10">
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-2">
+                        {showInitialAssessmentCTA && (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-amber-900">Initial Assessment Required</p>
+                              <p className="text-xs text-amber-800">
+                                You skipped the mandatory initial assessment. Complete it to keep your learning path personalized and fully compliant.
+                              </p>
+                            </div>
+                            <button
+                              onClick={handleOpenInitialAssessment}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition-colors"
+                            >
+                              <Brain className="h-4 w-4" />
+                              Start Assessment
+                            </button>
+                          </div>
+                        )}
 
-                    <SupplementalBanner
-                      variant="full"
-                      atRiskSubjects={atRiskSubjects}
-                      onAction={() => setActiveTab('Modules')}
-                    />
+                        <HeroBanner 
+                          userName={firstName} 
+                          userLevel={userLevel}
+                          onContinueLearning={() => handleStudentNavigation('Modules')} 
+                        />
 
-                    <div className="grid grid-cols-12 gap-4">
-                      <div className="col-span-12 xl:col-span-9">
+                        <SupplementalBanner
+                          variant="full"
+                          atRiskSubjects={atRiskSubjects}
+                          onAction={() => handleStudentNavigation('Modules')}
+                        />
+
                         {profileReady && (
-                          <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
+                          <div className="pb-4">
+                            <LearningPath onNavigateToModules={() => handleStudentNavigation('Modules')} atRiskSubjects={atRiskSubjects} />
+                          </div>
                         )}
                       </div>
 
-                      <div className="col-span-12 xl:col-span-3">
+                      <div className="col-span-12 xl:col-span-3 pt-2">
                         <RightSidebar 
                           onOpenRewards={() => setShowRewardsModal(true)}
+                          onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                           userLevel={userLevel}
                           currentXP={currentXP}
                           xpToNextLevel={xpToNextLevel}
                           streak={streak}
+                          streakHistory={studentProfile?.streakHistory || []}
                         />
                       </div>
                     </div>
@@ -476,7 +700,7 @@ const App = () => {
                 ) : activeTab === 'Modules' ? (
                   <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} />
                 ) : activeTab === 'Leaderboard' ? (
-                  <LeaderboardPage />
+                  <LeaderboardPage currentUserPhoto={profileData.photo} />
                 ) : activeTab === 'AI Chat' ? (
                   <AIChatPage />
                 ) : activeTab === 'Grades' ? (
@@ -545,6 +769,7 @@ const App = () => {
             onClose={() => setShowSettingsModal(false)}
             profileData={profileData}
             onSave={handleSaveProfile}
+            onResetData={handleResetTestingData}
           />
 
           {/* Scientific Calculator */}
@@ -560,6 +785,8 @@ const App = () => {
             onComplete={handleDiagnosticComplete}
             lrn={(studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid}
             gradeLevel={(studentProfile as StudentProfile)?.grade}
+            workflowMode={iarWorkflowMode}
+            assessmentType={diagnosticAssessmentType}
           />
         </div>
       </div>

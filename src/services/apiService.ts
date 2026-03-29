@@ -98,6 +98,20 @@ export interface UploadResponse {
   columnMapping: Record<string, string>;
 }
 
+export interface CourseMaterialUploadResponse {
+  success: boolean;
+  fileName: string;
+  fileType: string;
+  charCount: number;
+  wordCount: number;
+  sections: {
+    title: string;
+    excerpt: string;
+  }[];
+  suggestedTopics: string[];
+  preview: string;
+}
+
 // ─── Quiz Maker Types ────────────────────────────────────────
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
@@ -487,6 +501,26 @@ export const apiService = {
 
     return apiFetch<UploadResponse>(
       '/api/upload/class-records',
+      { method: 'POST', body: formData },
+      UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /** Upload and parse course materials (PDF, DOCX, TXT) */
+  async uploadCourseMaterials(file: File): Promise<CourseMaterialUploadResponse> {
+    if (!file || file.size === 0) {
+      throw new ApiValidationError('/api/upload/course-materials', 'File is required and must not be empty');
+    }
+    // 10 MB limit
+    if (file.size > 10 * 1024 * 1024) {
+      throw new ApiValidationError('/api/upload/course-materials', 'File size exceeds 10 MB limit');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return apiFetch<CourseMaterialUploadResponse>(
+      '/api/upload/course-materials',
       { method: 'POST', body: formData },
       UPLOAD_RETRY_OPTS,
     );

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { BookOpen, GraduationCap, Target, TrendingUp, ChevronRight, Lock, CheckCircle, Play, AlertTriangle } from 'lucide-react';
+import {
+  BookOpen, Play, CheckCircle, ChevronDown, ChevronRight, Lock, Award, Clock, Star, TrendingUp, AlertTriangle, Target, Calculator, Compass, PieChart, Box, Percent, Infinity as InfinityIcon, Layers, Search, Plus
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import SubjectDetailView from './SubjectDetailView';
@@ -7,8 +9,9 @@ import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
 import QuizExperience from './QuizExperience';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
-import { subjects, Subject, Module } from '../data/subjects';
+import { subjects, getActiveSubjectIdsForGrade, type Subject, type Module, type SubjectId } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
+import { type StudentProfile } from '../types/models';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -17,10 +20,31 @@ interface ModulesPageProps {
 
 const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = [] }) => {
   const { userProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'learning-path' | 'all-subjects' | 'practice' | 'recommended'>('learning-path');
+  const [activeTab, setActiveTab] = useState<'all-subjects' | 'practice' | 'recommended'>('all-subjects');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const studentGrade = (userProfile as StudentProfile | null)?.grade;
+  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+  const gradeScopedSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
+
+  // Filter subjects based on search query
+  const filteredSubjects = gradeScopedSubjects.map(subject => {
+    const query = searchQuery.toLowerCase();
+    const subjectMatches = subject.title.toLowerCase().includes(query);
+    const matchedModules = subject.modules.filter(m => 
+      m.title.toLowerCase().includes(query) || 
+      m.description.toLowerCase().includes(query)
+    );
+    
+    if (subjectMatches) {
+      return subject; // Keep all modules if subject matches
+    } else if (matchedModules.length > 0) {
+      return { ...subject, modules: matchedModules }; // Only keep matched modules
+    }
+    return null;
+  }).filter(Boolean) as Subject[];
 
   // Handle quiz start
   const handleStartQuiz = (quiz: QuizExperienceQuiz) => {
@@ -70,57 +94,116 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#0a1628] mb-4">Explore Modules</h1>
+    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
+      {/* Kaggle-style Header Area */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-8">
+          <div className="flex-1 max-w-2xl">
+            <h1 className="text-[36px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-5">
+              Explore Modules
+            </h1>
+            <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
+              Welcome to your personalized learning hub! MathPulse transforms your teacher's curriculum into a smart, adaptive lesson plan tailored exactly to your needs. The system dynamically generates quizzes and adjusts the difficulty level to match your true capacity, helping you master tricky math concepts at your own perfect pace. <span className="font-bold text-indigo-600 drop-shadow-sm">Start leveling up! 🚀</span>
+            </p>
+          </div>
+          
+          <div className="hidden md:flex flex-shrink-0 items-center justify-end w-[350px]">
+            {/* Elegant Illustration mimicking the screenshot */}
+            <svg viewBox="0 0 300 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-sm">
+              {/* Character Base */}
+              <circle cx="210" cy="90" r="45" fill="#202124" />
+              <path d="M165 90 C165 65.1472 185.147 45 210 45 C234.853 45 255 65.1472 255 90 C255 114.853 234.853 135 210 135 C185.147 135 165 114.853 165 90 Z" fill="#202124"/>
+              
+              {/* Hair/Body */}
+              <path d="M150 140 C140 120 160 80 200 70 C240 60 260 80 270 120 C275 140 260 180 210 180 C160 180 155 160 150 140 Z" fill="#202124"/>
+              
+              {/* Face */}
+              <path d="M210 125 C195 125 185 110 185 95 C185 80 200 72 215 72 C230 72 245 80 245 95 C245 115 225 125 210 125 Z" fill="#e8eaed"/>
+              <circle cx="202" cy="92" r="2" fill="#202124"/>
+              <circle cx="225" cy="92" r="2" fill="#202124"/>
+              <path d="M210 105 Q 215 110 220 105" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <path d="M198 86 Q 202 84 206 86" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <path d="M220 86 Q 225 84 230 86" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              
+              {/* Earrings */}
+              <circle cx="180" cy="100" r="6" stroke="#202124" strokeWidth="2" fill="none"/>
+              <circle cx="248" cy="100" r="6" stroke="#202124" strokeWidth="2" fill="none"/>
+              
+              {/* Shirt */}
+              <path d="M175 180 L 180 135 C185 125 235 125 240 135 L 245 180 Z" fill="#f8f9fa"/>
+              <path d="M175 180 L 180 135 C185 125 235 125 240 135 L 245 180 Z" stroke="#202124" strokeWidth="2" fill="none"/>
+              
+              {/* Laptop */}
+              <path d="M170 178 L 220 178 L 230 130 L 180 130 Z" fill="white" stroke="#202124" strokeWidth="2" strokeLinejoin="round"/>
+              <path d="M160 178 L 250 178" stroke="#202124" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M195 130 C195 130 190 155 180 170" stroke="#202124" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              
+              {/* Floating Elements (Left) */}
+              <circle cx="120" cy="50" r="14" fill="white" stroke="#202124" strokeWidth="1.5"/>
+              <path d="M112 50 L 128 50 M 120 42 L 120 58 M 115 45 L 125 55 M 115 55 L 125 45" stroke="#202124" strokeWidth="1"/>
+              
+              <rect x="135" cy="55" width="16" height="12" rx="2" fill="white" stroke="#202124" strokeWidth="1.5" y="45"/>
+              <path d="M140 50 h6 M140 53 h4" stroke="#202124" strokeWidth="1" strokeLinecap="round"/>
+
+              {/* Floating Graph (Right) */}
+              <circle cx="50" cy="110" r="4" fill="#202124"/>
+              <circle cx="80" cy="70" r="3" fill="#1FA7E1"/>
+              <circle cx="30" cy="80" r="3" fill="#1FA7E1"/>
+              <circle cx="85" cy="140" r="3" fill="#1FA7E1"/>
+              <circle cx="100" cy="100" r="3" fill="#1FA7E1"/>
+              <circle cx="20" cy="130" r="3" fill="#1FA7E1"/>
+              <path d="M50 110 L80 70 M50 110 L30 80 M50 110 L85 140 M50 110 L100 100 M50 110 L20 130" stroke="#1FA7E1" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+              
+              <path d="M100 35 L 105 25 L 110 35 L 100 35 Z" fill="white" stroke="#202124" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M40 40 L 45 40 L 42.5 35 Z" fill="#202124"/>
+            </svg>
+          </div>
+        </div>
         
-        {/* Tabs */}
-        <div className="flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-sm">
-          <button
-            onClick={() => setActiveTab('learning-path')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'learning-path'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            <GraduationCap size={18} />
-            My Learning Path
-          </button>
-          <button
-            onClick={() => setActiveTab('all-subjects')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'all-subjects'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            <BookOpen size={18} />
-            All Subjects
-          </button>
-          <button
-            onClick={() => setActiveTab('practice')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'practice'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            <Target size={18} />
-            Practice & Quizzes
-          </button>
-          <button
-            onClick={() => setActiveTab('recommended')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              activeTab === 'recommended'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            <TrendingUp size={18} />
-            Recommended
-          </button>
+        {/* Search Bar */}
+        <div className="relative mb-6">
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#5f6368]">
+            <Search size={22} strokeWidth={2.5} />
+          </div>
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search Modules..." 
+            className="w-full pl-16 pr-6 py-4 rounded-full border border-[#dadce0] bg-white text-[#202124] text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+          />
+        </div>
+
+        {/* Tabs - Dynamic Segmented Control */}
+        <div className="flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/60 shadow-inner gap-1 w-max overflow-x-auto max-w-full no-scrollbar">
+          {[
+            { id: 'all-subjects', label: 'Subjects', icon: BookOpen, color: 'text-[#1FA7E1]' },
+            { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
+            { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FF8B8B]' },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`relative flex items-center gap-2.5 px-6 py-3 rounded-full text-[15px] font-bold transition-all duration-300 flex-shrink-0 ${
+                  isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="modulesTabBackground"
+                    className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className={`relative z-10 flex items-center gap-2 ${isActive ? tab.color : ''}`}>
+                  <tab.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -135,13 +218,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
           className="flex-1 overflow-y-auto"
         >
           {activeTab === 'practice' ? (
-            <PracticeCenter onStartQuiz={handleStartQuiz} />
-          ) : activeTab === 'learning-path' ? (
-            <LearningPathView subjects={subjects} onSelectSubject={setSelectedSubject} atRiskSubjects={atRiskSubjects} />
+            <PracticeCenter onStartQuiz={handleStartQuiz} searchQuery={searchQuery} allowedSubjectIds={allowedSubjectIds} />
           ) : activeTab === 'all-subjects' ? (
-            <AllSubjectsView subjects={subjects} onSelectSubject={setSelectedSubject} atRiskSubjects={atRiskSubjects} />
+            <AllSubjectsView subjects={filteredSubjects} onSelectSubject={setSelectedSubject} atRiskSubjects={atRiskSubjects} />
           ) : (
-            <RecommendedView subjects={subjects} onSelectSubject={setSelectedSubject} onSelectModule={setSelectedModule} atRiskSubjects={atRiskSubjects} />
+            <RecommendedView subjects={filteredSubjects} onSelectSubject={setSelectedSubject} onSelectModule={setSelectedModule} atRiskSubjects={atRiskSubjects} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -149,18 +230,19 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
   );
 };
 
-// Learning Path View - Shows subjects with active progress
-const LearningPathView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject: Subject) => void; atRiskSubjects?: string[] }> = ({ subjects, onSelectSubject, atRiskSubjects = [] }) => {
-  const activeSubjects = subjects.filter(s => s.progress > 0);
-  const nextSubjects = subjects.filter(s => s.progress === 0).slice(0, 2);
-
+// All Subjects View - Browse all available subjects
+const AllSubjectsView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject: Subject) => void; atRiskSubjects?: string[] }> = ({ subjects, onSelectSubject, atRiskSubjects = [] }) => {
   return (
-    <div className="h-full overflow-y-auto pr-2 pb-4 space-y-6 scrollbar-hide">
-      {/* Active Subjects */}
+    <div className="h-full overflow-y-auto pr-2 pb-8 scrollbar-hide space-y-10">
       <div>
-        <h2 className="font-bold text-lg text-[#0a1628] mb-4">Continue Learning</h2>
-        <div className="grid grid-cols-2 gap-4">
-          {activeSubjects.map((subject, index) => (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+            <BookOpen size={20} strokeWidth={2.5} />
+          </div>
+          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">All Subjects</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {subjects.map((subject, index) => (
             <SubjectCard
               key={subject.id}
               subject={subject}
@@ -172,45 +254,6 @@ const LearningPathView: React.FC<{ subjects: Subject[]; onSelectSubject: (subjec
           ))}
         </div>
       </div>
-
-      {/* Next Up */}
-      {nextSubjects.length > 0 && (
-        <div>
-          <h2 className="font-bold text-lg text-[#0a1628] mb-4">Start Learning</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {nextSubjects.map((subject, index) => (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                onClick={() => onSelectSubject(subject)}
-                index={index}
-                showProgress={false}
-                isAtRisk={atRiskSubjects.includes(subject.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// All Subjects View - Browse all available subjects
-const AllSubjectsView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject: Subject) => void; atRiskSubjects?: string[] }> = ({ subjects, onSelectSubject, atRiskSubjects = [] }) => {
-  return (
-    <div className="h-full overflow-y-auto pr-2 pb-4 scrollbar-hide">
-      <div className="grid grid-cols-2 gap-4">
-        {subjects.map((subject, index) => (
-          <SubjectCard
-            key={subject.id}
-            subject={subject}
-            onClick={() => onSelectSubject(subject)}
-            index={index}
-            showProgress
-            isAtRisk={atRiskSubjects.includes(subject.id)}
-          />
-        ))}
-      </div>
     </div>
   );
 };
@@ -219,7 +262,7 @@ const AllSubjectsView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
 const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject: Subject) => void; onSelectModule: (module: Module) => void; atRiskSubjects?: string[] }> = ({ subjects, onSelectSubject, onSelectModule, atRiskSubjects = [] }) => {
   // Get recommended modules (in progress modules from different subjects)
   const recommendedModules: { subject: Subject; module: Module }[] = [];
-  
+
   subjects.forEach(subject => {
     const inProgressModules = subject.modules.filter(m => m.progress > 0 && m.progress < 100);
     inProgressModules.forEach(module => {
@@ -229,7 +272,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
 
   // Get suggested next modules (first incomplete module from subjects with progress)
   const suggestedModules: { subject: Subject; module: Module }[] = [];
-  
+
   subjects.filter(s => s.progress > 0).forEach(subject => {
     const nextModule = subject.modules.find(m => m.progress === 0);
     if (nextModule) {
@@ -238,15 +281,16 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
   });
 
   return (
-    <div className="h-full overflow-y-auto pr-2 pb-4 space-y-6 scrollbar-hide">
+    <div className="h-full overflow-y-auto pr-2 pb-8 space-y-10 scrollbar-hide">
       {/* Continue Where You Left Off */}
       {recommendedModules.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-lg text-[#0a1628]">Continue Where You Left Off</h2>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner">🔥</div>
+            <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Jump Back In</h2>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {recommendedModules.slice(0, 6).map((item, index) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {recommendedModules.slice(0, 4).map((item, index) => (
               <ModuleCardCompact
                 key={item.module.id}
                 subject={item.subject}
@@ -264,11 +308,12 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
       {/* Suggested Next */}
       {suggestedModules.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-lg text-[#0a1628]">Suggested Next</h2>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-[14px] bg-[#75D06A]/10 flex items-center justify-center text-[20px] shadow-inner">💡</div>
+            <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Suggested Next</h2>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {suggestedModules.slice(0, 3).map((item, index) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {suggestedModules.slice(0, 4).map((item, index) => (
               <ModuleCardCompact
                 key={item.module.id}
                 subject={item.subject}
@@ -285,10 +330,10 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
 
       {/* Browse All Subjects */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-lg text-[#0a1628]">All Subjects</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display font-semibold text-[22px] text-slate-800">All Subjects</h2>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {subjects.map((subject, index) => (
             <SubjectCard
               key={subject.id}
@@ -315,89 +360,89 @@ const SubjectCard: React.FC<{
 }> = ({ subject, onClick, index, showProgress, isAtRisk }) => {
   const Icon = subject.icon;
 
+  const getCardStyle = (id: string) => {
+    switch(id) {
+      case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1 };
+      case 'pre-calc': return { bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2 };
+      case 'stats-prob': return { bg: 'bg-[#FF8B8B]', tags: ['Probability', 'Charts'], level: 2 };
+      case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals'], level: 3 };
+      default: return { bg: 'bg-[#75D06A]', tags: ['Math', 'Logic'], level: 1 };
+    }
+  };
+  const { bg, tags, level } = getCardStyle(subject.id);
+
+  const rating = subject.rating || 5;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ y: -6, scale: 1.02 }}
       onClick={onClick}
-      className={`${subject.color} rounded-2xl p-6 border ${isAtRisk ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-300'} shadow-sm hover:shadow-lg transition-all cursor-pointer group relative overflow-hidden`}
+      className={`${bg} rounded-[2rem] p-5 min-h-[260px] h-full relative overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col group shadow-sm hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)]`}
     >
-      {/* Background Icon */}
-      <div className="absolute right-4 bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-        <Icon size={80} />
+      {/* Background Graphic Elements */}
+      <div className="absolute -bottom-8 right-[-20%] w-48 h-48 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110" />
+      <div className="absolute bottom-4 right-12 w-32 h-32 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110 delay-75" />
+
+      {/* Top Row */}
+      <div className="flex justify-between items-start mb-4 relative z-10">
+        <div className="w-12 h-12 rounded-[1rem] bg-white/20 flex flex-shrink-0 items-center justify-center text-white backdrop-blur-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+          <Icon size={24} className="opacity-100" />
+        </div>
+        <div className="px-3 py-1 bg-white/20 rounded-full text-white text-[13px] font-bold backdrop-blur-md">
+          Lv {level}
+        </div>
       </div>
 
-      {/* At Risk/On Track Badge */}
-      {showProgress && subject.progress > 0 && (
-        <div className="absolute top-4 right-4 z-20">
-          {isAtRisk ? (
-            <div className="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-red-200">
-              <AlertTriangle size={12} />
-              At Risk
+      {/* Title & Tags */}
+      <div className="relative z-10 flex-1">
+         <h3 className="text-[22px] font-display font-bold text-white leading-tight mb-3 drop-shadow-sm pr-4 line-clamp-2">
+           {subject.title}
+         </h3>
+         <div className="flex flex-wrap gap-2 pb-4">
+           {tags.map(tag => (
+             <span key={tag} className="px-2.5 py-1 rounded-full bg-white/20 text-white text-[12px] font-bold shadow-sm backdrop-blur-md">
+               {tag}
+             </span>
+           ))}
+         </div>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="relative z-10 mt-auto pt-3 flex flex-col gap-2">
+         {showProgress ? (
+           <>
+             <div className="flex justify-between text-white font-bold text-[13px] tracking-wide mt-1">
+                <span>Progress</span>
+                <span>{subject.progress}%</span>
+             </div>
+             
+             <div className="w-full h-2 rounded-full bg-black/10 overflow-hidden shadow-inner ring-1 ring-white/20">
+                <div 
+                  className="h-full bg-white rounded-full transition-all duration-1000 ease-out" 
+                  style={{width: `${subject.progress}%`}} 
+                />
+             </div>
+           </>
+         ) : (
+            <div className="flex justify-between text-white/90 text-[13px] font-bold mt-1">
+               <div className="flex items-center gap-1.5">
+                 <Clock size={14} /> {(subject.totalModules * 45)} mins
+               </div>
+               <div className="flex items-center gap-1 tracking-widest text-white">
+                 {'★'.repeat(Math.floor(rating))}
+                 <span className="opacity-50">{'★'.repeat(5 - Math.floor(rating))}</span> 
+               </div>
             </div>
-          ) : (
-             <div className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-emerald-200">
-              <CheckCircle size={12} />
-              On Track
+         )}
+         
+         {isAtRisk && (
+            <div className="absolute -top-3 right-0 bg-red-500 text-white px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 shadow-lg animate-pulse">
+              <AlertTriangle size={12} /> At Risk
             </div>
-          )}
-        </div>
-      )}
-
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-14 h-14 ${subject.color} brightness-95 rounded-xl flex items-center justify-center ${subject.iconColor}`}>
-            <Icon size={28} />
-          </div>
-          {showProgress && subject.progress > 0 && (
-            <div className="text-right">
-              <p className={`text-2xl font-bold ${subject.iconColor}`}>{subject.progress}%</p>
-              <p className="text-xs text-[#5a6578] font-medium">Complete</p>
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <h3 className="font-bold text-[#0a1628] mb-2">{subject.title}</h3>
-        <p className="text-sm text-[#5a6578] mb-4 line-clamp-2">{subject.description}</p>
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-[#5a6578] mb-4">
-          <div className="flex items-center gap-1">
-            <BookOpen size={14} />
-            <span className="font-medium">{subject.totalModules} modules</span>
-          </div>
-          {subject.completedModules > 0 && (
-            <div className="flex items-center gap-1 text-teal-600">
-              <CheckCircle size={14} />
-              <span className="font-medium">{subject.completedModules} done</span>
-            </div>
-          )}
-        </div>
-
-        {/* Progress Bar */}
-        {showProgress && (
-          <div className="h-2 bg-white/60 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${subject.progress}%` }}
-              transition={{ duration: 1, ease: 'easeOut', delay: index * 0.1 }}
-              className={`h-full ${subject.accentColor} rounded-full`}
-            />
-          </div>
-        )}
-
-        {/* CTA */}
-        {!showProgress || subject.progress === 0 && (
-          <Button
-            className={`w-full ${subject.accentColor} hover:opacity-90 text-white font-bold py-3 rounded-xl text-sm mt-4`}
-          >
-            Start Learning
-          </Button>
-        )}
+         )}
       </div>
     </motion.div>
   );
@@ -412,55 +457,76 @@ const ModuleCardCompact: React.FC<{
   status: string;
   isAtRisk?: boolean;
 }> = ({ subject, module, onClick, index, status, isAtRisk }) => {
+  const getCardStyle = (id: string) => {
+    switch(id) {
+      case 'gen-math': return { bg: 'bg-[#9956DE]', light: 'bg-[#F5EDFC]', text: 'text-[#9956DE]' };
+      case 'pre-calc': return { bg: 'bg-[#1FA7E1]', light: 'bg-[#E5F5FC]', text: 'text-[#1FA7E1]' };
+      case 'stats-prob': return { bg: 'bg-[#FF8B8B]', light: 'bg-[#FFEDED]', text: 'text-[#FF8B8B]' };
+      case 'basic-calc': return { bg: 'bg-[#FB96BB]', light: 'bg-[#FFEEF4]', text: 'text-[#FB96BB]' };
+      default: return { bg: 'bg-[#75D06A]', light: 'bg-[#EDFAEB]', text: 'text-[#75D06A]' };
+    }
+  };
+  
+  const { bg, light, text } = getCardStyle(subject.id);
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       onClick={onClick}
-      className={`${module.color} rounded-2xl p-4 border ${isAtRisk ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-300'} shadow-sm hover:shadow-lg transition-all cursor-pointer relative`}
+      className="bg-white rounded-[2rem] border border-slate-100 p-5 cursor-pointer shadow-sm hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.1)] transition-all duration-300 flex flex-col min-h-[170px]"
     >
-      {isAtRisk && (
-        <div className="absolute top-2 right-2 z-20">
-          <AlertTriangle size={14} className="text-red-500" />
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-12 h-12 rounded-2xl ${light} flex items-center justify-center`}>
+          <subject.icon size={24} className={text} />
         </div>
-      )}
-      <div className="flex items-start justify-between mb-3">
-        <div className={`px-2 py-1 rounded-lg text-xs font-bold ${subject.iconColor} ${subject.color} brightness-95`}>
-          {subject.title}
-        </div>
-        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-          status === 'In Progress' ? 'bg-sky-100 text-sky-700' :
-          status === 'Completed' ? 'bg-teal-100 text-teal-700' :
-          'bg-emerald-100 text-emerald-700'
+        
+        {isAtRisk && (
+           <div className="absolute top-2 right-2">
+             <AlertTriangle size={14} className="text-red-500" />
+           </div>
+        )}
+        
+        <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
+          status === 'In Progress' ? 'bg-[#FFF3E0] text-[#FFB356]' :
+          status === 'Completed' ? 'bg-[#EDFAEB] text-[#75D06A]' :
+          'bg-slate-100 text-slate-500'
         }`}>
           {status}
         </span>
       </div>
 
-      <h3 className="font-bold text-[#0a1628] text-sm mb-2 line-clamp-2">{module.title}</h3>
-      <p className="text-xs text-[#5a6578] mb-3 line-clamp-1">{module.description}</p>
-
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-[#5a6578] font-medium">
-          {module.lessons.length} lessons • {module.quizzes.length} quizzes
-        </span>
-        {module.progress > 0 && (
-          <span className={`font-bold ${module.iconColor}`}>{module.progress}%</span>
-        )}
+      <div className="flex-1">
+        <div className={`text-[11px] font-bold ${text} uppercase tracking-wider mb-1`}>
+          {subject.title}
+        </div>
+        <h3 className="font-display font-bold text-slate-800 text-[16px] leading-[1.3] mb-3 line-clamp-2">
+          {module.title}
+        </h3>
       </div>
 
-      {module.progress > 0 && (
-        <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mt-3">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${module.progress}%` }}
-            transition={{ duration: 1, ease: 'easeOut', delay: index * 0.1 }}
-            className={`h-full ${module.accentColor} rounded-full`}
-          />
+      <div className="mt-auto pt-2 flex flex-col gap-2">
+        <div className="flex items-center justify-between text-[13px] font-semibold text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <BookOpen size={16} className={text} />
+            {module.lessons.length} Lessons
+          </span>
+          {module.progress > 0 && <span className={text}>{module.progress}%</span>}
         </div>
-      )}
+
+        {module.progress > 0 && (
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden mt-1 ring-1 ring-slate-200/50">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${module.progress}%` }}
+              transition={{ duration: 1, ease: 'easeOut', delay: index * 0.1 }}
+              className={`h-full ${bg} rounded-full`}
+            />
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 };

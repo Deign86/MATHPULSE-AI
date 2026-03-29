@@ -1,6 +1,5 @@
 import React from 'react';
 import { X, Crown, Star, Flame, Trophy, BookOpen, Target, Zap, Award, Users, Calendar, TrendingUp } from 'lucide-react';
-import { Progress } from './ui/progress';
 
 interface Achievement {
   id: string;
@@ -42,8 +41,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'First Steps',
       description: 'Complete your first video lesson',
       unlocked: true,
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50'
+      color: 'text-[#9956DE]',
+      bgColor: 'bg-[#FB96BB]/20'
     },
     {
       id: '2',
@@ -52,7 +51,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       description: 'Score 100% on any quiz',
       unlocked: false,
       color: 'text-slate-500',
-      bgColor: 'bg-[#edf1f7]'
+      bgColor: 'bg-slate-100'
     },
     {
       id: '3',
@@ -63,7 +62,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       total: 7,
       unlocked: false,
       color: 'text-slate-500',
-      bgColor: 'bg-[#edf1f7]'
+      bgColor: 'bg-slate-100'
     },
     {
       id: '4',
@@ -74,7 +73,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       total: 10,
       unlocked: false,
       color: 'text-slate-500',
-      bgColor: 'bg-[#edf1f7]'
+      bgColor: 'bg-slate-100'
     },
     {
       id: '5',
@@ -82,8 +81,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'Knowledge Seeker',
       description: 'Watch 20 video lessons',
       unlocked: true,
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50'
+      color: 'text-[#1FA7E1]',
+      bgColor: 'bg-[#6ED1CF]/20'
     },
     {
       id: '6',
@@ -91,8 +90,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'Speed Learner',
       description: 'Complete 5 lessons in one day',
       unlocked: true,
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50'
+      color: 'text-[#FFB356]',
+      bgColor: 'bg-[#FFB356]/20'
     },
     {
       id: '7',
@@ -103,7 +102,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       total: 10,
       unlocked: false,
       color: 'text-slate-500',
-      bgColor: 'bg-[#edf1f7]'
+      bgColor: 'bg-slate-100'
     },
     {
       id: '8',
@@ -111,8 +110,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       title: 'XP Hunter',
       description: 'Earn 1000 XP',
       unlocked: true,
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50'
+      color: 'text-[#7274ED]',
+      bgColor: 'bg-[#7274ED]/15'
     },
     {
       id: '9',
@@ -123,7 +122,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       total: 14,
       unlocked: false,
       color: 'text-slate-500',
-      bgColor: 'bg-[#edf1f7]'
+      bgColor: 'bg-slate-100'
     },
     {
       id: '10',
@@ -134,7 +133,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       total: 30,
       unlocked: false,
       color: 'text-slate-500',
-      bgColor: 'bg-[#edf1f7]'
+      bgColor: 'bg-slate-100'
     },
   ];
 
@@ -158,59 +157,60 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       {/* Modal */}
       <div className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-2xl max-h-[85vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 text-white relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] p-6 text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(251,150,187,0.35),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(117,208,106,0.25),transparent_38%)]" />
           <div className="accent-line absolute top-0 left-0 right-0"></div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 relative z-10">
             <div>
               <h2 className="text-2xl font-display font-bold">Rewards & Achievements</h2>
-              <p className="text-sky-100 text-sm font-body">Track your learning progress and unlock badges</p>
+              <p className="text-white/90 text-sm font-body">Track your learning progress and unlock badges</p>
             </div>
             <button
               onClick={onClose}
-              className="text-white/80 hover:text-sky-700 hover:bg-slate-100 p-2 rounded-xl transition-colors"
+              className="text-white/90 hover:text-white hover:bg-white/20 p-2 rounded-xl transition-colors"
             >
               <X size={24} />
             </button>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-100 backdrop-blur-sm rounded-xl p-4 border border-slate-200">
+          <div className="grid grid-cols-3 gap-3 relative z-10">
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
               <div className="flex items-center gap-2 mb-1">
-                <Crown size={18} className="text-rose-400" />
-                <span className="text-xs font-medium text-slate-500 font-body">Level</span>
+                <Crown size={18} className="text-[#FFB356]" />
+                <span className="text-xs font-medium text-white/90 font-body">Level</span>
               </div>
               <p className="text-2xl font-bold">{userLevel}</p>
             </div>
-            <div className="bg-slate-100 backdrop-blur-sm rounded-xl p-4 border border-slate-200">
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
               <div className="flex items-center gap-2 mb-1">
-                <Star size={18} className="text-rose-400" />
-                <span className="text-xs font-medium text-slate-500 font-body">Total XP</span>
+                <Star size={18} className="text-[#6ED1CF]" />
+                <span className="text-xs font-medium text-white/90 font-body">Total XP</span>
               </div>
               <p className="text-2xl font-bold">{totalXP.toLocaleString()}</p>
             </div>
-            <div className="bg-slate-100 backdrop-blur-sm rounded-xl p-4 border border-slate-200">
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
               <div className="flex items-center gap-2 mb-1">
-                <Flame size={18} className="text-orange-400" />
-                <span className="text-xs font-medium text-slate-500 font-body">Day Streak</span>
+                <Flame size={18} className="text-[#FF8B8B]" />
+                <span className="text-xs font-medium text-white/90 font-body">Day Streak</span>
               </div>
               <p className="text-2xl font-bold">{streak} days</p>
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="mt-4">
+          <div className="mt-4 relative z-10">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-bold text-white font-body">Level {userLevel}</span>
               <span className="text-sm font-bold text-white font-body">Level {userLevel + 1}</span>
             </div>
             <div className="relative">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-xs text-slate-500">{currentXP} / {xpToNextLevel} XP</span>
+                <span className="text-xs text-white/90">{currentXP} / {xpToNextLevel} XP</span>
               </div>
-              <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-3 bg-white/20 rounded-full overflow-hidden border border-white/20">
                 <div
-                  className="h-full bg-gradient-to-r from-sky-500 to-sky-400 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-[#6ED1CF] via-[#75D06A] to-[#FFB356] rounded-full transition-all duration-500"
                   style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }}
                 ></div>
               </div>
@@ -229,7 +229,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                 return (
                   <div
                     key={achievement.id}
-                    className={`${achievement.unlocked ? 'bg-white border-rose-200' : 'bg-[#edf1f7] border-[#dde3eb]'} border-2 rounded-xl p-4 transition-all ${
+                    className={`${achievement.unlocked ? 'bg-white border-[#9956DE]/25' : 'bg-[#edf1f7] border-[#dde3eb]'} border-2 rounded-xl p-4 transition-all ${
                       achievement.unlocked ? 'shadow-md' : 'opacity-60'
                     }`}
                   >
@@ -243,7 +243,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                             {achievement.title}
                           </h4>
                           {achievement.unlocked && (
-                            <span className="px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-bold rounded-full">
+                            <span className="px-2 py-0.5 bg-[#75D06A] text-white text-[9px] font-bold rounded-full">
                               Unlocked
                             </span>
                           )}
@@ -261,7 +261,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                             </div>
                             <div className="h-1.5 bg-[#dde3eb] rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-sky-500 rounded-full transition-all"
+                                className="h-full bg-gradient-to-r from-[#7274ED] to-[#1FA7E1] rounded-full transition-all"
                                 style={{ width: `${(achievement.progress / achievement.total) * 100}%` }}
                               ></div>
                             </div>
@@ -278,7 +278,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
           {/* How to Earn XP */}
           <div className="bg-white rounded-xl p-5 border border-[#dde3eb]">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-sky-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#7274ED] to-[#1FA7E1] rounded-lg flex items-center justify-center">
                 <TrendingUp size={16} className="text-white" />
               </div>
               <h3 className="text-base font-display font-bold text-[#0a1628]">How to Earn XP</h3>
@@ -286,9 +286,9 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
             <div className="grid grid-cols-2 gap-2">
               {xpEarningMethods.map((method, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-sky-600 rounded-full"></div>
+                  <div className="w-1.5 h-1.5 bg-[#1FA7E1] rounded-full"></div>
                   <span className="text-xs text-[#5a6578] font-body">{method.activity}:</span>
-                  <span className="text-xs font-bold text-sky-600">+{method.xp} XP</span>
+                  <span className="text-xs font-bold text-[#7274ED]">+{method.xp} XP</span>
                 </div>
               ))}
             </div>

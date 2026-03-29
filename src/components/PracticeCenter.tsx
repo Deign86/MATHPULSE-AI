@@ -1,27 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play, BookOpen, PenTool } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Quiz } from './QuizExperience';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
 import { UserProgress } from '../types/models';
-import { subjects } from '../data/subjects';
+import { subjects, type SubjectId } from '../data/subjects';
 
 interface PracticeCenterProps {
   onStartQuiz?: (quiz: Quiz) => void;
+  searchQuery?: string;
+  allowedSubjectIds?: SubjectId[];
 }
 
-const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
+const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuery = '', allowedSubjectIds }) => {
   const { userProfile } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'practice' | 'challenge' | 'mastery'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [progress, setProgress] = useState<UserProgress | null>(null);
 
+  const availableSubjects = useMemo(() => {
+    if (!allowedSubjectIds || allowedSubjectIds.length === 0) {
+      return subjects;
+    }
+
+    return subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
+  }, [allowedSubjectIds]);
+
   useEffect(() => {
     if (!userProfile?.uid) return;
     getUserProgress(userProfile.uid).then(setProgress).catch(console.error);
   }, [userProfile?.uid]);
+
+  useEffect(() => {
+    if (selectedSubject === 'all') return;
+
+    const selectedStillVisible = availableSubjects.some((subject) => subject.title === selectedSubject);
+    if (!selectedStillVisible) {
+      setSelectedSubject('all');
+    }
+  }, [availableSubjects, selectedSubject]);
 
   // Derive stats from real Firebase data
   const totalQuizzesCompleted = progress?.totalQuizzesCompleted || 0;
@@ -41,7 +60,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
     }
   }
 
-  const quizzes: Quiz[] = subjects.flatMap((subject) =>
+  const quizzes: Quiz[] = availableSubjects.flatMap((subject) =>
     subject.modules.flatMap((mod) =>
       mod.quizzes.map((q) => ({
         id: q.id,
@@ -62,7 +81,11 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
   const filteredQuizzes = quizzes.filter(quiz => {
     const typeMatch = selectedFilter === 'all' || quiz.type === selectedFilter;
     const subjectMatch = selectedSubject === 'all' || quiz.subject === selectedSubject;
-    return typeMatch && subjectMatch;
+    const searchMatch = !searchQuery || 
+      quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      quiz.subject.toLowerCase().includes(searchQuery.toLowerCase());
+      
+    return typeMatch && subjectMatch && searchMatch;
   });
 
   const getTypeColor = (type: string) => {
@@ -112,7 +135,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#0a1628] mb-2">Practice Center</h1>
@@ -212,75 +235,107 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
           className="px-4 py-2.5 bg-white border-2 border-[#dde3eb] rounded-xl text-sm font-bold text-[#0a1628] focus:border-indigo-600 focus:outline-none"
         >
           <option value="all">All Subjects</option>
-          <option value="General Mathematics">General Mathematics</option>
-          <option value="Pre-Calculus">Pre-Calculus</option>
-          <option value="Statistics and Probability">Statistics and Probability</option>
-          <option value="Basic Calculus">Basic Calculus</option>
+          {availableSubjects.map((subject) => (
+            <option key={subject.id} value={subject.title}>{subject.title}</option>
+          ))}
         </select>
       </div>
 
       {/* Quizzes Grid */}
-      <div className="flex-1 overflow-y-auto pr-2 pb-4 scrollbar-hide">
-        <div className="grid grid-cols-2 gap-4">
+      <div 
+        className="flex-1 overflow-y-auto pr-2 pb-4 scrollbar-hide rounded-[2rem] border border-slate-200 shadow-inner relative"
+        style={{
+          backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+          backgroundPosition: '-12px -12px',
+          backgroundColor: '#FAFAFA'
+        }}
+      >
+        {/* Notebook binding / margin line */}
+        <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/60 pointer-events-none z-0"></div>
+        <div className="absolute left-[54px] top-0 bottom-0 w-px bg-rose-100/40 pointer-events-none z-0"></div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 p-4 md:p-6 relative z-10">
           {filteredQuizzes.map((quiz, index) => {
-            const colors = getTypeColor(quiz.type);
-            
+            const isLocked = quiz.locked;
+            const isHard = quiz.difficulty === 'Hard';
+            const isChallenge = quiz.type === 'challenge';
+
             return (
               <motion.div
                 key={quiz.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`${colors.bg} rounded-2xl p-5 border ${colors.border} shadow-sm hover:shadow-lg transition-all ${
-                  quiz.locked ? 'opacity-60' : 'cursor-pointer hover:scale-[1.02]'
-                }`}
-                onClick={() => !quiz.locked && onStartQuiz?.(quiz)}
+                onClick={() => !isLocked && onStartQuiz?.(quiz)}
+                className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${
+                  isLocked
+                    ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
+                    : quiz.completed
+                    ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
+                    : isHard
+                    ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
+                    : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
+                } group`}
               >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`px-3 py-1 rounded-lg text-xs font-bold ${colors.text} ${colors.bg} brightness-95 capitalize`}>
-                    {quiz.type}
-                  </div>
-                  {quiz.locked ? (
-                    <Lock size={18} className="text-slate-500" />
-                  ) : quiz.completed ? (
-                    <CheckCircle size={18} className="text-teal-600" />
-                  ) : (
-                    <Play size={18} className={colors.text} />
-                  )}
-                </div>
+                <div className="flex items-center justify-between gap-3 md:gap-4">
+                  <div className="flex items-center gap-3 md:gap-4 flex-1">
+                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${
+                      isLocked ? 'bg-slate-100 text-slate-400' :
+                      quiz.completed ? 'bg-teal-500 text-white' :
+                      isHard ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
+                    }`}>
+                      {isLocked ? <Lock size={18} /> :
+                       quiz.completed ? <Trophy size={18} /> :
+                       <PenTool size={18} />}
+                    </div>
 
-                {/* Title */}
-                <h3 className="font-bold text-[#0a1628] mb-2">{quiz.title}</h3>
-                <p className="text-xs text-[#5a6578] mb-4">{quiz.subject}</p>
-
-                {/* Stats */}
-                <div className="flex items-center gap-4 mb-4 text-xs text-[#5a6578]">
-                  <div className="flex items-center gap-1">
-                    <Award size={14} />
-                    <span>{quiz.questions} questions</span>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${
+                          isHard ? 'bg-indigo-100 text-indigo-700' :
+                          isChallenge ? 'bg-orange-100 text-orange-700' :
+                          'bg-sky-100 text-sky-700'
+                        }`}>
+                          {quiz.type} • {quiz.difficulty}
+                        </span>
+                        {!isLocked && !quiz.completed && (
+                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                        )}
+                      </div>
+                      <h3 className={`font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 transition-colors ${
+                        isLocked ? 'text-slate-600' : 'text-[#0a1628]'
+                      }`}>
+                        {quiz.title}
+                      </h3>
+                      <p className="text-[11px] md:text-[12px] text-slate-500 mb-1.5 line-clamp-1">{quiz.subject}</p>
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-bold text-slate-400">
+                        <span className="flex items-center gap-1"><BookOpen size={12}/> {quiz.questions} Qs</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="flex items-center gap-1"><Clock size={12}/> {quiz.duration}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="flex items-center gap-1 text-rose-500"><Trophy size={12}/> +{quiz.xpReward} XP</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock size={14} />
-                    <span>{quiz.duration}</span>
-                  </div>
-                </div>
 
-                {/* Bottom */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getDifficultyColor(quiz.difficulty)}`}>
-                      {quiz.difficulty}
-                    </span>
-                    {quiz.bestScore && (
-                      <span className="px-2 py-1 rounded-lg text-xs font-bold bg-teal-100 text-teal-700">
-                        Best: {quiz.bestScore}%
-                      </span>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    {quiz.bestScore !== undefined && (
+                      <div className="text-right">
+                        <div className={`text-xl md:text-2xl font-black leading-none ${quiz.bestScore >= 80 ? 'text-teal-600' : 'text-orange-500'}`}>{quiz.bestScore}%</div>
+                        <div className="text-[9px] uppercase tracking-wide text-slate-400 font-bold mt-1">Best Score</div>
+                      </div>
                     )}
-                  </div>
-                  <div className="flex items-center gap-1 text-rose-600 font-bold text-sm">
-                    <Trophy size={14} />
-                    <span>+{quiz.xpReward} XP</span>
+                    
+                    {!isLocked && (
+                      <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
+                        quiz.completed 
+                          ? 'bg-white border border-slate-200 text-slate-600 group-hover:bg-slate-50' 
+                          : 'bg-slate-900 text-white group-hover:bg-slate-600'
+                      }`}>
+                        {quiz.completed ? 'Review' : 'Start'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -289,10 +344,10 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz }) => {
         </div>
 
         {filteredQuizzes.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+          <div className="flex flex-col items-center justify-center h-64 text-slate-500 relative z-10">
             <Target size={48} className="mb-3" />
             <p className="font-medium">No quizzes found</p>
-            <p className="text-sm">Try adjusting your filters</p>
+            <p className="text-sm">Try adjusting your filters or search query</p>
           </div>
         )}
       </div>

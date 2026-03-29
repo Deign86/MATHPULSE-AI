@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, BookOpen, AlertCircle, Settings, BarChart3, Target, Award, Shield, Loader2, BookMarked } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import Sidebar from './Sidebar';
@@ -22,6 +22,7 @@ import {
 interface AdminDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
 }
 
 interface SystemStats {
@@ -31,7 +32,7 @@ interface SystemStats {
   loading: boolean;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
@@ -113,7 +114,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   return (
     <div className="flex h-screen w-full bg-[#edf1f7] overflow-hidden">
       {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userRole="admin" onLogout={() => setShowLogoutConfirm(true)} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        userRole="admin"
+        onOpenSettings={onOpenSettings}
+        onLogout={() => setShowLogoutConfirm(true)}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -140,9 +147,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="relative p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
-              <Settings size={18} />
-            </button>
             <button 
               onClick={onOpenProfile}
               className="flex items-center gap-2.5 w-[152px] h-11 shrink-0 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
