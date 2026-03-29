@@ -13,6 +13,9 @@ Scope completed in this chat:
 - Course Materials upload vertical slice (backend API + frontend service + Teacher Dashboard wiring).
 - Risk ML upgrade path added via normalized v2 endpoint built on existing enhanced model.
 
+Ready-to-continue focus for next session:
+- Start P1 + P2 together: canonical class-record normalization plus parse diagnostics in one pass.
+
 ## 2) Done (Implemented)
 
 ### A. Course Materials Upload API (Backend)
@@ -70,11 +73,16 @@ Priority order is based on end-to-end teacher flow value.
   - Record `{ student_id, date?, assessment_type, assessment_name, score, max_score, weight?, attendance_flag? }`
   - Attendance `{ student_id, date, status }`
 - Preserve ambiguous columns as `unknown_*` instead of dropping
+- Preferred implementation target files:
+  - [backend/main.py](backend/main.py) (upload endpoint parsing + response contract)
+  - [src/services/apiService.ts](src/services/apiService.ts) (typed response updates)
+  - [src/components/TeacherDashboard.tsx](src/components/TeacherDashboard.tsx) (display diagnostics)
 
 ### P2. Partial Success + Parse Diagnostics
 - Return per-file and per-row parse warnings/errors
 - Keep successful records even when some rows fail
 - Add actionable parse error reasons (missing header, password-protected PDF, invalid table)
+- Implement together with P1 to avoid a temporary unstable contract
 
 ### P3. Dedup and Upsert
 - Add deterministic dedup key strategy:
@@ -139,14 +147,26 @@ Priority order is based on end-to-end teacher flow value.
 ### B. Recommended immediate next task
 Implement P1 (canonical normalization for class records) in backend, then wire frontend display for per-file parse diagnostics.
 
+### B1. Recommended implementation order (single session)
+1. Update Class Records backend response shape to include normalized entities + warnings/errors.
+2. Keep backward-compatible fields during transition (`students`, `columnMapping`) to avoid UI breakage.
+3. Update frontend upload types and render structured import diagnostics.
+4. Wire risk invocation path to prefer `/api/predict-risk/v2` after import normalization is available.
+
 ### C. Suggested first commands
 - `npm run build`
-- `c:/Users/Deign/Downloads/MATHPULSE-AI/.venv/Scripts/python.exe -m py_compile backend/main.py`
+- `c:/Users/Deign/Downloads/MATHPULSE-AI/.venv/Scripts/python.exe -m py_compile backend/main.py backend/analytics.py`
+
+### C1. Quick kickoff checklist
+1. Confirm current branch and dirty state; do not revert unrelated files.
+2. Implement backend contract first, then frontend type/UI alignment.
+3. Run manual upload checks for valid/invalid/mixed quality files.
 
 ### D. Success criteria for next session
 - Class Records import returns normalized entities and unknown field retention
 - Import result includes row/file warnings without failing entire import
 - Existing upload UX remains functional for both Class Records and Course Materials
+- Risk v2 endpoint remains healthy and ready to be consumed by import-driven workflows
 
 ## 7) Decision Log
 
