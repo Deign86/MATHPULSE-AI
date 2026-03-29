@@ -250,7 +250,7 @@ const App = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fc]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-[#5a6578] font-body">Loading MathPulse AI...</p>
         </div>
       </div>
@@ -350,7 +350,7 @@ const App = () => {
   return (
     <>
     <ChatProvider>
-      <div className="flex h-screen w-full bg-[#f7f9fc] overflow-hidden">
+      <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
         {/* Sidebar */}
         <Sidebar 
           activeTab={activeTab} 
@@ -361,9 +361,11 @@ const App = () => {
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-indigo-200 via-fuchsia-50 to-orange-100 relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
+          <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
+          
           {/* Header — compact with inline gamification stats */}
-          <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">{activeTab}</h1>
@@ -381,13 +383,13 @@ const App = () => {
                 </button>
                 <button
                   onClick={() => setShowRewardsModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200/60 rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer"
                   title={`${currentXP}/${xpToNextLevel} XP to next level`}
                 >
-                  <Zap className="h-3.5 w-3.5 text-sky-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-sky-700">{currentXP} XP</span>
-                  <div className="w-12 h-1.5 bg-sky-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
+                  <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
+                  <span className="text-xs font-display font-bold text-violet-700">{currentXP} XP</span>
+                  <div className="w-12 h-1.5 bg-violet-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
@@ -405,7 +407,7 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
-                className="p-2 rounded-lg bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-sky-600 transition-all group"
+                className="p-2 rounded-lg bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group"
                 title="Scientific Calculator (Alt+K)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
@@ -423,7 +425,7 @@ const App = () => {
                   className="w-8 h-8 rounded-lg object-cover"
                 />
                 <div className="text-left min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors font-body truncate">
+                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
                     {firstName}
                   </p>
                 </div>
@@ -442,21 +444,21 @@ const App = () => {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="space-y-4 pb-4">
-                    <HeroBanner 
-                      userName={firstName} 
-                      userLevel={userLevel}
-                      onContinueLearning={() => setActiveTab('Modules')} 
-                    />
-
-                    <SupplementalBanner
-                      variant="full"
-                      atRiskSubjects={atRiskSubjects}
-                      onAction={() => setActiveTab('Modules')}
-                    />
-
+                  <div className="pb-4">
                     <div className="grid grid-cols-12 gap-4">
-                      <div className="col-span-12 xl:col-span-9">
+                      <div className="col-span-12 xl:col-span-9 space-y-4">
+                        <HeroBanner 
+                          userName={firstName} 
+                          userLevel={userLevel}
+                          onContinueLearning={() => setActiveTab('Modules')} 
+                        />
+
+                        <SupplementalBanner
+                          variant="full"
+                          atRiskSubjects={atRiskSubjects}
+                          onAction={() => setActiveTab('Modules')}
+                        />
+
                         {profileReady && (
                           <LearningPath onNavigateToModules={() => setActiveTab('Modules')} atRiskSubjects={atRiskSubjects} />
                         )}
@@ -469,6 +471,7 @@ const App = () => {
                           currentXP={currentXP}
                           xpToNextLevel={xpToNextLevel}
                           streak={streak}
+                          streakHistory={studentProfile?.streakHistory || []}
                         />
                       </div>
                     </div>
