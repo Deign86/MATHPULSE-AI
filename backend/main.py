@@ -127,6 +127,7 @@ UPLOAD_MAX_ROWS = int(os.getenv("UPLOAD_MAX_ROWS", "2000"))
 UPLOAD_MAX_COLS = int(os.getenv("UPLOAD_MAX_COLS", "60"))
 UPLOAD_MAX_PDF_PAGES = int(os.getenv("UPLOAD_MAX_PDF_PAGES", "20"))
 UPLOAD_RATE_LIMIT_PER_MIN = int(os.getenv("UPLOAD_RATE_LIMIT_PER_MIN", "12"))
+UPLOAD_MAX_TEXT_CHARS = int(os.getenv("UPLOAD_MAX_TEXT_CHARS", "250000"))
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -135,6 +136,14 @@ ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/pdf",
+    "application/octet-stream",
+}
+
+ALLOWED_COURSE_MATERIAL_EXTENSIONS: Set[str] = {".pdf", ".docx", ".txt"}
+ALLOWED_COURSE_MATERIAL_MIME_TYPES: Set[str] = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
     "application/octet-stream",
 }
 
@@ -162,6 +171,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/learning-path": ALL_APP_ROLES,
     "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
     "/api/upload/class-records": TEACHER_OR_ADMIN,
+    "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/quiz/generate": TEACHER_OR_ADMIN,
     "/api/quiz/preview": TEACHER_OR_ADMIN,
     "/api/quiz/student-competency": TEACHER_OR_ADMIN,
@@ -1595,6 +1605,175 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
     except Exception as e:
         logger.error(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=f"File upload error: {str(e)}")
+
+
+@app.post("/api/upload/course-materials")
+async def upload_course_materials(request: Request, file: UploadFile = File(...)):
+    """Upload and parse course material files (PDF, DOCX, TXT)."""
+    try:
+        enforce_rate_limit(request, "upload_course_materials", UPLOAD_RATE_LIMIT_PER_MIN, 60)
+
+        filename = file.filename or ""
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in ALLOWED_COURSE_MATERIAL_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file format: {filename}. Use .pdf, .docx, or .txt",
+            )
+
+        if (file.content_type or "").lower() not in ALLOWED_COURSE_MATERIAL_MIME_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported content type: {file.content_type}",
+            )
+
+        contents = await file.read(UPLOAD_MAX_BYTES + 1)
+        if len(contents) > UPLOAD_MAX_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
+            )
+
+        extracted_text = ""
+
+        if ext == ".txt":
+            try:
+                extracted_text = contents.decode("utf-8")
+            except UnicodeDecodeError:
+                extracted_text = contents.decode("latin-1", errors="ignore")
+
+        elif ext == ".docx":
+            try:
+                import docx  # type: ignore[import-not-found]
+
+                document = docx.Document(io.BytesIO(contents))
+                extracted_text = "\n".join(p.text.strip() for p in document.paragraphs if p.text and p.text.strip())
+            except Exception as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Could not parse DOCX file: {str(e)}",
+                )
+
+        elif ext == ".pdf":
+            try:
+                import pdfplumber  # type: ignore[import-not-found]
+
+                with pdfplumber.open(io.BytesIO(contents)) as pdf:
+                    if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
+                        )
+
+                    page_texts: List[str] = []
+                    for page in pdf.pages:
+                        text = page.extract_text() or ""
+                        if text.strip():
+                            page_texts.append(text.strip())
+
+                    extracted_text = "\n\n".join(page_texts)
+            except HTTPException:
+                raise
+            except Exception as e:
+                message = str(e)
+                if "password" in message.lower():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Could not parse PDF: file may be password-protected.",
+                    )
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Could not parse PDF file: {message}",
+                )
+
+        if not extracted_text or not extracted_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="No readable text found in the uploaded course material.",
+            )
+
+        if len(extracted_text) > UPLOAD_MAX_TEXT_CHARS:
+            extracted_text = extracted_text[:UPLOAD_MAX_TEXT_CHARS]
+
+        lines = [line.strip() for line in extracted_text.splitlines() if line and line.strip()]
+
+        sections: List[Dict[str, str]] = []
+        current_title: Optional[str] = None
+        current_buffer: List[str] = []
+
+        heading_pattern = re.compile(r"^(lesson|topic|module|unit|week|chapter)\b", re.IGNORECASE)
+        numbered_heading_pattern = re.compile(r"^\d+(?:\.\d+)*\s+.+")
+
+        for line in lines:
+            is_heading = (
+                heading_pattern.match(line) is not None
+                or numbered_heading_pattern.match(line) is not None
+                or (len(line) <= 80 and line.upper() == line and any(ch.isalpha() for ch in line))
+            )
+
+            if is_heading:
+                if current_title and current_buffer:
+                    sections.append(
+                        {
+                            "title": current_title,
+                            "excerpt": " ".join(current_buffer)[:240],
+                        }
+                    )
+                current_title = line
+                current_buffer = []
+                continue
+
+            if len(current_buffer) < 8:
+                current_buffer.append(line)
+
+        if current_title and current_buffer:
+            sections.append(
+                {
+                    "title": current_title,
+                    "excerpt": " ".join(current_buffer)[:240],
+                }
+            )
+
+        if not sections:
+            fallback_excerpt = " ".join(lines[:6])[:240]
+            sections = [{"title": "Imported content", "excerpt": fallback_excerpt}]
+
+        topic_pattern = re.compile(r"\b(?:topic|lesson|module|unit)\s*[:\-]\s*([^\n\r;,.]{2,80})", re.IGNORECASE)
+        suggested_topics: List[str] = []
+        for match in topic_pattern.findall(extracted_text):
+            topic = match.strip()
+            if topic and topic not in suggested_topics:
+                suggested_topics.append(topic)
+            if len(suggested_topics) >= 10:
+                break
+
+        # Fall back to section titles when explicit topic markers are not present.
+        if not suggested_topics:
+            for section in sections:
+                title = section.get("title", "").strip()
+                if title and title.lower() != "imported content" and title not in suggested_topics:
+                    suggested_topics.append(title)
+                if len(suggested_topics) >= 10:
+                    break
+
+        preview = extracted_text[:1200]
+
+        return {
+            "success": True,
+            "fileName": filename,
+            "fileType": ext.lstrip("."),
+            "charCount": len(extracted_text),
+            "wordCount": len(extracted_text.split()),
+            "sections": sections[:10],
+            "suggestedTopics": suggested_topics,
+            "preview": preview,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Course material upload error: {e}")
+        raise HTTPException(status_code=500, detail=f"Course material upload error: {str(e)}")
 
 
 # ─── Quiz Maker Models ────────────────────────────────────────

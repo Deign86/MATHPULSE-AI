@@ -10,6 +10,7 @@
  * │ Firestore Collection   │ Cloud Function                      │
  * ├────────────────────────┼──────────────────────────────────────┤
  * │ users (onCreate)       │ onStudentCreated                    │
+ * │ users (onUpdate)       │ onStudentProfileUpdated             │
  * │ diagnosticResults      │ onDiagnosticComplete                │
  * │ quizResults            │ onQuizSubmitted                     │
  * │ attendance (onWrite)   │ onAttendanceUpdate                  │
@@ -19,6 +20,7 @@
  * HTTP Callable:
  * - manualProcessStudent   — reprocess a diagnostic for a student
  * - manualProcessQuiz      — reprocess a quiz result
+ * - manualRequestReassessment — force reassessment eligibility
  */
 
 import * as admin from "firebase-admin";
@@ -33,10 +35,16 @@ export { onDiagnosticComplete } from "./triggers/onDiagnosticComplete";
 export { onQuizSubmitted } from "./triggers/onQuizSubmitted";
 export { onAttendanceUpdate } from "./triggers/onAttendanceUpdate";
 export { onContentUpdated } from "./triggers/onContentUpdated";
+export {
+  onStudentProfileUpdated,
+  runInactivityReassessmentSweep,
+} from "./triggers/onStudentProfileUpdated";
 
 // ─── HTTP Callable Functions ─────────────────────────────────
 
 export {
   manualProcessStudent,
   manualProcessQuiz,
+  manualBackfillCurriculumVersion,
+  manualRequestReassessment,
 } from "./triggers/manualTriggers";

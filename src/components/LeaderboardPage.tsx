@@ -31,7 +31,11 @@ interface LeaderboardStudent {
   isYou?: boolean;
 }
 
-const LeaderboardPage = () => {
+interface LeaderboardPageProps {
+  currentUserPhoto?: string;
+}
+
+const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto }) => {
   const { currentUser, userProfile } = useAuth();
   const studentProfile = userProfile as StudentProfile;
   const [activeView, setActiveView] = useState<'school' | 'section'>('section');
@@ -55,7 +59,10 @@ const LeaderboardPage = () => {
           id: entry.userId,
           uid: entry.userId,
           name: entry.name,
-          avatar: entry.photo || avatars[index % avatars.length],
+          avatar:
+            entry.userId === currentUser.uid
+              ? (currentUserPhoto || entry.photo || avatars[index % avatars.length])
+              : (entry.photo || avatars[index % avatars.length]),
           level: entry.level,
           totalXP: entry.xp,
           currentStreak: 0,
@@ -83,7 +90,7 @@ const LeaderboardPage = () => {
     };
 
     loadLeaderboard();
-  }, [currentUser, myClassSection, timeFilter]);
+  }, [currentUser, myClassSection, timeFilter, currentUserPhoto]);
 
   const getCurrentRank = () => {
     const you = students.find(s => s.isYou);

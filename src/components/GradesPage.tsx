@@ -4,14 +4,18 @@ import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
-import { UserProgress } from '../types/models';
+import { UserProgress, type StudentProfile } from '../types/models';
+import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 
 const GradesPage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<UserProgress | null>(null);
+  const studentGrade = (userProfile as StudentProfile | null)?.grade;
+  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+  const allowedSubjectSet = new Set(allowedSubjectIds);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -36,14 +40,28 @@ const GradesPage = () => {
   const gpa = averageScore > 0 ? Math.min((averageScore / 25), 4.0).toFixed(2) : '0.00';
 
   // Derive subject performance from progress data
-  const subjectMap: Record<string, { label: string; color: string }> = {
-    'gen-math': { label: 'General Mathematics', color: 'blue' },
-    'pre-calc': { label: 'Pre-Calculus', color: 'teal' },
-    'stats-prob': { label: 'Statistics and Probability', color: 'cyan' },
-    'basic-calc': { label: 'Basic Calculus', color: 'orange' },
+  const colorBySubjectId: Record<SubjectId, string> = {
+    'gen-math': 'blue',
+    'stats-prob': 'cyan',
+    'pre-calc': 'teal',
+    'basic-calc': 'orange',
   };
 
-  const subjectPerformance = Object.entries(progress?.subjects || {}).map(([subjectId, subjectData]) => {
+  const subjectMap: Record<string, { label: string; color: string }> = SHS_MATH_SUBJECTS.reduce((acc, subject) => {
+    acc[subject.id] = {
+      label: subject.name,
+      color: colorBySubjectId[subject.id as SubjectId] || 'slate',
+    };
+    return acc;
+  }, {} as Record<string, { label: string; color: string }>);
+
+  const allowedSubjectLabels = SHS_MATH_SUBJECTS
+    .filter((subject) => allowedSubjectSet.has(subject.id as SubjectId))
+    .map((subject) => subject.name);
+
+  const subjectPerformance = Object.entries(progress?.subjects || {})
+    .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
+    .map(([subjectId, subjectData]) => {
     const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
     const subjectQuizzes = quizAttempts.filter(q => q.quizId?.startsWith(subjectId));
     const avg = subjectQuizzes.length > 0
@@ -59,12 +77,18 @@ const GradesPage = () => {
   });
 
   // If no Firebase progress subjects, show default subjects with zero data
-  const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : [
-    { subject: 'General Mathematics', average: 0, quizzes: 0, color: 'blue', trend: 'up' as const },
-    { subject: 'Pre-Calculus', average: 0, quizzes: 0, color: 'teal', trend: 'up' as const },
-    { subject: 'Statistics and Probability', average: 0, quizzes: 0, color: 'cyan', trend: 'up' as const },
-    { subject: 'Basic Calculus', average: 0, quizzes: 0, color: 'orange', trend: 'up' as const },
-  ];
+  const defaultSubjectPerformance = allowedSubjectIds.map((subjectId) => {
+    const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
+    return {
+      subject: info.label,
+      average: 0,
+      quizzes: 0,
+      color: info.color,
+      trend: 'up' as const,
+    };
+  });
+
+  const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : defaultSubjectPerformance;
 
   // Recent quizzes from quiz attempts
   const recentQuizzes = quizAttempts
@@ -81,7 +105,8 @@ const GradesPage = () => {
         : new Date(attempt.completedAt).toISOString().split('T')[0],
       type: attempt.quizId?.includes('practice') ? 'practice' as const : 'module' as const,
       status: attempt.score >= 60 ? 'passed' : 'failed',
-    }));
+    }))
+    .filter((quiz) => allowedSubjectLabels.includes(quiz.subject));
 
   const overallStats = {
     gpa: parseFloat(gpa),
@@ -92,10 +117,18 @@ const GradesPage = () => {
   };
 
   const filteredQuizzes = recentQuizzes.filter(quiz => {
+    if (!allowedSubjectLabels.includes(quiz.subject)) return false;
     const subjectMatch = filterSubject === 'all' || quiz.subject === filterSubject;
     const typeMatch = filterType === 'all' || quiz.type === filterType;
     return subjectMatch && typeMatch;
   });
+
+  useEffect(() => {
+    if (filterSubject === 'all') return;
+    if (!allowedSubjectLabels.includes(filterSubject)) {
+      setFilterSubject('all');
+    }
+  }, [allowedSubjectLabels, filterSubject]);
 
   const handleExportReport = () => {
     // Generate CSV export
@@ -237,10 +270,9 @@ const GradesPage = () => {
               className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm font-body bg-white text-[#0a1628]"
             >
               <option value="all">All Subjects</option>
-              <option value="General Mathematics">General Mathematics</option>
-              <option value="Pre-Calculus">Pre-Calculus</option>
-              <option value="Statistics and Probability">Statistics and Probability</option>
-              <option value="Basic Calculus">Basic Calculus</option>
+              {allowedSubjectLabels.map((subjectName) => (
+                <option key={subjectName} value={subjectName}>{subjectName}</option>
+              ))}
             </select>
 
             <select
