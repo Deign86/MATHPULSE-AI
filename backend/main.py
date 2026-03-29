@@ -69,6 +69,7 @@ from analytics import (
     TopicRecommendationResponse,
     EnhancedRiskPrediction,
     EnhancedRiskRequest,
+    StudentRiskPredictionV2,
     RiskTrainRequest,
     RiskTrainResponse,
     CalibrateDifficultyRequest,
@@ -83,6 +84,7 @@ from analytics import (
     # Core functions
     compute_competency_analysis,
     predict_risk_enhanced,
+    predict_risk_v2,
     train_risk_model,
     calibrate_question_difficulty,
     select_adaptive_quiz,
@@ -179,6 +181,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/student/competency-analysis": TEACHER_OR_ADMIN,
     "/api/risk/train-model": ADMIN_ONLY,
     "/api/predict-risk/enhanced": TEACHER_OR_ADMIN,
+    "/api/predict-risk/v2": TEACHER_OR_ADMIN,
     "/api/quiz/calibrate-difficulty": TEACHER_OR_ADMIN,
     "/api/quiz/adaptive-select": TEACHER_OR_ADMIN,
     "/api/learning/recommend-topics": TEACHER_OR_ADMIN,
@@ -2706,6 +2709,24 @@ async def predict_risk_ml(data: EnhancedRiskRequest):
     except Exception as e:
         logger.error(f"Enhanced risk prediction error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Risk prediction error: {str(e)}")
+
+
+@app.post("/api/predict-risk/v2", response_model=StudentRiskPredictionV2)
+async def predict_risk_v2_endpoint(data: EnhancedRiskRequest):
+    """
+    Normalized student risk prediction endpoint.
+    Reuses enhanced ML inference and returns:
+    - risk_level in {low, medium, high}
+    - risk_score in [0, 1]
+    - top_factors as plain-language explanations
+    """
+    try:
+        logger.info(f"Risk v2 prediction for student {data.studentId}")
+        result = await predict_risk_v2(data)
+        return result
+    except Exception as e:
+        logger.error(f"Risk v2 prediction error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Risk v2 prediction error: {str(e)}")
 
 
 @app.post("/api/quiz/calibrate-difficulty", response_model=CalibrateDifficultyResponse)

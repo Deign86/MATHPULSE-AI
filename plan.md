@@ -11,6 +11,7 @@ A first implementation slice for Teacher Import has already been delivered and v
 
 Scope completed in this chat:
 - Course Materials upload vertical slice (backend API + frontend service + Teacher Dashboard wiring).
+- Risk ML upgrade path added via normalized v2 endpoint built on existing enhanced model.
 
 ## 2) Done (Implemented)
 
@@ -47,6 +48,17 @@ Scope completed in this chat:
 - Python syntax compile succeeded for backend (`python -m py_compile backend/main.py`)
 - No file-level editor errors reported in modified files
 
+### E. Risk ML Improvement (Kept and Upgraded)
+- Decision taken: keep existing risk ML and improve it (no destructive replacement)
+- Added normalized risk output model and adapter in [backend/analytics.py](backend/analytics.py)
+- Added API endpoint `/api/predict-risk/v2` in [backend/main.py](backend/main.py)
+- Added route authorization for `/api/predict-risk/v2` in [backend/main.py](backend/main.py)
+- v2 output contract now includes:
+  - `risk_level` in `low | medium | high`
+  - `risk_score` in `[0,1]` derived from class probabilities
+  - `top_factors` in plain teacher language
+  - normalized `probabilities` and `model_used`
+
 ## 3) Remaining Work (Next Implementation Targets)
 
 Priority order is based on end-to-end teacher flow value.
@@ -72,10 +84,8 @@ Priority order is based on end-to-end teacher flow value.
 
 ### P4. Risk Refresh Trigger from Imports
 - Trigger risk recomputation after successful import
-- Ensure output contract per student:
-  - `risk_level` in `{low, medium, high}`
-  - `risk_score` in `[0,1]`
-  - top 3 plain-language contributing factors
+- Use `/api/predict-risk/v2` as the default contract endpoint for downstream teacher workflows
+- Ensure v2 output is wired into import pipelines and class dashboards
 - Propagate uncertainty when data is partial
 
 ### P5. Course Material Intelligence (Grounded)
