@@ -23,3 +23,16 @@ models:
       notes: Prompt/procedure experimentation
     - id: meta-llama/Meta-Llama-3-8B-Instruct
       notes: Baseline comparison against legacy deployment
+
+routing:
+  task_model_map:
+    chat: Qwen/Qwen2.5-Math-7B-Instruct
+    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
+    lesson_generation: Qwen/Qwen2.5-Math-7B-Instruct
+    quiz_generation: Qwen/Qwen2.5-Math-7B-Instruct
+    learning_path: Qwen/Qwen2.5-Math-7B-Instruct
+    daily_insight: Qwen/Qwen2.5-Math-1.5B-Instruct
+    risk_classification: Qwen/Qwen2.5-Math-1.5B-Instruct
+
+  task_provider_map:
+    risk_classification: hf_inference
