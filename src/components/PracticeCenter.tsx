@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play, BookOpen, PenTool } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
@@ -6,23 +6,41 @@ import { Quiz } from './QuizExperience';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
 import { UserProgress } from '../types/models';
-import { subjects } from '../data/subjects';
+import { subjects, type SubjectId } from '../data/subjects';
 
 interface PracticeCenterProps {
   onStartQuiz?: (quiz: Quiz) => void;
   searchQuery?: string;
+  allowedSubjectIds?: SubjectId[];
 }
 
-const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuery = '' }) => {
+const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuery = '', allowedSubjectIds }) => {
   const { userProfile } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'practice' | 'challenge' | 'mastery'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [progress, setProgress] = useState<UserProgress | null>(null);
 
+  const availableSubjects = useMemo(() => {
+    if (!allowedSubjectIds || allowedSubjectIds.length === 0) {
+      return subjects;
+    }
+
+    return subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
+  }, [allowedSubjectIds]);
+
   useEffect(() => {
     if (!userProfile?.uid) return;
     getUserProgress(userProfile.uid).then(setProgress).catch(console.error);
   }, [userProfile?.uid]);
+
+  useEffect(() => {
+    if (selectedSubject === 'all') return;
+
+    const selectedStillVisible = availableSubjects.some((subject) => subject.title === selectedSubject);
+    if (!selectedStillVisible) {
+      setSelectedSubject('all');
+    }
+  }, [availableSubjects, selectedSubject]);
 
   // Derive stats from real Firebase data
   const totalQuizzesCompleted = progress?.totalQuizzesCompleted || 0;
@@ -42,7 +60,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
     }
   }
 
-  const quizzes: Quiz[] = subjects.flatMap((subject) =>
+  const quizzes: Quiz[] = availableSubjects.flatMap((subject) =>
     subject.modules.flatMap((mod) =>
       mod.quizzes.map((q) => ({
         id: q.id,
@@ -217,10 +235,9 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
           className="px-4 py-2.5 bg-white border-2 border-[#dde3eb] rounded-xl text-sm font-bold text-[#0a1628] focus:border-indigo-600 focus:outline-none"
         >
           <option value="all">All Subjects</option>
-          <option value="General Mathematics">General Mathematics</option>
-          <option value="Pre-Calculus">Pre-Calculus</option>
-          <option value="Statistics and Probability">Statistics and Probability</option>
-          <option value="Basic Calculus">Basic Calculus</option>
+          {availableSubjects.map((subject) => (
+            <option key={subject.id} value={subject.title}>{subject.title}</option>
+          ))}
         </select>
       </div>
 

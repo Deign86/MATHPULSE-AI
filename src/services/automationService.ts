@@ -10,7 +10,18 @@
 // The FastAPI backend is still used for AI/ML features (chat, risk prediction,
 // learning paths) — those calls are made by the Cloud Functions themselves.
 
-import { doc, updateDoc, serverTimestamp, setDoc, collection, addDoc } from 'firebase/firestore';
+import {
+  doc,
+  updateDoc,
+  serverTimestamp,
+  setDoc,
+  collection,
+  addDoc,
+  writeBatch,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { createNotification } from './notificationService';
 import { initializeUserProgress } from './progressService';
@@ -21,6 +32,18 @@ export interface DiagnosticResult {
   subject: string;
   score: number;
 }
+
+export interface DiagnosticQuestionResult {
+  correct: boolean;
+  questionId?: string;
+  difficulty?: 'basic' | 'standard' | 'challenge';
+  gradeLevelTag?: 'G11' | 'G12Candidate';
+  quarter?: 1 | 2 | 3 | 4;
+  answerType?: 'MCQ' | 'shortAnswerNumeric' | 'shortAnswerText' | 'confidenceLikert';
+}
+
+export type IARWorkflowMode = 'iar_only' | 'iar_plus_diagnostic';
+export type AssessmentType = 'initial_assessment' | 'followup_diagnostic';
 
 export interface AutomationResult {
   success: boolean;
@@ -76,6 +99,19 @@ export interface ContentUpdatePayload {
   details?: string;
 }
 
+export async function getPendingDeepDiagnosticCount(lrn: string): Promise<number> {
+  if (!lrn) return 0;
+
+  const assignmentsRef = collection(db, 'deepDiagnosticAssignments');
+  const pendingQ = query(assignmentsRef, where('lrn', '==', lrn));
+
+  const snap = await getDocs(pendingQ);
+  return snap.docs.filter((docSnap) => {
+    const status = docSnap.data().status as string | undefined;
+    return status === 'pending' || status === 'queued' || status === 'in_progress' || status === 'expired';
+  }).length;
+}
+
 // ─── Trigger: Diagnostic Completed ────────────────────────────
 
 /**
@@ -94,13 +130,41 @@ export async function triggerDiagnosticCompleted(
   lrn: string,
   results: DiagnosticResult[],
   gradeLevel: string = 'Grade 11',
-  questionBreakdown?: Record<string, { correct: boolean }[]>,
+  questionBreakdown?: Record<string, DiagnosticQuestionResult[]>,
+  workflowMode: IARWorkflowMode = 'iar_only',
+  assessmentType: AssessmentType = 'initial_assessment',
 ): Promise<AutomationResult> {
+  if (assessmentType === 'followup_diagnostic') {
+    const assignmentsRef = collection(db, 'deepDiagnosticAssignments');
+    const assignmentsQ = query(assignmentsRef, where('lrn', '==', lrn));
+    const assignmentsSnap = await getDocs(assignmentsQ);
+
+    if (!assignmentsSnap.empty) {
+      const batch = writeBatch(db);
+      let hasUpdates = false;
+      for (const assignmentDoc of assignmentsSnap.docs) {
+        const status = assignmentDoc.data().status as string | undefined;
+        if (status === 'pending' || status === 'queued') {
+          batch.update(assignmentDoc.ref, {
+            status: 'in_progress',
+            startedAt: serverTimestamp(),
+          });
+          hasUpdates = true;
+        }
+      }
+      if (hasUpdates) {
+        await batch.commit();
+      }
+    }
+  }
+
   // Write to diagnosticResults — Cloud Function triggers from here
   await setDoc(doc(db, 'diagnosticResults', lrn), {
     lrn,
     results,
     gradeLevel,
+    workflowMode,
+    assessmentType,
     questionBreakdown: questionBreakdown || null,
     completedAt: serverTimestamp(),
     processed: false,

@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
+import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -73,6 +74,12 @@ const TopicMasteryView: React.FC = () => {
   // Sorting
   const [sortField, setSortField] = useState<SortField>('classAverage');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const allSubjectIds = SHS_MATH_SUBJECTS.map((subject) => subject.id as SubjectId);
+  const subjectNameById = SHS_MATH_SUBJECTS.reduce<Record<string, string>>((acc, subject) => {
+    acc[subject.id] = subject.name;
+    return acc;
+  }, {});
 
   // Selection for bulk actions
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
@@ -206,16 +213,21 @@ const TopicMasteryView: React.FC = () => {
   };
 
   // ─── Filter and sort ─────────────────────────────────────
+  const gradeScopedSubjectIds = gradeFilter === 'all'
+    ? allSubjectIds
+    : getActiveSubjectIdsForGrade(gradeFilter);
 
-  const SUBJECT_FOR_GRADE: Record<string, string[]> = {
-    'Grade 11': ['gen-math', 'stats-prob'],
-    'Grade 12': ['pre-calc', 'basic-calc'],
-  };
+  useEffect(() => {
+    if (subjectFilter === 'all') return;
+    if (!gradeScopedSubjectIds.includes(subjectFilter as SubjectId)) {
+      setSubjectFilter('all');
+    }
+  }, [gradeScopedSubjectIds, subjectFilter]);
 
   const filteredTopics = topics
     .filter(t => {
       if (subjectFilter !== 'all' && t.subjectId !== subjectFilter) return false;
-      if (gradeFilter !== 'all' && !SUBJECT_FOR_GRADE[gradeFilter]?.includes(t.subjectId)) return false;
+      if (!gradeScopedSubjectIds.includes(t.subjectId as SubjectId)) return false;
       if (searchQuery && !t.topicName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     })
@@ -329,10 +341,9 @@ const TopicMasteryView: React.FC = () => {
           className="bg-white border border-[#dde3eb] rounded-xl px-3 py-2 text-sm outline-none"
         >
           <option value="all">All Subjects</option>
-          <option value="gen-math">General Mathematics</option>
-          <option value="stats-prob">Statistics and Probability</option>
-          <option value="pre-calc">Pre-Calculus</option>
-          <option value="basic-calc">Basic Calculus</option>
+          {gradeScopedSubjectIds.map((subjectId) => (
+            <option key={subjectId} value={subjectId}>{subjectNameById[subjectId] || subjectId}</option>
+          ))}
         </select>
         <select
           value={gradeFilter}
@@ -340,8 +351,9 @@ const TopicMasteryView: React.FC = () => {
           className="bg-white border border-[#dde3eb] rounded-xl px-3 py-2 text-sm outline-none"
         >
           <option value="all">All Grades</option>
-          <option value="Grade 11">Grade 11</option>
-          <option value="Grade 12">Grade 12</option>
+          {GRADE_LEVELS.map((grade) => (
+            <option key={grade} value={grade}>{grade}</option>
+          ))}
         </select>
       </div>
 

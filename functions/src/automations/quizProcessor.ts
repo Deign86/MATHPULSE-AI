@@ -33,6 +33,7 @@ export interface QuizSubmissionData {
 export interface RemedialQuizConfig {
   lrn: string;
   subject: string;
+  curriculumVersionSetId?: string;
   quizConfig: {
     topics: string[];
     gradeLevel: string;
@@ -152,6 +153,9 @@ export function buildRemedialQuizConfigs(
   atRiskSubjects: string[],
   overallRisk: string,
   gradeLevel: string,
+  options?: {
+    curriculumVersionSetId?: string;
+  },
 ): RemedialQuizConfig[] {
   const cfg = REMEDIAL_CONFIG[overallRisk] || REMEDIAL_CONFIG.Low;
   const quizzes: RemedialQuizConfig[] = [];
@@ -160,6 +164,7 @@ export function buildRemedialQuizConfigs(
     quizzes.push({
       lrn,
       subject,
+      curriculumVersionSetId: options?.curriculumVersionSetId,
       quizConfig: {
         topics: [subject],
         gradeLevel,

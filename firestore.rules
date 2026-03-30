@@ -160,6 +160,31 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /contentAuditLog/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /deepDiagnosticAssignments/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn');
+      allow create, update, delete: if false;
+    }
+
+    match /recommendationLogs/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
+      allow create, update, delete: if false;
+    }
+
+    match /learnerMasterySnapshots/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
+      allow create, update, delete: if false;
+    }
+
+    match /progressionAuditLog/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
+      allow create, update, delete: if false;
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;
