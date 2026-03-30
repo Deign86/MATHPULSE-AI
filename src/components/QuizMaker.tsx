@@ -1376,7 +1376,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           <div className="text-xs text-slate-500">
             {step === 'configure' && (
               <span className="flex items-center gap-1">
-                <Sparkles size={12} /> Powered by Meta-Llama-3-8B-Instruct
+                <Sparkles size={12} /> Powered by Qwen2.5-Math-7B-Instruct
               </span>
             )}
             {step === 'preview' && <span>Preview: {previewResult?.questions.length || 0} sample questions</span>}

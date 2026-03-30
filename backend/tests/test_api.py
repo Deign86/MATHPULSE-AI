@@ -207,6 +207,46 @@ class TestChatEndpoint:
         })
         assert response.status_code == 502
 
+    @patch("main.call_hf_chat")
+    def test_chat_quadratic_prompt_smoke(self, mock_chat):
+        mock_chat.return_value = (
+            "Given x^2 - 5x + 6 = 0, factor to (x-2)(x-3)=0. "
+            "So x = 2 or x = 3. Final answer: x = 2, x = 3."
+        )
+        response = client.post("/api/chat", json={
+            "message": "Solve quadratic equation x² - 5x + 6 = 0 step-by-step.",
+            "history": [],
+        })
+        assert response.status_code == 200
+        data = response.json()["response"]
+        assert "x = 2" in data
+        assert "x = 3" in data
+
+
+class TestHFChatTransport:
+    @patch("main.http_requests.post")
+    def test_call_hf_chat_uses_qwen_endpoint_and_disables_tools(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [{"generated_text": "x = 2 or x = 3"}]
+        mock_post.return_value = mock_response
+
+        result = main_module.call_hf_chat(
+            [{"role": "user", "content": "Solve x^2 - 5x + 6 = 0"}],
+            max_tokens=256,
+            temperature=0.2,
+            top_p=0.9,
+        )
+
+        assert result
+        call_args = mock_post.call_args
+        endpoint = call_args.args[0]
+        payload = call_args.kwargs["json"]
+
+        assert endpoint == "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Math-7B-Instruct"
+        assert payload["parameters"]["tool_choice"] == "none"
+        assert "tools" not in payload
+
 
 # ─── Risk Prediction ──────────────────────────────────────────
 
