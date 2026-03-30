@@ -1976,7 +1976,6 @@ CLASS_RECORD_IMPORT_CORE_FIELDS: Set[str] = {
     "engagementScore",
     "avgQuizScore",
     "attendance",
-    "assignmentCompletion",
 }
 
 CLASS_RECORD_IDENTITY_FIELDS: Set[str] = {"lrn", "email"}
@@ -2337,7 +2336,10 @@ def _normalize_class_records(
 ) -> Dict[str, Any]:
     normalized_rows: List[Dict[str, Any]] = []
     row_warnings: List[Dict[str, Any]] = []
+    rejected_rows: List[Dict[str, Any]] = []
     unknown_columns = sorted([col for col in df.columns if col not in column_mapping])
+    inferred_rows = 0
+    fallback_inference_rows = 0
 
     for idx, row in df.iterrows():
         student: Dict[str, Any] = {}
@@ -2356,26 +2358,57 @@ def _normalize_class_records(
 
         student_name = str(student.get("name", "")).strip()
         if not student_name:
-            row_warnings.append(
+            rejected_rows.append(
                 {
                     "row": int(idx) + 2,
-                    "warning": "missing required field: name",
+                    "reason": "missing required field: name",
                 }
             )
             continue
 
+        lrn_value = str(student.get("lrn", "")).strip()
+        email_value = str(student.get("email", "")).strip().lower()
+        if not lrn_value and not email_value:
+            rejected_rows.append(
+                {
+                    "row": int(idx) + 2,
+                    "reason": "missing required identity value: lrn_or_email",
+                }
+            )
+            continue
+
+        defaulted_metrics: Set[str] = set()
         for field in ["engagementScore", "avgQuizScore", "attendance", "assignmentCompletion"]:
             numeric_value, parse_warning = _safe_numeric(student.get(field))
             student[field] = numeric_value
             if parse_warning:
                 warnings_for_row.append(f"{field}: {parse_warning}")
+                defaulted_metrics.add(field)
 
         student_id, term, assessment_name, dedup_key = _build_record_identity(student, unknown_fields)
         student["name"] = student_name
-        student["email"] = str(student.get("email", "")).strip()
-        student["lrn"] = str(student.get("lrn", "")).strip()
+        student["email"] = email_value
+        student["lrn"] = lrn_value
         student["term"] = term
         student["assessmentName"] = assessment_name
+
+        has_topic_signal = bool(
+            (assessment_name and assessment_name.lower() != "general-assessment")
+            or any(
+                any(token in str(key).lower() for token in ("topic", "unit", "lesson", "skill", "competency"))
+                for key in unknown_fields.keys()
+            )
+        )
+        inference = _infer_student_state(
+            avg_quiz=float(student.get("avgQuizScore") or 0.0),
+            attendance=float(student.get("attendance") or 0.0),
+            engagement=float(student.get("engagementScore") or 0.0),
+            defaulted_metrics=defaulted_metrics,
+            has_topic_signal=has_topic_signal,
+        )
+        inferred_rows += 1
+        if inference.get("fallbackUsed"):
+            fallback_inference_rows += 1
 
         normalized_row = {
             **student,
@@ -2387,6 +2420,14 @@ def _normalize_class_records(
             },
             "studentId": student_id,
             "dedupKey": dedup_key,
+            "riskLevel": inference["riskLevel"],
+            "inferredState": {
+                "state": inference["state"],
+                "confidence": inference["confidence"],
+                "signals": inference["signals"],
+                "explanation": inference["explanation"],
+                "fallbackUsed": inference["fallbackUsed"],
+            },
         }
 
         normalized_rows.append(normalized_row)
@@ -2401,7 +2442,13 @@ def _normalize_class_records(
     return {
         "rows": normalized_rows,
         "rowWarnings": row_warnings,
+        "rejectedRows": rejected_rows,
         "unknownColumns": unknown_columns,
+        "interpretedRows": len(normalized_rows),
+        "rejectedRowsCount": len(rejected_rows),
+        "rejectedReasonCounts": dict(Counter(item["reason"] for item in rejected_rows)),
+        "inferredRows": inferred_rows,
+        "fallbackInferenceRows": fallback_inference_rows,
     }
 
 
@@ -2457,6 +2504,66 @@ def _derive_risk_level(avg_quiz: float, attendance: float, engagement: float) ->
     if avg_quiz < 75 or attendance < 85 or engagement < 70:
         return "Medium"
     return "Low"
+
+
+def _infer_student_state(
+    *,
+    avg_quiz: float,
+    attendance: float,
+    engagement: float,
+    defaulted_metrics: Set[str],
+    has_topic_signal: bool,
+) -> Dict[str, Any]:
+    risk_level = _derive_risk_level(avg_quiz, attendance, engagement)
+
+    if risk_level == "High":
+        if avg_quiz < 50 or attendance < 65 or engagement < 45:
+            state = "urgent_intervention"
+        else:
+            state = "at_risk"
+    elif risk_level == "Medium":
+        state = "watchlist"
+    else:
+        state = "on_track"
+
+    non_default_metrics = 3 - len(defaulted_metrics)
+    completeness = max(0.0, min(1.0, float(non_default_metrics) / 3.0))
+
+    threshold_gap = max(
+        max(0.0, 60.0 - avg_quiz) / 60.0,
+        max(0.0, 75.0 - attendance) / 75.0,
+        max(0.0, 55.0 - engagement) / 55.0,
+    )
+    confidence = 0.45 + (0.45 * completeness) + (0.1 * min(1.0, threshold_gap))
+    confidence = max(0.1, min(0.99, confidence))
+
+    signals: List[str] = []
+    if avg_quiz < 60:
+        signals.append("low_avg_quiz_score")
+    if attendance < 75:
+        signals.append("low_attendance")
+    if engagement < 55:
+        signals.append("low_engagement")
+    if defaulted_metrics:
+        signals.append("fallback_defaulted_metrics")
+    if not has_topic_signal:
+        signals.append("fallback_general_topic_context")
+    if not signals:
+        signals.append("stable_core_metrics")
+
+    explanation = (
+        f"State inferred from avgQuizScore={avg_quiz:.1f}, attendance={attendance:.1f}, "
+        f"engagementScore={engagement:.1f}."
+    )
+
+    return {
+        "riskLevel": risk_level,
+        "state": state,
+        "confidence": round(confidence, 3),
+        "signals": signals,
+        "explanation": explanation,
+        "fallbackUsed": bool(defaulted_metrics or not has_topic_signal),
+    }
 
 
 def _pick_weakest_topic(unknown_fields: Dict[str, Any]) -> str:
@@ -2570,7 +2677,15 @@ def _sync_imported_students_to_teacher_dashboard(
         avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
         avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
 
-        risk_level = _derive_risk_level(avg_quiz, avg_attendance, avg_engagement)
+        has_topic_signal = str(aggregate.get("weakestTopic") or "").strip() not in {"", "Foundational Skills"}
+        inference = _infer_student_state(
+            avg_quiz=avg_quiz,
+            attendance=avg_attendance,
+            engagement=avg_engagement,
+            defaulted_metrics=set(),
+            has_topic_signal=has_topic_signal,
+        )
+        risk_level = str(inference["riskLevel"])
         if risk_level == "High":
             risk_high_count += 1
         total_score += avg_quiz
@@ -2592,6 +2707,15 @@ def _sync_imported_students_to_teacher_dashboard(
             "classSectionId": resolved_section_id,
             "classroomId": classroom_doc_id,
             "riskLevel": risk_level,
+            "inferredState": {
+                "state": inference["state"],
+                "confidence": inference["confidence"],
+                "signals": inference["signals"],
+                "explanation": inference["explanation"],
+                "fallbackUsed": inference["fallbackUsed"],
+            },
+            "stateConfidence": inference["confidence"],
+            "stateSignals": inference["signals"],
             "engagementScore": round(avg_engagement, 1),
             "avgQuizScore": round(avg_quiz, 1),
             "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
@@ -3071,6 +3195,7 @@ async def upload_class_records(
         all_unknown_columns: Set[str] = set()
         all_warnings: List[str] = []
         all_row_warnings: List[Dict[str, Any]] = []
+        all_rejected_rows: List[Dict[str, Any]] = []
         all_column_interpretations: List[Dict[str, Any]] = []
         aggregate_interpretation = {
             "scoringColumns": 0,
@@ -3080,6 +3205,10 @@ async def upload_class_records(
             "domainMismatchWarnings": 0,
         }
         aggregate_dedup = {"inserted": 0, "updated": 0}
+        interpreted_rows_total = 0
+        rejected_rows_total = 0
+        inferred_rows_total = 0
+        fallback_inference_rows_total = 0
         per_file_results: List[Dict[str, Any]] = []
 
         for upload in uploads:
@@ -3087,6 +3216,7 @@ async def upload_class_records(
             ext = os.path.splitext(filename)[1].lower()
             file_warnings: List[str] = []
             file_row_warnings: List[Dict[str, Any]] = []
+            file_rejected_rows: List[Dict[str, Any]] = []
             file_students: List[Dict[str, Any]] = []
             file_unknown_columns: List[str] = []
             file_column_mapping: Dict[str, str] = {}
@@ -3101,6 +3231,10 @@ async def upload_class_records(
             }
             file_dedup = {"inserted": 0, "updated": 0}
             file_import_id: Optional[str] = None
+            file_interpreted_rows = 0
+            file_rejected_rows_count = 0
+            file_inferred_rows = 0
+            file_fallback_inference_rows = 0
 
             try:
                 if ext not in ALLOWED_UPLOAD_EXTENSIONS:
@@ -3259,7 +3393,12 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 )
                 file_students = normalized_result["rows"]
                 file_row_warnings = normalized_result["rowWarnings"]
+                file_rejected_rows = normalized_result.get("rejectedRows") or []
                 file_unknown_columns = normalized_result["unknownColumns"]
+                file_interpreted_rows = int(normalized_result.get("interpretedRows") or len(file_students))
+                file_rejected_rows_count = int(normalized_result.get("rejectedRowsCount") or len(file_rejected_rows))
+                file_inferred_rows = int(normalized_result.get("inferredRows") or 0)
+                file_fallback_inference_rows = int(normalized_result.get("fallbackInferenceRows") or 0)
 
                 persistence_result = _persist_class_record_import_artifact(
                     request,
@@ -3306,6 +3445,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "unknownColumns": file_unknown_columns,
                 "warnings": file_warnings,
                 "rowWarnings": file_row_warnings,
+                "rejectedRows": file_rejected_rows,
                 "datasetIntent": normalized_dataset_intent,
                 "columnInterpretations": file_column_interpretations,
                 "interpretationSummary": file_interpretation_summary,
@@ -3314,12 +3454,25 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "importId": file_import_id,
                 "persisted": bool(file_import_id),
                 "dedup": file_dedup,
+                "interpretedRows": file_interpreted_rows,
+                "rejectedRowsCount": file_rejected_rows_count,
+                "inferredRows": file_inferred_rows,
+                "fallbackInferenceRows": file_fallback_inference_rows,
             }
             per_file_results.append(per_file_result)
 
             all_students.extend(file_students)
             all_unknown_columns.update(file_unknown_columns)
             all_column_interpretations.extend(file_column_interpretations)
+            all_rejected_rows.extend(
+                [
+                    {
+                        "row": item.get("row"),
+                        "reason": f"{filename}: {item.get('reason', '')}",
+                    }
+                    for item in file_rejected_rows
+                ]
+            )
             aggregate_interpretation["scoringColumns"] += int(file_interpretation_summary.get("scoringColumns", 0) or 0)
             aggregate_interpretation["displayColumns"] += int(file_interpretation_summary.get("displayColumns", 0) or 0)
             aggregate_interpretation["storageOnlyColumns"] += int(file_interpretation_summary.get("storageOnlyColumns", 0) or 0)
@@ -3327,6 +3480,10 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
             aggregate_interpretation["domainMismatchWarnings"] += int(file_interpretation_summary.get("domainMismatchWarnings", 0) or 0)
             aggregate_dedup["inserted"] += int(file_dedup.get("inserted", 0) or 0)
             aggregate_dedup["updated"] += int(file_dedup.get("updated", 0) or 0)
+            interpreted_rows_total += file_interpreted_rows
+            rejected_rows_total += file_rejected_rows_count
+            inferred_rows_total += file_inferred_rows
+            fallback_inference_rows_total += file_fallback_inference_rows
             all_warnings.extend([f"{filename}: {warning}" for warning in file_warnings])
             all_row_warnings.extend(
                 [
@@ -3364,12 +3521,27 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
         if dashboard_sync.get("warning"):
             all_warnings.append(str(dashboard_sync["warning"]))
 
+        persisted_rows = int(aggregate_dedup.get("inserted", 0) or 0) + int(aggregate_dedup.get("updated", 0) or 0)
+        rejected_reason_counts = dict(Counter(item.get("reason", "unknown") for item in all_rejected_rows))
+        inferred_coverage_pct = round((float(inferred_rows_total) / float(max(interpreted_rows_total, 1))) * 100.0, 1)
+
         response_payload = {
             "success": overall_success,
             "students": all_students,
             "columnMapping": (first_file_with_mapping or {}).get("columnMapping") or {},
             "datasetIntent": normalized_dataset_intent,
             "totalRows": len(all_students),
+            "interpretedRows": interpreted_rows_total,
+            "rejectedRows": rejected_rows_total,
+            "rejectedRowDetails": all_rejected_rows,
+            "rejectedReasons": rejected_reason_counts,
+            "persistedRows": persisted_rows,
+            "inferredStateCoverage": {
+                "inferredRows": inferred_rows_total,
+                "interpretedRows": interpreted_rows_total,
+                "fallbackRows": fallback_inference_rows_total,
+                "coveragePct": inferred_coverage_pct,
+            },
             "unknownColumns": sorted(all_unknown_columns),
             "columnInterpretations": all_column_interpretations,
             "interpretationSummary": aggregate_interpretation,
@@ -3399,6 +3571,11 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "failedFiles": failed_files,
                 "persisted": bool(first_file_with_import and first_file_with_import.get("importId")),
                 "students": len(all_students),
+                "interpretedRows": interpreted_rows_total,
+                "rejectedRows": rejected_rows_total,
+                "persistedRows": persisted_rows,
+                "inferredRows": inferred_rows_total,
+                "fallbackInferenceRows": fallback_inference_rows_total,
                 "datasetIntent": normalized_dataset_intent,
                 "storageOnlyColumns": int(aggregate_interpretation.get("storageOnlyColumns", 0) or 0),
                 "domainMismatchWarnings": int(aggregate_interpretation.get("domainMismatchWarnings", 0) or 0),
@@ -7161,8 +7338,16 @@ async def get_imported_class_overview(
             attendance = float(row.get("attendance") or 0.0)
             engagement = float(row.get("engagementScore") or 0.0)
             completion = float(row.get("assignmentCompletion") or 0.0)
-            risk_level = _derive_risk_level(avg_quiz, attendance, engagement)
             weakest_topic = _pick_weakest_topic(row.get("unknownFields") or {})
+            has_topic_signal = weakest_topic not in {"", "Foundational Skills"}
+            inference = _infer_student_state(
+                avg_quiz=avg_quiz,
+                attendance=attendance,
+                engagement=engagement,
+                defaulted_metrics=set(),
+                has_topic_signal=has_topic_signal,
+            )
+            risk_level = str(inference["riskLevel"])
 
             existing_student = student_agg.get(student_key)
             if not existing_student:
@@ -7181,6 +7366,13 @@ async def get_imported_class_overview(
                     "completionValues": [completion],
                     "riskLevel": risk_level,
                     "weakestTopic": weakest_topic,
+                    "inferredState": {
+                        "state": inference["state"],
+                        "confidence": inference["confidence"],
+                        "signals": inference["signals"],
+                        "explanation": inference["explanation"],
+                        "fallbackUsed": inference["fallbackUsed"],
+                    },
                 }
             else:
                 existing_student["scores"].append(avg_quiz)
@@ -7193,6 +7385,14 @@ async def get_imported_class_overview(
                     existing_student["riskLevel"] = "Medium"
                 if existing_student.get("weakestTopic") in {"", "Foundational Skills"} and weakest_topic:
                     existing_student["weakestTopic"] = weakest_topic
+                if float(inference["confidence"]) < float(existing_student.get("inferredState", {}).get("confidence") or 1.0):
+                    existing_student["inferredState"] = {
+                        "state": inference["state"],
+                        "confidence": inference["confidence"],
+                        "signals": inference["signals"],
+                        "explanation": inference["explanation"],
+                        "fallbackUsed": inference["fallbackUsed"],
+                    }
 
             existing_class = class_agg.get(resolved_class_section_id)
             if not existing_class:
@@ -7226,6 +7426,8 @@ async def get_imported_class_overview(
                     "attendance": round(float(sum(attendance_values) / max(len(attendance_values), 1)), 1),
                     "engagementScore": round(float(sum(engagement_values) / max(len(engagement_values), 1)), 1),
                     "assignmentCompletion": round(float(sum(completion_values) / max(len(completion_values), 1)), 1),
+                    "stateConfidence": float((student.get("inferredState") or {}).get("confidence") or 0.0),
+                    "stateSignals": list((student.get("inferredState") or {}).get("signals") or []),
                 }
             )
 
@@ -7251,11 +7453,19 @@ async def get_imported_class_overview(
         if len(docs) >= limit:
             warnings.append("Imported class overview reached the maximum row scan limit; results may be partial.")
 
+        inferred_count = sum(1 for item in students_payload if item.get("inferredState"))
+        inferred_coverage_pct = round((float(inferred_count) / float(max(len(students_payload), 1))) * 100.0, 1)
+
         return {
             "success": True,
             "classSectionId": normalized_class_section_id,
             "classrooms": classrooms_payload,
             "students": students_payload,
+            "inferredStateCoverage": {
+                "inferredRows": inferred_count,
+                "studentRows": len(students_payload),
+                "coveragePct": inferred_coverage_pct,
+            },
             "warnings": warnings,
         }
     except HTTPException:
@@ -7436,6 +7646,7 @@ async def topic_mastery_analytics(
         docs = list(records_query.limit(3000).stream())
         student_ids: Set[str] = set()
         topic_stats: Dict[str, Dict[str, Any]] = {}
+        fallback_topic_rows = 0
 
         for doc in docs:
             row = doc.to_dict() or {}
@@ -7456,7 +7667,11 @@ async def topic_mastery_analytics(
                 student_ids.add(student_identity)
 
             avg_quiz_score = float(row.get("avgQuizScore") or 0.0)
-            for topic_label in extract_topics_from_record(row):
+            extracted_topics = extract_topics_from_record(row)
+            if extracted_topics == ["General Performance"]:
+                fallback_topic_rows += 1
+
+            for topic_label in extracted_topics:
                 metadata = resolve_topic_meta(topic_label)
                 topic_key = _normalize_topic_key(metadata["topicName"])
                 if topic_key not in topic_stats:
@@ -7547,6 +7762,12 @@ async def topic_mastery_analytics(
 
         topics_payload.sort(key=lambda item: (item["masteryStatus"], item["topicName"]))
 
+        warnings: List[str] = []
+        if fallback_topic_rows > 0:
+            warnings.append(
+                "Some records did not contain explicit topic/assessment columns; fallback topic context was applied."
+            )
+
         return {
             "topics": topics_payload,
             "summary": {
@@ -7554,7 +7775,9 @@ async def topic_mastery_analytics(
                 "masteredCount": mastered_count,
                 "needsAttentionCount": needs_attention_count,
                 "excludedCount": 0,
+                "fallbackTopicRows": fallback_topic_rows,
             },
+            "warnings": warnings,
         }
     except Exception as e:
         logger.error(f"Topic mastery analytics error: {e}")

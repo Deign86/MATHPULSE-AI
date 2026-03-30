@@ -38,6 +38,19 @@ interface CompetencyStudent {
   weakestTopic: string;
 }
 
+interface FallbackStudentInput {
+  id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  classSectionId?: string | null;
+  riskLevel: 'high' | 'medium' | 'low' | 'High' | 'Medium' | 'Low';
+  engagementScore: number;
+  avgScore?: number;
+  avgQuizScore?: number;
+  weakestTopic: string;
+}
+
 function normalizeClassSectionId(value?: string | null): string {
   return (value || '').trim().toLowerCase();
 }
@@ -102,7 +115,11 @@ const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string 
 
 // ─── Component ──────────────────────────────────────────────
 
-const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: string }> = ({ classSectionId, className }) => {
+const StudentCompetencyTable: React.FC<{
+  classSectionId?: string;
+  className?: string;
+  fallbackStudents?: FallbackStudentInput[];
+}> = ({ classSectionId, className, fallbackStudents = [] }) => {
   const { currentUser } = useAuth();
 
   const [rows, setRows] = useState<StudentRow[]>([]);
@@ -128,6 +145,18 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
     weakestTopic: student.weakestTopic || 'Foundational Skills',
   }), []);
 
+  const mapFallbackStudent = useCallback((student: FallbackStudentInput): CompetencyStudent => ({
+    id: student.id,
+    name: student.name,
+    email: student.email || '',
+    avatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+    classSectionId: student.classSectionId ?? null,
+    riskLevel: (String(student.riskLevel).charAt(0).toUpperCase() + String(student.riskLevel).slice(1).toLowerCase()) as 'High' | 'Medium' | 'Low',
+    engagementScore: student.engagementScore,
+    avgQuizScore: Number(student.avgQuizScore ?? student.avgScore ?? 0),
+    weakestTopic: student.weakestTopic || 'Foundational Skills',
+  }), []);
+
   // ─── Load students ────────────────────────────────────────
 
   const loadStudents = useCallback(async () => {
@@ -147,6 +176,13 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
         avgQuizScore: student.avgQuizScore,
         weakestTopic: student.weakestTopic || 'Foundational Skills',
       }));
+
+      if (fallbackStudents.length > 0) {
+        normalizedStudents = mergeCompetencyStudents(
+          normalizedStudents,
+          fallbackStudents.map(mapFallbackStudent),
+        );
+      }
 
       if (classSectionId) {
         normalizedStudents = normalizedStudents.filter((student) => student.classSectionId === classSectionId);
@@ -169,12 +205,26 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
       })));
     } catch (err) {
       console.error('Failed to load students:', err);
-      setRows([]);
-      setStudentsWarning('Student competency roster is unavailable right now.');
+      if (fallbackStudents.length > 0) {
+        const fallbackRows = fallbackStudents
+          .map(mapFallbackStudent)
+          .filter((student) => !classSectionId || student.classSectionId === classSectionId)
+          .map((student) => ({
+            student,
+            competency: null,
+            loading: false,
+            expanded: false,
+          }));
+        setRows(fallbackRows);
+        setStudentsWarning('Showing recently imported students while backend roster sync catches up.');
+      } else {
+        setRows([]);
+        setStudentsWarning('Student competency roster is unavailable right now.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [classSectionId, currentUser?.uid, mapImportedStudentToCompetencyStudent]);
+  }, [classSectionId, currentUser?.uid, fallbackStudents, mapFallbackStudent, mapImportedStudentToCompetencyStudent]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
 

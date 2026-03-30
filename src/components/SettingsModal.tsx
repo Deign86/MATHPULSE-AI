@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   Clock,
@@ -83,9 +83,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const hasInitializedForOpenRef = useRef(false);
+  const initialSettingsRef = useRef<UserSettings>(cloneDefaultSettings());
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasInitializedForOpenRef.current = false;
+      return;
+    }
+
+    if (hasInitializedForOpenRef.current) {
+      return;
+    }
+
+    hasInitializedForOpenRef.current = true;
+
+    const incomingSettings = settingsData ? JSON.parse(JSON.stringify(settingsData)) : cloneDefaultSettings();
+    initialSettingsRef.current = incomingSettings;
 
     setAccountData({
       uid: profileData?.uid,
@@ -106,7 +120,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       position: profileData?.position || '',
     });
 
-    setLocalSettings(settingsData ? JSON.parse(JSON.stringify(settingsData)) : cloneDefaultSettings());
+    setLocalSettings(incomingSettings);
   }, [isOpen, profileData, settingsData]);
 
   useEffect(() => {
@@ -119,7 +133,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onApplySettingsPreview?.(settingsData || cloneDefaultSettings());
+        onApplySettingsPreview?.(initialSettingsRef.current);
         onClose();
       }
     };
@@ -167,7 +181,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsDeleteConfirmOpen(false);
     setIsPasswordModalOpen(false);
     setNewPassword('');
-    onApplySettingsPreview?.(settingsData || cloneDefaultSettings());
+    onApplySettingsPreview?.(initialSettingsRef.current);
     onClose();
   };
 

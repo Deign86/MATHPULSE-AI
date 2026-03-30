@@ -630,6 +630,155 @@ class TestUploadClassRecordsGuardrails:
         assert patient_column["usagePolicy"] == "storage_only"
         assert patient_column["confidenceBand"] == "low"
 
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_accepts_minimal_teacher_schema(self, _mock_chat):
+        files = {
+            "files": (
+                "records.csv",
+                (
+                    b"name,lrn,avgQuizScore,attendance,engagementScore\n"
+                    b"Ana Cruz,1001,81,92,88\n"
+                    b"Ben Dela,1002,58,70,52\n"
+                ),
+                "text/csv",
+            ),
+        }
+
+        response = client.post(
+            "/api/upload/class-records",
+            files=files,
+            data={"datasetIntent": "synthetic_student_records"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["interpretedRows"] == 2
+        assert payload["rejectedRows"] == 0
+        assert payload["inferredStateCoverage"]["inferredRows"] == 2
+        assert payload["inferredStateCoverage"]["coveragePct"] == 100.0
+        assert all("inferredState" in row for row in payload["students"])
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_reports_explicit_row_rejections(self, _mock_chat):
+        files = {
+            "files": (
+                "records.csv",
+                (
+                    b"name,lrn,email,avgQuizScore,attendance,engagementScore\n"
+                    b",1001,ana@example.com,81,92,88\n"
+                    b"Ben Dela,,,58,70,52\n"
+                    b"Cara Lim,1003,,77,83,75\n"
+                ),
+                "text/csv",
+            ),
+        }
+
+        response = client.post(
+            "/api/upload/class-records",
+            files=files,
+            data={"datasetIntent": "synthetic_student_records"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["interpretedRows"] == 1
+        assert payload["rejectedRows"] == 2
+        reasons = payload.get("rejectedReasons") or {}
+        assert any("missing required field: name" in key for key in reasons.keys())
+        assert any("missing required identity value: lrn_or_email" in key for key in reasons.keys())
+        assert len(payload.get("rejectedRowDetails") or []) == 2
+
+
+class TestImportedOverviewAndTopicMastery:
+    def test_imported_class_overview_returns_inferred_state_for_realistic_minimal_records(self):
+        firestore = _FakeFirestoreModule(
+            {
+                "normalizedClassRecords": [
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "name": "Ana Cruz",
+                        "lrn": "1001",
+                        "classSectionId": "grade11_a",
+                        "className": "Grade 11 - A",
+                        "avgQuizScore": 92,
+                        "attendance": 96,
+                        "engagementScore": 91,
+                        "unknownFields": {},
+                    },
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "name": "Ben Dela",
+                        "lrn": "1002",
+                        "classSectionId": "grade11_a",
+                        "className": "Grade 11 - A",
+                        "avgQuizScore": 68,
+                        "attendance": 82,
+                        "engagementScore": 66,
+                        "unknownFields": {},
+                    },
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "name": "Cara Lim",
+                        "lrn": "1003",
+                        "classSectionId": "grade11_a",
+                        "className": "Grade 11 - A",
+                        "avgQuizScore": 49,
+                        "attendance": 71,
+                        "engagementScore": 50,
+                        "unknownFields": {},
+                    },
+                ]
+            }
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/analytics/imported-class-overview?classSectionId=grade11_a&limit=100")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert len(payload["students"]) == 3
+        coverage = payload.get("inferredStateCoverage") or {}
+        assert coverage.get("inferredRows") == 3
+        assert coverage.get("coveragePct") == 100.0
+
+        risk_levels = {student["riskLevel"] for student in payload["students"]}
+        assert risk_levels == {"Low", "Medium", "High"}
+        assert all(student.get("inferredState") for student in payload["students"])
+        assert all("stateConfidence" in student for student in payload["students"])
+
+    def test_topic_mastery_reports_fallback_warning_without_topic_columns(self):
+        firestore = _FakeFirestoreModule(
+            {
+                "normalizedClassRecords": [
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "name": "Ana Cruz",
+                        "lrn": "1001",
+                        "classSectionId": "grade11_a",
+                        "className": "Grade 11 - A",
+                        "avgQuizScore": 84,
+                        "attendance": 92,
+                        "engagementScore": 88,
+                        "assessmentName": "general-assessment",
+                        "unknownFields": {},
+                    }
+                ],
+                "courseMaterials": [],
+            }
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/analytics/topic-mastery?teacherId=test-teacher-uid&classSectionId=grade11_a")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["summary"]["totalTopicsTracked"] >= 1
+        assert payload["summary"].get("fallbackTopicRows") == 1
+        assert any("fallback topic context" in warning.lower() for warning in payload.get("warnings") or [])
+
 
 class TestAsyncGenerationTasks:
     @patch("main.asyncio.create_task")
