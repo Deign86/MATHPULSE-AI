@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import MathAnswerInput from './MathAnswerInput';
 import ScientificCalculator from './ScientificCalculator';
 import { Brain, CheckCircle, ChevronRight, AlertTriangle, Calculator, BarChart3, TrendingUp, X } from 'lucide-react';
-import { triggerDiagnosticCompleted, DiagnosticResult, IARWorkflowMode } from '../services/automationService';
+import { triggerDiagnosticCompleted, DiagnosticResult, IARWorkflowMode, DiagnosticQuestionResult } from '../services/automationService';
 import {
   IAR_BLUEPRINT_VERSION,
   IAR_QUESTION_BLUEPRINT,
@@ -230,14 +230,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       Logic: [],
     };
 
-    const questionBreakdown: Record<string, Array<{
-      correct: boolean;
-      questionId: string;
-      difficulty: string;
-      gradeLevelTag: string;
-      quarter: number;
-      answerType: string;
-    }>> = {};
+    const questionBreakdown: Record<string, DiagnosticQuestionResult[]> = {};
 
     QUESTIONS.forEach((question, index) => {
       const answer = finalAnswers[index];
