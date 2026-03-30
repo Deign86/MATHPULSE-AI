@@ -13,7 +13,7 @@ pinned: false
 FastAPI backend for the MathPulse AI educational platform.
 
 ## Models Used
-- **meta-llama/Meta-Llama-3-8B-Instruct** - AI Math Tutor, Learning Path Generation, Daily Insights
+- **Qwen/Qwen2.5-Math-7B-Instruct** - AI Math Tutor, Learning Path Generation, Daily Insights
 - **facebook/bart-large-mnli** - Student Risk Classification (zero-shot)
 
 ## API Endpoints

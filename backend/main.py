@@ -1,8 +1,8 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- meta-llama/Meta-Llama-3-8B-Instruct for chat, learning paths, insights, and quiz generation
-  (via HF Serverless Inference API)
+- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
+    (via Hugging Face Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
@@ -121,11 +121,8 @@ logger = logging.getLogger("mathpulse")
 
 HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
 
-# Temporarily using Meta-Llama-3-8B-Instruct via HF Serverless Inference API
-# because Qwen/Qwen2.5-Math-7B-Instruct is provider-only (not available on
-# HF serverless).  Swap this back once a provider is configured or the model
-# becomes serverless-compatible.
-HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "meta-llama/Meta-Llama-3-8B-Instruct")
+# Grade 11-12 tutoring default model. Can still be overridden via HF_MATH_MODEL_ID.
+HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
@@ -620,6 +617,30 @@ def _strip_repetition(text: str, min_chunk: int = 40) -> str:
     return "\n".join(result_lines).strip()
 
 
+def _build_hf_inference_url(model_id: str) -> str:
+    return f"https://api-inference.huggingface.co/models/{model_id}"
+
+
+def _messages_to_inference_prompt(messages: List[Dict[str, str]]) -> str:
+    parts: List[str] = []
+    for msg in messages:
+        role = (msg.get("role") or "user").strip().lower()
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+        if role in {"tool", "function"}:
+            continue
+        if role == "system":
+            parts.append(f"SYSTEM:\n{content}")
+        elif role == "assistant":
+            parts.append(f"ASSISTANT:\n{content}")
+        else:
+            parts.append(f"USER:\n{content}")
+
+    parts.append("ASSISTANT:")
+    return "\n\n".join(parts)
+
+
 def call_hf_chat(
     messages: List[Dict[str, str]],
     *,
@@ -631,25 +652,34 @@ def call_hf_chat(
     timeout: int = 90,
 ) -> str:
     """
-    Call the HF Serverless Inference API (OpenAI-compatible chat endpoint)
-    using plain ``requests``.  Retries up to 3 times on 503 (model loading).
+    Call the HF Inference API model endpoint using plain ``requests``.
+    Retries up to 3 times on 503 (model loading).
     """
     if not HF_TOKEN:
         raise RuntimeError("HF_TOKEN is not set")
 
     target_model = model or HF_MATH_MODEL_ID
-    url = "https://router.huggingface.co/v1/chat/completions"
+    url = _build_hf_inference_url(target_model)
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
         "Content-Type": "application/json",
     }
+    prompt = _messages_to_inference_prompt(messages)
     payload = {
-        "model": target_model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "top_p": top_p,
-        "repetition_penalty": repetition_penalty,
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "repetition_penalty": repetition_penalty,
+            "return_full_text": False,
+            "do_sample": temperature > 0,
+            "tool_choice": "none",
+        },
+        "options": {
+            "wait_for_model": True,
+            "use_cache": False,
+        },
     }
 
     for attempt in range(3):
@@ -662,15 +692,41 @@ def call_hf_chat(
             raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
 
         data = resp.json()
-        # OpenAI-compatible format: {"choices": [{"message": {"content": "..."}}]}
-        choices = data.get("choices", [])
-        if choices:
-            raw = (choices[0].get("message", {}).get("content", "") or "").strip()
-            return _strip_repetition(raw)
+        # Support both HF inference output shapes and OpenAI-compatible fallback.
+        if isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, dict):
+                raw = (first.get("generated_text", "") or "").strip()
+                if raw:
+                    return _strip_repetition(raw)
+
+        if isinstance(data, dict):
+            raw = (data.get("generated_text", "") or "").strip()
+            if raw:
+                return _strip_repetition(raw)
+
+            choices = data.get("choices", [])
+            if choices:
+                content = (choices[0].get("message", {}).get("content", "") or "").strip()
+                if content:
+                    return _strip_repetition(content)
 
         raise RuntimeError(f"Unexpected HF response format: {data}")
 
     raise RuntimeError("HF Inference failed after retries")
+
+
+def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
+    """Optional local loader for environments using Transformers instead of HF Inference API."""
+    from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore[import-not-found]
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype="auto",
+        device_map="auto",
+    )
+    return tokenizer, model
 
 
 # ─── Math Tutor Prompt & Wrapper ──────────────────────────────
@@ -844,12 +900,13 @@ Rules:
 - Never repeat yourself. Once a step is shown, move forward.
 - If unsure, say so rather than guessing.
 - Encourage the student briefly at the end.
-- If the question is not about math, politely say you can only help with math."""
+- If the question is not about math, politely say you can only help with math.
+- Never call tools, functions, or external agents. Solve using reasoning only."""
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
-    """AI Math Tutor powered by HF Serverless Inference (Meta-Llama-3-8B-Instruct)"""
+    """AI Math Tutor powered by HF Inference API (Qwen/Qwen2.5-Math-7B-Instruct)."""
     try:
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
@@ -3364,10 +3421,8 @@ VALID_BLOOM_LEVELS = ["remember", "understand", "apply", "analyze"]
 VALID_DIFFICULTY_LEVELS = ["easy", "medium", "hard"]
 
 # ── Temporary hard limits ──────────────────────────────────────
-# Meta-Llama-3-8B-Instruct has an 8 192-token context window.
-# Until we migrate to a model with a larger context (or add
-# streaming / chunked generation), enforce conservative caps so
-# the prompt + completion never exceed that budget.
+# Keep conservative limits so prompt + completion stay latency-safe
+# and stable for classroom usage across providers.
 MAX_QUESTIONS_LIMIT = 15   # keeps completion ≤ ~4 000 tokens
 MAX_TOPICS_LIMIT = 8       # keeps the prompt ≤ ~3 500 tokens
 
