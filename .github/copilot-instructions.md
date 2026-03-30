@@ -1,12 +1,8 @@
 # MathPulse AI - Development Guide
 
-## Lean-CTX Enforcement Policy
+## Tooling Policy
 
-- For every prompt that needs context gathering, tool use must start with lean-ctx MCP tools.
-- Always prefer `lean-ctx` MCP tools for read/search/shell/tree operations when available.
-- For shell commands without a dedicated MCP tool, run them through `lean-ctx -c "<command>"`.
-- Do not use raw `cat`, `head`, `grep`, `find`, or `ls` when the `lean-ctx` equivalent can serve the same task.
-- Keep using normal file edit tools for write operations (`Write`, `Edit`, `Delete`) because lean-ctx is read/analysis focused.
+- Use standard built-in tools for context gathering and shell operations.
 
 ## Copilot Skill Invocation Policy
 
