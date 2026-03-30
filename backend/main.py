@@ -17,20 +17,22 @@ import io
 import re
 import json
 import math
+import hashlib
 import logging
 import traceback
-from typing import List, Optional, Dict, Any, Set
+from typing import List, Optional, Dict, Any, Set, Tuple, cast
 from collections import Counter
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, validator
 from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 import time
 import uuid
 import sys
+from datetime import datetime, timezone, timedelta
 import tempfile
 import subprocess
 import requests as http_requests
@@ -69,7 +71,6 @@ from analytics import (
     TopicRecommendationResponse,
     EnhancedRiskPrediction,
     EnhancedRiskRequest,
-    StudentRiskPredictionV2,
     RiskTrainRequest,
     RiskTrainResponse,
     CalibrateDifficultyRequest,
@@ -84,7 +85,6 @@ from analytics import (
     # Core functions
     compute_competency_analysis,
     predict_risk_enhanced,
-    predict_risk_v2,
     train_risk_model,
     calibrate_question_difficulty,
     select_adaptive_quiz,
@@ -129,7 +129,11 @@ UPLOAD_MAX_ROWS = int(os.getenv("UPLOAD_MAX_ROWS", "2000"))
 UPLOAD_MAX_COLS = int(os.getenv("UPLOAD_MAX_COLS", "60"))
 UPLOAD_MAX_PDF_PAGES = int(os.getenv("UPLOAD_MAX_PDF_PAGES", "20"))
 UPLOAD_RATE_LIMIT_PER_MIN = int(os.getenv("UPLOAD_RATE_LIMIT_PER_MIN", "12"))
-UPLOAD_MAX_TEXT_CHARS = int(os.getenv("UPLOAD_MAX_TEXT_CHARS", "250000"))
+UPLOAD_MAX_FILES_PER_REQUEST = int(os.getenv("UPLOAD_MAX_FILES_PER_REQUEST", "8"))
+IMPORT_RETENTION_DAYS = int(os.getenv("IMPORT_RETENTION_DAYS", "180"))
+ENABLE_IMPORT_GROUNDED_QUIZ = os.getenv("ENABLE_IMPORT_GROUNDED_QUIZ", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -140,7 +144,6 @@ ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
     "application/pdf",
     "application/octet-stream",
 }
-
 ALLOWED_COURSE_MATERIAL_EXTENSIONS: Set[str] = {".pdf", ".docx", ".txt"}
 ALLOWED_COURSE_MATERIAL_MIME_TYPES: Set[str] = {
     "application/pdf",
@@ -173,15 +176,21 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/learning-path": ALL_APP_ROLES,
     "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
     "/api/upload/class-records": TEACHER_OR_ADMIN,
+    "/api/upload/class-records/risk-refresh/recent": TEACHER_OR_ADMIN,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
+    "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
+    "/api/course-materials/topics": TEACHER_OR_ADMIN,
     "/api/quiz/generate": TEACHER_OR_ADMIN,
     "/api/quiz/preview": TEACHER_OR_ADMIN,
+    "/api/lesson/generate": TEACHER_OR_ADMIN,
+    "/api/feedback/import-grounded": TEACHER_OR_ADMIN,
+    "/api/feedback/import-grounded/summary": TEACHER_OR_ADMIN,
+    "/api/import-grounded/access-audit": TEACHER_OR_ADMIN,
     "/api/quiz/student-competency": TEACHER_OR_ADMIN,
     "/api/calculator/evaluate": ALL_APP_ROLES,
     "/api/student/competency-analysis": TEACHER_OR_ADMIN,
     "/api/risk/train-model": ADMIN_ONLY,
     "/api/predict-risk/enhanced": TEACHER_OR_ADMIN,
-    "/api/predict-risk/v2": TEACHER_OR_ADMIN,
     "/api/quiz/calibrate-difficulty": TEACHER_OR_ADMIN,
     "/api/quiz/adaptive-select": TEACHER_OR_ADMIN,
     "/api/learning/recommend-topics": TEACHER_OR_ADMIN,
@@ -224,6 +233,17 @@ _firebase_ready = False
 _role_cache: Dict[str, Dict[str, Any]] = {}
 _ROLE_CACHE_TTL_SECONDS = 60
 _rate_limit_buckets: Dict[str, List[float]] = {}
+FIRESTORE_SERVER_TIMESTAMP: Any = getattr(cast(Any, firebase_firestore), "SERVER_TIMESTAMP", None)
+FIRESTORE_QUERY_DESCENDING: Any = getattr(getattr(cast(Any, firebase_firestore), "Query", None), "DESCENDING", "DESCENDING")
+
+
+def _snapshot_to_dict(snapshot: Any) -> Dict[str, Any]:
+    data = snapshot.to_dict() if hasattr(snapshot, "to_dict") else {}
+    return data if isinstance(data, dict) else {}
+
+
+def _snapshot_exists(snapshot: Any) -> bool:
+    return bool(getattr(snapshot, "exists", False))
 
 
 def _init_firebase_admin() -> None:
@@ -253,8 +273,8 @@ def _get_role_from_firestore(uid: str) -> Optional[str]:
         return None
 
     try:
-        doc = firebase_firestore.client().collection("users").document(uid).get()
-        role = doc.to_dict().get("role") if doc.exists else None
+        doc = cast(Any, firebase_firestore.client().collection("users").document(uid).get())
+        role = _snapshot_to_dict(doc).get("role") if _snapshot_exists(doc) else None
         if isinstance(role, str):
             _role_cache[uid] = {"role": role, "ts": now}
             return role
@@ -655,6 +675,9 @@ class RiskPrediction(BaseModel):
     riskLevel: str
     confidence: float
     analysis: dict
+    risk_level: str
+    risk_score: float
+    top_factors: List[str]
 
 
 class BatchRiskRequest(BaseModel):
@@ -1281,6 +1304,28 @@ RISK_MAPPING = {
 }
 
 
+def _to_strict_risk_level(level: str) -> str:
+    normalized = (level or "").strip().lower()
+    if normalized in {"high", "medium", "low"}:
+        return normalized
+    return "medium"
+
+
+def _basic_risk_top_factors(student_data: StudentRiskData) -> List[str]:
+    factors: List[str] = []
+    if student_data.avgQuizScore < 55:
+        factors.append("Low average quiz performance")
+    if student_data.attendance < 70:
+        factors.append("Low attendance rate")
+    if student_data.assignmentCompletion < 65:
+        factors.append("Incomplete assignment submission trend")
+    if student_data.engagementScore < 50:
+        factors.append("Low class engagement")
+    if not factors:
+        factors.append("No major risk indicators detected")
+    return factors[:3]
+
+
 @app.post("/api/predict-risk", response_model=RiskPrediction)
 async def predict_risk(student_data: StudentRiskData):
     """Student risk prediction using facebook/bart-large-mnli zero-shot classification"""
@@ -1327,6 +1372,8 @@ async def predict_risk(student_data: StudentRiskData):
         top_score = top.score
 
         risk_level = RISK_MAPPING.get(top_label, "Medium")
+        strict_risk_level = _to_strict_risk_level(risk_level)
+        top_factors = _basic_risk_top_factors(student_data)
 
         return RiskPrediction(
             riskLevel=risk_level,
@@ -1335,6 +1382,9 @@ async def predict_risk(student_data: StudentRiskData):
                 "labels": [el.label for el in result],
                 "scores": [round(el.score, 4) for el in result],
             },
+            risk_level=strict_risk_level,
+            risk_score=round(float(top_score), 4),
+            top_factors=top_factors,
         )
 
     except HTTPException:
@@ -1354,7 +1404,14 @@ async def predict_risk_batch(request: BatchRiskRequest):
             results.append(result)
         except Exception:
             results.append(
-                RiskPrediction(riskLevel="Medium", confidence=0.0, analysis={"labels": [], "scores": []})
+                RiskPrediction(
+                    riskLevel="Medium",
+                    confidence=0.0,
+                    analysis={"labels": [], "scores": []},
+                    risk_level="medium",
+                    risk_score=0.0,
+                    top_factors=["Fallback risk response due to prediction error"],
+                )
             )
     return results
 
@@ -1470,84 +1527,818 @@ Keep the response under 200 words. Be specific and practical."""
 # ─── Smart Document Upload ────────────────────────────────────
 
 
+CLASS_RECORD_REQUIRED_FIELDS: Set[str] = {
+    "name",
+    "lrn",
+    "email",
+    "engagementScore",
+    "avgQuizScore",
+    "attendance",
+    "assignmentCompletion",
+    "term",
+    "assessmentName",
+}
+
+CLASS_RECORD_FIELD_ALIASES: Dict[str, List[str]] = {
+    "name": ["name", "student", "learner", "fullname", "full name"],
+    "lrn": ["lrn", "student id", "learner id", "reference", "id number"],
+    "email": ["email", "e-mail", "mail"],
+    "engagementScore": ["engagement", "participation", "activity", "involvement"],
+    "avgQuizScore": ["quiz", "score", "grade", "exam", "test", "assessment"],
+    "attendance": ["attendance", "present", "absence", "attend"],
+    "assignmentCompletion": ["assignment", "homework", "submission", "completion", "task"],
+    "term": ["term", "quarter", "semester", "period", "grading"],
+    "assessmentName": ["assessment", "exam", "quiz name", "test name", "activity name", "title"],
+}
+
+
+def _is_empty_cell(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, float):
+        return math.isnan(value)
+    if isinstance(value, str):
+        return not value.strip()
+    return False
+
+
+def _stringify_cell(value: Any) -> str:
+    if _is_empty_cell(value):
+        return ""
+    return str(value).strip()
+
+
+def _normalize_unknown_key(column_name: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "_", column_name.lower()).strip("_")
+    if not base:
+        base = "field"
+    return f"unknown_{base[:48]}"
+
+
+def _safe_numeric(value: Any, *, default_value: float = 0.0) -> Tuple[float, Optional[str]]:
+    if _is_empty_cell(value):
+        return default_value, "missing numeric value; defaulted to 0"
+
+    raw = str(value).strip().replace("%", "").replace(",", "")
+    try:
+        return float(raw), None
+    except Exception:
+        return default_value, f"invalid numeric value '{raw}'; defaulted to 0"
+
+
+def _fallback_column_mapping(columns: List[str]) -> Dict[str, str]:
+    mapping: Dict[str, str] = {}
+    for col in columns:
+        normalized = re.sub(r"[^a-z0-9]+", " ", col.lower()).strip()
+        if not normalized:
+            continue
+
+        for field, aliases in CLASS_RECORD_FIELD_ALIASES.items():
+            if any(alias in normalized for alias in aliases):
+                if col not in mapping:
+                    mapping[col] = field
+                break
+
+    return mapping
+
+
+def _build_record_identity(
+    student: Dict[str, Any],
+    unknown_fields: Dict[str, Any],
+) -> Tuple[str, str, str, str]:
+    candidate_student_id = (
+        str(student.get("lrn", "")).strip()
+        or str(student.get("email", "")).strip().lower()
+        or re.sub(r"\s+", "_", str(student.get("name", "")).strip().lower())
+    )
+    if not candidate_student_id:
+        candidate_student_id = "unknown-student"
+
+    term = str(student.get("term", "")).strip()
+    if not term:
+        for key, value in unknown_fields.items():
+            if any(token in key for token in ("term", "quarter", "semester", "period")):
+                term = str(value).strip()
+                break
+    if not term:
+        term = "unspecified-term"
+
+    assessment_name = str(student.get("assessmentName", "")).strip()
+    if not assessment_name:
+        for key, value in unknown_fields.items():
+            if any(token in key for token in ("assessment", "exam", "quiz", "test", "activity", "title")):
+                assessment_name = str(value).strip()
+                break
+    if not assessment_name:
+        assessment_name = "general-assessment"
+
+    dedup_seed = f"{candidate_student_id.lower()}|{term.lower()}|{assessment_name.lower()}"
+    dedup_key = hashlib.sha1(dedup_seed.encode("utf-8")).hexdigest()[:28]
+    return candidate_student_id, term, assessment_name, dedup_key
+
+
+def _persist_class_record_import_artifact(
+    request: Request,
+    *,
+    file_hash: str,
+    file_name: str,
+    file_type: str,
+    column_mapping: Dict[str, str],
+    normalized_rows: List[Dict[str, Any]],
+    row_warnings: List[Dict[str, Any]],
+    unknown_columns: List[str],
+    parse_warnings: List[str],
+    class_section_id: Optional[str] = None,
+    class_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    if not (_firebase_ready and firebase_firestore):
+        return {
+            "persisted": False,
+            "importId": None,
+            "dedup": {"inserted": 0, "updated": 0},
+            "warning": "Firestore unavailable; class records were not persisted.",
+        }
+
+    user = get_current_user(request)
+    normalized_class_section_id = (class_section_id or "").strip() or None
+    normalized_class_name = (class_name or "").strip() or None
+    import_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{file_hash}"
+    import_id = hashlib.sha1(import_seed.encode("utf-8")).hexdigest()[:28]
+
+    import_payload: Dict[str, Any] = {
+        "importId": import_id,
+        "teacherId": user.uid,
+        "teacherEmail": user.email,
+        "fileName": file_name,
+        "fileType": file_type,
+        "fileHash": file_hash,
+        "rowCount": len(normalized_rows),
+        "columnMapping": column_mapping,
+        "unknownColumns": unknown_columns,
+        "parseWarnings": parse_warnings,
+        "rowWarnings": row_warnings[:300],
+        "source": "api_upload_class_records",
+        "retentionDays": IMPORT_RETENTION_DAYS,
+        "expiresAtEpoch": _artifact_expiry_epoch(),
+        "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+    }
+    if normalized_class_section_id:
+        import_payload["classSectionId"] = normalized_class_section_id
+    if normalized_class_name:
+        import_payload["className"] = normalized_class_name
+
+    imports_ref = firebase_firestore.client().collection("classRecordImports").document(import_id)
+    import_doc = cast(Any, imports_ref.get())
+    if not _snapshot_exists(import_doc):
+        import_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+    imports_ref.set(import_payload, merge=True)
+
+    inserted = 0
+    updated = 0
+    client = firebase_firestore.client()
+    normalized_ref = client.collection("normalizedClassRecords")
+    batch = client.batch()
+    batch_count = 0
+
+    for row in normalized_rows:
+        dedup_key = str(row.get("dedupKey", "")).strip()
+        if not dedup_key:
+            continue
+
+        scoped_key_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{dedup_key}"
+        scoped_key = hashlib.sha1(scoped_key_seed.encode("utf-8")).hexdigest()[:36]
+        row_doc_ref = normalized_ref.document(scoped_key)
+        existing_doc = cast(Any, row_doc_ref.get())
+
+        payload = {
+            **row,
+            "recordId": scoped_key,
+            "teacherId": user.uid,
+            "teacherEmail": user.email,
+            "importId": import_id,
+            "sourceFile": file_name,
+            "retentionDays": IMPORT_RETENTION_DAYS,
+            "expiresAtEpoch": _artifact_expiry_epoch(),
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+        if normalized_class_section_id:
+            payload["classSectionId"] = normalized_class_section_id
+        if normalized_class_name:
+            payload["className"] = normalized_class_name
+        if not _snapshot_exists(existing_doc):
+            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+            inserted += 1
+        else:
+            updated += 1
+
+        batch.set(row_doc_ref, payload, merge=True)
+        batch_count += 1
+        if batch_count >= 400:
+            batch.commit()
+            batch = client.batch()
+            batch_count = 0
+
+    if batch_count > 0:
+        batch.commit()
+
+    return {
+        "persisted": True,
+        "importId": import_id,
+        "dedup": {"inserted": inserted, "updated": updated},
+        "warning": None,
+    }
+
+
+def _normalize_class_records(
+    df: Any,
+    *,
+    file_name: str,
+    file_hash: str,
+    column_mapping: Dict[str, str],
+) -> Dict[str, Any]:
+    normalized_rows: List[Dict[str, Any]] = []
+    row_warnings: List[Dict[str, Any]] = []
+    unknown_columns = sorted([col for col in df.columns if col not in column_mapping])
+
+    for idx, row in df.iterrows():
+        student: Dict[str, Any] = {}
+        unknown_fields: Dict[str, Any] = {}
+        warnings_for_row: List[str] = []
+
+        for col in df.columns:
+            raw_value = row[col]
+            mapped_field = column_mapping.get(col)
+            if mapped_field in CLASS_RECORD_REQUIRED_FIELDS:
+                student[mapped_field] = _stringify_cell(raw_value)
+            else:
+                text_val = _stringify_cell(raw_value)
+                if text_val:
+                    unknown_fields[_normalize_unknown_key(col)] = text_val
+
+        student_name = str(student.get("name", "")).strip()
+        if not student_name:
+            row_warnings.append(
+                {
+                    "row": int(idx) + 2,
+                    "warning": "missing required field: name",
+                }
+            )
+            continue
+
+        for field in ["engagementScore", "avgQuizScore", "attendance", "assignmentCompletion"]:
+            numeric_value, parse_warning = _safe_numeric(student.get(field))
+            student[field] = numeric_value
+            if parse_warning:
+                warnings_for_row.append(f"{field}: {parse_warning}")
+
+        student_id, term, assessment_name, dedup_key = _build_record_identity(student, unknown_fields)
+        student["name"] = student_name
+        student["email"] = str(student.get("email", "")).strip()
+        student["lrn"] = str(student.get("lrn", "")).strip()
+        student["term"] = term
+        student["assessmentName"] = assessment_name
+
+        normalized_row = {
+            **student,
+            "unknownFields": unknown_fields,
+            "sourceMeta": {
+                "fileName": file_name,
+                "fileHash": file_hash,
+                "sourceRow": int(idx) + 2,
+            },
+            "studentId": student_id,
+            "dedupKey": dedup_key,
+        }
+
+        normalized_rows.append(normalized_row)
+        if warnings_for_row:
+            row_warnings.append(
+                {
+                    "row": int(idx) + 2,
+                    "warning": "; ".join(warnings_for_row),
+                }
+            )
+
+    return {
+        "rows": normalized_rows,
+        "rowWarnings": row_warnings,
+        "unknownColumns": unknown_columns,
+    }
+
+
+def _resolve_uploaded_files(
+    *,
+    file: Optional[UploadFile],
+    files: Optional[List[UploadFile]],
+    max_files: int = UPLOAD_MAX_FILES_PER_REQUEST,
+) -> List[UploadFile]:
+    resolved: List[UploadFile] = []
+    if files:
+        resolved.extend(files)
+    if file is not None:
+        # Keep backward compatibility for clients sending a single `file` field.
+        resolved.append(file)
+
+    unique_files: List[UploadFile] = []
+    seen_keys: Set[Tuple[str, Optional[str]]] = set()
+    for upload in resolved:
+        key = ((upload.filename or "").strip(), upload.content_type)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        unique_files.append(upload)
+
+    if not unique_files:
+        raise HTTPException(status_code=400, detail="At least one file is required")
+    if len(unique_files) > max_files:
+        raise HTTPException(status_code=400, detail=f"Too many files. Max allowed per request: {max_files}")
+    return unique_files
+
+
+def _artifact_expiry_epoch() -> int:
+    return int(time.time()) + (IMPORT_RETENTION_DAYS * 24 * 60 * 60)
+
+
+def _is_artifact_expired(data: Dict[str, Any]) -> bool:
+    raw = data.get("expiresAtEpoch")
+    if raw is None:
+        return False
+    try:
+        return int(raw) <= int(time.time())
+    except Exception:
+        return False
+
+
+def _write_access_audit_log(
+    request: Request,
+    *,
+    action: str,
+    status: str,
+    class_section_id: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    if not (_firebase_ready and firebase_firestore):
+        return
+
+    try:
+        user = get_current_user(request)
+        payload: Dict[str, Any] = {
+            "action": action,
+            "status": status,
+            "teacherId": user.uid,
+            "teacherEmail": user.email,
+            "role": user.role,
+            "path": request.url.path,
+            "method": request.method,
+            "createdAt": FIRESTORE_SERVER_TIMESTAMP,
+            "createdAtIso": datetime.now(timezone.utc).isoformat(),
+        }
+        normalized_class_section_id = (class_section_id or "").strip() or None
+        if normalized_class_section_id:
+            payload["classSectionId"] = normalized_class_section_id
+        if metadata:
+            payload["metadata"] = metadata
+
+        firebase_firestore.client().collection("accessAuditLogs").add(payload)
+    except Exception as audit_err:
+        logger.warning(f"Access audit log failed ({action}): {audit_err}")
+
+
+def _record_risk_refresh_event(
+    *,
+    teacher_id: str,
+    teacher_email: Optional[str],
+    class_section_id: Optional[str],
+    refresh_id: str,
+    status: str,
+    students_queued: int,
+    queued_at_epoch: int,
+    started_at_epoch: Optional[int] = None,
+    completed_at_epoch: Optional[int] = None,
+    duration_ms: Optional[int] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Persist lightweight monitoring artifacts for queued risk refresh jobs."""
+    if not (_firebase_ready and firebase_firestore):
+        return
+
+    try:
+        client = firebase_firestore.client()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        normalized_class_section_id = (class_section_id or "").strip() or None
+
+        event_payload: Dict[str, Any] = {
+            "refreshId": refresh_id,
+            "status": status,
+            "teacherId": teacher_id,
+            "teacherEmail": teacher_email,
+            "studentsQueued": students_queued,
+            "queuedAtEpoch": queued_at_epoch,
+            "startedAtEpoch": started_at_epoch,
+            "completedAtEpoch": completed_at_epoch,
+            "durationMs": duration_ms,
+            "createdAt": FIRESTORE_SERVER_TIMESTAMP,
+            "createdAtIso": now_iso,
+        }
+        if normalized_class_section_id:
+            event_payload["classSectionId"] = normalized_class_section_id
+        if metadata:
+            event_payload["metadata"] = metadata
+        client.collection("riskRefreshEvents").add(event_payload)
+
+        job_ref = client.collection("riskRefreshJobs").document(refresh_id)
+        job_update: Dict[str, Any] = {
+            "refreshId": refresh_id,
+            "status": status,
+            "teacherId": teacher_id,
+            "teacherEmail": teacher_email,
+            "studentsQueued": students_queued,
+            "queuedAtEpoch": queued_at_epoch,
+            "startedAtEpoch": started_at_epoch,
+            "completedAtEpoch": completed_at_epoch,
+            "durationMs": duration_ms,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAtIso": now_iso,
+        }
+        if normalized_class_section_id:
+            job_update["classSectionId"] = normalized_class_section_id
+        if metadata:
+            job_update["metadata"] = metadata
+
+        existing_job = cast(Any, job_ref.get())
+        if not _snapshot_exists(existing_job):
+            job_update["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+            job_update["createdAtIso"] = now_iso
+        job_ref.set(job_update, merge=True)
+
+        stats_ref = client.collection("riskRefreshStats").document(teacher_id)
+        stats_doc = cast(Any, stats_ref.get())
+        stats_data = _snapshot_to_dict(stats_doc) if _snapshot_exists(stats_doc) else {}
+        queued_count = int(stats_data.get("queuedCount", 0) or 0)
+        success_count = int(stats_data.get("successCount", 0) or 0)
+        failed_count = int(stats_data.get("failedCount", 0) or 0)
+
+        if status == "queued":
+            queued_count += 1
+        elif status == "success":
+            success_count += 1
+        elif status == "failed":
+            failed_count += 1
+
+        stats_payload: Dict[str, Any] = {
+            "teacherId": teacher_id,
+            "teacherEmail": teacher_email,
+            "queuedCount": queued_count,
+            "successCount": success_count,
+            "failedCount": failed_count,
+            "lastRefreshId": refresh_id,
+            "lastStatus": status,
+            "lastStudentsQueued": students_queued,
+            "lastQueuedAtEpoch": queued_at_epoch,
+            "lastStartedAtEpoch": started_at_epoch,
+            "lastCompletedAtEpoch": completed_at_epoch,
+            "lastDurationMs": duration_ms,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAtIso": now_iso,
+        }
+        if normalized_class_section_id:
+            stats_payload["classSectionId"] = normalized_class_section_id
+        if not _snapshot_exists(stats_doc):
+            stats_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+            stats_payload["createdAtIso"] = now_iso
+
+        stats_ref.set(stats_payload, merge=True)
+    except Exception as monitor_err:
+        logger.warning(f"Risk refresh monitor logging failed ({refresh_id}, {status}): {monitor_err}")
+
+
+def _queue_post_import_risk_refresh(
+    request: Request,
+    *,
+    students: List[Dict[str, Any]],
+    column_mapping: Dict[str, str],
+    class_section_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Queue non-blocking automation refresh after class-record imports."""
+    if not students:
+        return {
+            "queued": False,
+            "studentsQueued": 0,
+            "reason": "No normalized students to process.",
+            "refreshId": None,
+            "queuedAtEpoch": None,
+        }
+
+    # Keep payload compact while preserving key risk-driving fields.
+    compact_students = [
+        {
+            "studentId": row.get("studentId"),
+            "name": row.get("name"),
+            "email": row.get("email"),
+            "lrn": row.get("lrn"),
+            "avgQuizScore": row.get("avgQuizScore"),
+            "attendance": row.get("attendance"),
+            "engagementScore": row.get("engagementScore"),
+            "assignmentCompletion": row.get("assignmentCompletion"),
+            "term": row.get("term"),
+            "assessmentName": row.get("assessmentName"),
+            "classSectionId": class_section_id,
+        }
+        for row in students
+    ]
+
+    user = get_current_user(request)
+    normalized_class_section_id = (class_section_id or "").strip() or None
+    queued_at_epoch = int(time.time())
+    refresh_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{queued_at_epoch}|{len(compact_students)}"
+    refresh_id = hashlib.sha1(refresh_seed.encode("utf-8")).hexdigest()[:24]
+
+    payload = DataImportPayload(
+        teacherId=user.uid,
+        students=compact_students,
+        columnMapping=column_mapping,
+    )
+
+    _record_risk_refresh_event(
+        teacher_id=user.uid,
+        teacher_email=user.email,
+        class_section_id=normalized_class_section_id,
+        refresh_id=refresh_id,
+        status="queued",
+        students_queued=len(compact_students),
+        queued_at_epoch=queued_at_epoch,
+    )
+
+    async def _run_automation_job() -> None:
+        started_at_epoch = int(time.time())
+        try:
+            result = await automation_engine.handle_data_import(payload)
+            completed_at_epoch = int(time.time())
+            duration_ms = max(0, int((completed_at_epoch - started_at_epoch) * 1000))
+            final_status = "success" if bool(getattr(result, "success", False)) else "failed"
+            _record_risk_refresh_event(
+                teacher_id=user.uid,
+                teacher_email=user.email,
+                class_section_id=normalized_class_section_id,
+                refresh_id=refresh_id,
+                status=final_status,
+                students_queued=len(compact_students),
+                queued_at_epoch=queued_at_epoch,
+                started_at_epoch=started_at_epoch,
+                completed_at_epoch=completed_at_epoch,
+                duration_ms=duration_ms,
+                metadata={
+                    "automationSuccess": bool(getattr(result, "success", False)),
+                    "message": str(getattr(result, "message", "") or ""),
+                    "actionsCount": len(getattr(result, "actions", []) or []),
+                },
+            )
+            logger.info(
+                "Post-import automation completed for teacher %s (refreshId=%s, queued=%s, success=%s)",
+                user.uid,
+                refresh_id,
+                len(compact_students),
+                result.success,
+            )
+        except Exception as automation_exc:
+            completed_at_epoch = int(time.time())
+            duration_ms = max(0, int((completed_at_epoch - started_at_epoch) * 1000))
+            _record_risk_refresh_event(
+                teacher_id=user.uid,
+                teacher_email=user.email,
+                class_section_id=normalized_class_section_id,
+                refresh_id=refresh_id,
+                status="failed",
+                students_queued=len(compact_students),
+                queued_at_epoch=queued_at_epoch,
+                started_at_epoch=started_at_epoch,
+                completed_at_epoch=completed_at_epoch,
+                duration_ms=duration_ms,
+                metadata={
+                    "error": str(automation_exc),
+                },
+            )
+            logger.error(
+                "Post-import automation failed for teacher %s (refreshId=%s): %s",
+                user.uid,
+                refresh_id,
+                automation_exc,
+            )
+
+    asyncio.create_task(_run_automation_job())
+    return {
+        "queued": True,
+        "studentsQueued": len(compact_students),
+        "reason": None,
+        "refreshId": refresh_id,
+        "queuedAtEpoch": queued_at_epoch,
+    }
+
+
+@app.get("/api/upload/class-records/risk-refresh/recent")
+async def get_recent_risk_refresh_status(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    limit: int = Query(default=10, ge=1, le=50),
+):
+    """Return lightweight monitoring view for recent post-import risk refresh jobs."""
+    try:
+        user = get_current_user(request)
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        normalized_class_section_id = (classSectionId or "").strip() or None
+        query = (
+            firebase_firestore.client()
+            .collection("riskRefreshJobs")
+            .where("teacherId", "==", user.uid)
+        )
+        if normalized_class_section_id:
+            query = query.where("classSectionId", "==", normalized_class_section_id)
+
+        warnings: List[str] = []
+        try:
+            docs = (
+                query
+                .order_by("updatedAt", direction=FIRESTORE_QUERY_DESCENDING)
+                .limit(limit)
+                .stream()
+            )
+        except Exception:
+            warnings.append("Risk refresh monitor used fallback query path without ordering.")
+            docs = query.limit(limit).stream()
+
+        jobs: List[Dict[str, Any]] = []
+        for doc in docs:
+            data = doc.to_dict() or {}
+            jobs.append(
+                {
+                    "refreshId": str(data.get("refreshId") or doc.id),
+                    "status": str(data.get("status") or "unknown"),
+                    "studentsQueued": int(data.get("studentsQueued") or 0),
+                    "classSectionId": data.get("classSectionId"),
+                    "queuedAtEpoch": data.get("queuedAtEpoch"),
+                    "startedAtEpoch": data.get("startedAtEpoch"),
+                    "completedAtEpoch": data.get("completedAtEpoch"),
+                    "durationMs": data.get("durationMs"),
+                    "updatedAtIso": data.get("updatedAtIso"),
+                    "metadata": data.get("metadata") or {},
+                }
+            )
+
+        stats_doc = cast(Any, (
+            firebase_firestore.client()
+            .collection("riskRefreshStats")
+            .document(user.uid)
+            .get()
+        ))
+        stats_data = _snapshot_to_dict(stats_doc) if _snapshot_exists(stats_doc) else {}
+        stats = {
+            "queuedCount": int(stats_data.get("queuedCount", 0) or 0),
+            "successCount": int(stats_data.get("successCount", 0) or 0),
+            "failedCount": int(stats_data.get("failedCount", 0) or 0),
+            "lastRefreshId": stats_data.get("lastRefreshId"),
+            "lastStatus": stats_data.get("lastStatus"),
+            "lastStudentsQueued": int(stats_data.get("lastStudentsQueued", 0) or 0),
+            "lastQueuedAtEpoch": stats_data.get("lastQueuedAtEpoch"),
+            "lastStartedAtEpoch": stats_data.get("lastStartedAtEpoch"),
+            "lastCompletedAtEpoch": stats_data.get("lastCompletedAtEpoch"),
+            "lastDurationMs": stats_data.get("lastDurationMs"),
+            "updatedAtIso": stats_data.get("updatedAtIso"),
+        }
+
+        response_payload = {
+            "success": True,
+            "classSectionId": normalized_class_section_id,
+            "stats": stats,
+            "jobs": jobs,
+            "warnings": warnings,
+        }
+
+        _write_access_audit_log(
+            request,
+            action="risk_refresh_monitor_read",
+            status="success",
+            class_section_id=normalized_class_section_id,
+            metadata={
+                "requestedLimit": limit,
+                "returnedJobs": len(jobs),
+                "warningsCount": len(warnings),
+            },
+        )
+
+        return response_payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Risk refresh monitor lookup error: {e}")
+        raise HTTPException(status_code=500, detail=f"Risk refresh monitor lookup error: {str(e)}")
+
+
 @app.post("/api/upload/class-records")
-async def upload_class_records(request: Request, file: UploadFile = File(...)):
+async def upload_class_records(
+    request: Request,
+    file: Optional[UploadFile] = File(default=None),
+    files: Optional[List[UploadFile]] = File(default=None),
+    classSectionId: Optional[str] = Form(default=None),
+    className: Optional[str] = Form(default=None),
+):
     """Upload and parse class records (CSV, Excel, PDF) with AI column detection"""
     try:
         import pandas as pd  # type: ignore[import-not-found]
 
         enforce_rate_limit(request, "upload_class_records", UPLOAD_RATE_LIMIT_PER_MIN, 60)
 
-        filename = file.filename or ""
-        ext = os.path.splitext(filename)[1].lower()
-        if ext not in ALLOWED_UPLOAD_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file format: {filename}. Use .csv, .xlsx, .xls, or .pdf",
-            )
+        uploads = _resolve_uploaded_files(file=file, files=files)
+        all_students: List[Dict[str, Any]] = []
+        all_unknown_columns: Set[str] = set()
+        all_warnings: List[str] = []
+        all_row_warnings: List[Dict[str, Any]] = []
+        aggregate_dedup = {"inserted": 0, "updated": 0}
+        per_file_results: List[Dict[str, Any]] = []
 
-        if (file.content_type or "").lower() not in ALLOWED_UPLOAD_MIME_TYPES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported content type: {file.content_type}",
-            )
+        for upload in uploads:
+            filename = upload.filename or ""
+            ext = os.path.splitext(filename)[1].lower()
+            file_warnings: List[str] = []
+            file_row_warnings: List[Dict[str, Any]] = []
+            file_students: List[Dict[str, Any]] = []
+            file_unknown_columns: List[str] = []
+            file_column_mapping: Dict[str, str] = {}
+            file_dedup = {"inserted": 0, "updated": 0}
+            file_import_id: Optional[str] = None
 
-        contents = await file.read(UPLOAD_MAX_BYTES + 1)
-        if len(contents) > UPLOAD_MAX_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
-            )
+            try:
+                if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported file format: {filename}. Use .csv, .xlsx, .xls, or .pdf",
+                    )
 
-        df = None
+                if (upload.content_type or "").lower() not in ALLOWED_UPLOAD_MIME_TYPES:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported content type: {upload.content_type}",
+                    )
 
-        if ext == ".csv":
-            df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip")
-        elif ext in {".xlsx", ".xls"}:
-            import openpyxl
-            df = pd.read_excel(io.BytesIO(contents))
-        elif ext == ".pdf":
-            import pdfplumber
-            with pdfplumber.open(io.BytesIO(contents)) as pdf:
-                if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
+                contents = await upload.read(UPLOAD_MAX_BYTES + 1)
+                if len(contents) > UPLOAD_MAX_BYTES:
                     raise HTTPException(
                         status_code=413,
-                        detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
+                        detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
                     )
-                tables = []
-                for page in pdf.pages:
-                    page_tables = page.extract_tables()
-                    if page_tables:
-                        tables.extend(page_tables)
-                if tables and len(tables[0]) > 1:
-                    df = pd.DataFrame(tables[0][1:], columns=tables[0][0])
+
+                df = None
+
+                if ext == ".csv":
+                    df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip")
+                elif ext in {".xlsx", ".xls"}:
+                    import openpyxl
+                    df = pd.read_excel(io.BytesIO(contents))
+                elif ext == ".pdf":
+                    import pdfplumber
+                    with pdfplumber.open(io.BytesIO(contents)) as pdf:
+                        if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
+                            )
+                        tables = []
+                        for page in pdf.pages:
+                            page_tables = page.extract_tables()
+                            if page_tables:
+                                tables.extend(page_tables)
+                        if tables and len(tables[0]) > 1:
+                            df = pd.DataFrame(tables[0][1:], columns=tables[0][0])
+                        else:
+                            raise HTTPException(status_code=400, detail="No tables found in PDF")
                 else:
-                    raise HTTPException(status_code=400, detail="No tables found in PDF")
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file format: {filename}. Use .csv, .xlsx, or .pdf",
-            )
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported file format: {filename}. Use .csv, .xlsx, or .pdf",
+                    )
 
-        if df is None or df.empty:
-            raise HTTPException(status_code=400, detail="No data found in uploaded file")
+                if df is None or df.empty:
+                    raise HTTPException(status_code=400, detail="No data found in uploaded file")
 
-        if df.shape[0] > UPLOAD_MAX_ROWS:
-            raise HTTPException(
-                status_code=413,
-                detail=f"Too many rows ({df.shape[0]}). Max allowed: {UPLOAD_MAX_ROWS}",
-            )
+                if df.shape[0] > UPLOAD_MAX_ROWS:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Too many rows ({df.shape[0]}). Max allowed: {UPLOAD_MAX_ROWS}",
+                    )
 
-        if df.shape[1] > UPLOAD_MAX_COLS:
-            raise HTTPException(
-                status_code=413,
-                detail=f"Too many columns ({df.shape[1]}). Max allowed: {UPLOAD_MAX_COLS}",
-            )
+                if df.shape[1] > UPLOAD_MAX_COLS:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Too many columns ({df.shape[1]}). Max allowed: {UPLOAD_MAX_COLS}",
+                    )
 
-        # AI-powered column mapping
-        columns_text = ", ".join(df.columns.tolist())
+                file_hash = hashlib.sha256(contents).hexdigest()
 
-        prompt = f"""I have a spreadsheet with these columns: {columns_text}
+                # AI-powered column mapping
+                columns_text = ", ".join(df.columns.tolist())
+
+                prompt = f"""I have a spreadsheet with these columns: {columns_text}
 
 Map each column to one of these standard fields (respond as JSON only):
 - name (student full name)
@@ -1557,51 +2348,159 @@ Map each column to one of these standard fields (respond as JSON only):
 - avgQuizScore (average quiz/test score)
 - attendance (attendance percentage)
 
-If a column doesn't match any field, skip it. Respond ONLY with a JSON object mapping original column names to field names. Example: {{"Student Name": "name", "LRN": "lrn"}}"""
+If a column doesn't match any field, skip it. Respond ONLY with a JSON object mapping original column names to field names. Example: {{\"Student Name\": \"name\", \"LRN\": \"lrn\"}}"""
 
-        mapping_text = call_hf_chat(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
-            temperature=0.1,
+                mapping_text = ""
+                try:
+                    mapping_text = call_hf_chat(
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=300,
+                        temperature=0.1,
+                    )
+                    json_start = mapping_text.find("{")
+                    json_end = mapping_text.rfind("}") + 1
+                    if json_start >= 0 and json_end > json_start:
+                        file_column_mapping = json.loads(mapping_text[json_start:json_end])
+                    else:
+                        file_column_mapping = {}
+                        file_warnings.append("AI mapper returned no JSON; fallback mapper was used.")
+                except Exception:
+                    file_column_mapping = {}
+                    file_warnings.append("AI mapper failed; fallback mapper was used.")
+
+                fallback_mapping = _fallback_column_mapping(df.columns.tolist())
+                for col, field in fallback_mapping.items():
+                    if col not in file_column_mapping:
+                        file_column_mapping[col] = field
+
+                normalized_result = _normalize_class_records(
+                    df,
+                    file_name=filename,
+                    file_hash=file_hash,
+                    column_mapping=file_column_mapping,
+                )
+                file_students = normalized_result["rows"]
+                file_row_warnings = normalized_result["rowWarnings"]
+                file_unknown_columns = normalized_result["unknownColumns"]
+
+                persistence_result = _persist_class_record_import_artifact(
+                    request,
+                    file_hash=file_hash,
+                    file_name=filename,
+                    file_type=ext.replace(".", ""),
+                    column_mapping=file_column_mapping,
+                    normalized_rows=file_students,
+                    row_warnings=file_row_warnings,
+                    unknown_columns=file_unknown_columns,
+                    parse_warnings=file_warnings,
+                    class_section_id=classSectionId,
+                    class_name=className,
+                )
+                if persistence_result.get("warning"):
+                    file_warnings.append(str(persistence_result["warning"]))
+
+                file_status = "success"
+                if file_row_warnings or file_warnings:
+                    file_status = "partial_success"
+                if not file_students:
+                    file_status = "failed"
+
+                file_import_id = persistence_result.get("importId")
+                file_dedup = persistence_result.get("dedup") or {"inserted": 0, "updated": 0}
+            except HTTPException as file_exc:
+                file_status = "failed"
+                file_warnings.append(str(file_exc.detail))
+            except Exception as file_exc:
+                logger.error(f"Class records processing failed for {filename}: {file_exc}")
+                file_status = "failed"
+                file_warnings.append(f"Unexpected processing error: {str(file_exc)}")
+
+            per_file_result = {
+                "fileName": filename,
+                "fileType": ext.replace(".", ""),
+                "status": file_status,
+                "students": file_students,
+                "totalRows": len(file_students),
+                "columnMapping": file_column_mapping,
+                "unknownColumns": file_unknown_columns,
+                "warnings": file_warnings,
+                "rowWarnings": file_row_warnings,
+                "classSectionId": (classSectionId or "").strip() or None,
+                "className": (className or "").strip() or None,
+                "importId": file_import_id,
+                "persisted": bool(file_import_id),
+                "dedup": file_dedup,
+            }
+            per_file_results.append(per_file_result)
+
+            all_students.extend(file_students)
+            all_unknown_columns.update(file_unknown_columns)
+            aggregate_dedup["inserted"] += int(file_dedup.get("inserted", 0) or 0)
+            aggregate_dedup["updated"] += int(file_dedup.get("updated", 0) or 0)
+            all_warnings.extend([f"{filename}: {warning}" for warning in file_warnings])
+            all_row_warnings.extend(
+                [
+                    {
+                        "row": warning.get("row"),
+                        "warning": f"{filename}: {warning.get('warning', '')}",
+                    }
+                    for warning in file_row_warnings
+                ]
+            )
+
+        first_file_with_mapping = next(
+            (f for f in per_file_results if f.get("columnMapping")),
+            None,
         )
-        # Extract JSON from response
-        try:
-            # Try to find JSON in the response
-            json_start = mapping_text.find("{")
-            json_end = mapping_text.rfind("}") + 1
-            if json_start >= 0 and json_end > json_start:
-                column_mapping = json.loads(mapping_text[json_start:json_end])
-            else:
-                column_mapping = {}
-        except json.JSONDecodeError:
-            column_mapping = {}
+        first_file_with_import = next(
+            (f for f in per_file_results if f.get("importId")),
+            None,
+        )
+        successful_files = sum(1 for f in per_file_results if f.get("status") in {"success", "partial_success"})
+        failed_files = len(per_file_results) - successful_files
+        overall_success = successful_files > 0
+        risk_refresh = _queue_post_import_risk_refresh(
+            request,
+            students=all_students,
+            column_mapping=(first_file_with_mapping or {}).get("columnMapping") or {},
+            class_section_id=(classSectionId or "").strip() or None,
+        )
 
-        # Apply mapping and extract student data
-        students = []
-        for _, row in df.iterrows():
-            student = {}
-            for orig_col, field in column_mapping.items():
-                if orig_col in df.columns:
-                    val = row[orig_col]
-                    student[field] = str(val) if pd.notna(val) else ""
-
-            # Ensure numeric fields
-            for numeric_field in ["engagementScore", "avgQuizScore", "attendance"]:
-                if numeric_field in student:
-                    try:
-                        student[numeric_field] = float(student[numeric_field].replace("%", ""))
-                    except (ValueError, AttributeError):
-                        student[numeric_field] = 0.0
-
-            if student.get("name"):
-                students.append(student)
-
-        return {
-            "success": True,
-            "students": students,
-            "columnMapping": column_mapping,
-            "totalRows": len(students),
+        response_payload = {
+            "success": overall_success,
+            "students": all_students,
+            "columnMapping": (first_file_with_mapping or {}).get("columnMapping") or {},
+            "totalRows": len(all_students),
+            "unknownColumns": sorted(all_unknown_columns),
+            "warnings": all_warnings,
+            "rowWarnings": all_row_warnings,
+            "importId": (first_file_with_import or {}).get("importId"),
+            "persisted": bool(first_file_with_import and first_file_with_import.get("importId")),
+            "dedup": aggregate_dedup,
+            "files": per_file_results,
+            "summary": {
+                "totalFiles": len(per_file_results),
+                "successfulFiles": successful_files,
+                "failedFiles": failed_files,
+            },
+            "riskRefresh": risk_refresh,
         }
+
+        _write_access_audit_log(
+            request,
+            action="class_records_upload",
+            status="success" if overall_success else "partial_failure",
+            class_section_id=(classSectionId or "").strip() or None,
+            metadata={
+                "totalFiles": len(per_file_results),
+                "successfulFiles": successful_files,
+                "failedFiles": failed_files,
+                "persisted": bool(first_file_with_import and first_file_with_import.get("importId")),
+                "students": len(all_students),
+            },
+        )
+
+        return response_payload
 
     except HTTPException:
         raise
@@ -1610,173 +2509,633 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
         raise HTTPException(status_code=500, detail=f"File upload error: {str(e)}")
 
 
+def _split_material_sections(text: str, max_sections: int = 20) -> List[Dict[str, str]]:
+    blocks = [block.strip() for block in re.split(r"\n\s*\n", text) if block.strip()]
+    sections: List[Dict[str, str]] = []
+    for idx, block in enumerate(blocks[:max_sections]):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        title_candidate = lines[0][:80]
+        if len(lines) > 1 and len(title_candidate.split()) <= 12:
+            title = title_candidate
+            body = " ".join(lines[1:])
+        else:
+            title = f"Section {idx + 1}"
+            body = " ".join(lines)
+        preview = re.sub(r"\s+", " ", body).strip()[:220]
+        sections.append(
+            {
+                "sectionId": f"section_{idx + 1}",
+                "title": title,
+                "preview": preview,
+            }
+        )
+    return sections
+
+
+def _fallback_topic_extraction(text: str, max_topics: int = 8) -> List[Dict[str, Any]]:
+    stop_words = {
+        "about", "after", "again", "algebra", "also", "because", "before", "being", "between",
+        "could", "course", "each", "from", "have", "into", "lesson", "math", "module", "other",
+        "should", "their", "there", "these", "they", "this", "those", "topic", "topics", "using",
+        "will", "with", "your",
+    }
+    words = re.findall(r"\b[a-zA-Z][a-zA-Z\-]{3,}\b", text.lower())
+    filtered = [w for w in words if w not in stop_words]
+    if not filtered:
+        return []
+
+    counts = Counter(filtered)
+    topics: List[Dict[str, Any]] = []
+    for idx, (word, _) in enumerate(counts.most_common(max_topics)):
+        title = word.replace("-", " ").title()
+        topics.append(
+            {
+                "topicId": f"topic_{idx + 1}",
+                "title": title,
+                "description": f"Coverage area inferred from uploaded material around '{title}'.",
+                "prerequisiteTopics": [],
+            }
+        )
+    return topics
+
+
+def _persist_course_material_artifact(
+    request: Request,
+    *,
+    file_hash: str,
+    file_name: str,
+    file_type: str,
+    extracted_text: str,
+    sections: List[Dict[str, Any]],
+    topics: List[Dict[str, Any]],
+    warnings: List[str],
+    class_section_id: Optional[str] = None,
+    class_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    if not (_firebase_ready and firebase_firestore):
+        return {
+            "persisted": False,
+            "materialId": None,
+            "warning": "Firestore unavailable; material was not persisted.",
+        }
+
+    user = get_current_user(request)
+    normalized_class_section_id = (class_section_id or "").strip() or None
+    normalized_class_name = (class_name or "").strip() or None
+    dedup_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{file_hash}"
+    material_id = hashlib.sha1(dedup_seed.encode("utf-8")).hexdigest()[:28]
+
+    doc_payload: Dict[str, Any] = {
+        "materialId": material_id,
+        "teacherId": user.uid,
+        "teacherEmail": user.email,
+        "fileName": file_name,
+        "fileType": file_type,
+        "fileHash": file_hash,
+        "extractedTextLength": len(extracted_text),
+        "extractedTextPreview": extracted_text[:3000],
+        "sections": sections,
+        "topics": topics,
+        "warnings": warnings,
+        "source": "api_upload_course_materials",
+        "retentionDays": IMPORT_RETENTION_DAYS,
+        "expiresAtEpoch": _artifact_expiry_epoch(),
+        "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+    }
+    if normalized_class_section_id:
+        doc_payload["classSectionId"] = normalized_class_section_id
+    if normalized_class_name:
+        doc_payload["className"] = normalized_class_name
+
+    materials_ref = firebase_firestore.client().collection("courseMaterials").document(material_id)
+    existing = cast(Any, materials_ref.get())
+    if not _snapshot_exists(existing):
+        doc_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+    materials_ref.set(doc_payload, merge=True)
+    return {
+        "persisted": True,
+        "materialId": material_id,
+        "warning": None,
+    }
+
+
+def _load_persisted_course_material_topics(
+    request: Request,
+    *,
+    class_section_id: Optional[str] = None,
+    material_id: Optional[str] = None,
+    limit_materials: int = 20,
+) -> Dict[str, Any]:
+    if not (_firebase_ready and firebase_firestore):
+        return {
+            "topics": [],
+            "materials": [],
+            "warnings": ["Firestore unavailable; imported topic lookup skipped."],
+        }
+
+    user = get_current_user(request)
+    normalized_class_section_id = (class_section_id or "").strip() or None
+    normalized_material_id = (material_id or "").strip() or None
+
+    query = (
+        firebase_firestore.client()
+        .collection("courseMaterials")
+        .where("teacherId", "==", user.uid)
+    )
+    if normalized_class_section_id:
+        query = query.where("classSectionId", "==", normalized_class_section_id)
+    if normalized_material_id:
+        query = query.where("materialId", "==", normalized_material_id)
+
+    warnings: List[str] = []
+    try:
+        docs = (
+            query
+            .order_by("updatedAt", direction=FIRESTORE_QUERY_DESCENDING)
+            .limit(limit_materials)
+            .stream()
+        )
+    except Exception:
+        # Fallback for index limitations on combined where+order queries.
+        warnings.append("Topic lookup used fallback query path without ordering.")
+        docs = query.limit(limit_materials).stream()
+
+    materials: List[Dict[str, Any]] = []
+    deduped_topics: Dict[str, Dict[str, Any]] = {}
+    expired_count = 0
+    for doc in docs:
+        data = doc.to_dict() or {}
+        if _is_artifact_expired(data):
+            expired_count += 1
+            continue
+
+        doc_material_id = str(data.get("materialId") or doc.id)
+        doc_file_name = str(data.get("fileName") or "")
+        doc_class_section_id = data.get("classSectionId")
+        doc_class_name = data.get("className")
+        topics = data.get("topics") or []
+
+        materials.append(
+            {
+                "materialId": doc_material_id,
+                "fileName": doc_file_name,
+                "fileType": str(data.get("fileType") or ""),
+                "classSectionId": doc_class_section_id,
+                "className": doc_class_name,
+                "topicsCount": len(topics),
+            }
+        )
+
+        for idx, topic in enumerate(topics):
+            title = str(topic.get("title") or "").strip()
+            if not title:
+                continue
+
+            topic_id = str(topic.get("topicId") or f"topic_{idx + 1}")
+            description = str(topic.get("description") or "").strip()
+            prerequisite_topics = [
+                str(item).strip()
+                for item in (topic.get("prerequisiteTopics") or [])
+                if str(item).strip()
+            ]
+            source_files = [
+                str(item).strip()
+                for item in (topic.get("sourceFiles") or [doc_file_name])
+                if str(item).strip()
+            ]
+
+            dedup_key = re.sub(r"\s+", " ", title.lower()).strip()
+            if dedup_key not in deduped_topics:
+                deduped_topics[dedup_key] = {
+                    "topicId": topic_id,
+                    "title": title,
+                    "description": description,
+                    "prerequisiteTopics": prerequisite_topics,
+                    "sourceFiles": source_files,
+                    "materialId": doc_material_id,
+                    "sourceFile": source_files[0] if source_files else doc_file_name,
+                    "sectionId": None,
+                    "classSectionId": doc_class_section_id,
+                    "className": doc_class_name,
+                }
+
+    if expired_count > 0:
+        warnings.append(f"{expired_count} expired course-material artifact(s) were excluded by retention policy.")
+
+    return {
+        "topics": list(deduped_topics.values()),
+        "materials": materials,
+        "warnings": warnings,
+    }
+
+
 @app.post("/api/upload/course-materials")
-async def upload_course_materials(request: Request, file: UploadFile = File(...)):
-    """Upload and parse course material files (PDF, DOCX, TXT)."""
+async def upload_course_materials(
+    request: Request,
+    file: Optional[UploadFile] = File(default=None),
+    files: Optional[List[UploadFile]] = File(default=None),
+    classSectionId: Optional[str] = Form(default=None),
+    className: Optional[str] = Form(default=None),
+):
+    """Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)."""
     try:
         enforce_rate_limit(request, "upload_course_materials", UPLOAD_RATE_LIMIT_PER_MIN, 60)
 
-        filename = file.filename or ""
-        ext = os.path.splitext(filename)[1].lower()
-        if ext not in ALLOWED_COURSE_MATERIAL_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file format: {filename}. Use .pdf, .docx, or .txt",
-            )
+        uploads = _resolve_uploaded_files(file=file, files=files)
+        normalized_class_section_id = (classSectionId or "").strip() or None
+        normalized_class_name = (className or "").strip() or None
 
-        if (file.content_type or "").lower() not in ALLOWED_COURSE_MATERIAL_MIME_TYPES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported content type: {file.content_type}",
-            )
+        all_sections: List[Dict[str, Any]] = []
+        all_topics: List[Dict[str, Any]] = []
+        all_warnings: List[str] = []
+        per_file_results: List[Dict[str, Any]] = []
 
-        contents = await file.read(UPLOAD_MAX_BYTES + 1)
-        if len(contents) > UPLOAD_MAX_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
-            )
+        for upload in uploads:
+            filename = upload.filename or ""
+            ext = os.path.splitext(filename)[1].lower()
+            file_warnings: List[str] = []
+            file_sections: List[Dict[str, Any]] = []
+            file_topics: List[Dict[str, Any]] = []
+            file_hash: Optional[str] = None
+            material_id: Optional[str] = None
+            persisted = False
+            extracted_text_length = 0
 
-        extracted_text = ""
-
-        if ext == ".txt":
             try:
-                extracted_text = contents.decode("utf-8")
-            except UnicodeDecodeError:
-                extracted_text = contents.decode("latin-1", errors="ignore")
-
-        elif ext == ".docx":
-            try:
-                import docx  # type: ignore[import-not-found]
-
-                document = docx.Document(io.BytesIO(contents))
-                extracted_text = "\n".join(p.text.strip() for p in document.paragraphs if p.text and p.text.strip())
-            except Exception as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Could not parse DOCX file: {str(e)}",
-                )
-
-        elif ext == ".pdf":
-            try:
-                import pdfplumber  # type: ignore[import-not-found]
-
-                with pdfplumber.open(io.BytesIO(contents)) as pdf:
-                    if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
-                        raise HTTPException(
-                            status_code=413,
-                            detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
-                        )
-
-                    page_texts: List[str] = []
-                    for page in pdf.pages:
-                        text = page.extract_text() or ""
-                        if text.strip():
-                            page_texts.append(text.strip())
-
-                    extracted_text = "\n\n".join(page_texts)
-            except HTTPException:
-                raise
-            except Exception as e:
-                message = str(e)
-                if "password" in message.lower():
+                if ext not in ALLOWED_COURSE_MATERIAL_EXTENSIONS:
                     raise HTTPException(
                         status_code=400,
-                        detail="Could not parse PDF: file may be password-protected.",
+                        detail=f"Unsupported file format: {filename}. Use .pdf, .docx, or .txt",
                     )
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Could not parse PDF file: {message}",
+
+                if (upload.content_type or "").lower() not in ALLOWED_COURSE_MATERIAL_MIME_TYPES:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported content type: {upload.content_type}",
+                    )
+
+                contents = await upload.read(UPLOAD_MAX_BYTES + 1)
+                if len(contents) > UPLOAD_MAX_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
+                    )
+
+                extracted_text = ""
+                file_hash = hashlib.sha256(contents).hexdigest()
+
+                if ext == ".pdf":
+                    import pdfplumber
+
+                    with pdfplumber.open(io.BytesIO(contents)) as pdf:
+                        if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
+                            )
+
+                        page_texts: List[str] = []
+                        for page in pdf.pages:
+                            text = page.extract_text() or ""
+                            if text.strip():
+                                page_texts.append(text)
+                        extracted_text = "\n\n".join(page_texts)
+                elif ext == ".docx":
+                    import importlib
+
+                    docx_module = importlib.import_module("docx")
+                    doc = docx_module.Document(io.BytesIO(contents))
+                    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]
+                    extracted_text = "\n\n".join(paragraphs)
+                elif ext == ".txt":
+                    extracted_text = contents.decode("utf-8", errors="ignore")
+
+                extracted_text = re.sub(r"\s+", " ", extracted_text).strip()
+                if not extracted_text:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="No readable text found in uploaded course material",
+                    )
+
+                extracted_text_length = len(extracted_text)
+                sections = _split_material_sections(extracted_text)
+                prompt_excerpt = extracted_text[:7000]
+                topic_prompt = f"""Extract classroom math curriculum topics from this course material text.
+
+Return JSON only in this exact shape:
+{{
+  "topics": [
+    {{
+      "title": "...",
+      "description": "...",
+      "prerequisiteTopics": ["..."]
+    }}
+  ]
+}}
+
+Rules:
+- Keep topics concise and teacher-friendly.
+- Include at most 10 topics.
+- Use empty prerequisiteTopics when unknown.
+
+TEXT:
+{prompt_excerpt}
+"""
+
+                extracted_topics: List[Dict[str, Any]] = []
+                try:
+                    topic_text = call_hf_chat(
+                        messages=[{"role": "user", "content": topic_prompt}],
+                        max_tokens=700,
+                        temperature=0.1,
+                    )
+                    json_start = topic_text.find("{")
+                    json_end = topic_text.rfind("}") + 1
+                    topic_payload: Dict[str, Any] = {}
+                    if json_start >= 0 and json_end > json_start:
+                        topic_payload = json.loads(topic_text[json_start:json_end])
+
+                    for idx, topic in enumerate((topic_payload.get("topics") or [])[:10]):
+                        title = str(topic.get("title", "")).strip()
+                        if not title:
+                            continue
+                        desc = str(topic.get("description", "")).strip() or f"Curriculum content related to {title}."
+                        prereq_raw = topic.get("prerequisiteTopics") or []
+                        prereq = [str(p).strip() for p in prereq_raw if str(p).strip()]
+                        extracted_topics.append(
+                            {
+                                "topicId": f"topic_{idx + 1}",
+                                "title": title,
+                                "description": desc,
+                                "prerequisiteTopics": prereq,
+                            }
+                        )
+                except Exception as topic_err:
+                    logger.warning(f"Topic extraction via AI failed: {topic_err}")
+
+                if not extracted_topics:
+                    file_warnings.append("AI topic extraction fallback was used.")
+                    extracted_topics = _fallback_topic_extraction(extracted_text)
+
+                file_topics = [
+                    {
+                        **topic,
+                        "sourceFiles": [filename],
+                    }
+                    for topic in extracted_topics
+                ]
+
+                file_sections = [
+                    {
+                        **section,
+                        "sourceFile": filename,
+                    }
+                    for section in sections
+                ]
+
+                persistence_result = _persist_course_material_artifact(
+                    request,
+                    file_hash=file_hash,
+                    file_name=filename,
+                    file_type=ext.replace(".", ""),
+                    extracted_text=extracted_text,
+                    sections=file_sections,
+                    topics=file_topics,
+                    warnings=file_warnings,
+                    class_section_id=classSectionId,
+                    class_name=className,
                 )
+                if persistence_result.get("warning"):
+                    file_warnings.append(str(persistence_result["warning"]))
+                material_id = persistence_result.get("materialId")
+                persisted = bool(persistence_result.get("persisted"))
 
-        if not extracted_text or not extracted_text.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="No readable text found in the uploaded course material.",
-            )
+                file_status = "success" if not file_warnings else "partial_success"
+            except HTTPException as file_exc:
+                file_status = "failed"
+                file_warnings.append(str(file_exc.detail))
+            except Exception as file_exc:
+                logger.error(f"Course material processing failed for {filename}: {file_exc}")
+                file_status = "failed"
+                file_warnings.append(f"Unexpected processing error: {str(file_exc)}")
 
-        if len(extracted_text) > UPLOAD_MAX_TEXT_CHARS:
-            extracted_text = extracted_text[:UPLOAD_MAX_TEXT_CHARS]
+            file_result = {
+                "fileName": filename,
+                "fileType": ext.replace(".", ""),
+                "status": file_status,
+                "fileHash": file_hash,
+                "materialId": material_id,
+                "persisted": persisted,
+                "classSectionId": normalized_class_section_id,
+                "className": normalized_class_name,
+                "extractedTextLength": extracted_text_length,
+                "sections": file_sections,
+                "topics": file_topics,
+                "warnings": file_warnings,
+            }
+            per_file_results.append(file_result)
+            all_sections.extend(file_sections)
+            all_topics.extend(file_topics)
+            all_warnings.extend([f"{filename}: {warning}" for warning in file_warnings])
 
-        lines = [line.strip() for line in extracted_text.splitlines() if line and line.strip()]
+        first_successful = next(
+            (f for f in per_file_results if f.get("status") in {"success", "partial_success"}),
+            None,
+        )
+        successful_files = sum(1 for f in per_file_results if f.get("status") in {"success", "partial_success"})
+        failed_files = len(per_file_results) - successful_files
+        total_extracted_text_length = sum(int(f.get("extractedTextLength", 0) or 0) for f in per_file_results)
 
-        sections: List[Dict[str, str]] = []
-        current_title: Optional[str] = None
-        current_buffer: List[str] = []
-
-        heading_pattern = re.compile(r"^(lesson|topic|module|unit|week|chapter)\b", re.IGNORECASE)
-        numbered_heading_pattern = re.compile(r"^\d+(?:\.\d+)*\s+.+")
-
-        for line in lines:
-            is_heading = (
-                heading_pattern.match(line) is not None
-                or numbered_heading_pattern.match(line) is not None
-                or (len(line) <= 80 and line.upper() == line and any(ch.isalpha() for ch in line))
-            )
-
-            if is_heading:
-                if current_title and current_buffer:
-                    sections.append(
-                        {
-                            "title": current_title,
-                            "excerpt": " ".join(current_buffer)[:240],
-                        }
-                    )
-                current_title = line
-                current_buffer = []
-                continue
-
-            if len(current_buffer) < 8:
-                current_buffer.append(line)
-
-        if current_title and current_buffer:
-            sections.append(
-                {
-                    "title": current_title,
-                    "excerpt": " ".join(current_buffer)[:240],
-                }
-            )
-
-        if not sections:
-            fallback_excerpt = " ".join(lines[:6])[:240]
-            sections = [{"title": "Imported content", "excerpt": fallback_excerpt}]
-
-        topic_pattern = re.compile(r"\b(?:topic|lesson|module|unit)\s*[:\-]\s*([^\n\r;,.]{2,80})", re.IGNORECASE)
-        suggested_topics: List[str] = []
-        for match in topic_pattern.findall(extracted_text):
-            topic = match.strip()
-            if topic and topic not in suggested_topics:
-                suggested_topics.append(topic)
-            if len(suggested_topics) >= 10:
-                break
-
-        # Fall back to section titles when explicit topic markers are not present.
-        if not suggested_topics:
-            for section in sections:
-                title = section.get("title", "").strip()
-                if title and title.lower() != "imported content" and title not in suggested_topics:
-                    suggested_topics.append(title)
-                if len(suggested_topics) >= 10:
-                    break
-
-        preview = extracted_text[:1200]
-
-        return {
-            "success": True,
-            "fileName": filename,
-            "fileType": ext.lstrip("."),
-            "charCount": len(extracted_text),
-            "wordCount": len(extracted_text.split()),
-            "sections": sections[:10],
-            "suggestedTopics": suggested_topics,
-            "preview": preview,
+        response_payload = {
+            "success": successful_files > 0,
+            "fileName": (first_successful or {}).get("fileName", ""),
+            "fileType": (first_successful or {}).get("fileType", ""),
+            "fileHash": (first_successful or {}).get("fileHash"),
+            "materialId": (first_successful or {}).get("materialId"),
+            "persisted": bool(first_successful and first_successful.get("persisted")),
+            "classSectionId": normalized_class_section_id,
+            "className": normalized_class_name,
+            "extractedTextLength": total_extracted_text_length,
+            "sections": all_sections,
+            "topics": all_topics,
+            "warnings": all_warnings,
+            "files": per_file_results,
+            "summary": {
+                "totalFiles": len(per_file_results),
+                "successfulFiles": successful_files,
+                "failedFiles": failed_files,
+            },
         }
+
+        _write_access_audit_log(
+            request,
+            action="course_material_upload",
+            status="success" if successful_files > 0 else "failure",
+            class_section_id=normalized_class_section_id,
+            metadata={
+                "totalFiles": len(per_file_results),
+                "successfulFiles": successful_files,
+                "failedFiles": failed_files,
+                "totalTopics": len(all_topics),
+                "persisted": bool(first_successful and first_successful.get("persisted")),
+            },
+        )
+
+        return response_payload
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Course material upload error: {e}")
         raise HTTPException(status_code=500, detail=f"Course material upload error: {str(e)}")
+
+
+@app.get("/api/upload/course-materials/recent")
+async def get_recent_course_materials(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    limit: int = Query(default=10, ge=1, le=50),
+):
+    """List recent uploaded course materials for the authenticated teacher/admin."""
+    try:
+        user = get_current_user(request)
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        normalized_class_section_id = (classSectionId or "").strip() or None
+
+        query = (
+            firebase_firestore.client()
+            .collection("courseMaterials")
+            .where("teacherId", "==", user.uid)
+        )
+        if normalized_class_section_id:
+            query = query.where("classSectionId", "==", normalized_class_section_id)
+
+        warnings: List[str] = []
+        try:
+            docs = (
+                query
+                .order_by("updatedAt", direction=FIRESTORE_QUERY_DESCENDING)
+                .limit(limit)
+                .stream()
+            )
+        except Exception:
+            warnings.append("Course-material lookup used fallback query path without ordering.")
+            docs = query.limit(limit).stream()
+
+        materials: List[Dict[str, Any]] = []
+        expired_count = 0
+        for doc in docs:
+            data = doc.to_dict() or {}
+            if _is_artifact_expired(data):
+                expired_count += 1
+                continue
+
+            topics = data.get("topics") or []
+            created_at = data.get("createdAt")
+            updated_at = data.get("updatedAt")
+            created_at_iso = created_at.isoformat() if created_at is not None and hasattr(created_at, "isoformat") else None
+            updated_at_iso = updated_at.isoformat() if updated_at is not None and hasattr(updated_at, "isoformat") else None
+
+            materials.append(
+                {
+                    "materialId": data.get("materialId") or doc.id,
+                    "fileName": data.get("fileName", ""),
+                    "fileType": data.get("fileType", ""),
+                    "classSectionId": data.get("classSectionId"),
+                    "className": data.get("className"),
+                    "topicsCount": len(topics),
+                    "topicTitles": [str(t.get("title", "")).strip() for t in topics[:5] if str(t.get("title", "")).strip()],
+                    "extractedTextLength": int(data.get("extractedTextLength", 0) or 0),
+                    "retentionDays": int(data.get("retentionDays", IMPORT_RETENTION_DAYS) or IMPORT_RETENTION_DAYS),
+                    "expiresAtEpoch": data.get("expiresAtEpoch"),
+                    "createdAt": created_at_iso,
+                    "updatedAt": updated_at_iso,
+                }
+            )
+
+        if expired_count > 0:
+            warnings.append(f"{expired_count} expired course-material artifact(s) were excluded by retention policy.")
+
+        response_payload = {
+            "success": True,
+            "classSectionId": normalized_class_section_id,
+            "materials": materials,
+            "warnings": warnings,
+        }
+
+        _write_access_audit_log(
+            request,
+            action="course_material_recent_read",
+            status="success",
+            class_section_id=normalized_class_section_id,
+            metadata={
+                "requestedClassSectionId": normalized_class_section_id,
+                "requestedLimit": limit,
+                "returnedMaterials": len(materials),
+                "expiredExcluded": expired_count,
+                "warningsCount": len(warnings),
+            },
+        )
+
+        return response_payload
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Recent course materials lookup error: {e}")
+        raise HTTPException(status_code=500, detail=f"Recent materials lookup error: {str(e)}")
+
+
+@app.get("/api/course-materials/topics")
+async def get_course_material_topics(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    materialId: Optional[str] = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=50),
+):
+    """Return persisted course-material topic map for the authenticated teacher/admin."""
+    try:
+        normalized_class_section_id = (classSectionId or "").strip() or None
+        payload = _load_persisted_course_material_topics(
+            request,
+            class_section_id=normalized_class_section_id,
+            material_id=materialId,
+            limit_materials=limit,
+        )
+        response_payload = {
+            "success": True,
+            "classSectionId": normalized_class_section_id,
+            "materialId": (materialId or "").strip() or None,
+            "topics": payload.get("topics", []),
+            "materials": payload.get("materials", []),
+            "warnings": payload.get("warnings", []),
+        }
+
+        _write_access_audit_log(
+            request,
+            action="course_material_topics_read",
+            status="success",
+            class_section_id=normalized_class_section_id,
+            metadata={
+                "limit": limit,
+                "materialId": (materialId or "").strip() or None,
+                "topicsReturned": len(payload.get("topics", [])),
+                "materialsReturned": len(payload.get("materials", [])),
+                "warningsCount": len(payload.get("warnings", [])),
+            },
+        )
+
+        return response_payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Course material topics lookup error: {e}")
+        raise HTTPException(status_code=500, detail=f"Course materials topics lookup error: {str(e)}")
 
 
 # ─── Quiz Maker Models ────────────────────────────────────────
@@ -1823,6 +3182,13 @@ class QuizGenerationRequest(BaseModel):
         default_factory=list,
         description="Topics the class is already competent in — these will be excluded",
     )
+    classSectionId: Optional[str] = Field(default=None, description="Optional class section context for imported topics")
+    className: Optional[str] = Field(default=None, description="Optional class name context for metadata")
+    materialId: Optional[str] = Field(default=None, description="Optional specific course-material artifact ID")
+    preferImportedTopics: bool = Field(
+        default=True,
+        description="When true, prioritise persisted imported topics for generation when available",
+    )
 
     @validator("questionTypes", each_item=True)
     def validate_question_types(cls, v: str) -> str:
@@ -1857,6 +3223,7 @@ class QuizQuestion(BaseModel):
     topic: str
     points: int
     explanation: str
+    provenance: Optional[Dict[str, Optional[str]]] = None
 
 
 class QuizResponse(BaseModel):
@@ -1897,6 +3264,177 @@ class CalculatorResponse(BaseModel):
     steps: List[str]
     simplified: Optional[str] = None
     latex: Optional[str] = None
+
+
+class LessonGenerationRequest(BaseModel):
+    gradeLevel: str = Field(..., description="Grade level context for lesson generation")
+    classSectionId: Optional[str] = Field(default=None, description="Optional class section context")
+    className: Optional[str] = Field(default=None, description="Optional class display name")
+    materialId: Optional[str] = Field(default=None, description="Optional specific course-material artifact ID")
+    focusTopics: List[str] = Field(default_factory=list, description="Optional explicit topic overrides")
+    topicCount: int = Field(default=5, ge=1, le=10, description="Maximum number of focus topics")
+    preferImportedTopics: bool = Field(default=True, description="Prefer persisted imported topics when available")
+
+
+class LessonPlanBlock(BaseModel):
+    blockId: str
+    title: str
+    objective: str
+    strategy: str
+    estimatedMinutes: int
+    activities: List[str]
+    checksForUnderstanding: List[str]
+    remediationTips: List[str]
+    provenance: Optional[Dict[str, Optional[str]]] = None
+
+
+class LessonPlanResponse(BaseModel):
+    success: bool
+    lessonTitle: str
+    gradeLevel: str
+    classSectionId: Optional[str] = None
+    className: Optional[str] = None
+    usedImportedTopics: bool
+    importedTopicCount: int
+    weakSignals: Dict[str, float]
+    focusTopics: List[str]
+    blocks: List[LessonPlanBlock]
+    provenanceSummary: List[Dict[str, Optional[str]]]
+    warnings: List[str]
+
+
+class ImportGroundedFeedbackRequest(BaseModel):
+    flow: str = Field(..., description="Flow identifier: quiz or lesson")
+    status: str = Field(..., description="Event status: success, failed, or skipped")
+    classSectionId: Optional[str] = Field(default=None, description="Optional class section context")
+    className: Optional[str] = Field(default=None, description="Optional class display name")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional event metadata")
+
+    @validator("flow")
+    def validate_flow(cls, v: str) -> str:
+        value = (v or "").strip().lower()
+        if value not in {"quiz", "lesson"}:
+            raise ValueError("flow must be one of: quiz, lesson")
+        return value
+
+    @validator("status")
+    def validate_status(cls, v: str) -> str:
+        value = (v or "").strip().lower()
+        if value not in {"success", "failed", "skipped"}:
+            raise ValueError("status must be one of: success, failed, skipped")
+        return value
+
+
+class ImportGroundedFeedbackResponse(BaseModel):
+    success: bool
+    stored: bool
+    warnings: List[str]
+
+
+class ImportGroundedHourlyVolumeItem(BaseModel):
+    hourBucket: str
+    flow: str
+    status: str
+    eventCount: int
+
+
+class ImportGroundedClassRateItem(BaseModel):
+    classSectionId: str
+    total24h: int
+    failed24h: int
+    skipped24h: int
+    failureRate24h: float
+    skippedRate24h: float
+    total7d: int
+    failed7d: int
+    skipped7d: int
+    failureRate7d: float
+    skippedRate7d: float
+
+
+class ImportGroundedFlowUsageItem(BaseModel):
+    flow: str
+    totalEvents: int
+    eligibleEvents: int
+    groundedEvents: int
+    groundedUsageRatio: float
+
+
+class ImportGroundedErrorReasonItem(BaseModel):
+    normalizedErrorReason: str
+    occurrences: int
+
+
+class ImportGroundedTelemetryThresholds(BaseModel):
+    go: bool
+    reasons: List[str]
+
+
+class ImportGroundedTelemetrySummaryResponse(BaseModel):
+    success: bool
+    classSectionId: Optional[str] = None
+    lookbackDays: int
+    totalEvents: int
+    hourlyVolume: List[ImportGroundedHourlyVolumeItem]
+    classRates: List[ImportGroundedClassRateItem]
+    flowUsage: List[ImportGroundedFlowUsageItem]
+    topErrors: List[ImportGroundedErrorReasonItem]
+    thresholds: ImportGroundedTelemetryThresholds
+    warnings: List[str]
+
+
+class ImportGroundedAccessAuditItem(BaseModel):
+    auditId: str
+    action: str
+    status: str
+    path: str
+    method: str
+    classSectionId: Optional[str] = None
+    createdAtIso: Optional[str] = None
+    metadata: Dict[str, Any]
+
+
+class ImportGroundedAccessAuditSummary(BaseModel):
+    totalEvents: int
+    byAction: Dict[str, int]
+    byStatus: Dict[str, int]
+
+
+class ImportGroundedAccessAuditResponse(BaseModel):
+    success: bool
+    classSectionId: Optional[str] = None
+    lookbackDays: int
+    entries: List[ImportGroundedAccessAuditItem]
+    summary: ImportGroundedAccessAuditSummary
+    warnings: List[str]
+
+
+def _coerce_event_timestamp_utc(event: Dict[str, Any]) -> Optional[datetime]:
+    created_at = event.get("createdAt")
+    if isinstance(created_at, datetime):
+        return created_at if created_at.tzinfo else created_at.replace(tzinfo=timezone.utc)
+
+    created_at_iso = str(event.get("createdAtIso") or "").strip()
+    if not created_at_iso:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(created_at_iso.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def _to_compact_json(value: Any) -> str:
+    try:
+        return json.dumps(value, separators=(",", ":"), ensure_ascii=True)
+    except Exception:
+        return "{}"
+
+
+def _csv_escape(value: Any) -> str:
+    text = str(value if value is not None else "")
+    return '"' + text.replace('"', '""') + '"'
 
 
 # ─── Quiz Topics Database (SHS Grade 11-12 Only) ─────────────
@@ -1965,6 +3503,772 @@ MATH_TOPICS_BY_GRADE: Dict[str, Dict[str, List[str]]] = {
         ],
     },
 }
+
+
+def _normalize_topic_key(value: str) -> str:
+    key = re.sub(r"[^a-z0-9\s]+", " ", (value or "").lower())
+    key = re.sub(r"\s+", " ", key).strip()
+    return key
+
+
+def _fallback_topics_for_grade(grade_level: str, topic_count: int) -> List[str]:
+    fallback_topics: List[str] = []
+    grade_key = next(
+        (key for key in MATH_TOPICS_BY_GRADE.keys() if key.lower() == (grade_level or "").strip().lower()),
+        None,
+    )
+    if grade_key:
+        for _, topics in MATH_TOPICS_BY_GRADE[grade_key].items():
+            for topic in topics:
+                if topic not in fallback_topics:
+                    fallback_topics.append(topic)
+                if len(fallback_topics) >= topic_count:
+                    return fallback_topics
+
+    if not fallback_topics:
+        for grade_topics in MATH_TOPICS_BY_GRADE.values():
+            for _, topics in grade_topics.items():
+                for topic in topics:
+                    if topic not in fallback_topics:
+                        fallback_topics.append(topic)
+                    if len(fallback_topics) >= topic_count:
+                        return fallback_topics
+    return fallback_topics
+
+
+def _load_class_performance_artifacts(
+    request: Request,
+    *,
+    class_section_id: Optional[str] = None,
+    max_records: int = 500,
+) -> Dict[str, float]:
+    if not (_firebase_ready and firebase_firestore):
+        return {
+            "recordsCount": 0,
+            "averageQuizScore": 0.0,
+            "averageAttendance": 0.0,
+            "averageEngagement": 0.0,
+            "averageAssignmentCompletion": 0.0,
+            "atRiskRate": 0.0,
+        }
+
+    user = get_current_user(request)
+    normalized_class_section_id = (class_section_id or "").strip() or None
+
+    query = (
+        firebase_firestore.client()
+        .collection("normalizedClassRecords")
+        .where("teacherId", "==", user.uid)
+    )
+    if normalized_class_section_id:
+        query = query.where("classSectionId", "==", normalized_class_section_id)
+
+    docs = query.limit(max_records).stream()
+    scores: List[float] = []
+    attendance_rates: List[float] = []
+    engagement_rates: List[float] = []
+    completion_rates: List[float] = []
+    at_risk_count = 0
+
+    for doc in docs:
+        row = doc.to_dict() or {}
+        score = float(row.get("avgQuizScore") or 0.0)
+        attendance = float(row.get("attendance") or 0.0)
+        engagement = float(row.get("engagementScore") or 0.0)
+        completion = float(row.get("assignmentCompletion") or 0.0)
+
+        scores.append(score)
+        attendance_rates.append(attendance)
+        engagement_rates.append(engagement)
+        completion_rates.append(completion)
+
+        if score < 60 or attendance < 75 or engagement < 55:
+            at_risk_count += 1
+
+    count = len(scores)
+    if count == 0:
+        return {
+            "recordsCount": 0,
+            "averageQuizScore": 0.0,
+            "averageAttendance": 0.0,
+            "averageEngagement": 0.0,
+            "averageAssignmentCompletion": 0.0,
+            "atRiskRate": 0.0,
+        }
+
+    return {
+        "recordsCount": float(count),
+        "averageQuizScore": sum(scores) / count,
+        "averageAttendance": sum(attendance_rates) / count,
+        "averageEngagement": sum(engagement_rates) / count,
+        "averageAssignmentCompletion": sum(completion_rates) / count,
+        "atRiskRate": at_risk_count / count,
+    }
+
+
+def _parse_lesson_plan_json(raw: str) -> Dict[str, Any]:
+    cleaned = (raw or "").strip()
+    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
+    cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+    cleaned = cleaned.strip()
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}") + 1
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(cleaned[start:end])
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+    return {}
+
+
+@app.post("/api/lesson/generate", response_model=LessonPlanResponse)
+async def generate_lesson_plan(http_request: Request, request: LessonGenerationRequest):
+    """
+    Generate a class lesson plan grounded on imported course-material topics and
+    class performance artifacts. Falls back to built-in curriculum topics when
+    imported topics are unavailable.
+    """
+    try:
+        enforce_rate_limit(http_request, "generate_lesson_plan", 20, 60)
+
+        imported_topics_payload: Dict[str, Any] = {"topics": [], "materials": [], "warnings": []}
+        imported_topic_titles: List[str] = []
+        warnings: List[str] = []
+        import_grounding_enabled = ENABLE_IMPORT_GROUNDED_LESSON
+
+        if not import_grounding_enabled and request.preferImportedTopics:
+            warnings.append(
+                "Import-grounded lesson generation is disabled by rollout flag; using focus topics and fallback curriculum."
+            )
+
+        if import_grounding_enabled and (request.preferImportedTopics or not request.focusTopics):
+            imported_topics_payload = _load_persisted_course_material_topics(
+                http_request,
+                class_section_id=request.classSectionId,
+                material_id=request.materialId,
+                limit_materials=20,
+            )
+            imported_topic_titles = [
+                str(topic.get("title") or "").strip()
+                for topic in (imported_topics_payload.get("topics") or [])
+                if str(topic.get("title") or "").strip()
+            ]
+            warnings.extend(imported_topics_payload.get("warnings") or [])
+
+        selected_topics: List[str] = []
+        for topic in request.focusTopics:
+            clean_topic = str(topic).strip()
+            if clean_topic and clean_topic not in selected_topics:
+                selected_topics.append(clean_topic)
+
+        if imported_topic_titles:
+            for topic in imported_topic_titles:
+                if topic not in selected_topics:
+                    selected_topics.append(topic)
+
+        if not selected_topics:
+            selected_topics = _fallback_topics_for_grade(request.gradeLevel, request.topicCount)
+            warnings.append("Using fallback curriculum topics because no imported topics were found.")
+
+        selected_topics = selected_topics[: request.topicCount]
+
+        class_signals = _load_class_performance_artifacts(
+            http_request,
+            class_section_id=request.classSectionId,
+            max_records=500,
+        )
+
+        topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}
+        for topic in (imported_topics_payload.get("topics") or []):
+            title = str(topic.get("title") or "").strip()
+            if not title:
+                continue
+            topic_provenance_map[_normalize_topic_key(title)] = {
+                "topicId": str(topic.get("topicId") or "") or None,
+                "title": title,
+                "materialId": str(topic.get("materialId") or "") or None,
+                "sourceFile": str(topic.get("sourceFile") or "") or None,
+                "sectionId": str(topic.get("sectionId") or "") or None,
+            }
+
+        prompt = f"""Generate a JSON lesson plan for {request.gradeLevel}.
+
+Class context:
+- Class section: {request.classSectionId or 'n/a'}
+- Class name: {request.className or 'n/a'}
+
+Performance signals:
+- recordsCount: {int(class_signals.get('recordsCount', 0))}
+- averageQuizScore: {class_signals.get('averageQuizScore', 0.0):.1f}
+- averageAttendance: {class_signals.get('averageAttendance', 0.0):.1f}
+- averageEngagement: {class_signals.get('averageEngagement', 0.0):.1f}
+- averageAssignmentCompletion: {class_signals.get('averageAssignmentCompletion', 0.0):.1f}
+- atRiskRate: {class_signals.get('atRiskRate', 0.0):.2f}
+
+Focus topics:
+{json.dumps(selected_topics)}
+
+Return JSON only with this structure:
+{{
+  "lessonTitle": "...",
+  "blocks": [
+    {{
+      "title": "...",
+      "topic": "...",
+      "objective": "...",
+      "strategy": "...",
+      "estimatedMinutes": 10,
+      "activities": ["..."],
+      "checksForUnderstanding": ["..."],
+      "remediationTips": ["..."]
+    }}
+  ]
+}}
+
+Rules:
+- Use the provided focus topics only.
+- Include 3 to 6 blocks.
+- Prioritize prerequisite reinforcement and intervention scaffolds when risk is elevated.
+- Keep activities practical and teacher-editable.
+"""
+
+        lesson_payload: Dict[str, Any] = {}
+        try:
+            raw = call_hf_chat(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert math instructional designer. Output strict JSON only.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=1200,
+                temperature=0.25,
+            )
+            lesson_payload = _parse_lesson_plan_json(raw)
+        except Exception as lesson_exc:
+            logger.warning(f"Lesson generation AI fallback engaged: {lesson_exc}")
+            warnings.append("AI lesson synthesis failed; generated deterministic scaffold blocks.")
+
+        raw_blocks = lesson_payload.get("blocks") if isinstance(lesson_payload, dict) else None
+        if not isinstance(raw_blocks, list) or not raw_blocks:
+            raw_blocks = [
+                {
+                    "title": f"Targeted Focus: {topic}",
+                    "topic": topic,
+                    "objective": f"Strengthen conceptual understanding and application for {topic}.",
+                    "strategy": "Model-practice-feedback loop with explicit prerequisite checks.",
+                    "estimatedMinutes": 12,
+                    "activities": [
+                        f"Activate prior knowledge related to {topic} with quick retrieval prompts.",
+                        f"Guided worked examples for {topic} with think-aloud reasoning.",
+                        "Partner practice with immediate corrective feedback.",
+                    ],
+                    "checksForUnderstanding": [
+                        "Use mini whiteboard checks after each worked example.",
+                        "Collect one-sentence justification from students for the final item.",
+                    ],
+                    "remediationTips": [
+                        "Re-teach prerequisite vocabulary and notation before independent work.",
+                        "Provide tiered hints before revealing full solutions.",
+                    ],
+                }
+                for topic in selected_topics[: min(4, len(selected_topics))]
+            ]
+
+        lesson_title = str(lesson_payload.get("lessonTitle") or "Intervention-Grounded Math Lesson Plan").strip()
+        blocks: List[LessonPlanBlock] = []
+        provenance_summary: List[Dict[str, Optional[str]]] = []
+
+        for idx, block in enumerate(raw_blocks[:6]):
+            if not isinstance(block, dict):
+                continue
+            topic_hint = str(block.get("topic") or selected_topics[min(idx, len(selected_topics) - 1)]).strip()
+            matched_provenance = topic_provenance_map.get(_normalize_topic_key(topic_hint))
+
+            lesson_block = LessonPlanBlock(
+                blockId=f"block_{idx + 1}",
+                title=str(block.get("title") or f"Lesson Block {idx + 1}").strip(),
+                objective=str(block.get("objective") or f"Build understanding of {topic_hint}.").strip(),
+                strategy=str(block.get("strategy") or "Guided explicit instruction with scaffolded practice.").strip(),
+                estimatedMinutes=max(5, min(25, int(block.get("estimatedMinutes") or 12))),
+                activities=[str(item).strip() for item in (block.get("activities") or []) if str(item).strip()] or [f"Practice and discussion for {topic_hint}."],
+                checksForUnderstanding=[str(item).strip() for item in (block.get("checksForUnderstanding") or []) if str(item).strip()] or ["Exit ticket: one solved item plus reasoning."],
+                remediationTips=[str(item).strip() for item in (block.get("remediationTips") or []) if str(item).strip()] or ["Revisit prerequisite examples and provide targeted hints."],
+                provenance=matched_provenance,
+            )
+            blocks.append(lesson_block)
+
+            if matched_provenance and matched_provenance not in provenance_summary:
+                provenance_summary.append(matched_provenance)
+
+        if not blocks:
+            raise HTTPException(status_code=500, detail="Unable to generate lesson blocks.")
+
+        return LessonPlanResponse(
+            success=True,
+            lessonTitle=lesson_title,
+            gradeLevel=request.gradeLevel,
+            classSectionId=request.classSectionId,
+            className=request.className,
+            usedImportedTopics=bool(imported_topic_titles),
+            importedTopicCount=len(imported_topics_payload.get("topics") or []),
+            weakSignals=class_signals,
+            focusTopics=selected_topics,
+            blocks=blocks,
+            provenanceSummary=provenance_summary,
+            warnings=warnings,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Lesson generation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
+
+
+@app.post("/api/feedback/import-grounded", response_model=ImportGroundedFeedbackResponse)
+async def record_import_grounded_feedback(http_request: Request, request: ImportGroundedFeedbackRequest):
+    """Capture lightweight pilot feedback telemetry for import-grounded quiz and lesson flows."""
+    warnings: List[str] = []
+    stored = False
+    try:
+        enforce_rate_limit(http_request, "import_grounded_feedback", 60, 60)
+        user = get_current_user(http_request)
+
+        if ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS and _firebase_ready and firebase_firestore:
+            payload: Dict[str, Any] = {
+                "flow": request.flow,
+                "status": request.status,
+                "teacherId": user.uid,
+                "teacherEmail": user.email,
+                "role": user.role,
+                "classSectionId": (request.classSectionId or "").strip() or None,
+                "className": (request.className or "").strip() or None,
+                "metadata": request.metadata,
+                "createdAt": FIRESTORE_SERVER_TIMESTAMP,
+                "createdAtIso": datetime.now(timezone.utc).isoformat(),
+            }
+            firebase_firestore.client().collection("importGroundedFeedbackEvents").add(payload)
+            stored = True
+        else:
+            warnings.append("Import-grounded feedback storage is disabled or unavailable.")
+
+        _write_access_audit_log(
+            http_request,
+            action="import_grounded_feedback",
+            status="success" if stored else "accepted",
+            class_section_id=request.classSectionId,
+            metadata={
+                "flow": request.flow,
+                "eventStatus": request.status,
+                "stored": stored,
+            },
+        )
+
+        return ImportGroundedFeedbackResponse(success=True, stored=stored, warnings=warnings)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Import-grounded feedback logging failed: {e}")
+        return ImportGroundedFeedbackResponse(success=True, stored=False, warnings=["Feedback logging failed"])
+
+
+@app.get("/api/feedback/import-grounded/summary", response_model=ImportGroundedTelemetrySummaryResponse)
+async def get_import_grounded_feedback_summary(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    days: int = Query(default=7, ge=1, le=30),
+    limit: int = Query(default=5000, ge=100, le=20000),
+):
+    """Aggregate import-grounded pilot telemetry (Query A-D equivalent) from Firestore events."""
+    try:
+        user = get_current_user(request)
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        normalized_class_section_id = (classSectionId or "").strip() or None
+        now_utc = datetime.now(timezone.utc)
+        lookback_start = now_utc - timedelta(days=days)
+        start_24h = now_utc - timedelta(hours=24)
+        warnings: List[str] = []
+
+        docs = (
+            firebase_firestore.client()
+            .collection("importGroundedFeedbackEvents")
+            .where("teacherId", "==", user.uid)
+            .limit(limit)
+            .stream()
+        )
+
+        hourly_counter: Counter[Tuple[str, str, str]] = Counter()
+        class_counter: Dict[str, Dict[str, int]] = {}
+        flow_counter: Dict[str, Dict[str, int]] = {}
+        error_counter: Counter[str] = Counter()
+        total_events = 0
+
+        for doc in docs:
+            payload = doc.to_dict() or {}
+            event_class_section_id = str(payload.get("classSectionId") or "").strip() or None
+            if normalized_class_section_id and event_class_section_id != normalized_class_section_id:
+                continue
+
+            event_ts = _coerce_event_timestamp_utc(payload)
+            if event_ts is None:
+                warnings.append("Some events were excluded because timestamps were missing or invalid.")
+                continue
+            if event_ts < lookback_start:
+                continue
+
+            flow = str(payload.get("flow") or "unknown").strip().lower() or "unknown"
+            status = str(payload.get("status") or "unknown").strip().lower() or "unknown"
+            raw_metadata = payload.get("metadata")
+            metadata: Dict[str, Any] = raw_metadata if isinstance(raw_metadata, dict) else {}
+
+            total_events += 1
+
+            hour_bucket = event_ts.replace(minute=0, second=0, microsecond=0).isoformat()
+            hourly_counter[(hour_bucket, flow, status)] += 1
+
+            class_key = event_class_section_id or "unscoped"
+            class_stats = class_counter.setdefault(
+                class_key,
+                {
+                    "total24h": 0,
+                    "failed24h": 0,
+                    "skipped24h": 0,
+                    "total7d": 0,
+                    "failed7d": 0,
+                    "skipped7d": 0,
+                },
+            )
+            class_stats["total7d"] += 1
+            if status == "failed":
+                class_stats["failed7d"] += 1
+            if status == "skipped":
+                class_stats["skipped7d"] += 1
+            if event_ts >= start_24h:
+                class_stats["total24h"] += 1
+                if status == "failed":
+                    class_stats["failed24h"] += 1
+                if status == "skipped":
+                    class_stats["skipped24h"] += 1
+
+            flow_stats = flow_counter.setdefault(
+                flow,
+                {
+                    "totalEvents": 0,
+                    "eligibleEvents": 0,
+                    "groundedEvents": 0,
+                },
+            )
+            flow_stats["totalEvents"] += 1
+            import_grounding_enabled = bool(metadata.get("importGroundingEnabled", True))
+            if import_grounding_enabled:
+                flow_stats["eligibleEvents"] += 1
+                if bool(metadata.get("usedImportedTopics", False)):
+                    flow_stats["groundedEvents"] += 1
+
+            if status == "failed":
+                normalized_error = str(metadata.get("error") or "unknown_error").strip().lower() or "unknown_error"
+                error_counter[normalized_error] += 1
+
+        deduped_warnings = sorted(set(warnings))
+
+        hourly_volume = [
+            ImportGroundedHourlyVolumeItem(
+                hourBucket=hour,
+                flow=flow,
+                status=status,
+                eventCount=count,
+            )
+            for (hour, flow, status), count in sorted(hourly_counter.items(), key=lambda item: item[0], reverse=True)
+        ]
+
+        class_rates: List[ImportGroundedClassRateItem] = []
+        aggregate_total_24h = 0
+        aggregate_failed_24h = 0
+        aggregate_skipped_24h = 0
+        aggregate_total_7d = 0
+        aggregate_failed_7d = 0
+        aggregate_skipped_7d = 0
+
+        for class_key, stats in sorted(class_counter.items()):
+            total24h = int(stats["total24h"])
+            failed24h = int(stats["failed24h"])
+            skipped24h = int(stats["skipped24h"])
+            total7d = int(stats["total7d"])
+            failed7d = int(stats["failed7d"])
+            skipped7d = int(stats["skipped7d"])
+
+            aggregate_total_24h += total24h
+            aggregate_failed_24h += failed24h
+            aggregate_skipped_24h += skipped24h
+            aggregate_total_7d += total7d
+            aggregate_failed_7d += failed7d
+            aggregate_skipped_7d += skipped7d
+
+            class_rates.append(
+                ImportGroundedClassRateItem(
+                    classSectionId=class_key,
+                    total24h=total24h,
+                    failed24h=failed24h,
+                    skipped24h=skipped24h,
+                    failureRate24h=(failed24h / total24h) if total24h else 0.0,
+                    skippedRate24h=(skipped24h / total24h) if total24h else 0.0,
+                    total7d=total7d,
+                    failed7d=failed7d,
+                    skipped7d=skipped7d,
+                    failureRate7d=(failed7d / total7d) if total7d else 0.0,
+                    skippedRate7d=(skipped7d / total7d) if total7d else 0.0,
+                )
+            )
+
+        flow_usage: List[ImportGroundedFlowUsageItem] = []
+        aggregate_eligible = 0
+        aggregate_grounded = 0
+        for flow, stats in sorted(flow_counter.items()):
+            eligible = int(stats["eligibleEvents"])
+            grounded = int(stats["groundedEvents"])
+            aggregate_eligible += eligible
+            aggregate_grounded += grounded
+            flow_usage.append(
+                ImportGroundedFlowUsageItem(
+                    flow=flow,
+                    totalEvents=int(stats["totalEvents"]),
+                    eligibleEvents=eligible,
+                    groundedEvents=grounded,
+                    groundedUsageRatio=(grounded / eligible) if eligible else 0.0,
+                )
+            )
+
+        top_errors = [
+            ImportGroundedErrorReasonItem(normalizedErrorReason=reason, occurrences=count)
+            for reason, count in error_counter.most_common(20)
+        ]
+
+        failure_rate_24h = (aggregate_failed_24h / aggregate_total_24h) if aggregate_total_24h else 0.0
+        skipped_rate_7d = (aggregate_skipped_7d / aggregate_total_7d) if aggregate_total_7d else 0.0
+        failure_rate_7d = (aggregate_failed_7d / aggregate_total_7d) if aggregate_total_7d else 0.0
+        grounded_usage_ratio = (aggregate_grounded / aggregate_eligible) if aggregate_eligible else 0.0
+
+        threshold_reasons: List[str] = []
+        if failure_rate_24h > 0.08:
+            threshold_reasons.append("Hold: failure_rate_24h exceeded 8% threshold.")
+        if failure_rate_7d > 0.05:
+            threshold_reasons.append("Hold: failure_rate_7d exceeded 5% threshold.")
+        if skipped_rate_7d > 0.10:
+            threshold_reasons.append("Hold: skipped_rate_7d exceeded 10% threshold.")
+        if aggregate_eligible > 0 and grounded_usage_ratio < 0.70:
+            threshold_reasons.append("Hold: grounded_usage_ratio below 70% for eligible events.")
+
+        if total_events == 0:
+            deduped_warnings.append("No telemetry events found for the requested window/filter.")
+
+        _write_access_audit_log(
+            request,
+            action="import_grounded_feedback_summary_read",
+            status="success",
+            class_section_id=normalized_class_section_id,
+            metadata={
+                "lookbackDays": days,
+                "requestedLimit": limit,
+                "returnedEvents": total_events,
+                "warningsCount": len(deduped_warnings),
+            },
+        )
+
+        return ImportGroundedTelemetrySummaryResponse(
+            success=True,
+            classSectionId=normalized_class_section_id,
+            lookbackDays=days,
+            totalEvents=total_events,
+            hourlyVolume=hourly_volume,
+            classRates=class_rates,
+            flowUsage=flow_usage,
+            topErrors=top_errors,
+            thresholds=ImportGroundedTelemetryThresholds(
+                go=len(threshold_reasons) == 0,
+                reasons=threshold_reasons,
+            ),
+            warnings=deduped_warnings,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Import-grounded feedback summary lookup failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Import-grounded feedback summary error: {str(e)}")
+
+
+@app.get("/api/import-grounded/access-audit", response_model=ImportGroundedAccessAuditResponse)
+async def get_import_grounded_access_audit(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    days: int = Query(default=7, ge=1, le=30),
+    limit: int = Query(default=200, ge=1, le=1000),
+    export: str = Query(default="json"),
+):
+    """
+    Retrieve import-grounded access audit events for the authenticated teacher scope.
+    Supports JSON (default) and CSV export.
+    """
+    try:
+        user = get_current_user(request)
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        export_mode = (export or "json").strip().lower()
+        if export_mode not in {"json", "csv"}:
+            raise HTTPException(status_code=400, detail="export must be one of: json, csv")
+
+        normalized_class_section_id = (classSectionId or "").strip() or None
+        lookback_start = datetime.now(timezone.utc) - timedelta(days=days)
+        warnings: List[str] = []
+
+        query = (
+            firebase_firestore.client()
+            .collection("accessAuditLogs")
+            .where("teacherId", "==", user.uid)
+        )
+        try:
+            docs = (
+                query
+                .order_by("createdAt", direction=FIRESTORE_QUERY_DESCENDING)
+                .limit(min(limit * 4, 4000))
+                .stream()
+            )
+        except Exception:
+            warnings.append("Access-audit lookup used fallback query path without ordering.")
+            docs = query.limit(min(limit * 4, 4000)).stream()
+
+        allowed_prefixes = (
+            "class_records_",
+            "course_material_",
+            "risk_refresh_",
+            "import_grounded_",
+        )
+        entries: List[ImportGroundedAccessAuditItem] = []
+        by_action: Counter[str] = Counter()
+        by_status: Counter[str] = Counter()
+
+        for doc in docs:
+            payload = doc.to_dict() or {}
+            action = str(payload.get("action") or "").strip()
+            if not action or not action.startswith(allowed_prefixes):
+                continue
+
+            event_class_section_id = str(payload.get("classSectionId") or "").strip() or None
+            if normalized_class_section_id and event_class_section_id != normalized_class_section_id:
+                continue
+
+            event_ts = _coerce_event_timestamp_utc(payload)
+            if event_ts is None:
+                warnings.append("Some audit events were excluded because timestamps were missing or invalid.")
+                continue
+            if event_ts < lookback_start:
+                continue
+
+            status = str(payload.get("status") or "unknown").strip() or "unknown"
+            method = str(payload.get("method") or "").strip().upper() or "GET"
+            path = str(payload.get("path") or "").strip() or "unknown"
+            metadata_raw = payload.get("metadata")
+            metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
+            created_at_iso = event_ts.isoformat()
+
+            entry = ImportGroundedAccessAuditItem(
+                auditId=str(doc.id),
+                action=action,
+                status=status,
+                path=path,
+                method=method,
+                classSectionId=event_class_section_id,
+                createdAtIso=created_at_iso,
+                metadata=metadata,
+            )
+            entries.append(entry)
+            by_action[action] += 1
+            by_status[status] += 1
+
+            if len(entries) >= limit:
+                break
+
+        if not entries:
+            warnings.append("No import-grounded access-audit events found for the requested window/filter.")
+
+        deduped_warnings = sorted(set(warnings))
+        summary = ImportGroundedAccessAuditSummary(
+            totalEvents=len(entries),
+            byAction=dict(by_action),
+            byStatus=dict(by_status),
+        )
+
+        _write_access_audit_log(
+            request,
+            action="import_grounded_access_audit_read",
+            status="success",
+            class_section_id=normalized_class_section_id,
+            metadata={
+                "lookbackDays": days,
+                "requestedLimit": limit,
+                "returnedEvents": len(entries),
+                "export": export_mode,
+                "warningsCount": len(deduped_warnings),
+            },
+        )
+
+        if export_mode == "csv":
+            header = [
+                "auditId",
+                "createdAtIso",
+                "action",
+                "status",
+                "method",
+                "path",
+                "classSectionId",
+                "metadataJson",
+            ]
+            lines = [",".join(header)]
+            for item in entries:
+                lines.append(
+                    ",".join(
+                        [
+                            _csv_escape(item.auditId),
+                            _csv_escape(item.createdAtIso),
+                            _csv_escape(item.action),
+                            _csv_escape(item.status),
+                            _csv_escape(item.method),
+                            _csv_escape(item.path),
+                            _csv_escape(item.classSectionId or ""),
+                            _csv_escape(_to_compact_json(item.metadata)),
+                        ]
+                    )
+                )
+
+            date_tag = datetime.now(timezone.utc).strftime("%Y%m%d")
+            return Response(
+                content="\n".join(lines),
+                media_type="text/csv",
+                headers={
+                    "Content-Disposition": f'attachment; filename="import-grounded-access-audit-{date_tag}.csv"',
+                },
+            )
+
+        return ImportGroundedAccessAuditResponse(
+            success=True,
+            classSectionId=normalized_class_section_id,
+            lookbackDays=days,
+            entries=entries,
+            summary=summary,
+            warnings=deduped_warnings,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Import-grounded access-audit lookup failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Import-grounded access-audit error: {str(e)}")
 
 
 # ─── Quiz Generation System Prompt ────────────────────────────
@@ -2100,10 +4404,16 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
 def _validate_quiz_questions(
     questions: List[Dict[str, Any]],
     distribution: List[Dict[str, str]],
+    topic_provenance_map: Optional[Dict[str, Dict[str, Optional[str]]]] = None,
 ) -> List[QuizQuestion]:
     """Validate and normalise each question from the LLM response."""
     validated: List[QuizQuestion] = []
     points_map = {"easy": 1, "medium": 3, "hard": 5}
+
+    def _topic_key(value: str) -> str:
+        normalized = re.sub(r"[^a-z0-9\s]+", " ", (value or "").lower())
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        return normalized
 
     for i, q in enumerate(questions):
         dist = distribution[i] if i < len(distribution) else {}
@@ -2122,6 +4432,11 @@ def _validate_quiz_questions(
 
         options = q.get("options") if question_type == "multiple_choice" else None
 
+        question_topic = str(q.get("topic", "General"))
+        question_provenance = None
+        if topic_provenance_map:
+            question_provenance = topic_provenance_map.get(_topic_key(question_topic))
+
         validated.append(QuizQuestion(
             questionType=question_type,
             question=q.get("question", ""),
@@ -2129,9 +4444,10 @@ def _validate_quiz_questions(
             options=options,
             bloomLevel=bloom_level,
             difficulty=difficulty,
-            topic=q.get("topic", "General"),
+            topic=question_topic,
             points=q.get("points", points_map.get(difficulty, 3)),
             explanation=q.get("explanation", "No explanation provided."),
+            provenance=question_provenance,
         ))
 
     return validated
@@ -2141,7 +4457,7 @@ def _validate_quiz_questions(
 
 
 @app.post("/api/quiz/generate", response_model=QuizResponse)
-async def generate_quiz(request: QuizGenerationRequest):
+async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
     """
     Generate an AI-powered quiz via HF Serverless Inference.
     Supports Bloom's Taxonomy integration, multiple question types,
@@ -2151,6 +4467,36 @@ async def generate_quiz(request: QuizGenerationRequest):
 
         # Filter out excluded topics
         effective_topics = [t for t in request.topics if t not in request.excludeTopics]
+        import_grounding_enabled = ENABLE_IMPORT_GROUNDED_QUIZ
+        import_warnings: List[str] = []
+        if not import_grounding_enabled and request.preferImportedTopics:
+            import_warnings.append(
+                "Import-grounded quiz generation is disabled by rollout flag; using provided and curriculum topics only."
+            )
+
+        imported_topics_payload: Dict[str, Any] = {"topics": [], "materials": [], "warnings": []}
+        imported_topic_titles: List[str] = []
+        if import_grounding_enabled and (request.preferImportedTopics or not effective_topics):
+            imported_topics_payload = _load_persisted_course_material_topics(
+                http_request,
+                class_section_id=request.classSectionId,
+                material_id=request.materialId,
+                limit_materials=15,
+            )
+            import_warnings.extend(imported_topics_payload.get("warnings", []))
+            imported_topic_titles = [
+                str(topic.get("title", "")).strip()
+                for topic in imported_topics_payload.get("topics", [])
+                if str(topic.get("title", "")).strip() and str(topic.get("title", "")).strip() not in request.excludeTopics
+            ]
+
+        if imported_topic_titles:
+            if request.preferImportedTopics:
+                merged_topics = imported_topic_titles + [topic for topic in effective_topics if topic not in imported_topic_titles]
+            else:
+                merged_topics = effective_topics + [topic for topic in imported_topic_titles if topic not in effective_topics]
+            effective_topics = merged_topics
+
         if not effective_topics:
             raise HTTPException(
                 status_code=400,
@@ -2284,7 +4630,26 @@ Remember:
                 f"after {max_attempts} attempts (raw length={len(raw_content)} chars)."
             )
 
-        validated = _validate_quiz_questions(parsed_questions, distribution)
+        topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}
+        for imported_topic in (imported_topics_payload.get("topics") or []):
+            title = str(imported_topic.get("title") or "").strip()
+            if not title:
+                continue
+            normalized_title = re.sub(r"[^a-z0-9\s]+", " ", title.lower())
+            normalized_title = re.sub(r"\s+", " ", normalized_title).strip()
+            topic_provenance_map[normalized_title] = {
+                "topicId": str(imported_topic.get("topicId") or "") or None,
+                "title": title,
+                "materialId": str(imported_topic.get("materialId") or "") or None,
+                "sourceFile": str(imported_topic.get("sourceFile") or "") or None,
+                "sectionId": str(imported_topic.get("sectionId") or "") or None,
+            }
+
+        validated = _validate_quiz_questions(
+            parsed_questions,
+            distribution,
+            topic_provenance_map=topic_provenance_map,
+        )
         total_points = sum(q.points for q in validated)
 
         # Build metadata
@@ -2304,6 +4669,24 @@ Remember:
             "gradeLevel": request.gradeLevel,
             "totalQuestions": len(validated),
             "includesGraphQuestions": request.includeGraphs,
+            "classSectionId": request.classSectionId,
+            "className": request.className,
+            "materialId": request.materialId,
+            "importGroundingEnabled": import_grounding_enabled,
+            "usedImportedTopics": bool(imported_topic_titles),
+            "importedMaterialsCount": len(imported_topics_payload.get("materials", [])),
+            "importedTopicCount": len(imported_topics_payload.get("topics", [])),
+            "importWarnings": import_warnings,
+            "topicProvenance": [
+                {
+                    "topicId": topic.get("topicId"),
+                    "title": topic.get("title"),
+                    "materialId": topic.get("materialId"),
+                    "sourceFile": topic.get("sourceFile"),
+                    "sectionId": topic.get("sectionId"),
+                }
+                for topic in (imported_topics_payload.get("topics") or [])
+            ][:20],
             "supplementalPurpose": (
                 "This quiz is designed to supplement classroom instruction, "
                 "not replace teacher-led learning."
@@ -2342,14 +4725,14 @@ Remember:
 
 
 @app.post("/api/quiz/preview", response_model=QuizResponse)
-async def preview_quiz(request: QuizGenerationRequest):
+async def preview_quiz(http_request: Request, request: QuizGenerationRequest):
     """
     Generate a 3-question preview quiz for teachers to verify AI question
     quality before assigning a full quiz to students.
     """
     # Override to produce only 3 questions
     request.numQuestions = 3
-    return await generate_quiz(request)
+    return await generate_quiz(http_request, request)
 
 
 @app.get("/api/quiz/topics")
@@ -2709,24 +5092,6 @@ async def predict_risk_ml(data: EnhancedRiskRequest):
     except Exception as e:
         logger.error(f"Enhanced risk prediction error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Risk prediction error: {str(e)}")
-
-
-@app.post("/api/predict-risk/v2", response_model=StudentRiskPredictionV2)
-async def predict_risk_v2_endpoint(data: EnhancedRiskRequest):
-    """
-    Normalized student risk prediction endpoint.
-    Reuses enhanced ML inference and returns:
-    - risk_level in {low, medium, high}
-    - risk_score in [0, 1]
-    - top_factors as plain-language explanations
-    """
-    try:
-        logger.info(f"Risk v2 prediction for student {data.studentId}")
-        result = await predict_risk_v2(data)
-        return result
-    except Exception as e:
-        logger.error(f"Risk v2 prediction error: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Risk v2 prediction error: {str(e)}")
 
 
 @app.post("/api/quiz/calibrate-difficulty", response_model=CalibrateDifficultyResponse)
