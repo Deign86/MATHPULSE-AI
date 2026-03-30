@@ -80,6 +80,9 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
     return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
   };
 
+  const hasStartedLearning = modules.some((module) => module.progress > 0);
+  const learningPathHeading = hasStartedLearning ? 'Continue Learning' : 'Start Learning';
+
   const handleModuleClick = (module: typeof modules[0]) => {
     if (module.status !== 'Locked') {
       onNavigateToModules?.();
@@ -126,7 +129,12 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   return (
     <div>
       <div className="flex justify-between items-center mb-6 px-1">
-        <h2 className="text-2xl lg:text-[28px] font-display font-semibold text-slate-800 tracking-tight">Your Learning Path</h2>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+            <BookOpen size={20} strokeWidth={2.5} />
+          </div>
+          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">{learningPathHeading}</h2>
+        </div>
         <button 
           onClick={onNavigateToModules}
           className="text-primary font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20"
@@ -193,10 +201,8 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
                     <div className="flex items-center gap-1.5">
                        <Clock size={14} /> {module.duration} total
                     </div>
-                    <div className="flex items-center gap-1 tracking-widest text-[#fff]">
-                       {'★'.repeat(Math.floor(module.rating))}
-                       <span className="opacity-50">{'★'.repeat(5 - Math.floor(module.rating))}</span> 
-                       <span className="tracking-normal ml-0.5">{module.rating.toFixed(1)}</span>
+                    <div className="flex items-center gap-1.5 text-white/90">
+                     <BookOpen size={14} /> {module.totalLessons} lessons
                     </div>
                  </div>
                  

@@ -68,6 +68,7 @@ const App = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
+  const [dismissedSupplementalSignature, setDismissedSupplementalSignature] = useState<string>('');
 
   // Diagnostic State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
@@ -185,6 +186,52 @@ const App = () => {
     setProfileOverrides({});
   }, [userProfile?.uid]);
 
+  const atRiskSignature = [...atRiskSubjects].sort().join('|');
+  const supplementalDismissStorageKey = userProfile?.uid
+    ? `mathpulse_supplemental_dismissed_${userProfile.uid}`
+    : null;
+
+  useEffect(() => {
+    if (!supplementalDismissStorageKey) {
+      setDismissedSupplementalSignature('');
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(supplementalDismissStorageKey) || '';
+      setDismissedSupplementalSignature(stored);
+    } catch {
+      setDismissedSupplementalSignature('');
+    }
+  }, [supplementalDismissStorageKey]);
+
+  const dismissSupplementalBanner = () => {
+    if (!atRiskSignature) return;
+
+    setDismissedSupplementalSignature(atRiskSignature);
+    if (!supplementalDismissStorageKey) return;
+
+    try {
+      localStorage.setItem(supplementalDismissStorageKey, atRiskSignature);
+    } catch {
+      // Ignore localStorage errors safely.
+    }
+  };
+
+  const resetSupplementalBannerDismissal = () => {
+    setDismissedSupplementalSignature('');
+    if (!supplementalDismissStorageKey) return;
+
+    try {
+      localStorage.removeItem(supplementalDismissStorageKey);
+    } catch {
+      // Ignore localStorage errors safely.
+    }
+  };
+
+  const shouldShowSupplementalBanner =
+    atRiskSubjects.length > 0 && dismissedSupplementalSignature !== atRiskSignature;
+
   useEffect(() => {
     const loadSettings = async () => {
       if (!userProfile?.uid) {
@@ -264,6 +311,9 @@ const App = () => {
       setActiveTab('Dashboard');
       return;
     }
+
+    // Fresh diagnostic completion should always re-surface supplemental banner once.
+    resetSupplementalBannerDismissal();
 
     setAtRiskSubjects(payload.atRiskSubjectIds || []);
     setHasTakenDiagnostic(true);
@@ -776,11 +826,17 @@ const App = () => {
                           onContinueLearning={() => handleStudentNavigation('Modules')} 
                         />
 
-                        <SupplementalBanner
-                          variant="full"
-                          atRiskSubjects={atRiskSubjects}
-                          onAction={() => handleStudentNavigation('Modules')}
-                        />
+                        {shouldShowSupplementalBanner && (
+                          <SupplementalBanner
+                            variant="full"
+                            atRiskSubjects={atRiskSubjects}
+                            onDismiss={dismissSupplementalBanner}
+                            onAction={() => {
+                              dismissSupplementalBanner();
+                              handleStudentNavigation('Modules');
+                            }}
+                          />
+                        )}
 
                         {profileReady && (
                           <div className="pb-4">
