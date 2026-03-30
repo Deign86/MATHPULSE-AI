@@ -164,6 +164,41 @@ class TestHealthEndpoints:
         assert "x-request-id" in response.headers
 
 
+class TestAuthMiddleware:
+    def test_accepts_user_id_claim_when_uid_missing(self):
+        now = int(time.time())
+        firestore = _FakeFirestoreModule(
+            {
+                "courseMaterials": [
+                    {
+                        "materialId": "mat-auth-1",
+                        "teacherId": "test-teacher-uid",
+                        "fileName": "auth-check.pdf",
+                        "fileType": "pdf",
+                        "classSectionId": "grade11_a",
+                        "topics": [{"title": "Linear Equations"}],
+                        "extractedTextLength": 300,
+                        "retentionDays": 180,
+                        "expiresAtEpoch": now + 3600,
+                    }
+                ]
+            }
+        )
+
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "user_id": "test-teacher-uid",
+            "email": "teacher@example.com",
+            "role": "teacher",
+        }), patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/upload/course-materials/recent?classSectionId=grade11_a&limit=10")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert len(data["materials"]) == 1
+        assert data["materials"][0]["materialId"] == "mat-auth-1"
+
+
 # ─── Chat Endpoint ─────────────────────────────────────────────
 
 
