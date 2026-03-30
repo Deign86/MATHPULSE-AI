@@ -77,7 +77,7 @@ export const INITIAL_GAMIFICATION = {
  */
 export const BACKEND_API_URL =
   process.env.BACKEND_URL ||
-  "https://deign86-mathpulse-api.hf.space";
+  "https://deign86-mathpulse-api-v3test.hf.space";
 
 // ─── Retry / Timing ──────────────────────────────────────────
 

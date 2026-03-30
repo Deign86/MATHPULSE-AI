@@ -1,0 +1,25 @@
+models:
+  primary:
+    id: Qwen/Qwen2.5-Math-7B-Instruct
+    description: Main Grade 11-12 math tutor model
+    max_new_tokens: 512
+    temperature: 0.2
+    top_p: 0.9
+
+  backup:
+    - id: Qwen/Qwen2.5-Math-1.5B-Instruct
+      description: Lower-cost backup model for high traffic
+      max_new_tokens: 384
+      temperature: 0.2
+      top_p: 0.9
+    - id: google/gemma-2-2b-it
+      description: Secondary backup with broad instruction coverage
+      max_new_tokens: 384
+      temperature: 0.2
+      top_p: 0.9
+
+  experimental:
+    - id: mistralai/Mistral-7B-Instruct-v0.3
+      notes: Prompt/procedure experimentation
+    - id: meta-llama/Meta-Llama-3-8B-Instruct
+      notes: Baseline comparison against legacy deployment

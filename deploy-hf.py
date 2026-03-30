@@ -13,12 +13,28 @@ Safety:
 - This script only manages the backend space and never touches frontend spaces.
 """
 import argparse
+import io
 import os
 
 from huggingface_hub import HfApi, login
 
-SPACE_ID = "Deign86/mathpulse-api"
+SPACE_ID = "Deign86/mathpulse-api-v3test"
 BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
+
+SPACE_README = """---
+title: MathPulse AI API
+emoji: "🧮"
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# MathPulse AI Backend
+
+FastAPI backend for the MathPulse AI educational platform.
+"""
 
 
 def main():
@@ -63,7 +79,6 @@ def main():
         "automation_engine.py",
         "requirements.txt",
         "Dockerfile",
-        "README.md",
     ]
     for filename in files_to_upload:
         filepath = os.path.join(BACKEND_DIR, filename)
@@ -77,6 +92,15 @@ def main():
             print(f"Uploaded: {filename}")
         else:
             print(f"Warning: {filename} not found in {BACKEND_DIR}")
+
+    # Always upload normalized README metadata for stable Space parsing.
+    api.upload_file(
+        path_or_fileobj=io.BytesIO(SPACE_README.encode("utf-8")),
+        path_in_repo="README.md",
+        repo_id=SPACE_ID,
+        repo_type="space",
+    )
+    print("Uploaded: README.md (normalized Space metadata)")
 
     # Upload models directory (may contain trained model artifacts)
     models_dir = os.path.join(BACKEND_DIR, "models")
