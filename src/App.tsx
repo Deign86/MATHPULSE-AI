@@ -24,6 +24,7 @@ import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessm
 import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
 import AvatarShop from './components/AvatarShop';
+import AppLoadingScreen from './components/AppLoadingScreen';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService';
@@ -35,7 +36,7 @@ import { triggerStudentEnrolled, getPendingDeepDiagnosticCount } from './service
 import { resetTestingDataForRole } from './services/testResetService';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService';
 import { Toaster, toast } from 'sonner';
-import { Crown, Flame, Zap, Brain } from 'lucide-react';
+import { Crown, Flame, Zap, Brain, Calculator } from 'lucide-react';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -559,18 +560,6 @@ const App = () => {
     .split(/\s+/)
     .find((part) => /\p{L}/u.test(part)) || profileData.name.trim() || 'User';
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fc]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-[#5a6578] font-body">Loading MathPulse AI...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -617,9 +606,19 @@ const App = () => {
     }
   }, [isLoggedIn, userRole, isLearningPathLocked, pendingDeepDiagnosticCount]);
 
+  if (loading) {
+    return <AppLoadingScreen />;
+  }
+
   // Show login page if not logged in
   if (!isLoggedIn) {
     return <LoginPage />;
+  }
+
+  const isStudentProfileHydrated = userRole !== 'student' || profileReady;
+  
+  if (!isStudentProfileHydrated) {
+    return <AppLoadingScreen message="Preparing your dashboard..." />;
   }
 
   // Show Teacher Dashboard
@@ -743,16 +742,6 @@ const App = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {showInitialAssessmentCTA && (
-                <button
-                  onClick={handleOpenInitialAssessment}
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors"
-                  title="Initial assessment is required"
-                >
-                  <Brain className="h-4 w-4" />
-                  <span className="text-xs font-semibold">Take Initial Assessment</span>
-                </button>
-              )}
               <SearchBar
                 onSelect={(result) => {
                   // TODO: Navigate to selected search result
@@ -761,10 +750,10 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
-                className="p-2 rounded-lg bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group"
+                className="p-3 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group"
                 title="Scientific Calculator (Alt+K)"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
+                <Calculator size={20} className="group-hover:scale-110 transition-transform" />
               </button>
               <NotificationCenter userRole={userRole} />
               
@@ -800,30 +789,14 @@ const App = () => {
                 {activeTab === 'Dashboard' ? (
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
                     <div className="grid grid-cols-12 gap-8 lg:gap-10">
-                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-2">
-                        {showInitialAssessmentCTA && (
-                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-amber-900">Initial Assessment Required</p>
-                              <p className="text-xs text-amber-800">
-                                You skipped the mandatory initial assessment. Complete it to keep your learning path personalized and fully compliant.
-                              </p>
-                            </div>
-                            <button
-                              onClick={handleOpenInitialAssessment}
-                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition-colors"
-                            >
-                              <Brain className="h-4 w-4" />
-                              Start Assessment
-                            </button>
-                          </div>
-                        )}
-
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-0">
                         <HeroBanner 
                           userName={firstName} 
                           userLevel={userLevel}
                           avatarLayers={profileData.avatarLayers}
-                          onContinueLearning={() => handleStudentNavigation('Modules')} 
+                          onContinueLearning={() => handleStudentNavigation('Modules')}
+                          showAssessmentTooltip={showInitialAssessmentCTA}
+                          onOpenAssessment={handleOpenInitialAssessment}
                         />
 
                         {shouldShowSupplementalBanner && (
