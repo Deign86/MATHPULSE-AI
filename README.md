@@ -28,7 +28,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
 - **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
 - **Practice Center** — Dedicated practice area for reinforcing concepts
-- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen3-14B via Hugging Face Inference API, with optional self-consistency verification
+- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen2.5-Math-7B-Instruct via Hugging Face Inference API, with optional self-consistency verification
 - **Floating AI Tutor** — Always-accessible AI help widget available from any page
 - **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
 - **XP Notifications** — Real-time animated XP gain notifications
@@ -104,7 +104,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 ### AI Models
 | Model | Use Case |
 |---|---|
-| **Qwen/Qwen3-14B** | Chat tutoring (low-temperature, step-by-step verified), learning path generation, daily class insights, document column detection, math verification (self-consistency, code-based, LLM judge) |
+| **Qwen/Qwen2.5-Math-7B-Instruct** | Chat tutoring (low-temperature, step-by-step verified), learning path generation, daily class insights, document column detection, math verification (self-consistency, code-based, LLM judge) |
 | **facebook/bart-large-mnli** | Student risk classification via zero-shot classification |
 
 ## 🚀 Getting Started
@@ -205,29 +205,26 @@ Operational artifacts:
 
 MathPulse now supports a PRO-oriented architecture for fast demos, low-cost experimentation, and reproducible offline evaluation.
 
-- ZeroGPU Space app: app.py hosts a Gradio student demo with lazy-loaded model inference and GPU-on-demand via @spaces.GPU.
 - Inference provider switch: backend/services/inference_client.py routes requests to either local Space or Hugging Face Inference Providers, with retries, timeout controls, and fallback models.
 - HF Jobs for offline runs: jobs/eval_math_model.py and jobs/generate_variants.py support model evaluation and synthetic variant generation.
 - Private datasets flow: datasets/ structure plus scripts/push_dataset_to_hf.py and scripts/pull_dataset_from_hf.py for private Hub sync.
 
 Flow overview:
 
-1. Student demo requests go to ZeroGPU Space generation paths.
-2. Backend API calls route through the inference client and can switch provider mode by env.
-3. Offline evaluation and generation jobs consume datasets/eval and write artifacts to jobs/output and datasets/synthetic.
-4. Curated dataset artifacts sync to private Hugging Face Datasets repositories.
+1. Backend API calls route through the inference client and can switch provider mode by env.
+2. Offline evaluation and generation jobs consume datasets/eval and write artifacts to jobs/output and datasets/synthetic.
+3. Curated dataset artifacts sync to private Hugging Face Datasets repositories.
 
-### Chat-Only ZeroGPU Profile (Keep Full UI)
+### Chat-Only HF Inference Profile (Keep Full UI)
 
-If you only want the AI chatbot to use ZeroGPU while the rest of the app stays on normal backend/provider paths, use this routing profile:
+If you only want the AI chatbot to use HF inference while the rest of the app stays on normal backend/provider paths, use this routing profile:
 
 INFERENCE_PROVIDER=hf_inference
-INFERENCE_GPU_PROVIDER=local_space
+INFERENCE_GPU_PROVIDER=hf_inference
 INFERENCE_CPU_PROVIDER=hf_inference
 INFERENCE_GPU_REQUIRED_TASKS=chat
-INFERENCE_LOCAL_SPACE_URL=https://deign86-mathpulse-inference-zerogpu.hf.space
 
-This keeps your unique React UI and Firebase flows unchanged, while chat generation is offloaded to the dedicated ZeroGPU inference Space.
+This keeps your unique React UI and Firebase flows unchanged, while chat generation is handled through the configured HF inference provider.
 
 ### Quickstart: Run locally
 
@@ -236,20 +233,9 @@ This keeps your unique React UI and Firebase flows unchanged, while chat generat
 2. Install backend dependencies:
    python -m pip install -r backend/requirements.txt
 3. Copy config/env.sample values into your local environment.
-4. Start ZeroGPU-style Space app locally:
-   python app.py
-5. Run backend API:
+4. Run backend API:
    cd backend
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
-
-### Quickstart: Run via Hugging Face Space (ZeroGPU)
-
-1. Ensure Space runtime has requirements.txt dependencies installed.
-2. Set HF_SPACE_MODEL_ID and related generation env vars if needed.
-3. Enable ZeroGPU and verify:
-   - generate path via Gradio API name generate
-   - health path via Gradio API name health
-4. Use DEV_MODE.md for fast edit/reload loops.
 
 ### Quickstart: Run evaluation jobs on Hugging Face
 
@@ -263,7 +249,6 @@ This keeps your unique React UI and Firebase flows unchanged, while chat generat
 
 ### Cost Optimization Notes
 
-- Use ZeroGPU for public demo traffic and only request GPU in decorated inference functions.
 - Use smaller backup models in config/models.yaml for burst traffic or low-priority flows.
 - Run expensive experiments through Inference Providers with strict per-run limits in Jobs.
 - Keep eval/generation datasets private and compact to reduce iteration cost.
