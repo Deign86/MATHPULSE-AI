@@ -121,15 +121,6 @@ jobs:
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    # Run on manual trigger or when ZeroGPU frontend files change.
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && (
-        contains(toJson(github.event.commits), 'app.py') ||
-        contains(toJson(github.event.commits), 'requirements.txt') ||
-        contains(toJson(github.event.commits), 'backend/services/') ||
-        contains(toJson(github.event.commits), 'config/')
-      ))
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -217,3 +208,20 @@ jobs:
           git commit -m "🚀 Auto-deploy ZeroGPU frontend from GitHub (${GITHUB_SHA::7})"
           git push origin main --force
           echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-ai"
+
+      - name: Force ZeroGPU runtime
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi, SpaceHardware
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo_id = "Deign86/mathpulse-ai"
+
+          api.request_space_hardware(repo_id=repo_id, hardware=SpaceHardware.ZERO_A10G)
+          api.restart_space(repo_id=repo_id)
+          runtime = api.get_space_runtime(repo_id=repo_id)
+          print(f"Runtime stage={runtime.stage} requested_hardware={runtime.requested_hardware} current_hardware={runtime.hardware}")
+          PY
