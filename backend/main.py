@@ -37,6 +37,7 @@ import tempfile
 import subprocess
 import requests as http_requests
 import uvicorn
+from services.inference_client import InferenceRequest, create_default_client
 
 try:
     import firebase_admin  # type: ignore[import-not-found]
@@ -118,6 +119,7 @@ from analytics import (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mathpulse")
+inference_client = create_default_client()
 
 HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
 
@@ -651,10 +653,6 @@ def call_hf_chat(
     model: Optional[str] = None,
     timeout: int = 90,
 ) -> str:
-    """
-    Call the HF Inference API model endpoint using plain ``requests``.
-    Retries up to 3 times on 503 (model loading).
-    """
     if not HF_TOKEN:
         raise RuntimeError("HF_TOKEN is not set")
 
@@ -692,7 +690,6 @@ def call_hf_chat(
             raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
 
         data = resp.json()
-        # Support both HF inference output shapes and OpenAI-compatible fallback.
         if isinstance(data, list) and data:
             first = data[0]
             if isinstance(first, dict):
