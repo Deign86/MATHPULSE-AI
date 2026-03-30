@@ -243,7 +243,7 @@ class TestHFChatTransport:
         endpoint = call_args.args[0]
         payload = call_args.kwargs["json"]
 
-        assert endpoint == "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Math-7B-Instruct"
+        assert endpoint == "https://api-inference.huggingface.co/models/Qwen%2FQwen2.5-Math-7B-Instruct"
         assert payload["parameters"]["tool_choice"] == "none"
         assert "tools" not in payload
 
@@ -459,6 +459,43 @@ class TestQuizGeneration:
             "gradeLevel": "Grade 11",
         })
         assert response.status_code == 200
+
+    @patch("main.call_hf_chat")
+    def test_generate_quiz_accepts_new_max_limits(self, mock_chat):
+        max_questions = main_module.MAX_QUESTIONS_LIMIT
+        quiz_json = json.dumps([
+            {
+                "questionType": "identification",
+                "question": f"Question {i + 1}",
+                "correctAnswer": "Answer",
+                "bloomLevel": "remember",
+                "difficulty": "easy",
+                "topic": "Algebra",
+                "points": 1,
+                "explanation": "Because.",
+            }
+            for i in range(max_questions)
+        ])
+        mock_chat.return_value = quiz_json
+
+        response = client.post("/api/quiz/generate", json={
+            "topics": [f"Topic {i + 1}" for i in range(main_module.MAX_TOPICS_LIMIT)],
+            "gradeLevel": "Grade 11",
+            "numQuestions": max_questions,
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["questions"]) == max_questions
+
+    def test_generate_quiz_rejects_over_max_questions(self):
+        response = client.post("/api/quiz/generate", json={
+            "topics": ["Algebra"],
+            "gradeLevel": "Grade 11",
+            "numQuestions": main_module.MAX_QUESTIONS_LIMIT + 1,
+        })
+
+        assert response.status_code == 422
 
 
 # ─── Calculator ────────────────────────────────────────────────

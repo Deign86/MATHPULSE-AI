@@ -105,9 +105,9 @@ const filterTopicsByGrade = (
   );
 };
 
-// Temporary hard limits to prevent LLM token overflow (Meta-Llama-3-8B has 8192 token context)
-const MAX_QUESTIONS_LIMIT = 15;
-const MAX_TOPICS_LIMIT = 8;
+// Balanced limits for classroom use: allows longer quizzes while keeping response times practical.
+const MAX_QUESTIONS_LIMIT = 30;
+const MAX_TOPICS_LIMIT = 12;
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   easy: 'text-green-600',
@@ -942,7 +942,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   </p>
                   <p className="text-[11px] text-sky-400 mt-1 flex items-center gap-1">
                     <AlertCircle size={11} />
-                    Temporary limit: max {MAX_QUESTIONS_LIMIT} questions, {MAX_TOPICS_LIMIT} topics per quiz (model context constraint).
+                    Generation limit: up to {MAX_QUESTIONS_LIMIT} questions and {MAX_TOPICS_LIMIT} topics per quiz.
                   </p>
                 </div>
               </div>
@@ -1056,7 +1056,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   {selectedTopics.length > 0 && (
                     <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-rose-600 font-medium' : 'text-sky-600'}`}>
                       {selectedTopics.filter(t => !excludeTopics.includes(t)).length} topic{selectedTopics.filter(t => !excludeTopics.includes(t)).length !== 1 ? 's' : ''} selected
-                      {selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT && ` (only first ${MAX_TOPICS_LIMIT} will be used — model limit)`}
+                      {selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT && ` (only first ${MAX_TOPICS_LIMIT} will be used)`}
                     </p>
                   )}
                   {excludeTopics.length > 0 && (

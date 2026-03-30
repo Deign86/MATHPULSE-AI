@@ -1,7 +1,7 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen3-14B for chat, learning paths, insights, and quiz generation
+- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
     (via Hugging Face Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
@@ -124,10 +124,13 @@ inference_client = create_default_client()
 HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
 
 # Grade 11-12 tutoring default model. Can still be overridden via HF_MATH_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen3-14B")
+HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
+
+# Dedicated quiz model override (defaults to Qwen2.5 math instructor model).
+HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -668,7 +671,7 @@ def call_hf_chat(
     return _strip_repetition(text)
 
 
-def load_local_math_model(model_name: str = "Qwen/Qwen3-14B"):
+def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
     """Optional local loader for environments using Transformers instead of HF Inference API."""
     from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore[import-not-found]
 
@@ -858,7 +861,7 @@ Rules:
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
-    """AI Math Tutor powered by HF Inference API (Qwen/Qwen3-14B)."""
+    """AI Math Tutor powered by HF Inference API (Qwen/Qwen2.5-Math-7B-Instruct)."""
     try:
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
@@ -5127,6 +5130,7 @@ Remember:
                 messages, max_tokens=max_tokens, temperature=0.3, top_p=0.9,
                 timeout=http_timeout,
                 task_type="quiz_generation",
+                model=HF_QUIZ_MODEL_ID,
             )
             logger.info(f"Raw quiz response length: {len(raw_content)} chars (attempt {attempt + 1})")
 
