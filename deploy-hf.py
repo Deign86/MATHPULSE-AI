@@ -16,6 +16,7 @@ Safety:
 import argparse
 import io
 import os
+import time
 
 from huggingface_hub import HfApi, login
 
@@ -63,6 +64,39 @@ def _upload_tree(api: HfApi, repo_id: str, source_root: str, target_root: str) -
             print(f"Uploaded: {remote_path}")
 
 
+def _wait_for_runtime(api: HfApi, repo_id: str, timeout_sec: int) -> None:
+    """Poll runtime stage and print clear status while the Space boots."""
+    if timeout_sec <= 0:
+        return
+
+    start_ts = time.time()
+    while True:
+        runtime = api.get_space_runtime(repo_id=repo_id)
+        stage = str(runtime.stage)
+        requested_hardware = getattr(runtime, "requested_hardware", None)
+        current_hardware = getattr(runtime, "hardware", None)
+        print(
+            "Runtime status:",
+            {
+                "stage": stage,
+                "requested_hardware": str(requested_hardware),
+                "current_hardware": str(current_hardware),
+            },
+        )
+
+        if stage == "RUNNING":
+            return
+
+        elapsed = time.time() - start_ts
+        if elapsed >= timeout_sec:
+            print(
+                "Runtime did not reach RUNNING before timeout. "
+                "Inspect Space logs in HF UI if stage stays APP_STARTING/BUILDING.",
+            )
+            return
+        time.sleep(10)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Deploy MathPulse backend to HuggingFace Spaces")
     parser.add_argument("--token", required=False, help="HuggingFace API token (write access)")
@@ -83,6 +117,12 @@ def main():
         "--skip-restart",
         action="store_true",
         help="Do not restart the Space runtime after deployment/variable update.",
+    )
+    parser.add_argument(
+        "--wait-timeout-sec",
+        type=int,
+        default=300,
+        help="How long to wait for runtime to reach RUNNING (0 disables waiting).",
     )
     args = parser.parse_args()
 
@@ -114,27 +154,27 @@ def main():
     )
     print(f"Space ready: {SPACE_ID}")
 
-    # Step 3: Upload backend files (include ALL Python modules imported by main.py)
-    files_to_upload = [
+    # Step 3: Upload backend runtime files in ONE commit to avoid rebuild loops.
+    allow_patterns = [
         "main.py",
         "analytics.py",
         "automation_engine.py",
         "requirements.txt",
         ".dockerignore",
         "Dockerfile",
+        "services/**",
+        "models/**",
     ]
-    for filename in files_to_upload:
-        filepath = os.path.join(BACKEND_DIR, filename)
-        if os.path.exists(filepath):
-            api.upload_file(
-                path_or_fileobj=filepath,
-                path_in_repo=filename,
-                repo_id=SPACE_ID,
-                repo_type="space",
-            )
-            print(f"Uploaded: {filename}")
-        else:
-            print(f"Warning: {filename} not found in {BACKEND_DIR}")
+    api.upload_folder(
+        folder_path=BACKEND_DIR,
+        repo_id=SPACE_ID,
+        repo_type="space",
+        path_in_repo=".",
+        allow_patterns=allow_patterns,
+        ignore_patterns=["**/__pycache__/**", "**/*.pyc"],
+        commit_message="Deploy backend runtime files (atomic upload)",
+    )
+    print("Uploaded backend runtime files (single commit)")
 
     # Always upload normalized README metadata for stable Space parsing.
     api.upload_file(
@@ -144,10 +184,6 @@ def main():
         repo_type="space",
     )
     print("Uploaded: README.md (normalized Space metadata)")
-
-    # Upload package directories required at runtime.
-    _upload_tree(api, SPACE_ID, os.path.join(BACKEND_DIR, "services"), "services")
-    _upload_tree(api, SPACE_ID, os.path.join(BACKEND_DIR, "models"), "models")
 
     # Ensure backend routes can call the frontend ZeroGPU Space endpoint.
     api.add_space_variable(
@@ -160,6 +196,8 @@ def main():
     if not args.skip_restart:
         api.restart_space(repo_id=SPACE_ID)
         print("Restarted Space runtime to apply updated variables.")
+
+    _wait_for_runtime(api, SPACE_ID, args.wait_timeout_sec)
 
     print(f"\nDeployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")
