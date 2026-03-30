@@ -141,7 +141,26 @@ jobs:
             build/ hf-frontend/
 
           # Ensure HF Space metadata README exists
-          printf '%s\n' '---' 'title: MathPulse AI' 'emoji: "\U0001F4D0"' 'colorFrom: blue' 'colorTo: purple' 'sdk: static' 'pinned: false' '---' > hf-frontend/README.md
+          printf '%s\n' \
+            '---' \
+            'title: MathPulse AI' \
+            'emoji: "📐"' \
+            'colorFrom: blue' \
+            'colorTo: purple' \
+            'sdk: static' \
+            'pinned: false' \
+            '---' > hf-frontend/README.md
+
+          # Guardrail: fail fast if required Space metadata is missing/empty
+          test -s hf-frontend/README.md
+          grep -q '^---$' hf-frontend/README.md
+          grep -q '^title: MathPulse AI$' hf-frontend/README.md
+          grep -q '^emoji: "📐"$' hf-frontend/README.md
+          grep -q '^colorFrom: blue$' hf-frontend/README.md
+          grep -q '^colorTo: purple$' hf-frontend/README.md
+          grep -q '^sdk: static$' hf-frontend/README.md
+          grep -q '^pinned: false$' hf-frontend/README.md
+          echo "README.md Space metadata validation passed"
           
           # Commit and push
           cd hf-frontend

@@ -2,16 +2,18 @@
 Deploy MathPulse AI backend to HuggingFace Spaces.
 
 Usage:
-  python deploy-hf.py --token YOUR_HF_TOKEN
+    python deploy-hf.py --token YOUR_HF_TOKEN [--recreate]
 
 This script will:
-1. Delete existing mathpulse-api and mathpulse-frontend spaces
-2. Create a new mathpulse-api space (Docker SDK)
+1. Authenticate with Hugging Face
+2. Ensure mathpulse-api space exists (or recreate it when --recreate is used)
 3. Upload the backend files to the space
+
+Safety:
+- This script only manages the backend space and never touches frontend spaces.
 """
 import argparse
 import os
-import sys
 
 from huggingface_hub import HfApi, login
 
@@ -22,6 +24,11 @@ BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"
 def main():
     parser = argparse.ArgumentParser(description="Deploy MathPulse backend to HuggingFace Spaces")
     parser.add_argument("--token", required=True, help="HuggingFace API token (write access)")
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Delete and recreate the backend space before upload",
+    )
     args = parser.parse_args()
 
     login(token=args.token)
@@ -30,23 +37,24 @@ def main():
     user = api.whoami()
     print(f"Authenticated as: {user['name']}")
 
-    # Step 1: Delete existing spaces
-    for space_id in ["Deign86/mathpulse-api", "Deign86/mathpulse-frontend"]:
+    # Step 1: Optionally recreate backend space only
+    if args.recreate:
         try:
-            api.delete_repo(repo_id=space_id, repo_type="space")
-            print(f"Deleted space: {space_id}")
+            api.delete_repo(repo_id=SPACE_ID, repo_type="space")
+            print(f"Deleted space: {SPACE_ID}")
         except Exception as e:
-            print(f"Could not delete {space_id}: {e}")
+            print(f"Could not delete {SPACE_ID}: {e}")
 
-    # Step 2: Create new mathpulse-api space (Docker SDK)
-    print(f"\nCreating space: {SPACE_ID}")
+    # Step 2: Ensure backend space exists
+    print(f"\nEnsuring space exists: {SPACE_ID}")
     api.create_repo(
         repo_id=SPACE_ID,
         repo_type="space",
         space_sdk="docker",
         private=False,
+        exist_ok=True,
     )
-    print(f"Created space: {SPACE_ID}")
+    print(f"Space ready: {SPACE_ID}")
 
     # Step 3: Upload backend files (include ALL Python modules imported by main.py)
     files_to_upload = [
