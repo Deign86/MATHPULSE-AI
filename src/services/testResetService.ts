@@ -125,9 +125,41 @@ async function resetTeacherTestingData(uid: string): Promise<{ deletedDocs: numb
   let deletedDocs = 0;
   let updatedDocs = 0;
 
+  const classroomsSnapshot = await getDocs(query(collection(db, 'classrooms'), where('teacherId', '==', uid)));
+  const classroomIds = classroomsSnapshot.docs.map((entry) => entry.id);
+
   deletedDocs += await tryDeleteByField('notifications', 'userId', uid);
   deletedDocs += await tryDeleteByField('chatSessions', 'userId', uid);
   deletedDocs += await tryDeleteByField('chatMessages', 'userId', uid);
+  deletedDocs += await tryDeleteByField('announcements', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('classSectionOwnership', 'ownerTeacherId', uid);
+
+  // Remove teacher-owned dashboard and import data so reset leaves no residual class/student records.
+  deletedDocs += await tryDeleteByField('managedStudents', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('classrooms', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('normalizedClassRecords', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('classRecordImports', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('courseMaterials', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('riskRefreshEvents', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('riskRefreshJobs', 'teacherId', uid);
+  deletedDocs += await tryDeleteByField('importGroundedFeedbackEvents', 'teacherId', uid);
+
+  // Remove audit traces tied to the teacher's import actions.
+  deletedDocs += await tryDeleteByField('accessAuditLogs', 'actorUid', uid);
+  deletedDocs += await tryDeleteByField('accessAuditLogs', 'teacherId', uid);
+
+  for (const classroomId of classroomIds) {
+    deletedDocs += await tryDeleteByField('managedStudents', 'classroomId', classroomId);
+    deletedDocs += await tryDeleteByField('activities', 'classroomId', classroomId);
+    deletedDocs += await tryDeleteByField('announcements', 'classroomId', classroomId);
+    await deleteDoc(doc(db, 'classrooms', classroomId)).then(() => {
+      deletedDocs += 1;
+    }).catch(() => undefined);
+  }
+
+  await deleteDoc(doc(db, 'riskRefreshStats', uid)).then(() => {
+    deletedDocs += 1;
+  }).catch(() => undefined);
 
   await setDoc(
     doc(db, 'users', uid),

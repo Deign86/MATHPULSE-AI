@@ -7,6 +7,7 @@ import {
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import ConfirmModal from './ConfirmModal';
 import {
   Dialog,
   DialogContent,
@@ -39,10 +40,13 @@ const AdminUserManagement: React.FC = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<Pick<AdminUser, 'id' | 'name'> | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
   // Form State
@@ -139,21 +143,32 @@ const AdminUserManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const handleDeleteUser = (id: string, name: string) => {
+    setPendingDeleteUser({ id, name });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!pendingDeleteUser || isDeletingUser) return;
+
+    setIsDeletingUser(true);
     try {
-      await deleteAdminUser(id);
+      await deleteAdminUser(pendingDeleteUser.id);
       await addAuditLog(
         'User Deleted',
         'User',
         'Warning',
-        `Deleted user account: ${name}`,
+        `Deleted user account: ${pendingDeleteUser.name}`,
         { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
       );
       toast.success('User deleted');
-      setUsers(prev => prev.filter(u => u.id !== id));
-    } catch (err) {
+      setUsers(prev => prev.filter(u => u.id !== pendingDeleteUser.id));
+      setIsDeleteModalOpen(false);
+      setPendingDeleteUser(null);
+    } catch {
       toast.error('Failed to delete user');
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -490,6 +505,22 @@ const AdminUserManagement: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (isDeletingUser) return;
+          setIsDeleteModalOpen(false);
+          setPendingDeleteUser(null);
+        }}
+        onConfirm={handleConfirmDeleteUser}
+        title="Delete User?"
+        message={pendingDeleteUser ? `Delete user \"${pendingDeleteUser.name}\"? This cannot be undone.` : 'Delete this user? This cannot be undone.'}
+        confirmText={isDeletingUser ? 'Deleting...' : 'Delete'}
+        cancelText="Cancel"
+        type="danger"
+        icon="delete"
+      />
     </div>
   );
 };

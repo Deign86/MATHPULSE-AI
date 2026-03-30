@@ -558,6 +558,79 @@ class TestClassRecordImportMapping:
         assert response.status_code == 422
 
 
+class TestUploadClassRecordsGuardrails:
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_rejects_unsupported_dataset_intent(self, _mock_chat):
+        files = {
+            "files": ("records.csv", b"name,lrn,email,avgQuizScore,attendance,engagementScore,assignmentCompletion\nAna,1001,ana@example.com,80,90,85,88\n", "text/csv"),
+        }
+        response = client.post(
+            "/api/upload/class-records",
+            files=files,
+            data={"datasetIntent": "unsupported_intent"},
+        )
+
+        assert response.status_code == 400
+        assert "Unsupported datasetIntent" in response.json()["detail"]
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_blocks_when_required_core_fields_missing(self, _mock_chat):
+        files = {
+            "files": (
+                "records.csv",
+                b"name,lrn,email,attendance\nAna,1001,ana@example.com,90\n",
+                "text/csv",
+            ),
+        }
+        response = client.post(
+            "/api/upload/class-records",
+            files=files,
+            data={"datasetIntent": "synthetic_student_records"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is False
+        assert payload["summary"]["failedFiles"] == 1
+        combined_warnings = " ".join(payload.get("warnings", []))
+        assert "Missing required educational columns" in combined_warnings
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_returns_interpretation_metadata(self, _mock_chat):
+        files = {
+            "files": (
+                "records.csv",
+                (
+                    b"name,lrn,email,avgQuizScore,attendance,engagementScore,assignmentCompletion,patient_diagnosis\n"
+                    b"Ana,1001,ana@example.com,80,90,85,88,none\n"
+                ),
+                "text/csv",
+            ),
+        }
+        response = client.post(
+            "/api/upload/class-records",
+            files=files,
+            data={"datasetIntent": "synthetic_student_records"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["datasetIntent"] == "synthetic_student_records"
+        assert isinstance(payload.get("columnInterpretations"), list)
+        summary = payload.get("interpretationSummary") or {}
+        assert summary.get("storageOnlyColumns", 0) >= 1
+        assert summary.get("domainMismatchWarnings", 0) >= 1
+
+        patient_column = next(
+            (item for item in payload["columnInterpretations"] if item.get("columnName") == "patient_diagnosis"),
+            None,
+        )
+        assert patient_column is not None
+        assert patient_column["usagePolicy"] == "storage_only"
+        assert patient_column["confidenceBand"] == "low"
+
+
 class TestAsyncGenerationTasks:
     @patch("main.asyncio.create_task")
     def test_quiz_generate_async_submit_status_list_cancel(self, mock_create_task):

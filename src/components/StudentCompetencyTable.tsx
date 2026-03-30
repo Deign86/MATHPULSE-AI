@@ -38,6 +38,52 @@ interface CompetencyStudent {
   weakestTopic: string;
 }
 
+function normalizeClassSectionId(value?: string | null): string {
+  return (value || '').trim().toLowerCase();
+}
+
+function buildCompetencyStudentKey(student: CompetencyStudent): string {
+  const classKey = normalizeClassSectionId(student.classSectionId);
+  const idKey = (student.id || '').trim().toLowerCase();
+  if (classKey && idKey) return `${classKey}|id:${idKey}`;
+  const emailKey = (student.email || '').trim().toLowerCase();
+  if (classKey && emailKey) return `${classKey}|email:${emailKey}`;
+  return `${classKey}|name:${student.name.trim().toLowerCase()}`;
+}
+
+function mergeCompetencyStudents(primary: CompetencyStudent[], imported: CompetencyStudent[]): CompetencyStudent[] {
+  const merged = new Map<string, CompetencyStudent>();
+  primary.forEach((student) => merged.set(buildCompetencyStudentKey(student), student));
+
+  imported.forEach((student) => {
+    const key = buildCompetencyStudentKey(student);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, student);
+      return;
+    }
+
+    const riskLevel: 'High' | 'Medium' | 'Low' = [existing.riskLevel, student.riskLevel].includes('High')
+      ? 'High'
+      : [existing.riskLevel, student.riskLevel].includes('Medium')
+        ? 'Medium'
+        : 'Low';
+
+    merged.set(key, {
+      ...existing,
+      classSectionId: existing.classSectionId ?? student.classSectionId,
+      avgQuizScore: student.avgQuizScore > 0 ? student.avgQuizScore : existing.avgQuizScore,
+      engagementScore: student.engagementScore > 0 ? student.engagementScore : existing.engagementScore,
+      weakestTopic: existing.weakestTopic && existing.weakestTopic !== 'Foundational Skills'
+        ? existing.weakestTopic
+        : student.weakestTopic,
+      riskLevel,
+    });
+  });
+
+  return Array.from(merged.values());
+}
+
 type SortField = 'name' | 'avgQuizScore' | 'riskLevel' | 'engagementScore';
 type SortDir = 'asc' | 'desc';
 
@@ -106,13 +152,14 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
         normalizedStudents = normalizedStudents.filter((student) => student.classSectionId === classSectionId);
       }
 
-      if (normalizedStudents.length === 0) {
-        const importedOverview = await apiService.getImportedClassOverview({ classSectionId, limit: 3000 });
-        if (importedOverview.warnings.length > 0) {
-          setStudentsWarning(importedOverview.warnings.join(' '));
-        }
-        normalizedStudents = importedOverview.students.map(mapImportedStudentToCompetencyStudent);
+      const importedOverview = await apiService.getImportedClassOverview({ classSectionId, limit: 3000 });
+      if (importedOverview.warnings.length > 0) {
+        setStudentsWarning(importedOverview.warnings.join(' '));
       }
+      normalizedStudents = mergeCompetencyStudents(
+        normalizedStudents,
+        importedOverview.students.map(mapImportedStudentToCompetencyStudent),
+      );
 
       setRows(normalizedStudents.map(s => ({
         student: s,

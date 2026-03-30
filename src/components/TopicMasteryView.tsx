@@ -105,7 +105,12 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
       if (classSectionId) {
         params.set('classSectionId', classSectionId);
       }
-      const res = await fetch(`${API_URL}/api/analytics/topic-mastery?${params.toString()}`);
+      const token = await currentUser.getIdToken();
+      const res = await fetch(`${API_URL}/api/analytics/topic-mastery?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (res.ok) {
         const data = await res.json();

@@ -6,13 +6,14 @@ import { Button } from './ui/button';
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
   icon?: 'logout' | 'delete' | 'warning';
+  zIndexClass?: string;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -24,7 +25,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   type = 'warning',
-  icon = 'warning'
+  icon = 'warning',
+  zIndexClass = 'z-50',
 }) => {
   const getIcon = () => {
     switch (icon) {
@@ -67,9 +69,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   const colors = getColorClasses();
 
-  const handleConfirm = () => {
-    onConfirm();
-    onClose();
+  const handleConfirm = async () => {
+    try {
+      await onConfirm();
+      onClose();
+    } catch {
+      // Keep modal open if caller throws so the user can retry or cancel.
+    }
   };
 
   return (
@@ -82,7 +88,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${zIndexClass} flex items-center justify-center p-4`}
           >
             {/* Modal */}
             <motion.div

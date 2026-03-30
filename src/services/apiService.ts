@@ -42,6 +42,7 @@ const IMPORT_GROUNDED_QUIZ_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE
 const IMPORT_GROUNDED_LESSON_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_LESSON, true);
 const IMPORT_GROUNDED_FEEDBACK_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS, true);
 const ASYNC_GENERATION_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_ASYNC_GENERATION, true);
+let IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = true;
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -135,6 +136,7 @@ export interface ImportedClassOverviewResponse {
 
 export interface UploadResponse {
   success: boolean;
+  datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
   students: {
     name: string;
     lrn?: string;
@@ -155,6 +157,22 @@ export interface UploadResponse {
     dedupKey?: string;
   }[];
   columnMapping: Record<string, string>;
+  columnInterpretations?: {
+    columnName: string;
+    mappedField?: string;
+    mappingSource: 'ai' | 'fallback' | 'unmapped';
+    confidenceBand: 'high' | 'medium' | 'low';
+    usagePolicy: 'scoring' | 'display' | 'storage_only';
+    reason: string;
+    domainSignals?: string[];
+  }[];
+  interpretationSummary?: {
+    scoringColumns: number;
+    displayColumns: number;
+    storageOnlyColumns: number;
+    lowConfidenceColumns: number;
+    domainMismatchWarnings: number;
+  };
   totalRows?: number;
   unknownColumns?: string[];
   warnings?: string[];
@@ -181,6 +199,9 @@ export interface UploadResponse {
     students: UploadResponse['students'];
     totalRows: number;
     columnMapping: Record<string, string>;
+    datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
+    columnInterpretations?: UploadResponse['columnInterpretations'];
+    interpretationSummary?: UploadResponse['interpretationSummary'];
     unknownColumns: string[];
     warnings: string[];
     rowWarnings: { row: number; warning: string }[];
@@ -420,8 +441,22 @@ export interface AsyncTaskStatusResponse {
   createdAt: string;
   startedAt?: string | null;
   completedAt?: string | null;
+  progressPercent?: number;
+  progressStage?: string;
+  progressMessage?: string | null;
   result?: Record<string, unknown> | null;
   error?: unknown;
+}
+
+export interface AsyncTaskWaitOptions {
+  timeoutMs?: number;
+  pollIntervalMs?: number;
+  onProgress?: (status: AsyncTaskStatusResponse) => void;
+}
+
+export interface QuizGenerationOptions {
+  onTaskCreated?: (taskId: string) => void;
+  onProgress?: (status: AsyncTaskStatusResponse) => void;
 }
 
 export interface AsyncTaskListResponse {
@@ -659,6 +694,13 @@ const UPLOAD_RETRY_OPTS: RetryFetchOptions = {
   maxRetries: 2,
   timeoutMs: 120_000,
   baseBackoffMs: 2_000,
+};
+
+/** Imported class overview should fail fast so dashboard loading never stalls. */
+const IMPORTED_OVERVIEW_RETRY_OPTS: RetryFetchOptions = {
+  maxRetries: 0,
+  timeoutMs: 8_000,
+  baseBackoffMs: 500,
 };
 
 // ─── Warmup / Health Ping ────────────────────────────────────
@@ -1066,6 +1108,16 @@ export const apiService = {
     classSectionId?: string;
     limit?: number;
   }): Promise<ImportedClassOverviewResponse> {
+    if (!IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE) {
+      return {
+        success: true,
+        classSectionId: options?.classSectionId ?? null,
+        classrooms: [],
+        students: [],
+        warnings: ['Imported class overview endpoint is unavailable on this backend deployment.'],
+      };
+    }
+
     const limit = options?.limit ?? 3000;
     validateRange('/api/analytics/imported-class-overview', 'limit', limit, 1, 5000);
     const params = new URLSearchParams();
@@ -1074,13 +1126,35 @@ export const apiService = {
       params.set('classSectionId', options.classSectionId);
     }
 
-    return apiFetch<ImportedClassOverviewResponse>(`/api/analytics/imported-class-overview?${params.toString()}`);
+    try {
+      return await apiFetch<ImportedClassOverviewResponse>(
+        `/api/analytics/imported-class-overview?${params.toString()}`,
+        undefined,
+        IMPORTED_OVERVIEW_RETRY_OPTS,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = false;
+        return {
+          success: true,
+          classSectionId: options?.classSectionId ?? null,
+          classrooms: [],
+          students: [],
+          warnings: ['Imported class overview endpoint is unavailable on this backend deployment.'],
+        };
+      }
+      throw error;
+    }
   },
 
   /** Smart File Upload with AI Column Detection */
   async uploadClassRecords(
     files: File | File[],
-    options?: { classSectionId?: string; className?: string },
+    options?: {
+      classSectionId?: string;
+      className?: string;
+      datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
+    },
   ): Promise<UploadResponse> {
     const resolvedFiles = Array.isArray(files) ? files : [files];
     if (resolvedFiles.length === 0) {
@@ -1101,6 +1175,7 @@ export const apiService = {
     if (options?.className) {
       formData.append('className', options.className);
     }
+    formData.append('datasetIntent', options?.datasetIntent ?? 'synthetic_student_records');
 
     return apiFetch<UploadResponse>(
       '/api/upload/class-records',
@@ -1295,7 +1370,10 @@ export const apiService = {
   // ─── Quiz Maker ───────────────────────────────────────────
 
   /** Generate AI-powered quiz */
-  async generateQuiz(request: QuizGenerationRequest): Promise<QuizGenerationResponse> {
+  async generateQuiz(
+    request: QuizGenerationRequest,
+    options?: QuizGenerationOptions,
+  ): Promise<QuizGenerationResponse> {
     validateRequired('/api/quiz/generate', {
       topics: request.topics,
       gradeLevel: request.gradeLevel,
@@ -1311,9 +1389,11 @@ export const apiService = {
 
     if (ASYNC_GENERATION_ENABLED) {
       const submitted = await apiService.submitQuizAsync(effectiveRequest);
+      options?.onTaskCreated?.(submitted.taskId);
       const task = await apiService.waitForTaskResult(submitted.taskId, {
         timeoutMs: 240_000,
         pollIntervalMs: 1_500,
+        onProgress: options?.onProgress,
       });
       const payload = task.result;
       if (!payload || typeof payload !== 'object') {
@@ -1409,10 +1489,7 @@ export const apiService = {
 
   async waitForTaskResult(
     taskId: string,
-    options?: {
-      timeoutMs?: number;
-      pollIntervalMs?: number;
-    },
+    options?: AsyncTaskWaitOptions,
   ): Promise<AsyncTaskStatusResponse> {
     const timeoutMs = options?.timeoutMs ?? 180_000;
     const pollIntervalMs = options?.pollIntervalMs ?? 1_500;
@@ -1420,6 +1497,7 @@ export const apiService = {
 
     while (Date.now() - started <= timeoutMs) {
       const status = await apiService.getTaskStatus(taskId);
+      options?.onProgress?.(status);
       if (status.status === 'completed') {
         return status;
       }

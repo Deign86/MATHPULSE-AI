@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import ConfirmModal from './ConfirmModal';
 import {
   Dialog,
   DialogContent,
@@ -38,10 +39,13 @@ const AdminContent: React.FC = () => {
   const [modules, setModules] = useState<ContentModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('All Types');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [pendingDeleteModule, setPendingDeleteModule] = useState<ContentModule | null>(null);
   const [editingModule, setEditingModule] = useState<ContentModule | null>(null);
   const [formData, setFormData] = useState<Omit<ContentModule, 'id'>>({
     title: '',
@@ -134,21 +138,32 @@ const AdminContent: React.FC = () => {
     }
   };
 
-  const handleDelete = async (mod: ContentModule) => {
-    if (!confirm(`Delete "${mod.title}"? This cannot be undone.`)) return;
+  const handleDelete = (mod: ContentModule) => {
+    setPendingDeleteModule(mod);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteModule || isDeleting) return;
+
+    setIsDeleting(true);
     try {
-      await deleteModule(mod.id);
+      await deleteModule(pendingDeleteModule.id);
       await addAuditLog(
         'Module Deleted',
         'Content',
         'Warning',
-        `Deleted module: "${mod.title}"`,
+        `Deleted module: "${pendingDeleteModule.title}"`,
         { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
       );
       toast.success('Module deleted');
-      setModules(prev => prev.filter(m => m.id !== mod.id));
+      setModules(prev => prev.filter(m => m.id !== pendingDeleteModule.id));
+      setIsDeleteModalOpen(false);
+      setPendingDeleteModule(null);
     } catch {
       toast.error('Failed to delete module');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -471,6 +486,22 @@ const AdminContent: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (isDeleting) return;
+          setIsDeleteModalOpen(false);
+          setPendingDeleteModule(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Module?"
+        message={pendingDeleteModule ? `Delete \"${pendingDeleteModule.title}\"? This cannot be undone.` : 'Delete this module? This cannot be undone.'}
+        confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+        cancelText="Cancel"
+        type="danger"
+        icon="delete"
+      />
     </motion.div>
   );
 };
