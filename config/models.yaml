@@ -1,13 +1,13 @@
 models:
   primary:
-    id: Qwen/Qwen2.5-Math-7B-Instruct
-    description: Main Grade 11-12 math tutor model
+    id: Qwen/Qwen3.5-9B
+    description: Main Grade 11-12 tutor model (router-supported)
     max_new_tokens: 512
     temperature: 0.2
     top_p: 0.9
 
   backup:
-    - id: Qwen/Qwen2.5-Math-1.5B-Instruct
+    - id: meta-llama/Llama-3.1-8B-Instruct
       description: Lower-cost backup model for high traffic
       max_new_tokens: 384
       temperature: 0.2
@@ -28,11 +28,27 @@ routing:
   task_model_map:
     chat: Qwen/Qwen2.5-Math-7B-Instruct
     verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
-    lesson_generation: Qwen/Qwen2.5-Math-7B-Instruct
-    quiz_generation: Qwen/Qwen2.5-Math-7B-Instruct
-    learning_path: Qwen/Qwen2.5-Math-7B-Instruct
-    daily_insight: Qwen/Qwen2.5-Math-1.5B-Instruct
-    risk_classification: Qwen/Qwen2.5-Math-1.5B-Instruct
+    lesson_generation: Qwen/Qwen3.5-9B
+    quiz_generation: Qwen/Qwen3.5-9B
+    learning_path: Qwen/Qwen3.5-9B
+    daily_insight: meta-llama/Llama-3.1-8B-Instruct
+    risk_classification: meta-llama/Llama-3.1-8B-Instruct
+    risk_narrative: meta-llama/Llama-3.1-8B-Instruct
+
+  task_fallback_model_map:
+    chat:
+      - Qwen/Qwen2.5-Math-1.5B-Instruct
+      - deepseek-ai/deepseek-math-7b-instruct
+      - meta-llama/Llama-3.1-8B-Instruct
+    verify_solution:
+      - Qwen/Qwen2.5-Math-1.5B-Instruct
+      - deepseek-ai/deepseek-math-7b-instruct
+      - meta-llama/Llama-3.1-8B-Instruct
 
   task_provider_map:
+    quiz_generation: local_space
+    lesson_generation: local_space
+    learning_path: local_space
+    daily_insight: local_space
+    risk_narrative: local_space
     risk_classification: hf_inference

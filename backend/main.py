@@ -28,7 +28,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Fo
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 import time
@@ -131,8 +131,8 @@ HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct"
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
 
-# Dedicated quiz model override (defaults to Qwen2.5 math instructor model).
-HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
+# Dedicated quiz model override.
+HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -149,6 +149,7 @@ ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true
 ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_ASYNC_GENERATION = os.getenv("ENABLE_ASYNC_GENERATION", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_LLM_RISK_RECOMMENDATIONS = os.getenv("ENABLE_LLM_RISK_RECOMMENDATIONS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ASYNC_TASK_TTL_SECONDS = int(os.getenv("ASYNC_TASK_TTL_SECONDS", "3600"))
 ASYNC_TASK_MAX_ITEMS = int(os.getenv("ASYNC_TASK_MAX_ITEMS", "400"))
 LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
@@ -156,6 +157,8 @@ LESSON_SOURCE_MIN_TOPICS = int(os.getenv("LESSON_SOURCE_MIN_TOPICS", "1"))
 LESSON_VALIDATION_MIN_SCORE = float(os.getenv("LESSON_VALIDATION_MIN_SCORE", "0.7"))
 ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY = os.getenv("ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY", "true").strip().lower() in {"1", "true", "yes", "on"}
 FIREBASE_AUTH_PROJECT_ID = os.getenv("FIREBASE_AUTH_PROJECT_ID", "mathpulse-ai-2026").strip()
+FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+FIREBASE_SERVICE_ACCOUNT_FILE = os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE", "").strip()
 FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
     value.strip()
     for value in os.getenv("FIREBASE_AUTH_PROJECT_ALLOWLIST", "").split(",")
@@ -262,6 +265,9 @@ class AuthenticatedUser(BaseModel):
 _firebase_ready = False
 _role_cache: Dict[str, Dict[str, Any]] = {}
 _ROLE_CACHE_TTL_SECONDS = 60
+_firestore_role_lookup_warning_emitted = False
+_firestore_audit_lookup_warning_emitted = False
+_firestore_topics_lookup_warning_emitted = False
 _rate_limit_buckets: Dict[str, List[float]] = {}
 _async_tasks: Dict[str, Dict[str, Any]] = {}
 _async_tasks_lock = Lock()
@@ -278,6 +284,14 @@ def _snapshot_exists(snapshot: Any) -> bool:
     return bool(getattr(snapshot, "exists", False))
 
 
+def _is_adc_missing_error(err: Exception) -> bool:
+    message = str(err).lower()
+    return (
+        "default credentials were not found" in message
+        or "application default credentials" in message
+    )
+
+
 def _init_firebase_admin() -> None:
     global _firebase_ready
     if _firebase_ready:
@@ -289,9 +303,21 @@ def _init_firebase_admin() -> None:
     try:
         if not firebase_admin._apps:  # type: ignore[attr-defined]
             init_options: Dict[str, Any] = {}
+            credentials_obj: Optional[Any] = None
             if FIREBASE_AUTH_PROJECT_ID:
                 init_options["projectId"] = FIREBASE_AUTH_PROJECT_ID
-            if init_options:
+
+            if FIREBASE_SERVICE_ACCOUNT_JSON:
+                service_account_payload = json.loads(FIREBASE_SERVICE_ACCOUNT_JSON)
+                credentials_obj = cast(Any, firebase_admin).credentials.Certificate(service_account_payload)
+            elif FIREBASE_SERVICE_ACCOUNT_FILE:
+                credentials_obj = cast(Any, firebase_admin).credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_FILE)
+
+            if credentials_obj and init_options:
+                firebase_admin.initialize_app(credentials_obj, options=init_options)  # type: ignore[union-attr]
+            elif credentials_obj:
+                firebase_admin.initialize_app(credentials_obj)  # type: ignore[union-attr]
+            elif init_options:
                 firebase_admin.initialize_app(options=init_options)  # type: ignore[union-attr]
             else:
                 firebase_admin.initialize_app()  # type: ignore[union-attr]
@@ -301,7 +327,11 @@ def _init_firebase_admin() -> None:
         else:
             logger.info("Firebase Admin SDK initialized for API auth verification")
     except Exception as e:
-        logger.warning(f"Firebase Admin SDK init failed: {e}")
+        logger.warning(
+            "Firebase Admin SDK init failed: %s. Configure FIREBASE_SERVICE_ACCOUNT_JSON "
+            "or FIREBASE_SERVICE_ACCOUNT_FILE, or set GOOGLE_APPLICATION_CREDENTIALS.",
+            e,
+        )
 
 
 def _get_role_from_firestore(uid: str) -> Optional[str]:
@@ -320,12 +350,84 @@ def _get_role_from_firestore(uid: str) -> Optional[str]:
             _role_cache[uid] = {"role": role, "ts": now}
             return role
     except Exception as e:
-        logger.warning(f"Failed to resolve role from Firestore for {uid}: {e}")
+        _warn_firestore_role_lookup_once(f"Failed to resolve role from Firestore for {uid}: {e}")
 
     return None
 
 
-def _resolve_user_role(decoded: Dict[str, Any]) -> str:
+def _warn_firestore_role_lookup_once(message: str) -> None:
+    global _firestore_role_lookup_warning_emitted
+    if _firestore_role_lookup_warning_emitted:
+        return
+    logger.warning(message)
+    _firestore_role_lookup_warning_emitted = True
+
+
+def _warn_firestore_audit_lookup_once(message: str) -> None:
+    global _firestore_audit_lookup_warning_emitted
+    if _firestore_audit_lookup_warning_emitted:
+        return
+    logger.warning(message)
+    _firestore_audit_lookup_warning_emitted = True
+
+
+def _warn_firestore_topics_lookup_once(message: str) -> None:
+    global _firestore_topics_lookup_warning_emitted
+    if _firestore_topics_lookup_warning_emitted:
+        return
+    logger.warning(message)
+    _firestore_topics_lookup_warning_emitted = True
+
+
+def _extract_role_from_firestore_rest_payload(payload: Dict[str, Any]) -> Optional[str]:
+    fields = payload.get("fields")
+    if not isinstance(fields, dict):
+        return None
+    role_field = fields.get("role")
+    if not isinstance(role_field, dict):
+        return None
+
+    # Firestore REST encodes field values by type, e.g. {"stringValue": "teacher"}.
+    role_value = role_field.get("stringValue")
+    if isinstance(role_value, str):
+        normalized = role_value.strip().lower()
+        if normalized in VALID_ROLES:
+            return normalized
+    return None
+
+
+def _get_role_from_firestore_rest(uid: str, firebase_id_token: str, project_id: str) -> Optional[str]:
+    if not uid or not firebase_id_token or not project_id:
+        return None
+
+    role_doc_url = (
+        "https://firestore.googleapis.com/v1/"
+        f"projects/{project_id}/databases/(default)/documents/users/{uid}"
+        "?mask.fieldPaths=role"
+    )
+
+    try:
+        response = http_requests.get(
+            role_doc_url,
+            headers={"Authorization": f"Bearer {firebase_id_token}"},
+            timeout=5,
+        )
+        if response.status_code == 200:
+            payload = cast(Dict[str, Any], response.json())
+            return _extract_role_from_firestore_rest_payload(payload)
+        if response.status_code not in {401, 403, 404}:
+            logger.info(
+                "Firestore REST role lookup returned non-success status %s for uid=%s",
+                response.status_code,
+                uid,
+            )
+    except Exception as rest_error:
+        logger.info(f"Firestore REST role lookup failed for {uid}: {rest_error}")
+
+    return None
+
+
+def _resolve_user_role(decoded: Dict[str, Any], firebase_id_token: Optional[str] = None) -> str:
     role_claim = decoded.get("role")
     if isinstance(role_claim, str) and role_claim in VALID_ROLES:
         return role_claim
@@ -335,6 +437,14 @@ def _resolve_user_role(decoded: Dict[str, Any]) -> str:
         firestore_role = _get_role_from_firestore(uid)
         if isinstance(firestore_role, str) and firestore_role in VALID_ROLES:
             return firestore_role
+
+        if firebase_id_token:
+            token_project_id = str(decoded.get("aud", "")).strip()
+            project_id = FIREBASE_AUTH_PROJECT_ID or token_project_id
+            firestore_rest_role = _get_role_from_firestore_rest(uid, firebase_id_token, project_id)
+            if isinstance(firestore_rest_role, str) and firestore_rest_role in VALID_ROLES:
+                _role_cache[uid] = {"role": firestore_rest_role, "ts": time.time()}
+                return firestore_rest_role
 
     return "student"
 
@@ -589,7 +699,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not uid:
             return JSONResponse(status_code=401, content={"detail": "Token missing uid"})
 
-        role = _resolve_user_role(decoded)
+        role = _resolve_user_role(decoded, token)
         request.state.user = AuthenticatedUser(
             uid=uid,
             email=decoded.get("email"),
@@ -765,7 +875,7 @@ def _strip_repetition(text: str, min_chunk: int = 40) -> str:
 
 
 def _build_hf_inference_url(model_id: str) -> str:
-    return f"https://api-inference.huggingface.co/models/{model_id}"
+    return f"https://router.huggingface.co/hf-inference/models/{model_id}"
 
 
 def _messages_to_inference_prompt(messages: List[Dict[str, str]]) -> str:
@@ -1546,6 +1656,71 @@ def _basic_risk_top_factors(student_data: StudentRiskData) -> List[str]:
     return factors[:3]
 
 
+def _parse_recommendation_lines(text: str, *, max_items: int = 5) -> List[str]:
+    lines: List[str] = []
+    for raw_line in (text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*\u2022\d\.\)\s]+", "", line).strip()
+        if not line:
+            continue
+        if len(line) < 8:
+            continue
+        lines.append(line)
+
+    if not lines and text.strip():
+        chunks = [chunk.strip() for chunk in re.split(r"[\n;]", text) if chunk.strip()]
+        lines = chunks
+
+    deduped: List[str] = []
+    seen: Set[str] = set()
+    for line in lines:
+        key = line.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(line)
+        if len(deduped) >= max_items:
+            break
+    return deduped
+
+
+def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: EnhancedRiskPrediction) -> List[str]:
+    prompt = (
+        "Generate concise teacher interventions for this student risk profile. "
+        "Return plain text with one recommendation per line. Avoid JSON and markdown.\n\n"
+        f"risk_level: {result.riskLevel}\n"
+        f"risk_score: {result.risk_score:.2f}\n"
+        f"engagementScore: {data.engagementScore:.1f}\n"
+        f"avgQuizScore: {data.avgQuizScore:.1f}\n"
+        f"attendance: {data.attendance:.1f}\n"
+        f"assignmentCompletion: {data.assignmentCompletion:.1f}\n"
+        f"streak: {int(data.streak or 0)}\n"
+        f"daysSinceLastActivity: {int(data.daysSinceLastActivity or 0)}\n"
+        f"top_factors: {', '.join(result.top_factors)}"
+    )
+
+    content = call_hf_chat(
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a student success specialist. Provide practical, measurable, and age-appropriate "
+                    "interventions for Grade 11-12 students."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=260,
+        temperature=0.2,
+        top_p=0.9,
+        task_type="risk_narrative",
+        timeout=120,
+    )
+    return _parse_recommendation_lines(content, max_items=5)
+
+
 @app.post("/api/predict-risk", response_model=RiskPrediction)
 async def predict_risk(student_data: StudentRiskData):
     """Student risk prediction using facebook/bart-large-mnli zero-shot classification"""
@@ -2121,7 +2296,12 @@ def _write_access_audit_log(
 
         firebase_firestore.client().collection("accessAuditLogs").add(payload)
     except Exception as audit_err:
-        logger.warning(f"Access audit log failed ({action}): {audit_err}")
+        if _is_adc_missing_error(cast(Exception, audit_err)):
+            _warn_firestore_audit_lookup_once(
+                f"Access audit log skipped because Firestore ADC is not configured ({action})."
+            )
+        else:
+            logger.warning(f"Access audit log failed ({action}): {audit_err}")
 
 
 def _record_risk_refresh_event(
@@ -2990,15 +3170,28 @@ def _load_persisted_course_material_topics(
     normalized_class_section_id = (class_section_id or "").strip() or None
     normalized_material_id = (material_id or "").strip() or None
 
-    query = (
-        firebase_firestore.client()
-        .collection("courseMaterials")
-        .where("teacherId", "==", user.uid)
-    )
-    if normalized_class_section_id:
-        query = query.where("classSectionId", "==", normalized_class_section_id)
-    if normalized_material_id:
-        query = query.where("materialId", "==", normalized_material_id)
+    try:
+        query = (
+            firebase_firestore.client()
+            .collection("courseMaterials")
+            .where("teacherId", "==", user.uid)
+        )
+        if normalized_class_section_id:
+            query = query.where("classSectionId", "==", normalized_class_section_id)
+        if normalized_material_id:
+            query = query.where("materialId", "==", normalized_material_id)
+    except Exception as e:
+        warning = (
+            "Firestore ADC is not configured; imported topic lookup skipped."
+            if _is_adc_missing_error(e)
+            else "Firestore lookup unavailable; imported topic lookup skipped."
+        )
+        _warn_firestore_topics_lookup_once(f"{warning} Error: {e}")
+        return {
+            "topics": [],
+            "materials": [],
+            "warnings": [warning],
+        }
 
     warnings: List[str] = []
     try:
@@ -3008,10 +3201,24 @@ def _load_persisted_course_material_topics(
             .limit(limit_materials)
             .stream()
         )
-    except Exception:
+    except Exception as stream_error:
         # Fallback for index limitations on combined where+order queries.
         warnings.append("Topic lookup used fallback query path without ordering.")
-        docs = query.limit(limit_materials).stream()
+        try:
+            docs = query.limit(limit_materials).stream()
+        except Exception as fallback_error:
+            chosen_error = fallback_error or stream_error
+            warning = (
+                "Firestore ADC is not configured; imported topic lookup skipped."
+                if _is_adc_missing_error(cast(Exception, chosen_error))
+                else "Firestore lookup unavailable; imported topic lookup skipped."
+            )
+            _warn_firestore_topics_lookup_once(f"{warning} Error: {chosen_error}")
+            return {
+                "topics": [],
+                "materials": [],
+                "warnings": [warning],
+            }
 
     materials: List[Dict[str, Any]] = []
     deduped_topics: Dict[str, Dict[str, Any]] = {}
@@ -3554,19 +3761,24 @@ class QuizGenerationRequest(BaseModel):
         description="When true, prioritise persisted imported topics for generation when available",
     )
 
-    @validator("questionTypes", each_item=True)
-    def validate_question_types(cls, v: str) -> str:
-        if v not in VALID_QUESTION_TYPES:
-            raise ValueError(f"Invalid question type '{v}'. Must be one of: {VALID_QUESTION_TYPES}")
-        return v
+    @field_validator("questionTypes")
+    @classmethod
+    def validate_question_types(cls, values: List[str]) -> List[str]:
+        for value in values:
+            if value not in VALID_QUESTION_TYPES:
+                raise ValueError(f"Invalid question type '{value}'. Must be one of: {VALID_QUESTION_TYPES}")
+        return values
 
-    @validator("bloomLevels", each_item=True)
-    def validate_bloom_levels(cls, v: str) -> str:
-        if v not in VALID_BLOOM_LEVELS:
-            raise ValueError(f"Invalid Bloom level '{v}'. Must be one of: {VALID_BLOOM_LEVELS}")
-        return v
+    @field_validator("bloomLevels")
+    @classmethod
+    def validate_bloom_levels(cls, values: List[str]) -> List[str]:
+        for value in values:
+            if value not in VALID_BLOOM_LEVELS:
+                raise ValueError(f"Invalid Bloom level '{value}'. Must be one of: {VALID_BLOOM_LEVELS}")
+        return values
 
-    @validator("difficultyDistribution")
+    @field_validator("difficultyDistribution")
+    @classmethod
     def validate_difficulty_distribution(cls, v: Dict[str, int]) -> Dict[str, int]:
         for key in v:
             if key not in VALID_DIFFICULTY_LEVELS:
@@ -3734,14 +3946,16 @@ class ImportGroundedFeedbackRequest(BaseModel):
     className: Optional[str] = Field(default=None, description="Optional class display name")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional event metadata")
 
-    @validator("flow")
+    @field_validator("flow")
+    @classmethod
     def validate_flow(cls, v: str) -> str:
         value = (v or "").strip().lower()
         if value not in {"quiz", "lesson"}:
             raise ValueError("flow must be one of: quiz, lesson")
         return value
 
-    @validator("status")
+    @field_validator("status")
+    @classmethod
     def validate_status(cls, v: str) -> str:
         value = (v or "").strip().lower()
         if value not in {"success", "failed", "skipped"}:
@@ -4567,7 +4781,7 @@ async def generate_lesson_plan_async(http_request: Request, request: LessonGener
     task_id = _create_async_task(
         owner_uid=user.uid,
         task_kind="lesson_generation",
-        payload=request.dict(),
+        payload=request.model_dump(),
     )
 
     asyncio.create_task(_run_async_task(task_id, lambda: generate_lesson_plan(http_request, request)))
@@ -5507,7 +5721,7 @@ async def generate_quiz_async(http_request: Request, request: QuizGenerationRequ
     task_id = _create_async_task(
         owner_uid=user.uid,
         task_kind="quiz_generation",
-        payload=request.dict(),
+        payload=request.model_dump(),
     )
 
     asyncio.create_task(_run_async_task(task_id, lambda: generate_quiz(http_request, request)))
@@ -5548,6 +5762,93 @@ async def get_async_task_status(http_request: Request, task_id: str):
         completedAt=cast(Optional[str], task_data.get("completedAt")),
         result=cast(Optional[Dict[str, Any]], task_data.get("result")),
         error=task_data.get("error"),
+    )
+
+
+@app.get("/api/tasks", response_model=AsyncTaskListResponse)
+async def list_async_tasks(
+    http_request: Request,
+    limit: int = Query(default=50, ge=1, le=200),
+    status: Optional[str] = Query(default=None),
+    include_results: bool = Query(default=False),
+):
+    user = get_current_user(http_request)
+    status_filter = (status or "").strip().lower()
+
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        raw_tasks = list(_async_tasks.values())
+
+    filtered: List[Dict[str, Any]] = []
+    for task in raw_tasks:
+        owner_uid = str(task.get("ownerUid") or "")
+        if user.role != "admin" and owner_uid != user.uid:
+            continue
+        task_status = str(task.get("status") or "queued").strip().lower()
+        if status_filter and task_status != status_filter:
+            continue
+        filtered.append(dict(task))
+
+    filtered.sort(key=lambda item: str(item.get("createdAt") or ""), reverse=True)
+    selected = filtered[:limit]
+
+    task_items: List[AsyncTaskStatusResponse] = []
+    for item in selected:
+        task_items.append(
+            AsyncTaskStatusResponse(
+                success=True,
+                taskId=str(item.get("taskId") or ""),
+                taskKind=str(item.get("taskKind") or "unknown"),
+                status=str(item.get("status") or "queued"),
+                createdAt=str(item.get("createdAt") or _utc_now_iso()),
+                startedAt=cast(Optional[str], item.get("startedAt")),
+                completedAt=cast(Optional[str], item.get("completedAt")),
+                result=cast(Optional[Dict[str, Any]], item.get("result") if include_results else None),
+                error=item.get("error"),
+            )
+        )
+
+    return AsyncTaskListResponse(success=True, count=len(task_items), tasks=task_items)
+
+
+@app.post("/api/tasks/{task_id}/cancel", response_model=AsyncTaskCancelResponse)
+async def cancel_async_task(http_request: Request, task_id: str):
+    user = get_current_user(http_request)
+
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        task = _async_tasks.get(task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        owner_uid = str(task.get("ownerUid") or "")
+        if user.role != "admin" and owner_uid != user.uid:
+            raise HTTPException(status_code=403, detail="Forbidden for this task")
+
+        current_status = str(task.get("status") or "queued").strip().lower()
+        if current_status in {"completed", "failed", "cancelled"}:
+            return AsyncTaskCancelResponse(
+                success=False,
+                taskId=task_id,
+                status=current_status,
+                message="Task is already in a terminal state.",
+            )
+
+        task["cancelRequested"] = True
+        if current_status == "queued":
+            task["status"] = "cancelled"
+            task["completedAt"] = _utc_now_iso()
+            task["error"] = {"message": "Task cancelled before execution."}
+        else:
+            task["status"] = "cancelling"
+
+        updated_status = str(task.get("status") or "queued")
+
+    return AsyncTaskCancelResponse(
+        success=True,
+        taskId=task_id,
+        status=updated_status,
+        message="Cancellation request accepted.",
     )
 
 
@@ -5910,6 +6211,14 @@ async def predict_risk_ml(data: EnhancedRiskRequest):
     try:
         logger.info(f"Enhanced risk prediction for student {data.studentId}")
         result = await predict_risk_enhanced(data)
+        if ENABLE_LLM_RISK_RECOMMENDATIONS:
+            try:
+                llm_recommendations = _generate_risk_recommendations_llm(data, result)
+                if llm_recommendations:
+                    result.recommendations = llm_recommendations
+                    result.modelUsed = "ml_model+llm_narrative"
+            except Exception as llm_exc:
+                logger.warning(f"Risk recommendation generation via LLM failed: {llm_exc}")
         return result
     except Exception as e:
         logger.error(f"Enhanced risk prediction error: {e}\n{traceback.format_exc()}")

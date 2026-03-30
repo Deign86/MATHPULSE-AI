@@ -2,6 +2,19 @@
 
 Use Hugging Face Jobs for offline evaluation and synthetic data generation with controlled cost.
 
+## 0. Single-session launcher
+
+Use the unified launcher to run either local jobs or HF Jobs CLI commands:
+
+python jobs/hf_jobs_launcher.py --job eval --mode local --subset algebra --limit 100
+
+python jobs/hf_jobs_launcher.py --job variants --mode local --limit 200 --variants-per-item 3
+
+HF CLI mode (dry-run first):
+
+python jobs/hf_jobs_launcher.py --job eval --mode hf --flavor cpu-basic --dry-run \
+  --env HF_TOKEN=<token> --env INFERENCE_PRO_ENABLED=true
+
 ## 1. Prerequisites
 
 1. Hugging Face PRO token in environment as HF_TOKEN.
@@ -37,10 +50,15 @@ python jobs/generate_variants.py \
 ## 4. Recommended HF Job environment variables
 
 - INFERENCE_PROVIDER=hf_inference
+- INFERENCE_PRO_ENABLED=true
+- INFERENCE_PRO_PRIORITY_TASKS=eval_generation,variant_generation
 - HF_TOKEN=<hf_token>
 - INFERENCE_MODEL_ID=Qwen/Qwen2.5-Math-7B-Instruct
 - INFERENCE_MAX_RETRIES=3
 - INFERENCE_BACKOFF_SEC=1.5
+- INFERENCE_BACKGROUND_TIMEOUT_SEC=120
+- INFERENCE_BACKGROUND_MAX_RETRIES=3
+- INFERENCE_BACKGROUND_BACKOFF_SEC=1.75
 
 ## 5. Input and output artifacts
 
@@ -56,3 +74,9 @@ Outputs:
 - Store synthetic or anonymized records only.
 - Do not include student name, email, LRN, or section IDs in dataset artifacts.
 - Run dataset sync scripts with privacy checks enabled (default).
+
+## 7. Telemetry and routing tags
+
+- Eval jobs emit task_type=eval_generation and request_tag=<run_id>.
+- Variant jobs emit task_type=variant_generation and request_tag=<run_id>.
+- These tags are logged by backend/services/inference_client.py for cost attribution and fallback analysis.
