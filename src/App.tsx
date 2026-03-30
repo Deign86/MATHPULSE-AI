@@ -482,6 +482,7 @@ const App = () => {
     email: userProfile.email,
     phone: userProfile.phone || '',
     photo: userProfile.photo || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
+    avatarLayers: userProfile.avatarLayers,
     role: userProfile.role,
     ...(userRole === 'student' && studentProfile ? {
       lrn: studentProfile.lrn,
@@ -499,6 +500,7 @@ const App = () => {
     email: '',
     phone: '',
     photo: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
+    avatarLayers: undefined,
     role: userRole,
   };
 
@@ -770,6 +772,7 @@ const App = () => {
                         <HeroBanner 
                           userName={firstName} 
                           userLevel={userLevel}
+                          avatarLayers={profileData.avatarLayers}
                           onContinueLearning={() => handleStudentNavigation('Modules')} 
                         />
 
@@ -808,7 +811,11 @@ const App = () => {
                 ) : activeTab === 'Grades' ? (
                   <GradesPage />
                 ) : activeTab === 'Avatar Studio' ? (
-                  <AvatarShop />
+                  <AvatarShop
+                    onSaveProfile={(layers) => {
+                      setProfileOverrides((prev) => ({ ...prev, avatarLayers: layers }));
+                    }}
+                  />
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
