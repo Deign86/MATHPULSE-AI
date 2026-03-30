@@ -233,6 +233,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/ops/inference-metrics": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
+    "/api/analytics/imported-class-overview": TEACHER_OR_ADMIN,
     "/api/analytics/topic-mastery": TEACHER_OR_ADMIN,
     "/api/automation/diagnostic-completed": ADMIN_ONLY,
     "/api/automation/quiz-submitted": ADMIN_ONLY,
@@ -6626,6 +6627,154 @@ async def get_analytics_config():
         "cacheTTLSeconds": 3600,
         "topicPrerequisites": fetch_topic_dependencies(),
     }
+
+
+@app.get("/api/analytics/imported-class-overview")
+async def get_imported_class_overview(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    limit: int = Query(default=3000, ge=1, le=5000),
+):
+    """Return teacher-facing class/student aggregates derived from imported normalized records."""
+    try:
+        user = get_current_user(request)
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        normalized_class_section_id = (classSectionId or "").strip().lower() or None
+        client = firebase_firestore.client()
+        query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
+        if normalized_class_section_id:
+            query = query.where("classSectionId", "==", normalized_class_section_id)
+
+        docs = list(query.limit(limit).stream())
+
+        class_agg: Dict[str, Dict[str, Any]] = {}
+        student_agg: Dict[str, Dict[str, Any]] = {}
+
+        for doc in docs:
+            row = doc.to_dict() or {}
+            resolved_class_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
+                class_section_id=str(row.get("classSectionId") or "").strip() or None,
+                class_name=str(row.get("className") or "").strip() or None,
+            )
+
+            student_identity = (
+                str(row.get("studentId") or "").strip()
+                or str(row.get("lrn") or "").strip()
+                or str(row.get("email") or "").strip().lower()
+                or re.sub(r"\s+", "_", str(row.get("name") or "").strip().lower())
+            )
+            if not student_identity:
+                continue
+
+            student_key = f"{resolved_class_section_id}|{student_identity}"
+            avg_quiz = float(row.get("avgQuizScore") or 0.0)
+            attendance = float(row.get("attendance") or 0.0)
+            engagement = float(row.get("engagementScore") or 0.0)
+            completion = float(row.get("assignmentCompletion") or 0.0)
+            risk_level = _derive_risk_level(avg_quiz, attendance, engagement)
+            weakest_topic = _pick_weakest_topic(row.get("unknownFields") or {})
+
+            existing_student = student_agg.get(student_key)
+            if not existing_student:
+                student_agg[student_key] = {
+                    "id": hashlib.sha1(f"{user.uid}|{student_key}".encode("utf-8")).hexdigest()[:36],
+                    "lrn": str(row.get("lrn") or "").strip() or None,
+                    "name": str(row.get("name") or "Imported Student").strip() or "Imported Student",
+                    "email": str(row.get("email") or "").strip(),
+                    "classSectionId": resolved_class_section_id,
+                    "className": resolved_class_name,
+                    "grade": grade,
+                    "section": section,
+                    "scores": [avg_quiz],
+                    "attendanceValues": [attendance],
+                    "engagementValues": [engagement],
+                    "completionValues": [completion],
+                    "riskLevel": risk_level,
+                    "weakestTopic": weakest_topic,
+                }
+            else:
+                existing_student["scores"].append(avg_quiz)
+                existing_student["attendanceValues"].append(attendance)
+                existing_student["engagementValues"].append(engagement)
+                existing_student["completionValues"].append(completion)
+                if existing_student.get("riskLevel") != "High" and risk_level == "High":
+                    existing_student["riskLevel"] = "High"
+                elif existing_student.get("riskLevel") == "Low" and risk_level == "Medium":
+                    existing_student["riskLevel"] = "Medium"
+                if existing_student.get("weakestTopic") in {"", "Foundational Skills"} and weakest_topic:
+                    existing_student["weakestTopic"] = weakest_topic
+
+            existing_class = class_agg.get(resolved_class_section_id)
+            if not existing_class:
+                class_agg[resolved_class_section_id] = {
+                    "id": resolved_class_section_id,
+                    "name": resolved_class_name,
+                    "classSectionId": resolved_class_section_id,
+                    "grade": grade,
+                    "section": section,
+                    "schedule": "Mon-Fri",
+                    "students": set(),
+                    "scoreValues": [],
+                    "atRiskStudents": set(),
+                }
+
+            class_agg[resolved_class_section_id]["students"].add(student_key)
+            class_agg[resolved_class_section_id]["scoreValues"].append(avg_quiz)
+            if risk_level == "High":
+                class_agg[resolved_class_section_id]["atRiskStudents"].add(student_key)
+
+        students_payload: List[Dict[str, Any]] = []
+        for student in student_agg.values():
+            scores = student.pop("scores", [])
+            attendance_values = student.pop("attendanceValues", [])
+            engagement_values = student.pop("engagementValues", [])
+            completion_values = student.pop("completionValues", [])
+            students_payload.append(
+                {
+                    **student,
+                    "avgQuizScore": round(float(sum(scores) / max(len(scores), 1)), 1),
+                    "attendance": round(float(sum(attendance_values) / max(len(attendance_values), 1)), 1),
+                    "engagementScore": round(float(sum(engagement_values) / max(len(engagement_values), 1)), 1),
+                    "assignmentCompletion": round(float(sum(completion_values) / max(len(completion_values), 1)), 1),
+                }
+            )
+
+        classrooms_payload: List[Dict[str, Any]] = []
+        for classroom in class_agg.values():
+            score_values = classroom.get("scoreValues") or []
+            classrooms_payload.append(
+                {
+                    "id": classroom["id"],
+                    "name": classroom["name"],
+                    "classSectionId": classroom["classSectionId"],
+                    "schedule": classroom["schedule"],
+                    "studentCount": len(classroom.get("students") or set()),
+                    "avgScore": round(float(sum(score_values) / max(len(score_values), 1)), 1) if score_values else 0.0,
+                    "atRiskCount": len(classroom.get("atRiskStudents") or set()),
+                }
+            )
+
+        classrooms_payload.sort(key=lambda item: item.get("name") or "")
+        students_payload.sort(key=lambda item: item.get("name") or "")
+
+        warnings: List[str] = []
+        if len(docs) >= limit:
+            warnings.append("Imported class overview reached the maximum row scan limit; results may be partial.")
+
+        return {
+            "success": True,
+            "classSectionId": normalized_class_section_id,
+            "classrooms": classrooms_payload,
+            "students": students_payload,
+            "warnings": warnings,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Imported class overview error: {e}")
+        raise HTTPException(status_code=500, detail=f"Imported class overview error: {str(e)}")
 
 
 # ─── Topic Mastery Analytics ──────────────────────────────────

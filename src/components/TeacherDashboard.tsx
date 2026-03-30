@@ -30,6 +30,7 @@ import {
 import {
   apiService,
   ApiError,
+  type ImportedClassOverviewResponse,
   type ImportGroundedAccessAuditResponse,
   type CourseMaterialArtifactSummary,
   type ImportGroundedTelemetrySummaryResponse,
@@ -133,6 +134,44 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
   };
 }
 
+function toImportedClassView(c: ImportedClassOverviewResponse['classrooms'][number]): ClassView {
+  const riskLevel = c.atRiskCount >= 5 ? 'high' : c.atRiskCount >= 2 ? 'medium' : 'low';
+  return {
+    id: c.id,
+    name: c.name,
+    classSectionId: c.classSectionId || undefined,
+    schedule: c.schedule || 'Mon-Fri',
+    studentCount: c.studentCount,
+    avgScore: c.avgScore,
+    atRiskCount: c.atRiskCount,
+    riskLevel,
+  };
+}
+
+function toImportedStudentView(s: ImportedClassOverviewResponse['students'][number]): StudentView {
+  const riskLevel = (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
+  const className = s.className || [s.grade, s.section].filter(Boolean).join(' - ') || 'Imported Class';
+  return {
+    id: s.id,
+    lrn: s.lrn || undefined,
+    name: s.name,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
+    avgScore: s.avgQuizScore,
+    riskLevel,
+    weakestTopic: s.weakestTopic || 'Foundational Skills',
+    classroomId: s.classSectionId || className,
+    className,
+    grade: s.grade || className.split(' - ')[0] || 'Grade 11',
+    section: s.section || className.split(' - ')[1] || 'Section A',
+    classSectionId: s.classSectionId || undefined,
+    lastActive: 'Recently imported',
+    struggles: [s.weakestTopic || 'Foundational Skills'],
+    engagementScore: s.engagementScore,
+    attendance: s.attendance,
+    assignmentCompletion: s.assignmentCompletion,
+  };
+}
+
 function formatRelativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -181,15 +220,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       setDataLoading(true);
       try {
         const classrooms = await getClassroomsByTeacher(teacherId);
-        const classViews = classrooms.map(toClassView);
-        setClasses(classViews);
+        let classViews = classrooms.map(toClassView);
 
         // Build a map of classroomId -> name
         const classNameMap: Record<string, string> = {};
         classrooms.forEach((c) => { classNameMap[c.id] = c.name; });
 
         const allStudents = await getStudentsByTeacher(teacherId);
-        const studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
+        let studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
+
+        if (classViews.length === 0 || studentViews.length === 0) {
+          try {
+            const imported = await apiService.getImportedClassOverview({ limit: 3000 });
+            if (imported.warnings.length > 0) {
+              console.warn('Imported class overview warnings:', imported.warnings.join(' '));
+            }
+
+            if (classViews.length === 0 && imported.classrooms.length > 0) {
+              classViews = imported.classrooms.map(toImportedClassView);
+            }
+
+            if (studentViews.length === 0 && imported.students.length > 0) {
+              studentViews = imported.students.map(toImportedStudentView);
+            }
+          } catch (importedErr) {
+            console.warn('Imported class overview fallback unavailable:', importedErr);
+          }
+        }
+
+        setClasses(classViews);
         setStudents(studentViews);
 
         // Subscribe to live activity
