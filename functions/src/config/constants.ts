@@ -89,10 +89,80 @@ export const MAX_RETRIES = 2;
 /** Days until a remedial quiz is due */
 export const REMEDIAL_QUIZ_DUE_DAYS = 7;
 
-// ─── Reassessment Sweep Configuration ───────────────────────
+// ─── IAR Workflow Modes ─────────────────────────────────────
 
-/** Days of inactivity before a reassessment can be queued */
-export const REASSESSMENT_INACTIVITY_DAYS = 30;
+export type IARWorkflowMode = "iar_only" | "iar_plus_diagnostic";
 
-/** Maximum student profiles scanned per scheduled sweep */
-export const REASSESSMENT_SCAN_BATCH_LIMIT = 500;
+/**
+ * Default IAR mode. Override via env var IAR_WORKFLOW_MODE.
+ */
+export const DEFAULT_IAR_WORKFLOW_MODE: IARWorkflowMode =
+  process.env.IAR_WORKFLOW_MODE === "iar_plus_diagnostic"
+    ? "iar_plus_diagnostic"
+    : "iar_only";
+
+/**
+ * Baseline minimum deep-diagnostic item counts per subject area.
+ * This is used only when mode is `iar_plus_diagnostic`.
+ */
+export const DEEP_DIAGNOSTIC_MIN_ITEMS_BY_SUBJECT: Record<string, number> = {
+  "gen-math": 12,
+  "stats-prob": 10,
+  "pre-calc": 10,
+  "basic-calc": 10,
+  Functions: 12,
+  BusinessMath: 10,
+  Logic: 10,
+};
+
+/** Default due window for deep-diagnostic assignments. */
+export const DEEP_DIAGNOSTIC_DUE_DAYS = 14;
+
+export type DeepDiagnosticAssignmentStatus =
+  | "pending"
+  | "queued"
+  | "in_progress"
+  | "completed"
+  | "expired";
+
+export const DEEP_DIAGNOSTIC_ACTIVE_STATUSES: DeepDiagnosticAssignmentStatus[] = [
+  "pending",
+  "queued",
+  "in_progress",
+  "expired",
+];
+
+export const LEARNING_PATH_UNLOCK_CRITERIA_VERSION = "v3_assignment_state_policy_bound";
+
+/**
+ * Reassessment inactivity threshold in days.
+ * Set to 0 to disable inactivity-triggered reassessment scans.
+ */
+export const REASSESSMENT_INACTIVITY_DAYS = Number(
+  process.env.REASSESSMENT_INACTIVITY_DAYS || "0",
+);
+
+/** Maximum number of student documents scanned per scheduled inactivity run. */
+export const REASSESSMENT_SCAN_BATCH_LIMIT = Number(
+  process.env.REASSESSMENT_SCAN_BATCH_LIMIT || "300",
+);
+
+/**
+ * Grade 12 transition gating thresholds evaluated from the latest
+ * Grade 11 mastery snapshot.
+ */
+export const G12_TRANSITION_MIN_MASTERED_RATIO = 0.7;
+export const G12_TRANSITION_MAX_CRITICAL_GAPS = 1;
+
+/**
+ * Grade 11 prerequisite-first topic ordering for recommendation fallback.
+ */
+export const G11_TOPIC_SEQUENCE: string[] = [
+  "functions_foundations",
+  "rational_functions",
+  "inverse_exponential_logarithmic",
+  "business_interest_annuities",
+  "business_stocks_bonds_loans",
+  "logic_propositions",
+  "logic_syllogisms_proof",
+];

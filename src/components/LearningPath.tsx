@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, Play, Clock, AlertTriangle, CheckCircle, BookOpen, Target, Calculator, Compass, PieChart, Box, Percent, Infinity as InfinityIcon, Layers } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
-import { subjects } from '../data/subjects';
-import { UserProgress, SubjectStats } from '../types/models';
+import { subjects, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { UserProgress, SubjectStats, type StudentProfile } from '../types/models';
 import { getAllSubjectStats } from '../services/reviewService';
 
 interface LearningPathProps {
@@ -15,6 +15,9 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   const { userProfile } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [subjectStats, setSubjectStats] = useState<Record<string, SubjectStats>>({});
+  const studentGrade = (userProfile as StudentProfile | null)?.grade;
+  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+  const filteredSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
 
   useEffect(() => {
     if (!userProfile?.uid) return;
@@ -23,7 +26,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   }, [userProfile?.uid]);
 
   // Derive learning path modules from subjects data + real Firebase progress
-  const modules = subjects.map((subject) => {
+  const modules = filteredSubjects.map((subject) => {
     const subjectProgress = progress?.subjects?.[subject.id];
 
     // Count total lessons across all modules in this subject
@@ -69,6 +72,13 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
       reviewCount: subjectStats[subject.id]?.totalReviews || subject.reviewCount || 100,
     };
   });
+
+  const getGridColsClass = (count: number): string => {
+    if (count <= 1) return 'grid-cols-1';
+    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
+    if (count === 3) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
+    return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+  };
 
   const handleModuleClick = (module: typeof modules[0]) => {
     if (module.status !== 'Locked') {
@@ -125,7 +135,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className={`grid ${getGridColsClass(modules.length)} gap-6`}>
         {modules.map((module) => {
           const Icon = module.icon;
           const isAtRisk = atRiskSubjects.includes(module.subjectId);
