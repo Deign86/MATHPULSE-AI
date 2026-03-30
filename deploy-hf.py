@@ -37,6 +37,30 @@ FastAPI backend for the MathPulse AI educational platform.
 """
 
 
+def _upload_tree(api: HfApi, repo_id: str, source_root: str, target_root: str) -> None:
+    """Upload a directory recursively while skipping cache/build artifacts."""
+    if not os.path.isdir(source_root):
+        print(f"Warning: directory not found: {source_root}")
+        return
+
+    for current_root, dirnames, filenames in os.walk(source_root):
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for filename in filenames:
+            if filename == ".gitkeep" or filename.endswith(".pyc"):
+                continue
+
+            local_path = os.path.join(current_root, filename)
+            relative_path = os.path.relpath(local_path, source_root).replace(os.sep, "/")
+            remote_path = f"{target_root}/{relative_path}"
+            api.upload_file(
+                path_or_fileobj=local_path,
+                path_in_repo=remote_path,
+                repo_id=repo_id,
+                repo_type="space",
+            )
+            print(f"Uploaded: {remote_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Deploy MathPulse backend to HuggingFace Spaces")
     parser.add_argument("--token", required=True, help="HuggingFace API token (write access)")
@@ -102,19 +126,9 @@ def main():
     )
     print("Uploaded: README.md (normalized Space metadata)")
 
-    # Upload models directory (may contain trained model artifacts)
-    models_dir = os.path.join(BACKEND_DIR, "models")
-    if os.path.isdir(models_dir):
-        for fname in os.listdir(models_dir):
-            fpath = os.path.join(models_dir, fname)
-            if os.path.isfile(fpath) and fname != ".gitkeep":
-                api.upload_file(
-                    path_or_fileobj=fpath,
-                    path_in_repo=f"models/{fname}",
-                    repo_id=SPACE_ID,
-                    repo_type="space",
-                )
-                print(f"Uploaded: models/{fname}")
+    # Upload package directories required at runtime.
+    _upload_tree(api, SPACE_ID, os.path.join(BACKEND_DIR, "services"), "services")
+    _upload_tree(api, SPACE_ID, os.path.join(BACKEND_DIR, "models"), "models")
 
     print(f"\nDeployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")

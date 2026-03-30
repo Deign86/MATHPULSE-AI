@@ -22,8 +22,10 @@ import logging
 import traceback
 from typing import List, Optional, Dict, Any, Set, Tuple, cast
 from collections import Counter
+from threading import Lock
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, validator
@@ -146,6 +148,9 @@ ENABLE_IMPORT_GROUNDED_QUIZ = os.getenv("ENABLE_IMPORT_GROUNDED_QUIZ", "true").s
 ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_ASYNC_GENERATION = os.getenv("ENABLE_ASYNC_GENERATION", "true").strip().lower() in {"1", "true", "yes", "on"}
+ASYNC_TASK_TTL_SECONDS = int(os.getenv("ASYNC_TASK_TTL_SECONDS", "3600"))
+ASYNC_TASK_MAX_ITEMS = int(os.getenv("ASYNC_TASK_MAX_ITEMS", "400"))
 LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
 LESSON_SOURCE_MIN_TOPICS = int(os.getenv("LESSON_SOURCE_MIN_TOPICS", "1"))
 LESSON_VALIDATION_MIN_SCORE = float(os.getenv("LESSON_VALIDATION_MIN_SCORE", "0.7"))
@@ -203,8 +208,10 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
     "/api/quiz/generate": TEACHER_OR_ADMIN,
+    "/api/quiz/generate-async": TEACHER_OR_ADMIN,
     "/api/quiz/preview": TEACHER_OR_ADMIN,
     "/api/lesson/generate": TEACHER_OR_ADMIN,
+    "/api/lesson/generate-async": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded/summary": TEACHER_OR_ADMIN,
     "/api/import-grounded/access-audit": TEACHER_OR_ADMIN,
@@ -219,6 +226,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/student-summary": ALL_APP_ROLES,
     "/api/analytics/class-insights": TEACHER_OR_ADMIN,
     "/api/analytics/refresh-cache": ADMIN_ONLY,
+    "/api/ops/inference-metrics": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
     "/api/analytics/topic-mastery": TEACHER_OR_ADMIN,
@@ -255,6 +263,8 @@ _firebase_ready = False
 _role_cache: Dict[str, Dict[str, Any]] = {}
 _ROLE_CACHE_TTL_SECONDS = 60
 _rate_limit_buckets: Dict[str, List[float]] = {}
+_async_tasks: Dict[str, Dict[str, Any]] = {}
+_async_tasks_lock = Lock()
 FIRESTORE_SERVER_TIMESTAMP: Any = getattr(cast(Any, firebase_firestore), "SERVER_TIMESTAMP", None)
 FIRESTORE_QUERY_DESCENDING: Any = getattr(getattr(cast(Any, firebase_firestore), "Query", None), "DESCENDING", "DESCENDING")
 
@@ -415,6 +425,127 @@ def enforce_rate_limit(request: Request, bucket_name: str, limit: int, window_se
         )
     hits.append(now)
     _rate_limit_buckets[key] = hits
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _prune_async_tasks(now_ts: Optional[float] = None) -> None:
+    now_value = now_ts if now_ts is not None else time.time()
+    expiry_cutoff = now_value - ASYNC_TASK_TTL_SECONDS
+    expired_task_ids: List[str] = []
+
+    for task_id, task in list(_async_tasks.items()):
+        created_iso = str(task.get("createdAt") or "").strip()
+        if not created_iso:
+            continue
+        try:
+            created_dt = datetime.fromisoformat(created_iso.replace("Z", "+00:00"))
+            if created_dt.timestamp() < expiry_cutoff:
+                expired_task_ids.append(task_id)
+        except ValueError:
+            continue
+
+    for task_id in expired_task_ids:
+        _async_tasks.pop(task_id, None)
+
+    if len(_async_tasks) <= ASYNC_TASK_MAX_ITEMS:
+        return
+
+    overflow = len(_async_tasks) - ASYNC_TASK_MAX_ITEMS
+    sorted_items = sorted(_async_tasks.items(), key=lambda kv: str(kv[1].get("createdAt") or ""))
+    for task_id, _ in sorted_items[:overflow]:
+        _async_tasks.pop(task_id, None)
+
+
+def _create_async_task(owner_uid: str, task_kind: str, payload: Dict[str, Any]) -> str:
+    task_id = f"task_{uuid.uuid4().hex[:12]}"
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        _async_tasks[task_id] = {
+            "taskId": task_id,
+            "taskKind": task_kind,
+            "ownerUid": owner_uid,
+            "status": "queued",
+            "createdAt": _utc_now_iso(),
+            "startedAt": None,
+            "completedAt": None,
+            "cancelRequested": False,
+            "request": payload,
+            "result": None,
+            "error": None,
+        }
+    return task_id
+
+
+def _update_async_task(task_id: str, **updates: Any) -> None:
+    with _async_tasks_lock:
+        task = _async_tasks.get(task_id)
+        if not task:
+            return
+        task.update(updates)
+
+
+async def _run_async_task(task_id: str, runner) -> None:
+    with _async_tasks_lock:
+        task = _async_tasks.get(task_id)
+        if not task:
+            return
+        if bool(task.get("cancelRequested")):
+            task["status"] = "cancelled"
+            task["completedAt"] = _utc_now_iso()
+            task["error"] = {"message": "Task cancelled before execution."}
+            return
+        task["status"] = "running"
+        task["startedAt"] = _utc_now_iso()
+        task["error"] = None
+
+    try:
+        payload = await runner()
+        with _async_tasks_lock:
+            task = _async_tasks.get(task_id)
+            if not task:
+                return
+            if bool(task.get("cancelRequested")):
+                task["status"] = "cancelled"
+                task["completedAt"] = _utc_now_iso()
+                task["error"] = {"message": "Task cancelled during execution."}
+                task["result"] = None
+                return
+            task["status"] = "completed"
+            task["completedAt"] = _utc_now_iso()
+            task["result"] = jsonable_encoder(payload)
+            task["error"] = None
+    except HTTPException as http_exc:
+        with _async_tasks_lock:
+            task = _async_tasks.get(task_id)
+            if not task:
+                return
+            if bool(task.get("cancelRequested")):
+                task["status"] = "cancelled"
+                task["completedAt"] = _utc_now_iso()
+                task["error"] = {"message": "Task cancelled during execution."}
+                task["result"] = None
+                return
+            task["status"] = "failed"
+            task["completedAt"] = _utc_now_iso()
+            task["error"] = jsonable_encoder(http_exc.detail)
+    except Exception as exc:
+        logger.error(f"Async task {task_id} failed: {exc}")
+        with _async_tasks_lock:
+            task = _async_tasks.get(task_id)
+            if not task:
+                return
+            if bool(task.get("cancelRequested")):
+                task["status"] = "cancelled"
+                task["completedAt"] = _utc_now_iso()
+                task["error"] = {"message": "Task cancelled during execution."}
+                task["result"] = None
+                return
+            task["status"] = "failed"
+            task["completedAt"] = _utc_now_iso()
+            task["error"] = {"message": str(exc)}
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -3558,6 +3689,44 @@ class LessonPlanResponse(BaseModel):
     warnings: List[str]
 
 
+class AsyncTaskSubmitResponse(BaseModel):
+    success: bool
+    taskId: str
+    status: str
+    taskKind: str
+    createdAt: str
+
+
+class AsyncTaskStatusResponse(BaseModel):
+    success: bool
+    taskId: str
+    taskKind: str
+    status: str
+    createdAt: str
+    startedAt: Optional[str] = None
+    completedAt: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[Any] = None
+
+
+class AsyncTaskListResponse(BaseModel):
+    success: bool
+    count: int
+    tasks: List[AsyncTaskStatusResponse]
+
+
+class AsyncTaskCancelResponse(BaseModel):
+    success: bool
+    taskId: str
+    status: str
+    message: str
+
+
+class InferenceMetricsResponse(BaseModel):
+    success: bool
+    metrics: Dict[str, Any]
+
+
 class ImportGroundedFeedbackRequest(BaseModel):
     flow: str = Field(..., description="Flow identifier: quiz or lesson")
     status: str = Field(..., description="Event status: success, failed, or skipped")
@@ -4383,6 +4552,36 @@ Rules:
     except Exception as e:
         logger.error(f"Lesson generation error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
+
+
+@app.post("/api/lesson/generate-async", response_model=AsyncTaskSubmitResponse)
+async def generate_lesson_plan_async(http_request: Request, request: LessonGenerationRequest):
+    if not ENABLE_ASYNC_GENERATION:
+        raise HTTPException(status_code=404, detail="Async generation is disabled")
+
+    enforce_rate_limit(http_request, "generate_lesson_plan_async", 20, 60)
+    user = get_current_user(http_request)
+    if user.role not in TEACHER_OR_ADMIN:
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    task_id = _create_async_task(
+        owner_uid=user.uid,
+        task_kind="lesson_generation",
+        payload=request.dict(),
+    )
+
+    asyncio.create_task(_run_async_task(task_id, lambda: generate_lesson_plan(http_request, request)))
+
+    with _async_tasks_lock:
+        task = dict(_async_tasks.get(task_id, {}))
+
+    return AsyncTaskSubmitResponse(
+        success=True,
+        taskId=task_id,
+        status=str(task.get("status") or "queued"),
+        taskKind="lesson_generation",
+        createdAt=str(task.get("createdAt") or _utc_now_iso()),
+    )
 
 
 @app.post("/api/feedback/import-grounded", response_model=ImportGroundedFeedbackResponse)
@@ -5293,6 +5492,74 @@ async def preview_quiz(http_request: Request, request: QuizGenerationRequest):
     # Override to produce only 3 questions
     request.numQuestions = 3
     return await generate_quiz(http_request, request)
+
+
+@app.post("/api/quiz/generate-async", response_model=AsyncTaskSubmitResponse)
+async def generate_quiz_async(http_request: Request, request: QuizGenerationRequest):
+    if not ENABLE_ASYNC_GENERATION:
+        raise HTTPException(status_code=404, detail="Async generation is disabled")
+
+    enforce_rate_limit(http_request, "generate_quiz_async", 20, 60)
+    user = get_current_user(http_request)
+    if user.role not in TEACHER_OR_ADMIN:
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    task_id = _create_async_task(
+        owner_uid=user.uid,
+        task_kind="quiz_generation",
+        payload=request.dict(),
+    )
+
+    asyncio.create_task(_run_async_task(task_id, lambda: generate_quiz(http_request, request)))
+
+    with _async_tasks_lock:
+        task = dict(_async_tasks.get(task_id, {}))
+
+    return AsyncTaskSubmitResponse(
+        success=True,
+        taskId=task_id,
+        status=str(task.get("status") or "queued"),
+        taskKind="quiz_generation",
+        createdAt=str(task.get("createdAt") or _utc_now_iso()),
+    )
+
+
+@app.get("/api/tasks/{task_id}", response_model=AsyncTaskStatusResponse)
+async def get_async_task_status(http_request: Request, task_id: str):
+    user = get_current_user(http_request)
+
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        task = _async_tasks.get(task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        owner_uid = str(task.get("ownerUid") or "")
+        if user.role != "admin" and owner_uid != user.uid:
+            raise HTTPException(status_code=403, detail="Forbidden for this task")
+        task_data = dict(task)
+
+    return AsyncTaskStatusResponse(
+        success=True,
+        taskId=str(task_data.get("taskId") or task_id),
+        taskKind=str(task_data.get("taskKind") or "unknown"),
+        status=str(task_data.get("status") or "queued"),
+        createdAt=str(task_data.get("createdAt") or _utc_now_iso()),
+        startedAt=cast(Optional[str], task_data.get("startedAt")),
+        completedAt=cast(Optional[str], task_data.get("completedAt")),
+        result=cast(Optional[Dict[str, Any]], task_data.get("result")),
+        error=task_data.get("error"),
+    )
+
+
+@app.get("/api/ops/inference-metrics", response_model=InferenceMetricsResponse)
+async def get_inference_metrics(http_request: Request):
+    user = get_current_user(http_request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    metrics_snapshot = inference_client.snapshot_metrics()
+    metrics_snapshot["pro_enabled"] = bool(getattr(inference_client, "pro_enabled", False))
+    return InferenceMetricsResponse(success=True, metrics=metrics_snapshot)
 
 
 @app.get("/api/quiz/topics")

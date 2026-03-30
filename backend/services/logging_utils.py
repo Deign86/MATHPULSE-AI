@@ -34,6 +34,11 @@ def log_model_call(
     status: str,
     error_class: Optional[str] = None,
     error_message: Optional[str] = None,
+    task_type: Optional[str] = None,
+    request_tag: Optional[str] = None,
+    retry_attempt: Optional[int] = None,
+    fallback_depth: Optional[int] = None,
+    route: Optional[str] = None,
 ) -> None:
     payload = {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -47,6 +52,11 @@ def log_model_call(
         "status": status,
         "error_class": error_class,
         "error_message": error_message,
+        "task_type": task_type,
+        "request_tag": request_tag,
+        "retry_attempt": retry_attempt,
+        "fallback_depth": fallback_depth,
+        "route": route,
     }
     if status == "ok":
         logger.info(_safe_json(payload))
