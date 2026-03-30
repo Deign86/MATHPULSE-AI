@@ -13,19 +13,53 @@ import type {
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
+const isMissingIndexError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: string }).code;
+  const message = (err.message || '').toLowerCase();
+  return code === 'failed-precondition' && message.includes('requires an index');
+};
+
+const toMillis = (value: unknown): number => {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof value === 'object') {
+    const maybeTs = value as { toMillis?: () => number; seconds?: number };
+    if (typeof maybeTs.toMillis === 'function') return maybeTs.toMillis();
+    if (typeof maybeTs.seconds === 'number') return maybeTs.seconds * 1000;
+  }
+  return 0;
+};
+
 // ─── SAVE GENERATED QUIZ TO FIRESTORE ─────────────────────────
 
 export async function saveGeneratedQuiz(
   quiz: Omit<GeneratedQuiz, 'id'>,
   teacherId: string,
+  options?: { documentId?: string },
 ): Promise<string> {
-  const quizRef = doc(collection(db, 'generatedQuizzes'));
-  await setDoc(quizRef, {
+  const quizRef = options?.documentId
+    ? doc(db, 'generatedQuizzes', options.documentId)
+    : doc(collection(db, 'generatedQuizzes'));
+
+  const payload = {
     ...quiz,
     teacherId,
     createdAt: serverTimestamp(),
     status: 'draft' as GeneratedQuizStatus,
-  });
+  };
+
+  if (options?.documentId) {
+    await setDoc(quizRef, payload, { merge: true });
+  } else {
+    await setDoc(quizRef, payload);
+  }
+
   return quizRef.id;
 }
 
@@ -103,13 +137,24 @@ export async function fetchGeneratedQuiz(quizId: string): Promise<GeneratedQuiz 
 // ─── FETCH ALL QUIZZES BY TEACHER ────────────────────────────
 
 export async function fetchQuizzesByTeacher(teacherId: string): Promise<GeneratedQuiz[]> {
-  const q = query(
-    collection(db, 'generatedQuizzes'),
-    where('teacherId', '==', teacherId),
-    orderBy('createdAt', 'desc'),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as GeneratedQuiz));
+  try {
+    const q = query(
+      collection(db, 'generatedQuizzes'),
+      where('teacherId', '==', teacherId),
+      orderBy('createdAt', 'desc'),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as GeneratedQuiz));
+  } catch (err) {
+    if (!isMissingIndexError(err)) throw err;
+
+    // Fallback for environments where composite index rollout is pending.
+    const fallbackQuery = query(collection(db, 'generatedQuizzes'), where('teacherId', '==', teacherId));
+    const fallbackSnap = await getDocs(fallbackQuery);
+    return fallbackSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as GeneratedQuiz))
+      .sort((a, b) => toMillis((b as { createdAt?: unknown }).createdAt) - toMillis((a as { createdAt?: unknown }).createdAt));
+  }
 }
 
 // ─── CONVERT GeneratedQuiz → playable quiz payload ───────────
@@ -164,14 +209,26 @@ export function toPlayableQuiz(gen: GeneratedQuiz): PlayableQuiz {
 // ─── FETCH PENDING QUIZZES FOR STUDENT ───────────────────────
 
 export async function fetchPendingQuizzesForStudent(lrn: string): Promise<PlayableQuiz[]> {
-  const assignmentsQuery = query(
-    collection(db, 'quizAssignments'),
-    where('lrn', '==', lrn),
-    where('status', '==', 'pending'),
-    orderBy('assignedAt', 'desc'),
-  );
+  let assignmentsSnap;
+  try {
+    const assignmentsQuery = query(
+      collection(db, 'quizAssignments'),
+      where('lrn', '==', lrn),
+      where('status', '==', 'pending'),
+      orderBy('assignedAt', 'desc'),
+    );
+    assignmentsSnap = await getDocs(assignmentsQuery);
+  } catch (err) {
+    if (!isMissingIndexError(err)) throw err;
 
-  const assignmentsSnap = await getDocs(assignmentsQuery);
+    const fallbackQuery = query(
+      collection(db, 'quizAssignments'),
+      where('lrn', '==', lrn),
+      where('status', '==', 'pending'),
+    );
+    assignmentsSnap = await getDocs(fallbackQuery);
+  }
+
   const quizzes: PlayableQuiz[] = [];
 
   for (const assignDoc of assignmentsSnap.docs) {
