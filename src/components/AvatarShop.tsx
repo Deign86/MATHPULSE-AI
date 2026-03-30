@@ -2,6 +2,7 @@
 import { motion } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Save, Sparkles, Shirt, Scissors, Footprints, Crown } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../services/authService';
 import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
@@ -37,6 +38,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile }) => {
       if (onSaveProfile) {
         onSaveProfile(equipped);
       }
+      toast.success('Avatar saved successfully');
       setIsSaving(false);
     } catch (err) {
       console.error(err);
