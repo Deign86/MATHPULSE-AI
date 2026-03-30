@@ -3,7 +3,7 @@ import { Calculator, TrendingUp, BarChart3, Sigma } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHS CANONICAL DATA — Single source of truth for Grade 11-12 SHS Math
-// Philippine K-12 Curriculum
+// Strengthened SHS curriculum rollout
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const SHS_MATH_SUBJECTS = [
@@ -15,26 +15,30 @@ export const SHS_MATH_SUBJECTS = [
     semester: '1st Semester',
     color: 'from-blue-500 to-cyan-500',
     topics: [
-      // Functions and Their Graphs
-      { id: 'gen-math-001', name: 'Functions and Relations', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-002', name: 'Evaluating Functions', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-003', name: 'Operations on Functions', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-004', name: 'Composite Functions', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-005', name: 'Inverse Functions', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-006', name: 'Rational Functions', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-007', name: 'Exponential Functions', unit: 'Functions and Their Graphs' },
-      { id: 'gen-math-008', name: 'Logarithmic Functions', unit: 'Functions and Their Graphs' },
-      // Business Mathematics
-      { id: 'gen-math-009', name: 'Simple Interest', unit: 'Business Mathematics' },
-      { id: 'gen-math-010', name: 'Compound Interest', unit: 'Business Mathematics' },
-      { id: 'gen-math-011', name: 'Annuities', unit: 'Business Mathematics' },
-      { id: 'gen-math-012', name: 'Loans and Amortization', unit: 'Business Mathematics' },
-      { id: 'gen-math-013', name: 'Stocks and Bonds', unit: 'Business Mathematics' },
-      // Logic
-      { id: 'gen-math-014', name: 'Propositions and Connectives', unit: 'Logic' },
-      { id: 'gen-math-015', name: 'Truth Tables', unit: 'Logic' },
-      { id: 'gen-math-016', name: 'Logical Equivalence', unit: 'Logic' },
-      { id: 'gen-math-017', name: 'Valid Arguments and Fallacies', unit: 'Logic' },
+      // Patterns, Relations, and Functions
+      { id: 'gen-math-001', name: 'Patterns and Real-Life Relationships', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-002', name: 'Functions as Mathematical Models', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-003', name: 'Function Notation and Evaluation', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-004', name: 'Domain and Range of Functions', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-005', name: 'Operations on Functions', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-006', name: 'Composite Functions', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-007', name: 'Inverse Functions', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-008', name: 'Graphs of Rational Functions', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-009', name: 'Graphs of Exponential Functions', unit: 'Patterns, Relations, and Functions' },
+      { id: 'gen-math-010', name: 'Graphs of Logarithmic Functions', unit: 'Patterns, Relations, and Functions' },
+      // Financial Mathematics
+      { id: 'gen-math-011', name: 'Simple and Compound Interest', unit: 'Financial Mathematics' },
+      { id: 'gen-math-012', name: 'Simple and General Annuities', unit: 'Financial Mathematics' },
+      { id: 'gen-math-013', name: 'Present and Future Value', unit: 'Financial Mathematics' },
+      { id: 'gen-math-014', name: 'Loans, Amortization, and Sinking Funds', unit: 'Financial Mathematics' },
+      { id: 'gen-math-015', name: 'Stocks, Bonds, and Market Indices', unit: 'Financial Mathematics' },
+      { id: 'gen-math-016', name: 'Business Decision-Making with Mathematical Models', unit: 'Financial Mathematics' },
+      // Logic and Mathematical Reasoning
+      { id: 'gen-math-017', name: 'Propositions and Logical Connectives', unit: 'Logic and Mathematical Reasoning' },
+      { id: 'gen-math-018', name: 'Truth Values and Truth Tables', unit: 'Logic and Mathematical Reasoning' },
+      { id: 'gen-math-019', name: 'Logical Equivalence and Implication', unit: 'Logic and Mathematical Reasoning' },
+      { id: 'gen-math-020', name: 'Quantifiers and Negation', unit: 'Logic and Mathematical Reasoning' },
+      { id: 'gen-math-021', name: 'Validity of Arguments', unit: 'Logic and Mathematical Reasoning' },
     ]
   },
   {
@@ -138,12 +142,12 @@ export const SUBJECTS_BY_GRADE: Record<GradeLevel, typeof SHS_MATH_SUBJECTS[numb
 };
 
 // Active subject visibility for the strengthened SHS rollout.
-// Based on current curriculum assumptions used in previous curriculum template work:
-// - Grade 11: General Mathematics core only
-// - Grade 12: broader elective-facing set available in-app
+// Keep strict separation by grade level.
+// - Grade 11: General Mathematics only (current rollout)
+// - Grade 12: Pre-Calculus + Basic Calculus
 export const ACTIVE_SUBJECT_IDS_BY_GRADE: Record<GradeLevel, SubjectId[]> = {
   'Grade 11': ['gen-math'],
-  'Grade 12': ['gen-math', 'pre-calc', 'stats-prob', 'basic-calc'],
+  'Grade 12': ['pre-calc', 'basic-calc'],
 };
 
 export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null {

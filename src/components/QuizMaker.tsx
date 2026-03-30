@@ -66,6 +66,45 @@ const BLOOM_LABELS: Record<BloomLevel, { label: string; color: string; descripti
 
 const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
 
+const normalizeGradeLevel = (value?: string): 'Grade 11' | 'Grade 12' => {
+  const normalized = (value || '').trim().toLowerCase();
+  if (normalized === 'grade 12' || normalized === '12' || normalized.includes('12')) {
+    return 'Grade 12';
+  }
+  return 'Grade 11';
+};
+
+const FALLBACK_TOPICS_BY_GRADE: Record<'Grade 11' | 'Grade 12', Record<string, string[]>> = {
+  'Grade 11': {
+    'General Mathematics - Patterns, Relations, and Functions': ['Patterns and Real-Life Relationships', 'Functions as Mathematical Models', 'Function Notation and Evaluation', 'Domain and Range of Functions', 'Operations on Functions', 'Composite Functions', 'Inverse Functions', 'Graphs of Rational Functions', 'Graphs of Exponential Functions', 'Graphs of Logarithmic Functions'],
+    'General Mathematics - Financial Mathematics': ['Simple and Compound Interest', 'Simple and General Annuities', 'Present and Future Value', 'Loans, Amortization, and Sinking Funds', 'Stocks, Bonds, and Market Indices', 'Business Decision-Making with Mathematical Models'],
+    'General Mathematics - Logic and Mathematical Reasoning': ['Propositions and Logical Connectives', 'Truth Values and Truth Tables', 'Logical Equivalence and Implication', 'Quantifiers and Negation', 'Validity of Arguments'],
+  },
+  'Grade 12': {
+    'Pre-Calculus - Analytic Geometry': ['Conic Sections - Parabola', 'Conic Sections - Ellipse', 'Conic Sections - Hyperbola', 'Conic Sections - Circle', 'Systems of Nonlinear Equations'],
+    'Pre-Calculus - Series and Induction': ['Sequences and Series', 'Arithmetic Sequences', 'Geometric Sequences', 'Mathematical Induction', 'Binomial Theorem'],
+    'Pre-Calculus - Trigonometry': ['Angles and Unit Circle', 'Trigonometric Functions', 'Trigonometric Identities', 'Sum and Difference Formulas', 'Inverse Trigonometric Functions', 'Polar Coordinates'],
+    'Basic Calculus - Limits': ['Limits of Functions', 'Limit Theorems', 'One-Sided Limits', 'Infinite Limits and Limits at Infinity', 'Continuity of Functions'],
+    'Basic Calculus - Derivatives': ['Definition of the Derivative', 'Differentiation Rules', 'Chain Rule', 'Implicit Differentiation', 'Higher-Order Derivatives', 'Related Rates', 'Extrema and the First Derivative Test', 'Concavity and the Second Derivative Test', 'Optimization Problems'],
+    'Basic Calculus - Integration': ['Antiderivatives and Indefinite Integrals', 'Definite Integrals and the FTC', 'Integration by Substitution', 'Area Under a Curve'],
+  },
+};
+
+const CATEGORY_PREFIXES_BY_GRADE: Record<'Grade 11' | 'Grade 12', string[]> = {
+  'Grade 11': ['General Mathematics - '],
+  'Grade 12': ['Pre-Calculus - ', 'Basic Calculus - '],
+};
+
+const filterTopicsByGrade = (
+  topics: Record<string, string[]>,
+  grade: 'Grade 11' | 'Grade 12',
+): Record<string, string[]> => {
+  const allowedPrefixes = CATEGORY_PREFIXES_BY_GRADE[grade];
+  return Object.fromEntries(
+    Object.entries(topics).filter(([category]) => allowedPrefixes.some((prefix) => category.startsWith(prefix))),
+  );
+};
+
 // Temporary hard limits to prevent LLM token overflow (Meta-Llama-3-8B has 8192 token context)
 const MAX_QUESTIONS_LIMIT = 15;
 const MAX_TOPICS_LIMIT = 8;
@@ -92,7 +131,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
   // Form state
   const [step, setStep] = useState<Step>('configure');
-  const [selectedGrade, setSelectedGrade] = useState(initialGrade || 'Grade 11');
+  const [selectedGrade, setSelectedGrade] = useState(normalizeGradeLevel(initialGrade));
   const [numQuestions, setNumQuestions] = useState(10); // Capped at MAX_QUESTIONS_LIMIT
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [excludeTopics, setExcludeTopics] = useState<string[]>([]);
@@ -143,28 +182,15 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   // Load topics when grade changes
   const loadTopics = useCallback(async () => {
     setTopicsLoading(true);
+    const normalizedGrade = normalizeGradeLevel(selectedGrade);
     try {
-      const response = await apiService.getQuizTopics(selectedGrade);
+      const response = await apiService.getQuizTopics(normalizedGrade);
       if (response.topics) {
-        setAvailableTopics(response.topics);
+        setAvailableTopics(filterTopicsByGrade(response.topics, normalizedGrade));
       }
     } catch {
-      // Fallback topics if API fails — aligned with SHS curriculum
-      setAvailableTopics({
-        'General Mathematics - Functions and Their Graphs': ['Functions and Relations', 'Evaluating Functions', 'Operations on Functions', 'Composite Functions', 'Inverse Functions', 'Rational Functions', 'Exponential Functions', 'Logarithmic Functions'],
-        'General Mathematics - Business Mathematics': ['Simple Interest', 'Compound Interest', 'Annuities', 'Loans and Amortization', 'Stocks and Bonds'],
-        'General Mathematics - Logic': ['Propositions and Connectives', 'Truth Tables', 'Logical Equivalence', 'Valid Arguments and Fallacies'],
-        'Statistics and Probability - Random Variables': ['Random Variables', 'Discrete Probability Distributions', 'Mean and Variance of Discrete RV'],
-        'Statistics and Probability - Normal Distribution': ['Normal Distribution', 'Standard Normal Distribution and Z-scores', 'Areas Under the Normal Curve'],
-        'Statistics and Probability - Sampling and Estimation': ['Sampling Distributions', 'Central Limit Theorem', 'Point Estimation', 'Confidence Intervals'],
-        'Statistics and Probability - Hypothesis Testing': ['Hypothesis Testing Concepts', 'T-test', 'Z-test', 'Correlation and Regression'],
-        'Pre-Calculus - Analytic Geometry': ['Conic Sections - Parabola', 'Conic Sections - Ellipse', 'Conic Sections - Hyperbola', 'Conic Sections - Circle', 'Systems of Nonlinear Equations'],
-        'Pre-Calculus - Series and Induction': ['Sequences and Series', 'Arithmetic Sequences', 'Geometric Sequences', 'Mathematical Induction', 'Binomial Theorem'],
-        'Pre-Calculus - Trigonometry': ['Angles and Unit Circle', 'Trigonometric Functions', 'Trigonometric Identities', 'Sum and Difference Formulas', 'Inverse Trigonometric Functions', 'Polar Coordinates'],
-        'Basic Calculus - Limits': ['Limits of Functions', 'Limit Theorems', 'One-Sided Limits', 'Infinite Limits and Limits at Infinity', 'Continuity of Functions'],
-        'Basic Calculus - Derivatives': ['Definition of the Derivative', 'Differentiation Rules', 'Chain Rule', 'Implicit Differentiation', 'Higher-Order Derivatives', 'Related Rates', 'Extrema and the First Derivative Test', 'Concavity and the Second Derivative Test', 'Optimization Problems'],
-        'Basic Calculus - Integration': ['Antiderivatives and Indefinite Integrals', 'Definite Integrals and the FTC', 'Integration by Substitution', 'Area Under a Curve'],
-      });
+      // Fallback topics if API fails — keep grades separated.
+      setAvailableTopics(filterTopicsByGrade(FALLBACK_TOPICS_BY_GRADE[normalizedGrade], normalizedGrade));
     } finally {
       setTopicsLoading(false);
     }
@@ -928,7 +954,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <select
                     id="quiz-grade-level"
                     value={selectedGrade}
-                    onChange={e => setSelectedGrade(e.target.value)}
+                    onChange={e => setSelectedGrade(normalizeGradeLevel(e.target.value))}
                     className="w-full border border-[#dde3eb] rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none bg-white"
                   >
                     {GRADE_LEVELS.map(g => (

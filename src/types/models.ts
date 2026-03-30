@@ -7,6 +7,12 @@ export interface User {
   name: string;
   role: UserRole;
   photo?: string;
+  avatarLayers?: {
+    top?: string;
+    bottom?: string;
+    shoes?: string;
+    accessory?: string;
+  };
   phone?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -106,6 +112,122 @@ export interface AdminProfile extends User {
   position: string;
   department: string;
 }
+
+export type ProfileVisibility = 'everyone' | 'students_and_staff' | 'private';
+export type StudyTimePreference = 'morning' | 'afternoon' | 'evening' | 'night';
+export type QuizDifficultyPreference = 'adaptive' | 'easy' | 'medium' | 'hard';
+
+export interface UserSettings {
+  notifications: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    soundEnabled: boolean;
+    notificationTypes: {
+      quizReminders: boolean;
+      newContent: boolean;
+      achievements: boolean;
+      streakAlerts: boolean;
+      weeklySummary: boolean;
+    };
+    quietHours: {
+      start: string;
+      end: string;
+    };
+  };
+  appearance: {
+    darkMode: boolean;
+    fontSize: number;
+    compactView: boolean;
+    reduceAnimations: boolean;
+  };
+  privacy: {
+    profileVisibility: ProfileVisibility;
+    showActivityStatus: boolean;
+    dataSharing: boolean;
+  };
+  learning: {
+    dailyXpGoal: number;
+    preferredStudyTime: StudyTimePreference;
+    autoPlayLessons: boolean;
+    showHints: boolean;
+    quizDifficultyPreference: QuizDifficultyPreference;
+    studyReminderTime: string;
+  };
+  adminPanel: {
+    siteName: string;
+    siteDescription: string;
+    defaultLanguage: string;
+    maintenanceMode: boolean;
+    enforceStrongPasswords: boolean;
+    sessionTimeoutMinutes: number;
+    aiTutorEnabled: boolean;
+    aiAutoRecommendations: boolean;
+    aiRiskAlertsEnabled: boolean;
+    gradingScale: 'percentage' | 'gpa';
+    passingGrade: number;
+    parentSummaryEmails: boolean;
+    teacherDigestEmails: boolean;
+    weeklyPlatformReport: boolean;
+    autoBackupEnabled: boolean;
+    backupFrequency: 'daily' | 'weekly' | 'monthly';
+  };
+}
+
+export const DEFAULT_USER_SETTINGS: UserSettings = {
+  notifications: {
+    emailNotifications: true,
+    pushNotifications: true,
+    soundEnabled: true,
+    notificationTypes: {
+      quizReminders: true,
+      newContent: true,
+      achievements: true,
+      streakAlerts: true,
+      weeklySummary: true,
+    },
+    quietHours: {
+      start: '22:00',
+      end: '08:00',
+    },
+  },
+  appearance: {
+    darkMode: false,
+    fontSize: 16,
+    compactView: false,
+    reduceAnimations: false,
+  },
+  privacy: {
+    profileVisibility: 'everyone',
+    showActivityStatus: true,
+    dataSharing: true,
+  },
+  learning: {
+    dailyXpGoal: 100,
+    preferredStudyTime: 'evening',
+    autoPlayLessons: false,
+    showHints: true,
+    quizDifficultyPreference: 'adaptive',
+    studyReminderTime: '18:00',
+  },
+  adminPanel: {
+    siteName: 'MathPulse AI',
+    siteDescription: 'AI-Powered Mathematics Learning Platform',
+    defaultLanguage: 'English',
+    maintenanceMode: false,
+    enforceStrongPasswords: true,
+    sessionTimeoutMinutes: 60,
+    aiTutorEnabled: true,
+    aiAutoRecommendations: true,
+    aiRiskAlertsEnabled: true,
+    gradingScale: 'percentage',
+    passingGrade: 75,
+    parentSummaryEmails: true,
+    teacherDigestEmails: true,
+    weeklyPlatformReport: true,
+    autoBackupEnabled: false,
+    backupFrequency: 'weekly',
+  },
+};
 
 // Progress Types
 export interface LessonProgress {

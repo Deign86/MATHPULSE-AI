@@ -23,15 +23,17 @@ import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
 import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal';
 import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
+import AvatarShop from './components/AvatarShop';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
-import { signOutUser, updateUserProfile } from './services/authService';
+import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService';
 import { createNotification } from './services/notificationService';
 import { updateStreak, awardXP } from './services/gamificationService';
 import { getUserProgress } from './services/progressService';
-import { AdminProfile, StudentProfile, TeacherProfile, User } from './types/models';
+import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models';
 import { triggerStudentEnrolled, getPendingDeepDiagnosticCount } from './services/automationService';
 import { resetTestingDataForRole } from './services/testResetService';
+import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService';
 import { Toaster, toast } from 'sonner';
 import { Crown, Flame, Zap, Brain } from 'lucide-react';
 
@@ -65,6 +67,7 @@ const App = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
+  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
 
   // Diagnostic State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
@@ -181,6 +184,29 @@ const App = () => {
   useEffect(() => {
     setProfileOverrides({});
   }, [userProfile?.uid]);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!userProfile?.uid) {
+        setUserSettings(DEFAULT_USER_SETTINGS);
+        return;
+      }
+
+      try {
+        const settings = await getUserSettings(userProfile.uid);
+        setUserSettings(settings);
+      } catch (error) {
+        console.error('Error loading user settings:', error);
+        setUserSettings(DEFAULT_USER_SETTINGS);
+      }
+    };
+
+    void loadSettings();
+  }, [userProfile?.uid]);
+
+  useEffect(() => {
+    applyRuntimeSettings(userSettings);
+  }, [userSettings]);
 
   // Trigger diagnostic on first student login
   useEffect(() => {
@@ -323,6 +349,7 @@ const App = () => {
       'email',
       'phone',
       'photo',
+      'avatarLayers',
       'lrn',
       'grade',
       'section',
@@ -352,6 +379,67 @@ const App = () => {
     } catch (error) {
       console.error('Error saving profile:', error);
       toast.error('Failed to update profile');
+    }
+  };
+
+  const handleSaveSettings = async (settingsUpdates: Partial<UserSettings>) => {
+    if (!userProfile?.uid) return;
+
+    try {
+      const merged = await upsertUserSettings(userProfile.uid, settingsUpdates);
+      setUserSettings(merged);
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Failed to save settings');
+      throw error;
+    }
+  };
+
+  const handleUpdatePassword = async (nextPassword: string) => {
+    try {
+      await updateUserPassword(nextPassword);
+      toast.success('Password updated successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update password';
+      toast.error(message);
+      throw error;
+    }
+  };
+
+  const handleExportData = async () => {
+    if (!userProfile?.uid) return;
+
+    const snapshot = await exportUserDataSnapshot(userProfile.uid);
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `mathpulse-data-export-${userProfile.uid}-${Date.now()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    toast.success('Data export downloaded');
+  };
+
+  const handleClearCache = async () => {
+    await clearClientCache();
+    toast.success('Local cache cleared');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userProfile?.uid || userRole !== 'admin') {
+      throw new Error('Only admin accounts can delete this account from settings.');
+    }
+
+    try {
+      await deleteCurrentUserAccount(userProfile.uid);
+      toast.success('Account deleted successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to delete account';
+      toast.error(message);
+      throw error;
     }
   };
 
@@ -502,6 +590,13 @@ const App = () => {
           onClose={() => setShowSettingsModal(false)}
           profileData={profileData}
           onSave={handleSaveProfile}
+          settingsData={userSettings}
+          onSaveSettings={handleSaveSettings}
+          onApplySettingsPreview={setUserSettings}
+          onUpdatePassword={handleUpdatePassword}
+          onExportData={handleExportData}
+          onClearCache={handleClearCache}
+          onDeleteAccount={handleDeleteAccount}
           onResetData={handleResetTestingData}
         />
         <Toaster position="top-right" richColors closeButton />
@@ -529,6 +624,13 @@ const App = () => {
           onClose={() => setShowSettingsModal(false)}
           profileData={profileData}
           onSave={handleSaveProfile}
+          settingsData={userSettings}
+          onSaveSettings={handleSaveSettings}
+          onApplySettingsPreview={setUserSettings}
+          onUpdatePassword={handleUpdatePassword}
+          onExportData={handleExportData}
+          onClearCache={handleClearCache}
+          onDeleteAccount={handleDeleteAccount}
           onResetData={handleResetTestingData}
         />
         <Toaster position="top-right" richColors closeButton />
@@ -705,6 +807,8 @@ const App = () => {
                   <AIChatPage />
                 ) : activeTab === 'Grades' ? (
                   <GradesPage />
+                ) : activeTab === 'Avatar Studio' ? (
+                  <AvatarShop />
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
@@ -769,6 +873,13 @@ const App = () => {
             onClose={() => setShowSettingsModal(false)}
             profileData={profileData}
             onSave={handleSaveProfile}
+            settingsData={userSettings}
+            onSaveSettings={handleSaveSettings}
+            onApplySettingsPreview={setUserSettings}
+            onUpdatePassword={handleUpdatePassword}
+            onExportData={handleExportData}
+            onClearCache={handleClearCache}
+            onDeleteAccount={handleDeleteAccount}
             onResetData={handleResetTestingData}
           />
 

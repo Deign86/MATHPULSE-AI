@@ -9,8 +9,9 @@ import {
   User as FirebaseUser,
   updateEmail,
   updatePassword,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
 
@@ -259,8 +260,29 @@ export const updateUserProfile = async (
     Partial<Omit<AdminProfile, keyof User | 'role'>>
 ): Promise<void> => {
   try {
+    const currentProfile = await getUserProfile(uid);
+    if (!currentProfile) {
+      throw new Error('Profile not found');
+    }
+
+    const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers'];
+    const roleAllowedMap: Record<UserRole, string[]> = {
+      student: ['lrn', 'grade', 'section', 'school', 'enrollmentDate', 'major', 'gpa'],
+      teacher: ['department', 'subject', 'yearsOfExperience', 'qualification'],
+      admin: ['department', 'position'],
+    };
+
+    const allowedKeys = new Set([...baseAllowed, ...roleAllowedMap[currentProfile.role]]);
+    const sanitizedUpdates: Record<string, unknown> = {};
+
+    Object.entries(updates as Record<string, unknown>).forEach(([key, value]) => {
+      if (value !== undefined && allowedKeys.has(key)) {
+        sanitizedUpdates[key] = value;
+      }
+    });
+
     const docRef = doc(db, 'users', uid);
-    await setDoc(docRef, { ...updates, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(docRef, { ...sanitizedUpdates, updatedAt: serverTimestamp() }, { merge: true });
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;
@@ -282,4 +304,18 @@ export const updateUserPassword = async (newPassword: string): Promise<void> => 
 // Get current user
 export const getCurrentUser = (): FirebaseUser | null => {
   return auth.currentUser;
+};
+
+export const deleteCurrentUserAccount = async (uid: string): Promise<void> => {
+  if (!auth.currentUser) {
+    throw new Error('No user logged in');
+  }
+
+  await deleteUser(auth.currentUser);
+
+  try {
+    await deleteDoc(doc(db, 'users', uid));
+  } catch (error) {
+    console.warn('User auth deleted but profile document cleanup failed:', error);
+  }
 };

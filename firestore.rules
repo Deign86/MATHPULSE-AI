@@ -53,6 +53,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /users/{userId}/settings/{settingsId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create, update: if isSelf(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /progress/{docId} {
       allow read: if ownerByField('userId') || isTeacherOrAdmin();
       allow create, update: if ownerByField('userId') || isTeacherOrAdmin();

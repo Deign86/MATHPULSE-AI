@@ -18,6 +18,7 @@ import random
 import logging
 import hashlib
 import traceback
+import re
 from typing import List, Optional, Dict, Any, Tuple, Literal
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -66,6 +67,37 @@ except ImportError:
     HAS_FIREBASE = False
 
 logger = logging.getLogger("mathpulse.analytics")
+
+
+def _normalize_topic_key(value: str) -> str:
+    key = re.sub(r"[^a-z0-9\s]+", " ", (value or "").lower())
+    key = re.sub(r"\s+", " ", key).strip()
+    return key
+
+
+TOPIC_LABEL_ALIASES: Dict[str, str] = {
+    _normalize_topic_key("Functions and Relations"): "Functions as Mathematical Models",
+    _normalize_topic_key("Evaluating Functions"): "Function Notation and Evaluation",
+    _normalize_topic_key("Rational Functions"): "Graphs of Rational Functions",
+    _normalize_topic_key("Exponential Functions"): "Graphs of Exponential Functions",
+    _normalize_topic_key("Logarithmic Functions"): "Graphs of Logarithmic Functions",
+    _normalize_topic_key("Simple Interest"): "Simple and Compound Interest",
+    _normalize_topic_key("Compound Interest"): "Simple and Compound Interest",
+    _normalize_topic_key("Annuities"): "Simple and General Annuities",
+    _normalize_topic_key("Loans and Amortization"): "Loans, Amortization, and Sinking Funds",
+    _normalize_topic_key("Stocks and Bonds"): "Stocks, Bonds, and Market Indices",
+    _normalize_topic_key("Propositions and Connectives"): "Propositions and Logical Connectives",
+    _normalize_topic_key("Truth Tables"): "Truth Values and Truth Tables",
+    _normalize_topic_key("Logical Equivalence"): "Logical Equivalence and Implication",
+    _normalize_topic_key("Valid Arguments and Fallacies"): "Validity of Arguments",
+}
+
+
+def _canonicalize_topic_label(value: str) -> str:
+    clean_value = str(value or "").strip()
+    if not clean_value:
+        return "Unknown"
+    return TOPIC_LABEL_ALIASES.get(_normalize_topic_key(clean_value), clean_value)
 
 # ─── Configuration ─────────────────────────────────────────────
 
@@ -635,8 +667,8 @@ async def compute_competency_analysis(
     # Group by topic
     topic_data: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for entry in quiz_history:
-        topic = entry.get("topicId") or entry.get("topic") or "Unknown"
-        if topic_filter and topic != topic_filter:
+        topic = _canonicalize_topic_label(str(entry.get("topicId") or entry.get("topic") or "Unknown"))
+        if topic_filter and topic != _canonicalize_topic_label(topic_filter):
             continue
         topic_data[topic].append(entry)
 
@@ -1364,7 +1396,11 @@ async def select_adaptive_quiz(request: AdaptiveQuizRequest) -> AdaptiveQuizResp
     quiz_history = await fetch_student_quiz_history(request.studentId)
 
     # Estimate student ability
-    topic_entries = [e for e in quiz_history if (e.get("topicId") or e.get("topic")) == request.topicId]
+    canonical_topic_id = _canonicalize_topic_label(request.topicId)
+    topic_entries = [
+        e for e in quiz_history
+        if _canonicalize_topic_label(str(e.get("topicId") or e.get("topic") or "")) == canonical_topic_id
+    ]
 
     if topic_entries:
         responses_for_irt = []
