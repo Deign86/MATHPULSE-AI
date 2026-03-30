@@ -238,6 +238,38 @@ html {
   font-size: var(--font-size);
 }
 
+html[data-density='compact'] {
+  --radius: 0.9rem;
+}
+
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/*
+ * Extension-style dark mode: invert the full document, then invert media back
+ * so photos/videos/charts keep natural colors.
+ */
+html.smart-dark {
+  filter: invert(1) hue-rotate(180deg);
+  background: #101217;
+}
+
+html.smart-dark img,
+html.smart-dark picture,
+html.smart-dark video,
+html.smart-dark canvas,
+html.smart-dark svg,
+html.smart-dark iframe,
+html.smart-dark [data-preserve-color='true'] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 /* ─── Font Family Utilities ──────────────────────────── */
 .font-display {
   font-family: var(--font-display);

@@ -3441,18 +3441,23 @@ def _csv_escape(value: Any) -> str:
 
 MATH_TOPICS_BY_GRADE: Dict[str, Dict[str, List[str]]] = {
     "Grade 11": {
-        "General Mathematics - Functions and Their Graphs": [
-            "Functions and Relations", "Evaluating Functions", "Operations on Functions",
-            "Composite Functions", "Inverse Functions", "Rational Functions",
-            "Exponential Functions", "Logarithmic Functions",
+        "General Mathematics - Patterns, Relations, and Functions": [
+            "Patterns and Real-Life Relationships", "Functions as Mathematical Models",
+            "Function Notation and Evaluation", "Domain and Range of Functions",
+            "Operations on Functions", "Composite Functions", "Inverse Functions",
+            "Graphs of Rational Functions", "Graphs of Exponential Functions",
+            "Graphs of Logarithmic Functions",
         ],
-        "General Mathematics - Business Mathematics": [
-            "Simple Interest", "Compound Interest", "Annuities",
-            "Loans and Amortization", "Stocks and Bonds",
+        "General Mathematics - Financial Mathematics": [
+            "Simple and Compound Interest", "Simple and General Annuities",
+            "Present and Future Value", "Loans, Amortization, and Sinking Funds",
+            "Stocks, Bonds, and Market Indices",
+            "Business Decision-Making with Mathematical Models",
         ],
-        "General Mathematics - Logic": [
-            "Propositions and Connectives", "Truth Tables",
-            "Logical Equivalence", "Valid Arguments and Fallacies",
+        "General Mathematics - Logic and Mathematical Reasoning": [
+            "Propositions and Logical Connectives", "Truth Values and Truth Tables",
+            "Logical Equivalence and Implication", "Quantifiers and Negation",
+            "Validity of Arguments",
         ],
         "Statistics and Probability - Random Variables": [
             "Random Variables", "Discrete Probability Distributions",
@@ -3511,12 +3516,62 @@ def _normalize_topic_key(value: str) -> str:
     return key
 
 
+TOPIC_LABEL_ALIASES: Dict[str, str] = {
+    # Legacy General Mathematics aliases mapped to strengthened SHS canonical labels.
+    _normalize_topic_key("Functions and Relations"): "Functions as Mathematical Models",
+    _normalize_topic_key("Evaluating Functions"): "Function Notation and Evaluation",
+    _normalize_topic_key("Rational Functions"): "Graphs of Rational Functions",
+    _normalize_topic_key("Exponential Functions"): "Graphs of Exponential Functions",
+    _normalize_topic_key("Logarithmic Functions"): "Graphs of Logarithmic Functions",
+    _normalize_topic_key("Simple Interest"): "Simple and Compound Interest",
+    _normalize_topic_key("Compound Interest"): "Simple and Compound Interest",
+    _normalize_topic_key("Annuities"): "Simple and General Annuities",
+    _normalize_topic_key("Loans and Amortization"): "Loans, Amortization, and Sinking Funds",
+    _normalize_topic_key("Stocks and Bonds"): "Stocks, Bonds, and Market Indices",
+    _normalize_topic_key("Propositions and Connectives"): "Propositions and Logical Connectives",
+    _normalize_topic_key("Truth Tables"): "Truth Values and Truth Tables",
+    _normalize_topic_key("Logical Equivalence"): "Logical Equivalence and Implication",
+    _normalize_topic_key("Valid Arguments and Fallacies"): "Validity of Arguments",
+}
+
+
+def _canonicalize_topic_label(value: str) -> str:
+    clean_value = str(value or "").strip()
+    if not clean_value:
+        return ""
+    return TOPIC_LABEL_ALIASES.get(_normalize_topic_key(clean_value), clean_value)
+
+
+def _canonicalize_topic_list(values: List[str]) -> List[str]:
+    canonical: List[str] = []
+    for value in values:
+        normalized = _canonicalize_topic_label(value)
+        if normalized and normalized not in canonical:
+            canonical.append(normalized)
+    return canonical
+
+
+def _resolve_grade_level_key(grade_level: Optional[str]) -> Optional[str]:
+    raw = str(grade_level or "").strip()
+    if not raw:
+        return None
+
+    normalized = raw.lower()
+    if normalized in {"11", "grade11", "grade 11", "g11"}:
+        return "Grade 11"
+    if normalized in {"12", "grade12", "grade 12", "g12"}:
+        return "Grade 12"
+
+    for key in MATH_TOPICS_BY_GRADE.keys():
+        if key.lower() == normalized:
+            return key
+
+    return None
+
+
 def _fallback_topics_for_grade(grade_level: str, topic_count: int) -> List[str]:
     fallback_topics: List[str] = []
-    grade_key = next(
-        (key for key in MATH_TOPICS_BY_GRADE.keys() if key.lower() == (grade_level or "").strip().lower()),
-        None,
-    )
+    grade_key = _resolve_grade_level_key(grade_level)
     if grade_key:
         for _, topics in MATH_TOPICS_BY_GRADE[grade_key].items():
             for topic in topics:
@@ -3525,14 +3580,14 @@ def _fallback_topics_for_grade(grade_level: str, topic_count: int) -> List[str]:
                 if len(fallback_topics) >= topic_count:
                     return fallback_topics
 
-    if not fallback_topics:
-        for grade_topics in MATH_TOPICS_BY_GRADE.values():
-            for _, topics in grade_topics.items():
-                for topic in topics:
-                    if topic not in fallback_topics:
-                        fallback_topics.append(topic)
-                    if len(fallback_topics) >= topic_count:
-                        return fallback_topics
+    # Keep grade-level separation strict; if grade is unknown, default to Grade 11.
+    default_grade = "Grade 11"
+    for _, topics in MATH_TOPICS_BY_GRADE[default_grade].items():
+        for topic in topics:
+            if topic not in fallback_topics:
+                fallback_topics.append(topic)
+            if len(fallback_topics) >= topic_count:
+                return fallback_topics
     return fallback_topics
 
 
@@ -3660,7 +3715,7 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
 
         selected_topics: List[str] = []
         for topic in request.focusTopics:
-            clean_topic = str(topic).strip()
+            clean_topic = _canonicalize_topic_label(str(topic).strip())
             if clean_topic and clean_topic not in selected_topics:
                 selected_topics.append(clean_topic)
 
@@ -4465,8 +4520,10 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
     """
     try:
 
-        # Filter out excluded topics
-        effective_topics = [t for t in request.topics if t not in request.excludeTopics]
+        normalized_exclude_topics = set(_canonicalize_topic_list(request.excludeTopics))
+        # Filter out excluded topics (supports legacy topic labels via canonicalization)
+        effective_topics = _canonicalize_topic_list(request.topics)
+        effective_topics = [t for t in effective_topics if t not in normalized_exclude_topics]
         import_grounding_enabled = ENABLE_IMPORT_GROUNDED_QUIZ
         import_warnings: List[str] = []
         if not import_grounding_enabled and request.preferImportedTopics:
@@ -4487,8 +4544,9 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
             imported_topic_titles = [
                 str(topic.get("title", "")).strip()
                 for topic in imported_topics_payload.get("topics", [])
-                if str(topic.get("title", "")).strip() and str(topic.get("title", "")).strip() not in request.excludeTopics
+                if str(topic.get("title", "")).strip() and _canonicalize_topic_label(str(topic.get("title", "")).strip()) not in normalized_exclude_topics
             ]
+            imported_topic_titles = _canonicalize_topic_list(imported_topic_titles)
 
         if imported_topic_titles:
             if request.preferImportedTopics:
@@ -4743,14 +4801,9 @@ async def get_quiz_topics(gradeLevel: Optional[str] = None):
     If gradeLevel is provided, return topics for that grade only.
     """
     if gradeLevel:
-        key = gradeLevel.strip()
-        # Try exact match first
-        if key in MATH_TOPICS_BY_GRADE:
+        key = _resolve_grade_level_key(gradeLevel)
+        if key:
             return {"gradeLevel": key, "topics": MATH_TOPICS_BY_GRADE[key]}
-        # Case-insensitive match
-        for k, v in MATH_TOPICS_BY_GRADE.items():
-            if k.lower() == key.lower():
-                return {"gradeLevel": k, "topics": v}
         raise HTTPException(
             status_code=404,
             detail=f"Grade level '{gradeLevel}' not found. Available: {list(MATH_TOPICS_BY_GRADE.keys())}",
@@ -4787,7 +4840,7 @@ async def student_competency(request: StudentCompetencyRequest):
         # Aggregate scores per topic
         topic_data: Dict[str, List[Dict[str, Any]]] = {}
         for entry in history:
-            topic = entry.get("topic", "Unknown")
+            topic = _canonicalize_topic_label(str(entry.get("topic", "Unknown")))
             if topic not in topic_data:
                 topic_data[topic] = []
             topic_data[topic].append(entry)
