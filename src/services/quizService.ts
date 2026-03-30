@@ -11,7 +11,7 @@ import type {
   QuizAnswerRecord,
 } from '../types/models';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api.hf.space';
+const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
 // ─── SAVE GENERATED QUIZ TO FIRESTORE ─────────────────────────
 

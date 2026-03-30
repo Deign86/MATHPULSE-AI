@@ -201,6 +201,61 @@ Operational artifacts:
 
 ## 🏗 Architecture
 
+## Hugging Face PRO Architecture
+
+MathPulse now supports a PRO-oriented architecture for fast demos, low-cost experimentation, and reproducible offline evaluation.
+
+- ZeroGPU Space app: app.py hosts a Gradio student demo with lazy-loaded model inference and GPU-on-demand via @spaces.GPU.
+- Inference provider switch: backend/services/inference_client.py routes requests to either local Space or Hugging Face Inference Providers, with retries, timeout controls, and fallback models.
+- HF Jobs for offline runs: jobs/eval_math_model.py and jobs/generate_variants.py support model evaluation and synthetic variant generation.
+- Private datasets flow: datasets/ structure plus scripts/push_dataset_to_hf.py and scripts/pull_dataset_from_hf.py for private Hub sync.
+
+Flow overview:
+
+1. Student demo requests go to ZeroGPU Space generation paths.
+2. Backend API calls route through the inference client and can switch provider mode by env.
+3. Offline evaluation and generation jobs consume datasets/eval and write artifacts to jobs/output and datasets/synthetic.
+4. Curated dataset artifacts sync to private Hugging Face Datasets repositories.
+
+### Quickstart: Run locally
+
+1. Install Python dependencies for Space and jobs:
+   python -m pip install -r requirements.txt
+2. Install backend dependencies:
+   python -m pip install -r backend/requirements.txt
+3. Copy config/env.sample values into your local environment.
+4. Start ZeroGPU-style Space app locally:
+   python app.py
+5. Run backend API:
+   cd backend
+   uvicorn main:app --reload --host 0.0.0.0 --port 7860
+
+### Quickstart: Run via Hugging Face Space (ZeroGPU)
+
+1. Ensure Space runtime has requirements.txt dependencies installed.
+2. Set HF_SPACE_MODEL_ID and related generation env vars if needed.
+3. Enable ZeroGPU and verify:
+   - generate path via Gradio API name generate
+   - health path via Gradio API name health
+4. Use DEV_MODE.md for fast edit/reload loops.
+
+### Quickstart: Run evaluation jobs on Hugging Face
+
+1. Set INFERENCE_PROVIDER=hf_inference and HF_TOKEN in the job environment.
+2. Run evaluation:
+   python jobs/eval_math_model.py --subset algebra --limit 100
+3. Run synthetic generation:
+   python jobs/generate_variants.py --limit 200 --variants-per-item 3
+4. Sync curated artifacts to private dataset repo:
+   python scripts/push_dataset_to_hf.py --repo Deign86/mathpulse-private-datasets
+
+### Cost Optimization Notes
+
+- Use ZeroGPU for public demo traffic and only request GPU in decorated inference functions.
+- Use smaller backup models in config/models.yaml for burst traffic or low-priority flows.
+- Run expensive experiments through Inference Providers with strict per-run limits in Jobs.
+- Keep eval/generation datasets private and compact to reduce iteration cost.
+
 ```
 MATHPULSE-AI/
 ├── src/
