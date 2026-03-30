@@ -688,6 +688,11 @@ async def _run_async_task(task_id: str, runner) -> None:
             task["error"] = {"message": str(exc)}
 
 
+def _start_async_task_in_thread(task_id: str, runner) -> None:
+    """Run long async generation tasks off the main event loop."""
+    asyncio.create_task(asyncio.to_thread(lambda: asyncio.run(_run_async_task(task_id, runner))))
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -5290,7 +5295,7 @@ async def generate_lesson_plan_async(http_request: Request, request: LessonGener
         payload=request.model_dump(),
     )
 
-    asyncio.create_task(_run_async_task(task_id, lambda: generate_lesson_plan(http_request, request)))
+    _start_async_task_in_thread(task_id, lambda: generate_lesson_plan(http_request, request))
 
     with _async_tasks_lock:
         task = dict(_async_tasks.get(task_id, {}))
@@ -5891,14 +5896,19 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
                         break
         return blocks
 
+    def _coerce_question_list(value: Any) -> List[Dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        return [item for item in value if isinstance(item, dict)]
+
     # Try every balanced JSON block and accept array payloads directly.
     for candidate in _extract_json_blocks(cleaned):
         try:
             parsed = json.loads(candidate)
             if isinstance(parsed, list):
-                return parsed
+                return _coerce_question_list(parsed)
             if isinstance(parsed, dict) and isinstance(parsed.get("questions"), list):
-                return cast(List[Dict[str, Any]], parsed.get("questions") or [])
+                return _coerce_question_list(parsed.get("questions") or [])
         except json.JSONDecodeError:
             continue
 
@@ -5907,7 +5917,7 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     arr_end = cleaned.rfind("]") + 1
     if arr_start >= 0 and arr_end > arr_start:
         try:
-            return json.loads(cleaned[arr_start:arr_end])
+            return _coerce_question_list(json.loads(cleaned[arr_start:arr_end]))
         except json.JSONDecodeError:
             pass
 
@@ -6015,7 +6025,43 @@ def _validate_quiz_questions(
         normalized = re.sub(r"\s+", " ", normalized).strip()
         return normalized
 
+    def _normalize_options(raw_options: Any, fallback_obj: Dict[str, Any]) -> Optional[List[str]]:
+        def _coerce_list(value: Any) -> List[str]:
+            if isinstance(value, list):
+                return [str(item).strip() for item in value if str(item).strip()]
+            if isinstance(value, dict):
+                extracted = [str(item).strip() for item in value.values() if str(item).strip()]
+                return extracted
+            if isinstance(value, str):
+                text = value.strip()
+                if not text:
+                    return []
+                if text.startswith("[") and text.endswith("]"):
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, list):
+                            return [str(item).strip() for item in parsed if str(item).strip()]
+                    except Exception:
+                        pass
+                split_candidates = [part.strip() for part in re.split(r"\n+|\s*\|\s*", text) if part.strip()]
+                return split_candidates
+            return []
+
+        options_list = _coerce_list(raw_options)
+        if not options_list:
+            for alt_key in ("choices", "answerChoices", "answers"):
+                options_list = _coerce_list(fallback_obj.get(alt_key))
+                if options_list:
+                    break
+
+        if not options_list:
+            return None
+
+        return options_list[:4]
+
     for i, q in enumerate(questions):
+        if not isinstance(q, dict):
+            continue
         dist = distribution[i] if i < len(distribution) else {}
 
         question_type = q.get("questionType", dist.get("questionType", "identification"))
@@ -6030,7 +6076,13 @@ def _validate_quiz_questions(
         if bloom_level not in VALID_BLOOM_LEVELS:
             bloom_level = "understand"
 
-        options = q.get("options") if question_type == "multiple_choice" else None
+        options = None
+        if question_type == "multiple_choice":
+            options = _normalize_options(q.get("options"), q)
+            if not options:
+                # If options are malformed/missing, downgrade to identification to keep generation resilient.
+                question_type = "identification"
+                options = None
 
         question_topic = str(q.get("topic", "General"))
         question_provenance = None
@@ -6039,14 +6091,14 @@ def _validate_quiz_questions(
 
         validated.append(QuizQuestion(
             questionType=question_type,
-            question=q.get("question", ""),
+            question=str(q.get("question", "")),
             correctAnswer=str(q.get("correctAnswer", "")),
             options=options,
             bloomLevel=bloom_level,
             difficulty=difficulty,
             topic=question_topic,
             points=q.get("points", points_map.get(difficulty, 3)),
-            explanation=q.get("explanation", "No explanation provided."),
+            explanation=str(q.get("explanation", "No explanation provided.")),
             provenance=question_provenance,
         ))
 
@@ -6419,7 +6471,7 @@ async def generate_quiz_async(http_request: Request, request: QuizGenerationRequ
         )
         return response
 
-    asyncio.create_task(_run_async_task(task_id, _quiz_runner))
+    _start_async_task_in_thread(task_id, _quiz_runner)
 
     with _async_tasks_lock:
         task = dict(_async_tasks.get(task_id, {}))
