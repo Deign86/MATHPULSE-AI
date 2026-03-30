@@ -22,6 +22,10 @@
 
 name: Deploy to Hugging Face Spaces
 
+concurrency:
+  group: hf-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -29,12 +33,43 @@ on:
   workflow_dispatch:     # Allow manual trigger from GitHub UI
 
 jobs:
-  deploy-backend:
+  detect-changes:
     runs-on: ubuntu-latest
-    # Only run when backend files change (or manual trigger)
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'deploy-hf.py'
+              - '.github/workflows/deploy-hf.yml'
+            frontend:
+              - 'src/**'
+              - 'public/**'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.ts'
+              - 'tsconfig.json'
+              - '.github/workflows/deploy-hf.yml'
+
+  deploy-backend:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    # Run when backend-related files changed, or on manual trigger.
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && contains(toJson(github.event.commits), 'backend/'))
+      needs.detect-changes.outputs.backend == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -120,7 +155,12 @@ jobs:
           echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-api-v3test"
 
   deploy-frontend:
+    needs: detect-changes
     runs-on: ubuntu-latest
+    # Run when frontend-related files changed, or on manual trigger.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.frontend == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
