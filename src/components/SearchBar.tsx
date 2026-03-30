@@ -86,10 +86,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
     inputRef.current?.focus();
   };
 
-  // Keyboard shortcut (Cmd+K / Ctrl+K)
+  // Keyboard shortcut (Ctrl+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if (e.ctrlKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
         setIsOpen(true);
@@ -132,7 +132,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             </motion.button>
           )}
           <kbd className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-body font-semibold text-slate-500 bg-[#edf1f7] border border-[#dde3eb] rounded-md">
-            ⌘K
+            Ctrl+K
           </kbd>
         </div>
       </div>
