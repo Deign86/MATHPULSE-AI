@@ -49,6 +49,15 @@ except Exception:
     firebase_firestore = None  # type: ignore[assignment]
     HAS_FIREBASE_ADMIN = False
 
+try:
+    from google.oauth2 import id_token as google_id_token  # type: ignore[import-not-found]
+    from google.auth.transport import requests as google_auth_requests  # type: ignore[import-not-found]
+    HAS_GOOGLE_AUTH = True
+except Exception:
+    google_id_token = None  # type: ignore[assignment]
+    google_auth_requests = None  # type: ignore[assignment]
+    HAS_GOOGLE_AUTH = False
+
 # Event-driven automation engine
 from automation_engine import (
     automation_engine,
@@ -138,6 +147,12 @@ ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS
 LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
 LESSON_SOURCE_MIN_TOPICS = int(os.getenv("LESSON_SOURCE_MIN_TOPICS", "1"))
 LESSON_VALIDATION_MIN_SCORE = float(os.getenv("LESSON_VALIDATION_MIN_SCORE", "0.7"))
+ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY = os.getenv("ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY", "true").strip().lower() in {"1", "true", "yes", "on"}
+FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
+    value.strip()
+    for value in os.getenv("FIREBASE_AUTH_PROJECT_ALLOWLIST", "").split(",")
+    if value.strip()
+}
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -311,6 +326,42 @@ def _parse_bearer_token(authorization: str) -> Optional[str]:
     return parts[1].strip()
 
 
+def _verify_token_with_fallback(token: str) -> Dict[str, Any]:
+    """Verify Firebase ID token via firebase-admin, then google-auth as fallback."""
+    last_error: Optional[Exception] = None
+
+    try:
+        return cast(Dict[str, Any], firebase_auth.verify_id_token(token))  # type: ignore[union-attr]
+    except Exception as err:
+        last_error = err
+
+    if not ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY:
+        raise cast(Exception, last_error)
+    if not HAS_GOOGLE_AUTH:
+        raise cast(Exception, last_error)
+
+    try:
+        request_adapter = google_auth_requests.Request()  # type: ignore[union-attr]
+        decoded_raw = google_id_token.verify_firebase_token(token, request_adapter)  # type: ignore[union-attr]
+        decoded = cast(Dict[str, Any], decoded_raw or {})
+        if not decoded:
+            raise ValueError("Fallback Firebase token verification returned empty claims")
+
+        audience = str(decoded.get("aud", ""))
+        issuer = str(decoded.get("iss", ""))
+        if audience and issuer != f"https://securetoken.google.com/{audience}":
+            raise ValueError("Fallback Firebase token verification issuer mismatch")
+
+        if FIREBASE_AUTH_PROJECT_ALLOWLIST and audience not in FIREBASE_AUTH_PROJECT_ALLOWLIST:
+            raise ValueError("Firebase token project is not in FIREBASE_AUTH_PROJECT_ALLOWLIST")
+
+        logger.info("Firebase token verified via google-auth fallback")
+        return decoded
+    except Exception as fallback_err:
+        logger.warning(f"Fallback Firebase token verification failed: {fallback_err}")
+        raise cast(Exception, last_error)
+
+
 def get_current_user(request: Request) -> AuthenticatedUser:
     user = getattr(request.state, "user", None)
     if user is None:
@@ -375,7 +426,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
 
         try:
-            decoded = firebase_auth.verify_id_token(token)  # type: ignore[union-attr]
+            decoded = _verify_token_with_fallback(token)
         except Exception as e:
             logger.warning(f"Token verification failed for {path}: {e}")
             return JSONResponse(status_code=401, content={"detail": "Invalid or expired auth token"})

@@ -647,33 +647,58 @@ async function apiFetch<T>(
 
   logApiInfo(endpoint, method, 'Starting request');
 
-  const headers = new Headers(options?.headers ?? {});
-  if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const idToken = await currentUser.getIdToken();
-      if (idToken) {
-        headers.set('Authorization', `Bearer ${idToken}`);
-      }
-    } catch (err) {
-      logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
+  const buildFetchOptions = async (forceTokenRefresh: boolean): Promise<RequestInit> => {
+    const headers = new Headers(options?.headers ?? {});
+    if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
     }
-  }
 
-  const fetchOptions: RequestInit = {
-    ...options,
-    headers,
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const idToken = await currentUser.getIdToken(forceTokenRefresh);
+        if (idToken) {
+          headers.set('Authorization', `Bearer ${idToken}`);
+        }
+      } catch (err) {
+        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
+      }
+    }
+
+    return {
+      ...options,
+      headers,
+    };
   };
+
+  let fetchOptions = await buildFetchOptions(false);
 
   try {
     const result = await retryFetch<T>(url, fetchOptions, retryOpts);
     logApiInfo(endpoint, method, 'Request succeeded');
     return result;
   } catch (err) {
+    if (err instanceof ApiError && err.status === 401 && auth.currentUser) {
+      try {
+        logApiInfo(endpoint, method, '401 received, refreshing Firebase token and retrying once');
+        fetchOptions = await buildFetchOptions(true);
+        const refreshedResult = await retryFetch<T>(url, fetchOptions, retryOpts);
+        logApiInfo(endpoint, method, 'Request succeeded after token refresh');
+        return refreshedResult;
+      } catch (refreshErr) {
+        if (refreshErr instanceof ApiError) {
+          logApiError(endpoint, method, `HTTP ${refreshErr.status}: ${refreshErr.responseBody.slice(0, 300)}`);
+        } else if (refreshErr instanceof ApiTimeoutError) {
+          logApiError(endpoint, method, `Timeout after ${refreshErr.timeoutMs}ms`);
+        } else if (refreshErr instanceof ApiNetworkError) {
+          logApiError(endpoint, method, `Network error: ${refreshErr.originalError.message}`);
+        } else {
+          logApiError(endpoint, method, `Unexpected: ${refreshErr instanceof Error ? refreshErr.message : String(refreshErr)}`);
+        }
+        throw refreshErr;
+      }
+    }
+
     // Enrich the error log with endpoint context
     if (err instanceof ApiError) {
       logApiError(endpoint, method, `HTTP ${err.status}: ${err.responseBody.slice(0, 300)}`);
@@ -697,40 +722,52 @@ async function apiFetchBlob(
   const method = options?.method ?? 'GET';
   logApiInfo(endpoint, method, 'Starting blob request');
 
-  const headers = new Headers(options?.headers ?? {});
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const idToken = await currentUser.getIdToken();
-      if (idToken) {
-        headers.set('Authorization', `Bearer ${idToken}`);
+  const fetchBlobOnce = async (forceTokenRefresh: boolean): Promise<Blob> => {
+    const headers = new Headers(options?.headers ?? {});
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const idToken = await currentUser.getIdToken(forceTokenRefresh);
+        if (idToken) {
+          headers.set('Authorization', `Bearer ${idToken}`);
+        }
+      } catch (err) {
+        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
       }
-    } catch (err) {
-      logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
     }
-  }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new ApiError({
-        status: res.status,
-        statusText: res.statusText || 'Request Failed',
-        endpoint,
-        responseBody: body,
-        retryable: res.status >= 500 || res.status === 429,
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
       });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new ApiError({
+          status: res.status,
+          statusText: res.statusText || 'Request Failed',
+          endpoint,
+          responseBody: body,
+          retryable: res.status >= 500 || res.status === 429,
+        });
+      }
+      return await res.blob();
+    } finally {
+      clearTimeout(timeout);
     }
-    return await res.blob();
-  } finally {
-    clearTimeout(timeout);
+  };
+
+  try {
+    return await fetchBlobOnce(false);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401 && auth.currentUser) {
+      logApiInfo(endpoint, method, '401 received for blob request, refreshing Firebase token and retrying once');
+      return fetchBlobOnce(true);
+    }
+    throw err;
   }
 }
 
