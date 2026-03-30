@@ -12,7 +12,7 @@ import argparse
 import io
 from pathlib import Path
 
-from huggingface_hub import HfApi, login
+from huggingface_hub import HfApi, SpaceHardware, login
 
 SPACE_ID = "Deign86/mathpulse-ai"
 ROOT = Path(__file__).resolve().parent
@@ -69,6 +69,7 @@ def main() -> None:
         repo_id=SPACE_ID,
         repo_type="space",
         space_sdk="gradio",
+        space_hardware=SpaceHardware.ZERO_A10G,
         private=False,
         exist_ok=True,
     )
@@ -87,6 +88,18 @@ def main() -> None:
         repo_type="space",
     )
     print("Uploaded: README.md")
+
+    api.request_space_hardware(repo_id=SPACE_ID, hardware=SpaceHardware.ZERO_A10G)
+    api.restart_space(repo_id=SPACE_ID)
+    runtime = api.get_space_runtime(repo_id=SPACE_ID)
+    print(
+        "Runtime status:",
+        {
+            "stage": str(runtime.stage),
+            "requested_hardware": str(runtime.requested_hardware),
+            "hardware": str(runtime.hardware),
+        },
+    )
 
     print(f"Deployment complete: https://huggingface.co/spaces/{SPACE_ID}")
 
