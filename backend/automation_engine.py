@@ -337,19 +337,55 @@ class MathPulseAutomationEngine:
         """
         logger.info(f"📂 DATA IMPORT by teacher {payload.teacherId} — {len(payload.students)} students")
         notifications: list[str] = []
-        newly_at_risk: list[str] = []
+        high_risk_students: list[str] = []
+        medium_risk_count = 0
+        low_risk_count = 0
+        weak_topic_counts: Dict[str, int] = {}
 
         for student_row in payload.students:
-            name = student_row.get("name", "Unknown")
-            avg_score = float(student_row.get("avgQuizScore", 0))
-            if avg_score < AT_RISK_THRESHOLD:
-                newly_at_risk.append(name)
+            name = str(student_row.get("name") or "Unknown").strip() or "Unknown"
+            avg_score = self._safe_float(student_row.get("avgQuizScore"), 0.0)
+            attendance = self._safe_float(student_row.get("attendance"), 0.0)
+            engagement = self._safe_float(student_row.get("engagementScore"), 0.0)
+            completion = self._safe_float(student_row.get("assignmentCompletion"), 0.0)
 
-        if newly_at_risk:
+            risk_level = self._classify_import_risk(
+                avg_score=avg_score,
+                attendance=attendance,
+                engagement=engagement,
+                completion=completion,
+            )
+            if risk_level == "High":
+                high_risk_students.append(name)
+            elif risk_level == "Medium":
+                medium_risk_count += 1
+            else:
+                low_risk_count += 1
+
+            topic_label = self._extract_import_topic(student_row)
+            if topic_label:
+                weak_topic_counts[topic_label] = weak_topic_counts.get(topic_label, 0) + 1
+
+        if high_risk_students:
             notifications.append(
-                f"Data import flagged {len(newly_at_risk)} student(s) as At Risk: "
-                + ", ".join(newly_at_risk[:5])
-                + ("…" if len(newly_at_risk) > 5 else "")
+                f"Data import flagged {len(high_risk_students)} high-risk student(s): "
+                + ", ".join(high_risk_students[:5])
+                + ("..." if len(high_risk_students) > 5 else "")
+            )
+
+        notifications.append(
+            "Risk interpretation summary — "
+            f"High: {len(high_risk_students)}, Medium: {medium_risk_count}, Low: {low_risk_count}."
+        )
+
+        if weak_topic_counts:
+            top_topics = sorted(
+                weak_topic_counts.items(),
+                key=lambda item: (-item[1], item[0]),
+            )[:3]
+            notifications.append(
+                "Most frequent weak-topic signals: "
+                + ", ".join(f"{topic} ({count})" for topic, count in top_topics)
             )
 
         notifications.append(
@@ -397,6 +433,45 @@ class MathPulseAutomationEngine:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     # --- risk classification ---
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            parsed = float(value)
+            if math.isnan(parsed) or math.isinf(parsed):
+                return default
+            return parsed
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _classify_import_risk(
+        *,
+        avg_score: float,
+        attendance: float,
+        engagement: float,
+        completion: float,
+    ) -> str:
+        high_flags = int(avg_score < 60) + int(attendance < 75) + int(engagement < 55) + int(completion < 60)
+        medium_flags = int(avg_score < 75) + int(attendance < 85) + int(engagement < 70) + int(completion < 75)
+
+        if high_flags >= 2 or (avg_score < 55 and (attendance < 80 or engagement < 65)):
+            return "High"
+        if medium_flags >= 2:
+            return "Medium"
+        return "Low"
+
+    @staticmethod
+    def _extract_import_topic(student_row: Dict[str, Any]) -> Optional[str]:
+        explicit_topic = str(student_row.get("weakestTopic") or "").strip()
+        if explicit_topic:
+            return explicit_topic
+
+        assessment_name = str(student_row.get("assessmentName") or "").strip()
+        if assessment_name and assessment_name.lower() != "general-assessment":
+            return assessment_name
+
+        return None
 
     @staticmethod
     def _classify_subject_risks(

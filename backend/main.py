@@ -133,7 +133,8 @@ HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct"
 CHAT_MODEL = HF_MATH_MODEL_ID
 
 # Dedicated quiz model override.
-HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
+HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "Qwen/Qwen3.5-9B")
+HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -583,6 +584,9 @@ def _create_async_task(owner_uid: str, task_kind: str, payload: Dict[str, Any]) 
             "createdAt": _utc_now_iso(),
             "startedAt": None,
             "completedAt": None,
+            "progressPercent": 5.0,
+            "progressStage": "queued",
+            "progressMessage": "Task queued for background generation.",
             "cancelRequested": False,
             "request": payload,
             "result": None,
@@ -607,10 +611,16 @@ async def _run_async_task(task_id: str, runner) -> None:
         if bool(task.get("cancelRequested")):
             task["status"] = "cancelled"
             task["completedAt"] = _utc_now_iso()
+            task["progressPercent"] = 100.0
+            task["progressStage"] = "cancelled"
+            task["progressMessage"] = "Task was cancelled before execution."
             task["error"] = {"message": "Task cancelled before execution."}
             return
         task["status"] = "running"
         task["startedAt"] = _utc_now_iso()
+        task["progressPercent"] = 15.0
+        task["progressStage"] = "running"
+        task["progressMessage"] = "Background generation started."
         task["error"] = None
 
     try:
@@ -622,11 +632,17 @@ async def _run_async_task(task_id: str, runner) -> None:
             if bool(task.get("cancelRequested")):
                 task["status"] = "cancelled"
                 task["completedAt"] = _utc_now_iso()
+                task["progressPercent"] = 100.0
+                task["progressStage"] = "cancelled"
+                task["progressMessage"] = "Task was cancelled during execution."
                 task["error"] = {"message": "Task cancelled during execution."}
                 task["result"] = None
                 return
             task["status"] = "completed"
             task["completedAt"] = _utc_now_iso()
+            task["progressPercent"] = 100.0
+            task["progressStage"] = "completed"
+            task["progressMessage"] = "Generation completed successfully."
             task["result"] = jsonable_encoder(payload)
             task["error"] = None
     except HTTPException as http_exc:
@@ -637,11 +653,17 @@ async def _run_async_task(task_id: str, runner) -> None:
             if bool(task.get("cancelRequested")):
                 task["status"] = "cancelled"
                 task["completedAt"] = _utc_now_iso()
+                task["progressPercent"] = 100.0
+                task["progressStage"] = "cancelled"
+                task["progressMessage"] = "Task was cancelled during execution."
                 task["error"] = {"message": "Task cancelled during execution."}
                 task["result"] = None
                 return
             task["status"] = "failed"
             task["completedAt"] = _utc_now_iso()
+            task["progressPercent"] = 100.0
+            task["progressStage"] = "failed"
+            task["progressMessage"] = "Generation failed while processing the request."
             task["error"] = jsonable_encoder(http_exc.detail)
     except Exception as exc:
         logger.error(f"Async task {task_id} failed: {exc}")
@@ -652,11 +674,17 @@ async def _run_async_task(task_id: str, runner) -> None:
             if bool(task.get("cancelRequested")):
                 task["status"] = "cancelled"
                 task["completedAt"] = _utc_now_iso()
+                task["progressPercent"] = 100.0
+                task["progressStage"] = "cancelled"
+                task["progressMessage"] = "Task was cancelled during execution."
                 task["error"] = {"message": "Task cancelled during execution."}
                 task["result"] = None
                 return
             task["status"] = "failed"
             task["completedAt"] = _utc_now_iso()
+            task["progressPercent"] = 100.0
+            task["progressStage"] = "failed"
+            task["progressMessage"] = "Generation failed due to an unexpected error."
             task["error"] = {"message": str(exc)}
 
 
@@ -1936,6 +1964,38 @@ CLASS_RECORD_REQUIRED_FIELDS: Set[str] = {
     "assessmentName",
 }
 
+# Fields that must be present in mapped columns before import proceeds.
+# These are the minimum metrics required for downstream dashboard/risk workflows.
+CLASS_RECORD_IMPORT_CORE_FIELDS: Set[str] = {
+    "name",
+    "engagementScore",
+    "avgQuizScore",
+    "attendance",
+    "assignmentCompletion",
+}
+
+CLASS_RECORD_IDENTITY_FIELDS: Set[str] = {"lrn", "email"}
+
+CLASS_RECORD_SCORING_FIELDS: Set[str] = {
+    "engagementScore",
+    "avgQuizScore",
+    "attendance",
+    "assignmentCompletion",
+}
+
+SUPPORTED_DATASET_INTENTS: Set[str] = {
+    "synthetic_student_records",
+    "general_analytics",
+    "eval_only",
+}
+
+NON_EDUCATION_DOMAIN_TOKENS: Dict[str, Set[str]] = {
+    "medical": {"patient", "diagnosis", "disease", "symptom", "clinical", "medication"},
+    "finance": {"loan", "mortgage", "revenue", "income", "profit", "stock", "price"},
+    "real_estate": {"bedroom", "bathroom", "sqft", "square feet", "zipcode", "property", "house"},
+    "genomics": {"gene", "genome", "protein", "rna", "dna", "mutation", "chromosome"},
+}
+
 CLASS_RECORD_FIELD_ALIASES: Dict[str, List[str]] = {
     "name": ["name", "student", "learner", "fullname", "full name"],
     "lrn": ["lrn", "student id", "learner id", "reference", "id number"],
@@ -1981,6 +2041,99 @@ def _safe_numeric(value: Any, *, default_value: float = 0.0) -> Tuple[float, Opt
         return float(raw), None
     except Exception:
         return default_value, f"invalid numeric value '{raw}'; defaulted to 0"
+
+
+def _normalize_column_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+
+
+def _detect_non_education_signals(columns: List[str]) -> Dict[str, List[str]]:
+    matches: Dict[str, List[str]] = {}
+    for raw_column in columns:
+        normalized = _normalize_column_text(raw_column)
+        if not normalized:
+            continue
+        hit_domains: List[str] = []
+        for domain, tokens in NON_EDUCATION_DOMAIN_TOKENS.items():
+            if any(token in normalized for token in tokens):
+                hit_domains.append(domain)
+        if hit_domains:
+            matches[raw_column] = sorted(set(hit_domains))
+    return matches
+
+
+def _build_column_interpretations(
+    *,
+    columns: List[str],
+    mapping: Dict[str, str],
+    mapping_source: Dict[str, str],
+    non_education_matches: Dict[str, List[str]],
+) -> List[Dict[str, Any]]:
+    interpretations: List[Dict[str, Any]] = []
+    for col in columns:
+        mapped_field = mapping.get(col)
+        source = mapping_source.get(col, "unmapped")
+        domains = non_education_matches.get(col, [])
+
+        if mapped_field in CLASS_RECORD_SCORING_FIELDS:
+            usage_policy = "scoring"
+            reason = "Mapped to a core educational metric used in risk and dashboard calculations."
+        elif mapped_field in CLASS_RECORD_REQUIRED_FIELDS:
+            usage_policy = "display"
+            reason = "Mapped to an educational identity/context field used for display and record management."
+        else:
+            usage_policy = "storage_only"
+            reason = "Column is not mapped to a supported educational field and is excluded from scoring."
+
+        if source == "fallback":
+            confidence_band = "high"
+        elif source == "ai":
+            confidence_band = "medium"
+        else:
+            confidence_band = "low"
+
+        if domains:
+            confidence_band = "low"
+            reason = f"Detected non-education domain signals ({', '.join(domains)}); kept as storage-only metadata."
+            usage_policy = "storage_only"
+
+        interpretations.append(
+            {
+                "columnName": col,
+                "mappedField": mapped_field,
+                "mappingSource": source,
+                "confidenceBand": confidence_band,
+                "usagePolicy": usage_policy,
+                "reason": reason,
+                "domainSignals": domains,
+            }
+        )
+
+    return interpretations
+
+
+def _validate_class_record_mapping(mapping: Dict[str, str]) -> Tuple[List[str], List[str]]:
+    mapped_fields = set(mapping.values())
+    missing_core_fields = sorted(CLASS_RECORD_IMPORT_CORE_FIELDS - mapped_fields)
+    has_identity = bool(CLASS_RECORD_IDENTITY_FIELDS & mapped_fields)
+    missing_identity = [] if has_identity else ["lrn_or_email"]
+    return missing_core_fields, missing_identity
+
+
+def _build_scoring_student_payload(row: Dict[str, Any], class_section_id: Optional[str]) -> Dict[str, Any]:
+    return {
+        "studentId": row.get("studentId"),
+        "name": row.get("name"),
+        "email": row.get("email"),
+        "lrn": row.get("lrn"),
+        "avgQuizScore": row.get("avgQuizScore"),
+        "attendance": row.get("attendance"),
+        "engagementScore": row.get("engagementScore"),
+        "assignmentCompletion": row.get("assignmentCompletion"),
+        "term": row.get("term"),
+        "assessmentName": row.get("assessmentName"),
+        "classSectionId": class_section_id,
+    }
 
 
 def _fallback_column_mapping(columns: List[str]) -> Dict[str, str]:
@@ -2063,6 +2216,9 @@ def _persist_class_record_import_artifact(
     row_warnings: List[Dict[str, Any]],
     unknown_columns: List[str],
     parse_warnings: List[str],
+    dataset_intent: str,
+    column_interpretations: List[Dict[str, Any]],
+    interpretation_summary: Dict[str, Any],
     class_section_id: Optional[str] = None,
     class_name: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -2091,6 +2247,9 @@ def _persist_class_record_import_artifact(
         "columnMapping": column_mapping,
         "unknownColumns": unknown_columns,
         "parseWarnings": parse_warnings,
+        "datasetIntent": dataset_intent,
+        "columnInterpretations": column_interpretations,
+        "interpretationSummary": interpretation_summary,
         "rowWarnings": row_warnings[:300],
         "source": "api_upload_class_records",
         "retentionDays": IMPORT_RETENTION_DAYS,
@@ -2686,22 +2845,7 @@ def _queue_post_import_risk_refresh(
         }
 
     # Keep payload compact while preserving key risk-driving fields.
-    compact_students = [
-        {
-            "studentId": row.get("studentId"),
-            "name": row.get("name"),
-            "email": row.get("email"),
-            "lrn": row.get("lrn"),
-            "avgQuizScore": row.get("avgQuizScore"),
-            "attendance": row.get("attendance"),
-            "engagementScore": row.get("engagementScore"),
-            "assignmentCompletion": row.get("assignmentCompletion"),
-            "term": row.get("term"),
-            "assessmentName": row.get("assessmentName"),
-            "classSectionId": class_section_id,
-        }
-        for row in students
-    ]
+    compact_students = [_build_scoring_student_payload(row, class_section_id) for row in students]
 
     user = get_current_user(request)
     normalized_class_section_id = (class_section_id or "").strip() or None
@@ -2899,6 +3043,7 @@ async def upload_class_records(
     files: Optional[List[UploadFile]] = File(default=None),
     classSectionId: Optional[str] = Form(default=None),
     className: Optional[str] = Form(default=None),
+    datasetIntent: str = Form(default="synthetic_student_records"),
 ):
     """Upload and parse class records (CSV, Excel, PDF) with AI column detection"""
     try:
@@ -2907,10 +3052,28 @@ async def upload_class_records(
         enforce_rate_limit(request, "upload_class_records", UPLOAD_RATE_LIMIT_PER_MIN, 60)
 
         uploads = _resolve_uploaded_files(file=file, files=files)
+        normalized_dataset_intent = (datasetIntent or "").strip() or "synthetic_student_records"
+        if normalized_dataset_intent not in SUPPORTED_DATASET_INTENTS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Unsupported datasetIntent. Allowed values: "
+                    + ", ".join(sorted(SUPPORTED_DATASET_INTENTS))
+                ),
+            )
+
         all_students: List[Dict[str, Any]] = []
         all_unknown_columns: Set[str] = set()
         all_warnings: List[str] = []
         all_row_warnings: List[Dict[str, Any]] = []
+        all_column_interpretations: List[Dict[str, Any]] = []
+        aggregate_interpretation = {
+            "scoringColumns": 0,
+            "displayColumns": 0,
+            "storageOnlyColumns": 0,
+            "lowConfidenceColumns": 0,
+            "domainMismatchWarnings": 0,
+        }
         aggregate_dedup = {"inserted": 0, "updated": 0}
         per_file_results: List[Dict[str, Any]] = []
 
@@ -2922,6 +3085,15 @@ async def upload_class_records(
             file_students: List[Dict[str, Any]] = []
             file_unknown_columns: List[str] = []
             file_column_mapping: Dict[str, str] = {}
+            file_column_mapping_source: Dict[str, str] = {}
+            file_column_interpretations: List[Dict[str, Any]] = []
+            file_interpretation_summary: Dict[str, Any] = {
+                "scoringColumns": 0,
+                "displayColumns": 0,
+                "storageOnlyColumns": 0,
+                "lowConfidenceColumns": 0,
+                "domainMismatchWarnings": 0,
+            }
             file_dedup = {"inserted": 0, "updated": 0}
             file_import_id: Optional[str] = None
 
@@ -3017,7 +3189,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                     json_start = mapping_text.find("{")
                     json_end = mapping_text.rfind("}") + 1
                     if json_start >= 0 and json_end > json_start:
-                        file_column_mapping = json.loads(mapping_text[json_start:json_end])
+                        ai_mapping = _sanitize_column_mapping(json.loads(mapping_text[json_start:json_end]))
+                        file_column_mapping = dict(ai_mapping)
+                        file_column_mapping_source = {col: "ai" for col in ai_mapping.keys()}
                     else:
                         file_column_mapping = {}
                         file_warnings.append("AI mapper returned no JSON; fallback mapper was used.")
@@ -3029,8 +3203,48 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 for col, field in fallback_mapping.items():
                     if col not in file_column_mapping:
                         file_column_mapping[col] = field
+                        file_column_mapping_source[col] = "fallback"
 
                 file_column_mapping = _sanitize_column_mapping(file_column_mapping)
+
+                missing_core_fields, missing_identity = _validate_class_record_mapping(file_column_mapping)
+                if missing_core_fields:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Missing required educational columns after mapping: "
+                            + ", ".join(missing_core_fields)
+                            + ". Add equivalent columns or rename headers before upload."
+                        ),
+                    )
+                if missing_identity:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Import requires at least one student identity column (lrn or email) to avoid record collisions."
+                        ),
+                    )
+
+                non_education_matches = _detect_non_education_signals(df.columns.tolist())
+                if non_education_matches:
+                    file_warnings.append(
+                        "Potential non-education columns detected; these columns will be stored but excluded from scoring: "
+                        + ", ".join(sorted(non_education_matches.keys())[:12])
+                    )
+
+                file_column_interpretations = _build_column_interpretations(
+                    columns=df.columns.tolist(),
+                    mapping=file_column_mapping,
+                    mapping_source=file_column_mapping_source,
+                    non_education_matches=non_education_matches,
+                )
+                file_interpretation_summary = {
+                    "scoringColumns": sum(1 for item in file_column_interpretations if item.get("usagePolicy") == "scoring"),
+                    "displayColumns": sum(1 for item in file_column_interpretations if item.get("usagePolicy") == "display"),
+                    "storageOnlyColumns": sum(1 for item in file_column_interpretations if item.get("usagePolicy") == "storage_only"),
+                    "lowConfidenceColumns": sum(1 for item in file_column_interpretations if item.get("confidenceBand") == "low"),
+                    "domainMismatchWarnings": len(non_education_matches),
+                }
 
                 normalized_result = _normalize_class_records(
                     df,
@@ -3052,6 +3266,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                     row_warnings=file_row_warnings,
                     unknown_columns=file_unknown_columns,
                     parse_warnings=file_warnings,
+                    dataset_intent=normalized_dataset_intent,
+                    column_interpretations=file_column_interpretations,
+                    interpretation_summary=file_interpretation_summary,
                     class_section_id=classSectionId,
                     class_name=className,
                 )
@@ -3084,6 +3301,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "unknownColumns": file_unknown_columns,
                 "warnings": file_warnings,
                 "rowWarnings": file_row_warnings,
+                "datasetIntent": normalized_dataset_intent,
+                "columnInterpretations": file_column_interpretations,
+                "interpretationSummary": file_interpretation_summary,
                 "classSectionId": (classSectionId or "").strip() or None,
                 "className": (className or "").strip() or None,
                 "importId": file_import_id,
@@ -3094,6 +3314,12 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
 
             all_students.extend(file_students)
             all_unknown_columns.update(file_unknown_columns)
+            all_column_interpretations.extend(file_column_interpretations)
+            aggregate_interpretation["scoringColumns"] += int(file_interpretation_summary.get("scoringColumns", 0) or 0)
+            aggregate_interpretation["displayColumns"] += int(file_interpretation_summary.get("displayColumns", 0) or 0)
+            aggregate_interpretation["storageOnlyColumns"] += int(file_interpretation_summary.get("storageOnlyColumns", 0) or 0)
+            aggregate_interpretation["lowConfidenceColumns"] += int(file_interpretation_summary.get("lowConfidenceColumns", 0) or 0)
+            aggregate_interpretation["domainMismatchWarnings"] += int(file_interpretation_summary.get("domainMismatchWarnings", 0) or 0)
             aggregate_dedup["inserted"] += int(file_dedup.get("inserted", 0) or 0)
             aggregate_dedup["updated"] += int(file_dedup.get("updated", 0) or 0)
             all_warnings.extend([f"{filename}: {warning}" for warning in file_warnings])
@@ -3137,8 +3363,11 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
             "success": overall_success,
             "students": all_students,
             "columnMapping": (first_file_with_mapping or {}).get("columnMapping") or {},
+            "datasetIntent": normalized_dataset_intent,
             "totalRows": len(all_students),
             "unknownColumns": sorted(all_unknown_columns),
+            "columnInterpretations": all_column_interpretations,
+            "interpretationSummary": aggregate_interpretation,
             "warnings": all_warnings,
             "rowWarnings": all_row_warnings,
             "importId": (first_file_with_import or {}).get("importId"),
@@ -3165,6 +3394,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "failedFiles": failed_files,
                 "persisted": bool(first_file_with_import and first_file_with_import.get("importId")),
                 "students": len(all_students),
+                "datasetIntent": normalized_dataset_intent,
+                "storageOnlyColumns": int(aggregate_interpretation.get("storageOnlyColumns", 0) or 0),
+                "domainMismatchWarnings": int(aggregate_interpretation.get("domainMismatchWarnings", 0) or 0),
                 "dashboardSync": bool(dashboard_sync.get("synced")),
                 "dashboardCreatedStudents": int(dashboard_sync.get("createdStudents") or 0),
                 "dashboardUpdatedStudents": int(dashboard_sync.get("updatedStudents") or 0),
@@ -4188,6 +4420,9 @@ class AsyncTaskStatusResponse(BaseModel):
     createdAt: str
     startedAt: Optional[str] = None
     completedAt: Optional[str] = None
+    progressPercent: float = 0.0
+    progressStage: str = "queued"
+    progressMessage: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
     error: Optional[Any] = None
 
@@ -5564,6 +5799,8 @@ Respond ONLY with a valid JSON array of question objects. No markdown, no explan
 
 Points by difficulty: easy=1, medium=3, hard=5.
 For non-multiple-choice questions, omit the "options" field or set to null.
+Do NOT output chain-of-thought, planning notes, "Thinking Process", or any preamble.
+If you cannot comply with constraints, still return the closest valid JSON array only.
 """
 
 
@@ -5618,6 +5855,53 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     cleaned = re.sub(r"\n?```\s*$", "", cleaned)
     cleaned = cleaned.strip()
 
+    # Remove common reasoning preambles before JSON output.
+    cleaned = re.sub(r"^\s*thinking\s*process\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+
+    def _extract_json_blocks(text: str) -> List[str]:
+        blocks: List[str] = []
+        starts = [i for i, ch in enumerate(text) if ch in "[{"]
+        for start in starts:
+            opener = text[start]
+            closer = "]" if opener == "[" else "}"
+            depth = 0
+            in_string = False
+            escaped = False
+            for idx in range(start, len(text)):
+                ch = text[idx]
+                if in_string:
+                    if escaped:
+                        escaped = False
+                    elif ch == "\\":
+                        escaped = True
+                    elif ch == '"':
+                        in_string = False
+                    continue
+
+                if ch == '"':
+                    in_string = True
+                    continue
+
+                if ch == opener:
+                    depth += 1
+                elif ch == closer:
+                    depth -= 1
+                    if depth == 0:
+                        blocks.append(text[start : idx + 1])
+                        break
+        return blocks
+
+    # Try every balanced JSON block and accept array payloads directly.
+    for candidate in _extract_json_blocks(cleaned):
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, dict) and isinstance(parsed.get("questions"), list):
+                return cast(List[Dict[str, Any]], parsed.get("questions") or [])
+        except json.JSONDecodeError:
+            continue
+
     # Try to find array brackets
     arr_start = cleaned.find("[")
     arr_end = cleaned.rfind("]") + 1
@@ -5638,6 +5922,83 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
             continue
 
     return objects
+
+
+def _repair_quiz_json_with_llm(
+    raw_output: str,
+    *,
+    num_questions: int,
+    timeout: int,
+    model_id: Optional[str],
+) -> List[Dict[str, Any]]:
+    """Attempt to coerce malformed quiz output into a strict JSON array."""
+    repair_messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a strict JSON formatter. Convert the user's draft into ONLY a valid JSON array "
+                "of quiz question objects. Do not include markdown, commentary, or chain-of-thought. "
+                f"Return exactly {num_questions} objects when possible."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "Rewrite this into valid JSON array only. Keep and normalize useful question content.\n\n"
+                f"DRAFT:\n{raw_output}"
+            ),
+        },
+    ]
+
+    repaired_text = call_hf_chat(
+        repair_messages,
+        max_tokens=min(4096, max(2048, num_questions * 260)),
+        temperature=0.0,
+        top_p=0.1,
+        timeout=timeout,
+        task_type="default",
+        model=model_id,
+    )
+    return _parse_quiz_json(repaired_text)
+
+
+def _regenerate_quiz_json_strict(
+    *,
+    original_prompt: str,
+    num_questions: int,
+    timeout: int,
+    model_id: Optional[str],
+) -> List[Dict[str, Any]]:
+    """Regenerate quiz questions using a strict JSON-only prompt path."""
+    strict_messages = [
+        {
+            "role": "system",
+            "content": (
+                "You generate quizzes as strict JSON only. "
+                "Output must begin with '[' and end with ']'. "
+                "Do not output markdown, notes, or chain-of-thought."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Generate exactly {num_questions} questions from this spec. "
+                "Return JSON array only.\n\n"
+                f"SPEC:\n{original_prompt}"
+            ),
+        },
+    ]
+
+    strict_text = call_hf_chat(
+        strict_messages,
+        max_tokens=min(4096, max(2048, num_questions * 260)),
+        temperature=0.0,
+        top_p=0.1,
+        timeout=timeout,
+        task_type="default",
+        model=model_id,
+    )
+    return _parse_quiz_json(strict_text)
 
 
 def _validate_quiz_questions(
@@ -5822,7 +6183,7 @@ Remember:
 
         for attempt in range(max_attempts):
             raw_content = call_hf_chat(
-                messages, max_tokens=max_tokens, temperature=0.3, top_p=0.9,
+                messages, max_tokens=max_tokens, temperature=0.1, top_p=0.9,
                 timeout=http_timeout,
                 task_type="quiz_generation",
                 model=HF_QUIZ_MODEL_ID,
@@ -5833,6 +6194,46 @@ Remember:
 
             if not parsed_questions:
                 logger.error(f"Failed to parse quiz JSON (attempt {attempt + 1}). Raw content:\n{raw_content[:500]}")
+                try:
+                    repaired_questions = _repair_quiz_json_with_llm(
+                        raw_content,
+                        num_questions=request.numQuestions,
+                        timeout=http_timeout,
+                        model_id=HF_QUIZ_JSON_REPAIR_MODEL_ID,
+                    )
+                except Exception as repair_exc:
+                    logger.warning(f"Quiz JSON repair pass failed (attempt {attempt + 1}): {repair_exc}")
+                    repaired_questions = []
+
+                if repaired_questions:
+                    parsed_questions = repaired_questions
+                    logger.info(
+                        "Recovered quiz JSON via repair pass: %s questions (attempt %s)",
+                        len(parsed_questions),
+                        attempt + 1,
+                    )
+
+            if not parsed_questions:
+                try:
+                    strict_questions = _regenerate_quiz_json_strict(
+                        original_prompt=prompt,
+                        num_questions=request.numQuestions,
+                        timeout=http_timeout,
+                        model_id=HF_QUIZ_JSON_REPAIR_MODEL_ID,
+                    )
+                except Exception as strict_exc:
+                    logger.warning(f"Strict quiz regeneration failed (attempt {attempt + 1}): {strict_exc}")
+                    strict_questions = []
+
+                if strict_questions:
+                    parsed_questions = strict_questions
+                    logger.info(
+                        "Recovered quiz JSON via strict regeneration: %s questions (attempt %s)",
+                        len(parsed_questions),
+                        attempt + 1,
+                    )
+
+            if not parsed_questions:
                 if attempt < max_attempts - 1:
                     logger.info("Retrying quiz generation...")
                     continue
@@ -5995,7 +6396,30 @@ async def generate_quiz_async(http_request: Request, request: QuizGenerationRequ
         payload=request.model_dump(),
     )
 
-    asyncio.create_task(_run_async_task(task_id, lambda: generate_quiz(http_request, request)))
+    async def _quiz_runner() -> QuizResponse:
+        _update_async_task(
+            task_id,
+            progressPercent=30.0,
+            progressStage="preparing",
+            progressMessage="Preparing quiz prompt and topic distribution.",
+        )
+        await asyncio.sleep(0)
+        _update_async_task(
+            task_id,
+            progressPercent=70.0,
+            progressStage="generating",
+            progressMessage="Generating quiz questions with the AI model.",
+        )
+        response = await generate_quiz(http_request, request)
+        _update_async_task(
+            task_id,
+            progressPercent=92.0,
+            progressStage="finalizing",
+            progressMessage="Validating generated quiz and finalizing output.",
+        )
+        return response
+
+    asyncio.create_task(_run_async_task(task_id, _quiz_runner))
 
     with _async_tasks_lock:
         task = dict(_async_tasks.get(task_id, {}))
@@ -6031,6 +6455,9 @@ async def get_async_task_status(http_request: Request, task_id: str):
         createdAt=str(task_data.get("createdAt") or _utc_now_iso()),
         startedAt=cast(Optional[str], task_data.get("startedAt")),
         completedAt=cast(Optional[str], task_data.get("completedAt")),
+        progressPercent=float(task_data.get("progressPercent") or 0.0),
+        progressStage=str(task_data.get("progressStage") or "queued"),
+        progressMessage=cast(Optional[str], task_data.get("progressMessage")),
         result=cast(Optional[Dict[str, Any]], task_data.get("result")),
         error=task_data.get("error"),
     )
@@ -6074,6 +6501,9 @@ async def list_async_tasks(
                 createdAt=str(item.get("createdAt") or _utc_now_iso()),
                 startedAt=cast(Optional[str], item.get("startedAt")),
                 completedAt=cast(Optional[str], item.get("completedAt")),
+                progressPercent=float(item.get("progressPercent") or 0.0),
+                progressStage=str(item.get("progressStage") or "queued"),
+                progressMessage=cast(Optional[str], item.get("progressMessage")),
                 result=cast(Optional[Dict[str, Any]], item.get("result") if include_results else None),
                 error=item.get("error"),
             )
@@ -6109,9 +6539,14 @@ async def cancel_async_task(http_request: Request, task_id: str):
         if current_status == "queued":
             task["status"] = "cancelled"
             task["completedAt"] = _utc_now_iso()
+            task["progressPercent"] = 100.0
+            task["progressStage"] = "cancelled"
+            task["progressMessage"] = "Task was cancelled before execution."
             task["error"] = {"message": "Task cancelled before execution."}
         else:
             task["status"] = "cancelling"
+            task["progressStage"] = "cancelling"
+            task["progressMessage"] = "Cancellation requested. Waiting for task to stop."
 
         updated_status = str(task.get("status") or "queued")
 
@@ -6644,8 +7079,6 @@ async def get_imported_class_overview(
         normalized_class_section_id = (classSectionId or "").strip().lower() or None
         client = firebase_firestore.client()
         query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
-        if normalized_class_section_id:
-            query = query.where("classSectionId", "==", normalized_class_section_id)
 
         docs = list(query.limit(limit).stream())
 
@@ -6658,6 +7091,9 @@ async def get_imported_class_overview(
                 class_section_id=str(row.get("classSectionId") or "").strip() or None,
                 class_name=str(row.get("className") or "").strip() or None,
             )
+
+            if normalized_class_section_id and resolved_class_section_id != normalized_class_section_id:
+                continue
 
             student_identity = (
                 str(row.get("studentId") or "").strip()
@@ -6943,12 +7379,7 @@ async def topic_mastery_analytics(
 
         client = firebase_firestore.client()
         records_query = client.collection("normalizedClassRecords").where("teacherId", "==", teacherId)
-        if effective_class_section_id:
-            records_query = records_query.where("classSectionId", "==", effective_class_section_id)
-
         material_query = client.collection("courseMaterials").where("teacherId", "==", teacherId)
-        if effective_class_section_id:
-            material_query = material_query.where("classSectionId", "==", effective_class_section_id)
 
         docs = list(records_query.limit(3000).stream())
         student_ids: Set[str] = set()
@@ -6956,6 +7387,13 @@ async def topic_mastery_analytics(
 
         for doc in docs:
             row = doc.to_dict() or {}
+            resolved_class_section_id, _, _, _ = _resolve_import_class_context(
+                class_section_id=str(row.get("classSectionId") or "").strip() or None,
+                class_name=str(row.get("className") or "").strip() or None,
+            )
+            if effective_class_section_id and resolved_class_section_id != effective_class_section_id:
+                continue
+
             student_identity = (
                 str(row.get("studentId") or "").strip()
                 or str(row.get("lrn") or "").strip()
@@ -6988,6 +7426,13 @@ async def topic_mastery_analytics(
         material_docs = list(material_query.limit(200).stream())
         for doc in material_docs:
             data = doc.to_dict() or {}
+            resolved_material_section_id, _, _, _ = _resolve_import_class_context(
+                class_section_id=str(data.get("classSectionId") or "").strip() or None,
+                class_name=str(data.get("className") or "").strip() or None,
+            )
+            if effective_class_section_id and resolved_material_section_id != effective_class_section_id:
+                continue
+
             for topic in data.get("topics") or []:
                 topic_title = str((topic or {}).get("title") or "").strip()
                 if not topic_title:

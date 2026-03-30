@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
+import ConfirmModal from './ConfirmModal';
 import { DEFAULT_USER_SETTINGS, ProfileVisibility, QuizDifficultyPreference, StudyTimePreference, UserSettings } from '../types/models';
 
 interface ProfileData {
@@ -77,6 +78,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -157,16 +163,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleCancel = () => {
+    setIsResetConfirmOpen(false);
+    setIsDeleteConfirmOpen(false);
+    setIsPasswordModalOpen(false);
+    setNewPassword('');
     onApplySettingsPreview?.(settingsData || cloneDefaultSettings());
     onClose();
   };
 
-  const handleResetData = async () => {
+  const handleResetData = () => {
     if (!onResetData || isResetting) return;
 
-    const role = accountData.role || 'student';
-    const confirmed = window.confirm(`Reset ${role} testing data? This action is for QA/demo use and cannot be undone.`);
-    if (!confirmed) return;
+    setIsResetConfirmOpen(true);
+  };
+
+  const handleConfirmResetData = async () => {
+    if (!onResetData || isResetting) return;
+
+    setIsResetConfirmOpen(false);
 
     setIsResetting(true);
     try {
@@ -186,15 +200,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
 
-    const password = window.prompt('Enter your new password (minimum 8 characters):', '');
-    if (!password) return;
+    setNewPassword('');
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleSubmitPasswordUpdate = async () => {
+    if (!onUpdatePassword || isUpdatingPassword) return;
+
+    const password = newPassword.trim();
+
+    if (!password) {
+      toast.error('Password is required.');
+      return;
+    }
 
     if (password.length < 8) {
       toast.error('Password must be at least 8 characters long.');
       return;
     }
 
-    await onUpdatePassword(password);
+    setIsUpdatingPassword(true);
+    try {
+      await onUpdatePassword(password);
+      toast.success('Password updated successfully.');
+      setIsPasswordModalOpen(false);
+      setNewPassword('');
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update password');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   const handleEnable2FA = () => {
@@ -235,14 +271,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = () => {
     if (!onDeleteAccount || isDeleting) {
       toast.info('Account deletion is not available right now.');
       return;
     }
 
-    const confirmed = window.confirm('Delete account permanently? This action cannot be undone.');
-    if (!confirmed) return;
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    if (!onDeleteAccount || isDeleting) return;
+
+    setIsDeleteConfirmOpen(false);
 
     setIsDeleting(true);
     try {
@@ -260,6 +301,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <AnimatePresence>
+      <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0 }}
@@ -919,6 +961,114 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </motion.div>
       </div>
+
+      {isPasswordModalOpen ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => {
+            if (isUpdatingPassword) return;
+            setIsPasswordModalOpen(false);
+            setNewPassword('');
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-md rounded-2xl border border-[#dde3eb] bg-[#f7f9fc] shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#dde3eb] px-6 py-4">
+              <h4 className="text-lg font-display font-bold text-[#0a1628]">Update Password</h4>
+              <button
+                onClick={() => {
+                  if (isUpdatingPassword) return;
+                  setIsPasswordModalOpen(false);
+                  setNewPassword('');
+                }}
+                className="p-2 rounded-xl hover:bg-[#edf1f7] transition-colors"
+                aria-label="Close password update dialog"
+              >
+                <X size={18} className="text-[#5a6578]" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-[#5a6578]">Enter a new password with at least 8 characters.</p>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="New password"
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void handleSubmitPasswordUpdate();
+                  }
+                }}
+                disabled={isUpdatingPassword}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (isUpdatingPassword) return;
+                    setIsPasswordModalOpen(false);
+                    setNewPassword('');
+                  }}
+                  disabled={isUpdatingPassword}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitPasswordUpdate}
+                  className="bg-sky-600 hover:bg-sky-700 text-white"
+                  disabled={isUpdatingPassword}
+                >
+                  {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+
+      <ConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => {
+          if (isResetting) return;
+          setIsResetConfirmOpen(false);
+        }}
+        onConfirm={handleConfirmResetData}
+        title="Reset Testing Data?"
+        message={`Reset ${(accountData.role || 'student')} testing data? This action is for QA/demo use and cannot be undone.`}
+        confirmText={isResetting ? 'Resetting...' : 'Reset Data'}
+        cancelText="Cancel"
+        type="warning"
+        icon="warning"
+        zIndexClass="z-[130]"
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          if (isDeleting) return;
+          setIsDeleteConfirmOpen(false);
+        }}
+        onConfirm={handleConfirmDeleteAccount}
+        title="Delete Account?"
+        message="Delete account permanently? This action cannot be undone."
+        confirmText={isDeleting ? 'Deleting...' : 'Delete Account'}
+        cancelText="Cancel"
+        type="danger"
+        icon="delete"
+        zIndexClass="z-[130]"
+      />
+      </>
     </AnimatePresence>
   );
 };

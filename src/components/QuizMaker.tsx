@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Brain, Sparkles, BookOpen, BarChart3, Target, ChevronDown,
@@ -17,6 +17,7 @@ import {
   type BloomLevel,
   type DifficultyLevel,
   type CourseMaterialTopicMapTopic,
+  type AsyncTaskStatusResponse,
 } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import BloomsTaxonomyModal from './BloomsTaxonomyModal';
@@ -108,6 +109,13 @@ const filterTopicsByGrade = (
 // Balanced limits for classroom use: allows longer quizzes while keeping response times practical.
 const MAX_QUESTIONS_LIMIT = 30;
 const MAX_TOPICS_LIMIT = 12;
+const QUIZ_TASK_STORAGE_KEY = 'mathpulse:quiz-maker:active-task';
+
+interface PersistedQuizTask {
+  taskId: string;
+  request: QuizGenerationRequest;
+  createdAt: string;
+}
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   easy: 'text-green-600',
@@ -150,10 +158,15 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   // Generation state
   const [generating, setGenerating] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStage, setGenerationStage] = useState('queued');
+  const [generationMessage, setGenerationMessage] = useState('Waiting to start generation...');
   const [quizResult, setQuizResult] = useState<QuizGenerationResponse | null>(null);
   const [previewResult, setPreviewResult] = useState<QuizGenerationResponse | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const resumeAttemptedRef = useRef(false);
 
   // UI state
   const [expandedSection, setExpandedSection] = useState<string | null>('topics');
@@ -376,6 +389,137 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     };
   };
 
+  const persistActiveTask = useCallback((taskId: string, request: QuizGenerationRequest) => {
+    const payload: PersistedQuizTask = {
+      taskId,
+      request,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      sessionStorage.setItem(QUIZ_TASK_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // Non-blocking: resume still works while modal remains open.
+    }
+  }, []);
+
+  const clearPersistedTask = useCallback(() => {
+    try {
+      sessionStorage.removeItem(QUIZ_TASK_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures.
+    }
+  }, []);
+
+  const applyTaskProgress = useCallback((status: AsyncTaskStatusResponse) => {
+    const mappedPercent = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          typeof status.progressPercent === 'number'
+            ? status.progressPercent
+            : status.status === 'queued'
+            ? 10
+            : status.status === 'running'
+            ? 65
+            : status.status === 'completed'
+            ? 100
+            : status.status === 'cancelling'
+            ? 95
+            : 100,
+        ),
+      ),
+    );
+
+    setGenerationProgress(mappedPercent);
+    setGenerationStage(status.progressStage || status.status);
+    setGenerationMessage(
+      status.progressMessage ||
+      (status.status === 'queued'
+        ? 'Task queued for generation.'
+        : status.status === 'running'
+        ? 'Generating quiz in the background...'
+        : status.status === 'completed'
+        ? 'Generation complete.'
+        : status.status === 'cancelling'
+        ? 'Cancelling generation...'
+        : 'Generation finished with an error.'),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (resumeAttemptedRef.current) {
+      return;
+    }
+    resumeAttemptedRef.current = true;
+
+    let cancelled = false;
+    const raw = sessionStorage.getItem(QUIZ_TASK_STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    let persisted: PersistedQuizTask | null = null;
+    try {
+      persisted = JSON.parse(raw) as PersistedQuizTask;
+    } catch {
+      clearPersistedTask();
+      return;
+    }
+
+    if (!persisted?.taskId) {
+      clearPersistedTask();
+      return;
+    }
+
+    setGenerating(true);
+    setActiveTaskId(persisted.taskId);
+    setError('');
+
+    void apiService
+      .waitForTaskResult(persisted.taskId, {
+        timeoutMs: 240_000,
+        pollIntervalMs: 1_500,
+        onProgress: applyTaskProgress,
+      })
+      .then((task) => {
+        if (cancelled) return;
+        const payload = task.result;
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('Quiz generation completed without a valid result payload.');
+        }
+        setQuizResult(payload as unknown as QuizGenerationResponse);
+        setStep('results');
+        setGenerationProgress(100);
+        setGenerationStage('completed');
+        setGenerationMessage('Generation complete.');
+        setActiveTaskId(null);
+        clearPersistedTask();
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to resume quiz generation');
+        setActiveTaskId(null);
+        clearPersistedTask();
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setGenerating(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyTaskProgress, clearPersistedTask]);
+
+  const handleClose = () => {
+    if (generating && activeTaskId) {
+      toast.info('Quiz generation will continue in the background. Reopen this modal to resume progress.');
+    }
+    onClose();
+  };
+
   const handlePreview = async () => {
     setError('');
     setPreviewing(true);
@@ -394,12 +538,34 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const handleGenerate = async () => {
     setError('');
     setGenerating(true);
+    setGenerationProgress(8);
+    setGenerationStage('queued');
+    setGenerationMessage('Submitting quiz generation task...');
     setQuizResult(null);
     const requestPayload = buildRequest();
     try {
-      const result = await apiService.generateQuiz(requestPayload);
+      const result = await apiService.generateQuiz(requestPayload, {
+        onTaskCreated: (taskId) => {
+          setActiveTaskId(taskId);
+          persistActiveTask(taskId, requestPayload);
+          setGenerationProgress((prev) => Math.max(prev, 12));
+          setGenerationStage('queued');
+          setGenerationMessage('Task queued. Generation is running in the background.');
+        },
+        onProgress: (status) => {
+          applyTaskProgress(status);
+          if (status.taskId && status.taskId !== activeTaskId) {
+            setActiveTaskId(status.taskId);
+          }
+        },
+      });
       setQuizResult(result);
       setStep('results');
+      setGenerationProgress(100);
+      setGenerationStage('completed');
+      setGenerationMessage('Generation complete.');
+      setActiveTaskId(null);
+      clearPersistedTask();
       void apiService.reportImportGroundedFeedback({
         flow: 'quiz',
         status: 'success',
@@ -414,6 +580,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Quiz generation failed');
+      setGenerationProgress(100);
+      setGenerationStage('failed');
+      setGenerationMessage('Generation failed.');
+      setActiveTaskId(null);
+      clearPersistedTask();
       void apiService.reportImportGroundedFeedback({
         flow: 'quiz',
         status: 'failed',
@@ -778,7 +949,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 <p className="text-sky-300 text-sm">Generate AI-powered assessments with Bloom's Taxonomy</p>
               </div>
             </div>
-            <button onClick={onClose} className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+            <button onClick={handleClose} className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
               <X size={18} />
             </button>
           </div>
@@ -925,6 +1096,36 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               <button onClick={() => setError('')} className="ml-auto">
                 <X size={14} className="text-red-400" />
               </button>
+            </motion.div>
+          )}
+
+          {generating && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 bg-white border border-sky-200 rounded-xl p-4"
+            >
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin text-sky-600" />
+                  <p className="text-sm font-semibold text-[#0a1628]">Generating Quiz in Background</p>
+                </div>
+                <span className="text-xs font-bold text-sky-700">{generationProgress}%</span>
+              </div>
+              <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden">
+                <motion.div
+                  animate={{ width: `${generationProgress}%` }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  className="h-full bg-gradient-to-r from-sky-600 to-cyan-500"
+                />
+              </div>
+              <p className="mt-2 text-xs text-[#5a6578] capitalize">
+                Stage: {generationStage.replace(/_/g, ' ')}
+              </p>
+              <p className="text-xs text-[#5a6578]">{generationMessage}</p>
+              {activeTaskId && (
+                <p className="text-[11px] text-[#7b8798] mt-1">Task ID: {activeTaskId}</p>
+              )}
             </motion.div>
           )}
 
@@ -1376,7 +1577,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           <div className="text-xs text-slate-500">
             {step === 'configure' && (
               <span className="flex items-center gap-1">
-                <Sparkles size={12} /> Powered by Qwen2.5-Math-7B-Instruct
+                <Sparkles size={12} /> Powered by Qwen/Qwen3.5-9B
               </span>
             )}
             {step === 'preview' && <span>Preview: {previewResult?.questions.length || 0} sample questions</span>}
@@ -1408,7 +1609,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   }`}
                 >
                   {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                  Generate Quiz
+                  {generating ? `Generating... ${generationProgress}%` : 'Generate Quiz'}
                 </button>
               </>
             )}
@@ -1427,7 +1628,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white shadow-lg shadow-sky-200 transition-all"
                 >
                   {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                  Generate Full Quiz ({numQuestions} Qs)
+                  {generating ? `Generating... ${generationProgress}%` : `Generate Full Quiz (${numQuestions} Qs)`}
                 </button>
               </>
             )}
@@ -1476,7 +1677,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 )}
 
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
                 >
                   Done

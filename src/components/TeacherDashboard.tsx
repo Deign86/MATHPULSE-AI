@@ -191,6 +191,104 @@ function buildClassSectionId(grade: string, section: string): string {
     .toLowerCase();
 }
 
+function normalizeClassSectionId(value?: string): string {
+  return (value || '').trim().toLowerCase();
+}
+
+function buildClassMergeKey(classView: ClassView): string {
+  const classSectionKey = normalizeClassSectionId(classView.classSectionId);
+  if (classSectionKey) return `section:${classSectionKey}`;
+  const idKey = (classView.id || '').trim().toLowerCase();
+  if (idKey) return `id:${idKey}`;
+  return `name:${(classView.name || '').trim().toLowerCase()}`;
+}
+
+function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView[] {
+  const merged = new Map<string, ClassView>();
+
+  primary.forEach((item) => {
+    merged.set(buildClassMergeKey(item), item);
+  });
+
+  imported.forEach((item) => {
+    const key = buildClassMergeKey(item);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, item);
+      return;
+    }
+
+    const atRiskCount = Math.max(existing.atRiskCount || 0, item.atRiskCount || 0);
+    const studentCount = Math.max(existing.studentCount || 0, item.studentCount || 0);
+    const avgScore = item.avgScore > 0 ? item.avgScore : existing.avgScore;
+    const riskLevel = atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low';
+
+    merged.set(key, {
+      ...existing,
+      classSectionId: existing.classSectionId || item.classSectionId,
+      name: existing.name || item.name,
+      schedule: existing.schedule || item.schedule,
+      studentCount,
+      atRiskCount,
+      avgScore,
+      riskLevel,
+    });
+  });
+
+  return Array.from(merged.values());
+}
+
+function buildStudentMergeKey(student: StudentView): string {
+  const classSectionKey = normalizeClassSectionId(student.classSectionId) || normalizeClassSectionId(student.classroomId);
+  const lrnKey = (student.lrn || '').trim().toLowerCase();
+  if (classSectionKey && lrnKey) return `${classSectionKey}|lrn:${lrnKey}`;
+  const idKey = (student.id || '').trim().toLowerCase();
+  if (classSectionKey && idKey) return `${classSectionKey}|id:${idKey}`;
+  return `${classSectionKey}|name:${student.name.trim().toLowerCase()}`;
+}
+
+function mergeStudentViews(primary: StudentView[], imported: StudentView[]): StudentView[] {
+  const merged = new Map<string, StudentView>();
+
+  primary.forEach((item) => {
+    merged.set(buildStudentMergeKey(item), item);
+  });
+
+  imported.forEach((item) => {
+    const key = buildStudentMergeKey(item);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, item);
+      return;
+    }
+
+    const chosenRisk = [existing.riskLevel, item.riskLevel].includes('high')
+      ? 'high'
+      : [existing.riskLevel, item.riskLevel].includes('medium')
+        ? 'medium'
+        : 'low';
+
+    merged.set(key, {
+      ...existing,
+      lrn: existing.lrn || item.lrn,
+      classSectionId: existing.classSectionId || item.classSectionId,
+      classroomId: existing.classroomId || item.classroomId,
+      className: existing.className || item.className,
+      grade: existing.grade || item.grade,
+      section: existing.section || item.section,
+      avgScore: item.avgScore > 0 ? item.avgScore : existing.avgScore,
+      attendance: item.attendance > 0 ? item.attendance : existing.attendance,
+      engagementScore: item.engagementScore > 0 ? item.engagementScore : existing.engagementScore,
+      assignmentCompletion: item.assignmentCompletion > 0 ? item.assignmentCompletion : existing.assignmentCompletion,
+      weakestTopic: existing.weakestTopic && existing.weakestTopic !== 'N/A' ? existing.weakestTopic : item.weakestTopic,
+      riskLevel: chosenRisk,
+      struggles: existing.struggles.length > 0 ? existing.struggles : item.struggles,
+    });
+  });
+
+  return Array.from(merged.values());
+}
+
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -213,6 +311,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   useEffect(() => {
     if (!currentUser) return;
     const teacherId = currentUser.uid;
+    let isActive = true;
 
     let unsubActivity: (() => void) | undefined;
 
@@ -229,32 +328,30 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         const allStudents = await getStudentsByTeacher(teacherId);
         let studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
 
-        if (classViews.length === 0 || studentViews.length === 0) {
-          try {
-            const imported = await apiService.getImportedClassOverview({ limit: 3000 });
+        if (!isActive) return;
+        setClasses(classViews);
+        setStudents(studentViews);
+
+        // Load imported overview as a best-effort background merge so dashboard render is never blocked.
+        void apiService
+          .getImportedClassOverview({ limit: 3000 })
+          .then((imported) => {
+            if (!isActive) return;
             if (imported.warnings.length > 0) {
               console.warn('Imported class overview warnings:', imported.warnings.join(' '));
             }
-
-            if (classViews.length === 0 && imported.classrooms.length > 0) {
-              classViews = imported.classrooms.map(toImportedClassView);
-            }
-
-            if (studentViews.length === 0 && imported.students.length > 0) {
-              studentViews = imported.students.map(toImportedStudentView);
-            }
-          } catch (importedErr) {
-            console.warn('Imported class overview fallback unavailable:', importedErr);
-          }
-        }
-
-        setClasses(classViews);
-        setStudents(studentViews);
+            setClasses((prev) => mergeClassViews(prev, imported.classrooms.map(toImportedClassView)));
+            setStudents((prev) => mergeStudentViews(prev, imported.students.map(toImportedStudentView)));
+          })
+          .catch((importedErr) => {
+            console.warn('Imported class overview merge unavailable:', importedErr);
+          });
 
         // Subscribe to live activity
         const classroomIds = classrooms.map((c) => c.id);
         if (classroomIds.length > 0) {
           unsubActivity = subscribeToActivityFeed(classroomIds, (activities) => {
+            if (!isActive) return;
             setLiveActivity(
               activities.map((a) => ({
                 id: a.id,
@@ -278,6 +375,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     fetchData();
 
     return () => {
+      isActive = false;
       if (unsubActivity) unsubActivity();
     };
   }, [currentUser, dataRefreshNonce]);
@@ -1686,6 +1784,23 @@ const ImportView: React.FC<{
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
+  const [uploadInterpretation, setUploadInterpretation] = useState<{
+    datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
+    summary?: {
+      scoringColumns: number;
+      displayColumns: number;
+      storageOnlyColumns: number;
+      lowConfidenceColumns: number;
+      domainMismatchWarnings: number;
+    };
+    columns: Array<{
+      columnName: string;
+      mappedField?: string;
+      usagePolicy: 'scoring' | 'display' | 'storage_only';
+      confidenceBand: 'high' | 'medium' | 'low';
+      domainSignals?: string[];
+    }>;
+  } | null>(null);
   const [recentMaterials, setRecentMaterials] = useState<CourseMaterialArtifactSummary[]>([]);
   const [materialsWarnings, setMaterialsWarnings] = useState<string[]>([]);
   const [riskMonitorLoading, setRiskMonitorLoading] = useState(false);
@@ -1863,23 +1978,46 @@ const ImportView: React.FC<{
   const handleFileUpload = async (file: File) => {
     setUploadingClassRecords(true);
     setUploadResult('');
+    setUploadInterpretation(null);
     try {
       const result = await apiService.uploadClassRecords(file, {
         classSectionId,
         className,
+        datasetIntent: 'synthetic_student_records',
       });
       if (result.success) {
         toast.success(`Successfully imported ${result.students.length} student records`);
         const riskRefreshText = result.riskRefresh?.queued
           ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
           : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
-        setUploadResult(`Imported ${result.students.length} students.${riskRefreshText} Column mapping: ${JSON.stringify(result.columnMapping)}`);
+        const interpretation = result.interpretationSummary;
+        const interpretationText = interpretation
+          ? ` Interpreted columns - scoring: ${interpretation.scoringColumns}, display: ${interpretation.displayColumns}, storage-only: ${interpretation.storageOnlyColumns}, low-confidence: ${interpretation.lowConfidenceColumns}.`
+          : '';
+        const warningText = result.warnings && result.warnings.length > 0
+          ? ` Warnings: ${result.warnings.slice(0, 2).join(' ')}`
+          : '';
+        setUploadResult(
+          `Imported ${result.students.length} students.${riskRefreshText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
+        );
+        setUploadInterpretation({
+          datasetIntent: result.datasetIntent,
+          summary: result.interpretationSummary,
+          columns: result.columnInterpretations?.map((item) => ({
+            columnName: item.columnName,
+            mappedField: item.mappedField,
+            usagePolicy: item.usagePolicy,
+            confidenceBand: item.confidenceBand,
+            domainSignals: item.domainSignals,
+          })) || [],
+        });
         onDataChanged?.();
         await loadRiskRefreshMonitor();
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Upload failed');
       setUploadResult('Upload failed. Please check the file format and try again.');
+      setUploadInterpretation(null);
     } finally {
       setUploadingClassRecords(false);
     }
@@ -2351,6 +2489,62 @@ const ImportView: React.FC<{
         {uploadResult && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-sm text-green-800">
             {uploadResult}
+          </div>
+        )}
+
+        {uploadInterpretation && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-display font-bold text-[#0a1628]">Import Interpretation</h3>
+              <span className="text-xs px-2 py-1 rounded bg-[#edf1f7] text-[#334155]">
+                Intent: {uploadInterpretation.datasetIntent || 'synthetic_student_records'}
+              </span>
+            </div>
+
+            {uploadInterpretation.summary && (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Scoring</p>
+                  <p className="text-lg font-bold text-[#0a1628]">{uploadInterpretation.summary.scoringColumns}</p>
+                </div>
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Display</p>
+                  <p className="text-lg font-bold text-[#0a1628]">{uploadInterpretation.summary.displayColumns}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <p className="text-xs text-amber-700">Storage-only</p>
+                  <p className="text-lg font-bold text-amber-800">{uploadInterpretation.summary.storageOnlyColumns}</p>
+                </div>
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+                  <p className="text-xs text-rose-700">Low confidence</p>
+                  <p className="text-lg font-bold text-rose-800">{uploadInterpretation.summary.lowConfidenceColumns}</p>
+                </div>
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Domain warnings</p>
+                  <p className="text-lg font-bold text-[#0a1628]">{uploadInterpretation.summary.domainMismatchWarnings}</p>
+                </div>
+              </div>
+            )}
+
+            {uploadInterpretation.columns.length > 0 ? (
+              <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                {uploadInterpretation.columns.slice(0, 40).map((column) => (
+                  <div key={column.columnName} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg px-3 py-2">
+                    <p className="text-sm font-semibold text-[#0a1628]">{column.columnName}</p>
+                    <p className="text-xs text-[#5a6578]">
+                      mapped: {column.mappedField || 'none'}
+                      {' • '}usage: {column.usagePolicy}
+                      {' • '}confidence: {column.confidenceBand}
+                    </p>
+                    {column.domainSignals && column.domainSignals.length > 0 && (
+                      <p className="text-xs text-amber-700 mt-1">domain signals: {column.domainSignals.join(', ')}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[#5a6578]">No per-column interpretation data was returned for this upload.</p>
+            )}
           </div>
         )}
 
