@@ -1653,7 +1653,11 @@ const ImportView: React.FC<{
       setMaterialsWarnings(response.warnings || []);
     } catch (err) {
       setRecentMaterials([]);
-      setMaterialsWarnings([err instanceof Error ? err.message : 'Unable to load recent course materials.']);
+      if (err instanceof ApiError && err.status === 403) {
+        setMaterialsWarnings(['Recent course materials are not available for this role.']);
+      } else {
+        setMaterialsWarnings([err instanceof Error ? err.message : 'Unable to load recent course materials.']);
+      }
     }
   }, [classSectionId]);
 
@@ -1682,7 +1686,11 @@ const ImportView: React.FC<{
     } catch (err) {
       setRiskMonitorSummary(null);
       setRecentRiskJobs([]);
-      setRiskMonitorError(err instanceof Error ? err.message : 'Unable to load risk refresh monitor.');
+      if (err instanceof ApiError && err.status === 403) {
+        setRiskMonitorError('Risk refresh monitoring is not available for this role.');
+      } else {
+        setRiskMonitorError(err instanceof Error ? err.message : 'Unable to load risk refresh monitor.');
+      }
     } finally {
       setRiskMonitorLoading(false);
     }
@@ -1703,7 +1711,11 @@ const ImportView: React.FC<{
       }
     } catch (err) {
       setTelemetrySummary(null);
-      setTelemetryError(err instanceof Error ? err.message : 'Unable to load telemetry summary.');
+      if (err instanceof ApiError && err.status === 403) {
+        setTelemetryError('Telemetry summary is not available for this role.');
+      } else {
+        setTelemetryError(err instanceof Error ? err.message : 'Unable to load telemetry summary.');
+      }
     } finally {
       setTelemetryLoading(false);
     }
@@ -1724,7 +1736,11 @@ const ImportView: React.FC<{
       }
     } catch (err) {
       setAuditSummary(null);
-      setAuditError(err instanceof Error ? err.message : 'Unable to load access audit events.');
+      if (err instanceof ApiError && err.status === 403) {
+        setAuditError('Access audit is not available for this role.');
+      } else {
+        setAuditError(err instanceof Error ? err.message : 'Unable to load access audit events.');
+      }
     } finally {
       setAuditLoading(false);
     }
@@ -1750,7 +1766,11 @@ const ImportView: React.FC<{
       URL.revokeObjectURL(url);
       toast.success('Access audit CSV exported');
     } catch (err) {
-      setAuditError(err instanceof Error ? err.message : 'Unable to export access audit CSV.');
+      if (err instanceof ApiError && err.status === 403) {
+        setAuditError('Access audit export is not available for this role.');
+      } else {
+        setAuditError(err instanceof Error ? err.message : 'Unable to export access audit CSV.');
+      }
       toast.error('Access audit export failed');
     } finally {
       setAuditExporting(false);
@@ -1758,11 +1778,16 @@ const ImportView: React.FC<{
   }, [classSectionId]);
 
   useEffect(() => {
-    void loadRiskRefreshMonitor();
-    void loadRecentMaterials();
-    void loadTelemetrySummary();
-    void loadAccessAuditSummary();
-  }, [loadRecentMaterials, loadRiskRefreshMonitor, loadTelemetrySummary, loadAccessAuditSummary]);
+    setRecentMaterials([]);
+    setMaterialsWarnings([]);
+    setRiskMonitorSummary(null);
+    setRecentRiskJobs([]);
+    setRiskMonitorError('');
+    setTelemetrySummary(null);
+    setTelemetryError('');
+    setAuditSummary(null);
+    setAuditError('');
+  }, [classSectionId]);
 
   const handleFileUpload = async (file: File) => {
     setUploadingClassRecords(true);
@@ -1967,7 +1992,7 @@ const ImportView: React.FC<{
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#5a6578]">No course materials found for this scope yet.</p>
+            <p className="text-sm text-[#5a6578]">No course materials loaded yet. Click Refresh to fetch data for this scope.</p>
           )}
 
           {materialsWarnings.length > 0 && (
@@ -2051,7 +2076,7 @@ const ImportView: React.FC<{
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#5a6578]">No risk refresh jobs found yet.</p>
+            <p className="text-sm text-[#5a6578]">No risk refresh data loaded yet. Click Refresh to fetch monitor data.</p>
           )}
 
           {riskMonitorError && (
@@ -2164,7 +2189,7 @@ const ImportView: React.FC<{
           )}
 
           {!telemetrySummary && !telemetryLoading && (
-            <p className="text-sm text-[#5a6578]">No telemetry summary available yet for this scope.</p>
+            <p className="text-sm text-[#5a6578]">No telemetry summary loaded yet. Click Refresh to fetch telemetry.</p>
           )}
 
           {telemetryError && (
@@ -2241,7 +2266,7 @@ const ImportView: React.FC<{
           )}
 
           {!auditSummary && !auditLoading && (
-            <p className="text-sm text-[#5a6578]">No access audit summary available yet for this scope.</p>
+            <p className="text-sm text-[#5a6578]">No access audit summary loaded yet. Click Refresh to fetch access audit data.</p>
           )}
 
           {auditError && (

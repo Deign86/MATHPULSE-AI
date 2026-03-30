@@ -12,7 +12,7 @@ from backend.services.logging_utils import configure_structured_logging
 
 def build_common_parser(description: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--model", default=os.getenv("INFERENCE_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct"))
+    parser.add_argument("--model", default=os.getenv("INFERENCE_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct"))
     parser.add_argument("--limit", type=int, default=int(os.getenv("JOB_LIMIT", "100")))
     parser.add_argument("--subset", default=os.getenv("JOB_SUBSET", "all"))
     parser.add_argument("--output", default=os.getenv("JOB_OUTPUT", ""))
