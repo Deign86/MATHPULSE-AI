@@ -2,12 +2,13 @@
 Deploy MathPulse AI backend to HuggingFace Spaces.
 
 Usage:
-    python deploy-hf.py --token YOUR_HF_TOKEN [--recreate]
+    python deploy-hf.py [--token YOUR_HF_TOKEN] [--recreate]
 
 This script will:
 1. Authenticate with Hugging Face
 2. Ensure mathpulse-api space exists (or recreate it when --recreate is used)
 3. Upload the backend files to the space
+4. Optionally set INFERENCE_LOCAL_SPACE_URL and restart runtime
 
 Safety:
 - This script only manages the backend space and never touches frontend spaces.
@@ -20,6 +21,7 @@ from huggingface_hub import HfApi, login
 
 SPACE_ID = "Deign86/mathpulse-api-v3test"
 BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
+DEFAULT_FRONTEND_SPACE_URL = "https://huggingface.co/spaces/Deign86/mathpulse-ai"
 
 SPACE_README = """---
 title: MathPulse AI API
@@ -46,7 +48,7 @@ def _upload_tree(api: HfApi, repo_id: str, source_root: str, target_root: str) -
     for current_root, dirnames, filenames in os.walk(source_root):
         dirnames[:] = [d for d in dirnames if d != "__pycache__"]
         for filename in filenames:
-            if filename == ".gitkeep" or filename.endswith(".pyc"):
+            if filename.endswith(".pyc"):
                 continue
 
             local_path = os.path.join(current_root, filename)
@@ -63,15 +65,31 @@ def _upload_tree(api: HfApi, repo_id: str, source_root: str, target_root: str) -
 
 def main():
     parser = argparse.ArgumentParser(description="Deploy MathPulse backend to HuggingFace Spaces")
-    parser.add_argument("--token", required=True, help="HuggingFace API token (write access)")
+    parser.add_argument("--token", required=False, help="HuggingFace API token (write access)")
     parser.add_argument(
         "--recreate",
         action="store_true",
         help="Delete and recreate the backend space before upload",
     )
+    parser.add_argument(
+        "--local-space-url",
+        default=DEFAULT_FRONTEND_SPACE_URL,
+        help=(
+            "Value for INFERENCE_LOCAL_SPACE_URL. Can be either the Space page URL "
+            "(https://huggingface.co/spaces/<owner>/<space>) or hf.space host URL."
+        ),
+    )
+    parser.add_argument(
+        "--skip-restart",
+        action="store_true",
+        help="Do not restart the Space runtime after deployment/variable update.",
+    )
     args = parser.parse_args()
 
-    login(token=args.token)
+    if args.token:
+        login(token=args.token)
+    else:
+        print("No --token provided. Attempting to use cached Hugging Face login.")
     api = HfApi()
 
     user = api.whoami()
@@ -102,6 +120,7 @@ def main():
         "analytics.py",
         "automation_engine.py",
         "requirements.txt",
+        ".dockerignore",
         "Dockerfile",
     ]
     for filename in files_to_upload:
@@ -129,6 +148,18 @@ def main():
     # Upload package directories required at runtime.
     _upload_tree(api, SPACE_ID, os.path.join(BACKEND_DIR, "services"), "services")
     _upload_tree(api, SPACE_ID, os.path.join(BACKEND_DIR, "models"), "models")
+
+    # Ensure backend routes can call the frontend ZeroGPU Space endpoint.
+    api.add_space_variable(
+        repo_id=SPACE_ID,
+        key="INFERENCE_LOCAL_SPACE_URL",
+        value=args.local_space_url,
+    )
+    print(f"Set Space variable INFERENCE_LOCAL_SPACE_URL={args.local_space_url}")
+
+    if not args.skip_restart:
+        api.restart_space(repo_id=SPACE_ID)
+        print("Restarted Space runtime to apply updated variables.")
 
     print(f"\nDeployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")
