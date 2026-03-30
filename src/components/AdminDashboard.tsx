@@ -10,6 +10,7 @@ import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import MasteryHeatmap from './MasteryHeatmap';
+import AdminPriorityModules from './AdminPriorityModules';
 import {
   getDashboardStats,
   getAuditLogs,
@@ -205,6 +206,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   <p className="text-xs text-[#a0aec0]">Import class records to populate analytics.</p>
                 </div>
               </div>
+
+                {/* Priority Modules Carousel */}
+              <AdminPriorityModules />
 
               {/* Platform-Wide Subject Mastery Heatmap */}
               <MasteryHeatmap />

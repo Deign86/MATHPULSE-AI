@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Hand, ArrowRight, Zap } from 'lucide-react';
+import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { AvatarLayers } from './CompositeAvatar';
@@ -10,9 +10,18 @@ interface HeroBannerProps {
   userLevel?: number;
   avatarLayers?: AvatarLayers;
   onContinueLearning?: () => void;
+  showAssessmentTooltip?: boolean;
+  onOpenAssessment?: () => void;
 }
 
-const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel = 1, avatarLayers, onContinueLearning }) => {
+const HeroBanner: React.FC<HeroBannerProps> = ({ 
+  userName = 'Student', 
+  userLevel = 1, 
+  avatarLayers, 
+  onContinueLearning,
+  showAssessmentTooltip,
+  onOpenAssessment
+}) => {
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -26,7 +35,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full mt-6 lg:mt-1 rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
+      className="relative w-full mt-0 rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
     >
       {/* Background elements wrapped in overflow-hidden */}
       <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
@@ -70,6 +79,29 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ userName = 'Student', userLevel
       </div>
 
       {/* Avatar Container: Anchored to the exact bottom of the banner, clipped directly at the banner's baseline */}
+      {showAssessmentTooltip && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, x: 10 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          transition={{ delay: 0.5, type: 'spring' }}
+          onClick={onOpenAssessment}
+          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group"
+        >
+          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-500">
+                <Brain size={16} />
+              </span>
+              <p className="text-xs lg:text-sm font-bold text-amber-900 leading-tight">
+                Don't forget to take the<br/>Initial Assessment!
+              </p>
+            </div>
+            {/* Speech bubble tail pointing right-down towards avatar */}
+            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
+          </div>
+        </motion.div>
+      )}
+
       <div
         className="hidden md:block absolute right-0 lg:right-10 bottom-0 w-[150px] lg:w-[270px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
