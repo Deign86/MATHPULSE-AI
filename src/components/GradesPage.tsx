@@ -214,7 +214,12 @@ const GradesPage = () => {
       {/* Subject Performance */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-display font-bold text-[#0a1628]">Subject Performance</h2>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+              <Target size={20} strokeWidth={2.5} />
+            </div>
+            <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Subject Performance</h2>
+          </div>
           <Button variant="outline" size="sm" className="rounded-lg font-body border-[#dde3eb] text-[#5a6578]" onClick={handleExportReport}>
             <Download size={16} className="mr-2" />
             Export Report
@@ -262,7 +267,12 @@ const GradesPage = () => {
       {/* Quiz History */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-display font-bold text-[#0a1628]">Quiz History</h2>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+              <Calendar size={20} strokeWidth={2.5} />
+            </div>
+            <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Quiz History</h2>
+          </div>
           <div className="flex items-center gap-2">
             <select
               value={filterSubject}

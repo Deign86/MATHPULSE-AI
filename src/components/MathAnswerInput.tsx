@@ -10,6 +10,7 @@ interface MathAnswerInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   onCalculatorOpen?: () => void;
+  onSubmit?: () => void;
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -60,9 +61,11 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
   onChange,
   placeholder,
   onCalculatorOpen,
+  onSubmit,
 }) => {
   const [toolbarVisible, setToolbarVisible] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const awaitingExponent = useRef(false);
 
@@ -90,6 +93,12 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       const key = e.key;
+
+      if (key === 'Enter') {
+        e.preventDefault();
+        onSubmit?.();
+        return;
+      }
 
       // Caret triggers exponent mode
       if (key === '^') {
@@ -146,13 +155,48 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
         }
       }, 0);
     },
-    [value, onChange, suggestion, insertAtCursor],
+    [value, onChange, suggestion, insertAtCursor, onSubmit],
   );
 
-  /* ── Focus / Blur ───────────────────────────────────────── */
-  const handleFocus = useCallback(() => setToolbarVisible(true), []);
+  /* ── Focus / Blur / Always Open ─────────────────────────── */
+  const updateToolbarPos = useCallback(() => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setToolbarPos({
+        top: Math.max(20, rect.bottom - 280), // Align bottom with input roughly, keep in viewport
+        left: Math.max(10, rect.left - 240), // 240px wide estimated, keep left gap
+      });
+    }
+  }, []);
+
+  const handleFocus = useCallback(() => {
+    updateToolbarPos();
+    setToolbarVisible(true);
+  }, [updateToolbarPos]);
+
+  // Keep it always open once mounted
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      updateToolbarPos();
+      setToolbarVisible(true);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [updateToolbarPos]);
+
+  // Update position if window resizes or scrolls
+  React.useEffect(() => {
+    if (toolbarVisible) {
+      window.addEventListener('resize', updateToolbarPos);
+      window.addEventListener('scroll', updateToolbarPos, true); // capture phase for scroll
+      return () => {
+        window.removeEventListener('resize', updateToolbarPos);
+        window.removeEventListener('scroll', updateToolbarPos, true);
+      };
+    }
+  }, [toolbarVisible, updateToolbarPos]);
+
   const handleBlur = useCallback(() => {
-    setTimeout(() => setToolbarVisible(false), 200);
+    // We purposefully no longer close the toolbar on blur so it can stay open alongside the calculator
   }, []);
 
   /* ── Preview ────────────────────────────────────────────── */
@@ -168,8 +212,8 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
       {/* ── Floating toolbar ──────────────────────────────── */}
       {toolbarVisible && (
         <div
-          className="absolute z-40 left-0 bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 flex flex-col gap-2"
-          style={{ bottom: 'calc(100% + 8px)' }}
+          className="fixed z-[60] bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-3 flex flex-col gap-3 w-[220px] pointer-events-auto"
+          style={{ top: toolbarPos.top, left: toolbarPos.left }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {/* Row 1: Powers */}

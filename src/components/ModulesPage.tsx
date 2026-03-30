@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  BookOpen, Play, CheckCircle, ChevronDown, ChevronRight, Lock, Award, Clock, Star, TrendingUp, AlertTriangle, Target, Calculator, Compass, PieChart, Box, Percent, Infinity as InfinityIcon, Layers, Search, Plus
+  BookOpen, Play, CheckCircle, ChevronDown, ChevronRight, Lock, Award, Clock, TrendingUp, AlertTriangle, Target, Calculator, Compass, PieChart, Box, Percent, Infinity as InfinityIcon, Layers, Search, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -371,8 +371,6 @@ const SubjectCard: React.FC<{
   };
   const { bg, tags, level } = getCardStyle(subject.id);
 
-  const rating = subject.rating || 5;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -431,9 +429,8 @@ const SubjectCard: React.FC<{
                <div className="flex items-center gap-1.5">
                  <Clock size={14} /> {(subject.totalModules * 45)} mins
                </div>
-               <div className="flex items-center gap-1 tracking-widest text-white">
-                 {'★'.repeat(Math.floor(rating))}
-                 <span className="opacity-50">{'★'.repeat(5 - Math.floor(rating))}</span> 
+               <div className="flex items-center gap-1.5 text-white/90">
+                 <BookOpen size={14} /> {subject.totalModules} modules
                </div>
             </div>
          )}
