@@ -123,6 +123,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
   const [answers, setAnswers] = useState<AnswerValue[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showCalcTooltip, setShowCalcTooltip] = useState(false);
   const [topicSummaries, setTopicSummaries] = useState<Record<IARTopicArea, TopicScoreSummary> | null>(null);
   const [g12Readiness, setG12Readiness] = useState<G12ReadinessIndicators | null>(null);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>([]);
@@ -136,11 +137,32 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       setAnswers([]);
       setCurrentInput('');
       setShowCalculator(false);
+      setShowCalcTooltip(false);
       setTopicSummaries(null);
       setG12Readiness(null);
       setAtRiskSubjects([]);
     }
   }, [isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen || step !== 'test') {
+      setShowCalcTooltip(false);
+      return;
+    }
+
+    // Only show tooltip at the start of the test and hide automatically.
+    if (currentQuestionIndex > 0 || showCalculator) {
+      setShowCalcTooltip(false);
+      return;
+    }
+
+    setShowCalcTooltip(true);
+    const timeoutId = window.setTimeout(() => {
+      setShowCalcTooltip(false);
+    }, 2800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isOpen, step, currentQuestionIndex, showCalculator]);
 
   const handleSkip = () => {
     onComplete({
@@ -391,38 +413,83 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
         handleDismiss();
       }}
     >
+      {/* Main Modal - Always Centered */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] pointer-events-auto overflow-hidden relative z-[51]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-8 py-6 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-sky-600">
-              <Brain size={24} />
+          <div className="px-8 py-6 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-sky-600">
+                <Brain size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-[#0a1628]">
+                  {assessmentType === 'followup_diagnostic' ? 'Deep Diagnostic' : 'Initial Assessment'}
+                </h2>
+                <p className="text-sm text-[#5a6578]">Analyze your strengths & weaknesses</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-[#0a1628]">
-                {assessmentType === 'followup_diagnostic' ? 'Deep Diagnostic' : 'Initial Assessment'}
-              </h2>
-              <p className="text-sm text-[#5a6578]">Analyze your strengths & weaknesses</p>
+            <div className="flex items-center gap-2 relative">
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowCalculator(!showCalculator);
+                    setShowCalcTooltip(false);
+                  }}
+                  className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 border-2 ${
+                    showCalculator 
+                      ? 'bg-sky-100 border-sky-300 text-sky-700 shadow-sm' 
+                      : 'bg-white border-[#dde3eb] text-slate-500 hover:text-sky-600 hover:border-sky-200 hover:bg-sky-50'
+                  }`}
+                  title="Toggle Calculator"
+                >
+                  <Calculator size={20} />
+                </button>
+
+                {/* Calculator Tooltip overlay */}
+                <AnimatePresence>
+                  {isOpen && step === 'test' && showCalcTooltip && !showCalculator && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-full mt-3 w-[260px] bg-[#0a1628] text-white border border-[#2a3648] rounded-2xl p-4 shadow-2xl z-50 pointer-events-none"
+                    >
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-sky-500/20 flex items-center justify-center flex-shrink-0">
+                          <Calculator size={16} className="text-sky-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm mb-1">Calculator Available</h4>
+                          <p className="text-xs text-slate-300 leading-relaxed">
+                            You can freely use the scientific calculator at any time during this quiz.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="absolute -top-2 right-4 w-4 h-4 bg-[#0a1628] border-l border-t border-[#2a3648] rotate-45 rounded-tl-sm"></div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button
+                onClick={() => {
+                  handleDismiss();
+                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 border-2 border-transparent hover:text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] transition-all"
+                title="Close assessment"
+              >
+                <X size={20} />
+              </button>
             </div>
           </div>
-          <button
-            onClick={() => {
-              handleDismiss();
-            }}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-[#5a6578] hover:bg-[#dde3eb] transition-colors"
-            title="Close assessment"
-          >
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* Content */}
+          {/* Content */}
         <div className="p-8 overflow-y-auto">
           <AnimatePresence mode="wait">
             {step === 'intro' && (
@@ -539,37 +606,12 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                           value={currentInput}
                           onChange={setCurrentInput}
                           placeholder="Type numeric answer"
-                          onCalculatorOpen={() => setShowCalculator(true)}
+                          onSubmit={handleShortAnswerSubmit}
+                          onCalculatorOpen={() => {
+                            setShowCalculator(true);
+                            setShowCalcTooltip(false);
+                          }}
                         />
-
-                        <AnimatePresence>
-                          {showCalculator && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="bg-[#edf1f7] rounded-2xl p-4 border border-[#dde3eb]">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="text-sm font-bold text-[#0a1628]">Scientific Calculator</h4>
-                                  <button
-                                    onClick={() => setShowCalculator(false)}
-                                    className="text-slate-500 hover:text-[#5a6578] transition-colors"
-                                    title="Close calculator"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                                <ScientificCalculator
-                                  isOpen={true}
-                                  onClose={() => setShowCalculator(false)}
-                                  inline
-                                />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
                       </>
                     ) : (
                       <input
@@ -613,10 +655,12 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 </p>
 
                 <div className="bg-[#edf1f7] rounded-2xl p-6 border border-[#dde3eb] text-left space-y-4">
-                  <h4 className="font-bold text-[#0a1628] flex items-center gap-2">
-                    <BarChart3 size={18} className="text-sky-600" />
-                    Topic Analysis
-                  </h4>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+                      <BarChart3 size={18} strokeWidth={2.4} />
+                    </div>
+                    <h4 className="font-display font-black text-[22px] text-slate-800 tracking-tight">Topic Analysis</h4>
+                  </div>
                   
                   <div className="space-y-3">
                     {topicSummaries && (Object.keys(topicSummaries) as IARTopicArea[]).map((topic) => (
@@ -638,7 +682,12 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
 
                 {g12Readiness && (
                   <div className="bg-sky-50 rounded-2xl p-6 border border-sky-100 text-left space-y-2">
-                    <h4 className="font-bold text-[#0a1628]">Grade 12 Readiness Signals</h4>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <Brain size={18} strokeWidth={2.4} />
+                      </div>
+                      <h4 className="font-display font-black text-[22px] text-slate-800 tracking-tight">Grade 12 Readiness Signals</h4>
+                    </div>
                     <p className="text-xs text-slate-600">These indicators come from challenge and candidate items only.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                       <span className={`px-2 py-1 rounded-md font-bold ${g12Readiness.readyForFiniteMath ? 'bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-600'}`}>
@@ -656,9 +705,11 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
 
                 {atRiskSubjects.length > 0 && (
                   <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-100 rounded-xl text-left">
-                    <AlertTriangle className="text-rose-600 shrink-0 mt-0.5" size={20} />
+                    <div className="w-10 h-10 rounded-[14px] bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shadow-inner shrink-0">
+                      <AlertTriangle size={18} strokeWidth={2.3} />
+                    </div>
                     <div>
-                      <h5 className="font-bold text-rose-800 text-sm">Attention Needed</h5>
+                      <h5 className="font-display font-black text-[20px] tracking-tight text-rose-800 leading-none mb-1">Attention Needed</h5>
                       <p className="text-rose-700 text-xs mt-1">
                         We flagged {atRiskSubjects.length} topic area{atRiskSubjects.length > 1 ? 's' : ''} for review.
                         In IAR + Diagnostic mode, focused deep diagnostics may launch before full unlock.
@@ -680,6 +731,49 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
           </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* Calculator Popup (Draggable, right-aligned originally) */}
+      <AnimatePresence>
+        {showCalculator && (
+          <motion.div
+            drag
+            dragMomentum={false}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            style={{ 
+              position: 'absolute',
+              top: '50%',
+              left: 'calc(50% + 390px)',
+              y: '-50%' 
+            }}
+            className="w-[420px] max-w-[calc(100vw-24px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col pointer-events-auto overflow-hidden z-[60]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag Handle Area */}
+            <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0 cursor-move">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600">
+                  <Calculator size={18} />
+                </div>
+                <h3 className="font-bold text-[#0a1628] select-none">Scientific Calc</h3>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowCalculator(false); }} 
+                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-[#0a1628] hover:bg-[#dde3eb] rounded-lg transition-colors cursor-pointer"
+                title="Close Calculator"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {/* Content (Not scrollable) */}
+            <div className="p-4 bg-[#f7f9fc]">
+               <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

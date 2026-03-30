@@ -609,25 +609,25 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
   /* ── Button style helper ─────────────────────────────────── */
   const getButtonClasses = (variant: BtnVariant, label: string): string => {
-    const base = 'flex items-center justify-center rounded-lg font-semibold transition-all duration-150 active:scale-95 select-none cursor-pointer touch-manipulation';
-    const sizeNum = 'min-h-[52px] text-[15px]';
-    const sizeFunc = 'min-h-[52px] text-[13px]';
+    const base = 'flex items-center justify-center rounded-2xl font-bold transition-all duration-150 active:scale-95 select-none cursor-pointer touch-manipulation relative overflow-hidden';
+    const sizeNum = 'min-h-[56px] text-[16px]';
+    const sizeFunc = 'min-h-[56px] text-[14px]';
 
     switch (variant) {
       case 'number':
-        return `${base} ${sizeNum} bg-white hover:bg-slate-50 text-[#0a1628] border border-slate-200 shadow-sm`;
+        return `${base} ${sizeNum} bg-white hover:bg-[#edf1f7] text-[#0a1628] border border-[#dde3eb] shadow-sm`;
       case 'op':
-        return `${base} ${sizeNum} bg-gradient-to-br from-rose-500 to-teal-500 hover:from-sky-400 hover:to-teal-400 text-white shadow-md shadow-cyan-900/30 font-bold`;
+        return `${base} ${sizeNum} bg-[#edf1f7] hover:bg-[#dde3eb] text-[#7274ED] border border-[#dde3eb] shadow-sm font-bold`;
       case 'func':
-        return `${base} ${sizeFunc} bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-blue-900/30`;
+        return `${base} ${sizeFunc} bg-[#9956DE] hover:bg-[#8A4DCA] text-white shadow-md shadow-[#9956DE]/20`;
       case 'del':
-        return `${base} ${sizeNum} ${label === 'AC' ? 'bg-red-600 hover:bg-red-500' : 'bg-red-500/80 hover:bg-red-500'} text-white shadow-md shadow-red-900/30 font-bold`;
+        return `${base} ${sizeNum} ${label === 'AC' ? 'bg-[#FF8B8B] hover:bg-[#FF7373]' : 'bg-[#FB96BB] hover:bg-[#FA7DA9]'} text-[#8A1A1A] shadow-md shadow-red-900/10 font-bold border-none`;
       case 'equals':
-        return `${base} ${sizeNum} bg-gradient-to-br from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-white shadow-lg shadow-cyan-900/40 font-bold text-base`;
+        return `${base} ${sizeNum} bg-[#1FA7E1] hover:bg-[#1C96CB] text-white shadow-lg shadow-[#1FA7E1]/30 font-bold text-lg`;
       case 'shift':
-        return `${base} ${sizeFunc} bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 shadow-sm font-bold`;
+        return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#9956DE] border border-[#dde3eb] shadow-sm font-bold uppercase tracking-wider text-[11px]`;
       case 'mode':
-        return `${base} ${sizeFunc} bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-200 shadow-sm`;
+        return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#1FA7E1] border border-[#dde3eb] shadow-sm font-bold`;
       default:
         return `${base} ${sizeNum} bg-slate-100 text-[#0a1628] border border-slate-200`;
     }
@@ -678,7 +678,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
             {angleMode}
           </span>
           {shiftActive && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6ED1CF]/30 text-[#1FA7E1] border border-[#1FA7E1]/40 animate-pulse">
               SHIFT
             </span>
           )}
@@ -772,23 +772,27 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                   className={`
                     ${getButtonClasses(btn.variant, btn.label)}
                     ${btn.variant === 'shift' && btn.label === 'SHIFT' && shiftActive
-                      ? '!bg-rose-600 ring-2 ring-rose-400/50'
+                      ? '!bg-[#6ED1CF]/35 !text-[#1FA7E1] ring-2 ring-[#1FA7E1]/35 border-[#1FA7E1]/30'
                       : ''}
                     ${btn.variant === 'shift' && btn.label === 'ALPHA' && alphaActive
-                      ? '!bg-sky-600 ring-2 ring-indigo-400/50'
+                      ? '!bg-[#7274ED] !text-white ring-2 ring-[#9956DE]/50'
                       : ''}
                     ${btn.colSpan ? `col-span-${btn.colSpan}` : ''}
+                    ${showShift && btn.variant === 'func'
+                      ? '!bg-gradient-to-br !from-[#6ED1CF] !to-[#1FA7E1] hover:!from-[#8FE4DA] hover:!to-[#49BDEB] !text-white shadow-md shadow-[#1FA7E1]/20'
+                      : ''}
+                    ${btn.variant === 'op' && !['DEL', 'AC'].includes(btn.label) ? 'bg-gradient-to-br from-[#FFB356] to-[#FF8B8B] !text-white font-bold shadow-md' : ''}
                     relative
                   `}
                   title={btn.shiftLabel ? `SHIFT: ${btn.shiftLabel}` : undefined}
                 >
                   {/* Shift label above */}
                   {btn.shiftLabel && !shiftActive && (
-                    <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[9px] text-rose-400 font-semibold whitespace-nowrap drop-shadow-[0_0_3px_rgba(251,113,133,0.4)]">
+                    <span className="absolute top-1 right-1 text-[10px] leading-none bg-white/95 text-[#9956DE] font-black px-1.5 py-0.5 rounded-md shadow-sm">
                       {btn.shiftLabel}
                     </span>
                   )}
-                  <span className={showShift ? 'text-rose-200' : ''}>
+                  <span className={showShift ? 'text-[#EAFBFF]' : ''}>
                     {displayLabel}
                   </span>
                 </button>
