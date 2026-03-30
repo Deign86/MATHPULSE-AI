@@ -62,6 +62,7 @@ type View =
 interface ClassView {
   id: string;
   name: string;
+  classSectionId?: string;
   schedule: string;
   studentCount: number;
   avgScore: number;
@@ -94,6 +95,7 @@ function toClassView(c: Classroom): ClassView {
   return {
     id: c.id,
     name: c.name,
+    classSectionId: c.classSectionId,
     schedule: c.schedule,
     studentCount: c.studentCount,
     avgScore: c.avgScore,
@@ -166,6 +168,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
+  const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
 
   // Fetch classrooms and students from Firebase
   useEffect(() => {
@@ -218,7 +221,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     return () => {
       if (unsubActivity) unsubActivity();
     };
-  }, [currentUser]);
+  }, [currentUser, dataRefreshNonce]);
 
   // Fetch AI daily insight when students data is available
   useEffect(() => {
@@ -293,6 +296,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   };
 
   const teacherName = userProfile?.name || 'Teacher';
+  const selectedClassSectionId = useMemo(() => {
+    if (!selectedClass) return undefined;
+    if (selectedClass.classSectionId) return selectedClass.classSectionId;
+    const [grade = '', section = ''] = selectedClass.name.split(' - ');
+    const computed = buildClassSectionId(grade, section);
+    return computed || undefined;
+  }, [selectedClass]);
 
   if (dataLoading) {
     return (
@@ -547,18 +557,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onBack={handleBackToAnalytics}
               />
             )}
-            {activeView === 'topic_mastery' && <TopicMasteryView />}
+            {activeView === 'topic_mastery' && <TopicMasteryView classSectionId={selectedClassSectionId} />}
             {activeView === 'competency' && (
               <StudentCompetencyTable
-                classSectionId={selectedClass ? buildClassSectionId(selectedClass.name.split(' - ')[0] || '', selectedClass.name.split(' - ')[1] || '') : undefined}
+                classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
               />
             )}
             {activeView === 'import' && (
               <ImportView
                 onEditRecords={() => setActiveView('edit_records')}
-                classSectionId={selectedClass ? buildClassSectionId(selectedClass.name.split(' - ')[0] || '', selectedClass.name.split(' - ')[1] || '') : undefined}
+                classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
+                onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
               />
             )}
             {activeView === 'notifications' && (
@@ -1609,7 +1620,8 @@ const ImportView: React.FC<{
   onEditRecords: () => void;
   classSectionId?: string;
   className?: string;
-}> = ({ onEditRecords, classSectionId, className }) => {
+  onDataChanged?: () => void;
+}> = ({ onEditRecords, classSectionId, className, onDataChanged }) => {
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
@@ -1803,6 +1815,7 @@ const ImportView: React.FC<{
           ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
           : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
         setUploadResult(`Imported ${result.students.length} students.${riskRefreshText} Column mapping: ${JSON.stringify(result.columnMapping)}`);
+        onDataChanged?.();
         await loadRiskRefreshMonitor();
       }
     } catch (err: unknown) {
@@ -1828,6 +1841,7 @@ const ImportView: React.FC<{
         setUploadResult(
           `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s).`,
         );
+        onDataChanged?.();
         await loadRecentMaterials();
       }
     } catch (err: unknown) {

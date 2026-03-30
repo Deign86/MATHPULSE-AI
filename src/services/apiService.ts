@@ -581,7 +581,7 @@ export interface TopicCompetency {
 }
 
 export interface StudentCompetencyResponse {
-  lrn: string;
+  studentId: string;
   competencies: TopicCompetency[];
   recommendedTopics: string[];
   excludeTopics: string[];
@@ -1389,14 +1389,14 @@ export const apiService = {
 
   /** Get student competency assessment */
   async getStudentCompetency(
-    lrn: string,
+    studentId: string,
     quizHistory?: { topic: string; score: number; total: number; timeTaken?: number }[],
   ): Promise<StudentCompetencyResponse> {
-    validateRequired('/api/quiz/student-competency', { lrn });
+    validateRequired('/api/quiz/student-competency', { studentId });
 
     return apiFetch<StudentCompetencyResponse>('/api/quiz/student-competency', {
       method: 'POST',
-      body: JSON.stringify({ lrn, quizHistory }),
+      body: JSON.stringify({ studentId, quizHistory }),
     });
   },
 

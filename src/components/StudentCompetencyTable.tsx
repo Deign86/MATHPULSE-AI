@@ -153,7 +153,7 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
       const avg = row?.student.avgQuizScore || 50;
 
       const fallback: StudentCompetencyResponse = {
-        lrn: studentId,
+        studentId,
         competencies: [
           { topic: row?.student.weakestTopic || 'Unknown', efficiencyScore: Math.max(15, avg - 20), competencyLevel: avg < 50 ? 'beginner' : 'developing', perspective: `Student needs focused practice in ${row?.student.weakestTopic}.` },
           { topic: 'Functions and Relations', efficiencyScore: Math.min(95, avg + 10), competencyLevel: avg > 70 ? 'proficient' : 'developing', perspective: 'Shows solid understanding of function concepts.' },

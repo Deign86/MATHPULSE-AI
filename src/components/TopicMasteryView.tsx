@@ -58,7 +58,7 @@ const STATUS_ORDER: Record<string, number> = {
 
 // ─── Component ──────────────────────────────────────────────
 
-const TopicMasteryView: React.FC = () => {
+const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionId }) => {
   const { currentUser } = useAuth();
 
   // Data state
@@ -101,7 +101,11 @@ const TopicMasteryView: React.FC = () => {
 
       // Fetch topic mastery from backend API
       const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-      const res = await fetch(`${API_URL}/api/analytics/topic-mastery?teacherId=${currentUser.uid}`);
+      const params = new URLSearchParams({ teacherId: currentUser.uid });
+      if (classSectionId) {
+        params.set('classSectionId', classSectionId);
+      }
+      const res = await fetch(`${API_URL}/api/analytics/topic-mastery?${params.toString()}`);
 
       if (res.ok) {
         const data = await res.json();
@@ -124,7 +128,7 @@ const TopicMasteryView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [classSectionId, currentUser]);
 
   useEffect(() => {
     loadMasteryData();
