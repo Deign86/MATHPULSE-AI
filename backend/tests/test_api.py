@@ -472,6 +472,25 @@ class TestQuizGeneration:
         })
         assert response.status_code == 422
 
+
+class TestClassRecordImportMapping:
+    def test_sanitize_column_mapping_drops_none_and_unknown_fields(self):
+        raw_mapping = {
+            "Student Name": "name",
+            "Grade Level": None,
+            "Section": "",
+            "General Mathematics": None,
+            "Custom": "not_a_supported_field",
+            "Average": "avgQuizScore",
+        }
+
+        sanitized = main_module._sanitize_column_mapping(raw_mapping)
+
+        assert sanitized == {
+            "Student Name": "name",
+            "Average": "avgQuizScore",
+        }
+
     @patch("main.call_hf_chat")
     def test_generate_quiz_bad_llm_output(self, mock_chat):
         mock_chat.return_value = "This is not valid JSON at all."

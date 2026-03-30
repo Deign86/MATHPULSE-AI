@@ -1997,6 +1997,24 @@ def _fallback_column_mapping(columns: List[str]) -> Dict[str, str]:
     return mapping
 
 
+def _sanitize_column_mapping(raw_mapping: Any) -> Dict[str, str]:
+    """Keep only non-empty string->known-field entries from AI mapping output."""
+    if not isinstance(raw_mapping, dict):
+        return {}
+
+    sanitized: Dict[str, str] = {}
+    for raw_col, raw_field in raw_mapping.items():
+        column_name = _stringify_cell(raw_col)
+        mapped_field = _stringify_cell(raw_field)
+        if not column_name or not mapped_field:
+            continue
+        if mapped_field not in CLASS_RECORD_REQUIRED_FIELDS:
+            continue
+        sanitized[column_name] = mapped_field
+
+    return sanitized
+
+
 def _build_record_identity(
     student: Dict[str, Any],
     unknown_fields: Dict[str, Any],
@@ -2453,10 +2471,11 @@ def _queue_post_import_risk_refresh(
     refresh_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{queued_at_epoch}|{len(compact_students)}"
     refresh_id = hashlib.sha1(refresh_seed.encode("utf-8")).hexdigest()[:24]
 
+    sanitized_mapping = _sanitize_column_mapping(column_mapping)
     payload = DataImportPayload(
         teacherId=user.uid,
         students=compact_students,
-        columnMapping=column_mapping,
+        columnMapping=sanitized_mapping,
     )
 
     _record_risk_refresh_event(
@@ -2772,6 +2791,8 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 for col, field in fallback_mapping.items():
                     if col not in file_column_mapping:
                         file_column_mapping[col] = field
+
+                file_column_mapping = _sanitize_column_mapping(file_column_mapping)
 
                 normalized_result = _normalize_class_records(
                     df,
