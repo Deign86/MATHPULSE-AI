@@ -74,14 +74,9 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   });
 
   const getGridColsClass = (count: number): string => {
-    if (count <= 1) return 'grid-cols-1';
-    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
-    if (count === 3) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
-    return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+    return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4';
   };
-
-  const hasStartedLearning = modules.some((module) => module.progress > 0);
-  const learningPathHeading = hasStartedLearning ? 'Continue Learning' : 'Start Learning';
+  const hasStartedLearning = modules.some((module) => module.progress > 0);  const learningPathHeading = hasStartedLearning ? 'Continue Learning' : 'Start Learning';
 
   const handleModuleClick = (module: typeof modules[0]) => {
     if (module.status !== 'Locked') {
@@ -150,7 +145,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
           
           const getCardStyle = (id: string) => {
             switch(id) {
-              case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Functions', 'Business Math', 'Logic'], level: 1 };
+              case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1 };
               case 'pre-calc': return { bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2 };
               case 'stats-prob': return { bg: 'bg-[#FFB356]', tags: ['Probability', 'Mean/Median', 'Charts'], level: 2 };
               case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals', 'Continuity'], level: 3 };
