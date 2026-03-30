@@ -1,6 +1,6 @@
 # Hugging Face Spaces Dev Mode Guide
 
-This guide is for fast iteration on the ZeroGPU Space app, prompts, and evaluation scripts.
+This guide is for fast iteration on the Hugging Face Space app, prompts, and evaluation scripts.
 
 ## 1. Enable Dev Mode
 
