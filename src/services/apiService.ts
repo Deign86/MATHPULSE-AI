@@ -98,6 +98,41 @@ export interface DailyInsightResponse {
   insight: string;
 }
 
+export interface ImportedClassroomOverviewItem {
+  id: string;
+  name: string;
+  classSectionId?: string | null;
+  schedule: string;
+  studentCount: number;
+  avgScore: number;
+  atRiskCount: number;
+}
+
+export interface ImportedStudentOverviewItem {
+  id: string;
+  lrn?: string | null;
+  name: string;
+  email?: string;
+  classSectionId?: string | null;
+  className: string;
+  grade?: string;
+  section?: string;
+  avgQuizScore: number;
+  attendance: number;
+  engagementScore: number;
+  assignmentCompletion: number;
+  riskLevel: 'High' | 'Medium' | 'Low';
+  weakestTopic: string;
+}
+
+export interface ImportedClassOverviewResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  classrooms: ImportedClassroomOverviewItem[];
+  students: ImportedStudentOverviewItem[];
+  warnings: string[];
+}
+
 export interface UploadResponse {
   success: boolean;
   students: {
@@ -1024,6 +1059,22 @@ export const apiService = {
       FALLBACK_INSIGHT,
       'getDailyInsight',
     );
+  },
+
+  /** Retrieve class/student overview derived from imported normalized records */
+  async getImportedClassOverview(options?: {
+    classSectionId?: string;
+    limit?: number;
+  }): Promise<ImportedClassOverviewResponse> {
+    const limit = options?.limit ?? 3000;
+    validateRange('/api/analytics/imported-class-overview', 'limit', limit, 1, 5000);
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+
+    return apiFetch<ImportedClassOverviewResponse>(`/api/analytics/imported-class-overview?${params.toString()}`);
   },
 
   /** Smart File Upload with AI Column Detection */
