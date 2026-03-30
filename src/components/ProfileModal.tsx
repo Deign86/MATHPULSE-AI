@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { getLeaderboard, getUserRank } from '../services/gamificationService';
 import { LeaderboardEntry } from '../types/models';
+import CompositeAvatar from './CompositeAvatar';
 
 interface ProfileData {
   uid?: string;
@@ -12,15 +13,13 @@ interface ProfileData {
   email: string;
   phone: string;
   photo: string;
+  avatarLayers?: { top?: string; bottom?: string; shoes?: string; accessory?: string; };
   role: 'student' | 'teacher' | 'admin';
   // Student-specific
   lrn?: string;
   grade?: string;
   section?: string;
   school?: string;
-  enrollmentDate?: string;
-  major?: string;
-  gpa?: string;
   // Teacher-specific
   teacherId?: string;
   department?: string;
@@ -170,15 +169,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                 {/* Profile Photo Section */}
                 <div className="flex flex-col items-center mb-8">
                   <div className="relative group">
-                    <img
-                      src={editedData.photo}
-                      alt={editedData.name}
-                      className="w-28 h-28 rounded-xl object-cover shadow-lg border-2 border-[#dde3eb] ring-4 ring-sky-100"
+                    <CompositeAvatar 
+                      layers={editedData.avatarLayers} 
+                      className="w-28 h-28 rounded-xl bg-[#0B1021] shadow-lg border-2 border-[#dde3eb] ring-4 ring-sky-100" 
+                      fallbackSrc={editedData.photo}
                     />
                     {isEditing && (
                       <button
                         onClick={handlePhotoChange}
-                        className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-50"
                       >
                         <div className="text-center text-white">
                           <Camera size={32} className="mx-auto mb-1" />
@@ -275,8 +274,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                         Academic Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-[#5a6578] mb-2">LRN</label>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Learner's Reference Number (LRN)</label>
                           <div className="relative">
                             <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
@@ -300,49 +299,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Major/Focus</label>
-                          <div className="relative">
-                            <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <Input
-                              value={editedData.major || ''}
-                              onChange={(e) => setEditedData({ ...editedData, major: e.target.value })}
-                              disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
-                            />
-                          </div>
-                        </div>
-                        <div>
                           <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Section</label>
                           <div className="relative">
                             <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                               value={editedData.section || ''}
                               onChange={(e) => setEditedData({ ...editedData, section: e.target.value })}
-                              disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">GPA</label>
-                          <div className="relative">
-                            <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <Input
-                              value={editedData.gpa || ''}
-                              onChange={(e) => setEditedData({ ...editedData, gpa: e.target.value })}
-                              disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
-                            />
-                          </div>
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Enrollment Date</label>
-                          <div className="relative">
-                            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <Input
-                              type="date"
-                              value={editedData.enrollmentDate || ''}
-                              onChange={(e) => setEditedData({ ...editedData, enrollmentDate: e.target.value })}
                               disabled={!isEditing}
                               className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                             />
