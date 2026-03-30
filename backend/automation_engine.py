@@ -347,7 +347,12 @@ class MathPulseAutomationEngine:
             avg_score = self._safe_float(student_row.get("avgQuizScore"), 0.0)
             attendance = self._safe_float(student_row.get("attendance"), 0.0)
             engagement = self._safe_float(student_row.get("engagementScore"), 0.0)
-            completion = self._safe_float(student_row.get("assignmentCompletion"), 0.0)
+            completion_raw = student_row.get("assignmentCompletion")
+            completion = (
+                self._safe_float(completion_raw, 0.0)
+                if completion_raw not in (None, "")
+                else None
+            )
 
             risk_level = self._classify_import_risk(
                 avg_score=avg_score,
@@ -450,10 +455,14 @@ class MathPulseAutomationEngine:
         avg_score: float,
         attendance: float,
         engagement: float,
-        completion: float,
+        completion: Optional[float],
     ) -> str:
-        high_flags = int(avg_score < 60) + int(attendance < 75) + int(engagement < 55) + int(completion < 60)
-        medium_flags = int(avg_score < 75) + int(attendance < 85) + int(engagement < 70) + int(completion < 75)
+        high_flags = int(avg_score < 60) + int(attendance < 75) + int(engagement < 55)
+        medium_flags = int(avg_score < 75) + int(attendance < 85) + int(engagement < 70)
+
+        if completion is not None:
+            high_flags += int(completion < 60)
+            medium_flags += int(completion < 75)
 
         if high_flags >= 2 or (avg_score < 55 and (attendance < 80 or engagement < 65)):
             return "High"

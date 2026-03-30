@@ -478,6 +478,7 @@ export interface GeneratedQuiz {
     recommendedTeacherActions: string[];
     generatedAt: string;
     generatedBy: GeneratedQuizSource;
+    sourceTaskId?: string;
     assignedTo?: string;
   };
   status: GeneratedQuizStatus;

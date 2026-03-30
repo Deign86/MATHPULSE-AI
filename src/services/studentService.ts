@@ -92,19 +92,42 @@ export interface ClassSectionOwnershipRecord {
 // ─── Student Operations ───────────────────────────────────────
 
 export async function getStudentsByTeacher(teacherId: string): Promise<ManagedStudent[]> {
+  const studentsRef = collection(db, 'managedStudents');
+
+  // Prefer teacher-scoped reads to avoid Firestore `in` query limits after many imports.
+  try {
+    const teacherScopedQuery = query(studentsRef, where('teacherId', '==', teacherId));
+    const teacherScopedSnapshot = await getDocs(teacherScopedQuery);
+    if (!teacherScopedSnapshot.empty) {
+      const mappedStudents = teacherScopedSnapshot.docs
+        .map((entry) => ({
+          id: entry.id,
+          ...entry.data(),
+        } as ManagedStudent));
+      return mappedStudents.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+  } catch {
+    // Fall back to classroom-based reads for legacy documents or restricted indexes.
+  }
+
   const classrooms = await getClassroomsByTeacher(teacherId);
   const classroomIds = classrooms.map((c) => c.id);
-
   if (classroomIds.length === 0) return [];
 
-  const studentsRef = collection(db, 'managedStudents');
-  const q = query(studentsRef, where('classroomId', 'in', classroomIds), orderBy('name'));
-  const snapshot = await getDocs(q);
+  const dedupedStudents = new Map<string, ManagedStudent>();
+  for (let index = 0; index < classroomIds.length; index += 10) {
+    const classroomChunk = classroomIds.slice(index, index + 10);
+    const chunkQuery = query(studentsRef, where('classroomId', 'in', classroomChunk));
+    const chunkSnapshot = await getDocs(chunkQuery);
+    chunkSnapshot.docs.forEach((entry) => {
+      dedupedStudents.set(entry.id, {
+        id: entry.id,
+        ...entry.data(),
+      } as ManagedStudent);
+    });
+  }
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as ManagedStudent[];
+  return Array.from(dedupedStudents.values()).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 export async function getStudentsByClassroom(classroomId: string): Promise<ManagedStudent[]> {

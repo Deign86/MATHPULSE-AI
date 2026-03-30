@@ -155,6 +155,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /generatedQuizzes/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('teacherId');
+      allow create: if isTeacherOrAdmin() || ownerInIncoming('teacherId');
+      allow update, delete: if isAdmin() || ownerInExisting('teacherId');
+    }
+
+    match /quizAssignments/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('teacherId') || ownerByField('lrn');
+      allow create: if isTeacherOrAdmin() || ownerInIncoming('teacherId');
+      allow update, delete: if isAdmin() || ownerInExisting('teacherId');
+    }
+
     match /attendance/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('studentId');
       allow create, update: if isTeacherOrAdmin();

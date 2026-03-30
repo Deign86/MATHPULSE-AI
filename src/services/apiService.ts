@@ -43,6 +43,8 @@ const IMPORT_GROUNDED_LESSON_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENAB
 const IMPORT_GROUNDED_FEEDBACK_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS, true);
 const ASYNC_GENERATION_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_ASYNC_GENERATION, true);
 let IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = true;
+let IMPORTED_CLASS_OVERVIEW_RETRY_AT_EPOCH_MS = 0;
+const IMPORTED_CLASS_OVERVIEW_RETRY_COOLDOWN_MS = 60_000;
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -109,6 +111,14 @@ export interface ImportedClassroomOverviewItem {
   atRiskCount: number;
 }
 
+export interface InferredStudentState {
+  state: 'urgent_intervention' | 'at_risk' | 'watchlist' | 'on_track';
+  confidence: number;
+  signals: string[];
+  explanation: string;
+  fallbackUsed: boolean;
+}
+
 export interface ImportedStudentOverviewItem {
   id: string;
   lrn?: string | null;
@@ -124,6 +134,9 @@ export interface ImportedStudentOverviewItem {
   assignmentCompletion: number;
   riskLevel: 'High' | 'Medium' | 'Low';
   weakestTopic: string;
+  inferredState?: InferredStudentState;
+  stateConfidence?: number;
+  stateSignals?: string[];
 }
 
 export interface ImportedClassOverviewResponse {
@@ -131,6 +144,11 @@ export interface ImportedClassOverviewResponse {
   classSectionId?: string | null;
   classrooms: ImportedClassroomOverviewItem[];
   students: ImportedStudentOverviewItem[];
+  inferredStateCoverage?: {
+    inferredRows: number;
+    studentRows: number;
+    coveragePct: number;
+  };
   warnings: string[];
 }
 
@@ -174,6 +192,17 @@ export interface UploadResponse {
     domainMismatchWarnings: number;
   };
   totalRows?: number;
+  interpretedRows?: number;
+  rejectedRows?: number;
+  rejectedRowDetails?: { row: number; reason: string }[];
+  rejectedReasons?: Record<string, number>;
+  persistedRows?: number;
+  inferredStateCoverage?: {
+    inferredRows: number;
+    interpretedRows: number;
+    fallbackRows: number;
+    coveragePct: number;
+  };
   unknownColumns?: string[];
   warnings?: string[];
   rowWarnings?: { row: number; warning: string }[];
@@ -192,6 +221,15 @@ export interface UploadResponse {
     refreshId?: string | null;
     queuedAtEpoch?: number | null;
   };
+  dashboardSync?: {
+    synced: boolean;
+    createdStudents: number;
+    updatedStudents: number;
+    classroomsTouched: number;
+    classroomId?: string | null;
+    classSectionId?: string | null;
+    warning?: string | null;
+  };
   files?: {
     fileName: string;
     fileType: string;
@@ -205,11 +243,16 @@ export interface UploadResponse {
     unknownColumns: string[];
     warnings: string[];
     rowWarnings: { row: number; warning: string }[];
+    rejectedRows?: { row: number; reason: string }[];
     classSectionId?: string | null;
     className?: string | null;
     importId?: string | null;
     persisted?: boolean;
     dedup?: { inserted: number; updated: number };
+    interpretedRows?: number;
+    rejectedRowsCount?: number;
+    inferredRows?: number;
+    fallbackInferenceRows?: number;
   }[];
 }
 
@@ -1107,14 +1150,20 @@ export const apiService = {
   async getImportedClassOverview(options?: {
     classSectionId?: string;
     limit?: number;
+    forceRefresh?: boolean;
   }): Promise<ImportedClassOverviewResponse> {
-    if (!IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE) {
+    const shouldBackoff =
+      !options?.forceRefresh
+      && !IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE
+      && Date.now() < IMPORTED_CLASS_OVERVIEW_RETRY_AT_EPOCH_MS;
+
+    if (shouldBackoff) {
       return {
         success: true,
         classSectionId: options?.classSectionId ?? null,
         classrooms: [],
         students: [],
-        warnings: ['Imported class overview endpoint is unavailable on this backend deployment.'],
+        warnings: ['Imported class overview endpoint is temporarily unavailable. Retrying automatically soon.'],
       };
     }
 
@@ -1127,6 +1176,8 @@ export const apiService = {
     }
 
     try {
+      // Allow automatic recovery after transient backend deployment mismatches.
+      IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = true;
       return await apiFetch<ImportedClassOverviewResponse>(
         `/api/analytics/imported-class-overview?${params.toString()}`,
         undefined,
@@ -1135,6 +1186,7 @@ export const apiService = {
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = false;
+        IMPORTED_CLASS_OVERVIEW_RETRY_AT_EPOCH_MS = Date.now() + IMPORTED_CLASS_OVERVIEW_RETRY_COOLDOWN_MS;
         return {
           success: true,
           classSectionId: options?.classSectionId ?? null,

@@ -31,16 +31,15 @@ import {
   apiService,
   ApiError,
   type ImportedClassOverviewResponse,
-  type ImportGroundedAccessAuditResponse,
-  type CourseMaterialArtifactSummary,
-  type ImportGroundedTelemetrySummaryResponse,
   type LessonPlanResponse,
+  type UploadResponse,
 } from '../services/apiService';
 import { publishLessonPlan, saveGeneratedLessonPlan } from '../services/lessonPlanService';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
 import TopicMasteryView from './TopicMasteryView';
 import StudentCompetencyTable from './StudentCompetencyTable';
+import ChatMarkdown from './ChatMarkdown';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -169,6 +168,72 @@ function toImportedStudentView(s: ImportedClassOverviewResponse['students'][numb
     engagementScore: s.engagementScore,
     attendance: s.attendance,
     assignmentCompletion: s.assignmentCompletion,
+  };
+}
+
+function deriveRiskLevel(avgQuiz: number, attendance: number, engagement: number): 'high' | 'medium' | 'low' {
+  if (avgQuiz < 60 || attendance < 75 || engagement < 55) return 'high';
+  if (avgQuiz < 75 || attendance < 85 || engagement < 70) return 'medium';
+  return 'low';
+}
+
+function toUploadedStudentView(
+  student: UploadResponse['students'][number],
+  classSectionId?: string,
+  className?: string,
+): StudentView {
+  const resolvedClassName = className || 'Imported Class';
+  const [derivedGrade = '', derivedSection = ''] = resolvedClassName.split(' - ');
+  const resolvedClassSectionId = classSectionId || buildClassSectionId(derivedGrade, derivedSection) || 'imported_class';
+  const avgScore = Number(student.avgQuizScore || 0);
+  const attendance = Number(student.attendance || 0);
+  const engagementScore = Number(student.engagementScore || 0);
+  const assignmentCompletion = Number(student.assignmentCompletion || 0);
+  const weakestTopic = student.unknownFields?.weakestTopic || student.unknownFields?.topic || 'Foundational Skills';
+  const riskLevel = deriveRiskLevel(avgScore, attendance, engagementScore);
+  const identity = student.studentId || student.lrn || student.email || student.name || Math.random().toString(36).slice(2);
+
+  return {
+    id: `upload-${resolvedClassSectionId}-${identity}`,
+    lrn: student.lrn,
+    name: student.name,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+    avgScore,
+    riskLevel,
+    weakestTopic,
+    classroomId: resolvedClassSectionId,
+    className: resolvedClassName,
+    grade: derivedGrade || 'Grade 11',
+    section: derivedSection || 'Section A',
+    classSectionId: resolvedClassSectionId,
+    lastActive: 'Recently imported',
+    struggles: [weakestTopic],
+    engagementScore,
+    attendance,
+    assignmentCompletion,
+  };
+}
+
+function resolveUploadedClassContext(
+  result: UploadResponse,
+  fallbackClassSectionId?: string,
+  fallbackClassName?: string,
+): { classSectionId: string; className: string } {
+  const responseClassSectionId = result.dashboardSync?.classSectionId || fallbackClassSectionId || '';
+  const responseClassName = fallbackClassName || 'Imported Class';
+
+  if (responseClassSectionId) {
+    return {
+      classSectionId: responseClassSectionId,
+      className: responseClassName,
+    };
+  }
+
+  const [grade = 'Grade 11', section = 'Section A'] = responseClassName.split(' - ');
+  const computedSectionId = buildClassSectionId(grade, section) || 'imported_class';
+  return {
+    classSectionId: computedSectionId,
+    className: responseClassName,
   };
 }
 
@@ -329,12 +394,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         let studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
 
         if (!isActive) return;
-        setClasses(classViews);
-        setStudents(studentViews);
+        setClasses((prev) => {
+          if (classViews.length === 0 && prev.length > 0) {
+            return prev;
+          }
+          return classViews;
+        });
+        setStudents((prev) => {
+          if (studentViews.length === 0 && prev.length > 0) {
+            return prev;
+          }
+          return studentViews;
+        });
 
         // Load imported overview as a best-effort background merge so dashboard render is never blocked.
         void apiService
-          .getImportedClassOverview({ limit: 3000 })
+          .getImportedClassOverview({
+            limit: 3000,
+            forceRefresh: dataRefreshNonce > 0,
+          })
           .then((imported) => {
             if (!isActive) return;
             if (imported.warnings.length > 0) {
@@ -719,6 +797,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <StudentCompetencyTable
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
+                fallbackStudents={students}
               />
             )}
             {activeView === 'import' && (
@@ -726,6 +805,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onEditRecords={() => setActiveView('edit_records')}
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
+                onImportedClassRecords={(payload) => {
+                  const uploadedStudents = payload.students.map((item) =>
+                    toUploadedStudentView(item, payload.classSectionId, payload.className),
+                  );
+
+                  const classSection = payload.classSectionId
+                    || (payload.className
+                      ? buildClassSectionId(payload.className.split(' - ')[0] || '', payload.className.split(' - ')[1] || '')
+                      : 'imported_class');
+                  const resolvedClassName = payload.className || 'Imported Class';
+                  const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
+                  const avgScore = uploadedStudents.length > 0
+                    ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
+                    : 0;
+
+                  const uploadedClass: ClassView = {
+                    id: classSection,
+                    name: resolvedClassName,
+                    classSectionId: classSection,
+                    schedule: 'Mon-Fri',
+                    studentCount: uploadedStudents.length,
+                    avgScore,
+                    atRiskCount,
+                    riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
+                  };
+
+                  setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
+                  setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
+                }}
                 onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
               />
             )}
@@ -1526,8 +1634,8 @@ const InterventionView: React.FC<{
               <span>Generating personalized learning path...</span>
             </div>
           ) : learningPath ? (
-            <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 whitespace-pre-wrap text-sm text-[#0a1628]">
-              {learningPath}
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 text-sm text-[#0a1628]">
+              <ChatMarkdown>{learningPath}</ChatMarkdown>
             </div>
           ) : null}
           
@@ -1777,8 +1885,13 @@ const ImportView: React.FC<{
   onEditRecords: () => void;
   classSectionId?: string;
   className?: string;
+  onImportedClassRecords?: (payload: {
+    students: UploadResponse['students'];
+    classSectionId: string;
+    className: string;
+  }) => void;
   onDataChanged?: () => void;
-}> = ({ onEditRecords, classSectionId, className, onDataChanged }) => {
+}> = ({ onEditRecords, classSectionId, className, onImportedClassRecords, onDataChanged }) => {
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
@@ -1801,179 +1914,8 @@ const ImportView: React.FC<{
       domainSignals?: string[];
     }>;
   } | null>(null);
-  const [recentMaterials, setRecentMaterials] = useState<CourseMaterialArtifactSummary[]>([]);
-  const [materialsWarnings, setMaterialsWarnings] = useState<string[]>([]);
-  const [riskMonitorLoading, setRiskMonitorLoading] = useState(false);
-  const [riskMonitorError, setRiskMonitorError] = useState('');
-  const [telemetryLoading, setTelemetryLoading] = useState(false);
-  const [telemetryError, setTelemetryError] = useState('');
-  const [telemetrySummary, setTelemetrySummary] = useState<ImportGroundedTelemetrySummaryResponse | null>(null);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditExporting, setAuditExporting] = useState(false);
-  const [auditError, setAuditError] = useState('');
-  const [auditSummary, setAuditSummary] = useState<ImportGroundedAccessAuditResponse | null>(null);
-  const [riskMonitorSummary, setRiskMonitorSummary] = useState<{
-    queuedCount: number;
-    successCount: number;
-    failedCount: number;
-    lastStatus?: string | null;
-    lastRefreshId?: string | null;
-  } | null>(null);
-  const [recentRiskJobs, setRecentRiskJobs] = useState<Array<{
-    refreshId: string;
-    status: string;
-    studentsQueued: number;
-    durationMs?: number | null;
-    completedAtEpoch?: number | null;
-  }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
-
-  const loadRecentMaterials = useCallback(async () => {
-    try {
-      const response = await apiService.getRecentCourseMaterials({
-        classSectionId,
-        limit: 5,
-      });
-      setRecentMaterials(response.materials);
-      setMaterialsWarnings(response.warnings || []);
-    } catch (err) {
-      setRecentMaterials([]);
-      if (err instanceof ApiError && err.status === 403) {
-        setMaterialsWarnings(['Recent course materials are not available for this role.']);
-      } else {
-        setMaterialsWarnings([err instanceof Error ? err.message : 'Unable to load recent course materials.']);
-      }
-    }
-  }, [classSectionId]);
-
-  const loadRiskRefreshMonitor = useCallback(async () => {
-    setRiskMonitorLoading(true);
-    setRiskMonitorError('');
-    try {
-      const response = await apiService.getRiskRefreshMonitor({ limit: 5, classSectionId });
-      setRiskMonitorSummary({
-        queuedCount: response.stats.queuedCount,
-        successCount: response.stats.successCount,
-        failedCount: response.stats.failedCount,
-        lastStatus: response.stats.lastStatus,
-        lastRefreshId: response.stats.lastRefreshId,
-      });
-      setRecentRiskJobs(response.jobs.map((job) => ({
-        refreshId: job.refreshId,
-        status: job.status,
-        studentsQueued: job.studentsQueued,
-        durationMs: job.durationMs,
-        completedAtEpoch: job.completedAtEpoch,
-      })));
-      if (response.warnings.length > 0) {
-        setRiskMonitorError(response.warnings.join(' '));
-      }
-    } catch (err) {
-      setRiskMonitorSummary(null);
-      setRecentRiskJobs([]);
-      if (err instanceof ApiError && err.status === 403) {
-        setRiskMonitorError('Risk refresh monitoring is not available for this role.');
-      } else {
-        setRiskMonitorError(err instanceof Error ? err.message : 'Unable to load risk refresh monitor.');
-      }
-    } finally {
-      setRiskMonitorLoading(false);
-    }
-  }, [classSectionId]);
-
-  const loadTelemetrySummary = useCallback(async () => {
-    setTelemetryLoading(true);
-    setTelemetryError('');
-    try {
-      const response = await apiService.getImportGroundedTelemetrySummary({
-        classSectionId,
-        days: 7,
-        limit: 5000,
-      });
-      setTelemetrySummary(response);
-      if (response.warnings.length > 0) {
-        setTelemetryError(response.warnings.join(' '));
-      }
-    } catch (err) {
-      setTelemetrySummary(null);
-      if (err instanceof ApiError && err.status === 403) {
-        setTelemetryError('Telemetry summary is not available for this role.');
-      } else {
-        setTelemetryError(err instanceof Error ? err.message : 'Unable to load telemetry summary.');
-      }
-    } finally {
-      setTelemetryLoading(false);
-    }
-  }, [classSectionId]);
-
-  const loadAccessAuditSummary = useCallback(async () => {
-    setAuditLoading(true);
-    setAuditError('');
-    try {
-      const response = await apiService.getImportGroundedAccessAudit({
-        classSectionId,
-        days: 7,
-        limit: 25,
-      });
-      setAuditSummary(response);
-      if (response.warnings.length > 0) {
-        setAuditError(response.warnings.join(' '));
-      }
-    } catch (err) {
-      setAuditSummary(null);
-      if (err instanceof ApiError && err.status === 403) {
-        setAuditError('Access audit is not available for this role.');
-      } else {
-        setAuditError(err instanceof Error ? err.message : 'Unable to load access audit events.');
-      }
-    } finally {
-      setAuditLoading(false);
-    }
-  }, [classSectionId]);
-
-  const handleExportAccessAuditCsv = useCallback(async () => {
-    setAuditExporting(true);
-    setAuditError('');
-    try {
-      const blob = await apiService.exportImportGroundedAccessAuditCsv({
-        classSectionId,
-        days: 7,
-        limit: 500,
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const classTag = (classSectionId || 'all').replace(/[^a-z0-9_-]+/gi, '_').toLowerCase();
-      link.href = url;
-      link.download = `import-grounded-access-audit-${classTag}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success('Access audit CSV exported');
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
-        setAuditError('Access audit export is not available for this role.');
-      } else {
-        setAuditError(err instanceof Error ? err.message : 'Unable to export access audit CSV.');
-      }
-      toast.error('Access audit export failed');
-    } finally {
-      setAuditExporting(false);
-    }
-  }, [classSectionId]);
-
-  useEffect(() => {
-    setRecentMaterials([]);
-    setMaterialsWarnings([]);
-    setRiskMonitorSummary(null);
-    setRecentRiskJobs([]);
-    setRiskMonitorError('');
-    setTelemetrySummary(null);
-    setTelemetryError('');
-    setAuditSummary(null);
-    setAuditError('');
-  }, [classSectionId]);
 
   const handleFileUpload = async (file: File) => {
     setUploadingClassRecords(true);
@@ -1985,8 +1927,26 @@ const ImportView: React.FC<{
         className,
         datasetIntent: 'synthetic_student_records',
       });
+      const uploadedStudentsCount = result.students.length;
+      const uploadWarnings = result.warnings && result.warnings.length > 0
+        ? result.warnings.slice(0, 3).join(' ')
+        : '';
+      const dashboardSyncText = result.dashboardSync
+        ? ` Dashboard sync: ${result.dashboardSync.synced ? 'ok' : 'pending'} (created ${result.dashboardSync.createdStudents}, updated ${result.dashboardSync.updatedStudents}).`
+        : '';
+
+      const resolvedImportContext = resolveUploadedClassContext(result, classSectionId, className);
+
+      if (uploadedStudentsCount > 0) {
+        onImportedClassRecords?.({
+          students: result.students,
+          classSectionId: resolvedImportContext.classSectionId,
+          className: resolvedImportContext.className,
+        });
+      }
+
       if (result.success) {
-        toast.success(`Successfully imported ${result.students.length} student records`);
+        toast.success(`Successfully imported ${uploadedStudentsCount} student records`);
         const riskRefreshText = result.riskRefresh?.queued
           ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
           : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
@@ -1994,11 +1954,11 @@ const ImportView: React.FC<{
         const interpretationText = interpretation
           ? ` Interpreted columns - scoring: ${interpretation.scoringColumns}, display: ${interpretation.displayColumns}, storage-only: ${interpretation.storageOnlyColumns}, low-confidence: ${interpretation.lowConfidenceColumns}.`
           : '';
-        const warningText = result.warnings && result.warnings.length > 0
-          ? ` Warnings: ${result.warnings.slice(0, 2).join(' ')}`
+        const warningText = uploadWarnings
+          ? ` Warnings: ${uploadWarnings}`
           : '';
         setUploadResult(
-          `Imported ${result.students.length} students.${riskRefreshText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
+          `Imported ${uploadedStudentsCount} students.${riskRefreshText}${dashboardSyncText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
         );
         setUploadInterpretation({
           datasetIntent: result.datasetIntent,
@@ -2012,11 +1972,28 @@ const ImportView: React.FC<{
           })) || [],
         });
         onDataChanged?.();
-        await loadRiskRefreshMonitor();
+      } else {
+        const fileWarnings = (result.files || [])
+          .flatMap((entry) => entry.warnings || [])
+          .slice(0, 3)
+          .join(' ');
+        const message = fileWarnings || uploadWarnings || 'Import completed but no usable student rows were detected. Check required columns and retry.';
+        setUploadResult(message);
+        toast.error(message);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
-      setUploadResult('Upload failed. Please check the file format and try again.');
+      let message = err instanceof Error ? err.message : 'Upload failed';
+      const normalizedMessage = message.toLowerCase();
+      if (
+        err instanceof ApiError
+        && normalizedMessage.includes('missing required educational columns after mapping')
+        && normalizedMessage.includes('assignmentcompletion')
+      ) {
+        message = 'Your file matches the minimal import schema, but the connected backend is running an older validator that still requires assignmentCompletion. Update/redeploy the backend or point VITE_API_URL to this updated backend.';
+      }
+
+      toast.error(message);
+      setUploadResult(message);
       setUploadInterpretation(null);
     } finally {
       setUploadingClassRecords(false);
@@ -2039,7 +2016,6 @@ const ImportView: React.FC<{
           `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s).`,
         );
         onDataChanged?.();
-        await loadRecentMaterials();
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Course material upload failed');
@@ -2172,45 +2148,6 @@ const ImportView: React.FC<{
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-display font-bold text-[#0a1628]">Recent Course Materials</h3>
-            <Button
-              variant="outline"
-              className="border-[#dde3eb] text-[#5a6578]"
-              onClick={() => void loadRecentMaterials()}
-              disabled={uploadingCourseMaterials}
-            >
-              Refresh
-            </Button>
-          </div>
-
-          {recentMaterials.length > 0 ? (
-            <div className="space-y-2">
-              {recentMaterials.map((material) => (
-                <div key={material.materialId} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg p-3">
-                  <p className="text-sm font-semibold text-[#0a1628]">{material.fileName}</p>
-                  <p className="text-xs text-[#5a6578]">
-                    Topics: {material.topicsCount}
-                    {' • '}Type: {material.fileType}
-                    {material.classSectionId ? ` • Class: ${material.classSectionId}` : ''}
-                  </p>
-                  <p className="text-xs text-[#5a6578]">
-                    Expires: {material.expiresAtEpoch ? new Date(material.expiresAtEpoch * 1000).toLocaleDateString() : 'n/a'}
-                    {material.retentionDays ? ` • Retention: ${material.retentionDays} days` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[#5a6578]">No course materials loaded yet. Click Refresh to fetch data for this scope.</p>
-          )}
-
-          {materialsWarnings.length > 0 && (
-            <p className="text-xs text-amber-700 mt-3">{materialsWarnings.join(' ')}</p>
-          )}
-        </div>
-
         {/* Info Box */}
         <div className="bg-sky-50 border border-sky-200 rounded-2xl p-6">
           <h3 className="text-lg font-display font-bold text-sky-800 mb-3">How AI Uses Your Data</h3>
@@ -2236,253 +2173,6 @@ const ImportView: React.FC<{
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
-        </div>
-
-        {/* Risk Refresh Monitor */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-display font-bold text-[#0a1628]">Risk Refresh Monitor</h3>
-            <Button
-              variant="outline"
-              className="border-[#dde3eb] text-[#5a6578]"
-              onClick={() => void loadRiskRefreshMonitor()}
-              disabled={riskMonitorLoading}
-            >
-              {riskMonitorLoading ? <Loader2 size={14} className="animate-spin" /> : 'Refresh'}
-            </Button>
-          </div>
-
-          {riskMonitorSummary && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                <p className="text-xs text-[#5a6578]">Queued</p>
-                <p className="text-xl font-bold text-[#0a1628]">{riskMonitorSummary.queuedCount}</p>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <p className="text-xs text-emerald-700">Succeeded</p>
-                <p className="text-xl font-bold text-emerald-800">{riskMonitorSummary.successCount}</p>
-              </div>
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                <p className="text-xs text-rose-700">Failed</p>
-                <p className="text-xl font-bold text-rose-800">{riskMonitorSummary.failedCount}</p>
-              </div>
-            </div>
-          )}
-
-          {recentRiskJobs.length > 0 ? (
-            <div className="space-y-2">
-              {recentRiskJobs.map((job) => (
-                <div key={job.refreshId} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-[#0a1628]">{job.refreshId}</p>
-                    <p className="text-xs text-[#5a6578]">Students queued: {job.studentsQueued}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-xs font-semibold ${
-                      job.status === 'success' ? 'text-emerald-700' : job.status === 'failed' ? 'text-rose-700' : 'text-sky-700'
-                    }`}>{job.status}</p>
-                    {typeof job.durationMs === 'number' && <p className="text-xs text-[#5a6578]">{job.durationMs} ms</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[#5a6578]">No risk refresh data loaded yet. Click Refresh to fetch monitor data.</p>
-          )}
-
-          {riskMonitorError && (
-            <p className="text-xs text-amber-700 mt-3">{riskMonitorError}</p>
-          )}
-        </div>
-
-        {/* Import-Grounded Telemetry Summary */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-display font-bold text-[#0a1628]">Import-Grounded Telemetry</h3>
-              <p className="text-xs text-[#5a6578]">Query A-D equivalent summary for the current teacher scope</p>
-            </div>
-            <Button
-              variant="outline"
-              className="border-[#dde3eb] text-[#5a6578]"
-              onClick={() => void loadTelemetrySummary()}
-              disabled={telemetryLoading}
-            >
-              {telemetryLoading ? <Loader2 size={14} className="animate-spin" /> : 'Refresh'}
-            </Button>
-          </div>
-
-          {telemetrySummary && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Total Events ({telemetrySummary.lookbackDays}d)</p>
-                  <p className="text-xl font-bold text-[#0a1628]">{telemetrySummary.totalEvents}</p>
-                </div>
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Flow Coverage</p>
-                  <p className="text-xl font-bold text-[#0a1628]">{telemetrySummary.flowUsage.length}</p>
-                </div>
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Classes (with events)</p>
-                  <p className="text-xl font-bold text-[#0a1628]">{telemetrySummary.classRates.length}</p>
-                </div>
-                <div className={`border rounded-xl p-3 ${telemetrySummary.thresholds.go ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-                  <p className={`text-xs ${telemetrySummary.thresholds.go ? 'text-emerald-700' : 'text-rose-700'}`}>Rollout Decision</p>
-                  <p className={`text-xl font-bold ${telemetrySummary.thresholds.go ? 'text-emerald-800' : 'text-rose-800'}`}>
-                    {telemetrySummary.thresholds.go ? 'Go' : 'Hold'}
-                  </p>
-                </div>
-              </div>
-
-              {telemetrySummary.flowUsage.length > 0 && (
-                <div className="bg-[#f8fafc] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs font-semibold text-[#5a6578] mb-2">Grounded Usage by Flow</p>
-                  <div className="space-y-2">
-                    {telemetrySummary.flowUsage.map((item) => (
-                      <div key={item.flow} className="flex items-center justify-between text-xs text-[#0a1628]">
-                        <span className="font-semibold uppercase">{item.flow}</span>
-                        <span>
-                          {item.groundedEvents}/{item.eligibleEvents} grounded
-                          {' • '}
-                          {(item.groundedUsageRatio * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {telemetrySummary.classRates.length > 0 && (
-                <div className="bg-[#f8fafc] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs font-semibold text-[#5a6578] mb-2">Class Failure and Skipped Rates</p>
-                  <div className="space-y-2">
-                    {telemetrySummary.classRates.slice(0, 5).map((item) => (
-                      <div key={item.classSectionId} className="text-xs text-[#0a1628] flex items-center justify-between">
-                        <span className="font-semibold">{item.classSectionId}</span>
-                        <span>
-                          24h fail {(item.failureRate24h * 100).toFixed(1)}%
-                          {' • '}
-                          7d fail {(item.failureRate7d * 100).toFixed(1)}%
-                          {' • '}
-                          7d skipped {(item.skippedRate7d * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {telemetrySummary.topErrors.length > 0 && (
-                <div className="bg-[#fff7ed] border border-amber-200 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-amber-800 mb-2">Top Error Reasons</p>
-                  <div className="space-y-1">
-                    {telemetrySummary.topErrors.slice(0, 5).map((item) => (
-                      <p key={item.normalizedErrorReason} className="text-xs text-amber-900">
-                        {item.normalizedErrorReason}: {item.occurrences}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {telemetrySummary.thresholds.reasons.length > 0 && (
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-rose-700 mb-2">Threshold Notes</p>
-                  <div className="space-y-1">
-                    {telemetrySummary.thresholds.reasons.map((reason) => (
-                      <p key={reason} className="text-xs text-rose-800">• {reason}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!telemetrySummary && !telemetryLoading && (
-            <p className="text-sm text-[#5a6578]">No telemetry summary loaded yet. Click Refresh to fetch telemetry.</p>
-          )}
-
-          {telemetryError && (
-            <p className="text-xs text-amber-700 mt-3">{telemetryError}</p>
-          )}
-        </div>
-
-        {/* Import-Grounded Access Audit */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-display font-bold text-[#0a1628]">Import-Grounded Access Audit</h3>
-              <p className="text-xs text-[#5a6578]">Import/read/telemetry access traces for the current teacher scope (last 7 days)</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="border-[#dde3eb] text-[#5a6578]"
-                onClick={() => void loadAccessAuditSummary()}
-                disabled={auditLoading}
-              >
-                {auditLoading ? <Loader2 size={14} className="animate-spin" /> : 'Refresh'}
-              </Button>
-              <Button
-                className="bg-sky-600 hover:bg-sky-700 text-white"
-                onClick={() => void handleExportAccessAuditCsv()}
-                disabled={auditExporting}
-              >
-                {auditExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                <span className="ml-1">Export CSV</span>
-              </Button>
-            </div>
-          </div>
-
-          {auditSummary && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Total Events</p>
-                  <p className="text-xl font-bold text-[#0a1628]">{auditSummary.summary.totalEvents}</p>
-                </div>
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Distinct Actions</p>
-                  <p className="text-xl font-bold text-[#0a1628]">{Object.keys(auditSummary.summary.byAction || {}).length}</p>
-                </div>
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Distinct Statuses</p>
-                  <p className="text-xl font-bold text-[#0a1628]">{Object.keys(auditSummary.summary.byStatus || {}).length}</p>
-                </div>
-              </div>
-
-              {auditSummary.entries.length > 0 ? (
-                <div className="space-y-2">
-                  {auditSummary.entries.slice(0, 8).map((entry) => (
-                    <div key={entry.auditId} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg p-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-[#0a1628]">{entry.action}</p>
-                        <p className="text-xs text-[#5a6578]">
-                          {entry.method} {entry.path}
-                          {entry.classSectionId ? ` • ${entry.classSectionId}` : ''}
-                        </p>
-                        {entry.createdAtIso && (
-                          <p className="text-[11px] text-[#5a6578]">{new Date(entry.createdAtIso).toLocaleString()}</p>
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-sky-700">{entry.status}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-[#5a6578]">No import-grounded access audit events found for this scope yet.</p>
-              )}
-            </div>
-          )}
-
-          {!auditSummary && !auditLoading && (
-            <p className="text-sm text-[#5a6578]">No access audit summary loaded yet. Click Refresh to fetch access audit data.</p>
-          )}
-
-          {auditError && (
-            <p className="text-xs text-amber-700 mt-3">{auditError}</p>
-          )}
         </div>
 
         {/* Upload Results */}

@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner';
 import {
   apiService,
+  ApiError,
   type QuizGenerationRequest,
   type QuizGenerationResponse,
   type QuizQuestionGenerated,
@@ -115,6 +116,7 @@ interface PersistedQuizTask {
   taskId: string;
   request: QuizGenerationRequest;
   createdAt: string;
+  ownerUid?: string;
 }
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
@@ -131,7 +133,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   selectedClassId,
   selectedClassName,
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
 
   // Tab state
@@ -191,6 +193,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [bankLoading, setBankLoading] = useState(false);
   const [bankFilter, setBankFilter] = useState<GeneratedQuizStatus | 'all'>('all');
   const [bankAssignQuizId, setBankAssignQuizId] = useState<string | null>(null);
+  const [viewingBankQuizId, setViewingBankQuizId] = useState<string | null>(null);
 
   // Load topics when grade changes
   const loadTopics = useCallback(async () => {
@@ -394,13 +397,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       taskId,
       request,
       createdAt: new Date().toISOString(),
+      ownerUid: currentUser?.uid,
     };
     try {
       sessionStorage.setItem(QUIZ_TASK_STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // Non-blocking: resume still works while modal remains open.
     }
-  }, []);
+  }, [currentUser]);
 
   const clearPersistedTask = useCallback(() => {
     try {
@@ -431,7 +435,23 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       ),
     );
 
-    setGenerationProgress(mappedPercent);
+    setGenerationProgress((prev) => {
+      // Backend emits coarse checkpoints (e.g., 30 -> 70 -> 92). Smooth between them
+      // so long-running generations reflect forward progress instead of appearing stuck.
+      let next = Math.max(prev, mappedPercent);
+
+      if (status.status === 'running' && mappedPercent <= prev) {
+        const stage = String(status.progressStage || '').toLowerCase();
+        const stageCap = stage.includes('assembling') || stage.includes('final')
+          ? 97
+          : stage.includes('generating')
+            ? 89
+            : 95;
+        next = Math.min(stageCap, prev + 1);
+      }
+
+      return next;
+    });
     setGenerationStage(status.progressStage || status.status);
     setGenerationMessage(
       status.progressMessage ||
@@ -448,10 +468,19 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   }, []);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (resumeAttemptedRef.current) {
       return;
     }
     resumeAttemptedRef.current = true;
+
+    if (!currentUser) {
+      clearPersistedTask();
+      return;
+    }
 
     let cancelled = false;
     const raw = sessionStorage.getItem(QUIZ_TASK_STORAGE_KEY);
@@ -472,6 +501,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       return;
     }
 
+    if (persisted.ownerUid && persisted.ownerUid !== currentUser.uid) {
+      clearPersistedTask();
+      return;
+    }
+
     setGenerating(true);
     setActiveTaskId(persisted.taskId);
     setError('');
@@ -482,22 +516,37 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         pollIntervalMs: 1_500,
         onProgress: applyTaskProgress,
       })
-      .then((task) => {
+      .then(async (task) => {
         if (cancelled) return;
         const payload = task.result;
         if (!payload || typeof payload !== 'object') {
           throw new Error('Quiz generation completed without a valid result payload.');
         }
-        setQuizResult(payload as unknown as QuizGenerationResponse);
+        const resultPayload = payload as unknown as QuizGenerationResponse;
+        setQuizResult(resultPayload);
         setStep('results');
         setGenerationProgress(100);
         setGenerationStage('completed');
         setGenerationMessage('Generation complete.');
         setActiveTaskId(null);
         clearPersistedTask();
+        try {
+          await autoSaveGeneratedQuiz(resultPayload, persisted.request);
+          toast.success('Quiz auto-saved to your library as draft.');
+        } catch (saveErr) {
+          toast.error(saveErr instanceof Error ? saveErr.message : 'Quiz generated but failed to save to library');
+        }
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          // Auth can still be hydrating after a hard refresh; keep task persisted and retry once auth settles.
+          resumeAttemptedRef.current = false;
+          setGenerating(false);
+          return;
+        }
+
         setError(err instanceof Error ? err.message : 'Failed to resume quiz generation');
         setActiveTaskId(null);
         clearPersistedTask();
@@ -511,7 +560,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [applyTaskProgress, clearPersistedTask]);
+  }, [applyTaskProgress, authLoading, clearPersistedTask, currentUser]);
 
   const handleClose = () => {
     if (generating && activeTaskId) {
@@ -538,6 +587,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const handleGenerate = async () => {
     setError('');
     setGenerating(true);
+    setViewingBankQuizId(null);
     setGenerationProgress(8);
     setGenerationStage('queued');
     setGenerationMessage('Submitting quiz generation task...');
@@ -566,6 +616,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       setGenerationMessage('Generation complete.');
       setActiveTaskId(null);
       clearPersistedTask();
+      try {
+        await autoSaveGeneratedQuiz(result, requestPayload);
+        toast.success('Quiz auto-saved to your library as draft.');
+      } catch (saveErr) {
+        toast.error(saveErr instanceof Error ? saveErr.message : 'Quiz generated but failed to save to library');
+      }
       void apiService.reportImportGroundedFeedback({
         flow: 'quiz',
         status: 'success',
@@ -634,7 +690,13 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   // ─── Save / Publish / Assign Handlers ─────────────────────
 
   /** Convert API QuizGenerationResponse to a storable GeneratedQuiz shape */
-  const buildGeneratedQuiz = (result: QuizGenerationResponse): Omit<GeneratedQuiz, 'id'> => {
+  const buildGeneratedQuiz = (
+    result: QuizGenerationResponse,
+    sourceRequest?: QuizGenerationRequest,
+  ): Omit<GeneratedQuiz, 'id'> => {
+    const effectiveGrade = sourceRequest?.gradeLevel || selectedGrade;
+    const effectiveTopics = sourceRequest?.topics || selectedTopics;
+
     const questions: AIQuizQuestion[] = result.questions.map((q, i) => ({
       id: `q_${Date.now()}_${i}`,
       questionType: (q.questionType as AIQuizQuestion['questionType']) || 'identification',
@@ -644,14 +706,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       bloomLevel: (q.bloomLevel as AIQuizQuestion['bloomLevel']) || 'understand',
       difficulty: (q.difficulty as AIQuizQuestion['difficulty']) || 'medium',
       topic: q.topic,
-      subject: selectedGrade,
+      subject: effectiveGrade,
       points: q.points,
       explanation: q.explanation,
     }));
 
     return {
-      title: `${selectedGrade} Quiz – ${selectedTopics.length > 0 ? selectedTopics.slice(0, 2).join(', ') : 'Mixed Topics'}`,
-      gradeLevel: selectedGrade,
+      title: `${effectiveGrade} Quiz – ${effectiveTopics.length > 0 ? effectiveTopics.slice(0, 2).join(', ') : 'Mixed Topics'}`,
+      gradeLevel: effectiveGrade,
       questions,
       totalPoints: result.totalPoints,
       metadata: {
@@ -673,6 +735,33 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     };
   };
 
+  const upsertBankQuiz = useCallback((quiz: GeneratedQuiz) => {
+    setBankQuizzes((prev) => [quiz, ...prev.filter((existing) => existing.id !== quiz.id)]);
+  }, []);
+
+  async function autoSaveGeneratedQuiz(
+    result: QuizGenerationResponse,
+    sourceRequest: QuizGenerationRequest,
+  ): Promise<string | null> {
+    if (!currentUser) {
+      return null;
+    }
+
+    const quizData = buildGeneratedQuiz(result, sourceRequest);
+    const id = await saveGeneratedQuiz(
+      quizData,
+      currentUser.uid,
+      savedQuizId ? { documentId: savedQuizId } : undefined,
+    );
+    setSavedQuizId(id);
+    upsertBankQuiz({
+      id,
+      ...quizData,
+      teacherId: currentUser.uid,
+    } as GeneratedQuiz);
+    return id;
+  }
+
   const handleSaveToLibrary = async () => {
     if (!quizResult) {
       toast.error('No quiz to save. Generate a quiz first.');
@@ -685,8 +774,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     setSaving(true);
     try {
       const quizData = buildGeneratedQuiz(quizResult);
-      const id = await saveGeneratedQuiz(quizData, currentUser.uid);
+      const id = await saveGeneratedQuiz(
+        quizData,
+        currentUser.uid,
+        savedQuizId ? { documentId: savedQuizId } : undefined,
+      );
       setSavedQuizId(id);
+      upsertBankQuiz({
+        id,
+        ...quizData,
+        teacherId: currentUser.uid,
+      } as GeneratedQuiz);
       toast.success('Quiz saved to your library!');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save quiz');
@@ -700,6 +798,13 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     setPublishing(true);
     try {
       await publishQuiz(savedQuizId);
+      setBankQuizzes((prev) =>
+        prev.map((quiz) =>
+          quiz.id === savedQuizId
+            ? { ...quiz, status: 'published' }
+            : quiz,
+        ),
+      );
       toast.success('Quiz published to Quiz Bank!');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to publish quiz');
@@ -738,6 +843,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     setAssigning(true);
     try {
       await assignQuizToStudent(quizId, selectedStudentId, currentUser.uid);
+      setBankQuizzes((prev) =>
+        prev.map((quiz) =>
+          quiz.id === quizId
+            ? {
+                ...quiz,
+                status: 'assigned',
+                metadata: {
+                  ...quiz.metadata,
+                  assignedTo: selectedStudentId,
+                },
+              }
+            : quiz,
+        ),
+      );
       toast.success('Quiz assigned to student!');
       setShowAssignModal(false);
       setBankAssignQuizId(null);
@@ -784,6 +903,52 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   );
 
   const filteredBankQuizzes = bankFilter === 'all' ? bankQuizzes : bankQuizzes.filter((q) => q.status === bankFilter);
+
+  const mapBankQuizToGenerationResponse = (quiz: GeneratedQuiz): QuizGenerationResponse => {
+    const topicsCovered = (quiz.metadata.topicsCovered || []).reduce<Record<string, number>>((acc, topic) => {
+      acc[topic] = (acc[topic] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      questions: quiz.questions.map((question) => ({
+        questionType: question.questionType,
+        question: question.question,
+        correctAnswer: question.correctAnswer,
+        options: question.options ?? null,
+        bloomLevel: question.bloomLevel,
+        difficulty: question.difficulty,
+        topic: question.topic,
+        points: question.points,
+        explanation: question.explanation,
+      })),
+      totalPoints: quiz.totalPoints,
+      metadata: {
+        topicsCovered,
+        difficultyBreakdown: quiz.metadata.difficultyBreakdown,
+        bloomTaxonomyDistribution: quiz.metadata.bloomDistribution,
+        questionTypeBreakdown: quiz.metadata.questionTypeBreakdown,
+        gradeLevel: quiz.gradeLevel,
+        totalQuestions: quiz.questions.length,
+        includesGraphQuestions: false,
+        supplementalPurpose: quiz.metadata.supplementalPurpose,
+        bloomTaxonomyRationale: 'Loaded from saved quiz bank entry.',
+        recommendedTeacherActions: quiz.metadata.recommendedTeacherActions || [],
+      },
+    };
+  };
+
+  const handleViewBankQuiz = (quiz: GeneratedQuiz) => {
+    setSavedQuizId(quiz.id);
+    setQuizResult(mapBankQuizToGenerationResponse(quiz));
+    setPreviewResult(null);
+    setViewingBankQuizId(quiz.id);
+    setProvenanceSourceFilter('all');
+    setProvenanceMaterialFilter('all');
+    setExpandedQuestion(null);
+    setStep('results');
+    setActiveTab('create');
+  };
 
   // ─── Render ────────────────────────────────────────────────
 
@@ -1040,7 +1205,16 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       key={q.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="border border-[#dde3eb] rounded-xl p-4 hover:shadow-md transition-shadow"
+                      onClick={() => handleViewBankQuiz(q)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleViewBankQuiz(q);
+                        }
+                      }}
+                      className="border border-[#dde3eb] rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="text-sm font-bold text-[#0a1628] leading-tight">{q.title}</h4>
@@ -1060,13 +1234,28 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleOpenAssign(q.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleViewBankQuiz(q);
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#edf1f7] text-[#5a6578] rounded-lg hover:bg-[#dde3eb] transition-colors"
+                        >
+                          <Eye size={12} /> View
+                        </button>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenAssign(q.id);
+                          }}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors"
                         >
                           <Send size={12} /> Assign
                         </button>
                         <button
-                          onClick={() => handleDeleteBankQuiz(q.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteBankQuiz(q.id);
+                          }}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                         >
                           <Trash2 size={12} /> Delete
@@ -1634,55 +1823,82 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
             )}
 
             {step === 'results' && (
-              <>
-                <button
-                  onClick={() => {
-                    setStep('configure');
-                    setQuizResult(null);
-                    setPreviewResult(null);
-                    setSavedQuizId(null);
-                  }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
-                >
-                  Create Another
-                </button>
-
-                {/* Save to Library */}
-                {!savedQuizId ? (
+              viewingBankQuizId ? (
+                <>
                   <button
-                    onClick={handleSaveToLibrary}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    onClick={() => {
+                      setActiveTab('bank');
+                      setViewingBankQuizId(null);
+                    }}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                   >
-                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    Save to Library
+                    Back to Quiz Bank
                   </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={handlePublish}
-                      disabled={publishing}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-green-50 border border-green-300 text-green-700 hover:bg-green-100 transition-colors"
-                    >
-                      {publishing ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}
-                      Publish
-                    </button>
-                    <button
-                      onClick={() => handleOpenAssign()}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-sky-50 border border-sky-300 text-sky-700 hover:bg-sky-100 transition-colors"
-                    >
-                      <Send size={16} /> Assign
-                    </button>
-                  </>
-                )}
+                  <button
+                    onClick={() => handleOpenAssign(viewingBankQuizId)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-sky-50 border border-sky-300 text-sky-700 hover:bg-sky-100 transition-colors"
+                  >
+                    <Send size={16} /> Assign
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
+                  >
+                    Done
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setStep('configure');
+                      setQuizResult(null);
+                      setPreviewResult(null);
+                      setSavedQuizId(null);
+                      setViewingBankQuizId(null);
+                    }}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
+                  >
+                    Create Another
+                  </button>
 
-                <button
-                  onClick={handleClose}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
-                >
-                  Done
-                </button>
-              </>
+                  {/* Save to Library */}
+                  {!savedQuizId ? (
+                    <button
+                      onClick={handleSaveToLibrary}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 border border-emerald-300 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    >
+                      {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      Save to Library
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handlePublish}
+                        disabled={publishing}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-green-50 border border-green-300 text-green-700 hover:bg-green-100 transition-colors"
+                      >
+                        {publishing ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}
+                        Publish
+                      </button>
+                      <button
+                        onClick={() => handleOpenAssign()}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-sky-50 border border-sky-300 text-sky-700 hover:bg-sky-100 transition-colors"
+                      >
+                        <Send size={16} /> Assign
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    onClick={handleClose}
+                    className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
+                  >
+                    Done
+                  </button>
+                </>
+              )
             )}
           </div>
         </div>
