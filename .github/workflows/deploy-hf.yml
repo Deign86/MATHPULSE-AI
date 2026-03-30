@@ -34,15 +34,28 @@ jobs:
     # Only run when backend files change (or manual trigger)
     if: >
       github.event_name == 'workflow_dispatch' ||
-      contains(join(github.event.commits.*.modified, ','), 'backend/') ||
-      contains(join(github.event.commits.*.added, ','), 'backend/') ||
-      contains(join(github.event.commits.*.removed, ','), 'backend/')
+      (github.event_name == 'push' && contains(toJson(github.event.commits), 'backend/'))
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Backend preflight checks
+        run: |
+          python -m pytest backend/tests/test_api.py -q
+          python -m mypy --config-file mypy.ini backend/main.py backend/analytics.py
 
       - name: Push backend to HF Space
         env:
