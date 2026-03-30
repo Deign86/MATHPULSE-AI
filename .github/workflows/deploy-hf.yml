@@ -2,7 +2,6 @@
 # Auto-deploy to Hugging Face Spaces on push to main
 # - Backend (Docker): Deign86/mathpulse-api-v3test
 # - Frontend (Static Full App): Deign86/mathpulse-ai
-# - Inference (ZeroGPU Gradio): Deign86/mathpulse-inference-zerogpu
 # ============================================================
 # 
 # SETUP (one-time):
@@ -206,95 +205,3 @@ jobs:
           git push origin main --force
           echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-ai"
 
-  deploy-inference-zerogpu:
-    runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && (
-        contains(toJson(github.event.commits), 'app.py') ||
-        contains(toJson(github.event.commits), 'requirements.txt') ||
-        contains(toJson(github.event.commits), 'backend/services/') ||
-        contains(toJson(github.event.commits), 'config/')
-      ))
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install deploy dependency
-        run: |
-          python -m pip install --upgrade pip
-          pip install huggingface_hub
-
-      - name: Push ZeroGPU inference app to HF Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          test -n "${HF_TOKEN}"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-
-          SPACE_REPO="https://Deign86:${HF_TOKEN}@huggingface.co/spaces/Deign86/mathpulse-inference-zerogpu"
-
-          git clone "${SPACE_REPO}" hf-inference 2>/dev/null || {
-            echo "Inference Space repo not found — creating fresh push"
-            mkdir hf-inference && cd hf-inference && git init
-            git remote add origin "${SPACE_REPO}"
-            cd ..
-          }
-
-          rsync -av --delete \
-            --exclude='.git' \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            app.py requirements.txt hf-inference/
-
-          mkdir -p hf-inference/backend/services
-          rsync -av --delete \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            backend/services/ hf-inference/backend/services/
-
-          mkdir -p hf-inference/config
-          rsync -av --delete config/ hf-inference/config/
-
-          printf '%s\n' \
-            '---' \
-            'title: MathPulse Inference ZeroGPU' \
-            'emoji: "🧮"' \
-            'colorFrom: blue' \
-            'colorTo: indigo' \
-            'sdk: gradio' \
-            'app_file: app.py' \
-            'python_version: 3.11' \
-            'pinned: false' \
-            '---' > hf-inference/README.md
-
-          cd hf-inference
-          git add -A
-          git diff --staged --quiet && echo "No inference changes to deploy" && exit 0
-          git commit -m "🚀 Auto-deploy inference ZeroGPU from GitHub (${GITHUB_SHA::7})"
-          git push origin main --force
-
-      - name: Force ZeroGPU runtime on inference Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python - <<'PY'
-          import os
-          from huggingface_hub import HfApi, SpaceHardware
-
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          repo_id = "Deign86/mathpulse-inference-zerogpu"
-
-          api.request_space_hardware(repo_id=repo_id, hardware=SpaceHardware.ZERO_A10G)
-          api.restart_space(repo_id=repo_id)
-          runtime = api.get_space_runtime(repo_id=repo_id)
-          print(f"Runtime stage={runtime.stage} requested_hardware={runtime.requested_hardware} current_hardware={runtime.hardware}")
-          PY
