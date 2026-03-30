@@ -1,4 +1,0 @@
-# Single source of truth for backend Python dependencies.
-# The authoritative file lives next to the backend Dockerfile. Install with:
-#   cd backend && pip install -r requirements.txt
--r backend/requirements.txt
