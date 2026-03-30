@@ -169,6 +169,33 @@ class EnhancedRiskPrediction(BaseModel):
     contributingFactors: List[Dict[str, Any]]
     recommendations: List[str]
     modelUsed: str  # "ml_model" | "rule_based" | "zero_shot"
+    risk_level: str
+    risk_score: float
+    top_factors: List[str]
+
+
+def _to_strict_risk_level(level: str) -> str:
+    normalized = (level or "").strip().lower()
+    if normalized in {"high", "medium", "low"}:
+        return normalized
+    return "medium"
+
+
+def _extract_top_factor_texts(factors: List[Dict[str, Any]]) -> List[str]:
+    texts: List[str] = []
+    for factor in factors[:3]:
+        detail = str(factor.get("detail") or "").strip()
+        feature = str(factor.get("feature") or "").strip()
+        value = factor.get("value")
+        if detail:
+            texts.append(detail)
+        elif feature and value is not None:
+            texts.append(f"{feature}={value}")
+        elif feature:
+            texts.append(feature)
+    if not texts:
+        texts.append("No major risk indicators detected")
+    return texts
 
 
 class EnhancedRiskRequest(BaseModel):
@@ -694,7 +721,7 @@ async def compute_competency_analysis(
         mastery_pct = (first_attempt_correct / max(first_attempt_total, 1)) * 100
 
         # Class average time (use all entries as proxy)
-        class_avg_time = np.mean(times) if times else 60.0
+        class_avg_time = float(np.mean(times)) if times else 60.0
 
         efficiency = _calculate_efficiency_score(times, accuracies, class_avg_time, attempt_counts)
         velocity = _calculate_learning_velocity(scores_over_time)
@@ -870,6 +897,9 @@ def _rule_based_risk(data: EnhancedRiskRequest) -> EnhancedRiskPrediction:
         contributingFactors=factors[:3],
         recommendations=recommendations,
         modelUsed="rule_based",
+        risk_level=_to_strict_risk_level(risk_level),
+        risk_score=round(float(probs.get("High", 0.0)), 4),
+        top_factors=_extract_top_factor_texts(factors),
     )
 
 
@@ -971,6 +1001,9 @@ async def predict_risk_enhanced(data: EnhancedRiskRequest) -> EnhancedRiskPredic
             contributingFactors=factors,
             recommendations=recommendations,
             modelUsed="ml_model",
+            risk_level=_to_strict_risk_level(risk_level),
+            risk_score=round(float(probs.get("High", 0.0)), 4),
+            top_factors=_extract_top_factor_texts(factors),
         )
 
     except Exception as e:
@@ -1079,10 +1112,10 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred, average="weighted", zero_division=0)
-    rec = recall_score(y_test, y_pred, average="weighted", zero_division=0)
-    f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
+    acc = float(accuracy_score(y_test, y_pred))
+    prec = float(precision_score(y_test, y_pred, average="weighted", zero_division=0))
+    rec = float(recall_score(y_test, y_pred, average="weighted", zero_division=0))
+    f1 = float(f1_score(y_test, y_pred, average="weighted", zero_division=0))
 
     logger.info(f"Risk model trained: accuracy={acc:.3f}, F1={f1:.3f}")
     logger.info(f"Classification report:\n{classification_report(y_test, y_pred, zero_division=0)}")
@@ -1603,7 +1636,9 @@ async def get_student_summary(student_id: str) -> StudentSummaryResponse:
             y = np.array(recent_scores)
             model = LinearRegression()
             model.fit(x, y)
-            predicted_score = round(float(max(0, min(100, model.predict([[len(recent_scores)]])[0]))), 1)
+            next_idx = np.array([[len(recent_scores)]], dtype=float)
+            next_pred = float(model.predict(next_idx)[0])
+            predicted_score = round(float(max(0.0, min(100.0, next_pred))), 1)
 
     # Engagement patterns
     engagement_patterns = {

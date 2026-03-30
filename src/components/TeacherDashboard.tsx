@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   Users, BookOpen, TrendingUp, AlertTriangle, Calendar, MessageCircle, 
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   Play, FileText, Target, Zap, Award, Upload, FileSpreadsheet, 
   Video, ClipboardCheck, Info, Bell, Search, Home, Database,
-  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Loader2
+  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Loader2, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -27,7 +27,13 @@ import {
   type ManagedStudent,
   type ClassActivity,
 } from '../services/studentService';
-import { apiService } from '../services/apiService';
+import {
+  apiService,
+  type ImportGroundedAccessAuditResponse,
+  type CourseMaterialArtifactSummary,
+  type ImportGroundedTelemetrySummaryResponse,
+  type LessonPlanResponse,
+} from '../services/apiService';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
 import TopicMasteryView from './TopicMasteryView';
@@ -36,9 +42,19 @@ import StudentCompetencyTable from './StudentCompetencyTable';
 interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
 }
 
-type View = 'dashboard' | 'analytics' | 'intervention' | 'import' | 'edit_records' | 'topic_mastery' | 'competency';
+type View =
+  | 'dashboard'
+  | 'analytics'
+  | 'intervention'
+  | 'import'
+  | 'edit_records'
+  | 'topic_mastery'
+  | 'competency'
+  | 'notifications'
+  | 'calendar';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -124,7 +140,15 @@ function formatRelativeTime(date: Date): string {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile }) => {
+function buildClassSectionId(grade: string, section: string): string {
+  return [grade, section]
+    .filter(Boolean)
+    .join('_')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+}
+
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -363,12 +387,46 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('import')}
               />
+              <NavItem
+                icon={ClipboardCheck}
+                label="AI Quiz Maker"
+                active={showQuizMaker}
+                collapsed={sidebarCollapsed}
+                onClick={() => setShowQuizMaker(true)}
+              />
+              <NavItem
+                icon={Bell}
+                label="Notifications"
+                active={activeView === 'notifications'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('notifications')}
+              />
+              <NavItem
+                icon={Calendar}
+                label="Calendar"
+                active={activeView === 'calendar'}
+                collapsed={sidebarCollapsed}
+                onClick={() => setActiveView('calendar')}
+              />
             </div>
           </div>
         </nav>
 
         {/* User Section */}
         <div className="p-4 border-t border-slate-200">
+          <button
+            onClick={onOpenSettings}
+            className={`w-full mb-2 px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${
+              sidebarCollapsed
+                ? 'justify-center text-slate-500 hover:bg-slate-50 hover:text-sky-700'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-sky-700'
+            }`}
+            title={sidebarCollapsed ? 'Settings' : ''}
+          >
+            <Settings size={20} />
+            {!sidebarCollapsed && <span>Settings</span>}
+          </button>
+
           {!sidebarCollapsed ? (
             <div>
               <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} />
@@ -397,6 +455,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'topic_mastery' && 'Topic Mastery'}
                   {activeView === 'competency' && 'Student Competency'}
                   {activeView === 'import' && 'Data Import'}
+                  {activeView === 'notifications' && 'Notifications'}
+                  {activeView === 'calendar' && 'Calendar'}
                 </h1>
                 <p className="text-xs text-[#5a6578] font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -405,6 +465,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
                   {activeView === 'import' && 'Upload class records and materials'}
+                  {activeView === 'notifications' && 'View classroom alerts and updates'}
+                  {activeView === 'calendar' && 'Check upcoming class events and schedule'}
                 </p>
               </div>
               {/* Quick teacher stats */}
@@ -426,20 +488,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowQuizMaker(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold rounded-lg transition-all shadow-sm text-sm"
-              >
-                <ClipboardCheck size={16} />
-                AI Quiz Maker
-              </button>
-              <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors relative">
-                <Bell size={18} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <button className="p-2 bg-[#edf1f7] rounded-lg text-[#5a6578] hover:bg-[#dde3eb] transition-colors">
-                <Calendar size={18} />
-              </button>
               <button
                 onClick={onOpenProfile}
                 className="flex items-center gap-2.5 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group max-w-[220px]"
@@ -498,8 +546,33 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               />
             )}
             {activeView === 'topic_mastery' && <TopicMasteryView />}
-            {activeView === 'competency' && <StudentCompetencyTable />}
-            {activeView === 'import' && <ImportView onEditRecords={() => setActiveView('edit_records')} />}
+            {activeView === 'competency' && (
+              <StudentCompetencyTable
+                classSectionId={selectedClass ? buildClassSectionId(selectedClass.name.split(' - ')[0] || '', selectedClass.name.split(' - ')[1] || '') : undefined}
+                className={selectedClass?.name}
+              />
+            )}
+            {activeView === 'import' && (
+              <ImportView
+                onEditRecords={() => setActiveView('edit_records')}
+                classSectionId={selectedClass ? buildClassSectionId(selectedClass.name.split(' - ')[0] || '', selectedClass.name.split(' - ')[1] || '') : undefined}
+                className={selectedClass?.name}
+              />
+            )}
+            {activeView === 'notifications' && (
+              <ToolsPlaceholderView
+                icon={Bell}
+                title="Notifications"
+                description="Teacher alerts and classroom updates will appear here."
+              />
+            )}
+            {activeView === 'calendar' && (
+              <ToolsPlaceholderView
+                icon={Calendar}
+                title="Calendar"
+                description="Your class schedule and upcoming events will appear here."
+              />
+            )}
             {activeView === 'edit_records' && (
               <EditRecordsView
                 students={students}
@@ -550,6 +623,27 @@ const NavItem: React.FC<{
     <Icon size={20} />
     {!collapsed && <span>{label}</span>}
   </button>
+);
+
+const ToolsPlaceholderView: React.FC<{
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  title: string;
+  description: string;
+}> = ({ icon: Icon, title, description }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    className="p-6"
+  >
+    <div className="bg-white border border-[#dde3eb] rounded-2xl p-8 shadow-sm max-w-2xl">
+      <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
+        <Icon size={24} />
+      </div>
+      <h2 className="text-2xl font-display font-bold text-[#0a1628] mb-2">{title}</h2>
+      <p className="text-sm text-[#5a6578] font-body leading-relaxed">{description}</p>
+    </div>
+  </motion.div>
 );
 
 // Dashboard View
@@ -857,11 +951,17 @@ const InterventionView: React.FC<{
   onStudentUpdated: (student: StudentView) => void;
   onBack: () => void;
 }> = ({ student, teacherId, teacherName, onStudentUpdated, onBack }) => {
+  const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
   const [learningPath, setLearningPath] = useState<string>('');
   const [pathLoading, setPathLoading] = useState(true);
   const [gradeDraft, setGradeDraft] = useState(student.grade || 'Grade 11');
   const [sectionDraft, setSectionDraft] = useState(student.section || 'Section A');
   const [savingSection, setSavingSection] = useState(false);
+  const [lessonPlan, setLessonPlan] = useState<LessonPlanResponse | null>(null);
+  const [lessonLoading, setLessonLoading] = useState(false);
+  const [lessonError, setLessonError] = useState('');
+  const [lessonSourceFilter, setLessonSourceFilter] = useState<string>('all');
+  const [lessonMaterialFilter, setLessonMaterialFilter] = useState<string>('all');
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
@@ -885,6 +985,94 @@ const InterventionView: React.FC<{
     };
     fetchPath();
   }, [student]);
+
+  const generateTargetedLessonPlan = useCallback(async () => {
+    setLessonLoading(true);
+    setLessonError('');
+    try {
+      const classSectionId = student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A');
+      const response = await apiService.generateLessonPlan({
+        gradeLevel: gradeDraft || student.grade || 'Grade 11',
+        classSectionId,
+        className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
+        focusTopics: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+        topicCount: 5,
+        preferImportedTopics: rolloutFlags.lessonEnabled,
+      });
+      setLessonPlan(response);
+      void apiService.reportImportGroundedFeedback({
+        flow: 'lesson',
+        status: 'success',
+        classSectionId,
+        className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
+        metadata: {
+          usedImportedTopics: response.usedImportedTopics,
+          importedTopicCount: response.importedTopicCount,
+          blockCount: response.blocks.length,
+          importGroundingEnabled: rolloutFlags.lessonEnabled,
+        },
+      });
+    } catch (err) {
+      setLessonError(err instanceof Error ? err.message : 'Unable to generate lesson plan at this time.');
+      setLessonPlan(null);
+      void apiService.reportImportGroundedFeedback({
+        flow: 'lesson',
+        status: 'failed',
+        classSectionId: student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A'),
+        className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
+        metadata: {
+          error: err instanceof Error ? err.message : 'Unable to generate lesson plan at this time.',
+          importGroundingEnabled: rolloutFlags.lessonEnabled,
+        },
+      });
+    } finally {
+      setLessonLoading(false);
+    }
+  }, [student, gradeDraft, sectionDraft, rolloutFlags.lessonEnabled]);
+
+  useEffect(() => {
+    void generateTargetedLessonPlan();
+  }, [generateTargetedLessonPlan]);
+
+  useEffect(() => {
+    setLessonSourceFilter('all');
+    setLessonMaterialFilter('all');
+  }, [lessonPlan]);
+
+  const lessonProvenanceSources = useMemo(() => {
+    if (!lessonPlan) return [];
+    return Array.from(
+      new Set(
+        lessonPlan.blocks
+          .map((block) => block.provenance?.sourceFile?.trim())
+          .filter((source): source is string => Boolean(source))
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [lessonPlan]);
+
+  const lessonProvenanceMaterials = useMemo(() => {
+    if (!lessonPlan) return [];
+    return Array.from(
+      new Set(
+        lessonPlan.blocks
+          .map((block) => block.provenance?.materialId?.trim())
+          .filter((material): material is string => Boolean(material))
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [lessonPlan]);
+
+  const filteredLessonBlocks = useMemo(() => {
+    if (!lessonPlan) return [];
+    return lessonPlan.blocks.filter((block) => {
+      const matchesSource =
+        lessonSourceFilter === 'all' ||
+        (block.provenance?.sourceFile || '').trim() === lessonSourceFilter;
+      const matchesMaterial =
+        lessonMaterialFilter === 'all' ||
+        (block.provenance?.materialId || '').trim() === lessonMaterialFilter;
+      return matchesSource && matchesMaterial;
+    });
+  }, [lessonPlan, lessonSourceFilter, lessonMaterialFilter]);
 
   const remedialSteps = [
     { id: 1, type: 'video', title: `${student.weakestTopic} Fundamentals`, duration: '8 mins', icon: Video },
@@ -915,6 +1103,7 @@ const InterventionView: React.FC<{
         grade: gradeDraft,
         section: sectionDraft,
         className: [gradeDraft, sectionDraft].filter(Boolean).join(' - '),
+        classSectionId: buildClassSectionId(gradeDraft, sectionDraft),
       };
 
       onStudentUpdated(updatedStudent);
@@ -1097,6 +1286,116 @@ const InterventionView: React.FC<{
           </div>
         </div>
 
+        {/* Import-grounded Lesson Plan */}
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-xl font-display font-bold text-[#0a1628]">Targeted Lesson Plan</h2>
+              <p className="text-sm text-[#5a6578]">Grounded on imported class topics and student risk signals</p>
+            </div>
+            <Button
+              onClick={() => void generateTargetedLessonPlan()}
+              disabled={lessonLoading}
+              className="bg-sky-600 hover:bg-sky-700 text-white"
+            >
+              {lessonLoading ? <Loader2 size={16} className="animate-spin" /> : 'Regenerate'}
+            </Button>
+          </div>
+
+          {lessonLoading && (
+            <div className="flex items-center gap-2 text-[#5a6578] py-4">
+              <Loader2 size={18} className="animate-spin" />
+              <span>Generating class-scoped lesson plan...</span>
+            </div>
+          )}
+
+          {!lessonLoading && lessonError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+              {lessonError}
+            </div>
+          )}
+
+          {!lessonLoading && lessonPlan && (
+            <div className="space-y-4">
+              <div className="bg-[#f6f9ff] border border-[#dde3eb] rounded-xl p-4">
+                <p className="text-sm font-semibold text-[#0a1628]">{lessonPlan.lessonTitle}</p>
+                <p className="text-xs text-[#5a6578] mt-1">
+                  Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
+                  {' • '}Imported topic count: {lessonPlan.importedTopicCount}
+                </p>
+                {lessonPlan.warnings.length > 0 && (
+                  <p className="text-xs text-amber-700 mt-1">{lessonPlan.warnings.join(' ')}</p>
+                )}
+              </div>
+
+              {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
+                <div className="bg-white border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs font-semibold text-[#5a6578] mb-2">Provenance Filters</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <label className="text-xs text-[#5a6578] flex flex-col gap-1">
+                      <span className="font-semibold">Source File</span>
+                      <select
+                        value={lessonSourceFilter}
+                        onChange={(event) => setLessonSourceFilter(event.target.value)}
+                        className="bg-white border border-[#dde3eb] rounded-md px-2 py-1.5 text-xs"
+                      >
+                        <option value="all">All sources</option>
+                        {lessonProvenanceSources.map((source) => (
+                          <option key={source} value={source}>{source}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs text-[#5a6578] flex flex-col gap-1">
+                      <span className="font-semibold">Material ID</span>
+                      <select
+                        value={lessonMaterialFilter}
+                        onChange={(event) => setLessonMaterialFilter(event.target.value)}
+                        className="bg-white border border-[#dde3eb] rounded-md px-2 py-1.5 text-xs"
+                      >
+                        <option value="all">All materials</option>
+                        {lessonProvenanceMaterials.map((material) => (
+                          <option key={material} value={material}>{material}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-[#5a6578] mt-2">
+                    Showing {filteredLessonBlocks.length} of {lessonPlan.blocks.length} lesson blocks after provenance filters.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredLessonBlocks.map((block) => (
+                  <div key={block.blockId} className="border border-[#dde3eb] rounded-xl p-4 bg-[#fcfdff]">
+                    <h3 className="text-sm font-bold text-[#0a1628]">{block.title}</h3>
+                    <p className="text-xs text-[#5a6578] mt-1">{block.estimatedMinutes} mins • {block.strategy}</p>
+                    <p className="text-sm text-[#0a1628] mt-2">{block.objective}</p>
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-[#5a6578] mb-1">Activities</p>
+                      {block.activities.slice(0, 2).map((activity, idx) => (
+                        <p key={idx} className="text-xs text-[#5a6578]">• {activity}</p>
+                      ))}
+                    </div>
+                    {block.provenance && (
+                      <div className="mt-3 bg-sky-50 border border-sky-200 rounded-lg p-2">
+                        <p className="text-[11px] font-semibold text-sky-700">Provenance</p>
+                        {block.provenance.sourceFile && <p className="text-[11px] text-sky-900">Source: {block.provenance.sourceFile}</p>}
+                        {block.provenance.materialId && <p className="text-[11px] text-sky-900">Material: {block.provenance.materialId}</p>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {filteredLessonBlocks.length === 0 && (
+                <div className="border border-[#dde3eb] rounded-xl p-4 bg-white text-sm text-[#5a6578]">
+                  No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-4">
           <Button className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
@@ -1117,27 +1416,211 @@ const InterventionView: React.FC<{
 };
 
 // Import View
-const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) => {
+const ImportView: React.FC<{
+  onEditRecords: () => void;
+  classSectionId?: string;
+  className?: string;
+}> = ({ onEditRecords, classSectionId, className }) => {
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
+  const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
+  const [recentMaterials, setRecentMaterials] = useState<CourseMaterialArtifactSummary[]>([]);
+  const [materialsWarnings, setMaterialsWarnings] = useState<string[]>([]);
+  const [riskMonitorLoading, setRiskMonitorLoading] = useState(false);
+  const [riskMonitorError, setRiskMonitorError] = useState('');
+  const [telemetryLoading, setTelemetryLoading] = useState(false);
+  const [telemetryError, setTelemetryError] = useState('');
+  const [telemetrySummary, setTelemetrySummary] = useState<ImportGroundedTelemetrySummaryResponse | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditExporting, setAuditExporting] = useState(false);
+  const [auditError, setAuditError] = useState('');
+  const [auditSummary, setAuditSummary] = useState<ImportGroundedAccessAuditResponse | null>(null);
+  const [riskMonitorSummary, setRiskMonitorSummary] = useState<{
+    queuedCount: number;
+    successCount: number;
+    failedCount: number;
+    lastStatus?: string | null;
+    lastRefreshId?: string | null;
+  } | null>(null);
+  const [recentRiskJobs, setRecentRiskJobs] = useState<Array<{
+    refreshId: string;
+    status: string;
+    studentsQueued: number;
+    durationMs?: number | null;
+    completedAtEpoch?: number | null;
+  }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const materialInputRef = useRef<HTMLInputElement>(null);
+
+  const loadRecentMaterials = useCallback(async () => {
+    try {
+      const response = await apiService.getRecentCourseMaterials({
+        classSectionId,
+        limit: 5,
+      });
+      setRecentMaterials(response.materials);
+      setMaterialsWarnings(response.warnings || []);
+    } catch (err) {
+      setRecentMaterials([]);
+      setMaterialsWarnings([err instanceof Error ? err.message : 'Unable to load recent course materials.']);
+    }
+  }, [classSectionId]);
+
+  const loadRiskRefreshMonitor = useCallback(async () => {
+    setRiskMonitorLoading(true);
+    setRiskMonitorError('');
+    try {
+      const response = await apiService.getRiskRefreshMonitor({ limit: 5, classSectionId });
+      setRiskMonitorSummary({
+        queuedCount: response.stats.queuedCount,
+        successCount: response.stats.successCount,
+        failedCount: response.stats.failedCount,
+        lastStatus: response.stats.lastStatus,
+        lastRefreshId: response.stats.lastRefreshId,
+      });
+      setRecentRiskJobs(response.jobs.map((job) => ({
+        refreshId: job.refreshId,
+        status: job.status,
+        studentsQueued: job.studentsQueued,
+        durationMs: job.durationMs,
+        completedAtEpoch: job.completedAtEpoch,
+      })));
+      if (response.warnings.length > 0) {
+        setRiskMonitorError(response.warnings.join(' '));
+      }
+    } catch (err) {
+      setRiskMonitorSummary(null);
+      setRecentRiskJobs([]);
+      setRiskMonitorError(err instanceof Error ? err.message : 'Unable to load risk refresh monitor.');
+    } finally {
+      setRiskMonitorLoading(false);
+    }
+  }, [classSectionId]);
+
+  const loadTelemetrySummary = useCallback(async () => {
+    setTelemetryLoading(true);
+    setTelemetryError('');
+    try {
+      const response = await apiService.getImportGroundedTelemetrySummary({
+        classSectionId,
+        days: 7,
+        limit: 5000,
+      });
+      setTelemetrySummary(response);
+      if (response.warnings.length > 0) {
+        setTelemetryError(response.warnings.join(' '));
+      }
+    } catch (err) {
+      setTelemetrySummary(null);
+      setTelemetryError(err instanceof Error ? err.message : 'Unable to load telemetry summary.');
+    } finally {
+      setTelemetryLoading(false);
+    }
+  }, [classSectionId]);
+
+  const loadAccessAuditSummary = useCallback(async () => {
+    setAuditLoading(true);
+    setAuditError('');
+    try {
+      const response = await apiService.getImportGroundedAccessAudit({
+        classSectionId,
+        days: 7,
+        limit: 25,
+      });
+      setAuditSummary(response);
+      if (response.warnings.length > 0) {
+        setAuditError(response.warnings.join(' '));
+      }
+    } catch (err) {
+      setAuditSummary(null);
+      setAuditError(err instanceof Error ? err.message : 'Unable to load access audit events.');
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [classSectionId]);
+
+  const handleExportAccessAuditCsv = useCallback(async () => {
+    setAuditExporting(true);
+    setAuditError('');
+    try {
+      const blob = await apiService.exportImportGroundedAccessAuditCsv({
+        classSectionId,
+        days: 7,
+        limit: 500,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const classTag = (classSectionId || 'all').replace(/[^a-z0-9_-]+/gi, '_').toLowerCase();
+      link.href = url;
+      link.download = `import-grounded-access-audit-${classTag}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Access audit CSV exported');
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : 'Unable to export access audit CSV.');
+      toast.error('Access audit export failed');
+    } finally {
+      setAuditExporting(false);
+    }
+  }, [classSectionId]);
+
+  useEffect(() => {
+    void loadRiskRefreshMonitor();
+    void loadRecentMaterials();
+    void loadTelemetrySummary();
+    void loadAccessAuditSummary();
+  }, [loadRecentMaterials, loadRiskRefreshMonitor, loadTelemetrySummary, loadAccessAuditSummary]);
 
   const handleFileUpload = async (file: File) => {
-    setUploading(true);
+    setUploadingClassRecords(true);
     setUploadResult('');
     try {
-      const result = await apiService.uploadClassRecords(file);
+      const result = await apiService.uploadClassRecords(file, {
+        classSectionId,
+        className,
+      });
       if (result.success) {
         toast.success(`Successfully imported ${result.students.length} student records`);
-        setUploadResult(`Imported ${result.students.length} students. Column mapping: ${JSON.stringify(result.columnMapping)}`);
+        const riskRefreshText = result.riskRefresh?.queued
+          ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
+          : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
+        setUploadResult(`Imported ${result.students.length} students.${riskRefreshText} Column mapping: ${JSON.stringify(result.columnMapping)}`);
+        await loadRiskRefreshMonitor();
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Upload failed');
       setUploadResult('Upload failed. Please check the file format and try again.');
     } finally {
-      setUploading(false);
+      setUploadingClassRecords(false);
+    }
+  };
+
+  const handleCourseMaterialUpload = async (file: File) => {
+    setUploadingCourseMaterials(true);
+    setUploadResult('');
+    try {
+      const result = await apiService.uploadCourseMaterials(file, {
+        classSectionId,
+        className,
+      });
+
+      if (result.success) {
+        const topicCount = result.topics?.length ?? 0;
+        toast.success(`Course material imported (${topicCount} topics extracted)`);
+        setUploadResult(
+          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s).`,
+        );
+        await loadRecentMaterials();
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Course material upload failed');
+      setUploadResult('Course material upload failed. Please check the file format and try again.');
+    } finally {
+      setUploadingCourseMaterials(false);
     }
   };
 
@@ -1153,6 +1636,22 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
     if (file) handleFileUpload(file);
   };
 
+  const handleCourseMaterialDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver2(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      void handleCourseMaterialUpload(file);
+    }
+  };
+
+  const handleCourseMaterialSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      void handleCourseMaterialUpload(file);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1164,6 +1663,9 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
         <div className="mb-2">
           <h2 className="text-xl font-display font-bold text-[#0a1628]">Import Data</h2>
           <p className="text-[#5a6578]">Upload class records and course materials to enhance AI predictions</p>
+          <p className="text-xs text-[#5a6578] mt-1">
+            Class scope: {className || classSectionId || 'All classes'}
+          </p>
         </div>
 
         {/* Upload Zones */}
@@ -1186,7 +1688,7 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
               className="hidden"
             />
             <div className="w-20 h-20 bg-sky-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              {uploading ? (
+              {uploadingClassRecords ? (
                 <Loader2 size={40} className="text-sky-600 animate-spin" />
               ) : (
                 <FileSpreadsheet size={40} className="text-sky-600" />
@@ -1194,7 +1696,7 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
             </div>
             <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Class Records</h3>
             <p className="text-[#5a6578] mb-4">
-              {uploading ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
+              {uploadingClassRecords ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
             </p>
             <p className="text-xs text-[#5a6578] mb-4 flex items-center justify-center gap-2">
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.csv</span>
@@ -1210,16 +1712,30 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
             onDragLeave={() => setDragOver2(false)}
-            onDrop={(e) => { e.preventDefault(); setDragOver2(false); }}
+            onDrop={handleCourseMaterialDrop}
+            onClick={() => materialInputRef.current?.click()}
             className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-rose-400 hover:bg-rose-50 ${
               dragOver2 ? 'border-rose-600 bg-rose-50 scale-105' : 'border-[#dde3eb]'
             }`}
           >
+            <input
+              ref={materialInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={handleCourseMaterialSelect}
+              className="hidden"
+            />
             <div className="w-20 h-20 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <FileText size={40} className="text-rose-600" />
+              {uploadingCourseMaterials ? (
+                <Loader2 size={40} className="text-rose-600 animate-spin" />
+              ) : (
+                <FileText size={40} className="text-rose-600" />
+              )}
             </div>
             <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Course Materials</h3>
-            <p className="text-[#5a6578] mb-4">Upload syllabus, lesson plans, and curriculum documents</p>
+            <p className="text-[#5a6578] mb-4">
+              {uploadingCourseMaterials ? 'Uploading and extracting topics...' : 'Upload syllabus, lesson plans, and curriculum documents'}
+            </p>
             <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.pdf</span>
                 <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.docx</span>
@@ -1229,6 +1745,45 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
               Click or drag & drop
             </Button>
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-display font-bold text-[#0a1628]">Recent Course Materials</h3>
+            <Button
+              variant="outline"
+              className="border-[#dde3eb] text-[#5a6578]"
+              onClick={() => void loadRecentMaterials()}
+              disabled={uploadingCourseMaterials}
+            >
+              Refresh
+            </Button>
+          </div>
+
+          {recentMaterials.length > 0 ? (
+            <div className="space-y-2">
+              {recentMaterials.map((material) => (
+                <div key={material.materialId} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg p-3">
+                  <p className="text-sm font-semibold text-[#0a1628]">{material.fileName}</p>
+                  <p className="text-xs text-[#5a6578]">
+                    Topics: {material.topicsCount}
+                    {' • '}Type: {material.fileType}
+                    {material.classSectionId ? ` • Class: ${material.classSectionId}` : ''}
+                  </p>
+                  <p className="text-xs text-[#5a6578]">
+                    Expires: {material.expiresAtEpoch ? new Date(material.expiresAtEpoch * 1000).toLocaleDateString() : 'n/a'}
+                    {material.retentionDays ? ` • Retention: ${material.retentionDays} days` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[#5a6578]">No course materials found for this scope yet.</p>
+          )}
+
+          {materialsWarnings.length > 0 && (
+            <p className="text-xs text-amber-700 mt-3">{materialsWarnings.join(' ')}</p>
+          )}
         </div>
 
         {/* Info Box */}
@@ -1256,6 +1811,253 @@ const ImportView: React.FC<{ onEditRecords: () => void }> = ({ onEditRecords }) 
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
+        </div>
+
+        {/* Risk Refresh Monitor */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-display font-bold text-[#0a1628]">Risk Refresh Monitor</h3>
+            <Button
+              variant="outline"
+              className="border-[#dde3eb] text-[#5a6578]"
+              onClick={() => void loadRiskRefreshMonitor()}
+              disabled={riskMonitorLoading}
+            >
+              {riskMonitorLoading ? <Loader2 size={14} className="animate-spin" /> : 'Refresh'}
+            </Button>
+          </div>
+
+          {riskMonitorSummary && (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                <p className="text-xs text-[#5a6578]">Queued</p>
+                <p className="text-xl font-bold text-[#0a1628]">{riskMonitorSummary.queuedCount}</p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-xs text-emerald-700">Succeeded</p>
+                <p className="text-xl font-bold text-emerald-800">{riskMonitorSummary.successCount}</p>
+              </div>
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+                <p className="text-xs text-rose-700">Failed</p>
+                <p className="text-xl font-bold text-rose-800">{riskMonitorSummary.failedCount}</p>
+              </div>
+            </div>
+          )}
+
+          {recentRiskJobs.length > 0 ? (
+            <div className="space-y-2">
+              {recentRiskJobs.map((job) => (
+                <div key={job.refreshId} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[#0a1628]">{job.refreshId}</p>
+                    <p className="text-xs text-[#5a6578]">Students queued: {job.studentsQueued}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-xs font-semibold ${
+                      job.status === 'success' ? 'text-emerald-700' : job.status === 'failed' ? 'text-rose-700' : 'text-sky-700'
+                    }`}>{job.status}</p>
+                    {typeof job.durationMs === 'number' && <p className="text-xs text-[#5a6578]">{job.durationMs} ms</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[#5a6578]">No risk refresh jobs found yet.</p>
+          )}
+
+          {riskMonitorError && (
+            <p className="text-xs text-amber-700 mt-3">{riskMonitorError}</p>
+          )}
+        </div>
+
+        {/* Import-Grounded Telemetry Summary */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-display font-bold text-[#0a1628]">Import-Grounded Telemetry</h3>
+              <p className="text-xs text-[#5a6578]">Query A-D equivalent summary for the current teacher scope</p>
+            </div>
+            <Button
+              variant="outline"
+              className="border-[#dde3eb] text-[#5a6578]"
+              onClick={() => void loadTelemetrySummary()}
+              disabled={telemetryLoading}
+            >
+              {telemetryLoading ? <Loader2 size={14} className="animate-spin" /> : 'Refresh'}
+            </Button>
+          </div>
+
+          {telemetrySummary && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Total Events ({telemetrySummary.lookbackDays}d)</p>
+                  <p className="text-xl font-bold text-[#0a1628]">{telemetrySummary.totalEvents}</p>
+                </div>
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Flow Coverage</p>
+                  <p className="text-xl font-bold text-[#0a1628]">{telemetrySummary.flowUsage.length}</p>
+                </div>
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Classes (with events)</p>
+                  <p className="text-xl font-bold text-[#0a1628]">{telemetrySummary.classRates.length}</p>
+                </div>
+                <div className={`border rounded-xl p-3 ${telemetrySummary.thresholds.go ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                  <p className={`text-xs ${telemetrySummary.thresholds.go ? 'text-emerald-700' : 'text-rose-700'}`}>Rollout Decision</p>
+                  <p className={`text-xl font-bold ${telemetrySummary.thresholds.go ? 'text-emerald-800' : 'text-rose-800'}`}>
+                    {telemetrySummary.thresholds.go ? 'Go' : 'Hold'}
+                  </p>
+                </div>
+              </div>
+
+              {telemetrySummary.flowUsage.length > 0 && (
+                <div className="bg-[#f8fafc] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs font-semibold text-[#5a6578] mb-2">Grounded Usage by Flow</p>
+                  <div className="space-y-2">
+                    {telemetrySummary.flowUsage.map((item) => (
+                      <div key={item.flow} className="flex items-center justify-between text-xs text-[#0a1628]">
+                        <span className="font-semibold uppercase">{item.flow}</span>
+                        <span>
+                          {item.groundedEvents}/{item.eligibleEvents} grounded
+                          {' • '}
+                          {(item.groundedUsageRatio * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {telemetrySummary.classRates.length > 0 && (
+                <div className="bg-[#f8fafc] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs font-semibold text-[#5a6578] mb-2">Class Failure and Skipped Rates</p>
+                  <div className="space-y-2">
+                    {telemetrySummary.classRates.slice(0, 5).map((item) => (
+                      <div key={item.classSectionId} className="text-xs text-[#0a1628] flex items-center justify-between">
+                        <span className="font-semibold">{item.classSectionId}</span>
+                        <span>
+                          24h fail {(item.failureRate24h * 100).toFixed(1)}%
+                          {' • '}
+                          7d fail {(item.failureRate7d * 100).toFixed(1)}%
+                          {' • '}
+                          7d skipped {(item.skippedRate7d * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {telemetrySummary.topErrors.length > 0 && (
+                <div className="bg-[#fff7ed] border border-amber-200 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-amber-800 mb-2">Top Error Reasons</p>
+                  <div className="space-y-1">
+                    {telemetrySummary.topErrors.slice(0, 5).map((item) => (
+                      <p key={item.normalizedErrorReason} className="text-xs text-amber-900">
+                        {item.normalizedErrorReason}: {item.occurrences}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {telemetrySummary.thresholds.reasons.length > 0 && (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-rose-700 mb-2">Threshold Notes</p>
+                  <div className="space-y-1">
+                    {telemetrySummary.thresholds.reasons.map((reason) => (
+                      <p key={reason} className="text-xs text-rose-800">• {reason}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!telemetrySummary && !telemetryLoading && (
+            <p className="text-sm text-[#5a6578]">No telemetry summary available yet for this scope.</p>
+          )}
+
+          {telemetryError && (
+            <p className="text-xs text-amber-700 mt-3">{telemetryError}</p>
+          )}
+        </div>
+
+        {/* Import-Grounded Access Audit */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-display font-bold text-[#0a1628]">Import-Grounded Access Audit</h3>
+              <p className="text-xs text-[#5a6578]">Import/read/telemetry access traces for the current teacher scope (last 7 days)</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="border-[#dde3eb] text-[#5a6578]"
+                onClick={() => void loadAccessAuditSummary()}
+                disabled={auditLoading}
+              >
+                {auditLoading ? <Loader2 size={14} className="animate-spin" /> : 'Refresh'}
+              </Button>
+              <Button
+                className="bg-sky-600 hover:bg-sky-700 text-white"
+                onClick={() => void handleExportAccessAuditCsv()}
+                disabled={auditExporting}
+              >
+                {auditExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                <span className="ml-1">Export CSV</span>
+              </Button>
+            </div>
+          </div>
+
+          {auditSummary && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Total Events</p>
+                  <p className="text-xl font-bold text-[#0a1628]">{auditSummary.summary.totalEvents}</p>
+                </div>
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Distinct Actions</p>
+                  <p className="text-xl font-bold text-[#0a1628]">{Object.keys(auditSummary.summary.byAction || {}).length}</p>
+                </div>
+                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs text-[#5a6578]">Distinct Statuses</p>
+                  <p className="text-xl font-bold text-[#0a1628]">{Object.keys(auditSummary.summary.byStatus || {}).length}</p>
+                </div>
+              </div>
+
+              {auditSummary.entries.length > 0 ? (
+                <div className="space-y-2">
+                  {auditSummary.entries.slice(0, 8).map((entry) => (
+                    <div key={entry.auditId} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-[#0a1628]">{entry.action}</p>
+                        <p className="text-xs text-[#5a6578]">
+                          {entry.method} {entry.path}
+                          {entry.classSectionId ? ` • ${entry.classSectionId}` : ''}
+                        </p>
+                        {entry.createdAtIso && (
+                          <p className="text-[11px] text-[#5a6578]">{new Date(entry.createdAtIso).toLocaleString()}</p>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-sky-700">{entry.status}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[#5a6578]">No import-grounded access audit events found for this scope yet.</p>
+              )}
+            </div>
+          )}
+
+          {!auditSummary && !auditLoading && (
+            <p className="text-sm text-[#5a6578]">No access audit summary available yet for this scope.</p>
+          )}
+
+          {auditError && (
+            <p className="text-xs text-amber-700 mt-3">{auditError}</p>
+          )}
         </div>
 
         {/* Upload Results */}

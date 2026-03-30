@@ -143,6 +143,11 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 
    # Backend API (optional — defaults to hosted HF Spaces)
    VITE_API_URL=https://deign86-mathpulse-api.hf.space
+
+   # Import-grounded generation rollout flags (frontend)
+   VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
+   VITE_ENABLE_IMPORT_GROUNDED_LESSON=true
+   VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    ```
 
 4. **Start the frontend dev server**
@@ -156,6 +161,9 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
    cd backend
    pip install -r requirements.txt
    export HF_TOKEN=your_huggingface_token
+   export ENABLE_IMPORT_GROUNDED_QUIZ=true
+   export ENABLE_IMPORT_GROUNDED_LESSON=true
+   export ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
    ```
    > **Note:** The hosted backend at `https://deign86-mathpulse-api.hf.space` is used by default. Local backend is only needed for development. Port 7860 matches Hugging Face Spaces convention; Docker maps it to 8000.
@@ -165,6 +173,31 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 npm run build
 ```
 Output will be in the `build/` directory.
+
+### Backend Regression Gate (Local)
+```bash
+# API contracts + behavior checks
+python -m pytest backend/tests/test_api.py -q
+
+# Lightweight typed checks on critical backend files
+python -m mypy --config-file mypy.ini backend/main.py backend/analytics.py
+
+# Or run both via npm
+npm run check:backend
+```
+
+### Import-Grounded Pilot Operations
+```bash
+# Telemetry summary (Query A-D equivalent) for the authenticated teacher
+curl -X GET "${VITE_API_URL:-https://deign86-mathpulse-api.hf.space}/api/feedback/import-grounded/summary?days=7&limit=5000" \
+   -H "Authorization: Bearer <firebase_id_token>" \
+   -H "Content-Type: application/json"
+```
+
+Operational artifacts:
+- `docs/import-grounded-telemetry-query-pack.md`
+- `docs/import-grounded-e2e-verification-log.md`
+- `docs/import-grounded-security-drill-matrix.md`
 
 ## 🏗 Architecture
 
@@ -262,6 +295,11 @@ The FastAPI backend exposes the following endpoints:
 | `POST` | `/api/learning-path` | Generate personalized learning path by weaknesses |
 | `POST` | `/api/analytics/daily-insight` | Generate daily AI insights for teacher dashboard |
 | `POST` | `/api/upload/class-records` | Upload and parse class records (CSV/XLSX/PDF) with AI column detection |
+| `GET`  | `/api/upload/class-records/risk-refresh/recent` | Recent class-record risk refresh jobs (teacher scoped, optional class filter) |
+| `POST` | `/api/upload/course-materials` | Upload and parse course materials (PDF/DOCX/TXT) with topic extraction |
+| `GET`  | `/api/upload/course-materials/recent` | Recent course-material artifacts (teacher scoped, optional class filter) |
+| `GET`  | `/api/course-materials/topics` | Normalized topic map from imported materials (optional class/material filters) |
+| `POST` | `/api/lesson/generate` | Generate class lesson plans grounded on imported topics + class signals |
 
 Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` when the backend is running.
 
@@ -275,6 +313,30 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 | `/api/learning-path` | `{ weaknesses[], gradeLevel, learningStyle? }` | `{ learningPath }` |
 | `/api/analytics/daily-insight` | `{ students[{name, engagementScore, avgQuizScore, attendance, riskLevel}] }` | `{ insight }` |
 | `/api/upload/class-records` | `FormData(file)` — CSV/XLSX/PDF | `{ success, students[], columnMapping, totalRows }` |
+| `/api/upload/class-records/risk-refresh/recent` | `Query(limit?, classSectionId?)` | `{ success, classSectionId?, stats, jobs[], warnings[] }` |
+| `/api/upload/course-materials` | `FormData(files, classSectionId?, className?)` | `{ success, files?, topics[], sections[], warnings[] }` |
+| `/api/upload/course-materials/recent` | `Query(limit?, classSectionId?)` | `{ success, classSectionId?, materials[], warnings[] }` |
+| `/api/course-materials/topics` | `Query(classSectionId?, materialId?, limit?)` | `{ success, topics[], materials[], warnings[] }` |
+| `/api/lesson/generate` | `{ gradeLevel, classSectionId?, className?, materialId?, focusTopics? }` | `{ success, blocks[], provenanceSummary[], warnings[] }` |
+
+### Import Retention and Audit Cadence
+
+- Import artifacts (class records and course materials) are persisted with retention metadata (`retentionDays`, `expiresAtEpoch`).
+- Read endpoints exclude expired artifacts and return warnings when retention filtering removes records.
+- Teacher reads are always scoped by authenticated `teacherId`, and can be further constrained with `classSectionId` for class-specific views.
+- Access events for upload/read operations are written to `accessAuditLogs` with endpoint path, actor, status, and class scope metadata.
+- Import-grounded pilot feedback events are written to `importGroundedFeedbackEvents` via `/api/feedback/import-grounded` when feedback logging is enabled.
+- Rollout checklist recommendation: review import-access audit logs weekly during pilot, then at least monthly after stabilization.
+
+### Import-Grounded Rollout Flags
+
+- `ENABLE_IMPORT_GROUNDED_QUIZ` controls backend import-grounded topic injection for quiz generation.
+- `ENABLE_IMPORT_GROUNDED_LESSON` controls backend import-grounded topic injection for lesson generation.
+- `ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS` controls backend storage of pilot feedback events.
+- `VITE_ENABLE_IMPORT_GROUNDED_QUIZ` controls frontend request preference for import-grounded quiz generation.
+- `VITE_ENABLE_IMPORT_GROUNDED_LESSON` controls frontend request preference for import-grounded lesson generation.
+- `VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS` controls frontend feedback event reporting to the backend.
+- All flags default to `true`; set any flag to `false` to disable that behavior without code changes.
 
 > **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api.hf.space`.
 
