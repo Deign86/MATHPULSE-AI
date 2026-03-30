@@ -89,6 +89,8 @@ def main() -> None:
                         {"role": "user", "content": build_variant_prompt(question, args.variants_per_item)},
                     ],
                     model=args.model,
+                    task_type="variant_generation",
+                    request_tag=run_id,
                 )
             )
             variants = parse_variants(raw)

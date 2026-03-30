@@ -79,6 +79,8 @@ def main() -> None:
                     {"role": "user", "content": question},
                 ],
                 model=args.model,
+                task_type="eval_generation",
+                request_tag=run_id,
             )
         )
 

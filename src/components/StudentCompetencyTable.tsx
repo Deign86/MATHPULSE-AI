@@ -6,23 +6,36 @@ import {
   User, BookOpen, Brain, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
+import { getStudentsByTeacher } from '../services/studentService';
 import {
   apiService,
   type StudentCompetencyResponse,
   type TopicCompetency,
   type CourseMaterialTopicMapTopic,
+  type ImportedStudentOverviewItem,
 } from '../services/apiService';
 import { getUserProgress } from '../services/progressService';
 
 // ─── Types ──────────────────────────────────────────────────
 
 interface StudentRow {
-  student: ManagedStudent;
+  student: CompetencyStudent;
   competency: StudentCompetencyResponse | null;
   loading: boolean;
   expanded: boolean;
   error?: string;
+}
+
+interface CompetencyStudent {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  classSectionId?: string | null;
+  riskLevel: 'High' | 'Medium' | 'Low';
+  engagementScore: number;
+  avgQuizScore: number;
+  weakestTopic: string;
 }
 
 type SortField = 'name' | 'avgQuizScore' | 'riskLevel' | 'engagementScore';
@@ -55,15 +68,53 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
   const [importedTopics, setImportedTopics] = useState<CourseMaterialTopicMapTopic[]>([]);
   const [importedTopicsLoading, setImportedTopicsLoading] = useState(false);
   const [importedTopicsWarning, setImportedTopicsWarning] = useState('');
+  const [studentsWarning, setStudentsWarning] = useState('');
+
+  const mapImportedStudentToCompetencyStudent = useCallback((student: ImportedStudentOverviewItem): CompetencyStudent => ({
+    id: student.id,
+    name: student.name,
+    email: student.email || '',
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+    classSectionId: student.classSectionId ?? null,
+    riskLevel: student.riskLevel || 'Low',
+    engagementScore: student.engagementScore,
+    avgQuizScore: student.avgQuizScore,
+    weakestTopic: student.weakestTopic || 'Foundational Skills',
+  }), []);
 
   // ─── Load students ────────────────────────────────────────
 
   const loadStudents = useCallback(async () => {
     if (!currentUser?.uid) return;
     setLoading(true);
+    setStudentsWarning('');
     try {
       const students = await getStudentsByTeacher(currentUser.uid);
-      setRows(students.map(s => ({
+      let normalizedStudents: CompetencyStudent[] = students.map((student) => ({
+        id: student.id,
+        name: student.name,
+        email: student.email || '',
+        avatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+        classSectionId: student.classSectionId ?? null,
+        riskLevel: student.riskLevel,
+        engagementScore: student.engagementScore,
+        avgQuizScore: student.avgQuizScore,
+        weakestTopic: student.weakestTopic || 'Foundational Skills',
+      }));
+
+      if (classSectionId) {
+        normalizedStudents = normalizedStudents.filter((student) => student.classSectionId === classSectionId);
+      }
+
+      if (normalizedStudents.length === 0) {
+        const importedOverview = await apiService.getImportedClassOverview({ classSectionId, limit: 3000 });
+        if (importedOverview.warnings.length > 0) {
+          setStudentsWarning(importedOverview.warnings.join(' '));
+        }
+        normalizedStudents = importedOverview.students.map(mapImportedStudentToCompetencyStudent);
+      }
+
+      setRows(normalizedStudents.map(s => ({
         student: s,
         competency: null,
         loading: false,
@@ -72,10 +123,11 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
     } catch (err) {
       console.error('Failed to load students:', err);
       setRows([]);
+      setStudentsWarning('Student competency roster is unavailable right now.');
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.uid]);
+  }, [classSectionId, currentUser?.uid, mapImportedStudentToCompetencyStudent]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
 
@@ -153,7 +205,7 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
       const avg = row?.student.avgQuizScore || 50;
 
       const fallback: StudentCompetencyResponse = {
-        lrn: studentId,
+        studentId,
         competencies: [
           { topic: row?.student.weakestTopic || 'Unknown', efficiencyScore: Math.max(15, avg - 20), competencyLevel: avg < 50 ? 'beginner' : 'developing', perspective: `Student needs focused practice in ${row?.student.weakestTopic}.` },
           { topic: 'Functions and Relations', efficiencyScore: Math.min(95, avg + 10), competencyLevel: avg > 70 ? 'proficient' : 'developing', perspective: 'Shows solid understanding of function concepts.' },
@@ -312,6 +364,7 @@ const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: st
             : 'No imported topics found for this class context'}
         </p>
         {importedTopicsWarning && <p className="text-[11px] text-amber-700 mt-1">{importedTopicsWarning}</p>}
+        {studentsWarning && <p className="text-[11px] text-amber-700 mt-1">{studentsWarning}</p>}
         {importedTopicTitles.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {importedTopicTitles.map((topic) => (

@@ -30,6 +30,7 @@ import {
 import {
   apiService,
   ApiError,
+  type ImportedClassOverviewResponse,
   type ImportGroundedAccessAuditResponse,
   type CourseMaterialArtifactSummary,
   type ImportGroundedTelemetrySummaryResponse,
@@ -62,6 +63,7 @@ type View =
 interface ClassView {
   id: string;
   name: string;
+  classSectionId?: string;
   schedule: string;
   studentCount: number;
   avgScore: number;
@@ -94,6 +96,7 @@ function toClassView(c: Classroom): ClassView {
   return {
     id: c.id,
     name: c.name,
+    classSectionId: c.classSectionId,
     schedule: c.schedule,
     studentCount: c.studentCount,
     avgScore: c.avgScore,
@@ -125,6 +128,44 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     classSectionId: s.classSectionId,
     lastActive: lastActiveStr,
     struggles: s.struggles || [],
+    engagementScore: s.engagementScore,
+    attendance: s.attendance,
+    assignmentCompletion: s.assignmentCompletion,
+  };
+}
+
+function toImportedClassView(c: ImportedClassOverviewResponse['classrooms'][number]): ClassView {
+  const riskLevel = c.atRiskCount >= 5 ? 'high' : c.atRiskCount >= 2 ? 'medium' : 'low';
+  return {
+    id: c.id,
+    name: c.name,
+    classSectionId: c.classSectionId || undefined,
+    schedule: c.schedule || 'Mon-Fri',
+    studentCount: c.studentCount,
+    avgScore: c.avgScore,
+    atRiskCount: c.atRiskCount,
+    riskLevel,
+  };
+}
+
+function toImportedStudentView(s: ImportedClassOverviewResponse['students'][number]): StudentView {
+  const riskLevel = (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
+  const className = s.className || [s.grade, s.section].filter(Boolean).join(' - ') || 'Imported Class';
+  return {
+    id: s.id,
+    lrn: s.lrn || undefined,
+    name: s.name,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
+    avgScore: s.avgQuizScore,
+    riskLevel,
+    weakestTopic: s.weakestTopic || 'Foundational Skills',
+    classroomId: s.classSectionId || className,
+    className,
+    grade: s.grade || className.split(' - ')[0] || 'Grade 11',
+    section: s.section || className.split(' - ')[1] || 'Section A',
+    classSectionId: s.classSectionId || undefined,
+    lastActive: 'Recently imported',
+    struggles: [s.weakestTopic || 'Foundational Skills'],
     engagementScore: s.engagementScore,
     attendance: s.attendance,
     assignmentCompletion: s.assignmentCompletion,
@@ -166,6 +207,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
+  const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
 
   // Fetch classrooms and students from Firebase
   useEffect(() => {
@@ -178,15 +220,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       setDataLoading(true);
       try {
         const classrooms = await getClassroomsByTeacher(teacherId);
-        const classViews = classrooms.map(toClassView);
-        setClasses(classViews);
+        let classViews = classrooms.map(toClassView);
 
         // Build a map of classroomId -> name
         const classNameMap: Record<string, string> = {};
         classrooms.forEach((c) => { classNameMap[c.id] = c.name; });
 
         const allStudents = await getStudentsByTeacher(teacherId);
-        const studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
+        let studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
+
+        if (classViews.length === 0 || studentViews.length === 0) {
+          try {
+            const imported = await apiService.getImportedClassOverview({ limit: 3000 });
+            if (imported.warnings.length > 0) {
+              console.warn('Imported class overview warnings:', imported.warnings.join(' '));
+            }
+
+            if (classViews.length === 0 && imported.classrooms.length > 0) {
+              classViews = imported.classrooms.map(toImportedClassView);
+            }
+
+            if (studentViews.length === 0 && imported.students.length > 0) {
+              studentViews = imported.students.map(toImportedStudentView);
+            }
+          } catch (importedErr) {
+            console.warn('Imported class overview fallback unavailable:', importedErr);
+          }
+        }
+
+        setClasses(classViews);
         setStudents(studentViews);
 
         // Subscribe to live activity
@@ -218,7 +280,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     return () => {
       if (unsubActivity) unsubActivity();
     };
-  }, [currentUser]);
+  }, [currentUser, dataRefreshNonce]);
 
   // Fetch AI daily insight when students data is available
   useEffect(() => {
@@ -293,6 +355,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   };
 
   const teacherName = userProfile?.name || 'Teacher';
+  const selectedClassSectionId = useMemo(() => {
+    if (!selectedClass) return undefined;
+    if (selectedClass.classSectionId) return selectedClass.classSectionId;
+    const [grade = '', section = ''] = selectedClass.name.split(' - ');
+    const computed = buildClassSectionId(grade, section);
+    return computed || undefined;
+  }, [selectedClass]);
 
   if (dataLoading) {
     return (
@@ -547,18 +616,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onBack={handleBackToAnalytics}
               />
             )}
-            {activeView === 'topic_mastery' && <TopicMasteryView />}
+            {activeView === 'topic_mastery' && <TopicMasteryView classSectionId={selectedClassSectionId} />}
             {activeView === 'competency' && (
               <StudentCompetencyTable
-                classSectionId={selectedClass ? buildClassSectionId(selectedClass.name.split(' - ')[0] || '', selectedClass.name.split(' - ')[1] || '') : undefined}
+                classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
               />
             )}
             {activeView === 'import' && (
               <ImportView
                 onEditRecords={() => setActiveView('edit_records')}
-                classSectionId={selectedClass ? buildClassSectionId(selectedClass.name.split(' - ')[0] || '', selectedClass.name.split(' - ')[1] || '') : undefined}
+                classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
+                onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
               />
             )}
             {activeView === 'notifications' && (
@@ -1609,7 +1679,8 @@ const ImportView: React.FC<{
   onEditRecords: () => void;
   classSectionId?: string;
   className?: string;
-}> = ({ onEditRecords, classSectionId, className }) => {
+  onDataChanged?: () => void;
+}> = ({ onEditRecords, classSectionId, className, onDataChanged }) => {
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
@@ -1653,7 +1724,11 @@ const ImportView: React.FC<{
       setMaterialsWarnings(response.warnings || []);
     } catch (err) {
       setRecentMaterials([]);
-      setMaterialsWarnings([err instanceof Error ? err.message : 'Unable to load recent course materials.']);
+      if (err instanceof ApiError && err.status === 403) {
+        setMaterialsWarnings(['Recent course materials are not available for this role.']);
+      } else {
+        setMaterialsWarnings([err instanceof Error ? err.message : 'Unable to load recent course materials.']);
+      }
     }
   }, [classSectionId]);
 
@@ -1682,7 +1757,11 @@ const ImportView: React.FC<{
     } catch (err) {
       setRiskMonitorSummary(null);
       setRecentRiskJobs([]);
-      setRiskMonitorError(err instanceof Error ? err.message : 'Unable to load risk refresh monitor.');
+      if (err instanceof ApiError && err.status === 403) {
+        setRiskMonitorError('Risk refresh monitoring is not available for this role.');
+      } else {
+        setRiskMonitorError(err instanceof Error ? err.message : 'Unable to load risk refresh monitor.');
+      }
     } finally {
       setRiskMonitorLoading(false);
     }
@@ -1703,7 +1782,11 @@ const ImportView: React.FC<{
       }
     } catch (err) {
       setTelemetrySummary(null);
-      setTelemetryError(err instanceof Error ? err.message : 'Unable to load telemetry summary.');
+      if (err instanceof ApiError && err.status === 403) {
+        setTelemetryError('Telemetry summary is not available for this role.');
+      } else {
+        setTelemetryError(err instanceof Error ? err.message : 'Unable to load telemetry summary.');
+      }
     } finally {
       setTelemetryLoading(false);
     }
@@ -1724,7 +1807,11 @@ const ImportView: React.FC<{
       }
     } catch (err) {
       setAuditSummary(null);
-      setAuditError(err instanceof Error ? err.message : 'Unable to load access audit events.');
+      if (err instanceof ApiError && err.status === 403) {
+        setAuditError('Access audit is not available for this role.');
+      } else {
+        setAuditError(err instanceof Error ? err.message : 'Unable to load access audit events.');
+      }
     } finally {
       setAuditLoading(false);
     }
@@ -1750,7 +1837,11 @@ const ImportView: React.FC<{
       URL.revokeObjectURL(url);
       toast.success('Access audit CSV exported');
     } catch (err) {
-      setAuditError(err instanceof Error ? err.message : 'Unable to export access audit CSV.');
+      if (err instanceof ApiError && err.status === 403) {
+        setAuditError('Access audit export is not available for this role.');
+      } else {
+        setAuditError(err instanceof Error ? err.message : 'Unable to export access audit CSV.');
+      }
       toast.error('Access audit export failed');
     } finally {
       setAuditExporting(false);
@@ -1758,11 +1849,16 @@ const ImportView: React.FC<{
   }, [classSectionId]);
 
   useEffect(() => {
-    void loadRiskRefreshMonitor();
-    void loadRecentMaterials();
-    void loadTelemetrySummary();
-    void loadAccessAuditSummary();
-  }, [loadRecentMaterials, loadRiskRefreshMonitor, loadTelemetrySummary, loadAccessAuditSummary]);
+    setRecentMaterials([]);
+    setMaterialsWarnings([]);
+    setRiskMonitorSummary(null);
+    setRecentRiskJobs([]);
+    setRiskMonitorError('');
+    setTelemetrySummary(null);
+    setTelemetryError('');
+    setAuditSummary(null);
+    setAuditError('');
+  }, [classSectionId]);
 
   const handleFileUpload = async (file: File) => {
     setUploadingClassRecords(true);
@@ -1778,6 +1874,7 @@ const ImportView: React.FC<{
           ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
           : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
         setUploadResult(`Imported ${result.students.length} students.${riskRefreshText} Column mapping: ${JSON.stringify(result.columnMapping)}`);
+        onDataChanged?.();
         await loadRiskRefreshMonitor();
       }
     } catch (err: unknown) {
@@ -1803,6 +1900,7 @@ const ImportView: React.FC<{
         setUploadResult(
           `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s).`,
         );
+        onDataChanged?.();
         await loadRecentMaterials();
       }
     } catch (err: unknown) {
@@ -1967,7 +2065,7 @@ const ImportView: React.FC<{
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#5a6578]">No course materials found for this scope yet.</p>
+            <p className="text-sm text-[#5a6578]">No course materials loaded yet. Click Refresh to fetch data for this scope.</p>
           )}
 
           {materialsWarnings.length > 0 && (
@@ -2051,7 +2149,7 @@ const ImportView: React.FC<{
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#5a6578]">No risk refresh jobs found yet.</p>
+            <p className="text-sm text-[#5a6578]">No risk refresh data loaded yet. Click Refresh to fetch monitor data.</p>
           )}
 
           {riskMonitorError && (
@@ -2164,7 +2262,7 @@ const ImportView: React.FC<{
           )}
 
           {!telemetrySummary && !telemetryLoading && (
-            <p className="text-sm text-[#5a6578]">No telemetry summary available yet for this scope.</p>
+            <p className="text-sm text-[#5a6578]">No telemetry summary loaded yet. Click Refresh to fetch telemetry.</p>
           )}
 
           {telemetryError && (
@@ -2241,7 +2339,7 @@ const ImportView: React.FC<{
           )}
 
           {!auditSummary && !auditLoading && (
-            <p className="text-sm text-[#5a6578]">No access audit summary available yet for this scope.</p>
+            <p className="text-sm text-[#5a6578]">No access audit summary loaded yet. Click Refresh to fetch access audit data.</p>
           )}
 
           {auditError && (

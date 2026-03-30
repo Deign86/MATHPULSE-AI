@@ -260,10 +260,14 @@ class TestChatEndpoint:
 
 class TestHFChatTransport:
     @patch("main.http_requests.post")
-    def test_call_hf_chat_uses_qwen_endpoint_and_disables_tools(self, mock_post):
+    def test_call_hf_chat_uses_router_chat_completions(self, mock_post):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [{"generated_text": "x = 2 or x = 3"}]
+        mock_response.json.return_value = {
+            "choices": [
+                {"message": {"content": "x = 2 or x = 3"}}
+            ]
+        }
         mock_post.return_value = mock_response
 
         result = main_module.call_hf_chat(
@@ -278,9 +282,11 @@ class TestHFChatTransport:
         endpoint = call_args.args[0]
         payload = call_args.kwargs["json"]
 
-        assert endpoint == "https://api-inference.huggingface.co/models/Qwen%2FQwen2.5-Math-7B-Instruct"
-        assert payload["parameters"]["tool_choice"] == "none"
-        assert "tools" not in payload
+        assert endpoint == "https://router.huggingface.co/v1/chat/completions"
+        assert isinstance(payload["model"], str)
+        assert payload["model"]
+        assert payload["stream"] is False
+        assert isinstance(payload["messages"], list)
 
 
 # ─── Risk Prediction ──────────────────────────────────────────
@@ -466,6 +472,25 @@ class TestQuizGeneration:
         })
         assert response.status_code == 422
 
+
+class TestClassRecordImportMapping:
+    def test_sanitize_column_mapping_drops_none_and_unknown_fields(self):
+        raw_mapping = {
+            "Student Name": "name",
+            "Grade Level": None,
+            "Section": "",
+            "General Mathematics": None,
+            "Custom": "not_a_supported_field",
+            "Average": "avgQuizScore",
+        }
+
+        sanitized = main_module._sanitize_column_mapping(raw_mapping)
+
+        assert sanitized == {
+            "Student Name": "name",
+            "Average": "avgQuizScore",
+        }
+
     @patch("main.call_hf_chat")
     def test_generate_quiz_bad_llm_output(self, mock_chat):
         mock_chat.return_value = "This is not valid JSON at all."
@@ -531,6 +556,59 @@ class TestQuizGeneration:
         })
 
         assert response.status_code == 422
+
+
+class TestAsyncGenerationTasks:
+    @patch("main.asyncio.create_task")
+    def test_quiz_generate_async_submit_status_list_cancel(self, mock_create_task):
+        main_module._async_tasks.clear()
+        mock_create_task.side_effect = lambda coro: coro.close()
+        response = client.post("/api/quiz/generate-async", json={
+            "topics": ["Algebra"],
+            "gradeLevel": "Grade 11",
+            "numQuestions": 1,
+        })
+
+        assert response.status_code == 200
+        payload = response.json()
+        task_id = payload["taskId"]
+        assert payload["status"] == "queued"
+        assert mock_create_task.called
+
+        status_response = client.get(f"/api/tasks/{task_id}")
+        assert status_response.status_code == 200
+        status_payload = status_response.json()
+        assert status_payload["taskId"] == task_id
+        assert status_payload["status"] in {"queued", "running", "cancelling", "cancelled", "completed", "failed"}
+
+        list_response = client.get("/api/tasks?limit=20")
+        assert list_response.status_code == 200
+        list_payload = list_response.json()
+        assert list_payload["count"] >= 1
+        assert any(item["taskId"] == task_id for item in list_payload["tasks"])
+
+        cancel_response = client.post(f"/api/tasks/{task_id}/cancel")
+        assert cancel_response.status_code == 200
+        cancel_payload = cancel_response.json()
+        assert cancel_payload["taskId"] == task_id
+        assert cancel_payload["status"] in {"cancelled", "cancelling"}
+
+    def test_inference_metrics_requires_admin(self):
+        response = client.get("/api/ops/inference-metrics")
+        assert response.status_code == 403
+
+    @patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+        "uid": "admin-uid",
+        "email": "admin@example.com",
+        "role": "admin",
+    })
+    def test_inference_metrics_admin_success(self, _mock_verify):
+        response = client.get("/api/ops/inference-metrics")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert "metrics" in payload
+        assert "requests_total" in payload["metrics"]
 
 
 # ─── Calculator ────────────────────────────────────────────────

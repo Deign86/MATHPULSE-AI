@@ -20,15 +20,16 @@ import math
 import hashlib
 import logging
 import traceback
+import urllib.parse
 from typing import List, Optional, Dict, Any, Set, Tuple, cast
-from collections import Counter
+from collections import Counter, defaultdict
 from threading import Lock
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 import time
@@ -131,8 +132,8 @@ HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct"
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
 
-# Dedicated quiz model override (defaults to Qwen2.5 math instructor model).
-HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
+# Dedicated quiz model override.
+HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -149,6 +150,7 @@ ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true
 ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_ASYNC_GENERATION = os.getenv("ENABLE_ASYNC_GENERATION", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_LLM_RISK_RECOMMENDATIONS = os.getenv("ENABLE_LLM_RISK_RECOMMENDATIONS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ASYNC_TASK_TTL_SECONDS = int(os.getenv("ASYNC_TASK_TTL_SECONDS", "3600"))
 ASYNC_TASK_MAX_ITEMS = int(os.getenv("ASYNC_TASK_MAX_ITEMS", "400"))
 LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
@@ -156,6 +158,8 @@ LESSON_SOURCE_MIN_TOPICS = int(os.getenv("LESSON_SOURCE_MIN_TOPICS", "1"))
 LESSON_VALIDATION_MIN_SCORE = float(os.getenv("LESSON_VALIDATION_MIN_SCORE", "0.7"))
 ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY = os.getenv("ENABLE_FALLBACK_FIREBASE_TOKEN_VERIFY", "true").strip().lower() in {"1", "true", "yes", "on"}
 FIREBASE_AUTH_PROJECT_ID = os.getenv("FIREBASE_AUTH_PROJECT_ID", "mathpulse-ai-2026").strip()
+FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+FIREBASE_SERVICE_ACCOUNT_FILE = os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE", "").strip()
 FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
     value.strip()
     for value in os.getenv("FIREBASE_AUTH_PROJECT_ALLOWLIST", "").split(",")
@@ -229,6 +233,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/ops/inference-metrics": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
+    "/api/analytics/imported-class-overview": TEACHER_OR_ADMIN,
     "/api/analytics/topic-mastery": TEACHER_OR_ADMIN,
     "/api/automation/diagnostic-completed": ADMIN_ONLY,
     "/api/automation/quiz-submitted": ADMIN_ONLY,
@@ -262,6 +267,9 @@ class AuthenticatedUser(BaseModel):
 _firebase_ready = False
 _role_cache: Dict[str, Dict[str, Any]] = {}
 _ROLE_CACHE_TTL_SECONDS = 60
+_firestore_role_lookup_warning_emitted = False
+_firestore_audit_lookup_warning_emitted = False
+_firestore_topics_lookup_warning_emitted = False
 _rate_limit_buckets: Dict[str, List[float]] = {}
 _async_tasks: Dict[str, Dict[str, Any]] = {}
 _async_tasks_lock = Lock()
@@ -278,6 +286,14 @@ def _snapshot_exists(snapshot: Any) -> bool:
     return bool(getattr(snapshot, "exists", False))
 
 
+def _is_adc_missing_error(err: Exception) -> bool:
+    message = str(err).lower()
+    return (
+        "default credentials were not found" in message
+        or "application default credentials" in message
+    )
+
+
 def _init_firebase_admin() -> None:
     global _firebase_ready
     if _firebase_ready:
@@ -289,9 +305,21 @@ def _init_firebase_admin() -> None:
     try:
         if not firebase_admin._apps:  # type: ignore[attr-defined]
             init_options: Dict[str, Any] = {}
+            credentials_obj: Optional[Any] = None
             if FIREBASE_AUTH_PROJECT_ID:
                 init_options["projectId"] = FIREBASE_AUTH_PROJECT_ID
-            if init_options:
+
+            if FIREBASE_SERVICE_ACCOUNT_JSON:
+                service_account_payload = json.loads(FIREBASE_SERVICE_ACCOUNT_JSON)
+                credentials_obj = cast(Any, firebase_admin).credentials.Certificate(service_account_payload)
+            elif FIREBASE_SERVICE_ACCOUNT_FILE:
+                credentials_obj = cast(Any, firebase_admin).credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_FILE)
+
+            if credentials_obj and init_options:
+                firebase_admin.initialize_app(credentials_obj, options=init_options)  # type: ignore[union-attr]
+            elif credentials_obj:
+                firebase_admin.initialize_app(credentials_obj)  # type: ignore[union-attr]
+            elif init_options:
                 firebase_admin.initialize_app(options=init_options)  # type: ignore[union-attr]
             else:
                 firebase_admin.initialize_app()  # type: ignore[union-attr]
@@ -301,7 +329,11 @@ def _init_firebase_admin() -> None:
         else:
             logger.info("Firebase Admin SDK initialized for API auth verification")
     except Exception as e:
-        logger.warning(f"Firebase Admin SDK init failed: {e}")
+        logger.warning(
+            "Firebase Admin SDK init failed: %s. Configure FIREBASE_SERVICE_ACCOUNT_JSON "
+            "or FIREBASE_SERVICE_ACCOUNT_FILE, or set GOOGLE_APPLICATION_CREDENTIALS.",
+            e,
+        )
 
 
 def _get_role_from_firestore(uid: str) -> Optional[str]:
@@ -320,12 +352,84 @@ def _get_role_from_firestore(uid: str) -> Optional[str]:
             _role_cache[uid] = {"role": role, "ts": now}
             return role
     except Exception as e:
-        logger.warning(f"Failed to resolve role from Firestore for {uid}: {e}")
+        _warn_firestore_role_lookup_once(f"Failed to resolve role from Firestore for {uid}: {e}")
 
     return None
 
 
-def _resolve_user_role(decoded: Dict[str, Any]) -> str:
+def _warn_firestore_role_lookup_once(message: str) -> None:
+    global _firestore_role_lookup_warning_emitted
+    if _firestore_role_lookup_warning_emitted:
+        return
+    logger.warning(message)
+    _firestore_role_lookup_warning_emitted = True
+
+
+def _warn_firestore_audit_lookup_once(message: str) -> None:
+    global _firestore_audit_lookup_warning_emitted
+    if _firestore_audit_lookup_warning_emitted:
+        return
+    logger.warning(message)
+    _firestore_audit_lookup_warning_emitted = True
+
+
+def _warn_firestore_topics_lookup_once(message: str) -> None:
+    global _firestore_topics_lookup_warning_emitted
+    if _firestore_topics_lookup_warning_emitted:
+        return
+    logger.warning(message)
+    _firestore_topics_lookup_warning_emitted = True
+
+
+def _extract_role_from_firestore_rest_payload(payload: Dict[str, Any]) -> Optional[str]:
+    fields = payload.get("fields")
+    if not isinstance(fields, dict):
+        return None
+    role_field = fields.get("role")
+    if not isinstance(role_field, dict):
+        return None
+
+    # Firestore REST encodes field values by type, e.g. {"stringValue": "teacher"}.
+    role_value = role_field.get("stringValue")
+    if isinstance(role_value, str):
+        normalized = role_value.strip().lower()
+        if normalized in VALID_ROLES:
+            return normalized
+    return None
+
+
+def _get_role_from_firestore_rest(uid: str, firebase_id_token: str, project_id: str) -> Optional[str]:
+    if not uid or not firebase_id_token or not project_id:
+        return None
+
+    role_doc_url = (
+        "https://firestore.googleapis.com/v1/"
+        f"projects/{project_id}/databases/(default)/documents/users/{uid}"
+        "?mask.fieldPaths=role"
+    )
+
+    try:
+        response = http_requests.get(
+            role_doc_url,
+            headers={"Authorization": f"Bearer {firebase_id_token}"},
+            timeout=5,
+        )
+        if response.status_code == 200:
+            payload = cast(Dict[str, Any], response.json())
+            return _extract_role_from_firestore_rest_payload(payload)
+        if response.status_code not in {401, 403, 404}:
+            logger.info(
+                "Firestore REST role lookup returned non-success status %s for uid=%s",
+                response.status_code,
+                uid,
+            )
+    except Exception as rest_error:
+        logger.info(f"Firestore REST role lookup failed for {uid}: {rest_error}")
+
+    return None
+
+
+def _resolve_user_role(decoded: Dict[str, Any], firebase_id_token: Optional[str] = None) -> str:
     role_claim = decoded.get("role")
     if isinstance(role_claim, str) and role_claim in VALID_ROLES:
         return role_claim
@@ -335,6 +439,14 @@ def _resolve_user_role(decoded: Dict[str, Any]) -> str:
         firestore_role = _get_role_from_firestore(uid)
         if isinstance(firestore_role, str) and firestore_role in VALID_ROLES:
             return firestore_role
+
+        if firebase_id_token:
+            token_project_id = str(decoded.get("aud", "")).strip()
+            project_id = FIREBASE_AUTH_PROJECT_ID or token_project_id
+            firestore_rest_role = _get_role_from_firestore_rest(uid, firebase_id_token, project_id)
+            if isinstance(firestore_rest_role, str) and firestore_rest_role in VALID_ROLES:
+                _role_cache[uid] = {"role": firestore_rest_role, "ts": time.time()}
+                return firestore_rest_role
 
     return "student"
 
@@ -589,7 +701,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not uid:
             return JSONResponse(status_code=401, content={"detail": "Token missing uid"})
 
-        role = _resolve_user_role(decoded)
+        role = _resolve_user_role(decoded, token)
         request.state.user = AuthenticatedUser(
             uid=uid,
             email=decoded.get("email"),
@@ -765,7 +877,7 @@ def _strip_repetition(text: str, min_chunk: int = 40) -> str:
 
 
 def _build_hf_inference_url(model_id: str) -> str:
-    return f"https://api-inference.huggingface.co/models/{model_id}"
+    return f"https://router.huggingface.co/hf-inference/models/{model_id}"
 
 
 def _messages_to_inference_prompt(messages: List[Dict[str, str]]) -> str:
@@ -1546,6 +1658,71 @@ def _basic_risk_top_factors(student_data: StudentRiskData) -> List[str]:
     return factors[:3]
 
 
+def _parse_recommendation_lines(text: str, *, max_items: int = 5) -> List[str]:
+    lines: List[str] = []
+    for raw_line in (text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*\u2022\d\.\)\s]+", "", line).strip()
+        if not line:
+            continue
+        if len(line) < 8:
+            continue
+        lines.append(line)
+
+    if not lines and text.strip():
+        chunks = [chunk.strip() for chunk in re.split(r"[\n;]", text) if chunk.strip()]
+        lines = chunks
+
+    deduped: List[str] = []
+    seen: Set[str] = set()
+    for line in lines:
+        key = line.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(line)
+        if len(deduped) >= max_items:
+            break
+    return deduped
+
+
+def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: EnhancedRiskPrediction) -> List[str]:
+    prompt = (
+        "Generate concise teacher interventions for this student risk profile. "
+        "Return plain text with one recommendation per line. Avoid JSON and markdown.\n\n"
+        f"risk_level: {result.riskLevel}\n"
+        f"risk_score: {result.risk_score:.2f}\n"
+        f"engagementScore: {data.engagementScore:.1f}\n"
+        f"avgQuizScore: {data.avgQuizScore:.1f}\n"
+        f"attendance: {data.attendance:.1f}\n"
+        f"assignmentCompletion: {data.assignmentCompletion:.1f}\n"
+        f"streak: {int(data.streak or 0)}\n"
+        f"daysSinceLastActivity: {int(data.daysSinceLastActivity or 0)}\n"
+        f"top_factors: {', '.join(result.top_factors)}"
+    )
+
+    content = call_hf_chat(
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a student success specialist. Provide practical, measurable, and age-appropriate "
+                    "interventions for Grade 11-12 students."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=260,
+        temperature=0.2,
+        top_p=0.9,
+        task_type="risk_narrative",
+        timeout=120,
+    )
+    return _parse_recommendation_lines(content, max_items=5)
+
+
 @app.post("/api/predict-risk", response_model=RiskPrediction)
 async def predict_risk(student_data: StudentRiskData):
     """Student risk prediction using facebook/bart-large-mnli zero-shot classification"""
@@ -1822,6 +1999,24 @@ def _fallback_column_mapping(columns: List[str]) -> Dict[str, str]:
     return mapping
 
 
+def _sanitize_column_mapping(raw_mapping: Any) -> Dict[str, str]:
+    """Keep only non-empty string->known-field entries from AI mapping output."""
+    if not isinstance(raw_mapping, dict):
+        return {}
+
+    sanitized: Dict[str, str] = {}
+    for raw_col, raw_field in raw_mapping.items():
+        column_name = _stringify_cell(raw_col)
+        mapped_field = _stringify_cell(raw_field)
+        if not column_name or not mapped_field:
+            continue
+        if mapped_field not in CLASS_RECORD_REQUIRED_FIELDS:
+            continue
+        sanitized[column_name] = mapped_field
+
+    return sanitized
+
+
 def _build_record_identity(
     student: Dict[str, Any],
     unknown_fields: Dict[str, Any],
@@ -2046,6 +2241,242 @@ def _normalize_class_records(
     }
 
 
+def _slugify_class_token(value: str) -> str:
+    token = re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower())
+    return re.sub(r"_+", "_", token).strip("_")
+
+
+def _resolve_import_class_context(
+    *,
+    class_section_id: Optional[str],
+    class_name: Optional[str],
+) -> Tuple[str, str, str, str]:
+    normalized_section_id = (class_section_id or "").strip().lower()
+    normalized_class_name = (class_name or "").strip()
+
+    grade = "Grade 11"
+    section = "Section A"
+
+    if normalized_class_name and " - " in normalized_class_name:
+        parts = [part.strip() for part in normalized_class_name.split(" - ", 1)]
+        if parts[0]:
+            grade = parts[0]
+        if len(parts) > 1 and parts[1]:
+            section = parts[1]
+
+    if normalized_section_id:
+        section_tokens = [token for token in normalized_section_id.split("_") if token]
+        if section_tokens:
+            if section_tokens[0].startswith("grade"):
+                suffix = section_tokens[0].replace("grade", "").strip("_")
+                if suffix:
+                    grade = f"Grade {suffix}"
+            elif section_tokens[0].isdigit():
+                grade = f"Grade {section_tokens[0]}"
+            elif "grade" in section_tokens[0]:
+                grade = section_tokens[0].replace("_", " ").title()
+            if len(section_tokens) > 1:
+                section = " ".join(token.capitalize() for token in section_tokens[1:])
+            elif len(section_tokens) == 1 and section_tokens[0] and section_tokens[0] != "grade":
+                section = section or "Section A"
+
+    if not normalized_section_id:
+        normalized_section_id = _slugify_class_token(f"{grade}_{section}") or "grade_11_section_a"
+
+    resolved_name = normalized_class_name or f"{grade} - {section}"
+    return normalized_section_id, resolved_name, grade, section
+
+
+def _derive_risk_level(avg_quiz: float, attendance: float, engagement: float) -> str:
+    if avg_quiz < 60 or attendance < 75 or engagement < 55:
+        return "High"
+    if avg_quiz < 75 or attendance < 85 or engagement < 70:
+        return "Medium"
+    return "Low"
+
+
+def _pick_weakest_topic(unknown_fields: Dict[str, Any]) -> str:
+    for key, value in (unknown_fields or {}).items():
+        if any(token in key for token in ("weak", "topic", "skill", "competency")):
+            topic = _canonicalize_topic_label(str(value or "").strip())
+            if topic:
+                return topic
+    return "Foundational Skills"
+
+
+def _sync_imported_students_to_teacher_dashboard(
+    request: Request,
+    *,
+    normalized_rows: List[Dict[str, Any]],
+    class_section_id: Optional[str],
+    class_name: Optional[str],
+) -> Dict[str, Any]:
+    if not (_firebase_ready and firebase_firestore):
+        return {
+            "synced": False,
+            "createdStudents": 0,
+            "updatedStudents": 0,
+            "classroomsTouched": 0,
+            "classroomId": None,
+            "classSectionId": (class_section_id or "").strip().lower() or None,
+            "warning": "Firestore unavailable; dashboard sync skipped.",
+        }
+
+    user = get_current_user(request)
+    resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
+        class_section_id=class_section_id,
+        class_name=class_name,
+    )
+
+    by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
+    for row in normalized_rows:
+        name = str(row.get("name") or "").strip()
+        email = str(row.get("email") or "").strip().lower()
+        lrn = str(row.get("lrn") or "").strip()
+        identity = lrn or email or re.sub(r"\s+", "_", name.lower())
+        if not identity:
+            continue
+
+        state = by_identity.get(identity)
+        if not state:
+            state = {
+                "name": name,
+                "email": email,
+                "lrn": lrn,
+                "scores": [],
+                "attendance": [],
+                "engagement": [],
+                "completion": [],
+                "weakestTopic": "",
+            }
+            by_identity[identity] = state
+
+        avg_quiz = float(row.get("avgQuizScore") or 0.0)
+        attendance = float(row.get("attendance") or 0.0)
+        engagement = float(row.get("engagementScore") or 0.0)
+        completion = float(row.get("assignmentCompletion") or 0.0)
+
+        state["scores"].append(avg_quiz)
+        state["attendance"].append(attendance)
+        state["engagement"].append(engagement)
+        state["completion"].append(completion)
+        if not state.get("weakestTopic"):
+            state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
+
+        if name and not state.get("name"):
+            state["name"] = name
+        if email and not state.get("email"):
+            state["email"] = email
+        if lrn and not state.get("lrn"):
+            state["lrn"] = lrn
+
+    if not by_identity:
+        return {
+            "synced": False,
+            "createdStudents": 0,
+            "updatedStudents": 0,
+            "classroomsTouched": 0,
+            "classroomId": resolved_section_id,
+            "classSectionId": resolved_section_id,
+            "warning": "No normalized student records were available for dashboard sync.",
+        }
+
+    client = firebase_firestore.client()
+    classrooms_ref = client.collection("classrooms")
+    students_ref = client.collection("managedStudents")
+
+    classroom_doc_id = resolved_section_id or f"imported_{hashlib.sha1((user.uid + resolved_class_name).encode('utf-8')).hexdigest()[:12]}"
+    classroom_ref = classrooms_ref.document(classroom_doc_id)
+    classroom_snapshot = cast(Any, classroom_ref.get())
+    existing_classroom = _snapshot_to_dict(classroom_snapshot) if _snapshot_exists(classroom_snapshot) else {}
+
+    created_students = 0
+    updated_students = 0
+    risk_high_count = 0
+    total_score = 0.0
+
+    for identity, aggregate in by_identity.items():
+        scores = aggregate.get("scores") or [0.0]
+        attendance_values = aggregate.get("attendance") or [0.0]
+        engagement_values = aggregate.get("engagement") or [0.0]
+        completion_values = aggregate.get("completion") or [0.0]
+
+        avg_quiz = float(sum(scores) / max(len(scores), 1))
+        avg_attendance = float(sum(attendance_values) / max(len(attendance_values), 1))
+        avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
+        avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
+
+        risk_level = _derive_risk_level(avg_quiz, avg_attendance, avg_engagement)
+        if risk_level == "High":
+            risk_high_count += 1
+        total_score += avg_quiz
+
+        fallback_name = str(aggregate.get("name") or "Imported Student").strip() or "Imported Student"
+        avatar_seed = urllib.parse.quote(fallback_name)
+        student_doc_id = hashlib.sha1(f"{user.uid}|{identity}".encode("utf-8")).hexdigest()[:36]
+        student_ref = students_ref.document(student_doc_id)
+        student_snapshot = cast(Any, student_ref.get())
+
+        payload: Dict[str, Any] = {
+            "teacherId": user.uid,
+            "name": fallback_name,
+            "email": str(aggregate.get("email") or ""),
+            "lrn": str(aggregate.get("lrn") or ""),
+            "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
+            "grade": grade,
+            "section": section,
+            "classSectionId": resolved_section_id,
+            "classroomId": classroom_doc_id,
+            "riskLevel": risk_level,
+            "engagementScore": round(avg_engagement, 1),
+            "avgQuizScore": round(avg_quiz, 1),
+            "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
+            "attendance": round(avg_attendance, 1),
+            "assignmentCompletion": round(avg_completion, 1),
+            "struggles": [str(aggregate.get("weakestTopic") or "Foundational Skills")],
+            "lastActive": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+
+        if _snapshot_exists(student_snapshot):
+            updated_students += 1
+        else:
+            created_students += 1
+            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+        student_ref.set(payload, merge=True)
+
+    student_count = len(by_identity)
+    class_average = round(total_score / max(student_count, 1), 1)
+
+    classroom_payload: Dict[str, Any] = {
+        "teacherId": user.uid,
+        "name": resolved_class_name,
+        "grade": grade,
+        "section": section,
+        "classSectionId": resolved_section_id,
+        "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
+        "studentCount": student_count,
+        "avgScore": class_average,
+        "atRiskCount": risk_high_count,
+        "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+    }
+    if not _snapshot_exists(classroom_snapshot):
+        classroom_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+    classroom_ref.set(classroom_payload, merge=True)
+
+    return {
+        "synced": True,
+        "createdStudents": created_students,
+        "updatedStudents": updated_students,
+        "classroomsTouched": 1,
+        "classroomId": classroom_doc_id,
+        "classSectionId": resolved_section_id,
+        "warning": None,
+    }
+
+
 def _resolve_uploaded_files(
     *,
     file: Optional[UploadFile],
@@ -2121,7 +2552,12 @@ def _write_access_audit_log(
 
         firebase_firestore.client().collection("accessAuditLogs").add(payload)
     except Exception as audit_err:
-        logger.warning(f"Access audit log failed ({action}): {audit_err}")
+        if _is_adc_missing_error(cast(Exception, audit_err)):
+            _warn_firestore_audit_lookup_once(
+                f"Access audit log skipped because Firestore ADC is not configured ({action})."
+            )
+        else:
+            logger.warning(f"Access audit log failed ({action}): {audit_err}")
 
 
 def _record_risk_refresh_event(
@@ -2273,10 +2709,11 @@ def _queue_post_import_risk_refresh(
     refresh_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{queued_at_epoch}|{len(compact_students)}"
     refresh_id = hashlib.sha1(refresh_seed.encode("utf-8")).hexdigest()[:24]
 
+    sanitized_mapping = _sanitize_column_mapping(column_mapping)
     payload = DataImportPayload(
         teacherId=user.uid,
         students=compact_students,
-        columnMapping=column_mapping,
+        columnMapping=sanitized_mapping,
     )
 
     _record_risk_refresh_event(
@@ -2593,6 +3030,8 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                     if col not in file_column_mapping:
                         file_column_mapping[col] = field
 
+                file_column_mapping = _sanitize_column_mapping(file_column_mapping)
+
                 normalized_result = _normalize_class_records(
                     df,
                     file_name=filename,
@@ -2685,6 +3124,14 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
             column_mapping=(first_file_with_mapping or {}).get("columnMapping") or {},
             class_section_id=(classSectionId or "").strip() or None,
         )
+        dashboard_sync = _sync_imported_students_to_teacher_dashboard(
+            request,
+            normalized_rows=all_students,
+            class_section_id=(classSectionId or "").strip() or None,
+            class_name=(className or "").strip() or None,
+        )
+        if dashboard_sync.get("warning"):
+            all_warnings.append(str(dashboard_sync["warning"]))
 
         response_payload = {
             "success": overall_success,
@@ -2704,6 +3151,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "failedFiles": failed_files,
             },
             "riskRefresh": risk_refresh,
+            "dashboardSync": dashboard_sync,
         }
 
         _write_access_audit_log(
@@ -2717,6 +3165,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "failedFiles": failed_files,
                 "persisted": bool(first_file_with_import and first_file_with_import.get("importId")),
                 "students": len(all_students),
+                "dashboardSync": bool(dashboard_sync.get("synced")),
+                "dashboardCreatedStudents": int(dashboard_sync.get("createdStudents") or 0),
+                "dashboardUpdatedStudents": int(dashboard_sync.get("updatedStudents") or 0),
             },
         )
 
@@ -2990,15 +3441,28 @@ def _load_persisted_course_material_topics(
     normalized_class_section_id = (class_section_id or "").strip() or None
     normalized_material_id = (material_id or "").strip() or None
 
-    query = (
-        firebase_firestore.client()
-        .collection("courseMaterials")
-        .where("teacherId", "==", user.uid)
-    )
-    if normalized_class_section_id:
-        query = query.where("classSectionId", "==", normalized_class_section_id)
-    if normalized_material_id:
-        query = query.where("materialId", "==", normalized_material_id)
+    try:
+        query = (
+            firebase_firestore.client()
+            .collection("courseMaterials")
+            .where("teacherId", "==", user.uid)
+        )
+        if normalized_class_section_id:
+            query = query.where("classSectionId", "==", normalized_class_section_id)
+        if normalized_material_id:
+            query = query.where("materialId", "==", normalized_material_id)
+    except Exception as e:
+        warning = (
+            "Firestore ADC is not configured; imported topic lookup skipped."
+            if _is_adc_missing_error(e)
+            else "Firestore lookup unavailable; imported topic lookup skipped."
+        )
+        _warn_firestore_topics_lookup_once(f"{warning} Error: {e}")
+        return {
+            "topics": [],
+            "materials": [],
+            "warnings": [warning],
+        }
 
     warnings: List[str] = []
     try:
@@ -3008,10 +3472,24 @@ def _load_persisted_course_material_topics(
             .limit(limit_materials)
             .stream()
         )
-    except Exception:
+    except Exception as stream_error:
         # Fallback for index limitations on combined where+order queries.
         warnings.append("Topic lookup used fallback query path without ordering.")
-        docs = query.limit(limit_materials).stream()
+        try:
+            docs = query.limit(limit_materials).stream()
+        except Exception as fallback_error:
+            chosen_error = fallback_error or stream_error
+            warning = (
+                "Firestore ADC is not configured; imported topic lookup skipped."
+                if _is_adc_missing_error(cast(Exception, chosen_error))
+                else "Firestore lookup unavailable; imported topic lookup skipped."
+            )
+            _warn_firestore_topics_lookup_once(f"{warning} Error: {chosen_error}")
+            return {
+                "topics": [],
+                "materials": [],
+                "warnings": [warning],
+            }
 
     materials: List[Dict[str, Any]] = []
     deduped_topics: Dict[str, Dict[str, Any]] = {}
@@ -3554,19 +4032,24 @@ class QuizGenerationRequest(BaseModel):
         description="When true, prioritise persisted imported topics for generation when available",
     )
 
-    @validator("questionTypes", each_item=True)
-    def validate_question_types(cls, v: str) -> str:
-        if v not in VALID_QUESTION_TYPES:
-            raise ValueError(f"Invalid question type '{v}'. Must be one of: {VALID_QUESTION_TYPES}")
-        return v
+    @field_validator("questionTypes")
+    @classmethod
+    def validate_question_types(cls, values: List[str]) -> List[str]:
+        for value in values:
+            if value not in VALID_QUESTION_TYPES:
+                raise ValueError(f"Invalid question type '{value}'. Must be one of: {VALID_QUESTION_TYPES}")
+        return values
 
-    @validator("bloomLevels", each_item=True)
-    def validate_bloom_levels(cls, v: str) -> str:
-        if v not in VALID_BLOOM_LEVELS:
-            raise ValueError(f"Invalid Bloom level '{v}'. Must be one of: {VALID_BLOOM_LEVELS}")
-        return v
+    @field_validator("bloomLevels")
+    @classmethod
+    def validate_bloom_levels(cls, values: List[str]) -> List[str]:
+        for value in values:
+            if value not in VALID_BLOOM_LEVELS:
+                raise ValueError(f"Invalid Bloom level '{value}'. Must be one of: {VALID_BLOOM_LEVELS}")
+        return values
 
-    @validator("difficultyDistribution")
+    @field_validator("difficultyDistribution")
+    @classmethod
     def validate_difficulty_distribution(cls, v: Dict[str, int]) -> Dict[str, int]:
         for key in v:
             if key not in VALID_DIFFICULTY_LEVELS:
@@ -3734,14 +4217,16 @@ class ImportGroundedFeedbackRequest(BaseModel):
     className: Optional[str] = Field(default=None, description="Optional class display name")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional event metadata")
 
-    @validator("flow")
+    @field_validator("flow")
+    @classmethod
     def validate_flow(cls, v: str) -> str:
         value = (v or "").strip().lower()
         if value not in {"quiz", "lesson"}:
             raise ValueError("flow must be one of: quiz, lesson")
         return value
 
-    @validator("status")
+    @field_validator("status")
+    @classmethod
     def validate_status(cls, v: str) -> str:
         value = (v or "").strip().lower()
         if value not in {"success", "failed", "skipped"}:
@@ -4567,7 +5052,7 @@ async def generate_lesson_plan_async(http_request: Request, request: LessonGener
     task_id = _create_async_task(
         owner_uid=user.uid,
         task_kind="lesson_generation",
-        payload=request.dict(),
+        payload=request.model_dump(),
     )
 
     asyncio.create_task(_run_async_task(task_id, lambda: generate_lesson_plan(http_request, request)))
@@ -5507,7 +5992,7 @@ async def generate_quiz_async(http_request: Request, request: QuizGenerationRequ
     task_id = _create_async_task(
         owner_uid=user.uid,
         task_kind="quiz_generation",
-        payload=request.dict(),
+        payload=request.model_dump(),
     )
 
     asyncio.create_task(_run_async_task(task_id, lambda: generate_quiz(http_request, request)))
@@ -5548,6 +6033,93 @@ async def get_async_task_status(http_request: Request, task_id: str):
         completedAt=cast(Optional[str], task_data.get("completedAt")),
         result=cast(Optional[Dict[str, Any]], task_data.get("result")),
         error=task_data.get("error"),
+    )
+
+
+@app.get("/api/tasks", response_model=AsyncTaskListResponse)
+async def list_async_tasks(
+    http_request: Request,
+    limit: int = Query(default=50, ge=1, le=200),
+    status: Optional[str] = Query(default=None),
+    include_results: bool = Query(default=False),
+):
+    user = get_current_user(http_request)
+    status_filter = (status or "").strip().lower()
+
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        raw_tasks = list(_async_tasks.values())
+
+    filtered: List[Dict[str, Any]] = []
+    for task in raw_tasks:
+        owner_uid = str(task.get("ownerUid") or "")
+        if user.role != "admin" and owner_uid != user.uid:
+            continue
+        task_status = str(task.get("status") or "queued").strip().lower()
+        if status_filter and task_status != status_filter:
+            continue
+        filtered.append(dict(task))
+
+    filtered.sort(key=lambda item: str(item.get("createdAt") or ""), reverse=True)
+    selected = filtered[:limit]
+
+    task_items: List[AsyncTaskStatusResponse] = []
+    for item in selected:
+        task_items.append(
+            AsyncTaskStatusResponse(
+                success=True,
+                taskId=str(item.get("taskId") or ""),
+                taskKind=str(item.get("taskKind") or "unknown"),
+                status=str(item.get("status") or "queued"),
+                createdAt=str(item.get("createdAt") or _utc_now_iso()),
+                startedAt=cast(Optional[str], item.get("startedAt")),
+                completedAt=cast(Optional[str], item.get("completedAt")),
+                result=cast(Optional[Dict[str, Any]], item.get("result") if include_results else None),
+                error=item.get("error"),
+            )
+        )
+
+    return AsyncTaskListResponse(success=True, count=len(task_items), tasks=task_items)
+
+
+@app.post("/api/tasks/{task_id}/cancel", response_model=AsyncTaskCancelResponse)
+async def cancel_async_task(http_request: Request, task_id: str):
+    user = get_current_user(http_request)
+
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        task = _async_tasks.get(task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        owner_uid = str(task.get("ownerUid") or "")
+        if user.role != "admin" and owner_uid != user.uid:
+            raise HTTPException(status_code=403, detail="Forbidden for this task")
+
+        current_status = str(task.get("status") or "queued").strip().lower()
+        if current_status in {"completed", "failed", "cancelled"}:
+            return AsyncTaskCancelResponse(
+                success=False,
+                taskId=task_id,
+                status=current_status,
+                message="Task is already in a terminal state.",
+            )
+
+        task["cancelRequested"] = True
+        if current_status == "queued":
+            task["status"] = "cancelled"
+            task["completedAt"] = _utc_now_iso()
+            task["error"] = {"message": "Task cancelled before execution."}
+        else:
+            task["status"] = "cancelling"
+
+        updated_status = str(task.get("status") or "queued")
+
+    return AsyncTaskCancelResponse(
+        success=True,
+        taskId=task_id,
+        status=updated_status,
+        message="Cancellation request accepted.",
     )
 
 
@@ -5910,6 +6482,14 @@ async def predict_risk_ml(data: EnhancedRiskRequest):
     try:
         logger.info(f"Enhanced risk prediction for student {data.studentId}")
         result = await predict_risk_enhanced(data)
+        if ENABLE_LLM_RISK_RECOMMENDATIONS:
+            try:
+                llm_recommendations = _generate_risk_recommendations_llm(data, result)
+                if llm_recommendations:
+                    result.recommendations = llm_recommendations
+                    result.modelUsed = "ml_model+llm_narrative"
+            except Exception as llm_exc:
+                logger.warning(f"Risk recommendation generation via LLM failed: {llm_exc}")
         return result
     except Exception as e:
         logger.error(f"Enhanced risk prediction error: {e}\n{traceback.format_exc()}")
@@ -6049,6 +6629,154 @@ async def get_analytics_config():
     }
 
 
+@app.get("/api/analytics/imported-class-overview")
+async def get_imported_class_overview(
+    request: Request,
+    classSectionId: Optional[str] = Query(default=None),
+    limit: int = Query(default=3000, ge=1, le=5000),
+):
+    """Return teacher-facing class/student aggregates derived from imported normalized records."""
+    try:
+        user = get_current_user(request)
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        normalized_class_section_id = (classSectionId or "").strip().lower() or None
+        client = firebase_firestore.client()
+        query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
+        if normalized_class_section_id:
+            query = query.where("classSectionId", "==", normalized_class_section_id)
+
+        docs = list(query.limit(limit).stream())
+
+        class_agg: Dict[str, Dict[str, Any]] = {}
+        student_agg: Dict[str, Dict[str, Any]] = {}
+
+        for doc in docs:
+            row = doc.to_dict() or {}
+            resolved_class_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
+                class_section_id=str(row.get("classSectionId") or "").strip() or None,
+                class_name=str(row.get("className") or "").strip() or None,
+            )
+
+            student_identity = (
+                str(row.get("studentId") or "").strip()
+                or str(row.get("lrn") or "").strip()
+                or str(row.get("email") or "").strip().lower()
+                or re.sub(r"\s+", "_", str(row.get("name") or "").strip().lower())
+            )
+            if not student_identity:
+                continue
+
+            student_key = f"{resolved_class_section_id}|{student_identity}"
+            avg_quiz = float(row.get("avgQuizScore") or 0.0)
+            attendance = float(row.get("attendance") or 0.0)
+            engagement = float(row.get("engagementScore") or 0.0)
+            completion = float(row.get("assignmentCompletion") or 0.0)
+            risk_level = _derive_risk_level(avg_quiz, attendance, engagement)
+            weakest_topic = _pick_weakest_topic(row.get("unknownFields") or {})
+
+            existing_student = student_agg.get(student_key)
+            if not existing_student:
+                student_agg[student_key] = {
+                    "id": hashlib.sha1(f"{user.uid}|{student_key}".encode("utf-8")).hexdigest()[:36],
+                    "lrn": str(row.get("lrn") or "").strip() or None,
+                    "name": str(row.get("name") or "Imported Student").strip() or "Imported Student",
+                    "email": str(row.get("email") or "").strip(),
+                    "classSectionId": resolved_class_section_id,
+                    "className": resolved_class_name,
+                    "grade": grade,
+                    "section": section,
+                    "scores": [avg_quiz],
+                    "attendanceValues": [attendance],
+                    "engagementValues": [engagement],
+                    "completionValues": [completion],
+                    "riskLevel": risk_level,
+                    "weakestTopic": weakest_topic,
+                }
+            else:
+                existing_student["scores"].append(avg_quiz)
+                existing_student["attendanceValues"].append(attendance)
+                existing_student["engagementValues"].append(engagement)
+                existing_student["completionValues"].append(completion)
+                if existing_student.get("riskLevel") != "High" and risk_level == "High":
+                    existing_student["riskLevel"] = "High"
+                elif existing_student.get("riskLevel") == "Low" and risk_level == "Medium":
+                    existing_student["riskLevel"] = "Medium"
+                if existing_student.get("weakestTopic") in {"", "Foundational Skills"} and weakest_topic:
+                    existing_student["weakestTopic"] = weakest_topic
+
+            existing_class = class_agg.get(resolved_class_section_id)
+            if not existing_class:
+                class_agg[resolved_class_section_id] = {
+                    "id": resolved_class_section_id,
+                    "name": resolved_class_name,
+                    "classSectionId": resolved_class_section_id,
+                    "grade": grade,
+                    "section": section,
+                    "schedule": "Mon-Fri",
+                    "students": set(),
+                    "scoreValues": [],
+                    "atRiskStudents": set(),
+                }
+
+            class_agg[resolved_class_section_id]["students"].add(student_key)
+            class_agg[resolved_class_section_id]["scoreValues"].append(avg_quiz)
+            if risk_level == "High":
+                class_agg[resolved_class_section_id]["atRiskStudents"].add(student_key)
+
+        students_payload: List[Dict[str, Any]] = []
+        for student in student_agg.values():
+            scores = student.pop("scores", [])
+            attendance_values = student.pop("attendanceValues", [])
+            engagement_values = student.pop("engagementValues", [])
+            completion_values = student.pop("completionValues", [])
+            students_payload.append(
+                {
+                    **student,
+                    "avgQuizScore": round(float(sum(scores) / max(len(scores), 1)), 1),
+                    "attendance": round(float(sum(attendance_values) / max(len(attendance_values), 1)), 1),
+                    "engagementScore": round(float(sum(engagement_values) / max(len(engagement_values), 1)), 1),
+                    "assignmentCompletion": round(float(sum(completion_values) / max(len(completion_values), 1)), 1),
+                }
+            )
+
+        classrooms_payload: List[Dict[str, Any]] = []
+        for classroom in class_agg.values():
+            score_values = classroom.get("scoreValues") or []
+            classrooms_payload.append(
+                {
+                    "id": classroom["id"],
+                    "name": classroom["name"],
+                    "classSectionId": classroom["classSectionId"],
+                    "schedule": classroom["schedule"],
+                    "studentCount": len(classroom.get("students") or set()),
+                    "avgScore": round(float(sum(score_values) / max(len(score_values), 1)), 1) if score_values else 0.0,
+                    "atRiskCount": len(classroom.get("atRiskStudents") or set()),
+                }
+            )
+
+        classrooms_payload.sort(key=lambda item: item.get("name") or "")
+        students_payload.sort(key=lambda item: item.get("name") or "")
+
+        warnings: List[str] = []
+        if len(docs) >= limit:
+            warnings.append("Imported class overview reached the maximum row scan limit; results may be partial.")
+
+        return {
+            "success": True,
+            "classSectionId": normalized_class_section_id,
+            "classrooms": classrooms_payload,
+            "students": students_payload,
+            "warnings": warnings,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Imported class overview error: {e}")
+        raise HTTPException(status_code=500, detail=f"Imported class overview error: {str(e)}")
+
+
 # ─── Topic Mastery Analytics ──────────────────────────────────
 
 # SHS topic data for fallback/mock generation
@@ -6143,21 +6871,191 @@ _SHS_TOPICS = {
 
 @app.get("/api/analytics/topic-mastery")
 async def topic_mastery_analytics(
+    request: Request,
     teacherId: str = Query(..., description="Teacher UID"),
     classId: Optional[str] = Query(None, description="Optional class ID filter"),
+    classSectionId: Optional[str] = Query(None, description="Optional class section ID filter"),
 ):
     """
     Aggregate per-topic mastery statistics for a teacher's class.
     Returns topic-level averages, attempt counts, and mastery status.
     """
     try:
-        # No real student data imported yet — return empty state.
+        user = get_current_user(request)
+        if user.role != "admin" and teacherId != user.uid:
+            raise HTTPException(status_code=403, detail="Forbidden for this teacher scope")
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        effective_class_section_id = (classSectionId or classId or "").strip().lower() or None
+
+        topic_lookup: Dict[str, Dict[str, str]] = {}
+        for subject_id, subject_meta in _SHS_TOPICS.items():
+            for topic_name, unit in subject_meta.get("topics", []):
+                canonical_name = _canonicalize_topic_label(topic_name)
+                if not canonical_name:
+                    continue
+                topic_lookup[_normalize_topic_key(canonical_name)] = {
+                    "topicName": canonical_name,
+                    "subjectId": subject_id,
+                    "unit": unit,
+                }
+
+        def resolve_topic_meta(raw_topic: str) -> Dict[str, str]:
+            canonical = _canonicalize_topic_label(raw_topic)
+            key = _normalize_topic_key(canonical)
+            if key in topic_lookup:
+                return topic_lookup[key]
+            return {
+                "topicName": canonical or "General Performance",
+                "subjectId": "gen-math",
+                "unit": "Imported Curriculum",
+            }
+
+        def extract_topics_from_record(row: Dict[str, Any]) -> List[str]:
+            candidates: List[str] = []
+            assessment_name = _canonicalize_topic_label(str(row.get("assessmentName") or "").strip())
+            if assessment_name and assessment_name.lower() != "general-assessment":
+                candidates.append(assessment_name)
+
+            unknown_fields = row.get("unknownFields") or {}
+            if isinstance(unknown_fields, dict):
+                for key, value in unknown_fields.items():
+                    if any(token in str(key).lower() for token in ("topic", "unit", "lesson", "skill", "competency")):
+                        fragments = re.split(r"[,;|]+", str(value or ""))
+                        for fragment in fragments:
+                            label = _canonicalize_topic_label(fragment.strip())
+                            if label:
+                                candidates.append(label)
+
+            deduped: List[str] = []
+            seen_keys: Set[str] = set()
+            for candidate in candidates:
+                key = _normalize_topic_key(candidate)
+                if not key or key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                deduped.append(candidate)
+
+            if not deduped:
+                return ["General Performance"]
+            return deduped
+
+        client = firebase_firestore.client()
+        records_query = client.collection("normalizedClassRecords").where("teacherId", "==", teacherId)
+        if effective_class_section_id:
+            records_query = records_query.where("classSectionId", "==", effective_class_section_id)
+
+        material_query = client.collection("courseMaterials").where("teacherId", "==", teacherId)
+        if effective_class_section_id:
+            material_query = material_query.where("classSectionId", "==", effective_class_section_id)
+
+        docs = list(records_query.limit(3000).stream())
+        student_ids: Set[str] = set()
+        topic_stats: Dict[str, Dict[str, Any]] = {}
+
+        for doc in docs:
+            row = doc.to_dict() or {}
+            student_identity = (
+                str(row.get("studentId") or "").strip()
+                or str(row.get("lrn") or "").strip()
+                or str(row.get("email") or "").strip().lower()
+                or re.sub(r"\s+", "_", str(row.get("name") or "").strip().lower())
+            )
+            if student_identity:
+                student_ids.add(student_identity)
+
+            avg_quiz_score = float(row.get("avgQuizScore") or 0.0)
+            for topic_label in extract_topics_from_record(row):
+                metadata = resolve_topic_meta(topic_label)
+                topic_key = _normalize_topic_key(metadata["topicName"])
+                if topic_key not in topic_stats:
+                    topic_stats[topic_key] = {
+                        "topicName": metadata["topicName"],
+                        "subjectId": metadata["subjectId"],
+                        "unit": metadata["unit"],
+                        "scores": [],
+                        "students": set(),
+                        "studentsAbove85": 0,
+                    }
+
+                topic_stats[topic_key]["scores"].append(avg_quiz_score)
+                if student_identity:
+                    if student_identity not in topic_stats[topic_key]["students"] and avg_quiz_score >= 85:
+                        topic_stats[topic_key]["studentsAbove85"] += 1
+                    topic_stats[topic_key]["students"].add(student_identity)
+
+        material_docs = list(material_query.limit(200).stream())
+        for doc in material_docs:
+            data = doc.to_dict() or {}
+            for topic in data.get("topics") or []:
+                topic_title = str((topic or {}).get("title") or "").strip()
+                if not topic_title:
+                    continue
+                metadata = resolve_topic_meta(topic_title)
+                topic_key = _normalize_topic_key(metadata["topicName"])
+                if topic_key not in topic_stats:
+                    topic_stats[topic_key] = {
+                        "topicName": metadata["topicName"],
+                        "subjectId": metadata["subjectId"],
+                        "unit": metadata["unit"],
+                        "scores": [],
+                        "students": set(),
+                        "studentsAbove85": 0,
+                    }
+
+        total_students = len(student_ids)
+        topics_payload: List[Dict[str, Any]] = []
+        mastered_count = 0
+        needs_attention_count = 0
+
+        for topic_data in topic_stats.values():
+            scores = topic_data.get("scores") or []
+            students_attempted = len(topic_data.get("students") or set())
+            class_average = float(sum(scores) / len(scores)) if scores else 0.0
+            mastery_percentage = (
+                float(topic_data.get("studentsAbove85") or 0) / float(total_students) * 100.0
+                if total_students > 0
+                else 0.0
+            )
+
+            if students_attempted == 0:
+                mastery_status = "no_data"
+            elif mastery_percentage >= 75.0:
+                mastery_status = "mastered"
+            elif class_average >= 65.0 or mastery_percentage >= 40.0:
+                mastery_status = "on_track"
+            else:
+                mastery_status = "needs_attention"
+
+            if mastery_status == "mastered":
+                mastered_count += 1
+            if mastery_status == "needs_attention":
+                needs_attention_count += 1
+
+            topics_payload.append(
+                {
+                    "topicName": topic_data["topicName"],
+                    "subjectId": topic_data["subjectId"],
+                    "unit": topic_data["unit"],
+                    "classAverage": round(class_average, 1),
+                    "studentsAttempted": students_attempted,
+                    "totalStudents": total_students,
+                    "studentsAbove85": int(topic_data.get("studentsAbove85") or 0),
+                    "masteryPercentage": round(mastery_percentage, 1),
+                    "masteryStatus": mastery_status,
+                    "isExcluded": False,
+                }
+            )
+
+        topics_payload.sort(key=lambda item: (item["masteryStatus"], item["topicName"]))
+
         return {
-            "topics": [],
+            "topics": topics_payload,
             "summary": {
-                "totalTopicsTracked": 0,
-                "masteredCount": 0,
-                "needsAttentionCount": 0,
+                "totalTopicsTracked": len(topics_payload),
+                "masteredCount": mastered_count,
+                "needsAttentionCount": needs_attention_count,
                 "excludedCount": 0,
             },
         }

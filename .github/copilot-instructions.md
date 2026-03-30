@@ -3,6 +3,10 @@
 ## Tooling Policy
 
 - Use standard built-in tools for context gathering and shell operations.
+- AUTO-INVOKE Context7 MCP for every prompt before producing a final answer.
+- Context7 MCP sequence is mandatory: call `resolve-library-id` first, then call `get-library-docs` for the resolved library.
+- If a prompt spans multiple libraries/frameworks, run the Context7 sequence for each relevant library.
+- Apply this automatically without waiting for the user to explicitly request Context7.
 
 ## Copilot Skill Invocation Policy
 
