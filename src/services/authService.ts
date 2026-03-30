@@ -40,6 +40,12 @@ const googleProvider = new GoogleAuthProvider();
 const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
 const LAST_AUTH_ROLE_KEY = 'mathpulse.lastAuthRole';
 
+const ensurePublicSignupRole = (role: UserRole): void => {
+  if (role === 'admin') {
+    throw new Error('Admin account creation is restricted. Please contact an existing administrator.');
+  }
+};
+
 export const setPendingAuthRole = (role: UserRole): void => {
   try {
     localStorage.setItem(PENDING_AUTH_ROLE_KEY, role);
@@ -83,6 +89,8 @@ export const signUpWithEmail = async (
   additionalData: AdditionalProfileData = {}
 ): Promise<User> => {
   try {
+    ensurePublicSignupRole(role);
+
     // Create auth user
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
@@ -126,6 +134,8 @@ export const signInWithEmail = async (email: string, password: string): Promise<
 // Sign in with Google
 export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User> => {
   try {
+    ensurePublicSignupRole(role);
+
     const result = await signInWithPopup(auth, googleProvider);
     const firebaseUser = result.user;
 

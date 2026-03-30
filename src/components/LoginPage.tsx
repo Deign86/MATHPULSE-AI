@@ -13,9 +13,8 @@ const LoginPage: React.FC = () => {
     'Grade 11': ['STEM A', 'STEM B', 'ABM A', 'HUMSS A'],
     'Grade 12': ['STEM A', 'STEM B', 'ABM A', 'HUMSS A'],
   };
-  const DEPARTMENT_OPTIONS: Record<Exclude<UserRole, 'student'>, string[]> = {
+  const DEPARTMENT_OPTIONS: Record<'teacher', string[]> = {
     teacher: ['Mathematics', 'Science', 'English', 'Technology', 'Humanities'],
-    admin: ['System', 'Academic Affairs', 'Student Services', 'Operations', 'IT Support'],
   };
 
   const [email, setEmail] = useState('');
@@ -42,9 +41,6 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (selectedRole === 'teacher' && !DEPARTMENT_OPTIONS.teacher.includes(selectedDepartment)) {
       setSelectedDepartment(DEPARTMENT_OPTIONS.teacher[0]);
-    }
-    if (selectedRole === 'admin' && !DEPARTMENT_OPTIONS.admin.includes(selectedDepartment)) {
-      setSelectedDepartment(DEPARTMENT_OPTIONS.admin[0]);
     }
   }, [selectedDepartment, selectedRole]);
 
@@ -104,6 +100,12 @@ const LoginPage: React.FC = () => {
           return;
         }
 
+        if (selectedRole === 'admin') {
+          setError('Admin account creation is restricted. Please contact an existing administrator.');
+          setLoading(false);
+          return;
+        }
+
         setPendingAuthRole(selectedRole);
         await signUpWithEmail(
           email,
@@ -130,6 +132,11 @@ const LoginPage: React.FC = () => {
     
     try {
       if (isSignUp) {
+        if (selectedRole === 'admin') {
+          setError('Admin account creation is restricted. Please contact an existing administrator.');
+          setLoading(false);
+          return;
+        }
         setPendingAuthRole(selectedRole);
       }
       await signInWithGoogle(isSignUp ? selectedRole : undefined);
@@ -376,11 +383,10 @@ const LoginPage: React.FC = () => {
                     <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                       Account Type
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {([
                         { role: 'student', label: 'Student' },
                         { role: 'teacher', label: 'Teacher' },
-                        { role: 'admin', label: 'Admin' },
                       ] as { role: UserRole; label: string }[]).map((roleOption) => {
                         const isActive = selectedRole === roleOption.role;
                         return (
@@ -465,7 +471,7 @@ const LoginPage: React.FC = () => {
                         className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
                         required
                       >
-                        {DEPARTMENT_OPTIONS[selectedRole as Exclude<UserRole, 'student'>].map((department) => (
+                        {DEPARTMENT_OPTIONS.teacher.map((department) => (
                           <option key={department} value={department}>{department}</option>
                         ))}
                       </select>

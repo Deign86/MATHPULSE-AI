@@ -142,7 +142,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
           
           const getCardStyle = (id: string) => {
             switch(id) {
-              case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1 };
+              case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Functions', 'Business Math', 'Logic'], level: 1 };
               case 'pre-calc': return { bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2 };
               case 'stats-prob': return { bg: 'bg-[#FFB356]', tags: ['Probability', 'Mean/Median', 'Charts'], level: 2 };
               case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals', 'Continuity'], level: 3 };

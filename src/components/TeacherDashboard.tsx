@@ -29,11 +29,13 @@ import {
 } from '../services/studentService';
 import {
   apiService,
+  ApiError,
   type ImportGroundedAccessAuditResponse,
   type CourseMaterialArtifactSummary,
   type ImportGroundedTelemetrySummaryResponse,
   type LessonPlanResponse,
 } from '../services/apiService';
+import { publishLessonPlan, saveGeneratedLessonPlan } from '../services/lessonPlanService';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
 import TopicMasteryView from './TopicMasteryView';
@@ -962,6 +964,11 @@ const InterventionView: React.FC<{
   const [lessonError, setLessonError] = useState('');
   const [lessonSourceFilter, setLessonSourceFilter] = useState<string>('all');
   const [lessonMaterialFilter, setLessonMaterialFilter] = useState<string>('all');
+  const [allowReviewSources, setAllowReviewSources] = useState(false);
+  const [allowUnverifiedLesson, setAllowUnverifiedLesson] = useState(false);
+  const [savedLessonPlanId, setSavedLessonPlanId] = useState<string | null>(null);
+  const [savingLessonDraft, setSavingLessonDraft] = useState(false);
+  const [publishingLesson, setPublishingLesson] = useState(false);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
@@ -998,8 +1005,11 @@ const InterventionView: React.FC<{
         focusTopics: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
         topicCount: 5,
         preferImportedTopics: rolloutFlags.lessonEnabled,
+        allowReviewSources,
+        allowUnverifiedLesson,
       });
       setLessonPlan(response);
+      setSavedLessonPlanId(null);
       void apiService.reportImportGroundedFeedback({
         flow: 'lesson',
         status: 'success',
@@ -1009,11 +1019,38 @@ const InterventionView: React.FC<{
           usedImportedTopics: response.usedImportedTopics,
           importedTopicCount: response.importedTopicCount,
           blockCount: response.blocks.length,
+          publishReady: response.publishReady,
+          sourceLegitimacyStatus: response.sourceLegitimacy.status,
+          selfValidationPassed: response.selfValidation.passed,
           importGroundingEnabled: rolloutFlags.lessonEnabled,
         },
       });
     } catch (err) {
-      setLessonError(err instanceof Error ? err.message : 'Unable to generate lesson plan at this time.');
+      let errorMessage = err instanceof Error ? err.message : 'Unable to generate lesson plan at this time.';
+      if (err instanceof ApiError && err.status === 422) {
+        try {
+          const parsed = JSON.parse(err.responseBody) as {
+            detail?: {
+              message?: string;
+              sourceLegitimacy?: { status?: string; issues?: string[] };
+              selfValidation?: { issues?: string[] };
+            };
+          };
+          const detail = parsed?.detail;
+          if (detail?.message) {
+            errorMessage = detail.message;
+          }
+          const sourceIssues = detail?.sourceLegitimacy?.issues || [];
+          const validationIssues = detail?.selfValidation?.issues || [];
+          const issuePreview = [...sourceIssues, ...validationIssues].filter(Boolean).slice(0, 3);
+          if (issuePreview.length > 0) {
+            errorMessage = `${errorMessage} ${issuePreview.join(' ')}`;
+          }
+        } catch {
+          // Keep original ApiError message when body is not JSON.
+        }
+      }
+      setLessonError(errorMessage);
       setLessonPlan(null);
       void apiService.reportImportGroundedFeedback({
         flow: 'lesson',
@@ -1021,14 +1058,99 @@ const InterventionView: React.FC<{
         classSectionId: student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A'),
         className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
         metadata: {
-          error: err instanceof Error ? err.message : 'Unable to generate lesson plan at this time.',
+          error: errorMessage,
+          allowReviewSources,
+          allowUnverifiedLesson,
           importGroundingEnabled: rolloutFlags.lessonEnabled,
         },
       });
     } finally {
       setLessonLoading(false);
     }
-  }, [student, gradeDraft, sectionDraft, rolloutFlags.lessonEnabled]);
+  }, [student, gradeDraft, sectionDraft, rolloutFlags.lessonEnabled, allowReviewSources, allowUnverifiedLesson]);
+
+  const saveLessonDraft = useCallback(async (): Promise<string | null> => {
+    if (!lessonPlan) {
+      toast.error('Generate a lesson plan first.');
+      return null;
+    }
+
+    setSavingLessonDraft(true);
+    try {
+      const lessonId = await saveGeneratedLessonPlan(lessonPlan, teacherId, {
+        teacherName,
+        studentId: student.id,
+        studentName: student.name,
+      });
+      setSavedLessonPlanId(lessonId);
+      toast.success('Lesson plan saved as draft.');
+      return lessonId;
+    } catch (error) {
+      console.error('Failed to save lesson draft:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save lesson draft.');
+      return null;
+    } finally {
+      setSavingLessonDraft(false);
+    }
+  }, [lessonPlan, teacherId, teacherName, student.id, student.name]);
+
+  const publishCurrentLessonPlan = useCallback(async () => {
+    if (!lessonPlan) {
+      toast.error('Generate a lesson plan first.');
+      return;
+    }
+
+    if (!lessonPlan.publishReady) {
+      const issues = [...lessonPlan.sourceLegitimacy.issues, ...lessonPlan.selfValidation.issues]
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(' ');
+      toast.error(issues || 'Lesson is not publish-ready. Resolve legitimacy and validation checks first.');
+      return;
+    }
+
+    setPublishingLesson(true);
+    try {
+      let lessonId = savedLessonPlanId;
+      if (!lessonId) {
+        lessonId = await saveLessonDraft();
+      }
+      if (!lessonId) {
+        return;
+      }
+
+      await publishLessonPlan(lessonId);
+      toast.success('Lesson plan published to class content.');
+      void apiService.reportImportGroundedFeedback({
+        flow: 'lesson',
+        status: 'success',
+        classSectionId: lessonPlan.classSectionId || student.classSectionId,
+        className: lessonPlan.className || student.className,
+        metadata: {
+          action: 'publish_lesson_plan',
+          lessonPlanId: lessonId,
+          publishReady: lessonPlan.publishReady,
+          sourceLegitimacyStatus: lessonPlan.sourceLegitimacy.status,
+          selfValidationPassed: lessonPlan.selfValidation.passed,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to publish lesson plan:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to publish lesson plan.');
+      void apiService.reportImportGroundedFeedback({
+        flow: 'lesson',
+        status: 'failed',
+        classSectionId: lessonPlan.classSectionId || student.classSectionId,
+        className: lessonPlan.className || student.className,
+        metadata: {
+          action: 'publish_lesson_plan',
+          error: error instanceof Error ? error.message : 'Failed to publish lesson plan.',
+        },
+      });
+    } finally {
+      setPublishingLesson(false);
+    }
+  }, [lessonPlan, savedLessonPlanId, saveLessonDraft, student.className, student.classSectionId]);
 
   useEffect(() => {
     void generateTargetedLessonPlan();
@@ -1302,6 +1424,25 @@ const InterventionView: React.FC<{
             </Button>
           </div>
 
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+            <label className="flex items-center gap-2 text-xs text-[#5a6578] bg-[#f8fafc] border border-[#dde3eb] rounded-lg px-3 py-2">
+              <input
+                type="checkbox"
+                checked={allowReviewSources}
+                onChange={(event) => setAllowReviewSources(event.target.checked)}
+              />
+              Allow sources requiring manual review
+            </label>
+            <label className="flex items-center gap-2 text-xs text-[#5a6578] bg-[#f8fafc] border border-[#dde3eb] rounded-lg px-3 py-2">
+              <input
+                type="checkbox"
+                checked={allowUnverifiedLesson}
+                onChange={(event) => setAllowUnverifiedLesson(event.target.checked)}
+              />
+              Allow unverified lesson draft (publish remains blocked)
+            </label>
+          </div>
+
           {lessonLoading && (
             <div className="flex items-center gap-2 text-[#5a6578] py-4">
               <Loader2 size={18} className="animate-spin" />
@@ -1323,9 +1464,36 @@ const InterventionView: React.FC<{
                   Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
                   {' • '}Imported topic count: {lessonPlan.importedTopicCount}
                 </p>
+                <p className="text-xs text-[#5a6578] mt-1">
+                  Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
+                </p>
                 {lessonPlan.warnings.length > 0 && (
                   <p className="text-xs text-amber-700 mt-1">{lessonPlan.warnings.join(' ')}</p>
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-white border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs font-semibold text-[#5a6578]">Source Legitimacy</p>
+                  <p className="text-sm font-bold text-[#0a1628] mt-1">
+                    {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
+                  </p>
+                  <p className="text-xs text-[#5a6578] mt-1">
+                    Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} • Review: {lessonPlan.sourceLegitimacy.reviewMaterials} • Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
+                  </p>
+                  {lessonPlan.sourceLegitimacy.issues.length > 0 && (
+                    <p className="text-xs text-amber-700 mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
+                  )}
+                </div>
+                <div className="bg-white border border-[#dde3eb] rounded-xl p-3">
+                  <p className="text-xs font-semibold text-[#5a6578]">Self Validation</p>
+                  <p className="text-sm font-bold text-[#0a1628] mt-1">
+                    {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
+                  </p>
+                  {lessonPlan.selfValidation.issues.length > 0 && (
+                    <p className="text-xs text-amber-700 mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
+                  )}
+                </div>
               </div>
 
               {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
@@ -1392,6 +1560,27 @@ const InterventionView: React.FC<{
                   No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
                 </div>
               )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void saveLessonDraft()}
+                  disabled={savingLessonDraft || !lessonPlan}
+                  className="border-sky-300 text-sky-700"
+                >
+                  {savingLessonDraft ? <Loader2 size={14} className="animate-spin" /> : 'Save Draft'}
+                </Button>
+                <Button
+                  onClick={() => void publishCurrentLessonPlan()}
+                  disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {publishingLesson ? <Loader2 size={14} className="animate-spin" /> : 'Publish Lesson Plan'}
+                </Button>
+                {savedLessonPlanId && (
+                  <p className="text-xs text-[#5a6578] self-center">Draft ID: {savedLessonPlanId}</p>
+                )}
+              </div>
             </div>
           )}
         </div>
