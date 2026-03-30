@@ -18,6 +18,7 @@ LOGGER = configure_structured_logging("mathpulse.inference")
 class InferenceRequest:
     messages: List[Dict[str, str]]
     model: Optional[str] = None
+    task_type: str = "default"
     max_new_tokens: int = 512
     temperature: float = 0.2
     top_p: float = 0.9
@@ -43,6 +44,9 @@ class InferenceClient:
                     primary = primary_cfg
 
         self.provider = os.getenv("INFERENCE_PROVIDER", "hf_inference").strip().lower()
+        self.gpu_provider = os.getenv("INFERENCE_GPU_PROVIDER", "local_space").strip().lower()
+        self.cpu_provider = os.getenv("INFERENCE_CPU_PROVIDER", "hf_inference").strip().lower()
+        self.enable_provider_fallback = os.getenv("INFERENCE_ENABLE_PROVIDER_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.hf_token = os.getenv("HF_TOKEN", "")
         self.hf_base_url = os.getenv("INFERENCE_HF_BASE_URL", "https://api-inference.huggingface.co/models")
         self.local_space_url = os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
@@ -50,7 +54,7 @@ class InferenceClient:
 
         self.default_model = os.getenv(
             "INFERENCE_MODEL_ID",
-            str(primary.get("id", "Qwen/Qwen2.5-Math-7B-Instruct")),
+            str(primary.get("id", "Qwen/Qwen3-14B")),
         )
         self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", str(primary.get("max_new_tokens", 512))))
         self.default_temperature = float(os.getenv("INFERENCE_TEMPERATURE", str(primary.get("temperature", 0.2))))
@@ -64,31 +68,68 @@ class InferenceClient:
         fallback_raw = os.getenv("INFERENCE_FALLBACK_MODELS", "")
         self.fallback_models = [v.strip() for v in fallback_raw.split(",") if v.strip()]
 
+        gpu_tasks_raw = os.getenv(
+            "INFERENCE_GPU_REQUIRED_TASKS",
+            "chat,quiz_generation,lesson_generation,learning_path,verify_solution,variant_generation,eval_generation",
+        )
+        self.gpu_required_tasks = {v.strip().lower() for v in gpu_tasks_raw.split(",") if v.strip()}
+
+        cpu_tasks_raw = os.getenv(
+            "INFERENCE_CPU_ONLY_TASKS",
+            "risk_classification,analytics_aggregation,file_parsing,auth,default_cpu",
+        )
+        self.cpu_only_tasks = {v.strip().lower() for v in cpu_tasks_raw.split(",") if v.strip()}
+
     def generate_from_messages(self, req: InferenceRequest) -> str:
         model_chain = [req.model or self.default_model] + [m for m in self.fallback_models if m]
         last_error: Optional[Exception] = None
+        provider_chain = self._provider_chain_for_task(req.task_type)
 
         for model_name in model_chain:
             request_for_model = InferenceRequest(
                 messages=req.messages,
                 model=model_name,
+                task_type=req.task_type,
                 max_new_tokens=req.max_new_tokens or self.default_max_new_tokens,
                 temperature=req.temperature if req.temperature is not None else self.default_temperature,
                 top_p=req.top_p if req.top_p is not None else self.default_top_p,
                 repetition_penalty=req.repetition_penalty,
                 timeout_sec=req.timeout_sec,
             )
-            try:
-                if self.provider == "local_space":
-                    return self._call_local_space(request_for_model)
-                return self._call_hf_inference(request_for_model)
-            except Exception as exc:
-                last_error = exc
-                LOGGER.warning("provider=%s model=%s failed: %s", self.provider, model_name, exc)
+            for provider in provider_chain:
+                try:
+                    return self._generate_with_provider(request_for_model, provider)
+                except Exception as exc:
+                    last_error = exc
+                    LOGGER.warning(
+                        "task=%s provider=%s model=%s failed: %s",
+                        request_for_model.task_type,
+                        provider,
+                        model_name,
+                        exc,
+                    )
 
         if last_error:
             raise last_error
         raise RuntimeError("Inference failed with empty model chain")
+
+    def _provider_chain_for_task(self, task_type: str) -> List[str]:
+        normalized = (task_type or "default").strip().lower()
+        if normalized in self.cpu_only_tasks:
+            return [self.cpu_provider]
+
+        if normalized in self.gpu_required_tasks:
+            chain = [self.gpu_provider]
+            if self.enable_provider_fallback and self.cpu_provider != self.gpu_provider:
+                chain.append(self.cpu_provider)
+            return chain
+
+        return [self.provider]
+
+    def _generate_with_provider(self, req: InferenceRequest, provider: str) -> str:
+        if provider == "local_space":
+            return self._call_local_space(req)
+        return self._call_hf_inference(req)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
         parts: List[str] = []
@@ -177,6 +218,7 @@ class InferenceClient:
                 "repetition_penalty": req.repetition_penalty,
                 "return_full_text": False,
                 "do_sample": req.temperature > 0,
+                "tool_choice": "none",
             },
             "options": {
                 "wait_for_model": True,

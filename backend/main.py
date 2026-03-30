@@ -1,7 +1,7 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
+- Qwen/Qwen3-14B for chat, learning paths, insights, and quiz generation
     (via Hugging Face Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
@@ -124,7 +124,7 @@ inference_client = create_default_client()
 HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
 
 # Grade 11-12 tutoring default model. Can still be overridden via HF_MATH_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
+HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen3-14B")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
@@ -651,69 +651,24 @@ def call_hf_chat(
     top_p: float = 0.9,
     repetition_penalty: float = 1.15,
     model: Optional[str] = None,
+    task_type: str = "default",
     timeout: int = 90,
 ) -> str:
-    if not HF_TOKEN:
-        raise RuntimeError("HF_TOKEN is not set")
-
-    target_model = model or HF_MATH_MODEL_ID
-    url = _build_hf_inference_url(target_model)
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json",
-    }
-    prompt = _messages_to_inference_prompt(messages)
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-            "repetition_penalty": repetition_penalty,
-            "return_full_text": False,
-            "do_sample": temperature > 0,
-            "tool_choice": "none",
-        },
-        "options": {
-            "wait_for_model": True,
-            "use_cache": False,
-        },
-    }
-
-    for attempt in range(3):
-        resp = http_requests.post(url, headers=headers, json=payload, timeout=timeout)
-        if resp.status_code == 503 and attempt < 2:
-            logger.warning(f"HF chat 503 (model loading), retry {attempt + 1}/3")
-            time.sleep(3)
-            continue
-        if resp.status_code != 200:
-            raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
-
-        data = resp.json()
-        if isinstance(data, list) and data:
-            first = data[0]
-            if isinstance(first, dict):
-                raw = (first.get("generated_text", "") or "").strip()
-                if raw:
-                    return _strip_repetition(raw)
-
-        if isinstance(data, dict):
-            raw = (data.get("generated_text", "") or "").strip()
-            if raw:
-                return _strip_repetition(raw)
-
-            choices = data.get("choices", [])
-            if choices:
-                content = (choices[0].get("message", {}).get("content", "") or "").strip()
-                if content:
-                    return _strip_repetition(content)
-
-        raise RuntimeError(f"Unexpected HF response format: {data}")
-
-    raise RuntimeError("HF Inference failed after retries")
+    req = InferenceRequest(
+        messages=messages,
+        model=model,
+        task_type=task_type,
+        max_new_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+        timeout_sec=timeout,
+    )
+    text = inference_client.generate_from_messages(req)
+    return _strip_repetition(text)
 
 
-def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
+def load_local_math_model(model_name: str = "Qwen/Qwen3-14B"):
     """Optional local loader for environments using Transformers instead of HF Inference API."""
     from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore[import-not-found]
 
@@ -757,7 +712,7 @@ def call_math_tutor_llm(question: str) -> str:
     """Convenience wrapper: call the HF serverless model with the MathPulse tutor prompt via chat completions."""
     prompt = build_math_tutor_prompt(question)
     messages = [{"role": "user", "content": prompt}]
-    return call_hf_chat(messages, max_tokens=512, temperature=0.2, top_p=0.9)
+    return call_hf_chat(messages, max_tokens=512, temperature=0.2, top_p=0.9, task_type="chat")
 
 
 # ─── Request/Response Models ──────────────────────────────────
@@ -903,7 +858,7 @@ Rules:
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
-    """AI Math Tutor powered by HF Inference API (Qwen/Qwen2.5-Math-7B-Instruct)."""
+    """AI Math Tutor powered by HF Inference API (Qwen/Qwen3-14B)."""
     try:
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
@@ -916,7 +871,7 @@ async def chat_tutor(request: ChatRequest):
 
         # Call HF serverless with retry (handled inside call_hf_chat)
         try:
-            answer = call_hf_chat(messages, max_tokens=1024, temperature=0.3, top_p=0.9)
+            answer = call_hf_chat(messages, max_tokens=1024, temperature=0.3, top_p=0.9, task_type="chat")
         except Exception as hf_err:
             logger.error(f"HF chat failed: {hf_err}")
             raise HTTPException(
@@ -983,7 +938,7 @@ async def verify_math_response(
 
     for i in range(VERIFICATION_SAMPLES):
         try:
-            text = call_hf_chat(base_messages, max_tokens=2048, temperature=0.7, top_p=0.9)
+            text = call_hf_chat(base_messages, max_tokens=2048, temperature=0.7, top_p=0.9, task_type="verify_solution")
             responses.append(text)
             answers.append(_extract_final_answer(text))
             logger.info(f"  Sample {i+1} answer: {answers[-1]}")
@@ -1273,6 +1228,7 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
                 },
                 {"role": "user", "content": prompt},
             ],
+            task_type="verify_solution",
             max_tokens=500,
             temperature=0.1,
         )
@@ -1564,7 +1520,7 @@ Format as a numbered list. Be specific to the math topics mentioned."""
         ]
 
         try:
-            content = call_hf_chat(messages, max_tokens=1500, temperature=0.7)
+            content = call_hf_chat(messages, max_tokens=1500, temperature=0.7, task_type="learning_path")
         except Exception as hf_err:
             logger.error(f"HF learning-path failed: {hf_err}")
             raise HTTPException(
@@ -1626,7 +1582,7 @@ Keep the response under 200 words. Be specific and practical."""
         ]
 
         try:
-            content = call_hf_chat(messages, max_tokens=800, temperature=0.7)
+            content = call_hf_chat(messages, max_tokens=800, temperature=0.7, task_type="daily_insight")
         except Exception as hf_err:
             logger.error(f"HF daily-insight failed: {hf_err}")
             raise HTTPException(
@@ -3417,17 +3373,17 @@ VALID_BLOOM_LEVELS = ["remember", "understand", "apply", "analyze"]
 
 VALID_DIFFICULTY_LEVELS = ["easy", "medium", "hard"]
 
-# ── Temporary hard limits ──────────────────────────────────────
-# Keep conservative limits so prompt + completion stay latency-safe
-# and stable for classroom usage across providers.
-MAX_QUESTIONS_LIMIT = 15   # keeps completion ≤ ~4 000 tokens
-MAX_TOPICS_LIMIT = 8       # keeps the prompt ≤ ~3 500 tokens
+# ── Quiz generation hard limits ────────────────────────────────
+# Moderate classroom profile: supports longer quizzes while keeping
+# generation latency and payload size manageable across providers.
+MAX_QUESTIONS_LIMIT = 30
+MAX_TOPICS_LIMIT = 12
 
 
 class QuizGenerationRequest(BaseModel):
     topics: List[str] = Field(..., min_length=1, description="Specific math topics to cover")
     gradeLevel: str = Field(..., description="Student grade level (e.g., 'Grade 7', 'Grade 10', 'College')")
-    numQuestions: int = Field(default=10, ge=1, le=MAX_QUESTIONS_LIMIT, description="Number of questions to generate (temporary max 15)")
+    numQuestions: int = Field(default=10, ge=1, le=MAX_QUESTIONS_LIMIT, description="Number of questions to generate (max 30)")
     questionTypes: List[str] = Field(
         default=["multiple_choice", "identification", "word_problem"],
         description="Types of questions to include",
@@ -4064,6 +4020,7 @@ def _ai_validate_lesson_plan(
                 },
                 {"role": "user", "content": validation_prompt},
             ],
+            task_type="lesson_generation",
             max_tokens=420,
             temperature=0.1,
             top_p=0.9,
@@ -4306,6 +4263,7 @@ Rules:
                 ],
                 max_tokens=1200,
                 temperature=0.25,
+                task_type="lesson_generation",
             )
             lesson_payload = _parse_lesson_plan_json(raw)
         except Exception as lesson_exc:
@@ -5089,16 +5047,16 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
                 detail="All requested topics are in the exclude list. Please provide at least one topic to cover.",
             )
 
-        # ── Enforce temporary limits (8 192-token model context) ──
+        # ── Enforce request limits ──
         if len(effective_topics) > MAX_TOPICS_LIMIT:
             logger.warning(
-                f"Trimming topics from {len(effective_topics)} to {MAX_TOPICS_LIMIT} (model context limit)"
+                f"Trimming topics from {len(effective_topics)} to {MAX_TOPICS_LIMIT} (request limit)"
             )
             effective_topics = effective_topics[:MAX_TOPICS_LIMIT]
 
         if request.numQuestions > MAX_QUESTIONS_LIMIT:
             logger.warning(
-                f"Clamping numQuestions from {request.numQuestions} to {MAX_QUESTIONS_LIMIT} (model context limit)"
+                f"Clamping numQuestions from {request.numQuestions} to {MAX_QUESTIONS_LIMIT} (request limit)"
             )
             request.numQuestions = MAX_QUESTIONS_LIMIT
 
@@ -5154,20 +5112,21 @@ Remember:
 
         logger.info(f"Generating quiz: {request.numQuestions} questions, topics={effective_topics}")
 
-        # Scale max_tokens based on requested questions — each question needs ~250-350 tokens
-        # Hard-cap to 4096 so prompt+completion stays within the 8192 context window
-        max_tokens = min(4096, max(2048, request.numQuestions * 300))
-        # Use longer HTTP timeout for quiz generation (scales with question count)
-        http_timeout = max(90, request.numQuestions * 12)
+        # Scale max_tokens based on requested questions and allow larger completions
+        # for higher-count quizzes while keeping provider-side limits reasonable.
+        max_tokens = min(8192, max(3072, request.numQuestions * 320))
+        # Use longer HTTP timeout for larger quiz payloads.
+        http_timeout = min(300, max(120, request.numQuestions * 10))
 
         parsed_questions: List[Dict[str, Any]] = []
         raw_content = ""  # Will be set inside the loop
-        max_attempts = 2  # Retry once if LLM generates too few questions
+        max_attempts = 3  # Extra retry helps with larger quiz sizes
 
         for attempt in range(max_attempts):
             raw_content = call_hf_chat(
                 messages, max_tokens=max_tokens, temperature=0.3, top_p=0.9,
                 timeout=http_timeout,
+                task_type="quiz_generation",
             )
             logger.info(f"Raw quiz response length: {len(raw_content)} chars (attempt {attempt + 1})")
 

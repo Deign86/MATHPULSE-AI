@@ -28,7 +28,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
 - **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
 - **Practice Center** — Dedicated practice area for reinforcing concepts
-- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen2.5-Math-7B-Instruct via Hugging Face Inference API, with optional self-consistency verification
+- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen3-14B via Hugging Face Inference API, with optional self-consistency verification
 - **Floating AI Tutor** — Always-accessible AI help widget available from any page
 - **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
 - **XP Notifications** — Real-time animated XP gain notifications
@@ -104,7 +104,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 ### AI Models
 | Model | Use Case |
 |---|---|
-| **Qwen/Qwen2.5-Math-7B-Instruct** | Chat tutoring (low-temperature, step-by-step verified), learning path generation, daily class insights, document column detection, math verification (self-consistency, code-based, LLM judge) |
+| **Qwen/Qwen3-14B** | Chat tutoring (low-temperature, step-by-step verified), learning path generation, daily class insights, document column detection, math verification (self-consistency, code-based, LLM judge) |
 | **facebook/bart-large-mnli** | Student risk classification via zero-shot classification |
 
 ## 🚀 Getting Started
@@ -216,6 +216,18 @@ Flow overview:
 2. Backend API calls route through the inference client and can switch provider mode by env.
 3. Offline evaluation and generation jobs consume datasets/eval and write artifacts to jobs/output and datasets/synthetic.
 4. Curated dataset artifacts sync to private Hugging Face Datasets repositories.
+
+### Chat-Only ZeroGPU Profile (Keep Full UI)
+
+If you only want the AI chatbot to use ZeroGPU while the rest of the app stays on normal backend/provider paths, use this routing profile:
+
+INFERENCE_PROVIDER=hf_inference
+INFERENCE_GPU_PROVIDER=local_space
+INFERENCE_CPU_PROVIDER=hf_inference
+INFERENCE_GPU_REQUIRED_TASKS=chat
+INFERENCE_LOCAL_SPACE_URL=https://deign86-mathpulse-inference-zerogpu.hf.space
+
+This keeps your unique React UI and Firebase flows unchanged, while chat generation is offloaded to the dedicated ZeroGPU inference Space.
 
 ### Quickstart: Run locally
 
