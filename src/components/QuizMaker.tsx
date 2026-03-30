@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Brain, Sparkles, BookOpen, BarChart3, Target, ChevronDown,
@@ -16,6 +16,7 @@ import {
   type QuestionType,
   type BloomLevel,
   type DifficultyLevel,
+  type CourseMaterialTopicMapTopic,
 } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import BloomsTaxonomyModal from './BloomsTaxonomyModal';
@@ -34,6 +35,8 @@ import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../type
 interface QuizMakerProps {
   onClose: () => void;
   gradeLevel?: string;
+  selectedClassId?: string;
+  selectedClassName?: string;
 }
 
 type Step = 'configure' | 'preview' | 'results';
@@ -75,8 +78,14 @@ const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
 
 // ─── Component ──────────────────────────────────────────────
 
-const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade }) => {
+const QuizMaker: React.FC<QuizMakerProps> = ({
+  onClose,
+  gradeLevel: initialGrade,
+  selectedClassId,
+  selectedClassName,
+}) => {
   const { currentUser } = useAuth();
+  const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<MakerTab>('create');
@@ -95,6 +104,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   // Available topics from API
   const [availableTopics, setAvailableTopics] = useState<Record<string, string[]>>({});
   const [topicsLoading, setTopicsLoading] = useState(false);
+  const [importedTopics, setImportedTopics] = useState<CourseMaterialTopicMapTopic[]>([]);
+  const [importedTopicsLoading, setImportedTopicsLoading] = useState(false);
+  const [importedTopicsWarning, setImportedTopicsWarning] = useState('');
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -108,6 +120,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
   const [expandedSection, setExpandedSection] = useState<string | null>('topics');
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const [showBloomsModal, setShowBloomsModal] = useState(false);
+  const [provenanceSourceFilter, setProvenanceSourceFilter] = useState<string>('all');
+  const [provenanceMaterialFilter, setProvenanceMaterialFilter] = useState<string>('all');
 
   // Save / Assign / Publish state
   const [saving, setSaving] = useState(false);
@@ -156,11 +170,96 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
     }
   }, [selectedGrade]);
 
+  const loadImportedTopics = useCallback(async () => {
+    if (!rolloutFlags.quizEnabled) {
+      setImportedTopics([]);
+      setImportedTopicsWarning('Import-grounded quiz generation is disabled by rollout flag; using curriculum defaults.');
+      setImportedTopicsLoading(false);
+      return;
+    }
+
+    setImportedTopicsLoading(true);
+    setImportedTopicsWarning('');
+    try {
+      const response = await apiService.getCourseMaterialTopics({
+        classSectionId: selectedClassId,
+        limit: 20,
+      });
+      const validTopics = (response.topics || []).filter((topic) => topic.title?.trim());
+      setImportedTopics(validTopics);
+      if (response.warnings && response.warnings.length > 0) {
+        setImportedTopicsWarning(response.warnings.join(' '));
+      }
+    } catch {
+      setImportedTopics([]);
+      setImportedTopicsWarning('Imported topics are currently unavailable; quiz generation will use curriculum defaults.');
+    } finally {
+      setImportedTopicsLoading(false);
+    }
+  }, [selectedClassId, rolloutFlags.quizEnabled]);
+
   useEffect(() => {
     loadTopics();
     setSelectedTopics([]);
     setExcludeTopics([]);
   }, [loadTopics]);
+
+  useEffect(() => {
+    void loadImportedTopics();
+  }, [loadImportedTopics]);
+
+  const mergedAvailableTopics = useMemo(() => {
+    const importedTitles = Array.from(
+      new Set(importedTopics.map((topic) => topic.title.trim()).filter(Boolean))
+    );
+    if (importedTitles.length === 0) {
+      return availableTopics;
+    }
+    return {
+      'Imported Course Materials': importedTitles,
+      ...availableTopics,
+    };
+  }, [availableTopics, importedTopics]);
+
+  useEffect(() => {
+    setProvenanceSourceFilter('all');
+    setProvenanceMaterialFilter('all');
+  }, [quizResult]);
+
+  const quizProvenanceSources = useMemo(() => {
+    if (!quizResult) return [];
+    const questionSources = quizResult.questions
+      .map((q) => q.provenance?.sourceFile?.trim())
+      .filter((source): source is string => Boolean(source));
+    const metadataSources = (quizResult.metadata.topicProvenance || [])
+      .map((item) => item.sourceFile?.trim())
+      .filter((source): source is string => Boolean(source));
+    return Array.from(new Set([...questionSources, ...metadataSources])).sort((a, b) => a.localeCompare(b));
+  }, [quizResult]);
+
+  const quizProvenanceMaterials = useMemo(() => {
+    if (!quizResult) return [];
+    const questionMaterials = quizResult.questions
+      .map((q) => q.provenance?.materialId?.trim())
+      .filter((material): material is string => Boolean(material));
+    const metadataMaterials = (quizResult.metadata.topicProvenance || [])
+      .map((item) => item.materialId?.trim())
+      .filter((material): material is string => Boolean(material));
+    return Array.from(new Set([...questionMaterials, ...metadataMaterials])).sort((a, b) => a.localeCompare(b));
+  }, [quizResult]);
+
+  const filteredQuizQuestions = useMemo(() => {
+    if (!quizResult) return [];
+    return quizResult.questions.filter((question) => {
+      const matchesSource =
+        provenanceSourceFilter === 'all' ||
+        (question.provenance?.sourceFile || '').trim() === provenanceSourceFilter;
+      const matchesMaterial =
+        provenanceMaterialFilter === 'all' ||
+        (question.provenance?.materialId || '').trim() === provenanceMaterialFilter;
+      return matchesSource && matchesMaterial;
+    });
+  }, [quizResult, provenanceSourceFilter, provenanceMaterialFilter]);
 
   // Difficulty adjustment
   const adjustDifficulty = (key: DifficultyLevel, delta: number) => {
@@ -226,7 +325,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
     // Determine effective topics, filtering out excluded ones
     let effectiveTopics = selectedTopics.length > 0
       ? selectedTopics.filter(t => !excludeTopics.includes(t))
-      : Object.values(availableTopics).flat().filter(t => !excludeTopics.includes(t)).slice(0, 3);
+      : Object.values(mergedAvailableTopics).flat().filter(t => !excludeTopics.includes(t)).slice(0, 3);
 
     // Hard cap topics to stay within LLM token budget
     if (effectiveTopics.length > MAX_TOPICS_LIMIT) {
@@ -245,6 +344,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
       difficultyDistribution: difficultyDist,
       bloomLevels: selectedBlooms,
       excludeTopics,
+      classSectionId: selectedClassId,
+      className: selectedClassName,
+      preferImportedTopics: rolloutFlags.quizEnabled,
     };
   };
 
@@ -267,12 +369,35 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
     setError('');
     setGenerating(true);
     setQuizResult(null);
+    const requestPayload = buildRequest();
     try {
-      const result = await apiService.generateQuiz(buildRequest());
+      const result = await apiService.generateQuiz(requestPayload);
       setQuizResult(result);
       setStep('results');
+      void apiService.reportImportGroundedFeedback({
+        flow: 'quiz',
+        status: 'success',
+        classSectionId: requestPayload.classSectionId,
+        className: requestPayload.className,
+        metadata: {
+          totalQuestions: result.metadata.totalQuestions,
+          usedImportedTopics: Boolean(result.metadata.usedImportedTopics),
+          importedTopicCount: result.metadata.importedTopicCount ?? 0,
+          importGroundingEnabled: rolloutFlags.quizEnabled,
+        },
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Quiz generation failed');
+      void apiService.reportImportGroundedFeedback({
+        flow: 'quiz',
+        status: 'failed',
+        classSectionId: requestPayload.classSectionId,
+        className: requestPayload.className,
+        metadata: {
+          error: err instanceof Error ? err.message : 'Quiz generation failed',
+          importGroundingEnabled: rolloutFlags.quizEnabled,
+        },
+      });
     } finally {
       setGenerating(false);
     }
@@ -307,7 +432,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
     URL.revokeObjectURL(url);
   };
 
-  const isFormValid = selectedTopics.length > 0 || Object.values(availableTopics).flat().length > 0;
+  const isFormValid = selectedTopics.length > 0 || Object.values(mergedAvailableTopics).flat().length > 0;
 
   // ─── Save / Publish / Assign Handlers ─────────────────────
 
@@ -587,6 +712,18 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   <span>Type: {QUESTION_TYPE_LABELS[q.questionType as QuestionType]?.label || q.questionType}</span>
                   <span>Bloom: {q.bloomLevel}</span>
                 </div>
+                {q.provenance && (
+                  <div className="bg-[#f7fbff] border border-sky-100 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-sky-700 mb-1">Item Provenance</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs text-[#5a6578]">
+                      {q.provenance.title && <p>Topic: {q.provenance.title}</p>}
+                      {q.provenance.topicId && <p>Topic ID: {q.provenance.topicId}</p>}
+                      {q.provenance.materialId && <p>Material ID: {q.provenance.materialId}</p>}
+                      {q.provenance.sourceFile && <p>Source File: {q.provenance.sourceFile}</p>}
+                      {q.provenance.sectionId && <p>Section ID: {q.provenance.sectionId}</p>}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -830,12 +967,28 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
               {/* Topics */}
               {renderSection('topics', 'Topics', <BookOpen size={16} />, (
                 <div className="space-y-3">
+                  <div className="bg-[#f6f9ff] border border-[#dde3eb] rounded-lg p-3">
+                    <p className="text-xs font-semibold text-[#0a1628]">
+                      Imported topic context
+                      {selectedClassName ? ` for ${selectedClassName}` : ''}
+                    </p>
+                    <p className="text-xs text-[#5a6578] mt-1">
+                      {importedTopicsLoading
+                        ? 'Loading imported topics...'
+                        : importedTopics.length > 0
+                        ? `${importedTopics.length} imported topic${importedTopics.length !== 1 ? 's' : ''} available and prioritized during generation`
+                        : 'No imported topics found for the current class context'}
+                    </p>
+                    {importedTopicsWarning && (
+                      <p className="text-[11px] text-amber-700 mt-1">{importedTopicsWarning}</p>
+                    )}
+                  </div>
                   {topicsLoading ? (
                     <div className="flex items-center gap-2 text-sm text-[#5a6578]">
                       <Loader2 size={14} className="animate-spin" /> Loading topics...
                     </div>
                   ) : (
-                    Object.entries(availableTopics).map(([category, subtopics]) => (
+                    Object.entries(mergedAvailableTopics).map(([category, subtopics]) => (
                       <div key={category}>
                         <p className="text-xs font-bold text-[#5a6578] uppercase tracking-wide mb-2">{category}</p>
                         <div className="flex flex-wrap gap-2">
@@ -1076,6 +1229,56 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
                   </div>
                 </div>
 
+                {(quizResult.metadata.usedImportedTopics || (quizResult.metadata.topicProvenance || []).length > 0) && (
+                  <div className="mt-4 bg-white rounded-lg p-3 border border-[#dde3eb]">
+                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Imported Topic Provenance</p>
+                    <p className="text-xs text-[#5a6578] mb-2">
+                      Imported topics used: {quizResult.metadata.usedImportedTopics ? 'Yes' : 'No'}
+                      {' • '}Materials: {quizResult.metadata.importedMaterialsCount ?? 0}
+                      {' • '}Topics: {quizResult.metadata.importedTopicCount ?? 0}
+                    </p>
+                    {(quizResult.metadata.topicProvenance || []).slice(0, 5).map((item, index) => (
+                      <div key={`${item.topicId || item.title || 'topic'}_${index}`} className="text-xs text-[#5a6578]">
+                        {item.title || 'Untitled topic'}
+                        {item.sourceFile ? ` • ${item.sourceFile}` : ''}
+                      </div>
+                    ))}
+                    {(quizProvenanceSources.length > 0 || quizProvenanceMaterials.length > 0) && (
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <label className="text-xs text-[#5a6578] flex flex-col gap-1">
+                          <span className="font-semibold">Filter by Source File</span>
+                          <select
+                            value={provenanceSourceFilter}
+                            onChange={(event) => setProvenanceSourceFilter(event.target.value)}
+                            className="bg-white border border-[#dde3eb] rounded-md px-2 py-1.5 text-xs"
+                          >
+                            <option value="all">All sources</option>
+                            {quizProvenanceSources.map((source) => (
+                              <option key={source} value={source}>{source}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-xs text-[#5a6578] flex flex-col gap-1">
+                          <span className="font-semibold">Filter by Material ID</span>
+                          <select
+                            value={provenanceMaterialFilter}
+                            onChange={(event) => setProvenanceMaterialFilter(event.target.value)}
+                            className="bg-white border border-[#dde3eb] rounded-md px-2 py-1.5 text-xs"
+                          >
+                            <option value="all">All materials</option>
+                            {quizProvenanceMaterials.map((material) => (
+                              <option key={material} value={material}>{material}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-[#5a6578] mt-2">
+                      Showing {filteredQuizQuestions.length} of {quizResult.questions.length} questions after provenance filters.
+                    </p>
+                  </div>
+                )}
+
                 {/* Distribution breakdowns */}
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-white rounded-lg p-3">
@@ -1128,7 +1331,13 @@ const QuizMaker: React.FC<QuizMakerProps> = ({ onClose, gradeLevel: initialGrade
 
               {/* Questions */}
               <div className="space-y-3">
-                {quizResult.questions.map((q, i) => renderQuestionCard(q, i, true))}
+                {filteredQuizQuestions.length > 0 ? (
+                  filteredQuizQuestions.map((q, i) => renderQuestionCard(q, i, true))
+                ) : (
+                  <div className="border border-[#dde3eb] rounded-xl p-4 bg-white text-sm text-[#5a6578]">
+                    No questions match the selected provenance filters. Clear one or both filters to view all questions.
+                  </div>
+                )}
               </div>
             </div>
           )}

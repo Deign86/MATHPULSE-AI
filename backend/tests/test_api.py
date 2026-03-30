@@ -17,6 +17,8 @@ import asyncio
 import json
 import os
 import sys
+import time
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -86,9 +88,25 @@ sys.modules["automation_engine"] = mock_ae
 os.environ["HF_TOKEN"] = "test-token-for-testing"
 
 # analytics.py is importable directly (its heavy deps are guarded)
-from main import app  # noqa: E402
+import main as main_module  # noqa: E402
 
-client = TestClient(app)
+app = main_module.app
+
+# Mock auth verification so protected endpoints can run in tests without Firebase credentials.
+main_module._firebase_ready = True
+main_module._init_firebase_admin = lambda: None
+main_module.firebase_firestore = None
+if getattr(main_module, "firebase_auth", None) is None:
+    main_module.firebase_auth = MagicMock()
+main_module.firebase_auth.verify_id_token = MagicMock(
+    return_value={
+        "uid": "test-teacher-uid",
+        "email": "teacher@example.com",
+        "role": "teacher",
+    }
+)
+
+client = TestClient(app, headers={"Authorization": "Bearer test-auth-token"})
 
 
 # ─── Fixtures ──────────────────────────────────────────────────
@@ -267,14 +285,14 @@ class TestLearningPath:
         mock_chat.return_value = "1. Review fractions\n2. Practice decimals"
         response = client.post("/api/learning-path", json={
             "weaknesses": ["fractions", "decimals"],
-            "gradeLevel": "Grade 7",
+            "gradeLevel": "Grade 11",
         })
         assert response.status_code == 200
         assert "fractions" in response.json()["learningPath"].lower()
 
     def test_learning_path_missing_weaknesses(self):
         response = client.post("/api/learning-path", json={
-            "gradeLevel": "Grade 7",
+            "gradeLevel": "Grade 11",
         })
         assert response.status_code == 422
 
@@ -289,7 +307,7 @@ class TestLearningPath:
         mock_chat.side_effect = Exception("HF down")
         response = client.post("/api/learning-path", json={
             "weaknesses": ["algebra"],
-            "gradeLevel": "Grade 8",
+            "gradeLevel": "Grade 11",
         })
         assert response.status_code == 502
 
@@ -327,10 +345,10 @@ class TestQuizTopics:
         assert "allTopics" in response.json()
 
     def test_get_topics_by_grade(self):
-        response = client.get("/api/quiz/topics?gradeLevel=Grade%207")
+        response = client.get("/api/quiz/topics?gradeLevel=Grade%2011")
         assert response.status_code == 200
         data = response.json()
-        assert data["gradeLevel"] == "Grade 7"
+        assert data["gradeLevel"] == "Grade 11"
         assert "topics" in data
 
     def test_get_topics_invalid_grade(self):
@@ -359,7 +377,7 @@ class TestQuizGeneration:
 
         response = client.post("/api/quiz/generate", json={
             "topics": ["Arithmetic"],
-            "gradeLevel": "Grade 7",
+            "gradeLevel": "Grade 11",
             "numQuestions": 1,
         })
         assert response.status_code == 200
@@ -369,7 +387,7 @@ class TestQuizGeneration:
 
     def test_generate_quiz_missing_topics(self):
         response = client.post("/api/quiz/generate", json={
-            "gradeLevel": "Grade 7",
+            "gradeLevel": "Grade 11",
         })
         assert response.status_code == 422
 
@@ -378,7 +396,7 @@ class TestQuizGeneration:
         mock_chat.return_value = "This is not valid JSON at all."
         response = client.post("/api/quiz/generate", json={
             "topics": ["Algebra"],
-            "gradeLevel": "Grade 8",
+            "gradeLevel": "Grade 11",
             "numQuestions": 1,
         })
         assert response.status_code == 500
@@ -398,7 +416,7 @@ class TestQuizGeneration:
         mock_chat.return_value = quiz_json
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
-            "gradeLevel": "Grade 8",
+            "gradeLevel": "Grade 11",
         })
         assert response.status_code == 200
 
@@ -505,6 +523,286 @@ class TestStudentCompetency:
         geometry = next((c for c in data["competencies"] if c["topic"] == "Geometry"), None)
         if algebra and geometry:
             assert algebra["efficiencyScore"] > geometry["efficiencyScore"]
+
+
+# ─── Course Materials Recent Retrieval ───────────────────────
+
+
+class _FakeDocSnapshot:
+    def __init__(self, doc_id: str, data: Dict[str, Any]):
+        self.id = doc_id
+        self._data = data
+
+    def to_dict(self) -> Dict[str, Any]:
+        return self._data
+
+
+class _FakeQuery:
+    def __init__(self, docs: List[Dict[str, Any]], fail_order: bool = False):
+        self._docs = docs
+        self._filters: List[tuple[str, str, Any]] = []
+        self._limit: int | None = None
+        self._fail_order = fail_order
+
+    def where(self, field: str, op: str, value: Any):
+        self._filters.append((field, op, value))
+        return self
+
+    def order_by(self, *args, **kwargs):
+        if self._fail_order:
+            raise Exception("missing composite index")
+        return self
+
+    def limit(self, value: int):
+        self._limit = value
+        return self
+
+    def stream(self):
+        filtered: List[Dict[str, Any]] = []
+        for doc in self._docs:
+            include = True
+            for field, op, expected in self._filters:
+                if op != "==":
+                    continue
+                if doc.get(field) != expected:
+                    include = False
+                    break
+            if include:
+                filtered.append(doc)
+
+        if self._limit is not None:
+            filtered = filtered[: self._limit]
+
+        return [_FakeDocSnapshot(str(doc.get("materialId") or "doc"), doc) for doc in filtered]
+
+
+class _FakeCollection:
+    def __init__(self, name: str, store: Dict[str, List[Dict[str, Any]]], audit_logs: List[Dict[str, Any]], fail_order: bool = False):
+        self._name = name
+        self._store = store
+        self._audit_logs = audit_logs
+        self._fail_order = fail_order
+
+    def where(self, field: str, op: str, value: Any):
+        docs = list(self._store.get(self._name, []))
+        query = _FakeQuery(docs, fail_order=self._fail_order)
+        return query.where(field, op, value)
+
+    def add(self, payload: Dict[str, Any]):
+        self._audit_logs.append(payload)
+        return (None, None)
+
+
+class _FakeFirestoreClient:
+    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False):
+        self._store = store
+        self.audit_logs: List[Dict[str, Any]] = []
+        self._fail_order = fail_order
+
+    def collection(self, name: str):
+        return _FakeCollection(name, self._store, self.audit_logs, fail_order=self._fail_order)
+
+
+class _FakeFirestoreModule:
+    class Query:
+        DESCENDING = "DESCENDING"
+
+    SERVER_TIMESTAMP = object()
+
+    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False):
+        self._client = _FakeFirestoreClient(store, fail_order=fail_order)
+
+    def client(self):
+        return self._client
+
+
+class TestRecentCourseMaterials:
+    def test_recent_course_materials_respects_class_section_filter(self):
+        now = int(time.time())
+        firestore = _FakeFirestoreModule(
+            {
+                "courseMaterials": [
+                    {
+                        "materialId": "mat-a",
+                        "teacherId": "test-teacher-uid",
+                        "fileName": "algebra-a.pdf",
+                        "fileType": "pdf",
+                        "classSectionId": "grade11_a",
+                        "topics": [{"title": "Linear Equations"}],
+                        "extractedTextLength": 1200,
+                        "retentionDays": 180,
+                        "expiresAtEpoch": now + 3600,
+                    },
+                    {
+                        "materialId": "mat-b",
+                        "teacherId": "test-teacher-uid",
+                        "fileName": "algebra-b.pdf",
+                        "fileType": "pdf",
+                        "classSectionId": "grade11_b",
+                        "topics": [{"title": "Quadratics"}],
+                        "extractedTextLength": 1600,
+                        "retentionDays": 180,
+                        "expiresAtEpoch": now + 3600,
+                    },
+                ]
+            }
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/upload/course-materials/recent?classSectionId=grade11_a&limit=10")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["classSectionId"] == "grade11_a"
+        assert len(data["materials"]) == 1
+        assert data["materials"][0]["materialId"] == "mat-a"
+        assert all(item["classSectionId"] == "grade11_a" for item in data["materials"])
+
+    def test_recent_course_materials_reports_retention_exclusions(self):
+        now = int(time.time())
+        firestore = _FakeFirestoreModule(
+            {
+                "courseMaterials": [
+                    {
+                        "materialId": "mat-valid",
+                        "teacherId": "test-teacher-uid",
+                        "fileName": "active.txt",
+                        "fileType": "txt",
+                        "classSectionId": "grade11_a",
+                        "topics": [{"title": "Functions"}],
+                        "extractedTextLength": 900,
+                        "retentionDays": 180,
+                        "expiresAtEpoch": now + 7200,
+                    },
+                    {
+                        "materialId": "mat-expired",
+                        "teacherId": "test-teacher-uid",
+                        "fileName": "expired.txt",
+                        "fileType": "txt",
+                        "classSectionId": "grade11_a",
+                        "topics": [{"title": "Inequalities"}],
+                        "extractedTextLength": 700,
+                        "retentionDays": 30,
+                        "expiresAtEpoch": now - 60,
+                    },
+                ]
+            },
+            fail_order=True,
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/upload/course-materials/recent?classSectionId=grade11_a&limit=10")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["materials"]) == 1
+        assert data["materials"][0]["materialId"] == "mat-valid"
+        warning_text = " ".join(data.get("warnings", []))
+        assert "expired course-material artifact" in warning_text.lower()
+        assert "fallback query path" in warning_text.lower()
+
+
+# ─── Import-Grounded Telemetry Summary ───────────────────────
+
+
+class TestImportGroundedTelemetrySummary:
+    def test_feedback_summary_aggregates_query_pack_metrics(self):
+        now = datetime.now(timezone.utc)
+        firestore = _FakeFirestoreModule(
+            {
+                "importGroundedFeedbackEvents": [
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "flow": "quiz",
+                        "status": "success",
+                        "classSectionId": "grade11_a",
+                        "metadata": {"usedImportedTopics": True, "importGroundingEnabled": True},
+                        "createdAtIso": (now - timedelta(hours=2)).isoformat(),
+                    },
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "flow": "quiz",
+                        "status": "failed",
+                        "classSectionId": "grade11_a",
+                        "metadata": {"usedImportedTopics": False, "importGroundingEnabled": True, "error": "timeout"},
+                        "createdAtIso": (now - timedelta(hours=1)).isoformat(),
+                    },
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "flow": "lesson",
+                        "status": "skipped",
+                        "classSectionId": "grade11_b",
+                        "metadata": {"usedImportedTopics": False, "importGroundingEnabled": True},
+                        "createdAtIso": (now - timedelta(days=2)).isoformat(),
+                    },
+                    {
+                        "teacherId": "other-teacher",
+                        "flow": "lesson",
+                        "status": "failed",
+                        "classSectionId": "grade11_a",
+                        "metadata": {"error": "upstream"},
+                        "createdAtIso": (now - timedelta(hours=3)).isoformat(),
+                    },
+                ]
+            }
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/feedback/import-grounded/summary?days=7&limit=1000")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["totalEvents"] == 3
+        assert len(data["hourlyVolume"]) >= 2
+        assert any(item["flow"] == "quiz" for item in data["flowUsage"])
+        assert any(item["normalizedErrorReason"] == "timeout" for item in data["topErrors"])
+
+    def test_feedback_summary_class_filter_and_hold_thresholds(self):
+        now = datetime.now(timezone.utc)
+        firestore = _FakeFirestoreModule(
+            {
+                "importGroundedFeedbackEvents": [
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "flow": "quiz",
+                        "status": "failed",
+                        "classSectionId": "grade11_a",
+                        "metadata": {"usedImportedTopics": False, "importGroundingEnabled": True, "error": "empty_prompt"},
+                        "createdAtIso": (now - timedelta(hours=1)).isoformat(),
+                    },
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "flow": "quiz",
+                        "status": "failed",
+                        "classSectionId": "grade11_a",
+                        "metadata": {"usedImportedTopics": False, "importGroundingEnabled": True, "error": "timeout"},
+                        "createdAtIso": (now - timedelta(hours=2)).isoformat(),
+                    },
+                    {
+                        "teacherId": "test-teacher-uid",
+                        "flow": "lesson",
+                        "status": "success",
+                        "classSectionId": "grade11_b",
+                        "metadata": {"usedImportedTopics": True, "importGroundingEnabled": True},
+                        "createdAtIso": (now - timedelta(hours=2)).isoformat(),
+                    },
+                ]
+            }
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/feedback/import-grounded/summary?classSectionId=grade11_a&days=7&limit=1000")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["classSectionId"] == "grade11_a"
+        assert data["totalEvents"] == 2
+        assert all(item["classSectionId"] == "grade11_a" for item in data["classRates"])
+        assert data["thresholds"]["go"] is False
+        joined_reasons = " ".join(data["thresholds"].get("reasons", [])).lower()
+        assert "failure_rate_24h" in joined_reasons
 
 
 # ─── Run ───────────────────────────────────────────────────────

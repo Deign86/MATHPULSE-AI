@@ -7,7 +7,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
-import { apiService, type StudentCompetencyResponse, type TopicCompetency } from '../services/apiService';
+import {
+  apiService,
+  type StudentCompetencyResponse,
+  type TopicCompetency,
+  type CourseMaterialTopicMapTopic,
+} from '../services/apiService';
 import { getUserProgress } from '../services/progressService';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -38,7 +43,7 @@ const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string 
 
 // ─── Component ──────────────────────────────────────────────
 
-const StudentCompetencyTable: React.FC = () => {
+const StudentCompetencyTable: React.FC<{ classSectionId?: string; className?: string }> = ({ classSectionId, className }) => {
   const { currentUser } = useAuth();
 
   const [rows, setRows] = useState<StudentRow[]>([]);
@@ -47,6 +52,9 @@ const StudentCompetencyTable: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('riskLevel');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [importedTopics, setImportedTopics] = useState<CourseMaterialTopicMapTopic[]>([]);
+  const [importedTopicsLoading, setImportedTopicsLoading] = useState(false);
+  const [importedTopicsWarning, setImportedTopicsWarning] = useState('');
 
   // ─── Load students ────────────────────────────────────────
 
@@ -70,6 +78,34 @@ const StudentCompetencyTable: React.FC = () => {
   }, [currentUser?.uid]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
+
+  useEffect(() => {
+    const loadImportedTopics = async () => {
+      if (!classSectionId) {
+        setImportedTopics([]);
+        setImportedTopicsWarning('');
+        return;
+      }
+
+      setImportedTopicsLoading(true);
+      setImportedTopicsWarning('');
+      try {
+        const response = await apiService.getCourseMaterialTopics({ classSectionId, limit: 20 });
+        const topics = (response.topics || []).filter((topic) => topic.title?.trim());
+        setImportedTopics(topics);
+        if (response.warnings.length > 0) {
+          setImportedTopicsWarning(response.warnings.join(' '));
+        }
+      } catch {
+        setImportedTopics([]);
+        setImportedTopicsWarning('Imported topic context is unavailable right now.');
+      } finally {
+        setImportedTopicsLoading(false);
+      }
+    };
+
+    void loadImportedTopics();
+  }, [classSectionId]);
 
   // ─── Load competency on expand ────────────────────────────
 
@@ -182,6 +218,7 @@ const StudentCompetencyTable: React.FC = () => {
   const highRisk = rows.filter(r => r.student.riskLevel === 'High').length;
   const avgScore = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + r.student.avgQuizScore, 0) / totalStudents) : 0;
   const avgEngagement = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + r.student.engagementScore, 0) / totalStudents) : 0;
+  const importedTopicTitles = Array.from(new Set(importedTopics.map((topic) => topic.title).filter(Boolean))).slice(0, 10);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ChevronDown size={14} className="text-slate-500" />;
@@ -260,6 +297,30 @@ const StudentCompetencyTable: React.FC = () => {
           <RefreshCw size={14} />
           Refresh
         </button>
+      </div>
+
+      {/* Imported Topic Context */}
+      <div className="bg-[#f6f9ff] border border-[#dde3eb] rounded-xl p-3">
+        <p className="text-xs font-semibold text-[#0a1628]">
+          Imported Topic Context{className ? ` for ${className}` : ''}
+        </p>
+        <p className="text-xs text-[#5a6578] mt-1">
+          {importedTopicsLoading
+            ? 'Loading class-scoped imported topics...'
+            : importedTopicTitles.length > 0
+            ? `${importedTopicTitles.length} imported topics loaded for competency guidance`
+            : 'No imported topics found for this class context'}
+        </p>
+        {importedTopicsWarning && <p className="text-[11px] text-amber-700 mt-1">{importedTopicsWarning}</p>}
+        {importedTopicTitles.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {importedTopicTitles.map((topic) => (
+              <span key={topic} className="text-[11px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded">
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -402,6 +463,22 @@ const StudentCompetencyTable: React.FC = () => {
                                 <div className="flex flex-wrap gap-1.5">
                                   {row.competency.recommendedTopics.map((topic, i) => (
                                     <span key={i} className="inline-flex items-center bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-medium">
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {importedTopicTitles.length > 0 && (
+                              <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
+                                <h5 className="text-xs font-bold text-sky-800 mb-1.5 flex items-center gap-1">
+                                  <Brain size={12} />
+                                  Class Imported Topics
+                                </h5>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {importedTopicTitles.slice(0, 8).map((topic, i) => (
+                                    <span key={`${topic}_${i}`} className="inline-flex items-center bg-sky-100 text-sky-700 px-2 py-0.5 rounded text-xs font-medium">
                                       {topic}
                                     </span>
                                   ))}

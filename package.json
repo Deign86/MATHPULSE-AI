@@ -79,6 +79,8 @@
             "dev": "vite",
             "build": "vite build",
             "test": "vitest run",
-            "test:watch": "vitest"
+            "test:watch": "vitest",
+            "typecheck:backend": "node scripts/backend-gate.mjs typecheck",
+            "check:backend": "node scripts/backend-gate.mjs check"
       }
 }

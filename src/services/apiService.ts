@@ -33,6 +33,15 @@ export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api.hf.space';
 
+const parseEnvBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (value == null || value.trim() === '') return defaultValue;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+};
+
+const IMPORT_GROUNDED_QUIZ_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_QUIZ, true);
+const IMPORT_GROUNDED_LESSON_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_LESSON, true);
+const IMPORT_GROUNDED_FEEDBACK_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS, true);
+
 // ─── Types ────────────────────────────────────────────────────
 
 export interface ChatRequest {
@@ -59,6 +68,9 @@ export interface RiskPrediction {
     labels: string[];
     scores: number[];
   };
+  risk_level: 'high' | 'medium' | 'low';
+  risk_score: number;
+  top_factors: string[];
 }
 
 export interface LearningPathRequest {
@@ -90,12 +102,340 @@ export interface UploadResponse {
   students: {
     name: string;
     lrn?: string;
-    email: string;
+    email?: string;
     engagementScore: number;
     avgQuizScore: number;
     attendance: number;
+    assignmentCompletion?: number;
+    term?: string;
+    assessmentName?: string;
+    unknownFields?: Record<string, string>;
+    sourceMeta?: {
+      fileName: string;
+      fileHash: string;
+      sourceRow: number;
+    };
+    studentId?: string;
+    dedupKey?: string;
   }[];
   columnMapping: Record<string, string>;
+  totalRows?: number;
+  unknownColumns?: string[];
+  warnings?: string[];
+  rowWarnings?: { row: number; warning: string }[];
+  importId?: string | null;
+  persisted?: boolean;
+  dedup?: { inserted: number; updated: number };
+  summary?: {
+    totalFiles: number;
+    successfulFiles: number;
+    failedFiles: number;
+  };
+  riskRefresh?: {
+    queued: boolean;
+    studentsQueued: number;
+    reason?: string | null;
+    refreshId?: string | null;
+    queuedAtEpoch?: number | null;
+  };
+  files?: {
+    fileName: string;
+    fileType: string;
+    status: 'success' | 'partial_success' | 'failed';
+    students: UploadResponse['students'];
+    totalRows: number;
+    columnMapping: Record<string, string>;
+    unknownColumns: string[];
+    warnings: string[];
+    rowWarnings: { row: number; warning: string }[];
+    classSectionId?: string | null;
+    className?: string | null;
+    importId?: string | null;
+    persisted?: boolean;
+    dedup?: { inserted: number; updated: number };
+  }[];
+}
+
+export interface RiskRefreshMonitorJob {
+  refreshId: string;
+  status: 'queued' | 'success' | 'failed' | 'unknown';
+  studentsQueued: number;
+  classSectionId?: string | null;
+  queuedAtEpoch?: number | null;
+  startedAtEpoch?: number | null;
+  completedAtEpoch?: number | null;
+  durationMs?: number | null;
+  updatedAtIso?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RiskRefreshMonitorStats {
+  queuedCount: number;
+  successCount: number;
+  failedCount: number;
+  lastRefreshId?: string | null;
+  lastStatus?: string | null;
+  lastStudentsQueued?: number | null;
+  lastQueuedAtEpoch?: number | null;
+  lastStartedAtEpoch?: number | null;
+  lastCompletedAtEpoch?: number | null;
+  lastDurationMs?: number | null;
+  updatedAtIso?: string | null;
+}
+
+export interface RiskRefreshMonitorResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  stats: RiskRefreshMonitorStats;
+  jobs: RiskRefreshMonitorJob[];
+  warnings: string[];
+}
+
+export interface CourseMaterialTopic {
+  topicId: string;
+  title: string;
+  description: string;
+  prerequisiteTopics: string[];
+  sourceFiles: string[];
+}
+
+export interface CourseMaterialSection {
+  sectionId: string;
+  title: string;
+  preview: string;
+  sourceFile: string;
+}
+
+export interface CourseMaterialUploadResponse {
+  success: boolean;
+  fileName: string;
+  fileType: string;
+  fileHash?: string;
+  materialId?: string | null;
+  persisted?: boolean;
+  classSectionId?: string | null;
+  className?: string | null;
+  extractedTextLength: number;
+  sections: CourseMaterialSection[];
+  topics: CourseMaterialTopic[];
+  warnings: string[];
+  files?: {
+    fileName: string;
+    fileType: string;
+    status: 'success' | 'partial_success' | 'failed';
+    fileHash?: string | null;
+    materialId?: string | null;
+    persisted?: boolean;
+    classSectionId?: string | null;
+    className?: string | null;
+    extractedTextLength: number;
+    sections: CourseMaterialSection[];
+    topics: CourseMaterialTopic[];
+    warnings: string[];
+  }[];
+  summary?: {
+    totalFiles: number;
+    successfulFiles: number;
+    failedFiles: number;
+  };
+}
+
+export interface CourseMaterialArtifactSummary {
+  materialId: string;
+  fileName: string;
+  fileType: string;
+  classSectionId?: string | null;
+  className?: string | null;
+  topicsCount: number;
+  topicTitles: string[];
+  extractedTextLength: number;
+  retentionDays?: number | null;
+  expiresAtEpoch?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface RecentCourseMaterialsResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  materials: CourseMaterialArtifactSummary[];
+  warnings: string[];
+}
+
+export interface CourseMaterialTopicMapTopic {
+  topicId: string;
+  title: string;
+  description: string;
+  prerequisiteTopics: string[];
+  sourceFiles: string[];
+  materialId: string;
+  sourceFile?: string | null;
+  sectionId?: string | null;
+  classSectionId?: string | null;
+  className?: string | null;
+}
+
+export interface CourseMaterialTopicMapResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  materialId?: string | null;
+  topics: CourseMaterialTopicMapTopic[];
+  materials: CourseMaterialArtifactSummary[];
+  warnings: string[];
+}
+
+export interface LessonGenerationRequest {
+  gradeLevel: string;
+  classSectionId?: string;
+  className?: string;
+  materialId?: string;
+  focusTopics?: string[];
+  topicCount?: number;
+  preferImportedTopics?: boolean;
+}
+
+export interface LessonPlanBlock {
+  blockId: string;
+  title: string;
+  objective: string;
+  strategy: string;
+  estimatedMinutes: number;
+  activities: string[];
+  checksForUnderstanding: string[];
+  remediationTips: string[];
+  provenance?: {
+    topicId?: string | null;
+    title?: string | null;
+    materialId?: string | null;
+    sourceFile?: string | null;
+    sectionId?: string | null;
+  } | null;
+}
+
+export interface LessonPlanResponse {
+  success: boolean;
+  lessonTitle: string;
+  gradeLevel: string;
+  classSectionId?: string | null;
+  className?: string | null;
+  usedImportedTopics: boolean;
+  importedTopicCount: number;
+  weakSignals: {
+    recordsCount: number;
+    averageQuizScore: number;
+    averageAttendance: number;
+    averageEngagement: number;
+    averageAssignmentCompletion: number;
+    atRiskRate: number;
+  };
+  focusTopics: string[];
+  blocks: LessonPlanBlock[];
+  provenanceSummary: {
+    topicId?: string | null;
+    title?: string | null;
+    materialId?: string | null;
+    sourceFile?: string | null;
+    sectionId?: string | null;
+  }[];
+  warnings: string[];
+}
+
+export interface ImportGroundedFeedbackRequest {
+  flow: 'quiz' | 'lesson';
+  status: 'success' | 'failed' | 'skipped';
+  classSectionId?: string;
+  className?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ImportGroundedFeedbackResponse {
+  success: boolean;
+  stored: boolean;
+  warnings: string[];
+}
+
+export interface ImportGroundedRolloutFlags {
+  quizEnabled: boolean;
+  lessonEnabled: boolean;
+  feedbackEnabled: boolean;
+}
+
+export interface ImportGroundedHourlyVolumeItem {
+  hourBucket: string;
+  flow: string;
+  status: string;
+  eventCount: number;
+}
+
+export interface ImportGroundedClassRateItem {
+  classSectionId: string;
+  total24h: number;
+  failed24h: number;
+  skipped24h: number;
+  failureRate24h: number;
+  skippedRate24h: number;
+  total7d: number;
+  failed7d: number;
+  skipped7d: number;
+  failureRate7d: number;
+  skippedRate7d: number;
+}
+
+export interface ImportGroundedFlowUsageItem {
+  flow: string;
+  totalEvents: number;
+  eligibleEvents: number;
+  groundedEvents: number;
+  groundedUsageRatio: number;
+}
+
+export interface ImportGroundedErrorReasonItem {
+  normalizedErrorReason: string;
+  occurrences: number;
+}
+
+export interface ImportGroundedTelemetryThresholds {
+  go: boolean;
+  reasons: string[];
+}
+
+export interface ImportGroundedTelemetrySummaryResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  lookbackDays: number;
+  totalEvents: number;
+  hourlyVolume: ImportGroundedHourlyVolumeItem[];
+  classRates: ImportGroundedClassRateItem[];
+  flowUsage: ImportGroundedFlowUsageItem[];
+  topErrors: ImportGroundedErrorReasonItem[];
+  thresholds: ImportGroundedTelemetryThresholds;
+  warnings: string[];
+}
+
+export interface ImportGroundedAccessAuditItem {
+  auditId: string;
+  action: string;
+  status: string;
+  path: string;
+  method: string;
+  classSectionId?: string | null;
+  createdAtIso?: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface ImportGroundedAccessAuditSummary {
+  totalEvents: number;
+  byAction: Record<string, number>;
+  byStatus: Record<string, number>;
+}
+
+export interface ImportGroundedAccessAuditResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  lookbackDays: number;
+  entries: ImportGroundedAccessAuditItem[];
+  summary: ImportGroundedAccessAuditSummary;
+  warnings: string[];
 }
 
 // ─── Quiz Maker Types ────────────────────────────────────────
@@ -113,6 +453,10 @@ export interface QuizGenerationRequest {
   difficultyDistribution?: Record<DifficultyLevel, number>;
   bloomLevels?: BloomLevel[];
   excludeTopics?: string[];
+  classSectionId?: string;
+  className?: string;
+  materialId?: string;
+  preferImportedTopics?: boolean;
 }
 
 export interface QuizQuestionGenerated {
@@ -125,6 +469,13 @@ export interface QuizQuestionGenerated {
   topic: string;
   points: number;
   explanation: string;
+  provenance?: {
+    topicId?: string | null;
+    title?: string | null;
+    materialId?: string | null;
+    sourceFile?: string | null;
+    sectionId?: string | null;
+  } | null;
 }
 
 export interface QuizGenerationResponse {
@@ -142,6 +493,21 @@ export interface QuizGenerationResponse {
     bloomTaxonomyRationale: string;
     recommendedTeacherActions: string[];
     graphQuestionNote?: string;
+    classSectionId?: string | null;
+    className?: string | null;
+    materialId?: string | null;
+    importGroundingEnabled?: boolean;
+    usedImportedTopics?: boolean;
+    importedMaterialsCount?: number;
+    importedTopicCount?: number;
+    importWarnings?: string[];
+    topicProvenance?: {
+      topicId?: string;
+      title?: string;
+      materialId?: string;
+      sourceFile?: string;
+      sectionId?: string | null;
+    }[];
   };
 }
 
@@ -297,6 +663,52 @@ async function apiFetch<T>(
   }
 }
 
+async function apiFetchBlob(
+  endpoint: string,
+  options?: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Blob> {
+  const url = `${API_URL}${endpoint}`;
+  const method = options?.method ?? 'GET';
+  logApiInfo(endpoint, method, 'Starting blob request');
+
+  const headers = new Headers(options?.headers ?? {});
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken();
+      if (idToken) {
+        headers.set('Authorization', `Bearer ${idToken}`);
+      }
+    } catch (err) {
+      logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
+    }
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new ApiError({
+        status: res.status,
+        statusText: res.statusText || 'Request Failed',
+        endpoint,
+        responseBody: body,
+        retryable: res.status >= 500 || res.status === 429,
+      });
+    }
+    return await res.blob();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Fallback values ─────────────────────────────────────────
 
 const FALLBACK_CHAT: ChatResponse = {
@@ -307,6 +719,9 @@ const FALLBACK_RISK: RiskPrediction = {
   riskLevel: 'Medium',
   confidence: 0,
   analysis: { labels: [], scores: [] },
+  risk_level: 'medium',
+  risk_score: 0,
+  top_factors: ['Fallback risk response due to temporary service unavailability'],
 };
 
 const FALLBACK_LEARNING_PATH: LearningPathResponse = {
@@ -346,6 +761,29 @@ function validateQuizResponse(data: unknown): data is QuizGenerationResponse {
 // ─── Public API ──────────────────────────────────────────────
 
 export const apiService = {
+  getImportGroundedRolloutFlags(): ImportGroundedRolloutFlags {
+    return {
+      quizEnabled: IMPORT_GROUNDED_QUIZ_ENABLED,
+      lessonEnabled: IMPORT_GROUNDED_LESSON_ENABLED,
+      feedbackEnabled: IMPORT_GROUNDED_FEEDBACK_ENABLED,
+    };
+  },
+
+  async reportImportGroundedFeedback(payload: ImportGroundedFeedbackRequest): Promise<ImportGroundedFeedbackResponse> {
+    if (!IMPORT_GROUNDED_FEEDBACK_ENABLED) {
+      return {
+        success: true,
+        stored: false,
+        warnings: ['Import-grounded feedback events are disabled by frontend rollout flag.'],
+      };
+    }
+
+    return apiFetch<ImportGroundedFeedbackResponse>('/api/feedback/import-grounded', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   /** Health check */
   async health(): Promise<{ status: string }> {
     return apiFetch('/health', undefined, { ...DEFAULT_RETRY_OPTS, timeoutMs: 10_000 });
@@ -473,22 +911,204 @@ export const apiService = {
   },
 
   /** Smart File Upload with AI Column Detection */
-  async uploadClassRecords(file: File): Promise<UploadResponse> {
-    if (!file || file.size === 0) {
-      throw new ApiValidationError('/api/upload/class-records', 'File is required and must not be empty');
+  async uploadClassRecords(
+    files: File | File[],
+    options?: { classSectionId?: string; className?: string },
+  ): Promise<UploadResponse> {
+    const resolvedFiles = Array.isArray(files) ? files : [files];
+    if (resolvedFiles.length === 0) {
+      throw new ApiValidationError('/api/upload/class-records', 'At least one file is required');
     }
-    // 10 MB limit
-    if (file.size > 10 * 1024 * 1024) {
-      throw new ApiValidationError('/api/upload/class-records', 'File size exceeds 10 MB limit');
+    if (resolvedFiles.some((file) => !file || file.size === 0)) {
+      throw new ApiValidationError('/api/upload/class-records', 'All files must be non-empty');
+    }
+    if (resolvedFiles.some((file) => file.size > 10 * 1024 * 1024)) {
+      throw new ApiValidationError('/api/upload/class-records', 'One or more files exceed the 10 MB size limit');
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    resolvedFiles.forEach((file) => formData.append('files', file));
+    if (options?.classSectionId) {
+      formData.append('classSectionId', options.classSectionId);
+    }
+    if (options?.className) {
+      formData.append('className', options.className);
+    }
 
     return apiFetch<UploadResponse>(
       '/api/upload/class-records',
       { method: 'POST', body: formData },
       UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /** Retrieve recent post-import risk refresh queue/job monitor data */
+  async getRiskRefreshMonitor(options?: {
+    classSectionId?: string;
+    limit?: number;
+  }): Promise<RiskRefreshMonitorResponse> {
+    const limit = options?.limit ?? 10;
+    validateRange('/api/upload/class-records/risk-refresh/recent', 'limit', limit, 1, 50);
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+    return apiFetch<RiskRefreshMonitorResponse>(`/api/upload/class-records/risk-refresh/recent?${params.toString()}`);
+  },
+
+  /** Aggregate import-grounded pilot telemetry (Query A-D equivalent) */
+  async getImportGroundedTelemetrySummary(options?: {
+    classSectionId?: string;
+    days?: number;
+    limit?: number;
+  }): Promise<ImportGroundedTelemetrySummaryResponse> {
+    const days = options?.days ?? 7;
+    const limit = options?.limit ?? 5000;
+    validateRange('/api/feedback/import-grounded/summary', 'days', days, 1, 30);
+    validateRange('/api/feedback/import-grounded/summary', 'limit', limit, 100, 20000);
+
+    const params = new URLSearchParams();
+    params.set('days', String(days));
+    params.set('limit', String(limit));
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+
+    return apiFetch<ImportGroundedTelemetrySummaryResponse>(
+      `/api/feedback/import-grounded/summary?${params.toString()}`,
+    );
+  },
+
+  /** Retrieve import-grounded access audit events for the current teacher scope */
+  async getImportGroundedAccessAudit(options?: {
+    classSectionId?: string;
+    days?: number;
+    limit?: number;
+  }): Promise<ImportGroundedAccessAuditResponse> {
+    const days = options?.days ?? 7;
+    const limit = options?.limit ?? 200;
+    validateRange('/api/import-grounded/access-audit', 'days', days, 1, 30);
+    validateRange('/api/import-grounded/access-audit', 'limit', limit, 1, 1000);
+
+    const params = new URLSearchParams();
+    params.set('days', String(days));
+    params.set('limit', String(limit));
+    params.set('export', 'json');
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+
+    return apiFetch<ImportGroundedAccessAuditResponse>(
+      `/api/import-grounded/access-audit?${params.toString()}`,
+    );
+  },
+
+  /** Export import-grounded access audit events as CSV */
+  async exportImportGroundedAccessAuditCsv(options?: {
+    classSectionId?: string;
+    days?: number;
+    limit?: number;
+  }): Promise<Blob> {
+    const days = options?.days ?? 7;
+    const limit = options?.limit ?? 200;
+    validateRange('/api/import-grounded/access-audit', 'days', days, 1, 30);
+    validateRange('/api/import-grounded/access-audit', 'limit', limit, 1, 1000);
+
+    const params = new URLSearchParams();
+    params.set('days', String(days));
+    params.set('limit', String(limit));
+    params.set('export', 'csv');
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+
+    return apiFetchBlob(`/api/import-grounded/access-audit?${params.toString()}`, { method: 'GET' }, 30_000);
+  },
+
+  /** Upload course materials and extract topic map */
+  async uploadCourseMaterials(
+    files: File | File[],
+    options?: { classSectionId?: string; className?: string },
+  ): Promise<CourseMaterialUploadResponse> {
+    const resolvedFiles = Array.isArray(files) ? files : [files];
+    if (resolvedFiles.length === 0) {
+      throw new ApiValidationError('/api/upload/course-materials', 'At least one file is required');
+    }
+    if (resolvedFiles.some((file) => !file || file.size === 0)) {
+      throw new ApiValidationError('/api/upload/course-materials', 'All files must be non-empty');
+    }
+    if (resolvedFiles.some((file) => file.size > 10 * 1024 * 1024)) {
+      throw new ApiValidationError('/api/upload/course-materials', 'One or more files exceed the 10 MB size limit');
+    }
+
+    const formData = new FormData();
+    resolvedFiles.forEach((file) => formData.append('files', file));
+    if (options?.classSectionId) {
+      formData.append('classSectionId', options.classSectionId);
+    }
+    if (options?.className) {
+      formData.append('className', options.className);
+    }
+
+    return apiFetch<CourseMaterialUploadResponse>(
+      '/api/upload/course-materials',
+      { method: 'POST', body: formData },
+      UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /** List recent persisted course-material artifacts for current teacher/admin */
+  async getRecentCourseMaterials(options?: {
+    classSectionId?: string;
+    limit?: number;
+  }): Promise<RecentCourseMaterialsResponse> {
+    const limit = options?.limit ?? 10;
+    validateRange('/api/upload/course-materials/recent', 'limit', limit, 1, 50);
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+
+    return apiFetch<RecentCourseMaterialsResponse>(`/api/upload/course-materials/recent?${params.toString()}`);
+  },
+
+  /** Retrieve normalized topic map from persisted course materials */
+  async getCourseMaterialTopics(options?: {
+    classSectionId?: string;
+    materialId?: string;
+    limit?: number;
+  }): Promise<CourseMaterialTopicMapResponse> {
+    const limit = options?.limit ?? 20;
+    validateRange('/api/course-materials/topics', 'limit', limit, 1, 50);
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+    if (options?.materialId) {
+      params.set('materialId', options.materialId);
+    }
+
+    return apiFetch<CourseMaterialTopicMapResponse>(`/api/course-materials/topics?${params.toString()}`);
+  },
+
+  /** Generate class lesson plan grounded on imported topics and class performance artifacts */
+  async generateLessonPlan(request: LessonGenerationRequest): Promise<LessonPlanResponse> {
+    validateRequired('/api/lesson/generate', {
+      gradeLevel: request.gradeLevel,
+    });
+
+    const effectiveRequest: LessonGenerationRequest = {
+      ...request,
+      preferImportedTopics: IMPORT_GROUNDED_LESSON_ENABLED && (request.preferImportedTopics ?? true),
+    };
+
+    return apiFetch<LessonPlanResponse>(
+      '/api/lesson/generate',
+      { method: 'POST', body: JSON.stringify(effectiveRequest) },
+      AI_RETRY_OPTS,
     );
   },
 
@@ -504,9 +1124,14 @@ export const apiService = {
       throw new ApiValidationError('/api/quiz/generate', 'topics must be a non-empty array');
     }
 
+    const effectiveRequest: QuizGenerationRequest = {
+      ...request,
+      preferImportedTopics: IMPORT_GROUNDED_QUIZ_ENABLED && (request.preferImportedTopics ?? true),
+    };
+
     const result = await apiFetch<QuizGenerationResponse>(
       '/api/quiz/generate',
-      { method: 'POST', body: JSON.stringify(request) },
+      { method: 'POST', body: JSON.stringify(effectiveRequest) },
       AI_RETRY_OPTS,
     );
 
@@ -525,9 +1150,14 @@ export const apiService = {
       gradeLevel: request.gradeLevel,
     });
 
+    const effectiveRequest: QuizGenerationRequest = {
+      ...request,
+      preferImportedTopics: IMPORT_GROUNDED_QUIZ_ENABLED && (request.preferImportedTopics ?? true),
+    };
+
     return apiFetch<QuizGenerationResponse>(
       '/api/quiz/preview',
-      { method: 'POST', body: JSON.stringify(request) },
+      { method: 'POST', body: JSON.stringify(effectiveRequest) },
       AI_RETRY_OPTS,
     );
   },
