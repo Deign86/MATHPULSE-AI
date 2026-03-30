@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
+import MathAnswerInput from './MathAnswerInput';
+import ScientificCalculator from './ScientificCalculator';
 import { Brain, CheckCircle, ChevronRight, AlertTriangle, Calculator, BarChart3, TrendingUp, X } from 'lucide-react';
 import { triggerDiagnosticCompleted, DiagnosticResult, IARWorkflowMode } from '../services/automationService';
 import {
@@ -120,6 +122,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerValue[]>([]);
   const [currentInput, setCurrentInput] = useState('');
+  const [showCalculator, setShowCalculator] = useState(false);
   const [topicSummaries, setTopicSummaries] = useState<Record<IARTopicArea, TopicScoreSummary> | null>(null);
   const [g12Readiness, setG12Readiness] = useState<G12ReadinessIndicators | null>(null);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>([]);
@@ -132,6 +135,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       setCurrentQuestionIndex(0);
       setAnswers([]);
       setCurrentInput('');
+      setShowCalculator(false);
       setTopicSummaries(null);
       setG12Readiness(null);
       setAtRiskSubjects([]);
@@ -169,6 +173,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
   const moveToNext = (newAnswers: AnswerValue[]) => {
     setAnswers(newAnswers);
     setCurrentInput('');
+    setShowCalculator(false);
 
     if (currentQuestionIndex < QUESTIONS.length - 1) {
       setTimeout(() => {
@@ -528,21 +533,57 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
 
                 {(currentQuestion.answerType === 'shortAnswerNumeric' || currentQuestion.answerType === 'shortAnswerText') && (
                   <div className="space-y-3">
-                    <input
-                      value={currentInput}
-                      onChange={(event) => setCurrentInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          handleShortAnswerSubmit();
-                        }
-                      }}
-                      className="w-full p-4 rounded-xl border-2 border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500"
-                      placeholder={
-                        currentQuestion.answerType === 'shortAnswerNumeric'
-                          ? 'Type numeric answer'
-                          : 'Type short answer'
-                      }
-                    />
+                    {currentQuestion.answerType === 'shortAnswerNumeric' ? (
+                      <>
+                        <MathAnswerInput
+                          value={currentInput}
+                          onChange={setCurrentInput}
+                          placeholder="Type numeric answer"
+                          onCalculatorOpen={() => setShowCalculator(true)}
+                        />
+
+                        <AnimatePresence>
+                          {showCalculator && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="bg-[#edf1f7] rounded-2xl p-4 border border-[#dde3eb]">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="text-sm font-bold text-[#0a1628]">Scientific Calculator</h4>
+                                  <button
+                                    onClick={() => setShowCalculator(false)}
+                                    className="text-slate-500 hover:text-[#5a6578] transition-colors"
+                                    title="Close calculator"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                                <ScientificCalculator
+                                  isOpen={true}
+                                  onClose={() => setShowCalculator(false)}
+                                  inline
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    ) : (
+                      <input
+                        value={currentInput}
+                        onChange={(event) => setCurrentInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            handleShortAnswerSubmit();
+                          }
+                        }}
+                        className="w-full p-4 rounded-xl border-2 border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500"
+                        placeholder="Type short answer"
+                      />
+                    )}
                     <Button
                       onClick={handleShortAnswerSubmit}
                       disabled={!currentInput.trim()}

@@ -54,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (user) {
         const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
+        const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
 
         // Fetch user profile from Firestore
         let profile = await getUserProfile(user.uid);
@@ -61,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // If profile doesn't exist, auto-create it
         if (!profile && user.email) {
           console.log('[WARN] AuthContext: Profile missing, auto-creating...');
-          const role: UserRole = requestedRole;
+          const role: UserRole = safeRequestedRole;
           const name = user.displayName || 'User';
           
           try {
@@ -88,13 +89,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setResolvedRole(profile.role);
           setUserProfile(profile);
         } else {
-          setResolvedRole(requestedRole);
+          setResolvedRole(safeRequestedRole);
           // Keep login functional when profile storage is temporarily unavailable.
           setUserProfile({
             uid: user.uid,
             email: user.email || '',
             name: user.displayName || 'User',
-            role: requestedRole,
+            role: safeRequestedRole,
             photo: user.photoURL || '',
             createdAt: new Date(),
             updatedAt: new Date(),

@@ -226,6 +226,7 @@ export interface CourseMaterialUploadResponse {
     fileHash?: string | null;
     materialId?: string | null;
     persisted?: boolean;
+    sourceLegitimacy?: SourceLegitimacyReport;
     classSectionId?: string | null;
     className?: string | null;
     extractedTextLength: number;
@@ -244,6 +245,8 @@ export interface CourseMaterialArtifactSummary {
   materialId: string;
   fileName: string;
   fileType: string;
+  fileHash?: string;
+  sourceLegitimacy?: SourceLegitimacyReport;
   classSectionId?: string | null;
   className?: string | null;
   topicsCount: number;
@@ -292,6 +295,25 @@ export interface LessonGenerationRequest {
   focusTopics?: string[];
   topicCount?: number;
   preferImportedTopics?: boolean;
+  allowReviewSources?: boolean;
+  allowUnverifiedLesson?: boolean;
+}
+
+export interface SourceLegitimacyReport {
+  status: 'verified' | 'review_required' | 'rejected';
+  score: number;
+  verifiedMaterials: number;
+  reviewMaterials: number;
+  rejectedMaterials: number;
+  evidenceChecked: string[];
+  issues: string[];
+}
+
+export interface LessonSelfValidationReport {
+  passed: boolean;
+  score: number;
+  issues: string[];
+  checks: Record<string, unknown>;
 }
 
 export interface LessonPlanBlock {
@@ -337,6 +359,9 @@ export interface LessonPlanResponse {
     sourceFile?: string | null;
     sectionId?: string | null;
   }[];
+  sourceLegitimacy: SourceLegitimacyReport;
+  selfValidation: LessonSelfValidationReport;
+  publishReady: boolean;
   warnings: string[];
 }
 

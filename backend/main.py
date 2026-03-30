@@ -134,6 +134,10 @@ IMPORT_RETENTION_DAYS = int(os.getenv("IMPORT_RETENTION_DAYS", "180"))
 ENABLE_IMPORT_GROUNDED_QUIZ = os.getenv("ENABLE_IMPORT_GROUNDED_QUIZ", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS", "true").strip().lower() in {"1", "true", "yes", "on"}
+LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
+LESSON_SOURCE_MIN_TOPICS = int(os.getenv("LESSON_SOURCE_MIN_TOPICS", "1"))
+LESSON_VALIDATION_MIN_SCORE = float(os.getenv("LESSON_VALIDATION_MIN_SCORE", "0.7"))
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -2561,6 +2565,121 @@ def _fallback_topic_extraction(text: str, max_topics: int = 8) -> List[Dict[str,
     return topics
 
 
+def _compute_material_source_legitimacy(
+    *,
+    file_type: str,
+    file_hash: str,
+    extracted_text: str,
+    topics: List[Dict[str, Any]],
+    warnings: List[str],
+) -> Dict[str, Any]:
+    issues: List[str] = []
+    evidence_checked = [
+        "file_type",
+        "file_hash",
+        "text_length",
+        "topic_count",
+        "extraction_warnings",
+    ]
+
+    score = 1.0
+    normalized_type = (file_type or "").strip().lower()
+    if normalized_type not in {"pdf", "docx", "txt"}:
+        issues.append(f"Unsupported source type '{normalized_type}'.")
+        score -= 0.7
+
+    if not (file_hash or "").strip():
+        issues.append("Source file hash is missing.")
+        score -= 0.6
+
+    text_length = len(extracted_text or "")
+    if text_length < LESSON_SOURCE_MIN_TEXT_LENGTH:
+        issues.append(
+            f"Extracted text is too short ({text_length} chars); minimum is {LESSON_SOURCE_MIN_TEXT_LENGTH}."
+        )
+        score -= 0.5
+
+    topic_count = len(topics or [])
+    if topic_count < LESSON_SOURCE_MIN_TOPICS:
+        issues.append(
+            f"Insufficient extracted topics ({topic_count}); minimum is {LESSON_SOURCE_MIN_TOPICS}."
+        )
+        score -= 0.5
+
+    warning_hits = [w for w in (warnings or []) if "fallback" in str(w).lower() or "failed" in str(w).lower()]
+    if warning_hits:
+        issues.append("Source extraction had fallback/failure warnings that require review.")
+        score -= min(0.4, 0.15 * len(warning_hits))
+
+    score = max(0.0, min(1.0, score))
+    if score >= 0.75:
+        status = "verified"
+    elif score >= 0.45:
+        status = "review_required"
+    else:
+        status = "rejected"
+
+    return {
+        "status": status,
+        "score": round(score, 3),
+        "issues": issues,
+        "evidenceChecked": evidence_checked,
+        "checkedAtIso": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _evaluate_lesson_source_legitimacy(
+    imported_topics_payload: Dict[str, Any],
+    *,
+    allow_review_sources: bool,
+) -> Dict[str, Any]:
+    materials = imported_topics_payload.get("materials") or []
+    verified_materials = 0
+    review_materials = 0
+    rejected_materials = 0
+    issues: List[str] = []
+    evidence_checked = ["artifact_legitimacy", "material_metadata", "topic_provenance"]
+    scores: List[float] = []
+
+    for material in materials:
+        legitimacy = material.get("sourceLegitimacy") or {}
+        status = str(legitimacy.get("status") or "review_required").strip().lower()
+        score = float(legitimacy.get("score") or 0.0)
+        scores.append(max(0.0, min(1.0, score)))
+
+        if status == "verified":
+            verified_materials += 1
+        elif status == "review_required":
+            review_materials += 1
+        else:
+            rejected_materials += 1
+            issues.extend([str(x) for x in (legitimacy.get("issues") or []) if str(x).strip()])
+
+    average_score = round(sum(scores) / len(scores), 3) if scores else 0.0
+
+    if rejected_materials > 0:
+        status = "rejected"
+    elif review_materials > 0:
+        status = "review_required"
+    else:
+        status = "verified" if verified_materials > 0 else "review_required"
+
+    if status == "review_required" and not allow_review_sources:
+        issues.append("Source legitimacy requires review. Enable allowReviewSources to proceed.")
+    if status == "rejected":
+        issues.append("One or more imported sources failed legitimacy checks.")
+
+    return {
+        "status": status,
+        "score": average_score,
+        "verifiedMaterials": verified_materials,
+        "reviewMaterials": review_materials,
+        "rejectedMaterials": rejected_materials,
+        "evidenceChecked": evidence_checked,
+        "issues": sorted(list({issue for issue in issues if issue.strip()})),
+    }
+
+
 def _persist_course_material_artifact(
     request: Request,
     *,
@@ -2579,6 +2698,12 @@ def _persist_course_material_artifact(
             "persisted": False,
             "materialId": None,
             "warning": "Firestore unavailable; material was not persisted.",
+            "sourceLegitimacy": {
+                "status": "review_required",
+                "score": 0.0,
+                "issues": ["Firestore unavailable; source legitimacy metadata not persisted."],
+                "evidenceChecked": [],
+            },
         }
 
     user = get_current_user(request)
@@ -2586,6 +2711,13 @@ def _persist_course_material_artifact(
     normalized_class_name = (class_name or "").strip() or None
     dedup_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{file_hash}"
     material_id = hashlib.sha1(dedup_seed.encode("utf-8")).hexdigest()[:28]
+    source_legitimacy = _compute_material_source_legitimacy(
+        file_type=file_type,
+        file_hash=file_hash,
+        extracted_text=extracted_text,
+        topics=topics,
+        warnings=warnings,
+    )
 
     doc_payload: Dict[str, Any] = {
         "materialId": material_id,
@@ -2599,6 +2731,7 @@ def _persist_course_material_artifact(
         "sections": sections,
         "topics": topics,
         "warnings": warnings,
+        "sourceLegitimacy": source_legitimacy,
         "source": "api_upload_course_materials",
         "retentionDays": IMPORT_RETENTION_DAYS,
         "expiresAtEpoch": _artifact_expiry_epoch(),
@@ -2619,6 +2752,7 @@ def _persist_course_material_artifact(
         "persisted": True,
         "materialId": material_id,
         "warning": None,
+        "sourceLegitimacy": source_legitimacy,
     }
 
 
@@ -2683,9 +2817,17 @@ def _load_persisted_course_material_topics(
                 "materialId": doc_material_id,
                 "fileName": doc_file_name,
                 "fileType": str(data.get("fileType") or ""),
+                "fileHash": str(data.get("fileHash") or ""),
+                "extractedTextLength": int(data.get("extractedTextLength") or 0),
                 "classSectionId": doc_class_section_id,
                 "className": doc_class_name,
                 "topicsCount": len(topics),
+                "sourceLegitimacy": data.get("sourceLegitimacy") or {
+                    "status": "review_required",
+                    "score": 0.0,
+                    "issues": ["Missing source legitimacy metadata."],
+                    "evidenceChecked": [],
+                },
             }
         )
 
@@ -2762,6 +2904,12 @@ async def upload_course_materials(
             file_hash: Optional[str] = None
             material_id: Optional[str] = None
             persisted = False
+            source_legitimacy: Dict[str, Any] = {
+                "status": "review_required",
+                "score": 0.0,
+                "issues": [],
+                "evidenceChecked": [],
+            }
             extracted_text_length = 0
 
             try:
@@ -2912,6 +3060,7 @@ TEXT:
                     file_warnings.append(str(persistence_result["warning"]))
                 material_id = persistence_result.get("materialId")
                 persisted = bool(persistence_result.get("persisted"))
+                source_legitimacy = cast(Dict[str, Any], persistence_result.get("sourceLegitimacy") or source_legitimacy)
 
                 file_status = "success" if not file_warnings else "partial_success"
             except HTTPException as file_exc:
@@ -2929,6 +3078,7 @@ TEXT:
                 "fileHash": file_hash,
                 "materialId": material_id,
                 "persisted": persisted,
+                "sourceLegitimacy": source_legitimacy,
                 "classSectionId": normalized_class_section_id,
                 "className": normalized_class_name,
                 "extractedTextLength": extracted_text_length,
@@ -3274,6 +3424,8 @@ class LessonGenerationRequest(BaseModel):
     focusTopics: List[str] = Field(default_factory=list, description="Optional explicit topic overrides")
     topicCount: int = Field(default=5, ge=1, le=10, description="Maximum number of focus topics")
     preferImportedTopics: bool = Field(default=True, description="Prefer persisted imported topics when available")
+    allowReviewSources: bool = Field(default=False, description="Allow generation from review_required sources")
+    allowUnverifiedLesson: bool = Field(default=False, description="Allow returning lessons that fail self-validation")
 
 
 class LessonPlanBlock(BaseModel):
@@ -3288,6 +3440,23 @@ class LessonPlanBlock(BaseModel):
     provenance: Optional[Dict[str, Optional[str]]] = None
 
 
+class SourceLegitimacyReport(BaseModel):
+    status: str
+    score: float
+    verifiedMaterials: int
+    reviewMaterials: int
+    rejectedMaterials: int
+    evidenceChecked: List[str]
+    issues: List[str]
+
+
+class LessonSelfValidationReport(BaseModel):
+    passed: bool
+    score: float
+    issues: List[str]
+    checks: Dict[str, Any]
+
+
 class LessonPlanResponse(BaseModel):
     success: bool
     lessonTitle: str
@@ -3300,6 +3469,9 @@ class LessonPlanResponse(BaseModel):
     focusTopics: List[str]
     blocks: List[LessonPlanBlock]
     provenanceSummary: List[Dict[str, Optional[str]]]
+    sourceLegitimacy: SourceLegitimacyReport
+    selfValidation: LessonSelfValidationReport
+    publishReady: bool
     warnings: List[str]
 
 
@@ -3679,6 +3851,190 @@ def _parse_lesson_plan_json(raw: str) -> Dict[str, Any]:
     return {}
 
 
+def _deterministic_lesson_checks(
+    *,
+    selected_topics: List[str],
+    blocks: List[LessonPlanBlock],
+) -> Dict[str, Any]:
+    issues: List[str] = []
+    selected_topic_keys = {_normalize_topic_key(topic) for topic in selected_topics if topic.strip()}
+    covered_topic_keys: Set[str] = set()
+
+    if len(blocks) < 3:
+        issues.append("Lesson must include at least 3 instructional blocks.")
+
+    for block in blocks:
+        block_text = " ".join([
+            block.title,
+            block.objective,
+            block.strategy,
+            " ".join(block.activities),
+            " ".join(block.checksForUnderstanding),
+            " ".join(block.remediationTips),
+        ]).lower()
+
+        matched = False
+        for topic in selected_topics:
+            topic_key = _normalize_topic_key(topic)
+            topic_words = [w for w in topic_key.split(" ") if w]
+            if topic_words and all(word in block_text for word in topic_words[: min(2, len(topic_words))]):
+                covered_topic_keys.add(topic_key)
+                matched = True
+                break
+        if not matched:
+            issues.append(f"Block '{block.title}' is weakly grounded to selected topics.")
+
+        if not block.activities:
+            issues.append(f"Block '{block.title}' is missing classroom activities.")
+        if not block.checksForUnderstanding:
+            issues.append(f"Block '{block.title}' is missing checks for understanding.")
+
+    topic_coverage_ratio = 1.0
+    if selected_topic_keys:
+        topic_coverage_ratio = len(covered_topic_keys) / max(1, len(selected_topic_keys))
+        if topic_coverage_ratio < 0.6:
+            issues.append(
+                f"Topic coverage too low ({topic_coverage_ratio:.2f}); expected at least 0.60 across selected topics."
+            )
+
+    structure_ok = len(blocks) >= 3 and all(block.estimatedMinutes >= 5 for block in blocks)
+    grounding_ok = topic_coverage_ratio >= 0.6
+    score = max(0.0, min(1.0, 1.0 - (0.12 * len(issues))))
+
+    return {
+        "score": round(score, 3),
+        "issues": issues,
+        "checks": {
+            "structure": structure_ok,
+            "topicGrounding": grounding_ok,
+            "topicCoverageRatio": round(topic_coverage_ratio, 3),
+            "blockCount": len(blocks),
+        },
+    }
+
+
+def _ai_validate_lesson_plan(
+    *,
+    lesson_title: str,
+    selected_topics: List[str],
+    blocks: List[LessonPlanBlock],
+) -> Dict[str, Any]:
+    compact_blocks = [
+        {
+            "title": block.title,
+            "objective": block.objective,
+            "strategy": block.strategy,
+            "estimatedMinutes": block.estimatedMinutes,
+            "activities": block.activities,
+            "checksForUnderstanding": block.checksForUnderstanding,
+            "remediationTips": block.remediationTips,
+        }
+        for block in blocks
+    ]
+
+    validation_prompt = (
+        "Validate this generated math lesson plan for instructional quality and grounding. "
+        "Return JSON only in this schema: "
+        '{"passed":true|false,"score":0.0-1.0,"issues":["..."],"checks":{"mathSoundness":true|false,"topicGrounding":true|false,"classroomUsability":true|false}}. '
+        "Fail the lesson if topics are hallucinated, objectives are vague, or classroom activities are not actionable.\n\n"
+        f"Lesson title: {lesson_title}\n"
+        f"Selected topics: {json.dumps(selected_topics)}\n"
+        f"Blocks: {json.dumps(compact_blocks)}"
+    )
+
+    try:
+        raw = call_hf_chat(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a strict lesson-quality verifier. Return valid JSON only.",
+                },
+                {"role": "user", "content": validation_prompt},
+            ],
+            max_tokens=420,
+            temperature=0.1,
+            top_p=0.9,
+            timeout=90,
+        )
+        parsed = _parse_lesson_plan_json(raw)
+        if not parsed:
+            return {
+                "passed": False,
+                "score": 0.0,
+                "issues": ["AI validator returned invalid JSON."],
+                "checks": {
+                    "mathSoundness": False,
+                    "topicGrounding": False,
+                    "classroomUsability": False,
+                },
+            }
+
+        score = float(parsed.get("score") or 0.0)
+        score = max(0.0, min(1.0, score))
+        checks_raw: Dict[str, Any] = {}
+        if isinstance(parsed.get("checks"), dict):
+            checks_raw = cast(Dict[str, Any], parsed.get("checks"))
+        checks = {
+            "mathSoundness": bool(checks_raw.get("mathSoundness")),
+            "topicGrounding": bool(checks_raw.get("topicGrounding")),
+            "classroomUsability": bool(checks_raw.get("classroomUsability")),
+        }
+        issues = [str(item).strip() for item in (parsed.get("issues") or []) if str(item).strip()]
+        passed = bool(parsed.get("passed")) and score >= LESSON_VALIDATION_MIN_SCORE and all(checks.values())
+        return {
+            "passed": passed,
+            "score": round(score, 3),
+            "issues": issues,
+            "checks": checks,
+        }
+    except Exception as validation_exc:
+        logger.warning(f"Lesson AI self-validation failed: {validation_exc}")
+        return {
+            "passed": False,
+            "score": 0.0,
+            "issues": ["AI self-validation failed due to runtime error."],
+            "checks": {
+                "mathSoundness": False,
+                "topicGrounding": False,
+                "classroomUsability": False,
+            },
+        }
+
+
+def _validate_generated_lesson_plan(
+    *,
+    lesson_title: str,
+    selected_topics: List[str],
+    blocks: List[LessonPlanBlock],
+) -> Dict[str, Any]:
+    deterministic = _deterministic_lesson_checks(selected_topics=selected_topics, blocks=blocks)
+    ai_validation = _ai_validate_lesson_plan(
+        lesson_title=lesson_title,
+        selected_topics=selected_topics,
+        blocks=blocks,
+    )
+
+    issues = deterministic.get("issues", []) + ai_validation.get("issues", [])
+    checks = {
+        **deterministic.get("checks", {}),
+        **ai_validation.get("checks", {}),
+    }
+
+    combined_score = round(
+        (0.4 * float(deterministic.get("score", 0.0))) +
+        (0.6 * float(ai_validation.get("score", 0.0))),
+        3,
+    )
+    passed = bool(ai_validation.get("passed")) and combined_score >= LESSON_VALIDATION_MIN_SCORE
+
+    return {
+        "passed": passed,
+        "score": combined_score,
+        "issues": sorted(list({str(issue).strip() for issue in issues if str(issue).strip()})),
+        "checks": checks,
+    }
+
+
 @app.post("/api/lesson/generate", response_model=LessonPlanResponse)
 async def generate_lesson_plan(http_request: Request, request: LessonGenerationRequest):
     """
@@ -3729,6 +4085,41 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
             warnings.append("Using fallback curriculum topics because no imported topics were found.")
 
         selected_topics = selected_topics[: request.topicCount]
+
+        source_legitimacy_report = _evaluate_lesson_source_legitimacy(
+            imported_topics_payload,
+            allow_review_sources=request.allowReviewSources,
+        )
+        using_imported_sources = bool(imported_topic_titles)
+        if not using_imported_sources:
+            source_legitimacy_report = {
+                "status": "verified",
+                "score": 1.0,
+                "verifiedMaterials": 0,
+                "reviewMaterials": 0,
+                "rejectedMaterials": 0,
+                "evidenceChecked": ["builtin_curriculum_fallback"],
+                "issues": [],
+            }
+
+        if ENFORCE_LEGIT_SOURCES_FOR_LESSONS and using_imported_sources:
+            source_status = str(source_legitimacy_report.get("status") or "review_required")
+            if source_status == "rejected":
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": "Imported source legitimacy checks failed. Lesson generation blocked.",
+                        "sourceLegitimacy": source_legitimacy_report,
+                    },
+                )
+            if source_status == "review_required" and not request.allowReviewSources:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": "Imported sources require review. Set allowReviewSources=true to continue.",
+                        "sourceLegitimacy": source_legitimacy_report,
+                    },
+                )
 
         class_signals = _load_class_performance_artifacts(
             http_request,
@@ -3863,6 +4254,27 @@ Rules:
         if not blocks:
             raise HTTPException(status_code=500, detail="Unable to generate lesson blocks.")
 
+        self_validation_report = _validate_generated_lesson_plan(
+            lesson_title=lesson_title,
+            selected_topics=selected_topics,
+            blocks=blocks,
+        )
+        if not self_validation_report.get("passed"):
+            warnings.append("Generated lesson failed self-validation checks.")
+            if not request.allowUnverifiedLesson:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": "Lesson self-validation failed. Fix generation inputs or enable allowUnverifiedLesson.",
+                        "selfValidation": self_validation_report,
+                    },
+                )
+
+        publish_ready = bool(
+            self_validation_report.get("passed") and
+            source_legitimacy_report.get("status") == "verified"
+        )
+
         return LessonPlanResponse(
             success=True,
             lessonTitle=lesson_title,
@@ -3875,6 +4287,9 @@ Rules:
             focusTopics=selected_topics,
             blocks=blocks,
             provenanceSummary=provenance_summary,
+            sourceLegitimacy=SourceLegitimacyReport(**source_legitimacy_report),
+            selfValidation=LessonSelfValidationReport(**self_validation_report),
+            publishReady=publish_ready,
             warnings=warnings,
         )
 
