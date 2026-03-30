@@ -798,7 +798,7 @@ const App = () => {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="pb-8">
+                  <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
                     <div className="grid grid-cols-12 gap-8 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-2">
                         {showInitialAssessmentCTA && (
