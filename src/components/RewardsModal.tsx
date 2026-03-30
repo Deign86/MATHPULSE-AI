@@ -143,7 +143,6 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
     { activity: 'Perfect quiz score', xp: 150 },
     { activity: 'Finish a quiz', xp: 75 },
     { activity: 'Daily login streak', xp: 25 },
-    { activity: 'Help a classmate', xp: 50 },
   ];
 
   return (
@@ -159,7 +158,6 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
         {/* Header */}
         <div className="bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] p-6 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(251,150,187,0.35),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(117,208,106,0.25),transparent_38%)]" />
-          <div className="accent-line absolute top-0 left-0 right-0"></div>
           <div className="flex items-center justify-between mb-4 relative z-10">
             <div>
               <h2 className="text-2xl font-display font-bold">Rewards & Achievements</h2>
