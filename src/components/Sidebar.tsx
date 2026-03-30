@@ -85,14 +85,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
   const sections = getNavSections();
 
   return (
-    <div className="h-full bg-white rounded-2xl p-5 flex flex-col justify-between border border-slate-200/80 card-elevated-lg">
+    <div className="h-full bg-[#f7f9fc] rounded-3xl p-5 flex flex-col justify-between border border-[#dde3eb] shadow-sm">
       <div>
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8 px-2">
-          <div className="w-9 h-9 bg-gradient-to-br from-sky-600 to-sky-500 rounded-lg flex items-center justify-center shadow-lg shadow-sky-500/20">
-            <span className="text-white font-display font-extrabold text-lg">M</span>
+          <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center shadow-md">
+            <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
           </div>
-          <span className="font-display font-bold text-lg text-[#0a1628] tracking-tight">MathPulse</span>
+          <div>
+            <h2 className="text-base font-bold font-display text-[#0a1628]">MathPulse AI</h2>
+          </div>
         </div>
 
         {/* Grouped Navigation */}
@@ -100,29 +102,29 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
           {sections.map((section, sIdx) => (
             <div key={sIdx}>
               {section.label && (
-                <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">
+                <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">
                   {section.label}
                 </p>
               )}
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {section.items.map((item) => (
                   <motion.div
                     key={item.label}
-                    whileHover={{ x: 3 }}
+                    whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setActiveTab(item.label)}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border ${
                       activeTab === item.label
-                        ? 'bg-sky-50 text-sky-700 shadow-[inset_0_0_0_1px_rgba(2,132,199,0.15)]'
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                        ? 'bg-sky-50 border-sky-200 shadow-sm text-sky-700'
+                        : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
                     }`}
                   >
-                    <item.icon size={18} strokeWidth={activeTab === item.label ? 2.5 : 1.5} />
-                    <span className="font-body font-medium text-sm">{item.displayLabel || item.label}</span>
+                    <item.icon size={18} strokeWidth={activeTab === item.label ? 2.5 : 2} />
+                    <span className="font-body font-bold text-xs">{item.displayLabel || item.label}</span>
                     {activeTab === item.label && (
                       <motion.div
                         layoutId="sidebar-active-indicator"
-                        className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500"
+                        className="ml-auto w-2 h-2 rounded-full bg-sky-500"
                         transition={{ type: 'spring', duration: 0.4 }}
                       />
                     )}
@@ -134,17 +136,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole = '
         </nav>
       </div>
 
-      <div className="space-y-1 border-t border-slate-200 pt-4">
+      <div className="space-y-2 border-t border-[#dde3eb] pt-4">
         <button
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-sky-600 transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200"
           onClick={onOpenSettings}
         >
-          <Settings size={18} strokeWidth={1.5} />
-          <span className="font-body font-medium text-sm">Settings</span>
+          <Settings size={18} strokeWidth={2} />
+          <span className="font-body text-xs">Settings</span>
         </button>
 
         {onLogout && (
-          <LogoutActionButton onClick={onLogout} />
+          <div className="px-1 text-[#5a6578]">
+            <LogoutActionButton onClick={onLogout} />
+          </div>
         )}
       </div>
     </div>
