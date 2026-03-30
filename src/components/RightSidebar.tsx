@@ -39,7 +39,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         className="rounded-2xl border border-[#9956DE]/25 cursor-pointer transition-all group relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] hover:shadow-[0_16px_40px_rgba(114,116,237,0.28)] hover:-translate-y-0.5"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(251,150,187,0.32),transparent_42%),radial-gradient(circle_at_85%_84%,rgba(117,208,106,0.24),transparent_40%)]" />
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#FFB356] via-[#FB96BB] to-[#6ED1CF]" />
         
         <div className="relative z-10 p-3">
         <div className="flex items-center justify-between mb-3">

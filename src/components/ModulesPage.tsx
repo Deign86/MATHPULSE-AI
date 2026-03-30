@@ -179,7 +179,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
           {[
             { id: 'all-subjects', label: 'Subjects', icon: BookOpen, color: 'text-[#1FA7E1]' },
             { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
-            { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FF8B8B]' },
+            { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -241,7 +241,7 @@ const AllSubjectsView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
           </div>
           <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">All Subjects</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
           {subjects.map((subject, index) => (
             <SubjectCard
               key={subject.id}
@@ -289,7 +289,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
             <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner">🔥</div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Jump Back In</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-5">
             {recommendedModules.slice(0, 4).map((item, index) => (
               <ModuleCardCompact
                 key={item.module.id}
@@ -312,7 +312,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
             <div className="w-10 h-10 rounded-[14px] bg-[#75D06A]/10 flex items-center justify-center text-[20px] shadow-inner">💡</div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Suggested Next</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-5">
             {suggestedModules.slice(0, 4).map((item, index) => (
               <ModuleCardCompact
                 key={item.module.id}
@@ -333,7 +333,7 @@ const RecommendedView: React.FC<{ subjects: Subject[]; onSelectSubject: (subject
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display font-semibold text-[22px] text-slate-800">All Subjects</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
           {subjects.map((subject, index) => (
             <SubjectCard
               key={subject.id}
@@ -362,10 +362,10 @@ const SubjectCard: React.FC<{
 
   const getCardStyle = (id: string) => {
     switch(id) {
-      case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Functions', 'Business Math', 'Logic'], level: 1 };
+      case 'gen-math': return { bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1 };
       case 'pre-calc': return { bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2 };
-      case 'stats-prob': return { bg: 'bg-[#FF8B8B]', tags: ['Probability', 'Charts'], level: 2 };
-      case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals'], level: 3 };
+      case 'stats-prob': return { bg: 'bg-[#FFB356]', tags: ['Probability', 'Mean/Median', 'Charts'], level: 2 };
+      case 'basic-calc': return { bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals', 'Continuity'], level: 3 };
       default: return { bg: 'bg-[#75D06A]', tags: ['Math', 'Logic'], level: 1 };
     }
   };
@@ -458,7 +458,7 @@ const ModuleCardCompact: React.FC<{
     switch(id) {
       case 'gen-math': return { bg: 'bg-[#9956DE]', light: 'bg-[#F5EDFC]', text: 'text-[#9956DE]' };
       case 'pre-calc': return { bg: 'bg-[#1FA7E1]', light: 'bg-[#E5F5FC]', text: 'text-[#1FA7E1]' };
-      case 'stats-prob': return { bg: 'bg-[#FF8B8B]', light: 'bg-[#FFEDED]', text: 'text-[#FF8B8B]' };
+      case 'stats-prob': return { bg: 'bg-[#FFB356]', light: 'bg-[#FFEDED]', text: 'text-[#FFB356]' };
       case 'basic-calc': return { bg: 'bg-[#FB96BB]', light: 'bg-[#FFEEF4]', text: 'text-[#FB96BB]' };
       default: return { bg: 'bg-[#75D06A]', light: 'bg-[#EDFAEB]', text: 'text-[#75D06A]' };
     }

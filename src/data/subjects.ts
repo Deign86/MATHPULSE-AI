@@ -146,8 +146,8 @@ export const SUBJECTS_BY_GRADE: Record<GradeLevel, typeof SHS_MATH_SUBJECTS[numb
 // - Grade 11: General Mathematics only (current rollout)
 // - Grade 12: Pre-Calculus + Basic Calculus
 export const ACTIVE_SUBJECT_IDS_BY_GRADE: Record<GradeLevel, SubjectId[]> = {
-  'Grade 11': ['gen-math'],
-  'Grade 12': ['pre-calc', 'basic-calc'],
+  'Grade 11': ['gen-math', 'pre-calc', 'stats-prob', 'basic-calc'],
+  'Grade 12': ['pre-calc', 'basic-calc', 'gen-math', 'stats-prob'],
 };
 
 export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null {
