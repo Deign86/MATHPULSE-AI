@@ -20,8 +20,9 @@ import math
 import hashlib
 import logging
 import traceback
+import urllib.parse
 from typing import List, Optional, Dict, Any, Set, Tuple, cast
-from collections import Counter
+from collections import Counter, defaultdict
 from threading import Lock
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
@@ -2239,6 +2240,242 @@ def _normalize_class_records(
     }
 
 
+def _slugify_class_token(value: str) -> str:
+    token = re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower())
+    return re.sub(r"_+", "_", token).strip("_")
+
+
+def _resolve_import_class_context(
+    *,
+    class_section_id: Optional[str],
+    class_name: Optional[str],
+) -> Tuple[str, str, str, str]:
+    normalized_section_id = (class_section_id or "").strip().lower()
+    normalized_class_name = (class_name or "").strip()
+
+    grade = "Grade 11"
+    section = "Section A"
+
+    if normalized_class_name and " - " in normalized_class_name:
+        parts = [part.strip() for part in normalized_class_name.split(" - ", 1)]
+        if parts[0]:
+            grade = parts[0]
+        if len(parts) > 1 and parts[1]:
+            section = parts[1]
+
+    if normalized_section_id:
+        section_tokens = [token for token in normalized_section_id.split("_") if token]
+        if section_tokens:
+            if section_tokens[0].startswith("grade"):
+                suffix = section_tokens[0].replace("grade", "").strip("_")
+                if suffix:
+                    grade = f"Grade {suffix}"
+            elif section_tokens[0].isdigit():
+                grade = f"Grade {section_tokens[0]}"
+            elif "grade" in section_tokens[0]:
+                grade = section_tokens[0].replace("_", " ").title()
+            if len(section_tokens) > 1:
+                section = " ".join(token.capitalize() for token in section_tokens[1:])
+            elif len(section_tokens) == 1 and section_tokens[0] and section_tokens[0] != "grade":
+                section = section or "Section A"
+
+    if not normalized_section_id:
+        normalized_section_id = _slugify_class_token(f"{grade}_{section}") or "grade_11_section_a"
+
+    resolved_name = normalized_class_name or f"{grade} - {section}"
+    return normalized_section_id, resolved_name, grade, section
+
+
+def _derive_risk_level(avg_quiz: float, attendance: float, engagement: float) -> str:
+    if avg_quiz < 60 or attendance < 75 or engagement < 55:
+        return "High"
+    if avg_quiz < 75 or attendance < 85 or engagement < 70:
+        return "Medium"
+    return "Low"
+
+
+def _pick_weakest_topic(unknown_fields: Dict[str, Any]) -> str:
+    for key, value in (unknown_fields or {}).items():
+        if any(token in key for token in ("weak", "topic", "skill", "competency")):
+            topic = _canonicalize_topic_label(str(value or "").strip())
+            if topic:
+                return topic
+    return "Foundational Skills"
+
+
+def _sync_imported_students_to_teacher_dashboard(
+    request: Request,
+    *,
+    normalized_rows: List[Dict[str, Any]],
+    class_section_id: Optional[str],
+    class_name: Optional[str],
+) -> Dict[str, Any]:
+    if not (_firebase_ready and firebase_firestore):
+        return {
+            "synced": False,
+            "createdStudents": 0,
+            "updatedStudents": 0,
+            "classroomsTouched": 0,
+            "classroomId": None,
+            "classSectionId": (class_section_id or "").strip().lower() or None,
+            "warning": "Firestore unavailable; dashboard sync skipped.",
+        }
+
+    user = get_current_user(request)
+    resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
+        class_section_id=class_section_id,
+        class_name=class_name,
+    )
+
+    by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
+    for row in normalized_rows:
+        name = str(row.get("name") or "").strip()
+        email = str(row.get("email") or "").strip().lower()
+        lrn = str(row.get("lrn") or "").strip()
+        identity = lrn or email or re.sub(r"\s+", "_", name.lower())
+        if not identity:
+            continue
+
+        state = by_identity.get(identity)
+        if not state:
+            state = {
+                "name": name,
+                "email": email,
+                "lrn": lrn,
+                "scores": [],
+                "attendance": [],
+                "engagement": [],
+                "completion": [],
+                "weakestTopic": "",
+            }
+            by_identity[identity] = state
+
+        avg_quiz = float(row.get("avgQuizScore") or 0.0)
+        attendance = float(row.get("attendance") or 0.0)
+        engagement = float(row.get("engagementScore") or 0.0)
+        completion = float(row.get("assignmentCompletion") or 0.0)
+
+        state["scores"].append(avg_quiz)
+        state["attendance"].append(attendance)
+        state["engagement"].append(engagement)
+        state["completion"].append(completion)
+        if not state.get("weakestTopic"):
+            state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
+
+        if name and not state.get("name"):
+            state["name"] = name
+        if email and not state.get("email"):
+            state["email"] = email
+        if lrn and not state.get("lrn"):
+            state["lrn"] = lrn
+
+    if not by_identity:
+        return {
+            "synced": False,
+            "createdStudents": 0,
+            "updatedStudents": 0,
+            "classroomsTouched": 0,
+            "classroomId": resolved_section_id,
+            "classSectionId": resolved_section_id,
+            "warning": "No normalized student records were available for dashboard sync.",
+        }
+
+    client = firebase_firestore.client()
+    classrooms_ref = client.collection("classrooms")
+    students_ref = client.collection("managedStudents")
+
+    classroom_doc_id = resolved_section_id or f"imported_{hashlib.sha1((user.uid + resolved_class_name).encode('utf-8')).hexdigest()[:12]}"
+    classroom_ref = classrooms_ref.document(classroom_doc_id)
+    classroom_snapshot = cast(Any, classroom_ref.get())
+    existing_classroom = _snapshot_to_dict(classroom_snapshot) if _snapshot_exists(classroom_snapshot) else {}
+
+    created_students = 0
+    updated_students = 0
+    risk_high_count = 0
+    total_score = 0.0
+
+    for identity, aggregate in by_identity.items():
+        scores = aggregate.get("scores") or [0.0]
+        attendance_values = aggregate.get("attendance") or [0.0]
+        engagement_values = aggregate.get("engagement") or [0.0]
+        completion_values = aggregate.get("completion") or [0.0]
+
+        avg_quiz = float(sum(scores) / max(len(scores), 1))
+        avg_attendance = float(sum(attendance_values) / max(len(attendance_values), 1))
+        avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
+        avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
+
+        risk_level = _derive_risk_level(avg_quiz, avg_attendance, avg_engagement)
+        if risk_level == "High":
+            risk_high_count += 1
+        total_score += avg_quiz
+
+        fallback_name = str(aggregate.get("name") or "Imported Student").strip() or "Imported Student"
+        avatar_seed = urllib.parse.quote(fallback_name)
+        student_doc_id = hashlib.sha1(f"{user.uid}|{identity}".encode("utf-8")).hexdigest()[:36]
+        student_ref = students_ref.document(student_doc_id)
+        student_snapshot = cast(Any, student_ref.get())
+
+        payload: Dict[str, Any] = {
+            "teacherId": user.uid,
+            "name": fallback_name,
+            "email": str(aggregate.get("email") or ""),
+            "lrn": str(aggregate.get("lrn") or ""),
+            "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
+            "grade": grade,
+            "section": section,
+            "classSectionId": resolved_section_id,
+            "classroomId": classroom_doc_id,
+            "riskLevel": risk_level,
+            "engagementScore": round(avg_engagement, 1),
+            "avgQuizScore": round(avg_quiz, 1),
+            "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
+            "attendance": round(avg_attendance, 1),
+            "assignmentCompletion": round(avg_completion, 1),
+            "struggles": [str(aggregate.get("weakestTopic") or "Foundational Skills")],
+            "lastActive": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+
+        if _snapshot_exists(student_snapshot):
+            updated_students += 1
+        else:
+            created_students += 1
+            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+        student_ref.set(payload, merge=True)
+
+    student_count = len(by_identity)
+    class_average = round(total_score / max(student_count, 1), 1)
+
+    classroom_payload: Dict[str, Any] = {
+        "teacherId": user.uid,
+        "name": resolved_class_name,
+        "grade": grade,
+        "section": section,
+        "classSectionId": resolved_section_id,
+        "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
+        "studentCount": student_count,
+        "avgScore": class_average,
+        "atRiskCount": risk_high_count,
+        "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+    }
+    if not _snapshot_exists(classroom_snapshot):
+        classroom_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+    classroom_ref.set(classroom_payload, merge=True)
+
+    return {
+        "synced": True,
+        "createdStudents": created_students,
+        "updatedStudents": updated_students,
+        "classroomsTouched": 1,
+        "classroomId": classroom_doc_id,
+        "classSectionId": resolved_section_id,
+        "warning": None,
+    }
+
+
 def _resolve_uploaded_files(
     *,
     file: Optional[UploadFile],
@@ -2886,6 +3123,14 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
             column_mapping=(first_file_with_mapping or {}).get("columnMapping") or {},
             class_section_id=(classSectionId or "").strip() or None,
         )
+        dashboard_sync = _sync_imported_students_to_teacher_dashboard(
+            request,
+            normalized_rows=all_students,
+            class_section_id=(classSectionId or "").strip() or None,
+            class_name=(className or "").strip() or None,
+        )
+        if dashboard_sync.get("warning"):
+            all_warnings.append(str(dashboard_sync["warning"]))
 
         response_payload = {
             "success": overall_success,
@@ -2905,6 +3150,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "failedFiles": failed_files,
             },
             "riskRefresh": risk_refresh,
+            "dashboardSync": dashboard_sync,
         }
 
         _write_access_audit_log(
@@ -2918,6 +3164,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "failedFiles": failed_files,
                 "persisted": bool(first_file_with_import and first_file_with_import.get("importId")),
                 "students": len(all_students),
+                "dashboardSync": bool(dashboard_sync.get("synced")),
+                "dashboardCreatedStudents": int(dashboard_sync.get("createdStudents") or 0),
+                "dashboardUpdatedStudents": int(dashboard_sync.get("updatedStudents") or 0),
             },
         )
 
@@ -6473,21 +6722,191 @@ _SHS_TOPICS = {
 
 @app.get("/api/analytics/topic-mastery")
 async def topic_mastery_analytics(
+    request: Request,
     teacherId: str = Query(..., description="Teacher UID"),
     classId: Optional[str] = Query(None, description="Optional class ID filter"),
+    classSectionId: Optional[str] = Query(None, description="Optional class section ID filter"),
 ):
     """
     Aggregate per-topic mastery statistics for a teacher's class.
     Returns topic-level averages, attempt counts, and mastery status.
     """
     try:
-        # No real student data imported yet — return empty state.
+        user = get_current_user(request)
+        if user.role != "admin" and teacherId != user.uid:
+            raise HTTPException(status_code=403, detail="Forbidden for this teacher scope")
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        effective_class_section_id = (classSectionId or classId or "").strip().lower() or None
+
+        topic_lookup: Dict[str, Dict[str, str]] = {}
+        for subject_id, subject_meta in _SHS_TOPICS.items():
+            for topic_name, unit in subject_meta.get("topics", []):
+                canonical_name = _canonicalize_topic_label(topic_name)
+                if not canonical_name:
+                    continue
+                topic_lookup[_normalize_topic_key(canonical_name)] = {
+                    "topicName": canonical_name,
+                    "subjectId": subject_id,
+                    "unit": unit,
+                }
+
+        def resolve_topic_meta(raw_topic: str) -> Dict[str, str]:
+            canonical = _canonicalize_topic_label(raw_topic)
+            key = _normalize_topic_key(canonical)
+            if key in topic_lookup:
+                return topic_lookup[key]
+            return {
+                "topicName": canonical or "General Performance",
+                "subjectId": "gen-math",
+                "unit": "Imported Curriculum",
+            }
+
+        def extract_topics_from_record(row: Dict[str, Any]) -> List[str]:
+            candidates: List[str] = []
+            assessment_name = _canonicalize_topic_label(str(row.get("assessmentName") or "").strip())
+            if assessment_name and assessment_name.lower() != "general-assessment":
+                candidates.append(assessment_name)
+
+            unknown_fields = row.get("unknownFields") or {}
+            if isinstance(unknown_fields, dict):
+                for key, value in unknown_fields.items():
+                    if any(token in str(key).lower() for token in ("topic", "unit", "lesson", "skill", "competency")):
+                        fragments = re.split(r"[,;|]+", str(value or ""))
+                        for fragment in fragments:
+                            label = _canonicalize_topic_label(fragment.strip())
+                            if label:
+                                candidates.append(label)
+
+            deduped: List[str] = []
+            seen_keys: Set[str] = set()
+            for candidate in candidates:
+                key = _normalize_topic_key(candidate)
+                if not key or key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                deduped.append(candidate)
+
+            if not deduped:
+                return ["General Performance"]
+            return deduped
+
+        client = firebase_firestore.client()
+        records_query = client.collection("normalizedClassRecords").where("teacherId", "==", teacherId)
+        if effective_class_section_id:
+            records_query = records_query.where("classSectionId", "==", effective_class_section_id)
+
+        material_query = client.collection("courseMaterials").where("teacherId", "==", teacherId)
+        if effective_class_section_id:
+            material_query = material_query.where("classSectionId", "==", effective_class_section_id)
+
+        docs = list(records_query.limit(3000).stream())
+        student_ids: Set[str] = set()
+        topic_stats: Dict[str, Dict[str, Any]] = {}
+
+        for doc in docs:
+            row = doc.to_dict() or {}
+            student_identity = (
+                str(row.get("studentId") or "").strip()
+                or str(row.get("lrn") or "").strip()
+                or str(row.get("email") or "").strip().lower()
+                or re.sub(r"\s+", "_", str(row.get("name") or "").strip().lower())
+            )
+            if student_identity:
+                student_ids.add(student_identity)
+
+            avg_quiz_score = float(row.get("avgQuizScore") or 0.0)
+            for topic_label in extract_topics_from_record(row):
+                metadata = resolve_topic_meta(topic_label)
+                topic_key = _normalize_topic_key(metadata["topicName"])
+                if topic_key not in topic_stats:
+                    topic_stats[topic_key] = {
+                        "topicName": metadata["topicName"],
+                        "subjectId": metadata["subjectId"],
+                        "unit": metadata["unit"],
+                        "scores": [],
+                        "students": set(),
+                        "studentsAbove85": 0,
+                    }
+
+                topic_stats[topic_key]["scores"].append(avg_quiz_score)
+                if student_identity:
+                    if student_identity not in topic_stats[topic_key]["students"] and avg_quiz_score >= 85:
+                        topic_stats[topic_key]["studentsAbove85"] += 1
+                    topic_stats[topic_key]["students"].add(student_identity)
+
+        material_docs = list(material_query.limit(200).stream())
+        for doc in material_docs:
+            data = doc.to_dict() or {}
+            for topic in data.get("topics") or []:
+                topic_title = str((topic or {}).get("title") or "").strip()
+                if not topic_title:
+                    continue
+                metadata = resolve_topic_meta(topic_title)
+                topic_key = _normalize_topic_key(metadata["topicName"])
+                if topic_key not in topic_stats:
+                    topic_stats[topic_key] = {
+                        "topicName": metadata["topicName"],
+                        "subjectId": metadata["subjectId"],
+                        "unit": metadata["unit"],
+                        "scores": [],
+                        "students": set(),
+                        "studentsAbove85": 0,
+                    }
+
+        total_students = len(student_ids)
+        topics_payload: List[Dict[str, Any]] = []
+        mastered_count = 0
+        needs_attention_count = 0
+
+        for topic_data in topic_stats.values():
+            scores = topic_data.get("scores") or []
+            students_attempted = len(topic_data.get("students") or set())
+            class_average = float(sum(scores) / len(scores)) if scores else 0.0
+            mastery_percentage = (
+                float(topic_data.get("studentsAbove85") or 0) / float(total_students) * 100.0
+                if total_students > 0
+                else 0.0
+            )
+
+            if students_attempted == 0:
+                mastery_status = "no_data"
+            elif mastery_percentage >= 75.0:
+                mastery_status = "mastered"
+            elif class_average >= 65.0 or mastery_percentage >= 40.0:
+                mastery_status = "on_track"
+            else:
+                mastery_status = "needs_attention"
+
+            if mastery_status == "mastered":
+                mastered_count += 1
+            if mastery_status == "needs_attention":
+                needs_attention_count += 1
+
+            topics_payload.append(
+                {
+                    "topicName": topic_data["topicName"],
+                    "subjectId": topic_data["subjectId"],
+                    "unit": topic_data["unit"],
+                    "classAverage": round(class_average, 1),
+                    "studentsAttempted": students_attempted,
+                    "totalStudents": total_students,
+                    "studentsAbove85": int(topic_data.get("studentsAbove85") or 0),
+                    "masteryPercentage": round(mastery_percentage, 1),
+                    "masteryStatus": mastery_status,
+                    "isExcluded": False,
+                }
+            )
+
+        topics_payload.sort(key=lambda item: (item["masteryStatus"], item["topicName"]))
+
         return {
-            "topics": [],
+            "topics": topics_payload,
             "summary": {
-                "totalTopicsTracked": 0,
-                "masteredCount": 0,
-                "needsAttentionCount": 0,
+                "totalTopicsTracked": len(topics_payload),
+                "masteredCount": mastered_count,
+                "needsAttentionCount": needs_attention_count,
                 "excludedCount": 0,
             },
         }
