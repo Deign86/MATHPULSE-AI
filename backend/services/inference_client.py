@@ -44,7 +44,7 @@ class InferenceClient:
                     primary = primary_cfg
 
         self.provider = os.getenv("INFERENCE_PROVIDER", "hf_inference").strip().lower()
-        self.gpu_provider = os.getenv("INFERENCE_GPU_PROVIDER", "local_space").strip().lower()
+        self.gpu_provider = os.getenv("INFERENCE_GPU_PROVIDER", "hf_inference").strip().lower()
         self.cpu_provider = os.getenv("INFERENCE_CPU_PROVIDER", "hf_inference").strip().lower()
         self.enable_provider_fallback = os.getenv("INFERENCE_ENABLE_PROVIDER_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.hf_token = os.getenv("HF_TOKEN", "")
@@ -54,7 +54,7 @@ class InferenceClient:
 
         self.default_model = os.getenv(
             "INFERENCE_MODEL_ID",
-            str(primary.get("id", "Qwen/Qwen3-14B")),
+            str(primary.get("id", "Qwen/Qwen2.5-Math-7B-Instruct")),
         )
         self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", str(primary.get("max_new_tokens", 512))))
         self.default_temperature = float(os.getenv("INFERENCE_TEMPERATURE", str(primary.get("temperature", 0.2))))
