@@ -41,6 +41,7 @@ const parseEnvBoolean = (value: string | undefined, defaultValue: boolean): bool
 const IMPORT_GROUNDED_QUIZ_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_QUIZ, true);
 const IMPORT_GROUNDED_LESSON_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_LESSON, true);
 const IMPORT_GROUNDED_FEEDBACK_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS, true);
+const ASYNC_GENERATION_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_ASYNC_GENERATION, true);
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -95,6 +96,41 @@ export interface DailyInsightRequest {
 
 export interface DailyInsightResponse {
   insight: string;
+}
+
+export interface ImportedClassroomOverviewItem {
+  id: string;
+  name: string;
+  classSectionId?: string | null;
+  schedule: string;
+  studentCount: number;
+  avgScore: number;
+  atRiskCount: number;
+}
+
+export interface ImportedStudentOverviewItem {
+  id: string;
+  lrn?: string | null;
+  name: string;
+  email?: string;
+  classSectionId?: string | null;
+  className: string;
+  grade?: string;
+  section?: string;
+  avgQuizScore: number;
+  attendance: number;
+  engagementScore: number;
+  assignmentCompletion: number;
+  riskLevel: 'High' | 'Medium' | 'Low';
+  weakestTopic: string;
+}
+
+export interface ImportedClassOverviewResponse {
+  success: boolean;
+  classSectionId?: string | null;
+  classrooms: ImportedClassroomOverviewItem[];
+  students: ImportedStudentOverviewItem[];
+  warnings: string[];
 }
 
 export interface UploadResponse {
@@ -365,6 +401,42 @@ export interface LessonPlanResponse {
   warnings: string[];
 }
 
+export type AsyncTaskKind = 'lesson_generation' | 'quiz_generation';
+export type AsyncTaskStatus = 'queued' | 'running' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
+
+export interface AsyncTaskSubmitResponse {
+  success: boolean;
+  taskId: string;
+  status: AsyncTaskStatus;
+  taskKind: AsyncTaskKind;
+  createdAt: string;
+}
+
+export interface AsyncTaskStatusResponse {
+  success: boolean;
+  taskId: string;
+  taskKind: AsyncTaskKind;
+  status: AsyncTaskStatus;
+  createdAt: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  result?: Record<string, unknown> | null;
+  error?: unknown;
+}
+
+export interface AsyncTaskListResponse {
+  success: boolean;
+  count: number;
+  tasks: AsyncTaskStatusResponse[];
+}
+
+export interface AsyncTaskCancelResponse {
+  success: boolean;
+  taskId: string;
+  status: AsyncTaskStatus;
+  message: string;
+}
+
 export interface ImportGroundedFeedbackRequest {
   flow: 'quiz' | 'lesson';
   status: 'success' | 'failed' | 'skipped';
@@ -544,7 +616,7 @@ export interface TopicCompetency {
 }
 
 export interface StudentCompetencyResponse {
-  lrn: string;
+  studentId: string;
   competencies: TopicCompetency[];
   recommendedTopics: string[];
   excludeTopics: string[];
@@ -820,6 +892,23 @@ function validateQuizResponse(data: unknown): data is QuizGenerationResponse {
   return Array.isArray(d.questions) && typeof d.totalPoints === 'number';
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function extractTaskErrorMessage(error: unknown): string {
+  if (!error) return 'Generation task failed without a detailed error.';
+  if (typeof error === 'string') return error;
+  if (typeof error === 'object' && error !== null) {
+    const maybeRecord = error as Record<string, unknown>;
+    if (typeof maybeRecord.message === 'string') return maybeRecord.message;
+    try {
+      return JSON.stringify(maybeRecord);
+    } catch {
+      return 'Generation task failed due to an unknown error.';
+    }
+  }
+  return String(error);
+}
+
 // ─── Public API ──────────────────────────────────────────────
 
 export const apiService = {
@@ -970,6 +1059,22 @@ export const apiService = {
       FALLBACK_INSIGHT,
       'getDailyInsight',
     );
+  },
+
+  /** Retrieve class/student overview derived from imported normalized records */
+  async getImportedClassOverview(options?: {
+    classSectionId?: string;
+    limit?: number;
+  }): Promise<ImportedClassOverviewResponse> {
+    const limit = options?.limit ?? 3000;
+    validateRange('/api/analytics/imported-class-overview', 'limit', limit, 1, 5000);
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (options?.classSectionId) {
+      params.set('classSectionId', options.classSectionId);
+    }
+
+    return apiFetch<ImportedClassOverviewResponse>(`/api/analytics/imported-class-overview?${params.toString()}`);
   },
 
   /** Smart File Upload with AI Column Detection */
@@ -1167,6 +1272,19 @@ export const apiService = {
       preferImportedTopics: IMPORT_GROUNDED_LESSON_ENABLED && (request.preferImportedTopics ?? true),
     };
 
+    if (ASYNC_GENERATION_ENABLED) {
+      const submitted = await apiService.submitLessonPlanAsync(effectiveRequest);
+      const task = await apiService.waitForTaskResult(submitted.taskId, {
+        timeoutMs: 240_000,
+        pollIntervalMs: 1_500,
+      });
+      const payload = task.result;
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('Lesson generation completed without a valid result payload.');
+      }
+      return payload as unknown as LessonPlanResponse;
+    }
+
     return apiFetch<LessonPlanResponse>(
       '/api/lesson/generate',
       { method: 'POST', body: JSON.stringify(effectiveRequest) },
@@ -1190,6 +1308,22 @@ export const apiService = {
       ...request,
       preferImportedTopics: IMPORT_GROUNDED_QUIZ_ENABLED && (request.preferImportedTopics ?? true),
     };
+
+    if (ASYNC_GENERATION_ENABLED) {
+      const submitted = await apiService.submitQuizAsync(effectiveRequest);
+      const task = await apiService.waitForTaskResult(submitted.taskId, {
+        timeoutMs: 240_000,
+        pollIntervalMs: 1_500,
+      });
+      const payload = task.result;
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('Quiz generation completed without a valid result payload.');
+      }
+      if (!validateQuizResponse(payload)) {
+        throw new Error('Invalid quiz generation response from async task payload.');
+      }
+      return payload as unknown as QuizGenerationResponse;
+    }
 
     const result = await apiFetch<QuizGenerationResponse>(
       '/api/quiz/generate',
@@ -1224,6 +1358,80 @@ export const apiService = {
     );
   },
 
+  async submitLessonPlanAsync(request: LessonGenerationRequest): Promise<AsyncTaskSubmitResponse> {
+    return apiFetch<AsyncTaskSubmitResponse>(
+      '/api/lesson/generate-async',
+      { method: 'POST', body: JSON.stringify(request) },
+      AI_RETRY_OPTS,
+    );
+  },
+
+  async submitQuizAsync(request: QuizGenerationRequest): Promise<AsyncTaskSubmitResponse> {
+    return apiFetch<AsyncTaskSubmitResponse>(
+      '/api/quiz/generate-async',
+      { method: 'POST', body: JSON.stringify(request) },
+      AI_RETRY_OPTS,
+    );
+  },
+
+  async getTaskStatus(taskId: string): Promise<AsyncTaskStatusResponse> {
+    validateRequired('/api/tasks/{taskId}', { taskId });
+    return apiFetch<AsyncTaskStatusResponse>(`/api/tasks/${encodeURIComponent(taskId)}`);
+  },
+
+  async listTasks(options?: {
+    limit?: number;
+    status?: AsyncTaskStatus;
+    includeResults?: boolean;
+  }): Promise<AsyncTaskListResponse> {
+    const params = new URLSearchParams();
+    if (options?.limit != null) {
+      validateRange('/api/tasks', 'limit', options.limit, 1, 200);
+      params.set('limit', String(options.limit));
+    }
+    if (options?.status) {
+      params.set('status', options.status);
+    }
+    if (options?.includeResults != null) {
+      params.set('include_results', String(options.includeResults));
+    }
+    const query = params.toString();
+    return apiFetch<AsyncTaskListResponse>(`/api/tasks${query ? `?${query}` : ''}`);
+  },
+
+  async cancelTask(taskId: string): Promise<AsyncTaskCancelResponse> {
+    validateRequired('/api/tasks/{taskId}/cancel', { taskId });
+    return apiFetch<AsyncTaskCancelResponse>(
+      `/api/tasks/${encodeURIComponent(taskId)}/cancel`,
+      { method: 'POST' },
+    );
+  },
+
+  async waitForTaskResult(
+    taskId: string,
+    options?: {
+      timeoutMs?: number;
+      pollIntervalMs?: number;
+    },
+  ): Promise<AsyncTaskStatusResponse> {
+    const timeoutMs = options?.timeoutMs ?? 180_000;
+    const pollIntervalMs = options?.pollIntervalMs ?? 1_500;
+    const started = Date.now();
+
+    while (Date.now() - started <= timeoutMs) {
+      const status = await apiService.getTaskStatus(taskId);
+      if (status.status === 'completed') {
+        return status;
+      }
+      if (status.status === 'failed' || status.status === 'cancelled') {
+        throw new Error(extractTaskErrorMessage(status.error));
+      }
+      await sleep(pollIntervalMs);
+    }
+
+    throw new Error(`Async generation task timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+  },
+
   /** Get math topics by grade level */
   async getQuizTopics(gradeLevel?: string): Promise<QuizTopicsResponse> {
     const query = gradeLevel ? `?gradeLevel=${encodeURIComponent(gradeLevel)}` : '';
@@ -1232,14 +1440,14 @@ export const apiService = {
 
   /** Get student competency assessment */
   async getStudentCompetency(
-    lrn: string,
+    studentId: string,
     quizHistory?: { topic: string; score: number; total: number; timeTaken?: number }[],
   ): Promise<StudentCompetencyResponse> {
-    validateRequired('/api/quiz/student-competency', { lrn });
+    validateRequired('/api/quiz/student-competency', { studentId });
 
     return apiFetch<StudentCompetencyResponse>('/api/quiz/student-competency', {
       method: 'POST',
-      body: JSON.stringify({ lrn, quizHistory }),
+      body: JSON.stringify({ studentId, quizHistory }),
     });
   },
 

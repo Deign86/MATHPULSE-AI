@@ -1,11 +1,11 @@
 import os
 import time
 import json
+import re
 from threading import Lock
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote
 
 import requests
 import yaml
@@ -13,6 +13,23 @@ import yaml
 from .logging_utils import configure_structured_logging, log_model_call
 
 LOGGER = configure_structured_logging("mathpulse.inference")
+
+
+def _normalize_local_space_url(raw_url: str) -> str:
+    """Accept either hf.space host or huggingface.co/spaces URL for local_space provider."""
+    cleaned = (raw_url or "").strip().rstrip("/")
+    if not cleaned:
+        return "http://127.0.0.1:7860"
+
+    # Convert page URL format to runtime host format:
+    # https://huggingface.co/spaces/{owner}/{space} -> https://{owner}-{space}.hf.space
+    match = re.match(r"^https?://huggingface\.co/spaces/([^/]+)/([^/]+)$", cleaned, re.IGNORECASE)
+    if match:
+        owner = match.group(1).strip().lower()
+        space = match.group(2).strip().lower()
+        return f"https://{owner}-{space}.hf.space"
+
+    return cleaned
 
 
 @dataclass
@@ -52,15 +69,18 @@ class InferenceClient:
         self.enable_provider_fallback = os.getenv("INFERENCE_ENABLE_PROVIDER_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.pro_enabled = os.getenv("INFERENCE_PRO_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
         self.hf_token = os.getenv("HF_TOKEN", "")
-        self.hf_base_url = os.getenv("INFERENCE_HF_BASE_URL", "https://api-inference.huggingface.co/models")
-        self.local_space_url = os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
+        self.hf_base_url = os.getenv("INFERENCE_HF_BASE_URL", "https://router.huggingface.co/hf-inference/models")
+        self.hf_chat_url = os.getenv("INFERENCE_HF_CHAT_URL", "https://router.huggingface.co/v1/chat/completions")
+        self.local_space_url = _normalize_local_space_url(
+            os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
+        )
         self.local_generate_path = os.getenv("INFERENCE_LOCAL_SPACE_GENERATE_PATH", "/gradio_api/call/generate")
         self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
         self.default_model = os.getenv(
             "INFERENCE_MODEL_ID",
-            str(primary.get("id", "Qwen/Qwen2.5-Math-7B-Instruct")),
+            str(primary.get("id", "meta-llama/Llama-3.1-8B-Instruct")),
         )
         self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", str(primary.get("max_new_tokens", 512))))
         self.default_temperature = float(os.getenv("INFERENCE_TEMPERATURE", str(primary.get("temperature", 0.2))))
@@ -105,6 +125,7 @@ class InferenceClient:
         self.interactive_tasks = {v.strip().lower() for v in interactive_tasks_raw.split(",") if v.strip()}
 
         self.task_model_map: Dict[str, str] = {}
+        self.task_fallback_model_map: Dict[str, List[str]] = {}
         self.task_provider_map: Dict[str, str] = {}
         if isinstance(config, dict):
             routing_cfg = config.get("routing", {})
@@ -116,6 +137,22 @@ class InferenceClient:
                         for task, model in task_models.items()
                         if str(task).strip() and str(model).strip()
                     }
+                task_fallback_models = routing_cfg.get("task_fallback_model_map", {})
+                if isinstance(task_fallback_models, dict):
+                    parsed: Dict[str, List[str]] = {}
+                    for task, models in task_fallback_models.items():
+                        task_key = str(task).strip().lower()
+                        if not task_key:
+                            continue
+                        if isinstance(models, list):
+                            cleaned = [str(m).strip() for m in models if str(m).strip()]
+                            if cleaned:
+                                parsed[task_key] = cleaned
+                        elif isinstance(models, str):
+                            cleaned = [v.strip() for v in models.split(",") if v.strip()]
+                            if cleaned:
+                                parsed[task_key] = cleaned
+                    self.task_fallback_model_map = parsed
                 task_providers = routing_cfg.get("task_provider_map", {})
                 if isinstance(task_providers, dict):
                     self.task_provider_map = {
@@ -179,7 +216,7 @@ class InferenceClient:
         effective_task = (req.task_type or "default").strip().lower()
         request_tag = req.request_tag.strip() or f"{effective_task}-{int(time.time() * 1000)}"
         selected_model = req.model or self.task_model_map.get((req.task_type or "default").strip().lower(), self.default_model)
-        model_chain = [selected_model] + [m for m in self.fallback_models if m and m != selected_model]
+        model_chain = self._model_chain_for_task(effective_task, selected_model)
         last_error: Optional[Exception] = None
         provider_chain = self._provider_chain_for_task(req.task_type)
 
@@ -212,6 +249,20 @@ class InferenceClient:
         if last_error:
             raise last_error
         raise RuntimeError("Inference failed with empty model chain")
+
+    def _model_chain_for_task(self, task_type: str, selected_model: str) -> List[str]:
+        per_task_candidates = self.task_fallback_model_map.get(task_type, [])
+        combined = [selected_model] + per_task_candidates + self.fallback_models
+
+        deduped: List[str] = []
+        seen = set()
+        for model_id in combined:
+            model_name = (model_id or "").strip()
+            if not model_name or model_name in seen:
+                continue
+            seen.add(model_name)
+            deduped.append(model_name)
+        return deduped
 
     def _provider_chain_for_task(self, task_type: str) -> List[str]:
         normalized = (task_type or "default").strip().lower()
@@ -376,25 +427,16 @@ class InferenceClient:
             raise RuntimeError("HF_TOKEN is not set")
 
         target_model = req.model or self.default_model
-        encoded_model = quote(target_model, safe="")
-        url = f"{self.hf_base_url.rstrip('/')}/{encoded_model}"
+        chat_model = target_model if ":" in target_model else f"{target_model}:fastest"
+        url = self.hf_chat_url
 
-        prompt = self._latest_user_message(req.messages)
         payload: Dict[str, object] = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": req.max_new_tokens or self.default_max_new_tokens,
-                "temperature": req.temperature,
-                "top_p": req.top_p,
-                "repetition_penalty": req.repetition_penalty,
-                "return_full_text": False,
-                "do_sample": req.temperature > 0,
-                "tool_choice": "none",
-            },
-            "options": {
-                "wait_for_model": True,
-                "use_cache": False,
-            },
+            "model": chat_model,
+            "messages": req.messages,
+            "stream": False,
+            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
+            "temperature": req.temperature,
+            "top_p": req.top_p,
         }
         headers = {
             "Authorization": f"Bearer {self.hf_token}",
@@ -533,9 +575,13 @@ class InferenceClient:
 
             choices = data.get("choices", [])
             if choices:
-                msg = (choices[0].get("message", {}).get("content") or "").strip()
+                message = choices[0].get("message", {})
+                msg = (message.get("content") or "").strip()
                 if msg:
                     return msg
+                reasoning = (message.get("reasoning") or "").strip()
+                if reasoning:
+                    return reasoning
 
             generic_data = data.get("data")
             if isinstance(generic_data, list) and generic_data:

@@ -148,6 +148,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
    VITE_ENABLE_IMPORT_GROUNDED_LESSON=true
    VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
+   VITE_ENABLE_ASYNC_GENERATION=true
    ```
 
 4. **Start the frontend dev server**
@@ -240,18 +241,47 @@ This keeps your unique React UI and Firebase flows unchanged, while chat generat
 ### Quickstart: Run evaluation jobs on Hugging Face
 
 1. Set INFERENCE_PROVIDER=hf_inference and HF_TOKEN in the job environment.
-2. Run evaluation:
-   python jobs/eval_math_model.py --subset algebra --limit 100
-3. Run synthetic generation:
-   python jobs/generate_variants.py --limit 200 --variants-per-item 3
-4. Sync curated artifacts to private dataset repo:
+2. Enable Pro-priority routing for background jobs:
+   INFERENCE_PRO_ENABLED=true
+   INFERENCE_PRO_PRIORITY_TASKS=eval_generation,variant_generation
+3. Run evaluation via launcher:
+   python jobs/hf_jobs_launcher.py --job eval --mode local --subset algebra --limit 100
+4. Run synthetic generation via launcher:
+   python jobs/hf_jobs_launcher.py --job variants --mode local --limit 200 --variants-per-item 3
+5. Submit a Hugging Face Jobs CLI run (dry-run first):
+   python jobs/hf_jobs_launcher.py --job eval --mode hf --flavor cpu-basic --dry-run --env HF_TOKEN=<token>
+6. Sync curated artifacts to private dataset repo:
    python scripts/push_dataset_to_hf.py --repo Deign86/mathpulse-private-datasets
+
+### Async generation + Pro metrics endpoints
+
+- Submit heavy generation requests without blocking:
+   - POST /api/lesson/generate-async
+   - POST /api/quiz/generate-async
+- Poll task state and result payload:
+   - GET /api/tasks/{task_id}
+- List recent task records for the current user (admin sees all):
+   - GET /api/tasks?limit=50&status=queued|running|cancelling|completed|failed|cancelled
+- Cancel queued/running tasks:
+   - POST /api/tasks/{task_id}/cancel
+- Admin-only inference routing summary:
+   - GET /api/ops/inference-metrics
+
+Operational note:
+- If the backend returns 404 for async routes, set VITE_ENABLE_ASYNC_GENERATION=false to force synchronous generation calls while keeping all other PRO features enabled.
+
+Enable async task mode via env:
+- ENABLE_ASYNC_GENERATION=true
+- ASYNC_TASK_TTL_SECONDS=3600
+- ASYNC_TASK_MAX_ITEMS=400
 
 ### Cost Optimization Notes
 
 - Use smaller backup models in config/models.yaml for burst traffic or low-priority flows.
 - Run expensive experiments through Inference Providers with strict per-run limits in Jobs.
 - Keep eval/generation datasets private and compact to reduce iteration cost.
+- Use task_model_map in config/models.yaml to route low-risk tasks (e.g. daily_insight) to smaller models.
+- Use structured inference logs (task_type, request_tag, route, fallback_depth) to compare cost/quality before widening rollout.
 
 ```
 MATHPULSE-AI/
@@ -388,6 +418,7 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 - `VITE_ENABLE_IMPORT_GROUNDED_QUIZ` controls frontend request preference for import-grounded quiz generation.
 - `VITE_ENABLE_IMPORT_GROUNDED_LESSON` controls frontend request preference for import-grounded lesson generation.
 - `VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS` controls frontend feedback event reporting to the backend.
+- `VITE_ENABLE_ASYNC_GENERATION` controls frontend use of async submit/poll generation endpoints for quiz and lesson workflows.
 - All flags default to `true`; set any flag to `false` to disable that behavior without code changes.
 
 > **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api.hf.space`.
