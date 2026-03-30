@@ -138,6 +138,8 @@ jobs:
           # Sync build output into the Space repo (keep .git and README)
           rsync -av --delete \
             --exclude='.git' \
+            --exclude='README.md' \
+            --exclude='.gitattributes' \
             build/ hf-frontend/
 
           # Ensure HF Space metadata README exists
