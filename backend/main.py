@@ -320,13 +320,24 @@ def _resolve_user_role(decoded: Dict[str, Any]) -> str:
     if isinstance(role_claim, str) and role_claim in VALID_ROLES:
         return role_claim
 
-    uid = str(decoded.get("uid", ""))
+    uid = _extract_uid_from_claims(decoded)
     if uid:
         firestore_role = _get_role_from_firestore(uid)
         if isinstance(firestore_role, str) and firestore_role in VALID_ROLES:
             return firestore_role
 
     return "student"
+
+
+def _extract_uid_from_claims(decoded: Dict[str, Any]) -> str:
+    """Normalize Firebase token user identifier across verifier implementations."""
+    for key in ("uid", "user_id", "sub"):
+        value = decoded.get(key)
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized:
+                return normalized
+    return ""
 
 
 def _parse_bearer_token(authorization: str) -> Optional[str]:
@@ -443,7 +454,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             logger.warning(f"Token verification failed for {path}: {e}")
             return JSONResponse(status_code=401, content={"detail": "Invalid or expired auth token"})
 
-        uid = str(decoded.get("uid", ""))
+        uid = _extract_uid_from_claims(decoded)
         if not uid:
             return JSONResponse(status_code=401, content={"detail": "Token missing uid"})
 
