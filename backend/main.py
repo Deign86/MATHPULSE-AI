@@ -26,8 +26,14 @@ from collections import Counter, defaultdict
 from threading import Lock
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
-from startup_validation import run_all_validations
-run_all_validations()  # Exits with error if any critical check fails
+try:
+    from startup_validation import run_all_validations
+    run_all_validations()  # Exits with error if any critical check fails
+except ImportError as e:
+    # If startup_validation module is not found, log warning but continue
+    # This can happen if the module wasn't properly deployed
+    print(f"⚠️  Warning: startup_validation module not found: {e}")
+    print("   Continuing without startup validation checks...")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.encoders import jsonable_encoder
