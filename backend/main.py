@@ -40,7 +40,7 @@ import tempfile
 import subprocess
 import requests as http_requests
 import uvicorn
-from .services.inference_client import InferenceRequest, create_default_client
+from services.inference_client import InferenceRequest, create_default_client
 
 try:
     import firebase_admin  # type: ignore[import-not-found]
@@ -63,7 +63,7 @@ except Exception:
     HAS_GOOGLE_AUTH = False
 
 # Event-driven automation engine
-from .automation_engine import (
+from automation_engine import (
     automation_engine,
     DiagnosticCompletionPayload,
     QuizSubmissionPayload,
@@ -74,7 +74,7 @@ from .automation_engine import (
 )
 
 # ML-powered analytics module
-from .analytics import (
+from analytics import (
     # Request/Response models
     CompetencyAnalysisRequest,
     CompetencyAnalysis,
