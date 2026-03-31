@@ -280,6 +280,15 @@ async def startup_event():
     """Called when the app starts up. Initialize Firebase and log readiness."""
     logger.info("⚙️  Initializing backend services...")
     _init_firebase_admin()
+    
+    # Pre-initialize inference client at startup to avoid first-request latency spike
+    logger.info("🔧 Pre-initializing InferenceClient...")
+    try:
+        get_inference_client()
+        logger.info("✅ InferenceClient pre-initialized at startup")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
+    
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
