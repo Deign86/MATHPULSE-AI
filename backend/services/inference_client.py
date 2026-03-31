@@ -118,6 +118,18 @@ class InferenceClient:
         
         # Task-specific model overrides via environment variables
         self.chat_model_override = os.getenv("INFERENCE_CHAT_MODEL_ID", "").strip()
+        self.chat_hard_model = os.getenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct").strip()
+        self.chat_hard_trigger_enabled = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.chat_hard_prompt_chars = max(256, int(os.getenv("INFERENCE_CHAT_HARD_PROMPT_CHARS", "800")))
+        self.chat_hard_history_chars = max(
+            self.chat_hard_prompt_chars,
+            int(os.getenv("INFERENCE_CHAT_HARD_HISTORY_CHARS", "1800")),
+        )
+        hard_keywords_raw = os.getenv(
+            "INFERENCE_CHAT_HARD_KEYWORDS",
+            "step-by-step,show all steps,derive,proof,prove,rigorous,multi-step,word problem",
+        )
+        self.chat_hard_keywords = [kw.strip().lower() for kw in hard_keywords_raw.split(",") if kw.strip()]
 
         self.hf_timeout_sec = int(os.getenv("INFERENCE_HF_TIMEOUT_SEC", "90"))
         self.local_timeout_sec = int(os.getenv("INFERENCE_LOCAL_SPACE_TIMEOUT_SEC", "90"))
@@ -161,9 +173,9 @@ class InferenceClient:
             int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
         )
 
-        # Default task-to-model routing (HF inference router for Qwen2.5-7B-Instruct)
+        # Default task-to-model routing (chat defaults to fast 8B, with hard-prompt escalation to 70B)
         self.task_model_map: Dict[str, str] = {
-            "chat": "Qwen/Qwen2.5-7B-Instruct",
+            "chat": "meta-llama/Llama-3.1-8B-Instruct",
             "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
             "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
             "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
@@ -304,17 +316,7 @@ class InferenceClient:
     def generate_from_messages(self, req: InferenceRequest) -> str:
         effective_task = (req.task_type or "default").strip().lower()
         request_tag = req.request_tag.strip() or f"{effective_task}-{int(time.time() * 1000)}"
-        
-        # Check for explicit model override first, then env var override for chat, then task map, then default
-        if req.model:
-            selected_model = req.model
-            model_selection_source = "explicit_request"
-        elif effective_task == "chat" and self.chat_model_override:
-            selected_model = self.chat_model_override
-            model_selection_source = "chat_override_env"
-        else:
-            selected_model = self.task_model_map.get(effective_task, self.default_model)
-            model_selection_source = "task_map"
+        selected_model, model_selection_source = self._resolve_primary_model(req)
         
         model_chain = self._model_chain_for_task(effective_task, selected_model)
         last_error: Optional[Exception] = None
@@ -361,6 +363,90 @@ class InferenceClient:
         if last_error:
             raise last_error
         raise RuntimeError("Inference failed with empty model chain")
+
+    def _resolve_primary_model(self, req: InferenceRequest) -> Tuple[str, str]:
+        effective_task = (req.task_type or "default").strip().lower()
+
+        # Check explicit request model first, then chat override env, then task map/default.
+        if req.model:
+            selected_model = req.model
+            model_selection_source = "explicit_request"
+        elif effective_task == "chat" and self.chat_model_override:
+            selected_model = self.chat_model_override
+            model_selection_source = "chat_override_env"
+        else:
+            selected_model = self.task_model_map.get(effective_task, self.default_model)
+            model_selection_source = "task_map"
+
+        if effective_task == "chat" and self.chat_hard_trigger_enabled and self.chat_hard_model:
+            should_escalate, reason = self._should_escalate_chat_to_hard_model(req.messages)
+            if should_escalate and selected_model != self.chat_hard_model:
+                return self.chat_hard_model, f"chat_hard_escalation:{reason}"
+
+        return selected_model, model_selection_source
+
+    def _should_escalate_chat_to_hard_model(self, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
+        latest_user = self._latest_user_message(messages)
+        if not latest_user:
+            return False, "no_user_message"
+
+        latest_norm = latest_user.lower()
+        prompt_chars = len(latest_user)
+        history_chars = 0
+        for msg in messages:
+            content = (msg.get("content") or "") if isinstance(msg, dict) else ""
+            history_chars += len(content)
+
+        keyword_hit = ""
+        for kw in self.chat_hard_keywords:
+            if kw and kw in latest_norm:
+                keyword_hit = kw
+                break
+
+        math_marker_count = len(
+            re.findall(
+                r"(=|\bintegral\b|\bderivative\b|\bmatrix\b|\blimit\b|\bproof\b|\bderive\b|\bsolve\b)",
+                latest_norm,
+            )
+        )
+
+        long_prompt = prompt_chars >= self.chat_hard_prompt_chars
+        long_history = history_chars >= self.chat_hard_history_chars
+        immediate_hard_request = any(
+            phrase in latest_norm
+            for phrase in (
+                "show all steps",
+                "step-by-step",
+                "step by step",
+                "rigorous proof",
+                "formal proof",
+            )
+        )
+
+        # Escalate immediately for long step-by-step prompts or heavy math density.
+        escalate = bool(keyword_hit and immediate_hard_request)
+        if not escalate:
+            escalate = bool(keyword_hit and (long_prompt or long_history or math_marker_count >= 2))
+        if not escalate and long_prompt and math_marker_count >= 2:
+            escalate = True
+        if not escalate and long_history and math_marker_count >= 2:
+            escalate = True
+
+        if not escalate:
+            return False, "normal"
+
+        reasons: List[str] = []
+        if long_prompt:
+            reasons.append(f"prompt_chars={prompt_chars}")
+        if long_history:
+            reasons.append(f"history_chars={history_chars}")
+        if keyword_hit:
+            reasons.append(f"keyword={keyword_hit}")
+        if immediate_hard_request:
+            reasons.append("immediate_hard_request")
+        if math_marker_count >= 2:
+            reasons.append(f"math_markers={math_marker_count}")
+        return True, ",".join(reasons) if reasons else "hard_prompt"
 
     def _model_chain_for_task(self, task_type: str, selected_model: str) -> List[str]:
         per_task_candidates = self.task_fallback_model_map.get(task_type, [])

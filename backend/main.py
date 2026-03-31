@@ -192,6 +192,7 @@ FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
     for value in os.getenv("FIREBASE_AUTH_PROJECT_ALLOWLIST", "").split(",")
     if value.strip()
 }
+CHAT_MAX_NEW_TOKENS = max(256, int(os.getenv("CHAT_MAX_NEW_TOKENS", "576")))
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -1022,12 +1023,16 @@ def call_hf_chat_stream(
     request_tag = f"{effective_task}-stream-{int(time.time() * 1000)}"
     chat_model_override = getattr(cast(Any, client), "chat_model_override", "")
 
-    if model:
-        selected_model = model
-    elif effective_task == "chat" and chat_model_override:
-        selected_model = str(chat_model_override)
-    else:
-        selected_model = client.task_model_map.get(effective_task, client.default_model)
+    selection_req = InferenceRequest(
+        messages=messages,
+        model=model,
+        task_type=task_type,
+        max_new_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        timeout_sec=timeout,
+    )
+    selected_model, _ = client._resolve_primary_model(selection_req)
 
     model_chain = client._model_chain_for_task(effective_task, selected_model)
     provider_chain = client._provider_chain_for_task(effective_task)
@@ -1174,7 +1179,7 @@ def call_math_tutor_llm(question: str) -> str:
     """Convenience wrapper: call the HF serverless model with the MathPulse tutor prompt via chat completions."""
     prompt = build_math_tutor_prompt(question)
     messages = [{"role": "user", "content": prompt}]
-    return call_hf_chat(messages, max_tokens=512, temperature=0.2, top_p=0.9, task_type="chat")
+    return call_hf_chat(messages, max_tokens=CHAT_MAX_NEW_TOKENS, temperature=0.2, top_p=0.9, task_type="chat")
 
 
 # ─── Request/Response Models ──────────────────────────────────
@@ -1329,7 +1334,7 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
-    """AI Math Tutor powered by HF Inference API (Qwen/Qwen2.5-Math-7B-Instruct)."""
+    """AI Math Tutor powered by Hugging Face Inference routing."""
     try:
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
@@ -1342,7 +1347,13 @@ async def chat_tutor(request: ChatRequest):
 
         # Call HF serverless with retry (handled inside call_hf_chat)
         try:
-            answer = call_hf_chat(messages, max_tokens=512, temperature=0.3, top_p=0.85, task_type="chat")
+            answer = call_hf_chat(
+                messages,
+                max_tokens=CHAT_MAX_NEW_TOKENS,
+                temperature=0.3,
+                top_p=0.85,
+                task_type="chat",
+            )
         except Exception as hf_err:
             logger.error(f"HF chat failed: {hf_err}")
             raise HTTPException(
@@ -1388,7 +1399,7 @@ async def chat_tutor_stream(request: ChatRequest):
             try:
                 for chunk in call_hf_chat_stream(
                     messages,
-                    max_tokens=512,
+                    max_tokens=CHAT_MAX_NEW_TOKENS,
                     temperature=0.3,
                     top_p=0.85,
                     task_type="chat",
