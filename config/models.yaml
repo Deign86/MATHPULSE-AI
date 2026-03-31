@@ -26,14 +26,15 @@ models:
 
 routing:
   task_model_map:
-    # Using HF Inference API with Featherless AI provider routing (officially supported)
-    # https://huggingface.co/blog/inference-providers-featherless
-    chat: Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai
-    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai
-    lesson_generation: Qwen/Qwen3.5-9B:featherless-ai
-    quiz_generation: Qwen/Qwen3.5-9B:featherless-ai
-    learning_path: Qwen/Qwen3.5-9B:featherless-ai
-    daily_insight: meta-llama/Llama-3.1-8B-Instruct
+    # Primary: Mistral-7B-Instruct-v0.2 (2.7M downloads, proven stable on HF router)
+    # Alternative: meta-llama/Llama-3.1-8B-Instruct (confirmed working)
+    # Note: Qwen models have compatibility issues with Featherless AI on HF router
+    chat: mistralai/Mistral-7B-Instruct-v0.2
+    verify_solution: mistralai/Mistral-7B-Instruct-v0.2
+    lesson_generation: mistralai/Mistral-7B-Instruct-v0.2
+    quiz_generation: mistralai/Mistral-7B-Instruct-v0.2
+    learning_path: mistralai/Mistral-7B-Instruct-v0.2
+    daily_insight: mistralai/Mistral-7B-Instruct-v0.2
     risk_classification: meta-llama/Llama-3.1-8B-Instruct
     risk_narrative: meta-llama/Llama-3.1-8B-Instruct
 
