@@ -26,29 +26,33 @@ models:
 
 routing:
   task_model_map:
-    # Primary: meta-llama/Llama-3.1-8B-Instruct (confirmed working on HF router)
-    # Note: Mistral-7B-Instruct-v0.2 not supported by HF inference router
-    chat: meta-llama/Llama-3.1-8B-Instruct
-    verify_solution: meta-llama/Llama-3.1-8B-Instruct
-    lesson_generation: meta-llama/Llama-3.1-8B-Instruct
-    quiz_generation: meta-llama/Llama-3.1-8B-Instruct
-    learning_path: meta-llama/Llama-3.1-8B-Instruct
-    daily_insight: meta-llama/Llama-3.1-8B-Instruct
-    risk_classification: meta-llama/Llama-3.1-8B-Instruct
-    risk_narrative: meta-llama/Llama-3.1-8B-Instruct
+    # Primary: Qwen/Qwen2.5-7B-Instruct via HF inference router (3-5s latency, native support)
+    chat: Qwen/Qwen2.5-7B-Instruct
+    verify_solution: Qwen/Qwen2.5-7B-Instruct
+    lesson_generation: Qwen/Qwen2.5-7B-Instruct
+    quiz_generation: Qwen/Qwen2.5-7B-Instruct
+    learning_path: Qwen/Qwen2.5-7B-Instruct
+    daily_insight: Qwen/Qwen2.5-7B-Instruct
+    risk_classification: Qwen/Qwen2.5-7B-Instruct
+    risk_narrative: Qwen/Qwen2.5-7B-Instruct
 
   task_fallback_model_map:
     chat:
-      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback
-      - google/gemma-2-2b-it                # Secondary fallback
+      - Qwen/Qwen2.5-7B-Instruct             # Primary (HF router supported)
+      - meta-llama/Llama-3.1-8B-Instruct    # Secondary fallback
+      - google/gemma-2-2b-it                # Tertiary fallback
     verify_solution:
-      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback
-      - google/gemma-2-2b-it                # Secondary fallback
+      - Qwen/Qwen2.5-7B-Instruct             # Primary (HF router supported)
+      - meta-llama/Llama-3.1-8B-Instruct    # Secondary fallback
+      - google/gemma-2-2b-it                # Tertiary fallback
 
   task_provider_map:
-    quiz_generation: local_space
-    lesson_generation: local_space
-    learning_path: local_space
-    daily_insight: local_space
-    risk_narrative: local_space
+    # All tasks use hf_inference router (native HF support for Qwen/Qwen2.5-7B-Instruct)
+    chat: hf_inference
+    verify_solution: hf_inference
+    quiz_generation: hf_inference
+    lesson_generation: hf_inference
+    learning_path: hf_inference
+    daily_insight: hf_inference
+    risk_narrative: hf_inference
     risk_classification: hf_inference

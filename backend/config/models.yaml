@@ -26,16 +26,16 @@ models:
 
 routing:
   task_model_map:
-    # Primary: Qwen/Qwen2.5-Math-7B-Instruct (directly accessible via HF serverless TGI)
+    # Primary: Qwen/Qwen2.5-7B-Instruct (directly accessible via HF serverless TGI)
     # Fallback chain: meta-llama/Llama-3.1-8B-Instruct (router-compatible)
-    chat: Qwen/Qwen2.5-Math-7B-Instruct
-    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
-    lesson_generation: Qwen/Qwen2.5-Math-7B-Instruct
-    quiz_generation: Qwen/Qwen2.5-Math-7B-Instruct
-    learning_path: Qwen/Qwen2.5-Math-7B-Instruct
-    daily_insight: Qwen/Qwen2.5-Math-7B-Instruct
-    risk_classification: Qwen/Qwen2.5-Math-7B-Instruct
-    risk_narrative: Qwen/Qwen2.5-Math-7B-Instruct
+    chat: Qwen/Qwen2.5-7B-Instruct
+    verify_solution: Qwen/Qwen2.5-7B-Instruct
+    lesson_generation: Qwen/Qwen2.5-7B-Instruct
+    quiz_generation: Qwen/Qwen2.5-7B-Instruct
+    learning_path: Qwen/Qwen2.5-7B-Instruct
+    daily_insight: Qwen/Qwen2.5-7B-Instruct
+    risk_classification: Qwen/Qwen2.5-7B-Instruct
+    risk_narrative: Qwen/Qwen2.5-7B-Instruct
 
   task_fallback_model_map:
     chat:
@@ -46,12 +46,12 @@ routing:
       - google/gemma-2-2b-it                # Secondary fallback
 
   task_provider_map:
-    # Qwen models are only served by featherless-ai provider
-    chat: featherless-ai
-    verify_solution: featherless-ai
-    lesson_generation: local_space
-    quiz_generation: local_space
-    learning_path: local_space
-    daily_insight: featherless-ai
-    risk_narrative: featherless-ai
+    # All tasks use hf_inference router (Qwen2.5-7B-Instruct natively supported)
+    chat: hf_inference
+    verify_solution: hf_inference
+    lesson_generation: hf_inference
+    quiz_generation: hf_inference
+    learning_path: hf_inference
+    daily_insight: hf_inference
+    risk_narrative: hf_inference
     risk_classification: hf_inference
