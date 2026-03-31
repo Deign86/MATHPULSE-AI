@@ -46,14 +46,12 @@ routing:
       - google/gemma-2-2b-it                # Secondary fallback
 
   task_provider_map:
-    # Qwen models use featherless-ai provider (primary)
+    # Qwen models are only served by featherless-ai provider
     chat: featherless-ai
     verify_solution: featherless-ai
-    # Local space tasks
-    quiz_generation: local_space
     lesson_generation: local_space
+    quiz_generation: local_space
     learning_path: local_space
-    daily_insight: local_space
-    risk_narrative: local_space
-    # Other tasks use HF router
+    daily_insight: featherless-ai
+    risk_narrative: featherless-ai
     risk_classification: hf_inference
