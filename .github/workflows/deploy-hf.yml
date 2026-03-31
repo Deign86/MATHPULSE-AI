@@ -40,13 +40,13 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 0
 
       - name: Detect changed areas
         id: filter
-        uses: dorny/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v3.0.3
         with:
           filters: |
             backend:
@@ -72,7 +72,7 @@ jobs:
       needs.detect-changes.outputs.backend == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 0
           lfs: true
@@ -171,13 +171,13 @@ jobs:
       needs.detect-changes.outputs.frontend == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.2.0
         with:
           fetch-depth: 0
           lfs: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.0.0
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: 22
 
