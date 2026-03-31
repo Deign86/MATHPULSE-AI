@@ -189,39 +189,14 @@ def main():
     )
     print("Uploaded: README.md (normalized Space metadata)")
 
-    # ⚠️  Only set critical variables once, avoid repeated space variable updates
-    # which trigger unnecessary restarts. Config is now loaded from config/models.yaml.
-    try:
-        api.add_space_variable(
-            repo_id=SPACE_ID,
-            key="INFERENCE_LOCAL_SPACE_URL",
-            value=args.local_space_url,
-        )
-        api.add_space_variable(
-            repo_id=SPACE_ID,
-            key="INFERENCE_PROVIDER",
-            value="hf_inference",
-        )
-        print(f"✅ Space variables updated (runtime will auto-restart once)")
-    except Exception as e:
-        print(f"⚠️  Space variable update skipped: {e}")
-    
     # ⚠️  HF_TOKEN should NEVER be set as a Space VARIABLE (public/exposed).
     # Use set-hf-secrets.py to set it as a proper SECRET instead.
     print(f"\n⚠️  IMPORTANT: HF_TOKEN must be set as a SECRET (not variable)")
     print(f"   Use: python set-hf-secrets.py --hf-token YOUR_TOKEN --hf-secret YOUR_HF_TOKEN_VALUE")
 
-    if not args.skip_restart:
-        print("\n⏳ Waiting for Space runtime to stabilize...")
-        time.sleep(5)  # Give Space time to auto-restart from variable update
-    
-    _wait_for_runtime(api, SPACE_ID, args.wait_timeout_sec if not args.skip_restart else 0)
-
     print(f"\n✅ Deployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")
     print(f"API URL: https://{SPACE_ID.replace('/', '-').lower()}.hf.space")
-    print(f"\n🔐 NEXT STEP - Set HF_TOKEN as a SECRET (not a variable):")
-    print(f"   python set-hf-secrets.py --hf-token <YOUR_HF_TOKEN> --hf-secret <HF_TOKEN_VALUE>")
 
 
 if __name__ == "__main__":
