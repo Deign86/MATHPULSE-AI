@@ -26,27 +26,24 @@ models:
 
 routing:
   task_model_map:
-    # Primary: Mistral-7B-Instruct-v0.2 (2.7M downloads, proven stable on HF router)
-    # Alternative: meta-llama/Llama-3.1-8B-Instruct (confirmed working)
-    # Note: Qwen models have compatibility issues with Featherless AI on HF router
-    chat: mistralai/Mistral-7B-Instruct-v0.2
-    verify_solution: mistralai/Mistral-7B-Instruct-v0.2
-    lesson_generation: mistralai/Mistral-7B-Instruct-v0.2
-    quiz_generation: mistralai/Mistral-7B-Instruct-v0.2
-    learning_path: mistralai/Mistral-7B-Instruct-v0.2
-    daily_insight: mistralai/Mistral-7B-Instruct-v0.2
+    # Primary: meta-llama/Llama-3.1-8B-Instruct (confirmed working on HF router)
+    # Note: Mistral-7B-Instruct-v0.2 not supported by HF inference router
+    chat: meta-llama/Llama-3.1-8B-Instruct
+    verify_solution: meta-llama/Llama-3.1-8B-Instruct
+    lesson_generation: meta-llama/Llama-3.1-8B-Instruct
+    quiz_generation: meta-llama/Llama-3.1-8B-Instruct
+    learning_path: meta-llama/Llama-3.1-8B-Instruct
+    daily_insight: meta-llama/Llama-3.1-8B-Instruct
     risk_classification: meta-llama/Llama-3.1-8B-Instruct
     risk_narrative: meta-llama/Llama-3.1-8B-Instruct
 
   task_fallback_model_map:
     chat:
-      - Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai
-      - meta-llama/Llama-3.1-8B-Instruct
-      - google/gemma-2-2b-it
+      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback
+      - google/gemma-2-2b-it                # Secondary fallback
     verify_solution:
-      - Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai
-      - meta-llama/Llama-3.1-8B-Instruct
-      - google/gemma-2-2b-it
+      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback
+      - google/gemma-2-2b-it                # Secondary fallback
 
   task_provider_map:
     quiz_generation: local_space
