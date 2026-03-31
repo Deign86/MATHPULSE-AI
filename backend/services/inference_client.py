@@ -2,6 +2,7 @@ import os
 import time
 import json
 import re
+import random
 from threading import Lock
 from dataclasses import dataclass
 from pathlib import Path
@@ -88,7 +89,10 @@ class InferenceClient:
         self.cpu_provider = os.getenv("INFERENCE_CPU_PROVIDER", "hf_inference").strip().lower()
         self.enable_provider_fallback = os.getenv("INFERENCE_ENABLE_PROVIDER_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.pro_enabled = os.getenv("INFERENCE_PRO_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-        self.hf_token = os.getenv("HF_TOKEN", "")
+        self.hf_token = os.getenv(
+            "HF_TOKEN",
+            os.getenv("HUGGING_FACE_API_TOKEN", os.getenv("HUGGINGFACE_API_TOKEN", "")),
+        )
         self.hf_base_url = os.getenv("INFERENCE_HF_BASE_URL", "https://router.huggingface.co/hf-inference/models")
         self.hf_chat_url = os.getenv("INFERENCE_HF_CHAT_URL", "https://router.huggingface.co/v1/chat/completions")
         
@@ -571,6 +575,12 @@ class InferenceClient:
         )
         max_retries, backoff_sec = self._retry_profile(task_type)
         attempt = 0
+
+        def _retry_sleep(retry_attempt: int) -> None:
+            # Small jitter reduces synchronized retry storms during transient provider issues.
+            jitter_factor = random.uniform(0.9, 1.2)
+            time.sleep(backoff_sec * retry_attempt * jitter_factor)
+
         while True:
             start = time.perf_counter()
             try:
@@ -599,7 +609,7 @@ class InferenceClient:
                     raise
                 attempt += 1
                 self._bump_metric("retries_total", 1)
-                time.sleep(backoff_sec * attempt)
+                _retry_sleep(attempt)
                 continue
 
             latency_ms = (time.perf_counter() - start) * 1000
@@ -623,7 +633,7 @@ class InferenceClient:
                 )
                 attempt += 1
                 self._bump_metric("retries_total", 1)
-                time.sleep(backoff_sec * attempt)
+                _retry_sleep(attempt)
                 continue
             return resp, latency_ms, attempt + 1
 
