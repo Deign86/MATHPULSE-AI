@@ -104,7 +104,8 @@ class InferenceClient:
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
         default_model_fallback = str(primary.get("id") or "meta-llama/Llama-3.1-8B-Instruct")
-        self.default_model = os.getenv("INFERENCE_MODEL_ID", default_model_fallback)
+        env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
+        self.default_model = env_model_id or default_model_fallback
         
         default_max_tokens = str(primary.get("max_new_tokens") or 512)
         self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", default_max_tokens))
@@ -155,6 +156,10 @@ class InferenceClient:
             "chat,verify_solution,daily_insight",
         )
         self.interactive_tasks = {v.strip().lower() for v in interactive_tasks_raw.split(",") if v.strip()}
+        self.interactive_max_fallback_depth = max(
+            0,
+            int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
+        )
 
         # Default task-to-model routing (HF inference router for Qwen2.5-7B-Instruct)
         self.task_model_map: Dict[str, str] = {
@@ -217,10 +222,8 @@ class InferenceClient:
                         if str(task).strip() and str(provider).strip()
                     }
 
-        # Override all task model mappings with INFERENCE_MODEL_ID env var if set
-        env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
-        if env_model_id and env_model_id != self.default_model:
-            # Only override if it's different from the default (to distinguish env override from default)
+        # Override all task model mappings with INFERENCE_MODEL_ID env var if set.
+        if env_model_id:
             original_map = dict(self.task_model_map)
             for task_key in list(self.task_model_map.keys()):
                 self.task_model_map[task_key] = env_model_id
@@ -371,6 +374,11 @@ class InferenceClient:
                 continue
             seen.add(model_name)
             deduped.append(model_name)
+
+        normalized = (task_type or "default").strip().lower()
+        if normalized in self.interactive_tasks:
+            max_models = 1 + self.interactive_max_fallback_depth
+            return deduped[:max_models]
         return deduped
 
     def _provider_chain_for_task(self, task_type: str) -> List[str]:
