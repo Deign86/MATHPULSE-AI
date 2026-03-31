@@ -299,44 +299,51 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
-                className={`bg-white rounded-xl p-3 md:p-4 border relative overflow-hidden group transition-all duration-300 ${
+                className={`relative bg-transparent rounded-[1.2rem] overflow-visible group transition-all duration-300 ${
                   lesson.locked
-                    ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
+                    ? 'opacity-60 saturate-50 cursor-not-allowed'
                     : lesson.completed
-                    ? 'border-teal-200 hover:border-teal-300 hover:shadow-md cursor-pointer'
-                    : 'border-sky-200 hover:border-sky-300 hover:shadow-md cursor-pointer'
+                    ? 'cursor-pointer'
+                    : 'cursor-pointer'
                 }`}
               >
-                <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${
-                  lesson.locked ? 'bg-slate-300' :
-                  lesson.completed ? 'bg-teal-400' : 'bg-sky-400'
-                }`} />
+                <div className="absolute top-0 left-4 h-6 w-24 rounded-t-xl bg-[#d8e9ff] border border-[#b7d3ff] border-b-0 shadow-sm" />
 
-                <div className="flex items-center justify-between pl-3 relative z-10">
-                  <div className="flex items-center gap-3 md:gap-4 flex-1">
-                    <div className={`w-9 h-9 md:w-10 md:h-10 rounded-[10px] flex items-center justify-center shrink-0 shadow-sm ${
+                <div className={`mt-5 rounded-[1.2rem] border p-3 md:p-4 relative overflow-hidden shadow-sm transition-all duration-300 ${
+                  lesson.locked
+                    ? 'border-slate-200 bg-slate-100'
+                    : lesson.completed
+                    ? 'border-teal-200 bg-white hover:shadow-md'
+                    : 'border-sky-200 bg-white hover:shadow-md'
+                }`}>
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-200 to-indigo-200" />
+
+                  <div className="flex items-center justify-between relative z-10 pt-1">
+                    <div className="flex items-center gap-3 md:gap-4 flex-1">
+                      <div className={`w-9 h-9 md:w-10 md:h-10 rounded-[10px] flex items-center justify-center shrink-0 shadow-sm ${
                       lesson.locked ? 'bg-slate-100 text-slate-400' :
                       lesson.completed ? 'bg-teal-50 text-teal-600' : 'bg-sky-50 text-sky-600'
                     }`}>
-                      {lesson.locked ? <Lock size={16} /> :
-                       lesson.completed ? <CheckCircle2 size={16} /> : 
-                       <Play size={16} className="ml-1" />}
+                        {lesson.locked ? <Lock size={16} /> :
+                         lesson.completed ? <CheckCircle2 size={16} /> :
+                         <Play size={16} className="ml-1" />}
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Lesson {index + 1}</div>
+                        <h3 className={`font-bold text-[14px] md:text-[15px] leading-tight transition-colors ${
+                          lesson.locked ? 'text-slate-600' : 'text-[#0a1628] group-hover:text-sky-600'
+                        }`}>
+                          {lesson.title}
+                        </h3>
+                      </div>
                     </div>
 
-                    <div className="flex-1">
-                      <div className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Lesson {index + 1}</div>
-                      <h3 className={`font-bold text-[14px] md:text-[15px] leading-tight transition-colors ${
-                        lesson.locked ? 'text-slate-600' : 'text-[#0a1628] group-hover:text-sky-600'
-                      }`}>
-                        {lesson.title}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0 ml-3 md:ml-4">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-[11px] md:text-xs font-bold bg-slate-50 px-2 py-1 rounded-md">
-                      <Clock size={12} />
-                      <span>{lesson.duration}</span>
+                    <div className="flex items-center gap-3 shrink-0 ml-3 md:ml-4">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[11px] md:text-xs font-bold bg-slate-50 px-2 py-1 rounded-md">
+                        <Clock size={12} />
+                        <span>{lesson.duration}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -376,6 +383,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               const isLocked = quiz.locked;
               const isFinal = quiz.type === 'final';
               const isModuleQuiz = quiz.type === 'module';
+              const alignedLesson = module.lessons[Math.min(index, Math.max(module.lessons.length - 1, 0))];
 
               return (
                 <motion.div
@@ -415,6 +423,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                           }`}>
                             {isFinal ? 'Final Exam' : isModuleQuiz ? 'Module Task' : 'Quiz'}
                           </span>
+                          {!!alignedLesson && (
+                            <span className="px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider bg-violet-100 text-violet-700">
+                              For: {alignedLesson.title}
+                            </span>
+                          )}
                           {!isLocked && !quiz.completed && (
                             <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500 animate-pulse"></span>
                           )}
