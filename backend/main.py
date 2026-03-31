@@ -120,14 +120,30 @@ from analytics import (
 
 # ─── Configuration ─────────────────────────────────────────────
 
+# ─── Configuration ─────────────────────────────────────────────
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mathpulse")
-inference_client = create_default_client()
+
+# Lazy-initialized inference client to avoid startup blocking
+_inference_client = None
+_inference_client_lock = Lock()
+
+def get_inference_client():
+    """Lazy-initialize inference client on first use."""
+    global _inference_client
+    if _inference_client is None:
+        with _inference_client_lock:
+            if _inference_client is None:
+                logger.info("🔧 Initializing InferenceClient...")
+                _inference_client = create_default_client()
+                logger.info("✅ InferenceClient initialized")
+    return _inference_client
 
 HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
 
-# Grade 11-12 tutoring default model. Can still be overridden via HF_MATH_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
+# Grade 11-12 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
+HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-Math-7B-Instruct")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
@@ -256,6 +272,18 @@ app = FastAPI(
     description="AI-powered math tutoring and student analytics backend",
     version="1.0.0",
 )
+
+logger.info("🚀 FastAPI app created, startup sequence beginning...")
+
+@app.on_event("startup")
+async def startup_event():
+    """Called when the app starts up. Initialize Firebase and log readiness."""
+    logger.info("⚙️  Initializing backend services...")
+    _init_firebase_admin()
+    logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
+    logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
+    logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
+    logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
 
 
 class AuthenticatedUser(BaseModel):
@@ -954,7 +982,7 @@ def call_hf_chat(
         repetition_penalty=repetition_penalty,
         timeout_sec=timeout,
     )
-    text = inference_client.generate_from_messages(req)
+    text = get_inference_client().generate_from_messages(req)
     return _strip_repetition(text)
 
 
@@ -6793,8 +6821,9 @@ async def get_inference_metrics(http_request: Request):
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden for this role")
 
-    metrics_snapshot = inference_client.snapshot_metrics()
-    metrics_snapshot["pro_enabled"] = bool(getattr(inference_client, "pro_enabled", False))
+    client = get_inference_client()
+    metrics_snapshot = client.snapshot_metrics()
+    metrics_snapshot["pro_enabled"] = bool(getattr(client, "pro_enabled", False))
     return InferenceMetricsResponse(success=True, metrics=metrics_snapshot)
 
 

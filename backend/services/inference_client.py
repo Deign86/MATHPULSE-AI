@@ -47,12 +47,31 @@ class InferenceRequest:
 
 class InferenceClient:
     def __init__(self) -> None:
-        root_dir = Path(__file__).resolve().parents[2]
-        config_path = root_dir / "config" / "models.yaml"
+        # Try multiple config paths (HF Space, Docker, local development)
+        # The deploy script uploads config/ to the space root
+        config_paths = [
+            Path("./config/models.yaml"),  # Current working directory (most reliable)
+            Path("/config/models.yaml"),  # HF Space root
+            Path("/app/config/models.yaml"),  # App directory
+            Path.cwd() / "config" / "models.yaml",  # CWD with config subdir
+            Path(__file__).resolve().parents[2] / "config" / "models.yaml",  # Package root
+        ]
+        
         config: Dict[str, object] = {}
-        if config_path.exists():
-            with config_path.open("r", encoding="utf-8") as fh:
-                config = yaml.safe_load(fh) or {}
+        config_path = None
+        
+        for path in config_paths:
+            if path.exists():
+                config_path = path
+                with path.open("r", encoding="utf-8") as fh:
+                    config = yaml.safe_load(fh) or {}
+                LOGGER.info(f"✅ Loaded config from {config_path}")
+                break
+        
+        if not config_path:
+            LOGGER.warning(f"⚠️  Config file not found. Checked: {[str(p) for p in config_paths]}")
+            LOGGER.warning(f"    CWD: {Path.cwd()}")
+            LOGGER.warning(f"    Using hardcoded defaults")
 
         primary: Dict[str, object] = {}
         if isinstance(config, dict):
@@ -71,6 +90,11 @@ class InferenceClient:
         self.hf_token = os.getenv("HF_TOKEN", "")
         self.hf_base_url = os.getenv("INFERENCE_HF_BASE_URL", "https://router.huggingface.co/hf-inference/models")
         self.hf_chat_url = os.getenv("INFERENCE_HF_CHAT_URL", "https://router.huggingface.co/v1/chat/completions")
+        
+        # Featherless AI for Qwen math models (used as fallback when HF router fails)
+        self.featherless_api_key = os.getenv("FEATHERLESS_API_KEY", "")
+        self.featherless_chat_url = os.getenv("FEATHERLESS_CHAT_URL", "https://api.featherless.ai/openai/v1/chat/completions")
+        
         self.local_space_url = _normalize_local_space_url(
             os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
         )
@@ -78,13 +102,20 @@ class InferenceClient:
         self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
-        self.default_model = os.getenv(
-            "INFERENCE_MODEL_ID",
-            str(primary.get("id", "meta-llama/Llama-3.1-8B-Instruct")),
-        )
-        self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", str(primary.get("max_new_tokens", 512))))
-        self.default_temperature = float(os.getenv("INFERENCE_TEMPERATURE", str(primary.get("temperature", 0.2))))
-        self.default_top_p = float(os.getenv("INFERENCE_TOP_P", str(primary.get("top_p", 0.9))))
+        default_model_fallback = str(primary.get("id") or "meta-llama/Llama-3.1-8B-Instruct")
+        self.default_model = os.getenv("INFERENCE_MODEL_ID", default_model_fallback)
+        
+        default_max_tokens = str(primary.get("max_new_tokens") or 512)
+        self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", default_max_tokens))
+        
+        default_temp = str(primary.get("temperature") or 0.2)
+        self.default_temperature = float(os.getenv("INFERENCE_TEMPERATURE", default_temp))
+        
+        default_top_p = str(primary.get("top_p") or 0.9)
+        self.default_top_p = float(os.getenv("INFERENCE_TOP_P", default_top_p))
+        
+        # Task-specific model overrides via environment variables
+        self.chat_model_override = os.getenv("INFERENCE_CHAT_MODEL_ID", "").strip()
 
         self.hf_timeout_sec = int(os.getenv("INFERENCE_HF_TIMEOUT_SEC", "90"))
         self.local_timeout_sec = int(os.getenv("INFERENCE_LOCAL_SPACE_TIMEOUT_SEC", "90"))
@@ -124,19 +155,45 @@ class InferenceClient:
         )
         self.interactive_tasks = {v.strip().lower() for v in interactive_tasks_raw.split(",") if v.strip()}
 
-        self.task_model_map: Dict[str, str] = {}
-        self.task_fallback_model_map: Dict[str, List[str]] = {}
+        # Default task-to-model routing with provider suffixes for Featherless AI
+        self.task_model_map: Dict[str, str] = {
+            "chat": "Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai",
+            "verify_solution": "Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai",
+            "lesson_generation": "Qwen/Qwen3.5-9B:featherless-ai",
+            "quiz_generation": "Qwen/Qwen3.5-9B:featherless-ai",
+            "learning_path": "Qwen/Qwen3.5-9B:featherless-ai",
+            "daily_insight": self.default_model,
+            "risk_classification": self.default_model,
+            "risk_narrative": self.default_model,
+        }
+        # Fallback chains with provider routing
+        self.task_fallback_model_map: Dict[str, List[str]] = {
+            "chat": [
+                "Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai",
+                "meta-llama/Llama-3.1-8B-Instruct",
+                "google/gemma-2-2b-it",
+            ],
+            "verify_solution": [
+                "Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai",
+                "meta-llama/Llama-3.1-8B-Instruct",
+                "google/gemma-2-2b-it",
+            ],
+        }
+        # Model-to-provider mappings (not needed when using model:provider syntax directly)
+        self.model_provider_map: Dict[str, str] = {}
         self.task_provider_map: Dict[str, str] = {}
         if isinstance(config, dict):
             routing_cfg = config.get("routing", {})
             if isinstance(routing_cfg, dict):
                 task_models = routing_cfg.get("task_model_map", {})
                 if isinstance(task_models, dict):
-                    self.task_model_map = {
+                    config_task_models = {
                         str(task).strip().lower(): str(model).strip()
                         for task, model in task_models.items()
                         if str(task).strip() and str(model).strip()
                     }
+                    # Merge config models with defaults (config overrides defaults)
+                    self.task_model_map.update(config_task_models)
                 task_fallback_models = routing_cfg.get("task_fallback_model_map", {})
                 if isinstance(task_fallback_models, dict):
                     parsed: Dict[str, List[str]] = {}
@@ -161,6 +218,13 @@ class InferenceClient:
                         if str(task).strip() and str(provider).strip()
                     }
 
+        # Log configuration loaded for debugging
+        config_status = "from file" if config_path else "hardcoded defaults (no config file found)"
+        LOGGER.info(f"InferenceClient initialized {config_status}")
+        LOGGER.info(f"  Chat model: {self.task_model_map.get('chat', self.default_model)}")
+        LOGGER.info(f"  Verify solution model: {self.task_model_map.get('verify_solution', self.default_model)}")
+        LOGGER.info(f"  Full task_model_map: {self.task_model_map}")
+
         self._metrics_started_at = time.time()
         self._metrics_lock = Lock()
         self._metrics: Dict[str, object] = {
@@ -177,7 +241,7 @@ class InferenceClient:
 
     def _bump_metric(self, key: str, inc: int = 1) -> None:
         with self._metrics_lock:
-            current = int(self._metrics.get(key, 0))
+            current = int(self._metrics.get(key) or 0)
             self._metrics[key] = current + inc
 
     def _bump_bucket(self, key: str, bucket: str, inc: int = 1) -> None:
@@ -186,7 +250,7 @@ class InferenceClient:
             if not isinstance(mapping, dict):
                 mapping = {}
                 self._metrics[key] = mapping
-            mapping[bucket] = int(mapping.get(bucket, 0)) + inc
+            mapping[bucket] = int(mapping.get(bucket) or 0) + inc
 
     def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
         self._bump_metric("requests_total", 1)
@@ -200,25 +264,44 @@ class InferenceClient:
         with self._metrics_lock:
             snapshot = {
                 "uptime_sec": round(max(0.0, time.time() - self._metrics_started_at), 2),
-                "requests_total": int(self._metrics.get("requests_total", 0)),
-                "requests_ok": int(self._metrics.get("requests_ok", 0)),
-                "requests_error": int(self._metrics.get("requests_error", 0)),
-                "retries_total": int(self._metrics.get("retries_total", 0)),
-                "fallback_attempts": int(self._metrics.get("fallback_attempts", 0)),
-                "route_counts": dict(self._metrics.get("route_counts", {})),
-                "task_counts": dict(self._metrics.get("task_counts", {})),
-                "provider_counts": dict(self._metrics.get("provider_counts", {})),
-                "status_code_counts": dict(self._metrics.get("status_code_counts", {})),
+                "requests_total": int(self._metrics.get("requests_total") or 0),
+                "requests_ok": int(self._metrics.get("requests_ok") or 0),
+                "requests_error": int(self._metrics.get("requests_error") or 0),
+                "retries_total": int(self._metrics.get("retries_total") or 0),
+                "fallback_attempts": int(self._metrics.get("fallback_attempts") or 0),
+                "route_counts": dict(self._metrics.get("route_counts") or {}),
+                "task_counts": dict(self._metrics.get("task_counts") or {}),
+                "provider_counts": dict(self._metrics.get("provider_counts") or {}),
+                "status_code_counts": dict(self._metrics.get("status_code_counts") or {}),
             }
         return snapshot
 
     def generate_from_messages(self, req: InferenceRequest) -> str:
         effective_task = (req.task_type or "default").strip().lower()
         request_tag = req.request_tag.strip() or f"{effective_task}-{int(time.time() * 1000)}"
-        selected_model = req.model or self.task_model_map.get((req.task_type or "default").strip().lower(), self.default_model)
+        
+        # Check for explicit model override first, then env var override for chat, then task map, then default
+        if req.model:
+            selected_model = req.model
+        elif effective_task == "chat" and self.chat_model_override:
+            selected_model = self.chat_model_override
+        else:
+            selected_model = self.task_model_map.get(effective_task, self.default_model)
+        
         model_chain = self._model_chain_for_task(effective_task, selected_model)
         last_error: Optional[Exception] = None
         provider_chain = self._provider_chain_for_task(req.task_type)
+        
+        # Extract provider from model string if it has model:provider format (e.g., model:featherless-ai)
+        if ":" in selected_model:
+            model_base, provider_suffix = selected_model.rsplit(":", 1)
+            # Inject extracted provider at front of chain
+            if provider_suffix not in provider_chain:
+                provider_chain = [provider_suffix] + provider_chain
+        
+        # Log model selection for debugging
+        LOGGER.info(f"request_tag={request_tag} task={effective_task} selected_model={selected_model} model_chain={model_chain} provider_chain={provider_chain}")
+
 
         for fallback_depth, model_name in enumerate(model_chain):
             request_for_model = InferenceRequest(
@@ -232,6 +315,7 @@ class InferenceClient:
                 repetition_penalty=req.repetition_penalty,
                 timeout_sec=req.timeout_sec,
             )
+            
             for provider in provider_chain:
                 try:
                     return self._generate_with_provider(request_for_model, provider, fallback_depth)
@@ -318,6 +402,10 @@ class InferenceClient:
         route = self._resolve_route_label(provider, req.task_type)
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
+        elif provider in ("featherless_api", "featherless-ai"):
+            # Send to HF router which handles routing for featherless-ai models
+            return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
+        # Default to HF inference
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -464,6 +552,66 @@ class InferenceClient:
         if resp.status_code != 200:
             self._bump_metric("requests_error", 1)
             raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
+
+        data = resp.json()
+        text = self._extract_text(data)
+        log_model_call(
+            LOGGER,
+            provider=provider,
+            model=target_model,
+            endpoint=url,
+            latency_ms=latency_ms,
+            input_tokens=None,
+            output_tokens=None,
+            status="ok",
+            task_type=req.task_type,
+            request_tag=req.request_tag,
+            retry_attempt=retry_attempt,
+            fallback_depth=fallback_depth,
+            route=route,
+        )
+        self._bump_metric("requests_ok", 1)
+        return text
+
+    def _call_featherless(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
+        if not self.featherless_api_key:
+            raise RuntimeError("FEATHERLESS_API_KEY is not set")
+
+        target_model = req.model or self.default_model
+        url = self.featherless_chat_url
+
+        payload: Dict[str, object] = {
+            "model": target_model,
+            "messages": req.messages,
+            "stream": False,
+            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
+            "temperature": req.temperature,
+            "top_p": req.top_p,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.featherless_api_key}",
+            "Content-Type": "application/json",
+            "X-MathPulse-Task": (req.task_type or "default").strip().lower(),
+        }
+
+        timeout = self._timeout_for(req, provider)
+
+        resp, latency_ms, retry_attempt = self._post_with_retry(
+            url,
+            headers=headers,
+            payload=payload,
+            timeout=timeout,
+            provider=provider,
+            model=target_model,
+            task_type=req.task_type,
+            request_tag=req.request_tag,
+            fallback_depth=fallback_depth,
+            route=route,
+        )
+        self._bump_bucket("status_code_counts", str(resp.status_code), 1)
+        if resp.status_code != 200:
+            self._bump_metric("requests_error", 1)
+            raise RuntimeError(f"Featherless API error {resp.status_code}: {resp.text}")
 
         data = resp.json()
         text = self._extract_text(data)
