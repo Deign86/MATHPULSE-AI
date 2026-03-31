@@ -212,21 +212,14 @@ def main():
         key="INFERENCE_HF_CHAT_URL",
         value="https://router.huggingface.co/v1/chat/completions",
     )
-    api.add_space_variable(
-        repo_id=SPACE_ID,
-        key="INFERENCE_MODEL_ID",
-        value="Qwen/Qwen2.5-Math-7B-Instruct",
-    )
-    api.add_space_variable(
-        repo_id=SPACE_ID,
-        key="INFERENCE_CHAT_MODEL_ID",
-        value="Qwen/Qwen2.5-Math-7B-Instruct",
-    )
+    # Note: INFERENCE_MODEL_ID and INFERENCE_CHAT_MODEL_ID are NOT set here
+    # Instead, config/models.yaml provides task-specific models with :provider syntax
+    # Setting env vars would override config and strip the provider suffix
     
     print(f"✅ Set Space variables:")
     print(f"   - INFERENCE_LOCAL_SPACE_URL={args.local_space_url}")
     print(f"   - INFERENCE_PROVIDER=hf_inference")
-    print(f"   - INFERENCE_MODEL_ID=Qwen/Qwen2.5-Math-7B-Instruct")
+    print(f"   - Models configured via config/models.yaml with :featherless-ai provider routing")
     
     # ⚠️  HF_TOKEN should NEVER be set as a Space VARIABLE (public/exposed).
     # Use set-hf-secrets.py to set it as a proper SECRET instead.
