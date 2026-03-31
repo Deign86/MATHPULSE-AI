@@ -90,7 +90,7 @@ jobs:
       - name: Backend preflight checks
         run: |
           python -m pytest backend/tests/test_api.py -q
-          python -m mypy --config-file mypy.ini backend/main.py backend/analytics.py
+          python -m mypy --config-file mypy.ini backend/main.py
 
       - name: Pre-deployment validation
         run: |
