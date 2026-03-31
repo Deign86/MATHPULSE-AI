@@ -304,12 +304,14 @@ function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView
 }
 
 function buildStudentMergeKey(student: StudentView): string {
-  const classSectionKey = normalizeClassSectionId(student.classSectionId) || normalizeClassSectionId(student.classroomId);
   const lrnKey = (student.lrn || '').trim().toLowerCase();
-  if (classSectionKey && lrnKey) return `${classSectionKey}|lrn:${lrnKey}`;
+  if (lrnKey) return `lrn:${lrnKey}`;
+  const nameKey = student.name.trim().toLowerCase();
+  if (nameKey) return `name:${nameKey}`;
+  const classSectionKey = normalizeClassSectionId(student.classSectionId) || normalizeClassSectionId(student.classroomId);
   const idKey = (student.id || '').trim().toLowerCase();
   if (classSectionKey && idKey) return `${classSectionKey}|id:${idKey}`;
-  return `${classSectionKey}|name:${student.name.trim().toLowerCase()}`;
+  return `${classSectionKey}|anonymous`;
 }
 
 function mergeStudentViews(primary: StudentView[], imported: StudentView[]): StudentView[] {
@@ -358,6 +360,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showQuizMaker, setShowQuizMaker] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassView | null>(null);
@@ -530,6 +534,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setActiveView('dashboard');
   };
 
+  useEffect(() => {
+    const updateViewport = () => {
+      const nextIsMobile = window.innerWidth < 1024;
+      setIsMobileViewport(nextIsMobile);
+      if (nextIsMobile) {
+        setSidebarCollapsed(false);
+      } else {
+        setMobileNavOpen(false);
+      }
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) return;
+    setMobileNavOpen(false);
+  }, [activeView, isMobileViewport]);
+
   const teacherName = userProfile?.name || 'Teacher';
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
@@ -539,24 +564,60 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     return computed || undefined;
   }, [selectedClass]);
 
+  const effectiveAnalyticsClass = useMemo(() => {
+    return selectedClass || classes[0] || null;
+  }, [selectedClass, classes]);
+
+  const filteredStudentsForAnalytics = useMemo(() => {
+    if (!effectiveAnalyticsClass) return students;
+
+    const selectedId = (effectiveAnalyticsClass.id || '').trim().toLowerCase();
+    const selectedSectionId = normalizeClassSectionId(effectiveAnalyticsClass.classSectionId);
+    const selectedName = (effectiveAnalyticsClass.name || '').trim().toLowerCase();
+
+    return students.filter((student) => {
+      const studentClassroomId = normalizeClassSectionId(student.classroomId);
+      const studentClassSectionId = normalizeClassSectionId(student.classSectionId);
+      const studentClassName = (student.className || '').trim().toLowerCase();
+
+      return (
+        (selectedSectionId && (studentClassSectionId === selectedSectionId || studentClassroomId === selectedSectionId))
+        || (selectedId && (studentClassroomId === selectedId || studentClassSectionId === selectedId))
+        || (selectedName && studentClassName === selectedName)
+      );
+    });
+  }, [effectiveAnalyticsClass, students]);
+
   if (dataLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#f7f9fc]">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={40} className="animate-spin text-sky-600" />
-          <p className="text-[#5a6578] font-medium">Loading dashboard...</p>
+          <p className="text-muted-foreground font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#f7f9fc] overflow-hidden">
+    <div className="relative flex h-screen w-full bg-background overflow-hidden">
+      {isMobileViewport && mobileNavOpen && (
+        <button
+          aria-label="Close navigation"
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[1px]"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
       {/* Collapsible Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: sidebarCollapsed ? 80 : 280 }}
-        className="bg-white border-r border-slate-200 flex flex-col shadow-sm"
+        animate={{
+          width: isMobileViewport ? 280 : sidebarCollapsed ? 80 : 280,
+          x: isMobileViewport ? (mobileNavOpen ? 0 : -300) : 0,
+        }}
+        transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+        className="fixed inset-y-0 left-0 z-40 bg-card border-r border-slate-200 flex flex-col shadow-sm lg:static lg:z-auto"
       >
         {/* Logo & Toggle */}
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
@@ -566,17 +627,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <BookOpen size={20} className="text-white" />
               </div>
               <div>
-                <h1 className="font-display font-bold text-[#0a1628]">MathPulse AI</h1>
+                <h1 className="font-display font-bold text-foreground">MathPulse AI</h1>
                 <p className="text-xs text-slate-500">Teacher Portal</p>
               </div>
             </div>
           )}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
-          >
-            {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
+          {isMobileViewport ? (
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+              aria-label="Close navigation"
+            >
+              <X size={20} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -591,6 +663,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'dashboard'}
                 collapsed={sidebarCollapsed}
                 onClick={handleBackToDashboard}
+                forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={BarChart3}
@@ -598,6 +671,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'analytics'}
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('analytics')}
+                forceExpanded={isMobileViewport}
               />
             </div>
           </div>
@@ -612,6 +686,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'topic_mastery'}
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('topic_mastery')}
+                forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={Users}
@@ -619,6 +694,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'competency'}
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('competency')}
+                forceExpanded={isMobileViewport}
               />
             </div>
           </div>
@@ -633,6 +709,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'import'}
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('import')}
+                forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={ClipboardCheck}
@@ -640,6 +717,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={showQuizMaker}
                 collapsed={sidebarCollapsed}
                 onClick={() => setShowQuizMaker(true)}
+                forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={Bell}
@@ -647,6 +725,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'notifications'}
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('notifications')}
+                forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={Calendar}
@@ -654,6 +733,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'calendar'}
                 collapsed={sidebarCollapsed}
                 onClick={() => setActiveView('calendar')}
+                forceExpanded={isMobileViewport}
               />
             </div>
           </div>
@@ -668,13 +748,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 ? 'justify-center text-slate-500 hover:bg-slate-50 hover:text-sky-700'
                 : 'text-slate-500 hover:bg-slate-50 hover:text-sky-700'
             }`}
-            title={sidebarCollapsed ? 'Settings' : ''}
+            title={sidebarCollapsed && !isMobileViewport ? 'Settings' : ''}
           >
             <Settings size={20} />
-            {!sidebarCollapsed && <span>Settings</span>}
+            {(!sidebarCollapsed || isMobileViewport) && <span>Settings</span>}
           </button>
 
-          {!sidebarCollapsed ? (
+          {(!sidebarCollapsed || isMobileViewport) ? (
             <div>
               <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} />
             </div>
@@ -691,11 +771,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 sticky top-0 z-30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-3 sticky top-0 z-30">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              {isMobileViewport && (
+                <button
+                  onClick={() => setMobileNavOpen(true)}
+                  className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-sky-700 hover:border-sky-200 hover:bg-sky-50 transition-colors"
+                  aria-label="Open navigation"
+                >
+                  <Menu size={18} />
+                </button>
+              )}
               <div>
-                <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
+                <h1 className="text-xl font-display font-bold text-foreground leading-tight">
                   {activeView === 'dashboard' && 'Teacher Dashboard'}
                   {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
                   {activeView === 'intervention' && 'Student Intervention'}
@@ -705,7 +794,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'notifications' && 'Notifications'}
                   {activeView === 'calendar' && 'Calendar'}
                 </h1>
-                <p className="text-xs text-[#5a6578] font-body">
+                <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
                   {activeView === 'analytics' && 'Deep dive into class performance'}
                   {activeView === 'intervention' && selectedStudent?.name}
@@ -718,7 +807,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               </div>
               {/* Quick teacher stats */}
               {activeView === 'dashboard' && (
-                <div className="hidden md:flex items-center gap-2 ml-2">
+                <div className="hidden xl:flex items-center gap-2 ml-2">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 border border-sky-200/60 rounded-lg">
                     <Users size={13} className="text-sky-600" />
                     <span className="text-xs font-display font-bold text-sky-700">{totalStudents} students</span>
@@ -737,9 +826,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             <div className="flex items-center gap-2">
               <button
                 onClick={onOpenProfile}
-                className="flex items-center gap-2.5 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group max-w-[220px]"
+                className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
               >
-                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-sky-200/70 bg-white flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-sky-200/70 bg-card flex items-center justify-center">
                   <img
                     src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
                     alt={teacherName}
@@ -747,8 +836,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   />
                 </div>
                 <div className="hidden md:block min-w-0 text-left">
-                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors truncate">{teacherName}</p>
-                  <p className="text-xs text-[#5a6578] mt-0.5 leading-none">Teacher</p>
+                  <p className="text-sm font-semibold text-foreground leading-none group-hover:text-sky-600 transition-colors truncate">{teacherName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-none">Teacher</p>
                 </div>
               </button>
             </div>
@@ -763,6 +852,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 classes={classes}
                 liveActivity={liveActivity}
                 onViewClass={handleViewClass}
+                onViewAllClasses={() => setActiveView('analytics')}
                 dailyInsight={dailyInsight}
                 insightLoading={insightLoading}
                 totalStudents={totalStudents}
@@ -770,14 +860,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 avgPerformance={avgPerformance}
               />
             )}
-            {activeView === 'analytics' && (
+            {activeView === 'analytics' && effectiveAnalyticsClass && (
               <AnalyticsView
-                selectedClass={selectedClass || classes[0]}
-                students={selectedClass ? students.filter((s) => s.classroomId === selectedClass.id) : students}
+                selectedClass={effectiveAnalyticsClass}
+                students={filteredStudentsForAnalytics}
                 riskDistribution={riskDistribution}
                 topicPerformance={topicPerformance}
                 onViewStudent={handleViewStudent}
                 onBack={handleBackToDashboard}
+              />
+            )}
+            {activeView === 'analytics' && !effectiveAnalyticsClass && (
+              <ToolsPlaceholderView
+                icon={BarChart3}
+                title="Class Analytics"
+                description="No classes available yet. Import class records to unlock analytics views."
               />
             )}
             {activeView === 'intervention' && selectedStudent && (
@@ -888,8 +985,9 @@ const NavItem: React.FC<{
   label: string;
   active: boolean;
   collapsed: boolean;
+  forceExpanded?: boolean;
   onClick: () => void;
-}> = ({ icon: Icon, label, active, collapsed, onClick }) => (
+}> = ({ icon: Icon, label, active, collapsed, forceExpanded = false, onClick }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
@@ -899,7 +997,7 @@ const NavItem: React.FC<{
     }`}
   >
     <Icon size={20} />
-    {!collapsed && <span>{label}</span>}
+    {(!collapsed || forceExpanded) && <span>{label}</span>}
   </button>
 );
 
@@ -914,12 +1012,12 @@ const ToolsPlaceholderView: React.FC<{
     exit={{ opacity: 0, y: -20 }}
     className="p-6"
   >
-    <div className="bg-white border border-[#dde3eb] rounded-2xl p-8 shadow-sm max-w-2xl">
+    <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
       <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
         <Icon size={24} />
       </div>
-      <h2 className="text-2xl font-display font-bold text-[#0a1628] mb-2">{title}</h2>
-      <p className="text-sm text-[#5a6578] font-body leading-relaxed">{description}</p>
+      <h2 className="text-2xl font-display font-bold text-foreground mb-2">{title}</h2>
+      <p className="text-sm text-muted-foreground font-body leading-relaxed">{description}</p>
     </div>
   </motion.div>
 );
@@ -929,12 +1027,13 @@ const DashboardView: React.FC<{
   classes: ClassView[];
   liveActivity: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
   onViewClass: (classItem: ClassView) => void;
+  onViewAllClasses: () => void;
   dailyInsight: string;
   insightLoading: boolean;
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-}> = ({ classes, liveActivity, onViewClass, dailyInsight, insightLoading, totalStudents, totalAtRisk, avgPerformance }) => {
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, dailyInsight, insightLoading, totalStudents, totalAtRisk, avgPerformance }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -945,55 +1044,62 @@ const DashboardView: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="p-6 space-y-6"
     >
-      {/* Daily AI Insight Banner — compact, not dominating */}
+      {/* Daily AI Insight Banner -€” compact, not dominating */}
       <div className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl p-5 text-white shadow-md">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 bg-card/20 rounded-lg flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={20} />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-display font-bold mb-1">AI Insight</h2>
-            <p className="text-sky-100 text-sm leading-relaxed">
-              {insightLoading ? (
+            {insightLoading ? (
+              <p className="text-sky-100 text-sm leading-relaxed">
                 <span className="flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
                   Generating AI insight...
                 </span>
-              ) : (
-                dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`
-              )}
-            </p>
+              </p>
+            ) : (
+              <div className="text-sky-100 text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
+                <ChatMarkdown>
+                  {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
+                </ChatMarkdown>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Quick Stats Row — moved from inside the banner for better visibility */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-[#dde3eb] shadow-sm">
-          <p className="text-xs text-[#5a6578] font-body mb-1">Total Students</p>
-          <p className="text-2xl font-display font-bold text-[#0a1628]">{totalStudents}</p>
+      {/* Quick Stats Row -€” moved from inside the banner for better visibility */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-body mb-1">Total Students</p>
+          <p className="text-2xl font-display font-bold text-foreground">{totalStudents}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-[#dde3eb] shadow-sm">
-          <p className="text-xs text-[#5a6578] font-body mb-1">Class Average</p>
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-body mb-1">Class Average</p>
           <p className="text-2xl font-display font-bold text-sky-600">{avgPerformance}%</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-[#dde3eb] shadow-sm">
-          <p className="text-xs text-[#5a6578] font-body mb-1">Engagement Rate</p>
+        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+          <p className="text-xs text-muted-foreground font-body mb-1">Engagement Rate</p>
           <p className="text-2xl font-display font-bold text-emerald-600">{engagementRate}%</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-red-200/60 shadow-sm">
-          <p className="text-xs text-[#5a6578] font-body mb-1">At Risk</p>
+        <div className="bg-card rounded-xl p-4 border border-red-200/60 shadow-sm">
+          <p className="text-xs text-muted-foreground font-body mb-1">At Risk</p>
           <p className="text-2xl font-display font-bold text-red-600">{totalAtRisk}</p>
         </div>
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* My Classes - 2 columns */}
-        <div className="col-span-2 space-y-4">
+        <div className="xl:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold text-[#0a1628]">My Classes</h2>
-            <button className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 group">
+            <h2 className="text-xl font-display font-bold text-foreground">My Classes</h2>
+            <button
+              onClick={onViewAllClasses}
+              className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 group"
+            >
               View All
               <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </button>
@@ -1004,18 +1110,18 @@ const DashboardView: React.FC<{
               <motion.div
                 key={classItem.id}
                 whileHover={{ scale: 1.01 }}
-                className={`bg-white border border-[#dde3eb] rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+                className={`bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer`}
                 onClick={() => onViewClass(classItem)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-display font-bold text-[#0a1628]">{classItem.name}</h3>
+                      <h3 className="text-lg font-display font-bold text-foreground">{classItem.name}</h3>
                       <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(classItem.riskLevel)}`}>
                         {classItem.riskLevel === 'high' ? 'High Risk' : classItem.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-[#5a6578]">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock size={14} />
                       <span>{classItem.schedule}</span>
                     </div>
@@ -1027,15 +1133,15 @@ const DashboardView: React.FC<{
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-xs text-[#5a6578] mb-1">Total Students</p>
-                    <p className="text-xl font-bold text-[#0a1628]">{classItem.studentCount}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Total Students</p>
+                    <p className="text-xl font-bold text-foreground">{classItem.studentCount}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-[#5a6578] mb-1">At Risk</p>
+                    <p className="text-xs text-muted-foreground mb-1">At Risk</p>
                     <p className="text-xl font-bold text-red-600">{classItem.atRiskCount}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-[#5a6578] mb-1">Avg Score</p>
+                    <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
                     <p className="text-xl font-bold text-sky-600">{classItem.avgScore}%</p>
                   </div>
                 </div>
@@ -1050,10 +1156,13 @@ const DashboardView: React.FC<{
             <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
               <Zap size={20} className="text-rose-600" />
             </div>
-            <h2 className="text-xl font-display font-bold text-[#0a1628]">Live Classroom Pulse</h2>
+            <h2 className="text-xl font-display font-bold text-foreground">Live Classroom Pulse</h2>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb] space-y-3 max-h-[600px] overflow-y-auto">
+          <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3 max-h-[600px] overflow-y-auto">
+            {liveActivity.length === 0 && (
+              <p className="text-sm text-muted-foreground">No live classroom events yet. Activity appears here in real time.</p>
+            )}
             {liveActivity.map((activity) => (
               <div
                 key={activity.id}
@@ -1064,11 +1173,11 @@ const DashboardView: React.FC<{
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
-                  <p className="font-bold text-[#0a1628] text-sm">{activity.student}</p>
+                  <p className="font-bold text-foreground text-sm">{activity.student}</p>
                   <span className="text-xs text-slate-500">{activity.time}</span>
                 </div>
-                <p className="text-sm text-[#5a6578]">
-                  {activity.action} <span className="font-bold text-[#0a1628]">{activity.topic}</span>
+                <p className="text-sm text-muted-foreground">
+                  {activity.action} <span className="font-bold text-foreground">{activity.topic}</span>
                 </p>
               </div>
             ))}
@@ -1088,6 +1197,20 @@ const AnalyticsView: React.FC<{
   onViewStudent: (student: StudentView) => void;
   onBack: () => void;
 }> = ({ selectedClass, students, riskDistribution, topicPerformance, onViewStudent, onBack }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const visibleStudents = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return students;
+    return students.filter((student) => {
+      return (
+        student.name.toLowerCase().includes(query)
+        || (student.lrn || '').toLowerCase().includes(query)
+        || (student.weakestTopic || '').toLowerCase().includes(query)
+      );
+    });
+  }, [searchTerm, students]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1098,30 +1221,32 @@ const AnalyticsView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-[#5a6578] hover:text-sky-600 font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-muted-foreground hover:text-sky-600 font-bold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Dashboard
       </button>
 
       {/* Split View */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Left Column - Student List */}
-        <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+        <div className="xl:col-span-2 bg-card rounded-2xl p-6 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-display font-bold text-[#0a1628]">Students ({students.length})</h2>
+            <h2 className="text-lg font-display font-bold text-foreground">Students ({visibleStudents.length})</h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <Input
                 type="text"
                 placeholder="Search..."
-                className="w-40 pl-9 pr-4 py-2 rounded-xl border-[#dde3eb] text-sm"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-40 pl-9 pr-4 py-2 rounded-xl border-border text-sm"
               />
             </div>
           </div>
 
           <div className="space-y-3 max-h-[700px] overflow-y-auto">
-            {students.map((student) => (
+            {visibleStudents.map((student) => (
               <motion.div
                 key={student.id}
                 whileHover={{ scale: 1.02 }}
@@ -1135,17 +1260,17 @@ const AnalyticsView: React.FC<{
                     className="w-12 h-12 rounded-xl object-cover border-2 border-current"
                   />
                   <div className="flex-1">
-                    <h4 className="font-bold text-[#0a1628]">{student.name}</h4>
-                    <p className="text-xs text-[#5a6578]">{student.lastActive}</p>
+                    <h4 className="font-bold text-foreground">{student.name}</h4>
+                    <p className="text-xs text-muted-foreground">{student.lastActive}</p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-[#5a6578]">Avg Score</span>
-                    <span className="text-xs font-bold text-[#0a1628]">{student.avgScore}%</span>
+                    <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
+                    <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
                   </div>
-                  <div className="h-2 bg-white rounded-full overflow-hidden">
+                  <div className="h-2 bg-card rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${
                         student.riskLevel === 'high' ? 'bg-red-500' :
@@ -1158,14 +1283,19 @@ const AnalyticsView: React.FC<{
                 </div>
               </motion.div>
             ))}
+            {visibleStudents.length === 0 && (
+              <div className="border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground">
+                No students match your search.
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right Column - Charts */}
-        <div className="col-span-3 space-y-6">
+        <div className="xl:col-span-3 space-y-6">
           {/* Risk Distribution */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-            <h2 className="text-lg font-display font-bold text-[#0a1628] mb-5">Risk Distribution</h2>
+          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-display font-bold text-foreground mb-5">Risk Distribution</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={riskDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -1182,11 +1312,11 @@ const AnalyticsView: React.FC<{
           </div>
 
           {/* Topic Performance */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-            <h2 className="text-lg font-display font-bold text-[#0a1628] mb-5">Topic Performance</h2>
+          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-display font-bold text-foreground mb-5">Topic Performance</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={topicPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#dde3eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip />
@@ -1203,8 +1333,8 @@ const AnalyticsView: React.FC<{
                   <Target size={24} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="font-display font-bold text-[#0a1628]">Validate AI Links</h3>
-                  <p className="text-sm text-[#5a6578]">Review AI-generated interventions</p>
+                  <h3 className="font-display font-bold text-foreground">Validate AI Links</h3>
+                  <p className="text-sm text-muted-foreground">Review AI-generated interventions</p>
                 </div>
               </div>
               <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold">
@@ -1229,6 +1359,19 @@ const InterventionView: React.FC<{
   onStudentUpdated: (student: StudentView) => void;
   onBack: () => void;
 }> = ({ student, teacherId, teacherName, onStudentUpdated, onBack }) => {
+  const normalizedRiskLevel = (student.riskLevel || 'low').toLowerCase() as 'high' | 'medium' | 'low';
+  const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
+  const analysisTone = isUrgentBarrier
+    ? {
+        card: 'bg-red-50 border-red-200',
+        icon: 'bg-red-600',
+        bullet: 'text-red-600',
+      }
+    : {
+        card: 'bg-sky-50 border-sky-200',
+        icon: 'bg-sky-600',
+        bullet: 'text-sky-600',
+      };
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
   const [learningPath, setLearningPath] = useState<string>('');
   const [pathLoading, setPathLoading] = useState(true);
@@ -1524,7 +1667,7 @@ const InterventionView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-[#5a6578] hover:text-sky-600 font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-muted-foreground hover:text-sky-600 font-bold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Analytics
@@ -1532,7 +1675,7 @@ const InterventionView: React.FC<{
 
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Student Header */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#dde3eb]">
+        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
           <div className="flex items-start gap-6">
             <img
               src={student.avatar}
@@ -1541,23 +1684,23 @@ const InterventionView: React.FC<{
             />
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-display font-bold text-[#0a1628]">{student.name}</h1>
+                <h1 className="text-3xl font-display font-bold text-foreground">{student.name}</h1>
                 <span className={`px-4 py-1.5 rounded-xl text-sm font-bold border-2 ${getRiskBadge(student.riskLevel)}`}>
                   {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
                 </span>
               </div>
-              <p className="text-[#5a6578] mb-4">{student.className}</p>
+              <p className="text-muted-foreground mb-4">{student.className}</p>
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-[#edf1f7] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578] mb-1">Avg Score</p>
-                  <p className="text-2xl font-bold text-[#0a1628]">{student.avgScore}%</p>
+                <div className="bg-muted rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
+                  <p className="text-2xl font-bold text-foreground">{student.avgScore}%</p>
                 </div>
-                <div className="bg-[#edf1f7] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578] mb-1">Last Active</p>
-                  <p className="text-sm font-bold text-[#0a1628]">{student.lastActive}</p>
+                <div className="bg-muted rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Last Active</p>
+                  <p className="text-sm font-bold text-foreground">{student.lastActive}</p>
                 </div>
-                <div className="bg-[#edf1f7] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578] mb-1">Weakest Topic</p>
+                <div className="bg-muted rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Weakest Topic</p>
                   <p className="text-sm font-bold text-red-600">{student.weakestTopic}</p>
                 </div>
               </div>
@@ -1591,57 +1734,65 @@ const InterventionView: React.FC<{
         </div>
 
         {/* AI Analysis */}
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6">
+        <div className={`${analysisTone.card} border-2 rounded-2xl p-6`}>
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className={`w-12 h-12 ${analysisTone.icon} rounded-xl flex items-center justify-center flex-shrink-0`}>
               <AlertCircle size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-display font-bold text-[#0a1628] mb-2">AI Analysis - Learning Barriers</h2>
+              <h2 className="text-xl font-display font-bold text-foreground mb-2">
+                {isUrgentBarrier ? 'AI Analysis - Learning Barriers' : 'AI Analysis - Learning Strengths & Next Steps'}
+              </h2>
               {pathLoading ? (
-                <div className="flex items-center gap-2 text-[#5a6578]">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 size={18} className="animate-spin" />
                   <span>Generating AI analysis...</span>
                 </div>
               ) : (
-                <div className="space-y-2 text-[#0a1628]">
+                <ul className="space-y-2 text-foreground">
                   {student.struggles.length > 0 ? (
                     student.struggles.map((s, i) => (
-                      <p key={i} className="flex items-start gap-2">
-                        <span className="text-red-600 mt-1">•</span>
-                        <span>Struggles with <strong>{s}</strong></span>
-                      </p>
+                      <li key={i} className="flex items-start gap-2">
+                        <span className={`${analysisTone.bullet} inline-flex h-5 items-center`}>&bull;</span>
+                        <span>
+                          {isUrgentBarrier ? 'Struggles with ' : 'Continue strengthening '}
+                          <strong>{s}</strong>
+                        </span>
+                      </li>
                     ))
                   ) : (
-                    <p className="flex items-start gap-2">
-                      <span className="text-red-600 mt-1">•</span>
-                      <span>Needs support in <strong>{student.weakestTopic}</strong></span>
-                    </p>
+                    <li className="flex items-start gap-2">
+                      <span className={`${analysisTone.bullet} inline-flex h-5 items-center`}>&bull;</span>
+                      <span>
+                        {isUrgentBarrier ? 'Needs support in ' : 'Maintain momentum in '}
+                        <strong>{student.weakestTopic}</strong>
+                      </span>
+                    </li>
                   )}
-                </div>
+                </ul>
               )}
             </div>
           </div>
         </div>
 
         {/* AI-Generated Learning Path */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#dde3eb]">
-          <h2 className="text-xl font-display font-bold text-[#0a1628] mb-6">AI-Generated Learning Path</h2>
+        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
+          <h2 className="text-xl font-display font-bold text-foreground mb-6">AI-Generated Learning Path</h2>
           
           {pathLoading ? (
-            <div className="flex items-center justify-center py-8 gap-2 text-[#5a6578]">
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
               <Loader2 size={20} className="animate-spin" />
               <span>Generating personalized learning path...</span>
             </div>
           ) : learningPath ? (
-            <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 text-sm text-[#0a1628]">
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 text-sm text-foreground">
               <ChatMarkdown>{learningPath}</ChatMarkdown>
             </div>
           ) : null}
           
           <div className="space-y-4 relative">
             {/* Vertical Timeline Line */}
-            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-[#dde3eb]"></div>
+            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-border"></div>
 
             {remedialSteps.map((step, index) => {
               const Icon = step.icon;
@@ -1662,8 +1813,8 @@ const InterventionView: React.FC<{
                   <div className="bg-gradient-to-br from-sky-50 to-cyan-50 border border-sky-200 rounded-2xl p-5 hover:shadow-md transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-display font-bold text-[#0a1628] mb-1">{step.title}</h3>
-                        <p className="text-sm text-[#5a6578]">
+                        <h3 className="font-display font-bold text-foreground mb-1">{step.title}</h3>
+                        <p className="text-sm text-muted-foreground">
                           {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
                           {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
                           {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
@@ -1685,11 +1836,11 @@ const InterventionView: React.FC<{
         </div>
 
         {/* Import-grounded Lesson Plan */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#dde3eb]">
+        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-xl font-display font-bold text-[#0a1628]">Targeted Lesson Plan</h2>
-              <p className="text-sm text-[#5a6578]">Grounded on imported class topics and student risk signals</p>
+              <h2 className="text-xl font-display font-bold text-foreground">Targeted Lesson Plan</h2>
+              <p className="text-sm text-muted-foreground">Grounded on imported class topics and student risk signals</p>
             </div>
             <Button
               onClick={() => void generateTargetedLessonPlan()}
@@ -1701,7 +1852,7 @@ const InterventionView: React.FC<{
           </div>
 
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-            <label className="flex items-center gap-2 text-xs text-[#5a6578] bg-[#f8fafc] border border-[#dde3eb] rounded-lg px-3 py-2">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
               <input
                 type="checkbox"
                 checked={allowReviewSources}
@@ -1709,7 +1860,7 @@ const InterventionView: React.FC<{
               />
               Allow sources requiring manual review
             </label>
-            <label className="flex items-center gap-2 text-xs text-[#5a6578] bg-[#f8fafc] border border-[#dde3eb] rounded-lg px-3 py-2">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
               <input
                 type="checkbox"
                 checked={allowUnverifiedLesson}
@@ -1720,7 +1871,7 @@ const InterventionView: React.FC<{
           </div>
 
           {lessonLoading && (
-            <div className="flex items-center gap-2 text-[#5a6578] py-4">
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
               <Loader2 size={18} className="animate-spin" />
               <span>Generating class-scoped lesson plan...</span>
             </div>
@@ -1734,13 +1885,13 @@ const InterventionView: React.FC<{
 
           {!lessonLoading && lessonPlan && (
             <div className="space-y-4">
-              <div className="bg-[#f6f9ff] border border-[#dde3eb] rounded-xl p-4">
-                <p className="text-sm font-semibold text-[#0a1628]">{lessonPlan.lessonTitle}</p>
-                <p className="text-xs text-[#5a6578] mt-1">
+              <div className="bg-secondary border border-border rounded-xl p-4">
+                <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
-                  {' • '}Imported topic count: {lessonPlan.importedTopicCount}
+                  {' -€¢ '}Imported topic count: {lessonPlan.importedTopicCount}
                 </p>
-                <p className="text-xs text-[#5a6578] mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
                 </p>
                 {lessonPlan.warnings.length > 0 && (
@@ -1749,21 +1900,21 @@ const InterventionView: React.FC<{
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-white border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs font-semibold text-[#5a6578]">Source Legitimacy</p>
-                  <p className="text-sm font-bold text-[#0a1628] mt-1">
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Source Legitimacy</p>
+                  <p className="text-sm font-bold text-foreground mt-1">
                     {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
                   </p>
-                  <p className="text-xs text-[#5a6578] mt-1">
-                    Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} • Review: {lessonPlan.sourceLegitimacy.reviewMaterials} • Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} -€¢ Review: {lessonPlan.sourceLegitimacy.reviewMaterials} -€¢ Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
                   </p>
                   {lessonPlan.sourceLegitimacy.issues.length > 0 && (
                     <p className="text-xs text-amber-700 mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
                   )}
                 </div>
-                <div className="bg-white border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs font-semibold text-[#5a6578]">Self Validation</p>
-                  <p className="text-sm font-bold text-[#0a1628] mt-1">
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Self Validation</p>
+                  <p className="text-sm font-bold text-foreground mt-1">
                     {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
                   </p>
                   {lessonPlan.selfValidation.issues.length > 0 && (
@@ -1773,15 +1924,15 @@ const InterventionView: React.FC<{
               </div>
 
               {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
-                <div className="bg-white border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs font-semibold text-[#5a6578] mb-2">Provenance Filters</p>
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Provenance Filters</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <label className="text-xs text-[#5a6578] flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground flex flex-col gap-1">
                       <span className="font-semibold">Source File</span>
                       <select
                         value={lessonSourceFilter}
                         onChange={(event) => setLessonSourceFilter(event.target.value)}
-                        className="bg-white border border-[#dde3eb] rounded-md px-2 py-1.5 text-xs"
+                        className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
                       >
                         <option value="all">All sources</option>
                         {lessonProvenanceSources.map((source) => (
@@ -1789,12 +1940,12 @@ const InterventionView: React.FC<{
                         ))}
                       </select>
                     </label>
-                    <label className="text-xs text-[#5a6578] flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground flex flex-col gap-1">
                       <span className="font-semibold">Material ID</span>
                       <select
                         value={lessonMaterialFilter}
                         onChange={(event) => setLessonMaterialFilter(event.target.value)}
-                        className="bg-white border border-[#dde3eb] rounded-md px-2 py-1.5 text-xs"
+                        className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
                       >
                         <option value="all">All materials</option>
                         {lessonProvenanceMaterials.map((material) => (
@@ -1803,7 +1954,7 @@ const InterventionView: React.FC<{
                       </select>
                     </label>
                   </div>
-                  <p className="text-[11px] text-[#5a6578] mt-2">
+                  <p className="text-[11px] text-muted-foreground mt-2">
                     Showing {filteredLessonBlocks.length} of {lessonPlan.blocks.length} lesson blocks after provenance filters.
                   </p>
                 </div>
@@ -1811,14 +1962,14 @@ const InterventionView: React.FC<{
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {filteredLessonBlocks.map((block) => (
-                  <div key={block.blockId} className="border border-[#dde3eb] rounded-xl p-4 bg-[#fcfdff]">
-                    <h3 className="text-sm font-bold text-[#0a1628]">{block.title}</h3>
-                    <p className="text-xs text-[#5a6578] mt-1">{block.estimatedMinutes} mins • {block.strategy}</p>
-                    <p className="text-sm text-[#0a1628] mt-2">{block.objective}</p>
+                  <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
+                    <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins -€¢ {block.strategy}</p>
+                    <p className="text-sm text-foreground mt-2">{block.objective}</p>
                     <div className="mt-3">
-                      <p className="text-xs font-semibold text-[#5a6578] mb-1">Activities</p>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
                       {block.activities.slice(0, 2).map((activity, idx) => (
-                        <p key={idx} className="text-xs text-[#5a6578]">• {activity}</p>
+                        <p key={idx} className="text-xs text-muted-foreground">-€¢ {activity}</p>
                       ))}
                     </div>
                     {block.provenance && (
@@ -1832,7 +1983,7 @@ const InterventionView: React.FC<{
                 ))}
               </div>
               {filteredLessonBlocks.length === 0 && (
-                <div className="border border-[#dde3eb] rounded-xl p-4 bg-white text-sm text-[#5a6578]">
+                <div className="border border-border rounded-xl p-4 bg-card text-sm text-muted-foreground">
                   No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
                 </div>
               )}
@@ -1854,7 +2005,7 @@ const InterventionView: React.FC<{
                   {publishingLesson ? <Loader2 size={14} className="animate-spin" /> : 'Publish Lesson Plan'}
                 </Button>
                 {savedLessonPlanId && (
-                  <p className="text-xs text-[#5a6578] self-center">Draft ID: {savedLessonPlanId}</p>
+                  <p className="text-xs text-muted-foreground self-center">Draft ID: {savedLessonPlanId}</p>
                 )}
               </div>
             </div>
@@ -2062,23 +2213,23 @@ const ImportView: React.FC<{
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
-          <h2 className="text-xl font-display font-bold text-[#0a1628]">Import Data</h2>
-          <p className="text-[#5a6578]">Upload class records and course materials to enhance AI predictions</p>
-          <p className="text-xs text-[#5a6578] mt-1">
+          <h2 className="text-xl font-display font-bold text-foreground">Import Data</h2>
+          <p className="text-muted-foreground">Upload class records and course materials to enhance AI predictions</p>
+          <p className="text-xs text-muted-foreground mt-1">
             Class scope: {className || classSectionId || 'All classes'}
           </p>
         </div>
 
         {/* Upload Zones */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Class Records */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
             onDragLeave={() => setDragOver1(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-sky-400 hover:bg-sky-50 ${
-              dragOver1 ? 'border-sky-600 bg-sky-50 scale-105' : 'border-[#dde3eb]'
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-sky-400 hover:bg-sky-50 ${
+              dragOver1 ? 'border-sky-600 bg-sky-50 scale-105' : 'border-border'
             }`}
           >
             <input
@@ -2095,16 +2246,16 @@ const ImportView: React.FC<{
                 <FileSpreadsheet size={40} className="text-sky-600" />
               )}
             </div>
-            <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Class Records</h3>
-            <p className="text-[#5a6578] mb-4">
+            <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
+            <p className="text-muted-foreground mb-4">
               {uploadingClassRecords ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
             </p>
-            <p className="text-xs text-[#5a6578] mb-4 flex items-center justify-center gap-2">
-                <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.csv</span>
-                <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.xlsx</span>
-                <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.pdf</span>
+            <p className="text-xs text-muted-foreground mb-4 flex items-center justify-center gap-2">
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
             </p>
-            <Button className="bg-white border-2 border-[#dde3eb] text-[#5a6578] hover:border-sky-500 hover:text-sky-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-sky-500 hover:text-sky-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -2115,8 +2266,8 @@ const ImportView: React.FC<{
             onDragLeave={() => setDragOver2(false)}
             onDrop={handleCourseMaterialDrop}
             onClick={() => materialInputRef.current?.click()}
-            className={`bg-white border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-rose-400 hover:bg-rose-50 ${
-              dragOver2 ? 'border-rose-600 bg-rose-50 scale-105' : 'border-[#dde3eb]'
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-rose-400 hover:bg-rose-50 ${
+              dragOver2 ? 'border-rose-600 bg-rose-50 scale-105' : 'border-border'
             }`}
           >
             <input
@@ -2133,16 +2284,16 @@ const ImportView: React.FC<{
                 <FileText size={40} className="text-rose-600" />
               )}
             </div>
-            <h3 className="text-xl font-display font-bold text-[#0a1628] mb-2">Course Materials</h3>
-            <p className="text-[#5a6578] mb-4">
+            <h3 className="text-xl font-display font-bold text-foreground mb-2">Course Materials</h3>
+            <p className="text-muted-foreground mb-4">
               {uploadingCourseMaterials ? 'Uploading and extracting topics...' : 'Upload syllabus, lesson plans, and curriculum documents'}
             </p>
             <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
-                <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.pdf</span>
-                <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.docx</span>
-                <span className="bg-[#edf1f7] px-2 py-1 rounded text-[#5a6578] font-medium">.txt</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
             </p>
-            <Button className="bg-white border-2 border-[#dde3eb] text-[#5a6578] hover:border-rose-500 hover:text-rose-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-rose-500 hover:text-rose-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -2153,23 +2304,23 @@ const ImportView: React.FC<{
           <h3 className="text-lg font-display font-bold text-sky-800 mb-3">How AI Uses Your Data</h3>
           <div className="space-y-2 text-sky-900/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">•</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span><strong className="text-sky-800">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">•</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">•</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">•</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">•</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -2183,23 +2334,23 @@ const ImportView: React.FC<{
         )}
 
         {uploadInterpretation && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-display font-bold text-[#0a1628]">Import Interpretation</h3>
-              <span className="text-xs px-2 py-1 rounded bg-[#edf1f7] text-[#334155]">
+              <h3 className="text-lg font-display font-bold text-foreground">Import Interpretation</h3>
+              <span className="text-xs px-2 py-1 rounded bg-muted text-[#334155]">
                 Intent: {uploadInterpretation.datasetIntent || 'synthetic_student_records'}
               </span>
             </div>
 
             {uploadInterpretation.summary && (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Scoring</p>
-                  <p className="text-lg font-bold text-[#0a1628]">{uploadInterpretation.summary.scoringColumns}</p>
+                <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Scoring</p>
+                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.scoringColumns}</p>
                 </div>
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Display</p>
-                  <p className="text-lg font-bold text-[#0a1628]">{uploadInterpretation.summary.displayColumns}</p>
+                <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Display</p>
+                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                   <p className="text-xs text-amber-700">Storage-only</p>
@@ -2209,9 +2360,9 @@ const ImportView: React.FC<{
                   <p className="text-xs text-rose-700">Low confidence</p>
                   <p className="text-lg font-bold text-rose-800">{uploadInterpretation.summary.lowConfidenceColumns}</p>
                 </div>
-                <div className="bg-[#f8fbff] border border-[#dde3eb] rounded-xl p-3">
-                  <p className="text-xs text-[#5a6578]">Domain warnings</p>
-                  <p className="text-lg font-bold text-[#0a1628]">{uploadInterpretation.summary.domainMismatchWarnings}</p>
+                <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Domain warnings</p>
+                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.domainMismatchWarnings}</p>
                 </div>
               </div>
             )}
@@ -2219,12 +2370,12 @@ const ImportView: React.FC<{
             {uploadInterpretation.columns.length > 0 ? (
               <div className="space-y-2 max-h-64 overflow-auto pr-1">
                 {uploadInterpretation.columns.slice(0, 40).map((column) => (
-                  <div key={column.columnName} className="bg-[#f8fafc] border border-[#dde3eb] rounded-lg px-3 py-2">
-                    <p className="text-sm font-semibold text-[#0a1628]">{column.columnName}</p>
-                    <p className="text-xs text-[#5a6578]">
+                  <div key={column.columnName} className="bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
+                    <p className="text-sm font-semibold text-foreground">{column.columnName}</p>
+                    <p className="text-xs text-muted-foreground">
                       mapped: {column.mappedField || 'none'}
-                      {' • '}usage: {column.usagePolicy}
-                      {' • '}confidence: {column.confidenceBand}
+                      {' -€¢ '}usage: {column.usagePolicy}
+                      {' -€¢ '}confidence: {column.confidenceBand}
                     </p>
                     {column.domainSignals && column.domainSignals.length > 0 && (
                       <p className="text-xs text-amber-700 mt-1">domain signals: {column.domainSignals.join(', ')}</p>
@@ -2233,20 +2384,20 @@ const ImportView: React.FC<{
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-[#5a6578]">No per-column interpretation data was returned for this upload.</p>
+              <p className="text-sm text-muted-foreground">No per-column interpretation data was returned for this upload.</p>
             )}
           </div>
         )}
 
         {/* Manage Imported Data */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
-          <h3 className="text-lg font-display font-bold text-[#0a1628] mb-4">Manage Imported Data</h3>
+        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+          <h3 className="text-lg font-display font-bold text-foreground mb-4">Manage Imported Data</h3>
           <button 
             onClick={onEditRecords}
             className="w-full bg-[#00a86b] hover:bg-[#008f5d] text-white rounded-xl p-5 flex items-center justify-between transition-all shadow-sm hover:shadow-md group"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <div className="w-12 h-12 bg-card/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
                 <Edit3 size={24} className="text-white" />
               </div>
               <div className="text-left">
@@ -2349,21 +2500,21 @@ const EditRecordsView: React.FC<{
       exit={{ opacity: 0, x: -20 }}
       className="p-6 h-full flex flex-col"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2 hover:bg-[#edf1f7] rounded-lg transition-colors text-[#5a6578]"
+            className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
           >
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-display font-bold text-[#0a1628]">Edit Class Records</h1>
-            <p className="text-[#5a6578]">Review and modify student data manually</p>
+            <h1 className="text-2xl font-display font-bold text-foreground">Edit Class Records</h1>
+            <p className="text-muted-foreground">Review and modify student data manually</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onBack} className="border-[#dde3eb]">
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" onClick={onBack} className="border-border">
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
@@ -2373,41 +2524,41 @@ const EditRecordsView: React.FC<{
         </div>
       </div>
 
-      <div className="bg-white border border-[#dde3eb] rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-[#dde3eb] bg-[#f7f9fc] flex items-center justify-between">
-           <div className="flex items-center gap-2 text-[#5a6578]">
+      <div className="bg-card border border-border rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-border bg-background flex items-center justify-between">
+           <div className="flex items-center gap-2 text-muted-foreground">
              <Info size={18} />
              <span className="text-sm">Click on any field to edit</span>
            </div>
-           <div className="text-sm text-[#5a6578]">
+           <div className="text-sm text-muted-foreground">
              Showing {students.length} records
            </div>
         </div>
         
         <div className="overflow-auto flex-1">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-[#f7f9fc] sticky top-0 z-10">
+            <thead className="bg-background sticky top-0 z-10">
               <tr>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Student Name</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">LRN</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Grade</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Section</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Avg Score</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Risk Level</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Weakest Topic</th>
-                <th className="p-4 font-bold text-[#5a6578] border-b border-[#dde3eb] bg-[#f7f9fc]">Actions</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Student Name</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">LRN</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Grade</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Section</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Avg Score</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Risk Level</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Weakest Topic</th>
+                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Actions</th>
               </tr>
             </thead>
             <tbody>
               {students.map((student) => (
-                <tr key={student.id} className="border-b border-[#dde3eb] hover:bg-sky-50/30 group transition-colors">
+                <tr key={student.id} className="border-b border-border hover:bg-sky-50/30 group transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <img src={student.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      <span className="font-medium text-[#0a1628]">{student.name}</span>
+                      <span className="font-medium text-foreground">{student.name}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-[#5a6578] font-mono text-sm">{student.lrn || 'Not set'}</td>
+                  <td className="p-4 text-muted-foreground font-mono text-sm">{student.lrn || 'Not set'}</td>
                   <td className="p-4 min-w-[140px]">
                     <Input
                       value={sectionDrafts[student.id]?.grade || student.grade}
@@ -2443,9 +2594,9 @@ const EditRecordsView: React.FC<{
                       {student.riskLevel.toUpperCase()}
                     </span>
                   </td>
-                  <td className="p-4 text-[#5a6578]">{student.weakestTopic}</td>
+                  <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
                   <td className="p-4">
-                    <button className="p-2 hover:bg-[#edf1f7] rounded-lg text-slate-500 hover:text-sky-600 transition-colors">
+                    <button className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-sky-600 transition-colors">
                       <Edit3 size={16} />
                     </button>
                   </td>
@@ -2477,3 +2628,4 @@ function getRiskColor(level: 'high' | 'medium' | 'low') {
 }
 
 export default TeacherDashboard;
+
