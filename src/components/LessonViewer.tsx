@@ -109,6 +109,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
   };
 
   const currentSectionData = content.sections[currentSection];
+  const sectionSymbolMap: Record<LessonContent['sections'][number]['type'], string> = {
+    text: '📝',
+    example: '📎',
+    video: '🎬',
+    'key-point': '💡',
+    practice: '✍️',
+  };
+  const sectionSymbol = sectionSymbolMap[currentSectionData.type] || '📘';
 
   if (showCompletion) {
     return (
@@ -152,9 +160,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[radial-gradient(circle_at_top_left,#f8fbff_0%,#eef4ff_40%,#f8f4ff_100%)]">
       {/* Header */}
-        <header className="bg-white border-b border-[#dde3eb] px-6 sm:px-10 lg:px-16 py-4 shadow-sm">
+      <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 sm:px-10 lg:px-16 py-4 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -164,9 +172,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
               <ArrowLeft size={20} />
             </button>
             <div>
-              <div className="flex items-center gap-2 text-xs text-[#5a6578] font-medium mb-1">
+              <div className="flex items-center gap-2 text-xs text-[#5a6578] font-medium mb-1 uppercase tracking-wider">
                 <BookOpen size={14} />
-                <span>Lesson</span>
+                <span>Notebook Lesson</span>
               </div>
               <h1 className="font-bold text-lg text-[#0a1628]">{content.title}</h1>
             </div>
@@ -190,7 +198,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
       </header>
 
       {/* Main Content */}
-        <main className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-16 py-10">
+      <main className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-16 py-10">
         <div className="max-w-4xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -206,14 +214,25 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
                   <span>Section {currentSection + 1} of {totalSections}</span>
                 </div>
                 {currentSectionData.heading && (
-                  <h2 className="text-3xl font-bold text-[#0a1628] mb-4">
-                    {currentSectionData.heading}
+                  <h2 className="text-3xl font-black text-[#0a1628] mb-4 tracking-tight flex items-center gap-3">
+                    <span className="text-2xl" aria-hidden="true">{sectionSymbol}</span>
+                    <span>{currentSectionData.heading}</span>
                   </h2>
                 )}
               </div>
 
               {/* Content Based on Type */}
-              <div className="bg-white rounded-3xl p-8 shadow-lg border border-[#dde3eb] min-h-[500px]">
+              <div className="relative bg-white rounded-3xl p-8 shadow-lg border border-[#dde3eb] min-h-[500px] overflow-hidden">
+                <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/70 pointer-events-none" />
+                <div className="absolute left-[56px] top-0 bottom-0 w-px bg-rose-100/60 pointer-events-none" />
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-60"
+                  style={{
+                    backgroundImage: 'repeating-linear-gradient(transparent, transparent 37px, #e9eef8 37px, #e9eef8 38px)',
+                  }}
+                />
+
+                <div className="relative z-10 pl-8 md:pl-12">
                 {/* Text Content */}
                 {currentSectionData.type === 'text' && (
                   <div className="prose prose-slate max-w-none">
@@ -297,6 +316,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </motion.div>
           </AnimatePresence>
