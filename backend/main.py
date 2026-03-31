@@ -21,7 +21,7 @@ import hashlib
 import logging
 import traceback
 import urllib.parse
-from typing import List, Optional, Dict, Any, Set, Tuple, cast
+from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, cast
 from collections import Counter, defaultdict
 from threading import Lock
 
@@ -38,7 +38,7 @@ except ImportError as e:
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
@@ -228,6 +228,7 @@ PUBLIC_API_PATHS: Set[str] = {
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/chat": ALL_APP_ROLES,
+    "/api/chat/stream": ALL_APP_ROLES,
     "/api/verify-solution": ALL_APP_ROLES,
     "/api/predict-risk": TEACHER_OR_ADMIN,
     "/api/predict-risk/batch": TEACHER_OR_ADMIN,
@@ -741,7 +742,7 @@ def _start_async_task_in_thread(task_id: str, runner) -> None:
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path
         request.state.user = None
 
@@ -804,7 +805,7 @@ REQUEST_TIMEOUT_SECONDS = 120  # 2 minutes for AI-heavy endpoints
 class RequestMiddleware(BaseHTTPMiddleware):
     """Adds request-ID header, logs requests, and enforces timeouts."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         request_id = str(uuid.uuid4())[:8]
         start = time.time()
 
@@ -989,7 +990,7 @@ def call_hf_chat(
     repetition_penalty: float = 1.15,
     model: Optional[str] = None,
     task_type: str = "default",
-    timeout: int = 90,
+    timeout: Optional[int] = None,
 ) -> str:
     req = InferenceRequest(
         messages=messages,
@@ -1003,6 +1004,129 @@ def call_hf_chat(
     )
     text = get_inference_client().generate_from_messages(req)
     return _strip_repetition(text)
+
+
+def call_hf_chat_stream(
+    messages: List[Dict[str, str]],
+    *,
+    max_tokens: int = 512,
+    temperature: float = 0.3,
+    top_p: float = 0.85,
+    model: Optional[str] = None,
+    task_type: str = "chat",
+    timeout: Optional[int] = None,
+) -> Iterator[str]:
+    """Stream chat deltas from HF router as text chunks."""
+    client = get_inference_client()
+    effective_task = (task_type or "chat").strip().lower()
+    request_tag = f"{effective_task}-stream-{int(time.time() * 1000)}"
+
+    if model:
+        selected_model = model
+    elif effective_task == "chat" and getattr(client, "chat_model_override", ""):
+        selected_model = client.chat_model_override
+    else:
+        selected_model = client.task_model_map.get(effective_task, client.default_model)
+
+    model_chain = client._model_chain_for_task(effective_task, selected_model)
+    provider_chain = client._provider_chain_for_task(effective_task)
+    timeout_sec = timeout or client.interactive_timeout_sec
+    last_error: Optional[Exception] = None
+
+    for fallback_depth, model_name in enumerate(model_chain):
+        for provider in provider_chain:
+            if provider == "local_space":
+                last_error = RuntimeError("Streaming is not supported for local_space provider")
+                continue
+
+            route = client._resolve_route_label(provider, effective_task)
+            stream_model = model_name if ":" in model_name else f"{model_name}:fastest"
+            headers = {
+                "Authorization": f"Bearer {client.hf_token}",
+                "Content-Type": "application/json",
+                "X-MathPulse-Task": effective_task,
+            }
+            if route == "pro-priority" and client.pro_route_header_name.strip():
+                headers[client.pro_route_header_name.strip()] = client.pro_route_header_value
+
+            payload: Dict[str, object] = {
+                "model": stream_model,
+                "messages": messages,
+                "stream": True,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            }
+
+            start = time.perf_counter()
+            try:
+                with http_requests.post(
+                    client.hf_chat_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=timeout_sec,
+                    stream=True,
+                ) as response:
+                    if response.status_code != 200:
+                        raise RuntimeError(f"HF stream error {response.status_code}: {response.text}")
+
+                    emitted_any = False
+                    for raw_line in response.iter_lines(decode_unicode=True):
+                        if not raw_line:
+                            continue
+                        line = raw_line.strip()
+                        if not line.startswith("data:"):
+                            continue
+
+                        data_raw = line.split("data:", 1)[1].strip()
+                        if data_raw == "[DONE]":
+                            if emitted_any:
+                                latency_ms = (time.perf_counter() - start) * 1000
+                                logger.info(
+                                    "✅ HF stream success: task=%s model=%s latency=%sms",
+                                    effective_task,
+                                    model_name,
+                                    round(latency_ms, 0),
+                                )
+                                return
+                            continue
+
+                        try:
+                            payload_obj = json.loads(data_raw)
+                        except json.JSONDecodeError:
+                            continue
+
+                        choices = payload_obj.get("choices") or []
+                        if not choices:
+                            continue
+                        first = choices[0] if isinstance(choices[0], dict) else {}
+                        delta = first.get("delta") or {}
+                        chunk = delta.get("content")
+                        if not chunk:
+                            msg = first.get("message") or {}
+                            chunk = msg.get("content")
+                        if not chunk:
+                            continue
+
+                        emitted_any = True
+                        yield str(chunk)
+
+                    if emitted_any:
+                        return
+                    raise RuntimeError("HF stream ended without content")
+
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "⚠️ Stream attempt failed: task=%s provider=%s model=%s depth=%s error=%s",
+                    effective_task,
+                    provider,
+                    model_name,
+                    fallback_depth,
+                    str(exc)[:180],
+                )
+
+    raise last_error or RuntimeError("Streaming failed with empty model/provider chain")
 
 
 def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
@@ -1217,7 +1341,7 @@ async def chat_tutor(request: ChatRequest):
 
         # Call HF serverless with retry (handled inside call_hf_chat)
         try:
-            answer = call_hf_chat(messages, max_tokens=1024, temperature=0.3, top_p=0.85, task_type="chat")
+            answer = call_hf_chat(messages, max_tokens=512, temperature=0.3, top_p=0.85, task_type="chat")
         except Exception as hf_err:
             logger.error(f"HF chat failed: {hf_err}")
             raise HTTPException(
@@ -1243,6 +1367,55 @@ async def chat_tutor(request: ChatRequest):
     except Exception as e:
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
+
+
+@app.post("/api/chat/stream")
+async def chat_tutor_stream(request: ChatRequest):
+    """SSE stream endpoint for AI Math Tutor chat responses."""
+    try:
+        messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
+        for msg in request.history[-10:]:
+            messages.append({"role": msg.role, "content": msg.content})
+        messages.append({"role": "user", "content": request.message})
+
+        def _sse(event: str, data: str) -> str:
+            lines = str(data).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+            body = [f"event: {event}"] + [f"data: {line}" for line in lines]
+            return "\n".join(body) + "\n\n"
+
+        async def event_generator():
+            try:
+                for chunk in call_hf_chat_stream(
+                    messages,
+                    max_tokens=512,
+                    temperature=0.3,
+                    top_p=0.85,
+                    task_type="chat",
+                ):
+                    payload = json.dumps({"chunk": chunk}, ensure_ascii=False)
+                    yield _sse("chunk", payload)
+                    await asyncio.sleep(0)
+            except Exception as hf_err:
+                logger.error(f"HF chat stream failed: {hf_err}")
+                err_payload = json.dumps({
+                    "detail": "AI model service is temporarily unavailable. Please try again.",
+                })
+                yield _sse("error", err_payload)
+            finally:
+                yield _sse("end", "done")
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Chat stream setup error: {e}")
+        raise HTTPException(status_code=500, detail=f"Chat stream setup error: {str(e)}")
 
 
 # ─── Verification System ──────────────────────────────────────

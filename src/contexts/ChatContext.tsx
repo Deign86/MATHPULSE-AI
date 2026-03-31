@@ -367,89 +367,100 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
-      // Create placeholder AI message for streaming
-      const aiMsgId = (Date.now() + 1).toString();
-      const aiMsg: Message = {
-        id: aiMsgId,
-        sender: 'ai',
-        text: '▌', // Cursor indicator for typing
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let streamedText = '';
+      let streamMessageId: string | null = null;
+
+      const upsertStreamingMessage = (text: string) => {
+        setSessions(prev =>
+          prev.map(chatSession => {
+            if (chatSession.id !== sessionId) return chatSession;
+
+            if (!streamMessageId) {
+              streamMessageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              const streamMsg: Message = {
+                id: streamMessageId,
+                sender: 'ai',
+                text,
+                timestamp: aiTimestamp,
+              };
+              const updatedMessages = [...chatSession.messages, streamMsg];
+              return {
+                ...chatSession,
+                messages: updatedMessages,
+                messageCount: updatedMessages.length,
+                updatedAt: new Date(),
+              };
+            }
+
+            return {
+              ...chatSession,
+              messages: chatSession.messages.map(m =>
+                m.id === streamMessageId ? { ...m, text } : m
+              ),
+              updatedAt: new Date(),
+            };
+          })
+        );
       };
-      addMessageToSession(sessionId, aiMsg);
 
-      let fullResponse = '';
-      let streamFailed = false;
+      const removeStreamingMessage = () => {
+        if (!streamMessageId) return;
+        const removeId = streamMessageId;
+        setSessions(prev =>
+          prev.map(chatSession => {
+            if (chatSession.id !== sessionId) return chatSession;
+            const updatedMessages = chatSession.messages.filter(m => m.id !== removeId);
+            return {
+              ...chatSession,
+              messages: updatedMessages,
+              messageCount: updatedMessages.length,
+              updatedAt: new Date(),
+            };
+          })
+        );
+      };
 
-      // Try streaming first
       try {
         const { response } = await apiService.chat(userText.trim(), history, (chunk: string) => {
-          fullResponse += chunk;
-          // Update message in real-time as chunks arrive
-          setSessions(prev =>
-            prev.map(s =>
-              s.id === sessionId
-                ? {
-                    ...s,
-                    messages: s.messages.map(m =>
-                      m.id === aiMsgId ? { ...m, text: fullResponse || '▌' } : m
-                    ),
-                  }
-                : s
-            )
-          );
+          streamedText += chunk;
+          upsertStreamingMessage(streamedText);
         });
 
-        // Finalize the streamed response
-        setSessions(prev =>
-          prev.map(s =>
-            s.id === sessionId
-              ? {
-                  ...s,
-                  messages: s.messages.map(m =>
-                    m.id === aiMsgId ? { ...m, text: response } : m
-                  ),
-                }
-              : s
-          )
-        );
-      } catch (streamError) {
-        // If streaming fails, fall back to non-streaming chat
-        console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
-        streamFailed = true;
+        const finalResponse = (response || streamedText).trim();
+        if (streamMessageId) {
+          removeStreamingMessage();
+        }
 
+        const aiMsg: Message = {
+          id: streamMessageId || (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: finalResponse,
+          timestamp: aiTimestamp,
+        };
+        addMessageToSession(sessionId, aiMsg);
+      } catch (streamError) {
+        console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        if (streamMessageId) {
+          removeStreamingMessage();
+        }
+
+        let aiResponseText = '';
         try {
           const { data } = await apiService.chatSafe(userText.trim(), history);
-          
-          setSessions(prev =>
-            prev.map(s =>
-              s.id === sessionId
-                ? {
-                    ...s,
-                    messages: s.messages.map(m =>
-                      m.id === aiMsgId ? { ...m, text: data.response } : m
-                    ),
-                  }
-                : s
-            )
-          );
-        } catch (fallbackError) {
-          // Final fallback if all else fails
-          console.warn('Chat fallback also failed:', fallbackError);
-          const fallbackResponse = generateFallbackResponse(userText.trim());
-          
-          setSessions(prev =>
-            prev.map(s =>
-              s.id === sessionId
-                ? {
-                    ...s,
-                    messages: s.messages.map(m =>
-                      m.id === aiMsgId ? { ...m, text: fallbackResponse } : m
-                    ),
-                  }
-                : s
-            )
-          );
+          aiResponseText = data.response;
+        } catch (chatError) {
+          console.warn('Chat request failed, using local fallback response:', chatError);
+          aiResponseText = generateFallbackResponse(userText.trim());
         }
+
+        const aiMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: aiResponseText,
+          timestamp: aiTimestamp,
+        };
+        addMessageToSession(sessionId, aiMsg);
       }
 
       // Update session title if this is the first exchange

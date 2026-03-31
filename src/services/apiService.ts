@@ -732,6 +732,14 @@ const AI_RETRY_OPTS: RetryFetchOptions = {
   timeoutMs: 60_000,
 };
 
+/** Chat-specific retry profile to avoid compounding backend fallback latency. */
+const CHAT_RETRY_OPTS: RetryFetchOptions = {
+  ...AI_RETRY_OPTS,
+  maxRetries: 1,
+  timeoutMs: 45_000,
+  baseBackoffMs: 750,
+};
+
 /** Upload-specific: longer timeout, fewer retries */
 const UPLOAD_RETRY_OPTS: RetryFetchOptions = {
   maxRetries: 2,
@@ -1033,50 +1041,110 @@ export const apiService = {
   ): Promise<ChatResponse> {
     validateRequired('/api/chat', { message });
 
-    // If streaming callback provided, use SSE streaming
     if (onChunk) {
-      return new Promise((resolve, reject) => {
-        const params = new URLSearchParams({
-          message,
-          history: JSON.stringify(history ?? []),
-        });
-
-        const eventSource = new EventSource(`/api/chat/stream?${params}`);
-        let fullResponse = '';
-
-        eventSource.addEventListener('chunk', (event: any) => {
-          const chunk = event.data;
-          fullResponse += chunk;
-          onChunk(chunk);
-        });
-
-        eventSource.addEventListener('end', () => {
-          eventSource.close();
-          resolve({ response: fullResponse });
-        });
-
-        eventSource.onerror = (error) => {
-          eventSource.close();
-          console.error('Streaming error:', error);
-          reject(new Error('Streaming connection failed, falling back to non-streaming mode'));
-        };
-
-        // Timeout fallback in case stream hangs
-        setTimeout(() => {
-          if (eventSource.readyState === EventSource.CONNECTING || eventSource.readyState === EventSource.OPEN) {
-            eventSource.close();
-            reject(new Error('Stream timeout'));
-          }
-        }, 60000); // 60 second timeout
+      const headers = new Headers({
+        'Content-Type': 'application/json',
       });
+
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const idToken = await currentUser.getIdToken(false);
+          if (idToken) {
+            headers.set('Authorization', `Bearer ${idToken}`);
+          }
+        } catch (err) {
+          logApiError('/api/chat/stream', 'POST', 'Failed to acquire Firebase ID token', err);
+        }
+      }
+
+      const response = await fetch(`${API_URL}/api/chat/stream`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message, history: history ?? [] }),
+      });
+
+      if (!response.ok || !response.body) {
+        const bodyText = await response.text().catch(() => 'Unable to read response body');
+        throw new Error(`Streaming request failed (${response.status}): ${bodyText.slice(0, 300)}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullResponse = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let boundary = buffer.indexOf('\n\n');
+        while (boundary !== -1) {
+          const rawEvent = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+
+          let eventType = 'message';
+          const dataLines: string[] = [];
+          for (const line of rawEvent.split('\n')) {
+            if (line.startsWith('event:')) {
+              eventType = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              dataLines.push(line.slice(5).trimStart());
+            }
+          }
+
+          const eventData = dataLines.join('\n');
+          if (!eventData) {
+            boundary = buffer.indexOf('\n\n');
+            continue;
+          }
+
+          if (eventType === 'chunk') {
+            let chunk = eventData;
+            try {
+              const parsed = JSON.parse(eventData) as { chunk?: string };
+              if (typeof parsed?.chunk === 'string') {
+                chunk = parsed.chunk;
+              }
+            } catch {
+              // Keep raw chunk when payload is plain text.
+            }
+
+            if (chunk) {
+              fullResponse += chunk;
+              onChunk(chunk);
+            }
+          } else if (eventType === 'error') {
+            let errorMessage = 'Streaming failed on server.';
+            try {
+              const parsed = JSON.parse(eventData) as { detail?: string };
+              if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
+                errorMessage = parsed.detail;
+              }
+            } catch {
+              if (eventData.trim()) errorMessage = eventData.trim();
+            }
+            throw new Error(errorMessage);
+          } else if (eventType === 'end') {
+            return { response: fullResponse };
+          }
+
+          boundary = buffer.indexOf('\n\n');
+        }
+      }
+
+      return { response: fullResponse };
     }
 
-    // Fallback to regular fetch if no streaming callback
-    return apiFetch<ChatResponse>(
+    const result = await apiFetch<ChatResponse>(
       '/api/chat',
       { method: 'POST', body: JSON.stringify({ message, history: history ?? [] }) },
-      AI_RETRY_OPTS,
+      CHAT_RETRY_OPTS,
     );
+
+    return result;
   },
 
   /** AI Math Tutor Chat with fallback */

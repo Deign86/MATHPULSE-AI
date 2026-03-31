@@ -89,7 +89,7 @@
   color: inherit;
 }
 .chat-markdown hr {
-  border-color: var(--border);
+  border-color: rgb(148 163 184 / 0.45);
   margin: 0.75rem 0;
 }
 .chat-markdown table {
