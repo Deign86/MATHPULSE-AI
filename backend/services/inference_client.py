@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import yaml
+from huggingface_hub import InferenceClient as HFInferenceClient
 
 from .logging_utils import configure_structured_logging, log_model_call
 
@@ -218,12 +219,30 @@ class InferenceClient:
                         if str(task).strip() and str(provider).strip()
                     }
 
+        # Override all task model mappings with INFERENCE_MODEL_ID env var if set
+        env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
+        if env_model_id and env_model_id != self.default_model:
+            # Only override if it's different from the default (to distinguish env override from default)
+            original_map = dict(self.task_model_map)
+            for task_key in list(self.task_model_map.keys()):
+                self.task_model_map[task_key] = env_model_id
+            LOGGER.info(
+                f"🔄 INFERENCE_MODEL_ID env var override applied: {env_model_id}"
+            )
+            LOGGER.info(
+                f"   Task model mappings changed from: {original_map}"
+            )
+            env_override_note = " (env override active)"
+        else:
+            env_override_note = ""
+
         # Log configuration loaded for debugging
         config_status = "from file" if config_path else "hardcoded defaults (no config file found)"
-        LOGGER.info(f"InferenceClient initialized {config_status}")
-        LOGGER.info(f"  Chat model: {self.task_model_map.get('chat', self.default_model)}")
-        LOGGER.info(f"  Verify solution model: {self.task_model_map.get('verify_solution', self.default_model)}")
-        LOGGER.info(f"  Full task_model_map: {self.task_model_map}")
+        LOGGER.info(f"✅ InferenceClient initialized {config_status}{env_override_note}")
+        LOGGER.info(f"   Default model: {self.default_model}")
+        LOGGER.info(f"   Chat model: {self.task_model_map.get('chat', self.default_model)}")
+        LOGGER.info(f"   Verify solution model: {self.task_model_map.get('verify_solution', self.default_model)}")
+        LOGGER.info(f"   Full task_model_map: {self.task_model_map}")
 
         self._metrics_started_at = time.time()
         self._metrics_lock = Lock()
@@ -288,10 +307,13 @@ class InferenceClient:
         # Check for explicit model override first, then env var override for chat, then task map, then default
         if req.model:
             selected_model = req.model
+            model_selection_source = "explicit_request"
         elif effective_task == "chat" and self.chat_model_override:
             selected_model = self.chat_model_override
+            model_selection_source = "chat_override_env"
         else:
             selected_model = self.task_model_map.get(effective_task, self.default_model)
+            model_selection_source = "task_map"
         
         model_chain = self._model_chain_for_task(effective_task, selected_model)
         last_error: Optional[Exception] = None
@@ -304,8 +326,20 @@ class InferenceClient:
             if provider_suffix not in provider_chain:
                 provider_chain = [provider_suffix] + provider_chain
         
+        # Determine which endpoint will be used
+        model_base = selected_model.split(":")[0] if ":" in selected_model else selected_model
+        if "qwen" in model_base.lower():
+            endpoint = "featherless-ai"
+        else:
+            endpoint = "hf_inference_router"
+        
         # Log model selection for debugging
-        LOGGER.info(f"request_tag={request_tag} task={effective_task} selected_model={selected_model} model_chain={model_chain} provider_chain={provider_chain}")
+        LOGGER.info(
+            f"🎯 request_tag={request_tag} task={effective_task} source={model_selection_source} "
+            f"selected_model={selected_model} endpoint={endpoint}"
+        )
+        LOGGER.info(f"   model_chain={model_chain}")
+        LOGGER.info(f"   provider_chain={provider_chain}")
 
 
         for fallback_depth, model_name in enumerate(model_chain):
@@ -323,16 +357,16 @@ class InferenceClient:
             
             for provider in provider_chain:
                 try:
-                    return self._generate_with_provider(request_for_model, provider, fallback_depth)
+                    result = self._generate_with_provider(request_for_model, provider, fallback_depth)
+                    if fallback_depth > 0:
+                        LOGGER.info(f"✅ Fallback succeeded at depth={fallback_depth} model={model_name} provider={provider}")
+                    return result
                 except Exception as exc:
                     last_error = exc
+                    fallback_hint = f" (depth {fallback_depth})" if fallback_depth > 0 else ""
                     LOGGER.warning(
-                        "task=%s provider=%s model=%s fallback_depth=%s failed: %s",
-                        request_for_model.task_type,
-                        provider,
-                        model_name,
-                        fallback_depth,
-                        exc,
+                        f"⚠️  Attempt failed{fallback_hint}: task={request_for_model.task_type} "
+                        f"provider={provider} model={model_name} error={exc.__class__.__name__}: {str(exc)[:100]}"
                     )
 
         if last_error:
@@ -407,10 +441,19 @@ class InferenceClient:
         route = self._resolve_route_label(provider, req.task_type)
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        elif provider in ("featherless_api", "featherless-ai"):
+        
+        # Check if this is a Qwen model - use direct HF InferenceClient instead of router
+        target_model = req.model or self.default_model
+        target_model_base = target_model.split(":")[0] if ":" in target_model else target_model
+        if "qwen" in target_model_base.lower():
+            return self._call_hf_inference_direct(req, provider=provider, route=route, fallback_depth=fallback_depth)
+        
+        # For featherless_api provider or other models, use router
+        if provider in ("featherless_api", "featherless-ai"):
             # Send to HF router which handles routing for featherless-ai models
             return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        # Default to HF inference
+        
+        # Default to HF inference router
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -514,6 +557,98 @@ class InferenceClient:
                 time.sleep(backoff_sec * attempt)
                 continue
             return resp, latency_ms, attempt + 1
+
+    def _call_hf_inference_direct(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
+        """
+        Call Qwen and other models via direct HF InferenceClient with featherless-ai provider.
+        This bypasses the router which doesn't support Qwen/Qwen2.5-Math-7B-Instruct.
+        """
+        if not self.hf_token:
+            raise RuntimeError("HF_TOKEN is not set")
+
+        target_model = req.model or self.default_model
+        target_model_base = target_model.split(":")[0] if ":" in target_model else target_model
+        
+        timeout = self._timeout_for(req, provider)
+        start = time.perf_counter()
+        
+        try:
+            # Use HF InferenceClient with featherless-ai provider for Qwen models
+            # This provider is the only one supported for Qwen/Qwen2.5-Math-7B-Instruct
+            client = HFInferenceClient(
+                model=target_model_base,
+                provider="featherless-ai",
+                token=self.hf_token,
+                timeout=timeout
+            )
+            
+            response = client.chat_completion(
+                messages=req.messages,
+                max_tokens=req.max_new_tokens or self.default_max_new_tokens,
+                temperature=req.temperature or self.default_temperature,
+                top_p=req.top_p or self.default_top_p,
+            )
+            latency_ms = (time.perf_counter() - start) * 1000
+            
+            # Extract text from response
+            if hasattr(response, "choices") and response.choices:
+                content = response.choices[0].message.content or ""
+                text = content.strip()
+            else:
+                text = self._extract_text(response)
+            
+            log_model_call(
+                LOGGER,
+                provider="featherless-ai",
+                model=target_model_base,
+                endpoint="featherless-ai",
+                latency_ms=latency_ms,
+                input_tokens=None,
+                output_tokens=None,
+                status="ok",
+                task_type=req.task_type,
+                request_tag=req.request_tag,
+                retry_attempt=1,
+                fallback_depth=fallback_depth,
+                route=route,
+            )
+            self._record_attempt(
+                task_type=req.task_type,
+                provider="featherless-ai",
+                route=route,
+                fallback_depth=fallback_depth,
+            )
+            self._bump_metric("requests_ok", 1)
+            return text
+            
+        except Exception as exc:
+            latency_ms = (time.perf_counter() - start) * 1000
+            self._bump_metric("requests_error", 1)
+            log_model_call(
+                LOGGER,
+                provider="featherless-ai",
+                model=target_model_base,
+                endpoint="featherless-ai",
+                latency_ms=latency_ms,
+                input_tokens=None,
+                output_tokens=None,
+                status="error",
+                error_class=exc.__class__.__name__,
+                error_message=str(exc),
+                task_type=req.task_type,
+                request_tag=req.request_tag,
+                retry_attempt=1,
+                fallback_depth=fallback_depth,
+                route=route,
+            )
+            LOGGER.warning(
+                "task=%s provider=featherless-ai model=%s fallback_depth=%s failed: %s",
+                req.task_type,
+                target_model_base,
+                fallback_depth,
+                exc,
+            )
+            raise
 
     def _call_hf_inference(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         if not self.hf_token:

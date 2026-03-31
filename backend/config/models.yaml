@@ -26,29 +26,34 @@ models:
 
 routing:
   task_model_map:
-    # Primary: meta-llama/Llama-3.1-8B-Instruct (confirmed working on HF router)
-    # Note: Mistral-7B-Instruct-v0.2 not supported by HF inference router
-    chat: meta-llama/Llama-3.1-8B-Instruct
-    verify_solution: meta-llama/Llama-3.1-8B-Instruct
-    lesson_generation: meta-llama/Llama-3.1-8B-Instruct
-    quiz_generation: meta-llama/Llama-3.1-8B-Instruct
-    learning_path: meta-llama/Llama-3.1-8B-Instruct
-    daily_insight: meta-llama/Llama-3.1-8B-Instruct
-    risk_classification: meta-llama/Llama-3.1-8B-Instruct
-    risk_narrative: meta-llama/Llama-3.1-8B-Instruct
+    # Primary: Qwen/Qwen2.5-Math-7B-Instruct (directly accessible via HF serverless TGI)
+    # Fallback chain: meta-llama/Llama-3.1-8B-Instruct (router-compatible)
+    chat: Qwen/Qwen2.5-Math-7B-Instruct
+    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
+    lesson_generation: Qwen/Qwen2.5-Math-7B-Instruct
+    quiz_generation: Qwen/Qwen2.5-Math-7B-Instruct
+    learning_path: Qwen/Qwen2.5-Math-7B-Instruct
+    daily_insight: Qwen/Qwen2.5-Math-7B-Instruct
+    risk_classification: Qwen/Qwen2.5-Math-7B-Instruct
+    risk_narrative: Qwen/Qwen2.5-Math-7B-Instruct
 
   task_fallback_model_map:
     chat:
-      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback
+      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback (router-compatible)
       - google/gemma-2-2b-it                # Secondary fallback
     verify_solution:
-      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback
+      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback (router-compatible)
       - google/gemma-2-2b-it                # Secondary fallback
 
   task_provider_map:
+    # Qwen models use featherless-ai provider (primary)
+    chat: featherless-ai
+    verify_solution: featherless-ai
+    # Local space tasks
     quiz_generation: local_space
     lesson_generation: local_space
     learning_path: local_space
     daily_insight: local_space
     risk_narrative: local_space
+    # Other tasks use HF router
     risk_classification: hf_inference
