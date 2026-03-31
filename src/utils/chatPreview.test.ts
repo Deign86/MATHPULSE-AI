@@ -18,6 +18,18 @@ describe('toChatPreviewText', () => {
     expect(toChatPreviewText(input)).toBe('Answer is x^2 And y = mx + b');
   });
 
+  it('converts bare TeX commands to readable preview text', () => {
+    const input = 'Final Answer: \\boxed{3} and \\frac{1}{2}';
+
+    expect(toChatPreviewText(input)).toBe('Final Answer: 3 and 1/2');
+  });
+
+  it('removes dangling markdown markers when response is malformed', () => {
+    const input = 'Let\'s solve: **Final Answer: 40 boxes';
+
+    expect(toChatPreviewText(input)).toBe("Let's solve: Final Answer: 40 boxes");
+  });
+
   it('limits preview text to 80 characters by default', () => {
     const input = 'a'.repeat(120);
     const output = toChatPreviewText(input);
