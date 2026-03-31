@@ -1,3 +1,5 @@
+import { normalizeChatMarkdownForRender } from './chatMessageFormatting';
+
 const DEFAULT_PREVIEW_MAX_LENGTH = 80;
 
 /**
@@ -8,7 +10,7 @@ export function toChatPreviewText(input: string, maxLength: number = DEFAULT_PRE
     return '';
   }
 
-  const plainText = input
+  const plainText = normalizeChatMarkdownForRender(input)
     // Preserve label text while removing markdown link wrappers.
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
@@ -22,9 +24,18 @@ export function toChatPreviewText(input: string, maxLength: number = DEFAULT_PRE
     .replace(/^\s{0,3}>\s?/gm, '')
     .replace(/^\s{0,3}(?:[-*+]|\d+\.)\s+/gm, '')
     .replace(/^\s{0,3}(?:[-*_]\s?){3,}$/gm, ' ')
+    .replace(/\\boxed\{([^{}]+)\}/g, '$1')
+    .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '$1/$2')
+    .replace(/\\sqrt\{([^{}]+)\}/g, 'sqrt($1)')
+    .replace(/\\(?:cdot|times)/g, '*')
+    .replace(/\\(alpha|beta|gamma|delta|theta|pi|sum|int|pm|mp|leq|geq|neq|approx)\b/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/_([^_\n]+)_/g, '$1')
     .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\*{2,}|_{2,}|~{2,}/g, '')
+    .replace(/`+/g, '')
     .replace(/\|/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

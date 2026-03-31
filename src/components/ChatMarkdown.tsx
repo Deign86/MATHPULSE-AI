@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { normalizeChatMarkdownForRender } from '../utils/chatMessageFormatting';
 
 /**
  * ChatMarkdown — Markdown → React renderer for AI chat messages with LaTeX math support.
@@ -31,6 +32,8 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
   if (!children || typeof children !== 'string') {
     return null;
   }
+
+  const normalizedMarkdown = normalizeChatMarkdownForRender(children);
 
   return (
     <div className="chat-markdown">
@@ -91,7 +94,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
           p: ({ children }) => <p className="my-1">{children}</p>,
         }}
       >
-        {children}
+        {normalizedMarkdown}
       </ReactMarkdown>
     </div>
   );
