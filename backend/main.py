@@ -1546,6 +1546,7 @@ async def call_hf_chat_stream_async(
 
                         if response.status_code in retryable_status and attempt < max_retries:
                             body = await response.aread()
+                            body_preview = body[:220].decode("utf-8", errors="replace")
                             latency_ms = (time.perf_counter() - start) * 1000
                             log_model_call(
                                 logger,
@@ -1557,7 +1558,7 @@ async def call_hf_chat_stream_async(
                                 output_tokens=None,
                                 status="error",
                                 error_class="HTTPRetry",
-                                error_message=f"status={response.status_code} body={body[:220]}",
+                                error_message=f"status={response.status_code} body={body_preview}",
                                 task_type=effective_task,
                                 request_tag=request_tag,
                                 retry_attempt=attempt,
@@ -1570,9 +1571,10 @@ async def call_hf_chat_stream_async(
 
                         if response.status_code != 200:
                             body = await response.aread()
+                            body_preview = body[:280].decode("utf-8", errors="replace")
                             client._bump_metric("requests_error", 1)
                             raise RuntimeError(
-                                f"HF stream error {response.status_code}: {body[:280]}"
+                                f"HF stream error {response.status_code}: {body_preview}"
                             )
 
                         emitted_any = False
