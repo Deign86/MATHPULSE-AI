@@ -189,37 +189,22 @@ def main():
     )
     print("Uploaded: README.md (normalized Space metadata)")
 
-# Ensure backend routes can call the frontend ZeroGPU Space endpoint.
-    api.add_space_variable(
-        repo_id=SPACE_ID,
-        key="INFERENCE_LOCAL_SPACE_URL",
-        value=args.local_space_url,
-    )
-    
-    # Set HF inference routing configuration
-    api.add_space_variable(
-        repo_id=SPACE_ID,
-        key="INFERENCE_PROVIDER",
-        value="hf_inference",
-    )
-    api.add_space_variable(
-        repo_id=SPACE_ID,
-        key="INFERENCE_HF_BASE_URL",
-        value="https://router.huggingface.co/hf-inference/models",
-    )
-    api.add_space_variable(
-        repo_id=SPACE_ID,
-        key="INFERENCE_HF_CHAT_URL",
-        value="https://router.huggingface.co/v1/chat/completions",
-    )
-    # Note: INFERENCE_MODEL_ID and INFERENCE_CHAT_MODEL_ID are NOT set here
-    # Instead, config/models.yaml provides task-specific models with :provider syntax
-    # Setting env vars would override config and strip the provider suffix
-    
-    print(f"✅ Set Space variables:")
-    print(f"   - INFERENCE_LOCAL_SPACE_URL={args.local_space_url}")
-    print(f"   - INFERENCE_PROVIDER=hf_inference")
-    print(f"   - Models configured via config/models.yaml with :featherless-ai provider routing")
+    # ⚠️  Only set critical variables once, avoid repeated space variable updates
+    # which trigger unnecessary restarts. Config is now loaded from config/models.yaml.
+    try:
+        api.add_space_variable(
+            repo_id=SPACE_ID,
+            key="INFERENCE_LOCAL_SPACE_URL",
+            value=args.local_space_url,
+        )
+        api.add_space_variable(
+            repo_id=SPACE_ID,
+            key="INFERENCE_PROVIDER",
+            value="hf_inference",
+        )
+        print(f"✅ Space variables updated (runtime will auto-restart once)")
+    except Exception as e:
+        print(f"⚠️  Space variable update skipped: {e}")
     
     # ⚠️  HF_TOKEN should NEVER be set as a Space VARIABLE (public/exposed).
     # Use set-hf-secrets.py to set it as a proper SECRET instead.
@@ -227,11 +212,10 @@ def main():
     print(f"   Use: python set-hf-secrets.py --hf-token YOUR_TOKEN --hf-secret YOUR_HF_TOKEN_VALUE")
 
     if not args.skip_restart:
-        print("\n⏳ Restarting Space runtime (may take 30-60 seconds)...")
-        api.restart_space(repo_id=SPACE_ID)
-        print("✅ Restart initiated.")
-
-    _wait_for_runtime(api, SPACE_ID, args.wait_timeout_sec)
+        print("\n⏳ Waiting for Space runtime to stabilize...")
+        time.sleep(5)  # Give Space time to auto-restart from variable update
+    
+    _wait_for_runtime(api, SPACE_ID, args.wait_timeout_sec if not args.skip_restart else 0)
 
     print(f"\n✅ Deployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")
