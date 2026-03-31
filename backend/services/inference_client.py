@@ -156,26 +156,24 @@ class InferenceClient:
         )
         self.interactive_tasks = {v.strip().lower() for v in interactive_tasks_raw.split(",") if v.strip()}
 
-        # Default task-to-model routing with provider suffixes for Featherless AI
+        # Default task-to-model routing (HF inference router for Qwen2.5-7B-Instruct)
         self.task_model_map: Dict[str, str] = {
-            "chat": "Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai",
-            "verify_solution": "Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai",
-            "lesson_generation": "Qwen/Qwen3.5-9B:featherless-ai",
-            "quiz_generation": "Qwen/Qwen3.5-9B:featherless-ai",
-            "learning_path": "Qwen/Qwen3.5-9B:featherless-ai",
+            "chat": "Qwen/Qwen2.5-7B-Instruct",
+            "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
+            "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
+            "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
+            "learning_path": "Qwen/Qwen2.5-7B-Instruct",
             "daily_insight": self.default_model,
             "risk_classification": self.default_model,
             "risk_narrative": self.default_model,
         }
-        # Fallback chains with provider routing
+        # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
             "chat": [
-                "Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai",
                 "meta-llama/Llama-3.1-8B-Instruct",
                 "google/gemma-2-2b-it",
             ],
             "verify_solution": [
-                "Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai",
                 "meta-llama/Llama-3.1-8B-Instruct",
                 "google/gemma-2-2b-it",
             ],
@@ -319,27 +317,15 @@ class InferenceClient:
         last_error: Optional[Exception] = None
         provider_chain = self._provider_chain_for_task(req.task_type)
         
-        # Extract provider from model string if it has model:provider format (e.g., model:featherless-ai)
-        if ":" in selected_model:
-            model_base, provider_suffix = selected_model.rsplit(":", 1)
-            # Inject extracted provider at front of chain
-            if provider_suffix not in provider_chain:
-                provider_chain = [provider_suffix] + provider_chain
-        
-        # Determine which endpoint will be used
+        # Normalize model name (remove any provider suffix since we use hf_inference router)
         model_base = selected_model.split(":")[0] if ":" in selected_model else selected_model
-        if "qwen" in model_base.lower():
-            endpoint = "featherless-ai"
-        else:
-            endpoint = "hf_inference_router"
         
-        # Log model selection for debugging
+        # Log model selection for debugging - confirm which model will actually be used
         LOGGER.info(
             f"🎯 request_tag={request_tag} task={effective_task} source={model_selection_source} "
-            f"selected_model={selected_model} endpoint={endpoint}"
+            f"selected_model={model_base} (primary) provider_chain={provider_chain}"
         )
-        LOGGER.info(f"   model_chain={model_chain}")
-        LOGGER.info(f"   provider_chain={provider_chain}")
+        LOGGER.info(f"   fallback_chain={model_chain[1:] if len(model_chain) > 1 else 'none'}")
 
 
         for fallback_depth, model_name in enumerate(model_chain):
@@ -442,17 +428,7 @@ class InferenceClient:
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
-        # Check if this is a Qwen model - route to featherless-ai provider
-        target_model = req.model or self.default_model
-        target_model_base = target_model.split(":")[0] if ":" in target_model else target_model
-        if "qwen" in target_model_base.lower() and provider == "featherless-ai":
-            return self._call_hf_inference_direct(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        
-        # For featherless_api or other featherless routing, use direct client
-        if provider in ("featherless_api", "featherless-ai"):
-            return self._call_hf_inference_direct(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        
-        # Default to HF inference router for meta-llama and other models
+        # All models use HF inference router directly (including Qwen/Qwen2.5-7B-Instruct)
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -559,7 +535,7 @@ class InferenceClient:
 
     def _call_hf_inference_direct(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         """
-        Call Qwen models via Featherless AI provider (the only provider serving Qwen/Qwen2.5-Math-7B-Instruct).
+        Call Qwen models via Featherless AI provider (the only provider serving Qwen/Qwen2.5-7B-Instruct).
         Uses HF InferenceClient with provider="featherless-ai" for direct model access.
         """
         if not self.hf_token:
@@ -573,7 +549,7 @@ class InferenceClient:
         
         try:
             # Use HF InferenceClient with featherless-ai provider for Qwen models
-            # This is the only provider that supports Qwen/Qwen2.5-Math-7B-Instruct
+            # This is the only provider that supports Qwen/Qwen2.5-7B-Instruct
             client = HFInferenceClient(
                 model=target_model_base,
                 token=self.hf_token,
@@ -657,6 +633,13 @@ class InferenceClient:
         chat_model = target_model if ":" in target_model else f"{target_model}:fastest"
         url = self.hf_chat_url
 
+        # Log which model is actually being used
+        model_base = target_model.split(":")[0] if ":" in target_model else target_model
+        LOGGER.debug(
+            f"📌 Calling HF inference: task={req.task_type} model={model_base} "
+            f"route={route} depth={fallback_depth}"
+        )
+
         payload: Dict[str, object] = {
             "model": chat_model,
             "messages": req.messages,
@@ -694,6 +677,13 @@ class InferenceClient:
 
         data = resp.json()
         text = self._extract_text(data)
+        
+        # Log successful inference with actual model and response time
+        LOGGER.info(
+            f"✅ HF inference success: task={req.task_type} model={model_base} "
+            f"latency={latency_ms:.0f}ms tokens_out={len(text.split())}"
+        )
+        
         log_model_call(
             LOGGER,
             provider=provider,
@@ -848,35 +838,64 @@ class InferenceClient:
         return text
 
     def _extract_text(self, data: object) -> str:
+        """Extract clean text from inference response, stripping JSON artifacts."""
         if isinstance(data, list) and data:
             first = data[0]
             if isinstance(first, dict):
                 val = (first.get("generated_text") or "").strip()
                 if val:
-                    return val
+                    return self._clean_response_text(val)
 
         if isinstance(data, dict):
             direct = (data.get("generated_text") or "").strip()
             if direct:
-                return direct
+                return self._clean_response_text(direct)
 
             choices = data.get("choices", [])
             if choices:
                 message = choices[0].get("message", {})
                 msg = (message.get("content") or "").strip()
                 if msg:
-                    return msg
+                    return self._clean_response_text(msg)
                 reasoning = (message.get("reasoning") or "").strip()
                 if reasoning:
-                    return reasoning
+                    return self._clean_response_text(reasoning)
 
             generic_data = data.get("data")
             if isinstance(generic_data, list) and generic_data:
                 first = generic_data[0]
                 if isinstance(first, str) and first.strip():
-                    return first.strip()
+                    return self._clean_response_text(first.strip())
 
         raise RuntimeError(f"Unexpected inference response format: {data}")
+
+    def _clean_response_text(self, text: str) -> str:
+        """Strip JSON braces, template artifacts, and whitespace from response text."""
+        # Strip leading/trailing whitespace
+        text = text.strip()
+        
+        # Remove wrapping JSON braces or artifact markers
+        if text.startswith("{") and text.endswith("}"):
+            try:
+                # Try to parse as JSON - if it fails, return as-is
+                parsed = json.loads(text)
+                # If it's a dict with a "content" or "text" field, use that
+                if isinstance(parsed, dict):
+                    if "content" in parsed:
+                        text = str(parsed["content"]).strip()
+                    elif "text" in parsed:
+                        text = str(parsed["text"]).strip()
+            except json.JSONDecodeError:
+                # Not valid JSON, just clean up braces
+                text = text.strip("{}")
+        
+        # Remove any trailing artifact markers
+        if text.startswith("```json") or text.startswith("```"):
+            text = re.sub(r"^```(?:json)?", "", text).strip()
+        if text.endswith("```"):
+            text = text[:-3].strip()
+        
+        return text.strip()
 
 
 def create_default_client() -> InferenceClient:
