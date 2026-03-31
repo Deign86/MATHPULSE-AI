@@ -76,7 +76,8 @@ def validate_environment() -> None:
     # CRITICAL: HF_TOKEN for inference
     hf_token = os.environ.get("HF_TOKEN")
     api_key = os.environ.get("HUGGING_FACE_API_TOKEN")
-    if not hf_token and not api_key:
+    legacy_api_key = os.environ.get("HUGGINGFACE_API_TOKEN")
+    if not hf_token and not api_key and not legacy_api_key:
         logger.warning(
             "⚠  WARNING: HF_TOKEN is not set as an environment variable.\n"
             "   On HF Spaces, this should be set as a SPACE SECRET.\n"
@@ -84,7 +85,7 @@ def validate_environment() -> None:
             "   Use: python set-hf-secrets.py to set the secret."
         )
     else:
-        logger.info("   ✓ HF_TOKEN/HUGGING_FACE_API_TOKEN is set")
+        logger.info("   ✓ HF_TOKEN/HUGGING_FACE_API_TOKEN/HUGGINGFACE_API_TOKEN is set")
     
     # Check inference provider config
     inference_provider = os.getenv("INFERENCE_PROVIDER", "hf_inference")

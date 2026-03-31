@@ -21,7 +21,8 @@ import hashlib
 import logging
 import traceback
 import urllib.parse
-from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, cast
+import random
+from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, cast
 from collections import Counter, defaultdict
 from threading import Lock
 
@@ -56,8 +57,10 @@ from datetime import datetime, timezone, timedelta
 import tempfile
 import subprocess
 import requests as http_requests
+import httpx
 import uvicorn
 from services.inference_client import InferenceRequest, create_default_client
+from services.logging_utils import log_model_call
 
 try:
     import firebase_admin  # type: ignore[import-not-found]
@@ -157,7 +160,10 @@ def get_inference_client():
                 logger.info("✅ InferenceClient initialized")
     return _inference_client
 
-HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGING_FACE_API_TOKEN", ""))
+HF_TOKEN = os.environ.get(
+    "HF_TOKEN",
+    os.environ.get("HUGGING_FACE_API_TOKEN", os.environ.get("HUGGINGFACE_API_TOKEN", "")),
+)
 
 # Grade 11-12 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
 HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
@@ -165,8 +171,8 @@ HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
 
-# Dedicated quiz model override.
-HF_QUIZ_MODEL_ID = os.getenv("HF_QUIZ_MODEL_ID", "Qwen/Qwen3.5-9B")
+# Dedicated quiz model override. When empty, routing.task_model_map decides quiz model.
+HF_QUIZ_MODEL_ID = (os.getenv("HF_QUIZ_MODEL_ID", "").strip() or None)
 HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
 
 RISK_MODEL = "facebook/bart-large-mnli"
@@ -312,6 +318,11 @@ async def startup_event():
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    await _close_hf_async_http_client()
 
 
 class AuthenticatedUser(BaseModel):
@@ -1142,6 +1153,519 @@ def call_hf_chat_stream(
     raise last_error or RuntimeError("Streaming failed with empty model/provider chain")
 
 
+HF_BLOCKING_CALL_CONCURRENCY = max(1, int(os.getenv("HF_BLOCKING_CALL_CONCURRENCY", "16")))
+_hf_call_semaphore: Optional[asyncio.Semaphore] = None
+_hf_call_semaphore_loop: Optional[asyncio.AbstractEventLoop] = None
+HF_ASYNC_MAX_CONNECTIONS = max(4, int(os.getenv("HF_ASYNC_MAX_CONNECTIONS", "64")))
+HF_ASYNC_MAX_KEEPALIVE_CONNECTIONS = max(
+    2,
+    int(os.getenv("HF_ASYNC_MAX_KEEPALIVE_CONNECTIONS", "32")),
+)
+HF_ASYNC_CONNECT_TIMEOUT_SEC = float(os.getenv("HF_ASYNC_CONNECT_TIMEOUT_SEC", "10.0"))
+HF_ASYNC_WRITE_TIMEOUT_SEC = float(os.getenv("HF_ASYNC_WRITE_TIMEOUT_SEC", "30.0"))
+HF_ASYNC_POOL_TIMEOUT_SEC = float(os.getenv("HF_ASYNC_POOL_TIMEOUT_SEC", "10.0"))
+_hf_async_http_client: Optional[httpx.AsyncClient] = None
+_hf_async_http_client_lock: Optional[asyncio.Lock] = None
+_hf_async_http_client_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def _get_hf_async_http_client_lock() -> asyncio.Lock:
+    global _hf_async_http_client, _hf_async_http_client_lock, _hf_async_http_client_loop
+    loop = asyncio.get_running_loop()
+    if _hf_async_http_client_lock is None or _hf_async_http_client_loop is not loop:
+        # Test environments can spin up multiple event loops; reset pooled client per loop.
+        _hf_async_http_client = None
+        _hf_async_http_client_lock = asyncio.Lock()
+        _hf_async_http_client_loop = loop
+    return _hf_async_http_client_lock
+
+
+async def _get_hf_async_http_client() -> httpx.AsyncClient:
+    global _hf_async_http_client
+    lock = _get_hf_async_http_client_lock()
+    async with lock:
+        if _hf_async_http_client is None or _hf_async_http_client.is_closed:
+            limits = httpx.Limits(
+                max_connections=HF_ASYNC_MAX_CONNECTIONS,
+                max_keepalive_connections=HF_ASYNC_MAX_KEEPALIVE_CONNECTIONS,
+            )
+            _hf_async_http_client = httpx.AsyncClient(http2=True, limits=limits)
+    assert _hf_async_http_client is not None
+    return _hf_async_http_client
+
+
+async def _close_hf_async_http_client() -> None:
+    global _hf_async_http_client
+    lock = _get_hf_async_http_client_lock()
+    async with lock:
+        if _hf_async_http_client is not None:
+            await _hf_async_http_client.aclose()
+            _hf_async_http_client = None
+
+
+def _get_hf_call_semaphore() -> asyncio.Semaphore:
+    global _hf_call_semaphore, _hf_call_semaphore_loop
+    loop = asyncio.get_running_loop()
+    if _hf_call_semaphore is None or _hf_call_semaphore_loop is not loop:
+        _hf_call_semaphore = asyncio.Semaphore(HF_BLOCKING_CALL_CONCURRENCY)
+        _hf_call_semaphore_loop = loop
+    return _hf_call_semaphore
+
+
+async def _run_hf_blocking(func, /, *args, **kwargs):
+    semaphore = _get_hf_call_semaphore()
+    async with semaphore:
+        return await asyncio.to_thread(func, *args, **kwargs)
+
+
+def _hf_retry_sleep_seconds(backoff_sec: float, attempt: int) -> float:
+    jitter_factor = random.uniform(0.9, 1.2)
+    return backoff_sec * attempt * jitter_factor
+
+
+def _resolve_async_hf_timeout(timeout_sec: int) -> httpx.Timeout:
+    return httpx.Timeout(
+        connect=HF_ASYNC_CONNECT_TIMEOUT_SEC,
+        read=float(timeout_sec),
+        write=HF_ASYNC_WRITE_TIMEOUT_SEC,
+        pool=HF_ASYNC_POOL_TIMEOUT_SEC,
+    )
+
+
+async def call_hf_chat_async(
+    messages: List[Dict[str, str]],
+    *,
+    max_tokens: int = 2048,
+    temperature: float = 0.2,
+    top_p: float = 0.9,
+    repetition_penalty: float = 1.15,
+    model: Optional[str] = None,
+    task_type: str = "default",
+    timeout: Optional[int] = None,
+) -> str:
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return await _run_hf_blocking(
+            call_hf_chat,
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            model=model,
+            task_type=task_type,
+            timeout=timeout,
+        )
+
+    client = get_inference_client()
+    effective_task = (task_type or "default").strip().lower()
+    request_tag = f"{effective_task}-async-{int(time.time() * 1000)}"
+
+    selection_req = InferenceRequest(
+        messages=messages,
+        model=model,
+        task_type=task_type,
+        request_tag=request_tag,
+        max_new_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+        timeout_sec=timeout,
+    )
+    selected_model, _ = client._resolve_primary_model(selection_req)
+    model_chain = client._model_chain_for_task(effective_task, selected_model)
+    provider_chain = client._provider_chain_for_task(effective_task)
+    last_error: Optional[Exception] = None
+    retryable_status = {408, 429, 500, 502, 503, 504}
+
+    for fallback_depth, model_name in enumerate(model_chain):
+        request_for_model = InferenceRequest(
+            messages=messages,
+            model=model_name,
+            task_type=task_type,
+            request_tag=request_tag,
+            max_new_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            timeout_sec=timeout,
+        )
+        for provider in provider_chain:
+            route = client._resolve_route_label(provider, effective_task)
+            if provider == "local_space":
+                try:
+                    text = await _run_hf_blocking(
+                        client._generate_with_provider,
+                        request_for_model,
+                        provider,
+                        fallback_depth,
+                    )
+                    return _strip_repetition(text)
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning(
+                        "⚠️ Async local fallback failed: task=%s model=%s depth=%s error=%s",
+                        effective_task,
+                        model_name,
+                        fallback_depth,
+                        str(exc)[:180],
+                    )
+                    continue
+
+            stream_model = model_name if ":" in model_name else f"{model_name}:fastest"
+            timeout_sec = client._timeout_for(request_for_model, provider)
+            max_retries, backoff_sec = client._retry_profile(effective_task)
+            headers = {
+                "Authorization": f"Bearer {client.hf_token}",
+                "Content-Type": "application/json",
+                "X-MathPulse-Task": effective_task,
+            }
+            if route == "pro-priority" and client.pro_route_header_name.strip():
+                headers[client.pro_route_header_name.strip()] = client.pro_route_header_value
+
+            payload: Dict[str, object] = {
+                "model": stream_model,
+                "messages": messages,
+                "stream": False,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            }
+
+            async_client = await _get_hf_async_http_client()
+            for attempt in range(1, max_retries + 1):
+                start = time.perf_counter()
+                client._record_attempt(
+                    task_type=effective_task,
+                    provider=provider,
+                    route=route,
+                    fallback_depth=fallback_depth,
+                )
+                try:
+                    response = await async_client.post(
+                        client.hf_chat_url,
+                        headers=headers,
+                        json=payload,
+                        timeout=_resolve_async_hf_timeout(timeout_sec),
+                    )
+                    latency_ms = (time.perf_counter() - start) * 1000
+                    client._bump_bucket("status_code_counts", str(response.status_code), 1)
+
+                    if response.status_code in retryable_status and attempt < max_retries:
+                        log_model_call(
+                            logger,
+                            provider=provider,
+                            model=model_name,
+                            endpoint=client.hf_chat_url,
+                            latency_ms=latency_ms,
+                            input_tokens=None,
+                            output_tokens=None,
+                            status="error",
+                            error_class="HTTPRetry",
+                            error_message=f"status={response.status_code}",
+                            task_type=effective_task,
+                            request_tag=request_tag,
+                            retry_attempt=attempt,
+                            fallback_depth=fallback_depth,
+                            route=route,
+                        )
+                        client._bump_metric("retries_total", 1)
+                        await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
+                        continue
+
+                    if response.status_code != 200:
+                        client._bump_metric("requests_error", 1)
+                        raise RuntimeError(
+                            f"HF inference error {response.status_code}: {response.text[:280]}"
+                        )
+
+                    data = response.json()
+                    text = client._extract_text(data)
+                    log_model_call(
+                        logger,
+                        provider=provider,
+                        model=model_name,
+                        endpoint=client.hf_chat_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="ok",
+                        task_type=effective_task,
+                        request_tag=request_tag,
+                        retry_attempt=attempt,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    client._bump_metric("requests_ok", 1)
+                    return _strip_repetition(text)
+                except Exception as exc:
+                    latency_ms = (time.perf_counter() - start) * 1000
+                    last_error = exc
+                    if attempt < max_retries:
+                        log_model_call(
+                            logger,
+                            provider=provider,
+                            model=model_name,
+                            endpoint=client.hf_chat_url,
+                            latency_ms=latency_ms,
+                            input_tokens=None,
+                            output_tokens=None,
+                            status="error",
+                            error_class=exc.__class__.__name__,
+                            error_message=str(exc),
+                            task_type=effective_task,
+                            request_tag=request_tag,
+                            retry_attempt=attempt,
+                            fallback_depth=fallback_depth,
+                            route=route,
+                        )
+                        client._bump_metric("retries_total", 1)
+                        await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
+                        continue
+
+                    client._bump_metric("requests_error", 1)
+                    logger.warning(
+                        "⚠️ Async HF attempt failed: task=%s provider=%s model=%s depth=%s error=%s",
+                        effective_task,
+                        provider,
+                        model_name,
+                        fallback_depth,
+                        str(exc)[:180],
+                    )
+
+    raise last_error or RuntimeError("Inference failed with empty model/provider chain")
+
+
+async def call_hf_chat_stream_async(
+    messages: List[Dict[str, str]],
+    *,
+    max_tokens: int = 512,
+    temperature: float = 0.3,
+    top_p: float = 0.85,
+    model: Optional[str] = None,
+    task_type: str = "chat",
+    timeout: Optional[int] = None,
+) -> AsyncIterator[str]:
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        stream_iter = call_hf_chat_stream(
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            model=model,
+            task_type=task_type,
+            timeout=timeout,
+        )
+        done = object()
+
+        def _next_chunk():
+            return next(stream_iter, done)
+
+        while True:
+            chunk = await _run_hf_blocking(_next_chunk)
+            if chunk is done:
+                return
+            if chunk:
+                yield str(chunk)
+
+    client = get_inference_client()
+    effective_task = (task_type or "chat").strip().lower()
+    request_tag = f"{effective_task}-stream-async-{int(time.time() * 1000)}"
+
+    selection_req = InferenceRequest(
+        messages=messages,
+        model=model,
+        task_type=task_type,
+        request_tag=request_tag,
+        max_new_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        timeout_sec=timeout,
+    )
+    selected_model, _ = client._resolve_primary_model(selection_req)
+    model_chain = client._model_chain_for_task(effective_task, selected_model)
+    provider_chain = client._provider_chain_for_task(effective_task)
+    last_error: Optional[Exception] = None
+    retryable_status = {408, 429, 500, 502, 503, 504}
+
+    for fallback_depth, model_name in enumerate(model_chain):
+        request_for_model = InferenceRequest(
+            messages=messages,
+            model=model_name,
+            task_type=task_type,
+            request_tag=request_tag,
+            max_new_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            timeout_sec=timeout,
+        )
+        for provider in provider_chain:
+            if provider == "local_space":
+                last_error = RuntimeError("Streaming is not supported for local_space provider")
+                continue
+
+            route = client._resolve_route_label(provider, effective_task)
+            stream_model = model_name if ":" in model_name else f"{model_name}:fastest"
+            timeout_sec = client._timeout_for(request_for_model, provider)
+            max_retries, backoff_sec = client._retry_profile(effective_task)
+
+            headers = {
+                "Authorization": f"Bearer {client.hf_token}",
+                "Content-Type": "application/json",
+                "X-MathPulse-Task": effective_task,
+            }
+            if route == "pro-priority" and client.pro_route_header_name.strip():
+                headers[client.pro_route_header_name.strip()] = client.pro_route_header_value
+
+            payload: Dict[str, object] = {
+                "model": stream_model,
+                "messages": messages,
+                "stream": True,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            }
+
+            async_client = await _get_hf_async_http_client()
+            for attempt in range(1, max_retries + 1):
+                start = time.perf_counter()
+                client._record_attempt(
+                    task_type=effective_task,
+                    provider=provider,
+                    route=route,
+                    fallback_depth=fallback_depth,
+                )
+                try:
+                    async with async_client.stream(
+                        "POST",
+                        client.hf_chat_url,
+                        headers=headers,
+                        json=payload,
+                        timeout=_resolve_async_hf_timeout(timeout_sec),
+                    ) as response:
+                        client._bump_bucket("status_code_counts", str(response.status_code), 1)
+
+                        if response.status_code in retryable_status and attempt < max_retries:
+                            body = await response.aread()
+                            latency_ms = (time.perf_counter() - start) * 1000
+                            log_model_call(
+                                logger,
+                                provider=provider,
+                                model=model_name,
+                                endpoint=client.hf_chat_url,
+                                latency_ms=latency_ms,
+                                input_tokens=None,
+                                output_tokens=None,
+                                status="error",
+                                error_class="HTTPRetry",
+                                error_message=f"status={response.status_code} body={body[:220]}",
+                                task_type=effective_task,
+                                request_tag=request_tag,
+                                retry_attempt=attempt,
+                                fallback_depth=fallback_depth,
+                                route=route,
+                            )
+                            client._bump_metric("retries_total", 1)
+                            await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
+                            continue
+
+                        if response.status_code != 200:
+                            body = await response.aread()
+                            client._bump_metric("requests_error", 1)
+                            raise RuntimeError(
+                                f"HF stream error {response.status_code}: {body[:280]}"
+                            )
+
+                        emitted_any = False
+                        async for raw_line in response.aiter_lines():
+                            if not raw_line:
+                                continue
+                            line = raw_line.strip()
+                            if not line.startswith("data:"):
+                                continue
+
+                            data_raw = line.split("data:", 1)[1].strip()
+                            if data_raw == "[DONE]":
+                                continue
+
+                            try:
+                                payload_obj = json.loads(data_raw)
+                            except json.JSONDecodeError:
+                                continue
+
+                            choices = payload_obj.get("choices") or []
+                            if not choices:
+                                continue
+                            first = choices[0] if isinstance(choices[0], dict) else {}
+                            delta = first.get("delta") or {}
+                            chunk = delta.get("content")
+                            if not chunk:
+                                msg = first.get("message") or {}
+                                chunk = msg.get("content")
+                            if not chunk:
+                                continue
+
+                            emitted_any = True
+                            yield str(chunk)
+
+                        if emitted_any:
+                            latency_ms = (time.perf_counter() - start) * 1000
+                            log_model_call(
+                                logger,
+                                provider=provider,
+                                model=model_name,
+                                endpoint=client.hf_chat_url,
+                                latency_ms=latency_ms,
+                                input_tokens=None,
+                                output_tokens=None,
+                                status="ok",
+                                task_type=effective_task,
+                                request_tag=request_tag,
+                                retry_attempt=attempt,
+                                fallback_depth=fallback_depth,
+                                route=route,
+                            )
+                            client._bump_metric("requests_ok", 1)
+                            return
+
+                        raise RuntimeError("HF stream ended without content")
+                except Exception as exc:
+                    latency_ms = (time.perf_counter() - start) * 1000
+                    last_error = exc
+                    if attempt < max_retries:
+                        log_model_call(
+                            logger,
+                            provider=provider,
+                            model=model_name,
+                            endpoint=client.hf_chat_url,
+                            latency_ms=latency_ms,
+                            input_tokens=None,
+                            output_tokens=None,
+                            status="error",
+                            error_class=exc.__class__.__name__,
+                            error_message=str(exc),
+                            task_type=effective_task,
+                            request_tag=request_tag,
+                            retry_attempt=attempt,
+                            fallback_depth=fallback_depth,
+                            route=route,
+                        )
+                        client._bump_metric("retries_total", 1)
+                        await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
+                        continue
+
+                    client._bump_metric("requests_error", 1)
+                    logger.warning(
+                        "⚠️ Async stream attempt failed: task=%s provider=%s model=%s depth=%s error=%s",
+                        effective_task,
+                        provider,
+                        model_name,
+                        fallback_depth,
+                        str(exc)[:180],
+                    )
+
+    raise last_error or RuntimeError("Streaming failed with empty model/provider chain")
+
+
 def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
     """Optional local loader for environments using Transformers instead of HF Inference API."""
     from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore[import-not-found]
@@ -1354,7 +1878,7 @@ async def chat_tutor(request: ChatRequest):
 
         # Call HF serverless with retry (handled inside call_hf_chat)
         try:
-            answer = call_hf_chat(
+            answer = await call_hf_chat_async(
                 messages,
                 max_tokens=CHAT_MAX_NEW_TOKENS,
                 temperature=0.3,
@@ -1404,7 +1928,7 @@ async def chat_tutor_stream(request: ChatRequest):
 
         async def event_generator():
             try:
-                for chunk in call_hf_chat_stream(
+                async for chunk in call_hf_chat_stream_async(
                     messages,
                     max_tokens=CHAT_MAX_NEW_TOKENS,
                     temperature=0.3,
@@ -1476,7 +2000,13 @@ async def verify_math_response(
 
     for i in range(VERIFICATION_SAMPLES):
         try:
-            text = call_hf_chat(base_messages, max_tokens=2048, temperature=0.7, top_p=0.9, task_type="verify_solution")
+            text = await call_hf_chat_async(
+                base_messages,
+                max_tokens=2048,
+                temperature=0.7,
+                top_p=0.9,
+                task_type="verify_solution",
+            )
             responses.append(text)
             answers.append(_extract_final_answer(text))
             logger.info(f"  Sample {i+1} answer: {answers[-1]}")
@@ -1555,7 +2085,7 @@ Rules:
 Respond with ONLY the Python code, no markdown fences, no explanation."""
 
     try:
-        raw_code = call_hf_chat(
+        raw_code = await call_hf_chat_async(
             messages=[
                 {
                     "role": "system",
@@ -1758,7 +2288,7 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
 }}"""
 
     try:
-        raw = call_hf_chat(
+        raw = await call_hf_chat_async(
             messages=[
                 {
                     "role": "system",
@@ -1969,7 +2499,7 @@ def _parse_recommendation_lines(text: str, *, max_items: int = 5) -> List[str]:
     return deduped
 
 
-def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: EnhancedRiskPrediction) -> List[str]:
+async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: EnhancedRiskPrediction) -> List[str]:
     prompt = (
         "Generate concise teacher interventions for this student risk profile. "
         "Return plain text with one recommendation per line. Avoid JSON and markdown.\n\n"
@@ -1984,7 +2514,7 @@ def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: Enhanc
         f"top_factors: {', '.join(result.top_factors)}"
     )
 
-    content = call_hf_chat(
+    content = await call_hf_chat_async(
         messages=[
             {
                 "role": "system",
@@ -2023,7 +2553,8 @@ async def predict_risk(student_data: StudentRiskData):
         last_err: Optional[Exception] = None
         for attempt in range(3):
             try:
-                result = hf.zero_shot_classification(
+                result = await _run_hf_blocking(
+                    hf.zero_shot_classification,
                     text=text,
                     candidate_labels=RISK_LABELS,
                     model=RISK_MODEL,
@@ -2123,7 +2654,12 @@ Format as a numbered list. Be specific to the math topics mentioned."""
         ]
 
         try:
-            content = call_hf_chat(messages, max_tokens=1500, temperature=0.7, task_type="learning_path")
+            content = await call_hf_chat_async(
+                messages,
+                max_tokens=1500,
+                temperature=0.7,
+                task_type="learning_path",
+            )
         except Exception as hf_err:
             logger.error(f"HF learning-path failed: {hf_err}")
             raise HTTPException(
@@ -2185,7 +2721,12 @@ Keep the response under 200 words. Be specific and practical."""
         ]
 
         try:
-            content = call_hf_chat(messages, max_tokens=800, temperature=0.7, task_type="daily_insight")
+            content = await call_hf_chat_async(
+                messages,
+                max_tokens=800,
+                temperature=0.7,
+                task_type="daily_insight",
+            )
         except Exception as hf_err:
             logger.error(f"HF daily-insight failed: {hf_err}")
             raise HTTPException(
@@ -3568,7 +4109,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
 
                 mapping_text = ""
                 try:
-                    mapping_text = call_hf_chat(
+                    mapping_text = await call_hf_chat_async(
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=300,
                         temperature=0.1,
@@ -4351,7 +4892,7 @@ TEXT:
 
                 extracted_topics: List[Dict[str, Any]] = []
                 try:
-                    topic_text = call_hf_chat(
+                    topic_text = await call_hf_chat_async(
                         messages=[{"role": "user", "content": topic_prompt}],
                         max_tokens=700,
                         temperature=0.1,
@@ -5315,7 +5856,7 @@ def _deterministic_lesson_checks(
     }
 
 
-def _ai_validate_lesson_plan(
+async def _ai_validate_lesson_plan(
     *,
     lesson_title: str,
     selected_topics: List[str],
@@ -5345,7 +5886,7 @@ def _ai_validate_lesson_plan(
     )
 
     try:
-        raw = call_hf_chat(
+        raw = await call_hf_chat_async(
             messages=[
                 {
                     "role": "system",
@@ -5404,14 +5945,14 @@ def _ai_validate_lesson_plan(
         }
 
 
-def _validate_generated_lesson_plan(
+async def _validate_generated_lesson_plan(
     *,
     lesson_title: str,
     selected_topics: List[str],
     blocks: List[LessonPlanBlock],
 ) -> Dict[str, Any]:
     deterministic = _deterministic_lesson_checks(selected_topics=selected_topics, blocks=blocks)
-    ai_validation = _ai_validate_lesson_plan(
+    ai_validation = await _ai_validate_lesson_plan(
         lesson_title=lesson_title,
         selected_topics=selected_topics,
         blocks=blocks,
@@ -5586,7 +6127,7 @@ Rules:
 
         lesson_payload: Dict[str, Any] = {}
         try:
-            raw = call_hf_chat(
+            raw = await call_hf_chat_async(
                 messages=[
                     {
                         "role": "system",
@@ -5658,7 +6199,7 @@ Rules:
         if not blocks:
             raise HTTPException(status_code=500, detail="Unable to generate lesson blocks.")
 
-        self_validation_report = _validate_generated_lesson_plan(
+        self_validation_report = await _validate_generated_lesson_plan(
             lesson_title=lesson_title,
             selected_topics=selected_topics,
             blocks=blocks,
@@ -6359,7 +6900,7 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     return objects
 
 
-def _repair_quiz_json_with_llm(
+async def _repair_quiz_json_with_llm(
     raw_output: str,
     *,
     num_questions: int,
@@ -6385,7 +6926,7 @@ def _repair_quiz_json_with_llm(
         },
     ]
 
-    repaired_text = call_hf_chat(
+    repaired_text = await call_hf_chat_async(
         repair_messages,
         max_tokens=min(4096, max(2048, num_questions * 260)),
         temperature=0.0,
@@ -6397,7 +6938,7 @@ def _repair_quiz_json_with_llm(
     return _parse_quiz_json(repaired_text)
 
 
-def _regenerate_quiz_json_strict(
+async def _regenerate_quiz_json_strict(
     *,
     original_prompt: str,
     num_questions: int,
@@ -6424,7 +6965,7 @@ def _regenerate_quiz_json_strict(
         },
     ]
 
-    strict_text = call_hf_chat(
+    strict_text = await call_hf_chat_async(
         strict_messages,
         max_tokens=min(4096, max(2048, num_questions * 260)),
         temperature=0.0,
@@ -6659,7 +7200,7 @@ Remember:
         max_attempts = 3  # Extra retry helps with larger quiz sizes
 
         for attempt in range(max_attempts):
-            raw_content = call_hf_chat(
+            raw_content = await call_hf_chat_async(
                 messages, max_tokens=max_tokens, temperature=0.1, top_p=0.9,
                 timeout=http_timeout,
                 task_type="quiz_generation",
@@ -6672,7 +7213,7 @@ Remember:
             if not parsed_questions:
                 logger.error(f"Failed to parse quiz JSON (attempt {attempt + 1}). Raw content:\n{raw_content[:500]}")
                 try:
-                    repaired_questions = _repair_quiz_json_with_llm(
+                    repaired_questions = await _repair_quiz_json_with_llm(
                         raw_content,
                         num_questions=request.numQuestions,
                         timeout=http_timeout,
@@ -6692,7 +7233,7 @@ Remember:
 
             if not parsed_questions:
                 try:
-                    strict_questions = _regenerate_quiz_json_strict(
+                    strict_questions = await _regenerate_quiz_json_strict(
                         original_prompt=prompt,
                         num_questions=request.numQuestions,
                         timeout=http_timeout,
@@ -7155,7 +7696,7 @@ async def student_competency(request: StudentCompetencyRequest):
 
 Focus on actionable recommendations. Be encouraging yet honest."""
 
-                overall_perspective = call_hf_chat(
+                overall_perspective = await call_hf_chat_async(
                     messages=[
                         {"role": "system", "content": "You are an educational assessment expert. Be concise and supportive."},
                         {"role": "user", "content": ai_prompt},
@@ -7397,7 +7938,7 @@ async def predict_risk_ml(data: EnhancedRiskRequest):
         result = await predict_risk_enhanced(data)
         if ENABLE_LLM_RISK_RECOMMENDATIONS:
             try:
-                llm_recommendations = _generate_risk_recommendations_llm(data, result)
+                llm_recommendations = await _generate_risk_recommendations_llm(data, result)
                 if llm_recommendations:
                     result.recommendations = llm_recommendations
                     result.modelUsed = "ml_model+llm_narrative"
