@@ -43,18 +43,21 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
               {children}
             </a>
           ),
-          code: ({ node, inline, className, children, ...props }) => (
-            <code
-              className={`${
-                inline
-                  ? 'bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm'
-                  : 'block bg-gray-100 dark:bg-gray-900 rounded p-3 overflow-x-auto my-2'
-              } ${className || ''}`}
-              {...props}
-            >
-              {children}
-            </code>
-          ),
+          code: (props: any) => {
+            const { inline, className, children, ...rest } = props;
+            return (
+              <code
+                className={`${
+                  inline
+                    ? 'bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm'
+                    : 'block bg-gray-100 dark:bg-gray-900 rounded p-3 overflow-x-auto my-2'
+                } ${className || ''}`}
+                {...rest}
+              >
+                {children}
+              </code>
+            );
+          },
           table: ({ children }) => (
             <table className="border-collapse border border-gray-300 dark:border-gray-600 my-2">
               {children}
