@@ -9,6 +9,7 @@ import {
   deleteSession as deleteFirebaseSession,
   getSessionMessages,
 } from '../services/chatService';
+import { toChatPreviewText } from '../utils/chatPreview';
 
 export interface Message {
   id: string;
@@ -33,6 +34,7 @@ interface ChatContextType {
   sessions: ChatSession[];
   activeSessionId: string | null;
   isLoading: boolean;
+  loadingSessionId: string | null;
   sessionsLoaded: boolean;
   setActiveSessionId: (id: string | null) => void;
   createNewSession: (firstMessage?: Message) => string;
@@ -179,6 +181,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   // Map of tempId → Promise<firebaseId> for sessions being created
   const pendingSessionsRef = useRef<Map<string, Promise<string>>>(new Map());
@@ -212,7 +215,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 ? s.updatedAt.toLocaleDateString()
                 : new Date(s.updatedAt).toLocaleDateString(),
               messageCount: messages.length,
-              preview: messages.length > 0 ? messages[messages.length - 1].text.slice(0, 80) : 'No messages yet',
+              preview: messages.length > 0
+                ? (toChatPreviewText(messages[messages.length - 1].text) || 'No messages yet')
+                : 'No messages yet',
               topics: [],
               messages,
               createdAt: s.createdAt instanceof Date ? s.createdAt : new Date(s.createdAt),
@@ -262,7 +267,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       title: firstMessage ? generateTitleFromMessages([firstMessage]) : 'New Chat',
       date: 'Just now',
       messageCount: firstMessage ? 1 : 0,
-      preview: firstMessage?.text || 'Start a new conversation...',
+      preview: firstMessage
+        ? (toChatPreviewText(firstMessage.text) || 'Start a new conversation...')
+        : 'Start a new conversation...',
       topics: [],
       messages: firstMessage ? [firstMessage] : [],
       createdAt: now,
@@ -306,7 +313,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             ...session,
             messages: updatedMessages,
             messageCount: updatedMessages.length,
-            preview: message.sender === 'user' ? message.text : session.preview,
+            preview: toChatPreviewText(message.text) || session.preview,
             updatedAt: new Date(),
             title: updatedMessages.length === 2 ? generateTitleFromMessages(updatedMessages) : session.title,
           };
@@ -357,6 +364,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     addMessageToSession(sessionId, userMsg);
+    setLoadingSessionId(sessionId);
     setIsLoading(true);
 
     try {
@@ -478,6 +486,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
     } finally {
       setIsLoading(false);
+      setLoadingSessionId(null);
     }
   }, [sessions, addMessageToSession]);
 
@@ -520,6 +529,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         sessions,
         activeSessionId,
         isLoading,
+        loadingSessionId,
         sessionsLoaded,
         setActiveSessionId,
         createNewSession,
