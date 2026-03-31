@@ -27,6 +27,7 @@ COPY analytics.py /app/analytics.py
 COPY automation_engine.py /app/automation_engine.py
 COPY services /app/services
 COPY models /app/models
+COPY config /app/config
 
 EXPOSE 7860
 

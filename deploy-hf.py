@@ -2,23 +2,28 @@
 Deploy MathPulse AI backend to HuggingFace Spaces.
 
 Usage:
-    python deploy-hf.py [--token YOUR_HF_TOKEN] [--recreate]
+    python deploy-hf.py [--recreate] [--skip-restart] [--wait-timeout-sec 600]
 
 This script will:
-1. Authenticate with Hugging Face
-2. Ensure mathpulse-api space exists (or recreate it when --recreate is used)
+1. Authenticate with Hugging Face (use: huggingface-cli login)
+2. Ensure mathpulse-api space exists (or recreate with --recreate)
 3. Upload the backend files to the space
-4. Optionally set INFERENCE_LOCAL_SPACE_URL and restart runtime
+4. Set inference routing configuration variables
+5. Optionally restart runtime
+
+SECURITY: HF_TOKEN is NOT set by this script.
+Use set-hf-secrets.py to securely set HF_TOKEN as a Space SECRET.
 
 Safety:
-- This script only manages the backend space and never touches frontend spaces.
+- This script only manages backend code and public variables
+- No credentials are embedded or passed via CLI arguments
 """
 import argparse
 import io
 import os
 import time
 
-from huggingface_hub import HfApi, login
+from huggingface_hub import HfApi
 
 SPACE_ID = "Deign86/mathpulse-api-v3test"
 BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
@@ -99,7 +104,6 @@ def _wait_for_runtime(api: HfApi, repo_id: str, timeout_sec: int) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Deploy MathPulse backend to HuggingFace Spaces")
-    parser.add_argument("--token", required=False, help="HuggingFace API token (write access)")
     parser.add_argument(
         "--recreate",
         action="store_true",
@@ -126,10 +130,7 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.token:
-        login(token=args.token)
-    else:
-        print("No --token provided. Attempting to use cached Hugging Face login.")
+    print("🔐 Using cached Hugging Face login. Authenticate via: huggingface-cli login")
     api = HfApi()
 
     user = api.whoami()
@@ -164,6 +165,7 @@ def main():
         "Dockerfile",
         "services/**",
         "models/**",
+        "config/**",
     ]
     api.upload_folder(
         folder_path=BACKEND_DIR,
@@ -172,9 +174,11 @@ def main():
         path_in_repo=".",
         allow_patterns=allow_patterns,
         ignore_patterns=["**/__pycache__/**", "**/*.pyc"],
-        commit_message="Deploy backend runtime files (atomic upload)",
+        commit_message="Deploy backend runtime + config (atomic upload, single rebuild)",
     )
-    print("Uploaded backend runtime files (single commit)")
+    print("Uploaded backend runtime files and config (single commit)")
+    
+    # Step 3b removed: config now included in atomic backend upload
 
     # Always upload normalized README metadata for stable Space parsing.
     api.upload_file(
@@ -185,25 +189,62 @@ def main():
     )
     print("Uploaded: README.md (normalized Space metadata)")
 
-    # Ensure backend routes can call the frontend ZeroGPU Space endpoint.
+# Ensure backend routes can call the frontend ZeroGPU Space endpoint.
     api.add_space_variable(
         repo_id=SPACE_ID,
         key="INFERENCE_LOCAL_SPACE_URL",
         value=args.local_space_url,
     )
-    print(f"Set Space variable INFERENCE_LOCAL_SPACE_URL={args.local_space_url}")
+    
+    # Set HF inference routing configuration
+    api.add_space_variable(
+        repo_id=SPACE_ID,
+        key="INFERENCE_PROVIDER",
+        value="hf_inference",
+    )
+    api.add_space_variable(
+        repo_id=SPACE_ID,
+        key="INFERENCE_HF_BASE_URL",
+        value="https://router.huggingface.co/hf-inference/models",
+    )
+    api.add_space_variable(
+        repo_id=SPACE_ID,
+        key="INFERENCE_HF_CHAT_URL",
+        value="https://router.huggingface.co/v1/chat/completions",
+    )
+    api.add_space_variable(
+        repo_id=SPACE_ID,
+        key="INFERENCE_MODEL_ID",
+        value="Qwen/Qwen2.5-Math-7B-Instruct",
+    )
+    api.add_space_variable(
+        repo_id=SPACE_ID,
+        key="INFERENCE_CHAT_MODEL_ID",
+        value="Qwen/Qwen2.5-Math-7B-Instruct",
+    )
+    
+    print(f"✅ Set Space variables:")
+    print(f"   - INFERENCE_LOCAL_SPACE_URL={args.local_space_url}")
+    print(f"   - INFERENCE_PROVIDER=hf_inference")
+    print(f"   - INFERENCE_MODEL_ID=Qwen/Qwen2.5-Math-7B-Instruct")
+    
+    # ⚠️  HF_TOKEN should NEVER be set as a Space VARIABLE (public/exposed).
+    # Use set-hf-secrets.py to set it as a proper SECRET instead.
+    print(f"\n⚠️  IMPORTANT: HF_TOKEN must be set as a SECRET (not variable)")
+    print(f"   Use: python set-hf-secrets.py --hf-token YOUR_TOKEN --hf-secret YOUR_HF_TOKEN_VALUE")
 
     if not args.skip_restart:
+        print("\n⏳ Restarting Space runtime (may take 30-60 seconds)...")
         api.restart_space(repo_id=SPACE_ID)
-        print("Restarted Space runtime to apply updated variables.")
+        print("✅ Restart initiated.")
 
     _wait_for_runtime(api, SPACE_ID, args.wait_timeout_sec)
 
-    print(f"\nDeployment complete!")
+    print(f"\n✅ Deployment complete!")
     print(f"Space URL: https://huggingface.co/spaces/{SPACE_ID}")
     print(f"API URL: https://{SPACE_ID.replace('/', '-').lower()}.hf.space")
-    print(f"\nNote: Set the HF_TOKEN secret in the space settings:")
-    print(f"https://huggingface.co/spaces/{SPACE_ID}/settings")
+    print(f"\n🔐 NEXT STEP - Set HF_TOKEN as a SECRET (not a variable):")
+    print(f"   python set-hf-secrets.py --hf-token <YOUR_HF_TOKEN> --hf-secret <HF_TOKEN_VALUE>")
 
 
 if __name__ == "__main__":

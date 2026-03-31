@@ -1,0 +1,56 @@
+models:
+  primary:
+    id: Qwen/Qwen3.5-9B
+    description: Main Grade 11-12 tutor model (router-supported)
+    max_new_tokens: 512
+    temperature: 0.2
+    top_p: 0.9
+
+  backup:
+    - id: meta-llama/Llama-3.1-8B-Instruct
+      description: Lower-cost backup model for high traffic
+      max_new_tokens: 384
+      temperature: 0.2
+      top_p: 0.9
+    - id: google/gemma-2-2b-it
+      description: Secondary backup with broad instruction coverage
+      max_new_tokens: 384
+      temperature: 0.2
+      top_p: 0.9
+
+  experimental:
+    - id: mistralai/Mistral-7B-Instruct-v0.3
+      notes: Prompt/procedure experimentation
+    - id: meta-llama/Meta-Llama-3-8B-Instruct
+      notes: Baseline comparison against legacy deployment
+
+routing:
+  task_model_map:
+    # Using HF Inference API with Featherless AI provider routing (officially supported)
+    # https://huggingface.co/blog/inference-providers-featherless
+    chat: Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai
+    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai
+    lesson_generation: Qwen/Qwen3.5-9B:featherless-ai
+    quiz_generation: Qwen/Qwen3.5-9B:featherless-ai
+    learning_path: Qwen/Qwen3.5-9B:featherless-ai
+    daily_insight: meta-llama/Llama-3.1-8B-Instruct
+    risk_classification: meta-llama/Llama-3.1-8B-Instruct
+    risk_narrative: meta-llama/Llama-3.1-8B-Instruct
+
+  task_fallback_model_map:
+    chat:
+      - Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai
+      - meta-llama/Llama-3.1-8B-Instruct
+      - google/gemma-2-2b-it
+    verify_solution:
+      - Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai
+      - meta-llama/Llama-3.1-8B-Instruct
+      - google/gemma-2-2b-it
+
+  task_provider_map:
+    quiz_generation: local_space
+    lesson_generation: local_space
+    learning_path: local_space
+    daily_insight: local_space
+    risk_narrative: local_space
+    risk_classification: hf_inference
