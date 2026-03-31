@@ -1,7 +1,7 @@
 models:
   primary:
-    id: Qwen/Qwen2.5-Math-72B-Instruct
-    description: Math-specialized Grade 11-12 tutor model (enhanced accuracy)
+    id: meta-llama/Meta-Llama-3-70B-Instruct
+    description: High-quality instruction model for Grade 11-12 math (best available on HF)
     max_new_tokens: 1024
     temperature: 0.3
     top_p: 0.85
@@ -26,27 +26,27 @@ models:
 
 routing:
   task_model_map:
-    # Primary: Qwen2.5-Math-72B for chat (math-optimized, better accuracy for Grade 11-12)
-    # Fallback chain: Qwen2.5-Math-7B-Instruct → Llama-3.1-8B-Instruct
-    chat: Qwen/Qwen2.5-Math-72B-Instruct
-    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
-    lesson_generation: Qwen/Qwen2.5-7B-Instruct
-    quiz_generation: Qwen/Qwen2.5-7B-Instruct
-    learning_path: Qwen/Qwen2.5-7B-Instruct
-    daily_insight: Qwen/Qwen2.5-7B-Instruct
-    risk_classification: Qwen/Qwen2.5-7B-Instruct
-    risk_narrative: Qwen/Qwen2.5-7B-Instruct
+    # Primary: Meta-Llama-3-70B (best quality on HF Inference API)
+    # Fallback chain: Hermes-2-Mixtral → Llama-3.1-8B → Mixtral-8x7B
+    chat: meta-llama/Meta-Llama-3-70B-Instruct
+    verify_solution: NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO
+    lesson_generation: meta-llama/Llama-3.1-8B-Instruct
+    quiz_generation: meta-llama/Llama-3.1-8B-Instruct
+    learning_path: meta-llama/Llama-3.1-8B-Instruct
+    daily_insight: meta-llama/Llama-3.1-8B-Instruct
+    risk_classification: meta-llama/Llama-3.1-8B-Instruct
+    risk_narrative: meta-llama/Llama-3.1-8B-Instruct
 
   task_fallback_model_map:
     chat:
-      - Qwen/Qwen2.5-Math-72B-Instruct      # Primary (math-specialized)
-      - Qwen/Qwen2.5-Math-7B-Instruct       # First fallback (smaller math model)
-      - meta-llama/Llama-3.1-8B-Instruct    # Secondary fallback
-      - google/gemma-2-2b-it                # Tertiary fallback
+      - meta-llama/Meta-Llama-3-70B-Instruct      # Primary (best quality)
+      - NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO  # First fallback (good reasoning)
+      - meta-llama/Llama-3.1-8B-Instruct          # Second fallback (reliable)
+      - mistralai/Mixtral-8x7B-Instruct-v0.1      # Tertiary fallback
     verify_solution:
-      - Qwen/Qwen2.5-Math-7B-Instruct       # Primary fallback (math-optimized)
-      - meta-llama/Llama-3.1-8B-Instruct    # Secondary fallback
-      - google/gemma-2-2b-it                # Tertiary fallback
+      - NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO  # Primary (reasoning-focused)
+      - meta-llama/Meta-Llama-3-70B-Instruct      # First fallback
+      - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
 
   task_provider_map:
     # All tasks use hf_inference router (native HF support for Qwen/Qwen2.5-7B-Instruct)
