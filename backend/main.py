@@ -1020,11 +1020,12 @@ def call_hf_chat_stream(
     client = get_inference_client()
     effective_task = (task_type or "chat").strip().lower()
     request_tag = f"{effective_task}-stream-{int(time.time() * 1000)}"
+    chat_model_override = getattr(cast(Any, client), "chat_model_override", "")
 
     if model:
         selected_model = model
-    elif effective_task == "chat" and getattr(client, "chat_model_override", ""):
-        selected_model = client.chat_model_override
+    elif effective_task == "chat" and chat_model_override:
+        selected_model = str(chat_model_override)
     else:
         selected_model = client.task_model_map.get(effective_task, client.default_model)
 
