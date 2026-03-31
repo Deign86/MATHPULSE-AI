@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, Eye, Search, Loader2, User, ChevronLeft } from 'lucide-react';
+import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, Eye, Search, Loader2, User, ChevronLeft, Bold } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import StudentProfileModal from './StudentProfileModal';
@@ -150,172 +150,193 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
   }
 
   return (
-    <div className="min-h-screen lg:min-h-[85vh] bg-[#7c3aed] relative overflow-hidden font-body text-white lg:rounded-[2.5rem] flex flex-col items-center">
-      {/* Background Math Pattern & Glow Overlays */}
-      <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none"></div>
-      <div className="absolute top-0 right-[-100px] w-[500px] h-[500px] bg-[#8B5CF6] blur-[120px] rounded-full opacity-60 pointer-events-none -translate-y-1/3"></div>
-      <div className="absolute top-1/4 left-[-100px] w-[400px] h-[400px] bg-[#f43f5e] blur-[140px] rounded-full opacity-30 pointer-events-none"></div>
+    <div className="w-full min-h-screen relative flex flex-col items-center font-body text-white">
+      {/* Background that fades dynamically without harsh container edges */}
+      <div className="absolute inset-x-[-20px] top-0 bottom-[-50px] z-[-1] pointer-events-none overflow-hidden">
+        {/* Radial base fading from purple at bottom center to transparent at edges */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,#9333ea_0%,#c084fc_40%,transparent_80%)]"></div>
+        
+        {/* Sunburst Rays fading nicely before hitting the top header */}
+        <div 
+           className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[250vw] md:w-[200vw] h-[150vh] opacity-75 pointer-events-none"
+           style={{
+             WebkitMaskImage: 'radial-gradient(circle at 50% 100%, black 10%, transparent 60%)'
+           }}>
+           <motion.div 
+             className="absolute bottom-0 left-1/2 w-[300vw] h-[300vw] md:w-[200vw] md:h-[200vw]"
+             style={{
+               x: "-50%",
+               originX: 0.5,
+               originY: 1,
+               background: `repeating-conic-gradient(from 0deg at 50% 100%, 
+                 rgba(255,255,255,0.7) 0deg, rgba(255,255,255,0.7) 6deg, 
+                 transparent 6deg, transparent 12deg)`
+             }}
+             animate={{ rotate: 360 }}
+             transition={{ duration: 160, repeat: Infinity, ease: "linear" }}
+           />
+        </div>
+        
+        {/* Soft core light effect */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150vw] h-[100vh] bg-[radial-gradient(ellipse_at_50%_100%,#7e22ce_10%,transparent_60%)] mix-blend-overlay"></div>
+      </div>
+      <div className="absolute inset-0 bg-math-pattern opacity-[0.03] mix-blend-overlay pointer-events-none z-[-1]" style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%)' }}></div>
 
       {/* Constraints Wrapper */}
-      <div className="relative z-10 w-full max-w-2xl px-4 py-8 flex flex-col items-center">
+      <div className="relative z-10 w-full px-4 sm:px-8 py-4 md:py-6 flex flex-col items-center">
         
         {/* Top App Bar Area */}
-        <div className="w-full flex justify-between items-center mb-8">
-          <button 
-            onClick={onBack} 
-            className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors backdrop-blur-sm pointer-events-auto"
-            aria-label="Go back"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-2xl md:text-3xl font-display font-bold tracking-wide">Leaderboard</h1>
-          <div className="w-10 h-10"></div> {/* Spacer for alignment */}
+        <div className="w-full flex justify-center items-center mb-4 mt-2">
+          <h1 className="text-3xl md:text-4xl font-display font-bold tracking-wide text-slate-800 drop-shadow-sm">Leaderboard</h1>
         </div>
 
         {/* Time Filters - Segmented Pill based on Reference Image 1 */}
-        <div className="bg-white/10 backdrop-blur-md rounded-full p-1.5 flex gap-1 mb-6 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] border border-white/20 w-full max-w-[340px]">
-          {(['daily', 'weekly', 'all'] as TimeFilter[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setTimeFilter(mode)}
-              className={`flex-1 py-2.5 rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${
-                timeFilter === mode 
-                  ? 'bg-white/20 text-white shadow-md border border-white/30 backdrop-blur-lg' 
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {mode === 'all' ? 'All Time' : mode}
-            </button>
-          ))}
-        </div>
-
-        {/* Personalized Gamified Banner based on Reference Image 1 */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-[420px] mb-8 bg-gradient-to-r from-[#fb923c] to-[#f97316] p-4 rounded-[1.25rem] shadow-lg flex items-center gap-4 relative overflow-hidden ring-1 ring-white/20"
-        >
-          {/* Subtle noise pattern inside orange banner */}
-          <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
-          
-          <div className="bg-white/25 backdrop-blur-md px-4 py-3 min-w-[60px] rounded-xl flex flex-col items-center justify-center shadow-sm z-10 border border-white/20">
-            <span className="text-2xl font-display font-bold text-white leading-none">#{yourRank}</span>
+          <div className="bg-slate-800/5 backdrop-blur-md rounded-full p-1 flex gap-1 mb-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-slate-800/10 w-full max-w-[340px]">
+            {(['daily', 'weekly', 'all'] as TimeFilter[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setTimeFilter(mode)}
+                className={`flex-1 py-1.5 rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${
+                  timeFilter === mode
+                    ? 'bg-white text-purple-700 shadow-md border border-white/50 backdrop-blur-lg'
+                    : 'text-slate-600 hover:text-purple-700 hover:bg-white/50'
+                }`}
+              >
+                {mode === 'all' ? 'All Time' : mode}
+              </button>
+            ))}
           </div>
-          <div className="z-10 flex-1">
-            <p className="font-semibold text-white/95 text-[15px] leading-snug">
-              You are doing better than <br/>{percentile.toFixed(0)}% of other players!
-            </p>
-          </div>
-        </motion.div>
 
-        {/* 3D Slanted Podium Layout based on Reference Image 2 */}
-        <div className="w-full flex items-end justify-center h-[260px] md:h-[300px] relative z-20 mt-4">
-          
-          {/* Glowing Spotlight Aura for 1st Place */}
-          <div className="absolute bottom-[20%] left-1/2 -translate-x-1/2 w-[280px] h-[350px] bg-yellow-400/30 blur-[70px] rounded-[100%] mix-blend-screen pointer-events-none z-0 transform origin-bottom -rotate-[0deg] scale-y-[1.5]"></div>
-
-          {/* ----- 2nd Place (Left) ----- */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="flex flex-col items-center relative z-10 w-1/3 bottom-0"
+          {/* Personalized Gamified Banner based on Reference Image 1 */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-[420px] mb-4 bg-[#FFB356] p-2.5 md:p-3 rounded-full shadow-lg flex items-center gap-3 relative overflow-hidden ring-1 ring-white/20"
           >
-            {/* Avatar Profile */}
-            <div className="flex flex-col items-center mb-6 relative">
-              <div className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] rounded-full border-[3px] border-[#A78BFA] bg-slate-200 flex items-center justify-center relative z-20 shadow-lg overflow-hidden bg-gradient-to-br from-purple-200 to-purple-400">
-                {renderAvatar(topThree[1]?.avatar, 28)}
-                <div className="absolute -bottom-1 -right-1 flex gap-0.5 z-30">
-                  <div className="w-3.5 h-3.5 bg-blue-500 rounded-sm border border-white"></div>
-                  <div className="w-3.5 h-3.5 bg-red-500 rounded-sm border border-white"></div>
-                  <div className="w-3.5 h-3.5 bg-white rounded-sm border border-white"></div>
-                </div>
+            {/* Subtle noise pattern inside orange banner */}
+            <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
+
+            <div className="bg-white/25 backdrop-blur-md px-4 py-2 min-w-[60px] rounded-full flex flex-col items-center justify-center shadow-sm z-10 border border-white/20">
+              <span className="text-xl md:text-2xl font-display font-bold text-white leading-none">#{yourRank}</span>
+            </div>
+            <div className="z-10 flex-1 pr-2 md:pr-4">
+              <p className="font-medium text-white/90 text-sm md:text-[15px] leading-snug text-center">
+                You are doing better than <span className="font-black text-white drop-shadow-sm">{Math.round(percentile)}%</span> of other players!
+              </p>
+            </div>
+          </motion.div>
+
+        {/* Glowing Spotlight Rays have been replaced by the Sunburst integrated into the main background */}
+
+        {/* Podium Layout (Matches reference) */}
+        <div className="w-full max-w-[800px] flex items-end justify-center gap-2 md:gap-4 h-[280px] md:h-[310px] relative z-20 mt-8 md:mt-12 mx-auto px-2 sm:px-4 group perspective-1000">
+          {/* ----- 2nd Place (Left) ----- */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, type: "spring", stiffness: 90 }}
+            className="flex flex-col items-center relative z-10 w-[28%] sm:w-[30%] max-w-[145px] mx-1 md:mr-2"
+          >
+            <div className="flex flex-col items-center mb-2 md:mb-4 relative z-40 w-full">
+              <div className="w-14 h-14 md:w-[72px] md:h-[72px] rounded-full border-[3px] border-[#FF8B8B] bg-[#111827] flex items-center justify-center shadow-[0_0_18px_rgba(255,139,139,0.6)] overflow-hidden">
+                {renderAvatar(topThree[1]?.avatar, 26)}
               </div>
-              <h3 className="font-display font-bold tracking-wide text-white mt-3 text-xs md:text-sm drop-shadow-md z-20 truncate w-full text-center px-1">
+              <h3 className="font-semibold text-white mt-1.5 md:mt-2 text-xs md:text-sm drop-shadow-md w-full text-center pb-1 px-1 whitespace-normal break-words leading-tight relative z-50">
                 {topThree[1]?.name || '---'}
               </h3>
-              <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] md:text-xs font-bold text-white shadow-sm mt-1">
-                {topThree[1]?.totalXP || 0} XP
-              </div>
             </div>
 
-            {/* 3D Slanted Block (Leaning Right/Up towards center) */}
-            <div className="relative w-full z-10 flex flex-col items-center">
-              {/* Slanted Top Surface */}
-              <div className="h-[25px] w-full max-w-[100px] absolute -top-3 bg-[#E0D7FE] origin-bottom-right transform -skew-y-[15deg] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] border-t border-r border-[#FFF]/30"></div>
-              {/* Front Face skewed */}
-              <div className="w-full max-w-[100px] h-[110px] md:h-[130px] bg-gradient-to-b from-[#b598fd] to-[#9266f8] flex items-center justify-center pb-8 shadow-[inset_4px_0_10px_rgba(0,0,0,0.05)]" style={{ clipPath: 'polygon(0 15%, 100% 0, 100% 100%, 0 100%)' }}>
-                <span className="text-5xl md:text-6xl font-display font-bold text-white drop-shadow-sm opacity-90">2</span>
+            {/* 3D Cylinder Podium */}
+            <div className="w-[90%] relative mt-2">
+              {/* Bottom Curve */}
+              <div className="w-full h-10 md:h-14 absolute -bottom-5 md:-bottom-7 bg-[#D96C6A] rounded-[50%] shadow-[0_15px_25px_rgba(0,0,0,0.4)] z-0"></div>
+              
+              {/* Main Body */}
+              <div className="w-full h-[100px] md:h-[130px] bg-[#D96C6A] relative z-10 flex flex-col items-center justify-start overflow-hidden">
+                <span className="absolute inset-x-0 top-3 flex items-center justify-center text-[60px] md:text-[80px] font-black text-white/10 drop-shadow">2</span>
+              </div>
+              
+              {/* Top Platform */}
+              <div className="w-full h-10 md:h-14 absolute -top-5 md:-top-7 bg-[#FF8B8B] rounded-[50%] z-20 shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
+                 {/* Shadow Text laying flat */}
+                 <div className="text-black/25 font-black text-[18px] md:text-[26px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                   {topThree[1]?.totalXP || 0} XP
+                 </div>
               </div>
             </div>
           </motion.div>
 
           {/* ----- 1st Place (Center) ----- */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} 
-            className="flex flex-col items-center relative z-20 w-[38%] mx-[-4px] md:mx-[-8px] bottom-0"
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05, type: "spring", stiffness: 100 }}
+            className="flex flex-col items-center relative z-30 w-[35%] sm:w-[38%] max-w-[190px]"
           >
-            {/* Crown and Avatar */}
-            <div className="flex flex-col items-center mb-3 relative">
-              <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} className="mb-[-12px] z-30">
-                <Crown size={32} className="text-yellow-300 fill-yellow-300 drop-shadow-[0_2px_10px_rgba(250,204,21,0.6)] md:w-[42px] md:h-[42px]" />
+            <div className="flex flex-col items-center mb-3 md:mb-5 relative z-40 w-full">
+              <motion.div animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }} className="mb-[-10px] z-30">
+                <Crown size={30} className="text-yellow-300 fill-yellow-300 drop-shadow-[0_0_12px_rgba(250,204,21,0.9)] md:w-9 md:h-9" />
               </motion.div>
-              <div className="w-[76px] h-[76px] md:w-[94px] md:h-[94px] rounded-full border-4 border-yellow-300 bg-slate-200 flex items-center justify-center relative z-20 shadow-[0_4px_25px_rgba(250,204,21,0.5)] overflow-hidden bg-gradient-to-br from-yellow-100 to-yellow-400">
-                {renderAvatar(topThree[0]?.avatar, 40)}
-                <div className="absolute -bottom-1 -right-1 flex gap-0.5 z-30">
-                   <div className="w-4 h-4 bg-green-500 rounded-sm border-2 border-white"></div>
-                   <div className="w-4 h-4 bg-red-500 rounded-sm border-2 border-white"></div>
-                </div>
+              <div className="w-16 h-16 md:w-[86px] md:h-[86px] rounded-full border-[4px] border-[#fde68a] bg-[#111827] flex items-center justify-center shadow-[0_0_24px_rgba(250,204,21,0.6)] overflow-hidden">
+                {renderAvatar(topThree[0]?.avatar, 34)}
               </div>
-              <h3 className="font-display font-bold tracking-wide text-white mt-3 text-sm md:text-base drop-shadow-md z-20 truncate w-full text-center px-1">
+              <h3 className="font-semibold text-white mt-1.5 md:mt-2 text-sm md:text-base drop-shadow-md w-full text-center pb-1 px-1 whitespace-normal break-words leading-tight relative z-50">
                 {topThree[0]?.name || '---'}
               </h3>
-              <div className="bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs md:text-sm font-bold text-white shadow-sm mt-1">
-                {topThree[0]?.totalXP || 0} XP
-              </div>
             </div>
 
-            {/* Flat Tall Center Block */}
-            <div className="relative w-full z-20 flex flex-col items-center">
-              {/* Flat Top Surface */}
-              <div className="h-[20px] w-full max-w-[120px] absolute -top-[10px] bg-[#FFFFFF] shadow-[inset_0_2px_4px_rgba(255,255,255,0.8)] border border-slate-100 flex justify-center items-center">
+            {/* 3D Cylinder Podium */}
+            <div className="w-[95%] relative mt-2">
+              {/* Bottom Curve */}
+              <div className="w-full h-12 md:h-16 absolute -bottom-6 md:-bottom-8 bg-[#6F2BAF] rounded-[50%] shadow-[0_20px_30px_rgba(0,0,0,0.5)] z-0"></div>
+              
+              {/* Main Body */}
+              <div className="w-full h-[140px] md:h-[180px] bg-[#6F2BAF] relative z-10 flex flex-col items-center justify-start overflow-hidden">
+                <span className="absolute inset-x-0 top-4 flex items-center justify-center text-[80px] md:text-[110px] font-black text-white/10 drop-shadow">1</span>
               </div>
-              {/* Front Face */}
-              <div className="w-full max-w-[120px] h-[150px] md:h-[180px] bg-gradient-to-b from-[#E2E8F0] to-[#CBD5E1] flex items-center justify-center pb-10 shadow-[0_20px_40px_-5px_rgba(0,0,0,0.4)] relative">
-                <span className="text-7xl md:text-8xl font-display font-bold text-white drop-shadow-md opacity-100">1</span>
-                {/* Glossy gradient reflection top edge */}
-                <div className="absolute top-0 left-0 w-full h-[30px] bg-gradient-to-b from-white/60 to-transparent pointer-events-none mix-blend-overlay"></div>
+              
+              {/* Top Platform */}
+              <div className="w-full h-12 md:h-16 absolute -top-6 md:-top-8 bg-[#9956DE] rounded-[50%] z-20 shadow-[0_5px_12px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center">
+                 {/* Shadow Text laying flat */}
+                 <div className="text-black/25 font-black text-[22px] md:text-[32px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                   {topThree[0]?.totalXP || 0} XP
+                 </div>
               </div>
             </div>
           </motion.div>
 
           {/* ----- 3rd Place (Right) ----- */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="flex flex-col items-center relative z-10 w-1/3 bottom-0"
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, type: "spring", stiffness: 90 }}
+            className="flex flex-col items-center relative z-10 w-[28%] sm:w-[30%] max-w-[145px] mx-1 md:ml-2"
           >
-            {/* Avatar Profile */}
-            <div className="flex flex-col items-center mb-6 relative">
-              <div className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] rounded-full border-[3px] border-[#93c5fd] bg-slate-200 flex items-center justify-center relative z-20 shadow-lg overflow-hidden bg-gradient-to-br from-blue-200 to-blue-400">
-                {renderAvatar(topThree[2]?.avatar, 28)}
-                <div className="absolute -bottom-1 -right-1 flex gap-0.5 z-30">
-                   <div className="w-3.5 h-3.5 bg-red-500 rounded-sm border border-white"></div>
-                   <div className="w-3.5 h-3.5 bg-white rounded-sm border border-white"></div>
-                </div>
+            <div className="flex flex-col items-center mb-2 md:mb-4 relative z-40 w-full">
+              <div className="w-14 h-14 md:w-[72px] md:h-[72px] rounded-full border-[3px] border-[#FFB356] bg-[#111827] flex items-center justify-center shadow-[0_0_18px_rgba(255,179,86,0.6)] overflow-hidden">
+                {renderAvatar(topThree[2]?.avatar, 26)}
               </div>
-              <h3 className="font-display font-bold tracking-wide text-white mt-3 text-xs md:text-sm drop-shadow-md z-20 truncate w-full text-center px-1">
+              <h3 className="font-semibold text-white mt-1.5 md:mt-2 text-xs md:text-sm drop-shadow-md w-full text-center pb-1 px-1 whitespace-normal break-words leading-tight relative z-50">
                 {topThree[2]?.name || '---'}
               </h3>
-              <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] md:text-xs font-bold text-white shadow-sm mt-1">
-                {topThree[2]?.totalXP || 0} XP
-              </div>
             </div>
 
-            {/* 3D Slanted Block (Leaning Left/Up towards center) */}
-            <div className="relative w-full z-10 flex flex-col items-center">
-              {/* Slanted Top Surface */}
-              <div className="h-[25px] w-full max-w-[100px] absolute -top-3 bg-[#e0e7ff] origin-bottom-left transform skew-y-[15deg] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] border-t border-l border-[#FFF]/30"></div>
-              {/* Front Face skewed */}
-              <div className="w-full max-w-[100px] h-[95px] md:h-[110px] bg-gradient-to-b from-[#a5b4fc] to-[#818cf8] flex items-center justify-center pb-8 shadow-[inset_-4px_0_10px_rgba(0,0,0,0.05)]" style={{ clipPath: 'polygon(0 0, 100% 15%, 100% 100%, 0 100%)' }}>
-                <span className="text-5xl md:text-6xl font-display font-bold text-white drop-shadow-sm opacity-90">3</span>
+            {/* 3D Cylinder Podium */}
+            <div className="w-[90%] relative mt-2">
+              {/* Bottom Curve */}
+              <div className="w-full h-10 md:h-14 absolute -bottom-5 md:-bottom-7 bg-[#DE7949] rounded-[50%] shadow-[0_15px_25px_rgba(0,0,0,0.4)] z-0"></div>
+              
+              {/* Main Body */}
+              <div className="w-full h-[75px] md:h-[100px] bg-[#DE7949] relative z-10 flex flex-col items-center justify-start overflow-hidden">
+                <span className="absolute inset-x-0 top-1 flex items-center justify-center text-[50px] md:text-[70px] font-black text-white/10 drop-shadow">3</span>
+              </div>
+              
+              {/* Top Platform */}
+              <div className="w-full h-10 md:h-14 absolute -top-5 md:-top-7 bg-[#FFB356] rounded-[50%] z-20 shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
+                 {/* Shadow Text laying flat */}
+                 <div className="text-black/25 font-black text-[16px] md:text-[22px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                   {topThree[2]?.totalXP || 0} XP
+                 </div>
               </div>
             </div>
           </motion.div>
@@ -325,12 +346,15 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
       </div>{/* End Main Container Constraints */}
 
       {/* ----- Rest of Rankings List Container ----- */}
-      {/* Takes up the remaining space, overlaying the background */}
-      <div className="w-[110%] mx-[-5%] sm:w-full sm:mx-0 flex-1 bg-[#F5F7FA] mt-[-10px] rounded-t-[3rem] py-8 px-6 sm:px-10 relative z-20 shadow-[0_-15px_30px_rgba(0,0,0,0.1)] flex flex-col items-center">
+      {/* Takes up the remaining space, beautifully floating over the fixed background with a solid peeking styling */}
+      <div className="w-full flex-grow relative z-20 pt-6 pb-32 px-4 sm:px-10 flex flex-col items-center mt-[-20px] md:mt-[-40px] bg-white transition-all duration-300 hover:-translate-y-2 rounded-t-[2.5rem] shadow-[0_-15px_50px_rgba(0,0,0,0.2)] hover:shadow-[0_-20px_60px_rgba(0,0,0,0.3)] border-t border-slate-100 min-h-[50vh]">
+        {/* Ensures the white background continues downwards to cover any safe areas or scrolling gaps */}
+        <div className="absolute top-[50%] bottom-[-500px] left-0 right-0 bg-white z-[-1]"></div>
         
-        <div className="w-16 h-1.5 bg-slate-200 rounded-full mb-8 absolute top-4 left-1/2 -translate-x-1/2"></div>
-        
-        <div className="w-full max-w-2xl space-y-3.5">
+        {/* Visual Handle / indicator to scroll down */}
+        <div className="w-12 h-1.5 bg-slate-300/80 rounded-full mb-6 mt-[-10px]"></div>
+
+        <div className="w-full max-w-4xl space-y-3.5">
           {restOfList.map((student, index) => {
             const actualRank = student.rank.global || index + 4;
             
@@ -339,10 +363,10 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
                 key={student.id}
                 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 + 0.3 }}
                 onClick={() => setSelectedStudent(student)}
-                className={`flex items-center gap-4 p-3.5 md:p-4 rounded-3xl cursor-pointer transition-all hover:-translate-y-1 bg-white border ${
+                className={`flex items-center gap-4 p-3.5 md:p-4 rounded-3xl cursor-pointer bg-white border transition-all duration-300 ${
                   student.isYou 
-                    ? 'border-[#8B5CF6]/40 shadow-lg shadow-[#8B5CF6]/15 ring-2 ring-[#8B5CF6]/10' 
-                    : 'border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)]'
+                    ? 'border-[#8B5CF6]/40 shadow-xl shadow-[#8B5CF6]/20 ring-2 ring-[#8B5CF6]/10' 
+                    : 'border-slate-100 shadow-[0_12px_25px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_30px_rgba(0,0,0,0.12)]'
                 }`}
               >
                 {/* Rank Bubble */}
@@ -364,7 +388,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
                     </h4>
                   </div>
                   <div>
-                    <p className="text-[13px] md:text-[15px] font-bold text-slate-500 text-right">{student.totalXP} <span className="text-[10px] text-slate-400 font-normal uppercase">pts</span></p>
+                    <p className="text-[13px] md:text-[15px] font-bold text-slate-500 text-right">{student.totalXP} <span className="text-[10px] text-slate-400 font-normal uppercase">XP</span></p>
                   </div>
                 </div>
               </motion.div>
