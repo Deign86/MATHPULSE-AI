@@ -92,6 +92,14 @@ jobs:
           python -m pytest backend/tests/test_api.py -q
           python -m mypy --config-file mypy.ini backend/main.py backend/analytics.py
 
+      - name: Pre-deployment validation
+        run: |
+          python backend/pre_deploy_check.py
+          if [ $? -ne 0 ]; then
+            echo "❌ Pre-deployment validation failed - blocking deployment"
+            exit 1
+          fi
+
       - name: Push backend to HF Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

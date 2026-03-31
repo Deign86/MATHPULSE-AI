@@ -25,6 +25,10 @@ from typing import List, Optional, Dict, Any, Set, Tuple, cast
 from collections import Counter, defaultdict
 from threading import Lock
 
+# STARTUP VALIDATION - Run before anything else to prevent restart loops
+from startup_validation import run_all_validations
+run_all_validations()  # Exits with error if any critical check fails
+
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
