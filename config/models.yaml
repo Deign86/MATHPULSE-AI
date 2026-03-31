@@ -26,24 +26,26 @@ models:
 
 routing:
   task_model_map:
-    chat: Qwen/Qwen2.5-Math-7B-Instruct
-    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
-    lesson_generation: Qwen/Qwen3.5-9B
-    quiz_generation: Qwen/Qwen3.5-9B
-    learning_path: Qwen/Qwen3.5-9B
+    # Using HF Inference API with Featherless AI provider routing (officially supported)
+    # https://huggingface.co/blog/inference-providers-featherless
+    chat: Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai
+    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct:featherless-ai
+    lesson_generation: Qwen/Qwen3.5-9B:featherless-ai
+    quiz_generation: Qwen/Qwen3.5-9B:featherless-ai
+    learning_path: Qwen/Qwen3.5-9B:featherless-ai
     daily_insight: meta-llama/Llama-3.1-8B-Instruct
     risk_classification: meta-llama/Llama-3.1-8B-Instruct
     risk_narrative: meta-llama/Llama-3.1-8B-Instruct
 
   task_fallback_model_map:
     chat:
-      - Qwen/Qwen2.5-Math-1.5B-Instruct
-      - deepseek-ai/deepseek-math-7b-instruct
+      - Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai
       - meta-llama/Llama-3.1-8B-Instruct
+      - google/gemma-2-2b-it
     verify_solution:
-      - Qwen/Qwen2.5-Math-1.5B-Instruct
-      - deepseek-ai/deepseek-math-7b-instruct
+      - Qwen/Qwen2.5-Math-1.5B-Instruct:featherless-ai
       - meta-llama/Llama-3.1-8B-Instruct
+      - google/gemma-2-2b-it
 
   task_provider_map:
     quiz_generation: local_space
