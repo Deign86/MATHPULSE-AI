@@ -5,7 +5,7 @@ import re
 from threading import Lock
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import yaml
@@ -227,7 +227,7 @@ class InferenceClient:
 
         self._metrics_started_at = time.time()
         self._metrics_lock = Lock()
-        self._metrics: Dict[str, object] = {
+        self._metrics: Dict[str, Any] = {
             "requests_total": 0,
             "requests_ok": 0,
             "requests_error": 0,
@@ -241,7 +241,9 @@ class InferenceClient:
 
     def _bump_metric(self, key: str, inc: int = 1) -> None:
         with self._metrics_lock:
-            current = int(self._metrics.get(key) or 0)
+            current = self._metrics.get(key) or 0
+            if not isinstance(current, int):
+                current = 0
             self._metrics[key] = current + inc
 
     def _bump_bucket(self, key: str, bucket: str, inc: int = 1) -> None:
@@ -250,7 +252,10 @@ class InferenceClient:
             if not isinstance(mapping, dict):
                 mapping = {}
                 self._metrics[key] = mapping
-            mapping[bucket] = int(mapping.get(bucket) or 0) + inc
+            current = mapping.get(bucket) or 0
+            if not isinstance(current, int):
+                current = 0
+            mapping[bucket] = current + inc
 
     def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
         self._bump_metric("requests_total", 1)
@@ -260,15 +265,15 @@ class InferenceClient:
         if fallback_depth > 0:
             self._bump_metric("fallback_attempts", 1)
 
-    def snapshot_metrics(self) -> Dict[str, object]:
+    def snapshot_metrics(self) -> Dict[str, Any]:
         with self._metrics_lock:
             snapshot = {
                 "uptime_sec": round(max(0.0, time.time() - self._metrics_started_at), 2),
-                "requests_total": int(self._metrics.get("requests_total") or 0),
-                "requests_ok": int(self._metrics.get("requests_ok") or 0),
-                "requests_error": int(self._metrics.get("requests_error") or 0),
-                "retries_total": int(self._metrics.get("retries_total") or 0),
-                "fallback_attempts": int(self._metrics.get("fallback_attempts") or 0),
+                "requests_total": self._metrics.get("requests_total") or 0,
+                "requests_ok": self._metrics.get("requests_ok") or 0,
+                "requests_error": self._metrics.get("requests_error") or 0,
+                "retries_total": self._metrics.get("retries_total") or 0,
+                "fallback_attempts": self._metrics.get("fallback_attempts") or 0,
                 "route_counts": dict(self._metrics.get("route_counts") or {}),
                 "task_counts": dict(self._metrics.get("task_counts") or {}),
                 "provider_counts": dict(self._metrics.get("provider_counts") or {}),
