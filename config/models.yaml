@@ -1,16 +1,16 @@
 models:
   primary:
-    id: meta-llama/Meta-Llama-3-70B-Instruct
-    description: High-quality instruction model for Grade 11-12 math (best available on HF)
-    max_new_tokens: 1024
-    temperature: 0.3
-    top_p: 0.85
+    id: meta-llama/Llama-3.1-8B-Instruct
+    description: Fast default instruction model for interactive Grade 11-12 math tutoring
+    max_new_tokens: 640
+    temperature: 0.25
+    top_p: 0.9
 
   backup:
-    - id: meta-llama/Llama-3.1-8B-Instruct
-      description: Lower-cost backup model for high traffic
-      max_new_tokens: 384
-      temperature: 0.2
+    - id: meta-llama/Meta-Llama-3-70B-Instruct
+      description: High-quality model used for harder multi-step prompts
+      max_new_tokens: 768
+      temperature: 0.3
       top_p: 0.9
     - id: google/gemma-2-2b-it
       description: Secondary backup with broad instruction coverage
@@ -26,9 +26,9 @@ models:
 
 routing:
   task_model_map:
-    # Primary: Meta-Llama-3-70B (best quality on HF Inference API)
-    # Fallback chain: Hermes-2-Mixtral → Llama-3.1-8B → Mixtral-8x7B
-    chat: meta-llama/Meta-Llama-3-70B-Instruct
+    # Chat default: Llama-3.1-8B for low latency.
+    # Hard prompts can escalate to 70B via runtime policy in inference_client.
+    chat: meta-llama/Llama-3.1-8B-Instruct
     verify_solution: NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO
     lesson_generation: meta-llama/Llama-3.1-8B-Instruct
     quiz_generation: meta-llama/Llama-3.1-8B-Instruct
@@ -39,10 +39,8 @@ routing:
 
   task_fallback_model_map:
     chat:
-      - meta-llama/Meta-Llama-3-70B-Instruct      # Primary (best quality)
-      - NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO  # First fallback (good reasoning)
-      - meta-llama/Llama-3.1-8B-Instruct          # Second fallback (reliable)
-      - mistralai/Mixtral-8x7B-Instruct-v0.1      # Tertiary fallback
+      - meta-llama/Meta-Llama-3-70B-Instruct      # Hard/fallback quality tier
+      - google/gemma-2-2b-it                      # Fast safety fallback
     verify_solution:
       - NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO  # Primary (reasoning-focused)
       - meta-llama/Meta-Llama-3-70B-Instruct      # First fallback
