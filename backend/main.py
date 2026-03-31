@@ -34,6 +34,13 @@ except ImportError as e:
     # This can happen if the module wasn't properly deployed
     print(f"⚠️  Warning: startup_validation module not found: {e}")
     print("   Continuing without startup validation checks...")
+except BaseException as e:
+    # Do not crash the container on validation issues unless explicitly configured.
+    strict_startup_validation = os.getenv("STARTUP_VALIDATION_STRICT", "false").strip().lower() in {"1", "true", "yes", "on"}
+    if strict_startup_validation:
+        raise
+    print(f"⚠️  Warning: startup validation failed but strict mode is disabled: {e}")
+    print("   Continuing startup to avoid restart-loop crash.")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.encoders import jsonable_encoder

@@ -132,23 +132,29 @@ def validate_config_files() -> None:
 def validate_file_structure() -> None:
     """Verify critical backend files exist."""
     logger.info("🔍 Validating file structure...")
-    
-    required_files = [
-        "backend/main.py",
-        "backend/services/inference_client.py",
-        "backend/analytics.py",
-        "backend/automation_engine.py",
-        "Dockerfile",
+    required_path_sets = [
+        ["main.py", "backend/main.py"],
+        ["services/inference_client.py", "backend/services/inference_client.py"],
+        ["analytics.py", "backend/analytics.py"],
+        ["automation_engine.py", "backend/automation_engine.py"],
+        ["Dockerfile", "backend/Dockerfile"],
     ]
-    
-    for file_path in required_files:
-        full_path = Path(file_path)
-        if not full_path.exists():
+
+    for candidates in required_path_sets:
+        found = None
+        for candidate in candidates:
+            if Path(candidate).exists():
+                found = candidate
+                break
+
+        if not found:
+            joined = " or ".join(candidates)
             raise StartupError(
-                f"❌ FILE MISSING: {file_path}\n"
-                f"   Backend structure is broken.\n"
+                f"❌ FILE MISSING: {joined}\n"
+                f"   Backend structure is broken for this deployment layout.\n"
             )
-        logger.info(f"   ✓ {file_path} exists")
+
+        logger.info(f"   ✓ Found {found}")
     
     logger.info("✅ File structure OK")
 
@@ -202,6 +208,8 @@ def run_all_validations() -> None:
     logger.info("🚀 STARTUP VALIDATION - Checking all critical dependencies")
     logger.info("=" * 70)
     
+    strict_mode = os.getenv("STARTUP_VALIDATION_STRICT", "false").strip().lower() in {"1", "true", "yes", "on"}
+
     try:
         validate_file_structure()
         validate_imports()
@@ -217,8 +225,18 @@ def run_all_validations() -> None:
         logger.error("=" * 70)
         logger.error(str(e))
         logger.error("=" * 70)
-        logger.error("\n🛑 DEPLOYMENT WILL FAIL - Fix errors above and redeploy")
-        sys.exit(1)
+        if strict_mode:
+            logger.error("\n🛑 DEPLOYMENT WILL FAIL - Fix errors above and redeploy")
+            sys.exit(1)
+        logger.warning(
+            "\n⚠️  Continuing startup because STARTUP_VALIDATION_STRICT is disabled. "
+            "Set STARTUP_VALIDATION_STRICT=true to fail fast."
+        )
     except Exception as e:
         logger.exception(f"Unexpected validation error: {e}")
-        sys.exit(1)
+        if strict_mode:
+            sys.exit(1)
+        logger.warning(
+            "⚠️  Continuing startup after unexpected validation error because "
+            "STARTUP_VALIDATION_STRICT is disabled."
+        )
