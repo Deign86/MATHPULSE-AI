@@ -442,18 +442,17 @@ class InferenceClient:
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
-        # Check if this is a Qwen model - use direct HF InferenceClient instead of router
+        # Check if this is a Qwen model - route to featherless-ai provider
         target_model = req.model or self.default_model
         target_model_base = target_model.split(":")[0] if ":" in target_model else target_model
-        if "qwen" in target_model_base.lower():
+        if "qwen" in target_model_base.lower() and provider == "featherless-ai":
             return self._call_hf_inference_direct(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
-        # For featherless_api provider or other models, use router
+        # For featherless_api or other featherless routing, use direct client
         if provider in ("featherless_api", "featherless-ai"):
-            # Send to HF router which handles routing for featherless-ai models
-            return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
+            return self._call_hf_inference_direct(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
-        # Default to HF inference router
+        # Default to HF inference router for meta-llama and other models
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -560,8 +559,8 @@ class InferenceClient:
 
     def _call_hf_inference_direct(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         """
-        Call Qwen and other models via direct HF InferenceClient with featherless-ai provider.
-        This bypasses the router which doesn't support Qwen/Qwen2.5-Math-7B-Instruct.
+        Call Qwen models via Featherless AI provider (the only provider serving Qwen/Qwen2.5-Math-7B-Instruct).
+        Uses HF InferenceClient with provider="featherless-ai" for direct model access.
         """
         if not self.hf_token:
             raise RuntimeError("HF_TOKEN is not set")
@@ -574,11 +573,11 @@ class InferenceClient:
         
         try:
             # Use HF InferenceClient with featherless-ai provider for Qwen models
-            # This provider is the only one supported for Qwen/Qwen2.5-Math-7B-Instruct
+            # This is the only provider that supports Qwen/Qwen2.5-Math-7B-Instruct
             client = HFInferenceClient(
                 model=target_model_base,
-                provider="featherless-ai",
                 token=self.hf_token,
+                provider="featherless-ai",
                 timeout=timeout
             )
             
@@ -601,7 +600,7 @@ class InferenceClient:
                 LOGGER,
                 provider="featherless-ai",
                 model=target_model_base,
-                endpoint="featherless-ai",
+                endpoint="featherless-ai_inference",
                 latency_ms=latency_ms,
                 input_tokens=None,
                 output_tokens=None,
@@ -628,7 +627,7 @@ class InferenceClient:
                 LOGGER,
                 provider="featherless-ai",
                 model=target_model_base,
-                endpoint="featherless-ai",
+                endpoint="featherless-ai_inference",
                 latency_ms=latency_ms,
                 input_tokens=None,
                 output_tokens=None,
