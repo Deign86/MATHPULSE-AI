@@ -1,10 +1,10 @@
 models:
   primary:
-    id: Qwen/Qwen3.5-9B
-    description: Main Grade 11-12 tutor model (router-supported)
-    max_new_tokens: 512
-    temperature: 0.2
-    top_p: 0.9
+    id: Qwen/Qwen2.5-Math-72B-Instruct
+    description: Math-specialized Grade 11-12 tutor model (enhanced accuracy)
+    max_new_tokens: 1024
+    temperature: 0.3
+    top_p: 0.85
 
   backup:
     - id: meta-llama/Llama-3.1-8B-Instruct
@@ -26,10 +26,10 @@ models:
 
 routing:
   task_model_map:
-    # Primary: Qwen/Qwen2.5-7B-Instruct (directly accessible via HF serverless TGI)
-    # Fallback chain: meta-llama/Llama-3.1-8B-Instruct (router-compatible)
-    chat: Qwen/Qwen2.5-7B-Instruct
-    verify_solution: Qwen/Qwen2.5-7B-Instruct
+    # Primary: Qwen2.5-Math-72B for chat (math-optimized, better accuracy for Grade 11-12)
+    # Fallback chain: Qwen2.5-Math-7B-Instruct → Llama-3.1-8B-Instruct
+    chat: Qwen/Qwen2.5-Math-72B-Instruct
+    verify_solution: Qwen/Qwen2.5-Math-7B-Instruct
     lesson_generation: Qwen/Qwen2.5-7B-Instruct
     quiz_generation: Qwen/Qwen2.5-7B-Instruct
     learning_path: Qwen/Qwen2.5-7B-Instruct
@@ -39,11 +39,14 @@ routing:
 
   task_fallback_model_map:
     chat:
-      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback (router-compatible)
-      - google/gemma-2-2b-it                # Secondary fallback
+      - Qwen/Qwen2.5-Math-72B-Instruct      # Primary (math-specialized)
+      - Qwen/Qwen2.5-Math-7B-Instruct       # First fallback (smaller math model)
+      - meta-llama/Llama-3.1-8B-Instruct    # Secondary fallback
+      - google/gemma-2-2b-it                # Tertiary fallback
     verify_solution:
-      - meta-llama/Llama-3.1-8B-Instruct    # Primary fallback (router-compatible)
-      - google/gemma-2-2b-it                # Secondary fallback
+      - Qwen/Qwen2.5-Math-7B-Instruct       # Primary fallback (math-optimized)
+      - meta-llama/Llama-3.1-8B-Instruct    # Secondary fallback
+      - google/gemma-2-2b-it                # Tertiary fallback
 
   task_provider_map:
     # All tasks use hf_inference router (Qwen2.5-7B-Instruct natively supported)

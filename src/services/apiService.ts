@@ -1029,9 +1029,49 @@ export const apiService = {
   async chat(
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[],
+    onChunk?: (chunk: string) => void,
   ): Promise<ChatResponse> {
     validateRequired('/api/chat', { message });
 
+    // If streaming callback provided, use SSE streaming
+    if (onChunk) {
+      return new Promise((resolve, reject) => {
+        const params = new URLSearchParams({
+          message,
+          history: JSON.stringify(history ?? []),
+        });
+
+        const eventSource = new EventSource(`/api/chat/stream?${params}`);
+        let fullResponse = '';
+
+        eventSource.addEventListener('chunk', (event: any) => {
+          const chunk = event.data;
+          fullResponse += chunk;
+          onChunk(chunk);
+        });
+
+        eventSource.addEventListener('end', () => {
+          eventSource.close();
+          resolve({ response: fullResponse });
+        });
+
+        eventSource.onerror = (error) => {
+          eventSource.close();
+          console.error('Streaming error:', error);
+          reject(new Error('Streaming connection failed, falling back to non-streaming mode'));
+        };
+
+        // Timeout fallback in case stream hangs
+        setTimeout(() => {
+          if (eventSource.readyState === EventSource.CONNECTING || eventSource.readyState === EventSource.OPEN) {
+            eventSource.close();
+            reject(new Error('Stream timeout'));
+          }
+        }, 60000); // 60 second timeout
+      });
+    }
+
+    // Fallback to regular fetch if no streaming callback
     return apiFetch<ChatResponse>(
       '/api/chat',
       { method: 'POST', body: JSON.stringify({ message, history: history ?? [] }) },
