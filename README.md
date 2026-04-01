@@ -28,7 +28,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
 - **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
 - **Practice Center** — Dedicated practice area for reinforcing concepts
-- **AI Chat Tutor** — On-demand math help powered by Qwen/Qwen2.5-Math-7B-Instruct via Hugging Face Inference API, with optional self-consistency verification
+- **AI Chat Tutor** — On-demand math help via routed Hugging Face inference (Llama 3.1 8B default, hard-prompt escalation to Llama 3 70B), with optional self-consistency verification
 - **Floating AI Tutor** — Always-accessible AI help widget available from any page
 - **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
 - **XP Notifications** — Real-time animated XP gain notifications
@@ -46,7 +46,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Teacher Dashboard** — Monitor student progress and performance at a glance
 - **Student Management** — View individual student profiles with detailed academic metrics and at-risk indicators
 - **AI-Generated Insights** — Daily AI-powered class analytics with actionable recommendations
-- **Risk Classification** — ML-powered student risk prediction (High/Medium/Low) using zero-shot classification
+- **Risk Classification** — Dual pipeline: BART zero-shot classification and enhanced supervised ML scoring (XGBoost/RandomForest with SHAP explanations)
 - **Task Assignment** — Create and manage student tasks and assignments
 - **Smart File Import** — Upload CSV/Excel/PDF class records with AI-powered column detection
 - **Performance Analytics** — Track class-wide and per-student metrics with interactive charts
@@ -101,11 +101,27 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 | **Docker** | Containerized deployment (frontend + backend) |
 | **Hugging Face Spaces** | Backend API hosting |
 
-### AI Models
-| Model | Use Case |
+### AI Models (Current Runtime)
+
+#### LLM Routing (defaults from `config/models.yaml`)
+| Model | Primary Use |
 |---|---|
-| **Qwen/Qwen2.5-Math-7B-Instruct** | Chat tutoring (low-temperature, step-by-step verified), learning path generation, daily class insights, document column detection, math verification (self-consistency, code-based, LLM judge) |
-| **facebook/bart-large-mnli** | Student risk classification via zero-shot classification |
+| **meta-llama/Llama-3.1-8B-Instruct** | Default chat + generation model (`chat`, `lesson_generation`, `quiz_generation`, `learning_path`, `daily_insight`, `risk_narrative`) |
+| **NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO** | Primary model for `verify_solution` reasoning flow |
+| **meta-llama/Meta-Llama-3-70B-Instruct** | Hard-prompt escalation target and high-quality fallback tier |
+| **google/gemma-2-2b-it** | Fast fallback model for degraded-provider or burst scenarios |
+| **mistralai/Mistral-7B-Instruct-v0.3** | Experimental prompt/procedure benchmarking |
+| **meta-llama/Meta-Llama-3-8B-Instruct** | Experimental baseline comparison |
+
+#### Risk and Analytics Models
+| Model | Primary Use |
+|---|---|
+| **facebook/bart-large-mnli** | `/api/predict-risk` zero-shot student risk classification |
+| **XGBoostClassifier / RandomForestClassifier** | `/api/predict-risk/enhanced` supervised risk model; serialized to `models/risk_classifier.joblib` |
+
+Runtime note:
+- Environment variables can override routing at startup (`INFERENCE_MODEL_ID`, `INFERENCE_CHAT_MODEL_ID`, `HF_QUIZ_MODEL_ID`, `INFERENCE_FALLBACK_MODELS`).
+- If `INFERENCE_MODEL_ID` is set, task-specific defaults are overridden to that model.
 
 ## 🚀 Getting Started
 
@@ -195,20 +211,27 @@ curl -X GET "${VITE_API_URL:-https://deign86-mathpulse-api.hf.space}/api/feedbac
    -H "Content-Type: application/json"
 ```
 
-Operational artifacts:
-- `docs/import-grounded-telemetry-query-pack.md`
-- `docs/import-grounded-e2e-verification-log.md`
-- `docs/import-grounded-security-drill-matrix.md`
+Operational tips:
+- Use `/api/feedback/import-grounded/summary` for pilot telemetry rollups.
+- Use `/api/import-grounded/access-audit` for scoped access/audit review.
 
 ## 🏗 Architecture
 
-## Hugging Face PRO Architecture
+### Hugging Face PRO + Async Architecture
 
 MathPulse now supports a PRO-oriented architecture for fast demos, low-cost experimentation, and reproducible offline evaluation.
 
 - Inference provider switch: backend/services/inference_client.py routes requests to either local Space or Hugging Face Inference Providers, with retries, timeout controls, and fallback models.
 - HF Jobs for offline runs: jobs/eval_math_model.py and jobs/generate_variants.py support model evaluation and synthetic variant generation.
-- Private datasets flow: datasets/ structure plus scripts/push_dataset_to_hf.py and scripts/pull_dataset_from_hf.py for private Hub sync.
+
+### Recent Repository Updates (April 2026)
+
+- Centralized model routing with task maps, provider maps, and fallback chains in `backend/services/inference_client.py`.
+- Chat hard-prompt escalation controls added via `INFERENCE_CHAT_HARD_*` environment settings.
+- Async generation queue added for lesson/quiz workflows with task polling/cancellation APIs.
+- Import-grounded telemetry and access-audit endpoints added for pilot governance.
+- Enhanced risk pipeline expanded: zero-shot endpoint plus trainable ML endpoint (`/api/predict-risk/enhanced`) with optional LLM recommendations.
+- Startup and deployment safety checks added (`backend/startup_validation.py`, `backend/pre_deploy_check.py`).
 
 Flow overview:
 
@@ -250,8 +273,6 @@ This keeps your unique React UI and Firebase flows unchanged, while chat generat
    python jobs/hf_jobs_launcher.py --job variants --mode local --limit 200 --variants-per-item 3
 5. Submit a Hugging Face Jobs CLI run (dry-run first):
    python jobs/hf_jobs_launcher.py --job eval --mode hf --flavor cpu-basic --dry-run --env HF_TOKEN=<token>
-6. Sync curated artifacts to private dataset repo:
-   python scripts/push_dataset_to_hf.py --repo Deign86/mathpulse-private-datasets
 
 ### Async generation + Pro metrics endpoints
 
@@ -285,55 +306,36 @@ Enable async task mode via env:
 
 ```
 MATHPULSE-AI/
+├── config/                     # Shared model/inference configuration
+│   ├── env.sample
+│   └── models.yaml
 ├── src/
-│   ├── App.tsx                  # Root component with routing & layout
-│   ├── main.tsx                 # Application entry point
-│   ├── index.css                # Global CSS imports
-│   ├── components/              # React components (40+ files)
-│   │   ├── *Page.tsx            # Full-page views (Modules, AI Chat, Grades, Leaderboard)
-│   │   ├── *Modal.tsx           # Dialog overlays (Profile, Settings, Rewards, Diagnostic)
-│   │   ├── *Widget.tsx          # Small reusable blocks (QuickStats)
-│   │   ├── *Dashboard.tsx       # Role-based dashboards (Teacher, Admin)
-│   │   ├── LoginPage.tsx        # Firebase authentication (email/password + Google)
-│   │   ├── InteractiveLesson.tsx # Lesson renderer
-│   │   ├── QuizExperience.tsx   # Quiz engine with scoring
-│   │   ├── LearningPath.tsx     # AI-generated learning path view
-│   │   ├── PracticeCenter.tsx   # Practice problems area
-│   │   ├── FloatingAITutor.tsx  # Always-on AI help widget
-│   │   ├── TasksBoard.tsx       # Kanban-style task management
-│   │   ├── Sidebar.tsx          # Main navigation sidebar
-│   │   ├── CollapsibleSidebar.tsx # Sidebar collapse behavior
-│   │   └── ui/                  # Radix-based primitives (48 components)
-│   ├── contexts/                # React context providers
-│   │   ├── AuthContext.tsx      # Authentication state & useAuth() hook
-│   │   └── ChatContext.tsx      # AI chat session state
-│   ├── services/                # Firebase & API service layer
-│   │   ├── apiService.ts        # FastAPI backend client
-│   │   ├── authService.ts       # Auth operations (sign in/up/out, profiles)
-│   │   ├── progressService.ts   # Learning progress tracking
-│   │   ├── gamificationService.ts # XP, levels, streaks, achievements
-│   │   ├── chatService.ts       # AI chat session management
-│   │   ├── notificationService.ts # User notifications
-│   │   ├── taskService.ts       # Task CRUD operations
-│   │   └── studentService.ts    # Student data operations
-│   ├── types/
-│   │   └── models.ts            # TypeScript type definitions (230+ lines)
-│   ├── data/
-│   │   └── subjects.ts          # Static curriculum data (subjects, modules, lessons)
-│   ├── lib/
-│   │   └── firebase.ts          # Firebase SDK initialization & exports
-│   └── styles/
-│       └── globals.css          # Tailwind CSS + custom CSS variables
+│   ├── components/              # Student/teacher/admin UI, quiz + lesson workflows
+│   ├── contexts/                # AuthContext, ChatContext
+│   ├── services/                # Firebase + FastAPI service layer
+│   ├── data/                    # Subject/module curriculum data
+│   ├── types/                   # Shared frontend models
+│   ├── styles/                  # Styling system and globals
+│   ├── App.tsx
+│   └── main.tsx
 ├── backend/
-│   ├── main.py                  # FastAPI application (all-in-one: API, verification system)
-│   ├── requirements.txt         # Python dependencies
-│   └── Dockerfile               # Container configuration (Python 3.11)
-├── docker-compose.yml           # Multi-service orchestration (frontend + backend)
-├── Dockerfile                   # Multi-stage build (frontend + production)
-├── nginx.conf                   # Nginx config for production serving
-├── firestore.rules              # Firestore security rules
-├── firebase.json                # Firebase project config
-└── deploy-hf.py                 # Hugging Face Spaces deployment script
+│   ├── services/                # Inference routing + logging utilities
+│   ├── tests/                   # Backend API regression tests
+│   ├── config/                  # Backend-local model/env mirrors
+│   ├── analytics.py             # Risk, competency, recommendation engines
+│   ├── automation_engine.py     # Event-driven automation workflows
+│   ├── main.py                  # FastAPI API surface
+│   ├── startup_validation.py    # Startup guardrail checks
+│   └── pre_deploy_check.py      # Deployment safety checks
+├── jobs/                        # Offline eval + synthetic generation jobs
+├── datasets/                    # Evaluation + metadata datasets
+├── functions/                   # Firebase/TS automation functions
+├── scripts/                     # Utility scripts (backend gate, seed users)
+├── docker-compose.yml
+├── Dockerfile
+├── nginx.conf
+├── firebase.json
+└── firestore.rules
 ```
 
 ### Key Design Patterns
@@ -370,18 +372,32 @@ The FastAPI backend exposes the following endpoints:
 |---|---|---|
 | `GET`  | `/` | Root info (name, version, docs link) |
 | `GET`  | `/health` | Health check with model status |
-| `POST` | `/api/chat` | AI Math Tutor conversation (Llama 3 Instruct, temp=0.2, optional verification) |
+| `POST` | `/api/chat` | AI Math Tutor conversation (`chat` task routing, optional verification) |
+| `POST` | `/api/chat/stream` | Streaming tutor responses (SSE) |
 | `POST` | `/api/verify-solution` | Full multi-method verification of a math solution |
 | `POST` | `/api/predict-risk` | Single student risk classification (BART zero-shot) |
+| `POST` | `/api/predict-risk/enhanced` | Supervised ML risk scoring with optional LLM intervention recommendations |
 | `POST` | `/api/predict-risk/batch` | Batch risk prediction for multiple students |
+| `POST` | `/api/risk/train-model` | Train/retrain supervised risk model (admin) |
 | `POST` | `/api/learning-path` | Generate personalized learning path by weaknesses |
 | `POST` | `/api/analytics/daily-insight` | Generate daily AI insights for teacher dashboard |
+| `POST` | `/api/lesson/generate-async` | Async lesson generation submission |
+| `POST` | `/api/quiz/preview` | Preview quiz items before full generation |
+| `POST` | `/api/quiz/generate-async` | Async quiz generation submission |
+| `GET`  | `/api/tasks/{task_id}` | Poll async task status/result |
+| `GET`  | `/api/tasks` | List async tasks by status/user scope |
+| `POST` | `/api/tasks/{task_id}/cancel` | Cancel queued/running async task |
+| `GET`  | `/api/ops/inference-metrics` | Admin inference routing + fallback metrics |
 | `POST` | `/api/upload/class-records` | Upload and parse class records (CSV/XLSX/PDF) with AI column detection |
 | `GET`  | `/api/upload/class-records/risk-refresh/recent` | Recent class-record risk refresh jobs (teacher scoped, optional class filter) |
 | `POST` | `/api/upload/course-materials` | Upload and parse course materials (PDF/DOCX/TXT) with topic extraction |
 | `GET`  | `/api/upload/course-materials/recent` | Recent course-material artifacts (teacher scoped, optional class filter) |
 | `GET`  | `/api/course-materials/topics` | Normalized topic map from imported materials (optional class/material filters) |
 | `POST` | `/api/lesson/generate` | Generate class lesson plans grounded on imported topics + class signals |
+| `POST` | `/api/quiz/generate` | Generate import-grounded or curriculum quiz sets |
+| `POST` | `/api/feedback/import-grounded` | Submit import-grounded feedback events |
+| `GET`  | `/api/feedback/import-grounded/summary` | Aggregate pilot telemetry summaries |
+| `GET`  | `/api/import-grounded/access-audit` | Access-audit log query for import workflows |
 
 Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` when the backend is running.
 
@@ -390,8 +406,10 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 | Endpoint | Request Body | Response Body |
 |---|---|---|
 | `/api/chat` | `{ message, history[{role, content}], userId?, verify? }` | `{ response, verified?, confidence?, warning? }` |
+| `/api/chat/stream` | `{ message, history[{role, content}], userId?, verify? }` | `text/event-stream` tokens + completion/error events |
 | `/api/verify-solution` | `{ problem, solution }` | `{ overall_verified, aggregated_confidence, self_consistency, code_verification, llm_judge, warnings[] }` |
-| `/api/predict-risk` | `{ engagementScore, avgQuizScore, attendance, assignmentCompletion }` | `{ riskLevel, confidence, analysis{labels, scores} }` |
+| `/api/predict-risk` | `{ engagementScore, avgQuizScore, attendance, assignmentCompletion }` | `{ riskLevel, confidence, analysis{labels, scores}, risk_level, risk_score, top_factors[] }` |
+| `/api/predict-risk/enhanced` | `{ studentId, engagementScore, avgQuizScore, attendance, assignmentCompletion, ... }` | `{ riskLevel, confidence, probabilities, contributingFactors, recommendations, modelUsed, risk_level, risk_score, top_factors[] }` |
 | `/api/learning-path` | `{ weaknesses[], gradeLevel, learningStyle? }` | `{ learningPath }` |
 | `/api/analytics/daily-insight` | `{ students[{name, engagementScore, avgQuizScore, attendance, riskLevel}] }` | `{ insight }` |
 | `/api/upload/class-records` | `FormData(file)` — CSV/XLSX/PDF | `{ success, students[], columnMapping, totalRows }` |
@@ -400,6 +418,9 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 | `/api/upload/course-materials/recent` | `Query(limit?, classSectionId?)` | `{ success, classSectionId?, materials[], warnings[] }` |
 | `/api/course-materials/topics` | `Query(classSectionId?, materialId?, limit?)` | `{ success, topics[], materials[], warnings[] }` |
 | `/api/lesson/generate` | `{ gradeLevel, classSectionId?, className?, materialId?, focusTopics? }` | `{ success, blocks[], provenanceSummary[], warnings[] }` |
+| `/api/lesson/generate-async` | Same body as `/api/lesson/generate` | `{ taskId, status, statusUrl, pollAfterMs }` |
+| `/api/quiz/generate-async` | Same body as `/api/quiz/generate` | `{ taskId, status, statusUrl, pollAfterMs }` |
+| `/api/tasks/{task_id}` | `Path(task_id)` | `{ taskId, status, progress, result?, error?, expiresAt? }` |
 
 ### Import Retention and Audit Cadence
 

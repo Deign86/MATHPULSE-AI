@@ -257,6 +257,35 @@ class TestChatEndpoint:
         assert "x = 2" in data
         assert "x = 3" in data
 
+    @patch("main.call_hf_chat_stream")
+    def test_chat_stream_success(self, mock_stream):
+        mock_stream.return_value = iter(["Hello", " world"])
+
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "Say hello",
+            "history": [],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert "event: chunk" in content
+        assert '"chunk": "Hello"' in content
+        assert "event: end" in content
+
+    @patch("main.call_hf_chat_stream")
+    def test_chat_stream_emits_error_event(self, mock_stream):
+        mock_stream.side_effect = Exception("HF stream down")
+
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "Say hello",
+            "history": [],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert "event: error" in content
+        assert "event: end" in content
+
 
 class TestHFChatTransport:
     @patch("main.http_requests.post")

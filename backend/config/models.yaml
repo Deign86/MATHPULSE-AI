@@ -47,11 +47,11 @@ routing:
       - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
 
   task_provider_map:
-    # All tasks use hf_inference router (native HF support for Qwen/Qwen2.5-7B-Instruct)
+    # All tasks use hf_inference router (Qwen2.5-7B-Instruct natively supported)
     chat: hf_inference
     verify_solution: hf_inference
-    quiz_generation: hf_inference
     lesson_generation: hf_inference
+    quiz_generation: hf_inference
     learning_path: hf_inference
     daily_insight: hf_inference
     risk_narrative: hf_inference
