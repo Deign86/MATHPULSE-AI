@@ -102,6 +102,17 @@ jobs:
               return;
             }
 
+            let pr = null;
+            try {
+              pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            } catch (error) {
+              if (error.status === 404) {
+                core.warning(`PR #${prNumber} not found; skipping label and comment updates.`);
+                return;
+              }
+              throw error;
+            }
+
             const labels = Array.from(new Set([...(report.labels || []), `risk-${report.riskLevel}`]));
             const defaults = map.labelDefaults || {};
 
@@ -118,7 +129,6 @@ jobs:
               await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels });
             }
 
-            const pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
             const author = pr.data.user.login;
             const reviewers = (report.reviewers || [])
               .map((value) => String(value).replace(/^@/, ''))

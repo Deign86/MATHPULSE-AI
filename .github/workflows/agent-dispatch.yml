@@ -229,6 +229,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const ref = `${{ steps.validate.outputs.branch }}`;
+            const fallbackRef = context.payload.repository.default_branch || 'main';
             const inputs = {
               branch: `${{ steps.validate.outputs.branch }}`,
               summary: `${{ steps.validate.outputs.scope }}`,
@@ -237,22 +238,38 @@ jobs:
               pull_request_number: `${{ steps.validate.outputs.pull_request_number }}`
             };
 
-            await github.rest.actions.createWorkflowDispatch({
-              owner,
-              repo,
-              workflow_id: 'branch-name-governor.yml',
-              ref,
-              inputs
-            });
+            const dispatchWorkflow = async (workflowId) => {
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner,
+                  repo,
+                  workflow_id: workflowId,
+                  ref,
+                  inputs
+                });
+                core.info(`Triggered ${workflowId} on ref ${ref}.`);
+                return;
+              } catch (error) {
+                if (fallbackRef === ref) {
+                  throw error;
+                }
+                core.warning(`Dispatch for ${workflowId} on ref ${ref} failed: ${error.message}`);
+              }
 
-            if (`${{ steps.validate.outputs.requires_review }}` === 'true') {
               await github.rest.actions.createWorkflowDispatch({
                 owner,
                 repo,
-                workflow_id: 'ai-change-audit.yml',
-                ref,
+                workflow_id: workflowId,
+                ref: fallbackRef,
                 inputs
               });
+              core.info(`Triggered ${workflowId} on fallback ref ${fallbackRef}.`);
+            };
+
+            await dispatchWorkflow('branch-name-governor.yml');
+
+            if (`${{ steps.validate.outputs.requires_review }}` === 'true') {
+              await dispatchWorkflow('ai-change-audit.yml');
               core.info('Triggered branch-name-governor.yml and ai-change-audit.yml for manual dispatch flow.');
             } else {
               core.info('Triggered branch-name-governor.yml only (requires_review=false).');
