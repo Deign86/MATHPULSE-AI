@@ -1866,7 +1866,7 @@ const InterventionView: React.FC<{
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-xl font-display font-bold text-foreground">Targeted Lesson Plan</h2>
-              <p className="text-sm text-muted-foreground">Grounded on imported class topics and student risk signals</p>
+              <p className="text-sm text-muted-foreground">Class records drive risk signals. Import-grounded lesson generation needs uploaded course materials for topic context.</p>
             </div>
             <Button
               onClick={() => void generateTargetedLessonPlan()}
@@ -1876,6 +1876,10 @@ const InterventionView: React.FC<{
               {lessonLoading ? <Loader2 size={16} className="animate-spin" /> : 'Regenerate'}
             </Button>
           </div>
+
+          <p className="mb-4 text-xs text-muted-foreground bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
+            Class records alone are not enough for import-grounded lesson plans. Upload course materials in Data Import to provide lesson topic grounding.
+          </p>
 
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
             <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
@@ -2123,7 +2127,7 @@ const ImportView: React.FC<{
       }
 
       if (result.success) {
-        toast.success(`Successfully imported ${uploadedStudentsCount} student records`);
+        toast.success(`Successfully imported ${uploadedStudentsCount} student records. Next step: upload course materials for AI lesson-plan grounding.`);
         const riskRefreshText = result.riskRefresh?.queued
           ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
           : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
@@ -2135,7 +2139,7 @@ const ImportView: React.FC<{
           ? ` Warnings: ${uploadWarnings}`
           : '';
         setUploadResult(
-          `Imported ${uploadedStudentsCount} students.${riskRefreshText}${dashboardSyncText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
+          `Imported ${uploadedStudentsCount} students. Next step: upload course materials to give AI lesson generation topic context.${riskRefreshText}${dashboardSyncText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
         );
         setUploadInterpretation({
           datasetIntent: result.datasetIntent,
@@ -2188,9 +2192,9 @@ const ImportView: React.FC<{
 
       if (result.success) {
         const topicCount = result.topics?.length ?? 0;
-        toast.success(`Course material imported (${topicCount} topics extracted)`);
+        toast.success(`Course material imported (${topicCount} topics extracted). Lesson generation now has material context.`);
         setUploadResult(
-          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s).`,
+          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s). Lesson generation is now ready with material context.`,
         );
         onDataChanged?.();
       }
@@ -2240,7 +2244,7 @@ const ImportView: React.FC<{
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
           <h2 className="text-xl font-display font-bold text-foreground">Import Data</h2>
-          <p className="text-muted-foreground">Upload class records and course materials to enhance AI predictions</p>
+          <p className="text-muted-foreground">Class records drive analytics and at-risk signals. Course materials provide topic grounding for AI lesson plans.</p>
           <p className="text-xs text-muted-foreground mt-1">
             Class scope: {className || classSectionId || 'All classes'}
           </p>
