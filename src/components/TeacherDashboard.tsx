@@ -3,7 +3,7 @@ import {
   Users, BookOpen, TrendingUp, AlertTriangle, Calendar, MessageCircle, 
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   Play, FileText, Target, Zap, Award, Upload, FileSpreadsheet, 
-  Video, ClipboardCheck, Info, Bell, Search, Home, Database,
+  Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database,
   ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Loader2, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -56,7 +56,8 @@ type View =
   | 'topic_mastery'
   | 'competency'
   | 'notifications'
-  | 'calendar';
+  | 'calendar'
+  | 'quiz_maker';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -360,10 +361,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showQuizMaker, setShowQuizMaker] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassView | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentView | null>(null);
 
@@ -613,55 +614,65 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       <motion.aside
         initial={false}
         animate={{
-          width: isMobileViewport ? 280 : sidebarCollapsed ? 80 : 280,
+          width: isMobileViewport ? 280 : sidebarCollapsed && !sidebarHovered ? 80 : 280,
           x: isMobileViewport ? (mobileNavOpen ? 0 : -300) : 0,
         }}
         transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-        className="fixed inset-y-0 left-0 z-40 bg-card border-r border-slate-200 flex flex-col shadow-sm lg:static lg:z-auto"
+        onMouseEnter={() => !isMobileViewport && sidebarCollapsed && setSidebarHovered(true)}
+        onMouseLeave={() => setSidebarHovered(false)}
+        className="fixed inset-y-0 left-0 z-40 bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex flex-col shadow-sm lg:static lg:z-auto p-5"
       >
         {/* Logo & Toggle */}
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl flex items-center justify-center">
-                <BookOpen size={20} className="text-white" />
-              </div>
-              <div>
-                <h1 className="font-display font-bold text-foreground">MathPulse AI</h1>
-                <p className="text-xs text-slate-500">Teacher Portal</p>
-              </div>
+        <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
+              <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
             </div>
-          )}
-          {isMobileViewport ? (
-            <button
-              onClick={() => setMobileNavOpen(false)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
-              aria-label="Close navigation"
-            >
-              <X size={20} />
-            </button>
-          ) : (
-            <button
+            {(!sidebarCollapsed || sidebarHovered) && (
+              <div>
+                <h1 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
+              </div>
+            )}
+          </div>
+          {!isMobileViewport && (!sidebarCollapsed || sidebarHovered) && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+              className="p-2 hover:bg-[#dde3eb] rounded-lg transition-colors text-[#5a6578]"
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </motion.button>
+          )}
+          {isMobileViewport && (
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              className="p-2 hover:bg-[#dde3eb] rounded-lg transition-colors text-[#5a6578]"
+              aria-label="Close navigation"
+            >
+              <X size={20} />
             </button>
           )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-4">
+        <nav className="flex-1 space-y-5">
           {/* Overview Section */}
           <div>
-            <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Overview</p>
+            {sidebarCollapsed && !sidebarHovered ? (
+              <div className="px-4 mb-2 flex items-center gap-2">
+                <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
+              </div>
+            ) : (
+              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Overview</p>
+            )}
             <div className="space-y-1">
               <NavItem
-                icon={Home}
+                icon={LayoutDashboard}
                 label="Dashboard"
                 active={activeView === 'dashboard'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={handleBackToDashboard}
                 forceExpanded={isMobileViewport}
               />
@@ -669,7 +680,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 icon={BarChart3}
                 label="Class Analytics"
                 active={activeView === 'analytics'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('analytics')}
                 forceExpanded={isMobileViewport}
               />
@@ -678,13 +689,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
           {/* Students Section */}
           <div>
-            <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Students</p>
+            {sidebarCollapsed && !sidebarHovered ? (
+              <div className="px-4 mb-2 flex items-center gap-2">
+                <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
+              </div>
+            ) : (
+              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Students</p>
+            )}
             <div className="space-y-1">
               <NavItem
                 icon={Target}
                 label="Topic Mastery"
                 active={activeView === 'topic_mastery'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('topic_mastery')}
                 forceExpanded={isMobileViewport}
               />
@@ -692,7 +709,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 icon={Users}
                 label="Competency"
                 active={activeView === 'competency'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('competency')}
                 forceExpanded={isMobileViewport}
               />
@@ -701,29 +718,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
           {/* Tools Section */}
           <div>
-            <p className="px-4 mb-2 text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">Tools</p>
+            {sidebarCollapsed && !sidebarHovered ? (
+              <div className="px-4 mb-2 flex items-center gap-2">
+                <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
+              </div>
+            ) : (
+              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Tools</p>
+            )}
             <div className="space-y-1">
               <NavItem
                 icon={Database}
                 label="Data Import"
                 active={activeView === 'import'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('import')}
                 forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={ClipboardCheck}
                 label="AI Quiz Maker"
-                active={showQuizMaker}
-                collapsed={sidebarCollapsed}
-                onClick={() => setShowQuizMaker(true)}
+                active={activeView === 'quiz_maker'}
+                collapsed={sidebarCollapsed && !sidebarHovered}
+                onClick={() => setActiveView('quiz_maker')}
                 forceExpanded={isMobileViewport}
               />
               <NavItem
                 icon={Bell}
                 label="Notifications"
                 active={activeView === 'notifications'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('notifications')}
                 forceExpanded={isMobileViewport}
               />
@@ -731,7 +754,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 icon={Calendar}
                 label="Calendar"
                 active={activeView === 'calendar'}
-                collapsed={sidebarCollapsed}
+                collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('calendar')}
                 forceExpanded={isMobileViewport}
               />
@@ -740,31 +763,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </nav>
 
         {/* User Section */}
-        <div className="p-4 border-t border-slate-200">
-          <button
-            onClick={onOpenSettings}
-            className={`w-full mb-2 px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${
-              sidebarCollapsed
-                ? 'justify-center text-slate-500 hover:bg-slate-50 hover:text-sky-700'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-sky-700'
+        <div className="space-y-2 border-t border-[#dde3eb] pt-4">
+          <motion.button
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
+              sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
             }`}
-            title={sidebarCollapsed && !isMobileViewport ? 'Settings' : ''}
+            onClick={onOpenSettings}
+            title={sidebarCollapsed && !sidebarHovered ? 'Settings' : ''}
           >
-            <Settings size={20} />
-            {(!sidebarCollapsed || isMobileViewport) && <span>Settings</span>}
-          </button>
+            <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
+            {(!sidebarCollapsed || sidebarHovered) && <span className="font-body text-xs">Settings</span>}
+          </motion.button>
 
-          {(!sidebarCollapsed || isMobileViewport) ? (
-            <div>
-              <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} />
-            </div>
-          ) : (
-            <LogoutActionButton
-              onClick={() => setShowLogoutConfirm(true)}
-              collapsed
-              className="py-3"
-            />
-          )}
+          <div className="text-[#5a6578]">
+            <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} collapsed={sidebarCollapsed && !sidebarHovered} />
+          </div>
         </div>
       </motion.aside>
 
@@ -793,6 +808,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'import' && 'Data Import'}
                   {activeView === 'notifications' && 'Notifications'}
                   {activeView === 'calendar' && 'Calendar'}
+                  {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -801,6 +817,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
                   {activeView === 'import' && 'Upload class records and materials'}
+                  {activeView === 'quiz_maker' && 'Create and manage AI-powered quizzes'}
                   {activeView === 'notifications' && 'View classroom alerts and updates'}
                   {activeView === 'calendar' && 'Check upcoming class events and schedule'}
                 </p>
@@ -956,6 +973,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onBack={() => setActiveView('import')}
               />
             )}
+            {activeView === 'quiz_maker' && (
+              <QuizMaker onBack={() => setActiveView('dashboard')} />
+            )}
           </AnimatePresence>
         </main>
       </div>
@@ -970,35 +990,41 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         confirmText="Logout"
         cancelText="Cancel"
       />
-
-      {/* AI Quiz Maker Modal */}
-      {showQuizMaker && (
-        <QuizMaker onClose={() => setShowQuizMaker(false)} />
-      )}
     </div>
   );
 };
 
 // Navigation Item Component
 const NavItem: React.FC<{
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
   label: string;
   active: boolean;
   collapsed: boolean;
   forceExpanded?: boolean;
   onClick: () => void;
 }> = ({ icon: Icon, label, active, collapsed, forceExpanded = false, onClick }) => (
-  <button
+  <motion.button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+    whileHover={{ x: 2 }}
+    whileTap={{ scale: 0.98 }}
+    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${
+      collapsed && !forceExpanded ? 'justify-center' : ''
+    } ${
       active
-        ? 'bg-sky-50 text-sky-700 shadow-[inset_0_0_0_1px_rgba(2,132,199,0.15)]'
-        : 'text-slate-500 hover:bg-slate-50 hover:text-sky-700'
+        ? 'bg-sky-50 border-sky-200 shadow-sm text-sky-700'
+        : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
     }`}
   >
-    <Icon size={20} />
-    {(!collapsed || forceExpanded) && <span>{label}</span>}
-  </button>
+    <Icon size={18} strokeWidth={active ? 2.5 : 2} className="flex-shrink-0" />
+    {(!collapsed || forceExpanded) && <span className="font-body font-bold text-xs">{label}</span>}
+    {active && !collapsed && (
+      <motion.div
+        layoutId="sidebar-active-indicator"
+        className="ml-auto w-2 h-2 rounded-full bg-sky-500"
+        transition={{ type: 'spring', duration: 0.4 }}
+      />
+    )}
+  </motion.button>
 );
 
 const ToolsPlaceholderView: React.FC<{
