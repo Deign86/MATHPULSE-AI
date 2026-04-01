@@ -12,6 +12,7 @@ const AIChatPage = () => {
     sessions, 
     activeSessionId, 
     isLoading,
+    loadingSessionId,
     setActiveSessionId, 
     createNewSession, 
     sendMessage,
@@ -25,6 +26,7 @@ const AIChatPage = () => {
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
+  const showTypingIndicator = isLoading && activeSessionId === loadingSessionId;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,7 +39,7 @@ const AIChatPage = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, showTypingIndicator]);
 
   const handleSendMessage = async () => {
     if (!currentMessage.trim() || isLoading) return;
@@ -217,7 +219,7 @@ const AIChatPage = () => {
                 ))}
               </AnimatePresence>
               
-              {isLoading && (
+              {showTypingIndicator && (
                 <div className="flex justify-start">
                   <div className="bg-white text-[#0a1628] shadow-md border border-[#dde3eb] rounded-2xl px-5 py-3 max-w-[70%]">
                     <div className="flex gap-1">

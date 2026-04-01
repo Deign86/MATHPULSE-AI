@@ -9,6 +9,7 @@ import {
   deleteSession as deleteFirebaseSession,
   getSessionMessages,
 } from '../services/chatService';
+import { toChatPreviewText } from '../utils/chatPreview';
 
 export interface Message {
   id: string;
@@ -33,6 +34,7 @@ interface ChatContextType {
   sessions: ChatSession[];
   activeSessionId: string | null;
   isLoading: boolean;
+  loadingSessionId: string | null;
   sessionsLoaded: boolean;
   setActiveSessionId: (id: string | null) => void;
   createNewSession: (firstMessage?: Message) => string;
@@ -179,6 +181,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   // Map of tempId → Promise<firebaseId> for sessions being created
   const pendingSessionsRef = useRef<Map<string, Promise<string>>>(new Map());
@@ -212,7 +215,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 ? s.updatedAt.toLocaleDateString()
                 : new Date(s.updatedAt).toLocaleDateString(),
               messageCount: messages.length,
-              preview: messages.length > 0 ? messages[messages.length - 1].text.slice(0, 80) : 'No messages yet',
+              preview: messages.length > 0
+                ? (toChatPreviewText(messages[messages.length - 1].text) || 'No messages yet')
+                : 'No messages yet',
               topics: [],
               messages,
               createdAt: s.createdAt instanceof Date ? s.createdAt : new Date(s.createdAt),
@@ -262,7 +267,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       title: firstMessage ? generateTitleFromMessages([firstMessage]) : 'New Chat',
       date: 'Just now',
       messageCount: firstMessage ? 1 : 0,
-      preview: firstMessage?.text || 'Start a new conversation...',
+      preview: firstMessage
+        ? (toChatPreviewText(firstMessage.text) || 'Start a new conversation...')
+        : 'Start a new conversation...',
       topics: [],
       messages: firstMessage ? [firstMessage] : [],
       createdAt: now,
@@ -306,7 +313,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             ...session,
             messages: updatedMessages,
             messageCount: updatedMessages.length,
-            preview: message.sender === 'user' ? message.text : session.preview,
+            preview: toChatPreviewText(message.text) || session.preview,
             updatedAt: new Date(),
             title: updatedMessages.length === 2 ? generateTitleFromMessages(updatedMessages) : session.title,
           };
@@ -357,6 +364,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     addMessageToSession(sessionId, userMsg);
+    setLoadingSessionId(sessionId);
     setIsLoading(true);
 
     try {
@@ -367,36 +375,118 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
-      // Use chatSafe for automatic fallback handling
-      const { data, fromFallback } = await apiService.chatSafe(userText.trim(), history);
+      const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let streamedText = '';
+      let streamMessageId: string | null = null;
 
-      // If we got a fallback response from the API service, enhance it with context-aware response
-      const responseText = fromFallback 
-        ? generateFallbackResponse(userText.trim())
-        : data.response;
+      const upsertStreamingMessage = (text: string) => {
+        setSessions(prev =>
+          prev.map(chatSession => {
+            if (chatSession.id !== sessionId) return chatSession;
 
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: responseText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            if (!streamMessageId) {
+              streamMessageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              const streamMsg: Message = {
+                id: streamMessageId,
+                sender: 'ai',
+                text,
+                timestamp: aiTimestamp,
+              };
+              const updatedMessages = [...chatSession.messages, streamMsg];
+              return {
+                ...chatSession,
+                messages: updatedMessages,
+                messageCount: updatedMessages.length,
+                updatedAt: new Date(),
+              };
+            }
+
+            return {
+              ...chatSession,
+              messages: chatSession.messages.map(m =>
+                m.id === streamMessageId ? { ...m, text } : m
+              ),
+              updatedAt: new Date(),
+            };
+          })
+        );
       };
-      addMessageToSession(sessionId, aiMsg);
-    } catch (error) {
-      // This should rarely happen since chatSafe handles errors gracefully
-      console.warn('Chat fallback also failed:', error);
-      
-      // Generate a helpful fallback response
-      const fallbackResponse = generateFallbackResponse(userText.trim());
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: fallbackResponse,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+
+      const removeStreamingMessage = () => {
+        if (!streamMessageId) return;
+        const removeId = streamMessageId;
+        setSessions(prev =>
+          prev.map(chatSession => {
+            if (chatSession.id !== sessionId) return chatSession;
+            const updatedMessages = chatSession.messages.filter(m => m.id !== removeId);
+            return {
+              ...chatSession,
+              messages: updatedMessages,
+              messageCount: updatedMessages.length,
+              updatedAt: new Date(),
+            };
+          })
+        );
       };
-      addMessageToSession(sessionId, aiMsg);
+
+      try {
+        const { response } = await apiService.chat(userText.trim(), history, (chunk: string) => {
+          streamedText += chunk;
+          upsertStreamingMessage(streamedText);
+        });
+
+        const finalResponse = (response || streamedText).trim();
+        if (streamMessageId) {
+          removeStreamingMessage();
+        }
+
+        const aiMsg: Message = {
+          id: streamMessageId || (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: finalResponse,
+          timestamp: aiTimestamp,
+        };
+        addMessageToSession(sessionId, aiMsg);
+      } catch (streamError) {
+        console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        if (streamMessageId) {
+          removeStreamingMessage();
+        }
+
+        let aiResponseText = '';
+        try {
+          const { data } = await apiService.chatSafe(userText.trim(), history);
+          aiResponseText = data.response;
+        } catch (chatError) {
+          console.warn('Chat request failed, using local fallback response:', chatError);
+          aiResponseText = generateFallbackResponse(userText.trim());
+        }
+
+        const aiMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: aiResponseText,
+          timestamp: aiTimestamp,
+        };
+        addMessageToSession(sessionId, aiMsg);
+      }
+
+      // Update session title if this is the first exchange
+      if (session && session.messages.length === 1) {
+        const updatedSession = sessions.find(s => s.id === sessionId);
+        if (updatedSession && updatedSession.messages.length > 1) {
+          const newTitle = generateTitleFromMessages(updatedSession.messages);
+          const pending = pendingSessionsRef.current.get(sessionId);
+          const realIdPromise = pending ? pending : Promise.resolve(sessionId);
+          realIdPromise.then(realId =>
+            updateFirebaseTitle(realId, newTitle)
+              .catch(err => console.error('Error updating title:', err))
+          );
+        }
+      }
     } finally {
       setIsLoading(false);
+      setLoadingSessionId(null);
     }
   }, [sessions, addMessageToSession]);
 
@@ -439,6 +529,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         sessions,
         activeSessionId,
         isLoading,
+        loadingSessionId,
         sessionsLoaded,
         setActiveSessionId,
         createNewSession,
