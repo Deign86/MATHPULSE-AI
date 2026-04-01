@@ -160,9 +160,10 @@ Scope: Student, Teacher, Admin routes; console/runtime/network/forms/a11y/mobile
 ## Not Fixed (Intentionally Skipped)
 
 ### SKIP-001
-- Observation: Intermittent Firestore listen long-poll request lines marked `net::ERR_ABORTED` during channel handoff.
-- Reason Skipped: This is expected transport behavior during listen stream reconnection and did not surface as app-level runtime errors.
-- Mitigation: Monitored console for paired errors; none persisted after route transitions.
+- Observation: Intermittent Firestore listen long-poll requests were marked `net::ERR_ABORTED` during listen-channel handoff (stream renegotiation).
+- Reason Skipped: This matches expected Firestore listener reconnect behavior and did not produce `FirestoreError` callbacks, stale UI state, or user-visible regressions.
+- Mitigation: Correlated aborted listen calls with immediate successful follow-up listen requests and clean console state after route transitions.
+- Disposition: Accepted as non-actionable transport noise unless paired with persistent listener errors or data desync.
 
 ## Verification Summary
 - DevTools issue checks were rerun after each targeted patch.
