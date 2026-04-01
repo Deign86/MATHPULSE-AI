@@ -100,3 +100,18 @@ Demo is successful if you can show all of these:
 - CI is routed to relevant area targets.
 - Agent dispatch works with one payload.
 - No auto-merge, no force rename, no protected-branch bypass.
+
+## Troubleshooting from Real Run
+
+- If `gh workflow run ...` returns HTTP 404 for a workflow file:
+- The workflow is not available on the default branch yet.
+- `workflow_dispatch` requires the workflow file to exist on default branch.
+
+- If `repository_dispatch` returns success but no workflow run appears:
+- The target workflow is likely not present on default branch.
+- Move or merge workflow files to default branch before relying on dispatch events.
+
+- Token handling safety:
+- Never paste raw PAT values into repository files or command history.
+- Prefer setting a repo secret via GitHub UI or secure local prompt flow.
+- If a PAT was exposed in chat or logs, revoke it and issue a new token.
