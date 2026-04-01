@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Brain, Sparkles, BookOpen, BarChart3, Target, ChevronDown,
-  ChevronRight, Plus, Minus, Eye, Wand2, Download, Copy, Check,
+  ChevronRight, ChevronLeft, Plus, Minus, Eye, Wand2, Download, Copy, Check,
   AlertCircle, Loader2, GraduationCap, Layers, TrendingUp,
   FileText, Calculator, ChevronUp, Info, Lightbulb,
   Save, Send, Library, Trash2, Users, Search,
@@ -35,7 +35,7 @@ import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../type
 // ─── Types ──────────────────────────────────────────────────
 
 interface QuizMakerProps {
-  onClose: () => void;
+  onBack: () => void;
   gradeLevel?: string;
   selectedClassId?: string;
   selectedClassName?: string;
@@ -128,7 +128,7 @@ const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
 // ─── Component ──────────────────────────────────────────────
 
 const QuizMaker: React.FC<QuizMakerProps> = ({
-  onClose,
+  onBack,
   gradeLevel: initialGrade,
   selectedClassId,
   selectedClassName,
@@ -562,11 +562,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     };
   }, [applyTaskProgress, authLoading, clearPersistedTask, currentUser]);
 
-  const handleClose = () => {
-    if (generating && activeTaskId) {
-      toast.info('Quiz generation will continue in the background. Reopen this modal to resume progress.');
+  const handleBack = () => {
+    if (generating) {
+      if (window.confirm('Quiz generation is in progress. Are you sure you want to leave?')) {
+        setStep('configure');
+        setQuizResult(null);
+        setError('');
+        onBack();
+      }
+      return;
     }
-    onClose();
+    setStep('configure');
+    setQuizResult(null);
+    setError('');
+    onBack();
   };
 
   const handlePreview = async () => {
@@ -1095,79 +1104,42 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-[#dde3eb]"
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-sky-600 to-sky-500 px-6 py-4 text-white flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Brain size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-display font-bold">AI Quiz Maker</h2>
-                <p className="text-sky-300 text-sm">Generate AI-powered assessments with Bloom's Taxonomy</p>
-              </div>
-            </div>
-            <button onClick={handleClose} className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
-              <X size={18} />
-            </button>
+    <div className="w-full flex flex-col bg-[#f7f9fc] min-h-screen">
+      {/* Header */}
+      <div className="bg-white border-b border-[#dde3eb] px-6 py-4 flex-shrink-0">
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={handleBack} className="p-2 hover:bg-[#edf1f7] rounded-lg transition-colors text-slate-500">
+            <ChevronLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-display font-bold text-[#0a1628]">AI Quiz Maker</h2>
+            <p className="text-[#5a6578] text-sm mt-1">Generate AI-powered assessments with Bloom's Taxonomy</p>
           </div>
-
-          {/* Tab Switcher */}
-          <div className="flex items-center gap-2 mt-4">
-            <button
-              onClick={() => setActiveTab('create')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                activeTab === 'create' ? 'bg-white text-sky-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
-              }`}
-            >
-              <Wand2 size={14} /> Create Quiz
-            </button>
-            <button
-              onClick={() => setActiveTab('bank')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                activeTab === 'bank' ? 'bg-white text-sky-700' : 'bg-white/20 text-white/80 hover:bg-white/30'
-              }`}
-            >
-              <Library size={14} /> Quiz Bank
-            </button>
-          </div>
-
-          {/* Step indicator (Create tab only) */}
-          {activeTab === 'create' && (
-            <div className="flex items-center gap-2 mt-3">
-              {(['configure', 'preview', 'results'] as Step[]).map((s, i) => (
-                <React.Fragment key={s}>
-                  <button
-                    onClick={() => {
-                      if (s === 'configure') setStep('configure');
-                      if (s === 'preview' && previewResult) setStep('preview');
-                      if (s === 'results' && quizResult) setStep('results');
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      step === s ? 'bg-white/90 text-sky-700' : 'bg-white/15 text-white/70 hover:bg-white/25'
-                    }`}
-                  >
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      step === s ? 'bg-sky-600 text-white' : 'bg-white/30'
-                    }`}>{i + 1}</span>
-                    {s === 'configure' ? 'Configure' : s === 'preview' ? 'Preview' : 'Full Quiz'}
-                  </button>
-                  {i < 2 && <ChevronRight size={14} className="text-white/40" />}
-                </React.Fragment>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('create')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'create' ? 'bg-sky-100 text-sky-700 border border-sky-300' : 'bg-[#edf1f7] text-[#5a6578] hover:bg-[#dde3eb]'
+            }`}
+          >
+            <Wand2 size={16} /> Create Quiz
+          </button>
+          <button
+            onClick={() => setActiveTab('bank')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'bank' ? 'bg-sky-100 text-sky-700 border border-sky-300' : 'bg-[#edf1f7] text-[#5a6578] hover:bg-[#dde3eb]'
+            }`}
+          >
+            <Library size={16} /> Quiz Bank
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto px-6 sm:px-8 xl:px-10 py-8">
 
           {/* ═══ QUIZ BANK TAB ═══ */}
           {activeTab === 'bank' && (
@@ -1758,11 +1730,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
             </div>
           )}
           </>)}
-        </div>
+      </div>
 
-        {/* Footer (Create tab only) */}
-        {activeTab === 'create' && (
-        <div className="border-t border-[#dde3eb] px-6 py-4 bg-[#edf1f7] flex items-center justify-between flex-shrink-0">
+      {/* Footer (Create tab only) */}
+      {activeTab === 'create' && (
+        <div className="border-t border-[#dde3eb] px-6 sm:px-6 xl:px-10 py-4 bg-white flex items-center justify-between flex-shrink-0">
           <div className="text-xs text-slate-500">
             {step === 'configure' && (
               <span className="flex items-center gap-1">
@@ -1841,7 +1813,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     <Send size={16} /> Assign
                   </button>
                   <button
-                    onClick={handleClose}
+                    onClick={handleBack}
                     className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
                   >
                     Done
@@ -1892,7 +1864,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   )}
 
                   <button
-                    onClick={handleClose}
+                    onClick={handleBack}
                     className="px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white transition-all"
                   >
                     Done
@@ -1903,9 +1875,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           </div>
         </div>
         )}
-      </motion.div>
-
-      {/* Bloom's Taxonomy Info Modal */}
+      
       <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
 
       {/* ═══ ASSIGN STUDENT MODAL ═══ */}
