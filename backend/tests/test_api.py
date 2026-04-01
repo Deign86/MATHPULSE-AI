@@ -719,6 +719,41 @@ class TestUploadClassRecordsGuardrails:
         assert any("missing required identity value: lrn_or_email" in key for key in reasons.keys())
         assert len(payload.get("rejectedRowDetails") or []) == 2
 
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_degrades_gracefully_when_firestore_adc_missing(self, _mock_chat):
+        class _FailingFirestoreModule:
+            def client(self):
+                raise Exception(
+                    "Your default credentials were not found. "
+                    "To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc"
+                )
+
+        files = {
+            "files": (
+                "records.csv",
+                (
+                    b"name,lrn,avgQuizScore,attendance,engagementScore\n"
+                    b"Ana Cruz,1001,81,92,88\n"
+                ),
+                "text/csv",
+            ),
+        }
+
+        with patch.object(main_module, "firebase_firestore", _FailingFirestoreModule()), patch.object(main_module, "_firebase_ready", True):
+            response = client.post(
+                "/api/upload/class-records",
+                files=files,
+                data={"datasetIntent": "synthetic_student_records"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["persisted"] is False
+        assert (payload.get("dashboardSync") or {}).get("synced") is False
+        warnings_blob = " ".join(payload.get("warnings", []))
+        assert "adc is not configured" in warnings_blob.lower()
+
 
 class TestImportedOverviewAndTopicMastery:
     def test_imported_class_overview_returns_inferred_state_for_realistic_minimal_records(self):
@@ -777,6 +812,23 @@ class TestImportedOverviewAndTopicMastery:
         assert risk_levels == {"Low", "Medium", "High"}
         assert all(student.get("inferredState") for student in payload["students"])
         assert all("stateConfidence" in student for student in payload["students"])
+
+    def test_imported_class_overview_returns_503_when_firestore_adc_missing(self):
+        firestore = _FakeFirestoreModule(
+            {"normalizedClassRecords": []},
+            stream_error=(
+                "Your default credentials were not found. "
+                "To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc"
+            ),
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/analytics/imported-class-overview?classSectionId=grade11_a&limit=100")
+
+        assert response.status_code == 503
+        detail = str((response.json() or {}).get("detail") or "").lower()
+        assert "firestore adc is not configured" in detail
+        assert "google_application_credentials" in detail
 
     def test_topic_mastery_reports_fallback_warning_without_topic_columns(self):
         firestore = _FakeFirestoreModule(
@@ -979,11 +1031,12 @@ class _FakeDocSnapshot:
 
 
 class _FakeQuery:
-    def __init__(self, docs: List[Dict[str, Any]], fail_order: bool = False):
+    def __init__(self, docs: List[Dict[str, Any]], fail_order: bool = False, stream_error: str | None = None):
         self._docs = docs
         self._filters: List[tuple[str, str, Any]] = []
         self._limit: int | None = None
         self._fail_order = fail_order
+        self._stream_error = stream_error
 
     def where(self, field: str, op: str, value: Any):
         self._filters.append((field, op, value))
@@ -999,6 +1052,9 @@ class _FakeQuery:
         return self
 
     def stream(self):
+        if self._stream_error:
+            raise Exception(self._stream_error)
+
         filtered: List[Dict[str, Any]] = []
         for doc in self._docs:
             include = True
@@ -1018,15 +1074,23 @@ class _FakeQuery:
 
 
 class _FakeCollection:
-    def __init__(self, name: str, store: Dict[str, List[Dict[str, Any]]], audit_logs: List[Dict[str, Any]], fail_order: bool = False):
+    def __init__(
+        self,
+        name: str,
+        store: Dict[str, List[Dict[str, Any]]],
+        audit_logs: List[Dict[str, Any]],
+        fail_order: bool = False,
+        stream_error: str | None = None,
+    ):
         self._name = name
         self._store = store
         self._audit_logs = audit_logs
         self._fail_order = fail_order
+        self._stream_error = stream_error
 
     def where(self, field: str, op: str, value: Any):
         docs = list(self._store.get(self._name, []))
-        query = _FakeQuery(docs, fail_order=self._fail_order)
+        query = _FakeQuery(docs, fail_order=self._fail_order, stream_error=self._stream_error)
         return query.where(field, op, value)
 
     def add(self, payload: Dict[str, Any]):
@@ -1035,13 +1099,20 @@ class _FakeCollection:
 
 
 class _FakeFirestoreClient:
-    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False):
+    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False, stream_error: str | None = None):
         self._store = store
         self.audit_logs: List[Dict[str, Any]] = []
         self._fail_order = fail_order
+        self._stream_error = stream_error
 
     def collection(self, name: str):
-        return _FakeCollection(name, self._store, self.audit_logs, fail_order=self._fail_order)
+        return _FakeCollection(
+            name,
+            self._store,
+            self.audit_logs,
+            fail_order=self._fail_order,
+            stream_error=self._stream_error,
+        )
 
 
 class _FakeFirestoreModule:
@@ -1050,8 +1121,13 @@ class _FakeFirestoreModule:
 
     SERVER_TIMESTAMP = object()
 
-    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False):
-        self._client = _FakeFirestoreClient(store, fail_order=fail_order)
+    def __init__(
+        self,
+        store: Dict[str, List[Dict[str, Any]]],
+        fail_order: bool = False,
+        stream_error: str | None = None,
+    ):
+        self._client = _FakeFirestoreClient(store, fail_order=fail_order, stream_error=stream_error)
 
     def client(self):
         return self._client
