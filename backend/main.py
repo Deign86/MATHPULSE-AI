@@ -3056,59 +3056,74 @@ def _persist_class_record_import_artifact(
     if normalized_class_name:
         import_payload["className"] = normalized_class_name
 
-    imports_ref = firebase_firestore.client().collection("classRecordImports").document(import_id)
-    import_doc = cast(Any, imports_ref.get())
-    if not _snapshot_exists(import_doc):
-        import_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-    imports_ref.set(import_payload, merge=True)
-
     inserted = 0
     updated = 0
-    client = firebase_firestore.client()
-    normalized_ref = client.collection("normalizedClassRecords")
-    batch = client.batch()
-    batch_count = 0
+    try:
+        imports_ref = firebase_firestore.client().collection("classRecordImports").document(import_id)
+        import_doc = cast(Any, imports_ref.get())
+        if not _snapshot_exists(import_doc):
+            import_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+        imports_ref.set(import_payload, merge=True)
 
-    for row in normalized_rows:
-        dedup_key = str(row.get("dedupKey", "")).strip()
-        if not dedup_key:
-            continue
+        client = firebase_firestore.client()
+        normalized_ref = client.collection("normalizedClassRecords")
+        batch = client.batch()
+        batch_count = 0
 
-        scoped_key_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{dedup_key}"
-        scoped_key = hashlib.sha1(scoped_key_seed.encode("utf-8")).hexdigest()[:36]
-        row_doc_ref = normalized_ref.document(scoped_key)
-        existing_doc = cast(Any, row_doc_ref.get())
+        for row in normalized_rows:
+            dedup_key = str(row.get("dedupKey", "")).strip()
+            if not dedup_key:
+                continue
 
-        payload = {
-            **row,
-            "recordId": scoped_key,
-            "teacherId": user.uid,
-            "teacherEmail": user.email,
-            "importId": import_id,
-            "sourceFile": file_name,
-            "retentionDays": IMPORT_RETENTION_DAYS,
-            "expiresAtEpoch": _artifact_expiry_epoch(),
-            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
-        }
-        if normalized_class_section_id:
-            payload["classSectionId"] = normalized_class_section_id
-        if normalized_class_name:
-            payload["className"] = normalized_class_name
-        if not _snapshot_exists(existing_doc):
-            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-            inserted += 1
-        else:
-            updated += 1
+            scoped_key_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{dedup_key}"
+            scoped_key = hashlib.sha1(scoped_key_seed.encode("utf-8")).hexdigest()[:36]
+            row_doc_ref = normalized_ref.document(scoped_key)
+            existing_doc = cast(Any, row_doc_ref.get())
 
-        batch.set(row_doc_ref, payload, merge=True)
-        batch_count += 1
-        if batch_count >= 400:
+            payload = {
+                **row,
+                "recordId": scoped_key,
+                "teacherId": user.uid,
+                "teacherEmail": user.email,
+                "importId": import_id,
+                "sourceFile": file_name,
+                "retentionDays": IMPORT_RETENTION_DAYS,
+                "expiresAtEpoch": _artifact_expiry_epoch(),
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+            if normalized_class_section_id:
+                payload["classSectionId"] = normalized_class_section_id
+            if normalized_class_name:
+                payload["className"] = normalized_class_name
+            if not _snapshot_exists(existing_doc):
+                payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+                inserted += 1
+            else:
+                updated += 1
+
+            batch.set(row_doc_ref, payload, merge=True)
+            batch_count += 1
+            if batch_count >= 400:
+                batch.commit()
+                batch = client.batch()
+                batch_count = 0
+
+        if batch_count > 0:
             batch.commit()
-            batch = client.batch()
-            batch_count = 0
-
-    if batch_count > 0:
-        batch.commit()
+    except Exception as persistence_err:
+        if _is_adc_missing_error(cast(Exception, persistence_err)):
+            logger.warning("Class record persistence skipped because Firestore ADC is not configured.")
+            return {
+                "persisted": False,
+                "importId": None,
+                "dedup": {"inserted": 0, "updated": 0},
+                "warning": (
+                    "Firestore ADC is not configured; class records were parsed but not persisted. "
+                    "Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_FILE, "
+                    "or set GOOGLE_APPLICATION_CREDENTIALS."
+                ),
+            }
+        raise
 
     return {
         "persisted": True,
@@ -3373,6 +3388,7 @@ def _sync_imported_students_to_teacher_dashboard(
     class_section_id: Optional[str],
     class_name: Optional[str],
 ) -> Dict[str, Any]:
+    fallback_class_section_id = (class_section_id or "").strip().lower() or None
     if not (_firebase_ready and firebase_firestore):
         return {
             "synced": False,
@@ -3380,180 +3396,201 @@ def _sync_imported_students_to_teacher_dashboard(
             "updatedStudents": 0,
             "classroomsTouched": 0,
             "classroomId": None,
-            "classSectionId": (class_section_id or "").strip().lower() or None,
+            "classSectionId": fallback_class_section_id,
             "warning": "Firestore unavailable; dashboard sync skipped.",
         }
 
-    user = get_current_user(request)
-    resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
-        class_section_id=class_section_id,
-        class_name=class_name,
-    )
+    try:
+        user = get_current_user(request)
+        resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
+            class_section_id=class_section_id,
+            class_name=class_name,
+        )
 
-    by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
-    for row in normalized_rows:
-        name = str(row.get("name") or "").strip()
-        email = str(row.get("email") or "").strip().lower()
-        lrn = str(row.get("lrn") or "").strip()
-        identity = lrn or email or re.sub(r"\s+", "_", name.lower())
-        if not identity:
-            continue
+        by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        for row in normalized_rows:
+            name = str(row.get("name") or "").strip()
+            email = str(row.get("email") or "").strip().lower()
+            lrn = str(row.get("lrn") or "").strip()
+            identity = lrn or email or re.sub(r"\s+", "_", name.lower())
+            if not identity:
+                continue
 
-        state = by_identity.get(identity)
-        if not state:
-            state = {
-                "name": name,
-                "email": email,
-                "lrn": lrn,
-                "scores": [],
-                "attendance": [],
-                "engagement": [],
-                "completion": [],
-                "weakestTopic": "",
+            state = by_identity.get(identity)
+            if not state:
+                state = {
+                    "name": name,
+                    "email": email,
+                    "lrn": lrn,
+                    "scores": [],
+                    "attendance": [],
+                    "engagement": [],
+                    "completion": [],
+                    "weakestTopic": "",
+                }
+                by_identity[identity] = state
+
+            avg_quiz = float(row.get("avgQuizScore") or 0.0)
+            attendance = float(row.get("attendance") or 0.0)
+            engagement = float(row.get("engagementScore") or 0.0)
+            completion = float(row.get("assignmentCompletion") or 0.0)
+
+            state["scores"].append(avg_quiz)
+            state["attendance"].append(attendance)
+            state["engagement"].append(engagement)
+            state["completion"].append(completion)
+            if not state.get("weakestTopic"):
+                state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
+
+            if name and not state.get("name"):
+                state["name"] = name
+            if email and not state.get("email"):
+                state["email"] = email
+            if lrn and not state.get("lrn"):
+                state["lrn"] = lrn
+
+        if not by_identity:
+            return {
+                "synced": False,
+                "createdStudents": 0,
+                "updatedStudents": 0,
+                "classroomsTouched": 0,
+                "classroomId": resolved_section_id,
+                "classSectionId": resolved_section_id,
+                "warning": "No normalized student records were available for dashboard sync.",
             }
-            by_identity[identity] = state
 
-        avg_quiz = float(row.get("avgQuizScore") or 0.0)
-        attendance = float(row.get("attendance") or 0.0)
-        engagement = float(row.get("engagementScore") or 0.0)
-        completion = float(row.get("assignmentCompletion") or 0.0)
+        client = firebase_firestore.client()
+        classrooms_ref = client.collection("classrooms")
+        students_ref = client.collection("managedStudents")
 
-        state["scores"].append(avg_quiz)
-        state["attendance"].append(attendance)
-        state["engagement"].append(engagement)
-        state["completion"].append(completion)
-        if not state.get("weakestTopic"):
-            state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
+        classroom_doc_id = resolved_section_id or f"imported_{hashlib.sha1((user.uid + resolved_class_name).encode('utf-8')).hexdigest()[:12]}"
+        classroom_ref = classrooms_ref.document(classroom_doc_id)
+        classroom_snapshot = cast(Any, classroom_ref.get())
+        existing_classroom = _snapshot_to_dict(classroom_snapshot) if _snapshot_exists(classroom_snapshot) else {}
 
-        if name and not state.get("name"):
-            state["name"] = name
-        if email and not state.get("email"):
-            state["email"] = email
-        if lrn and not state.get("lrn"):
-            state["lrn"] = lrn
+        created_students = 0
+        updated_students = 0
+        risk_high_count = 0
+        total_score = 0.0
 
-    if not by_identity:
+        for identity, aggregate in by_identity.items():
+            scores = aggregate.get("scores") or [0.0]
+            attendance_values = aggregate.get("attendance") or [0.0]
+            engagement_values = aggregate.get("engagement") or [0.0]
+            completion_values = aggregate.get("completion") or [0.0]
+
+            avg_quiz = float(sum(scores) / max(len(scores), 1))
+            avg_attendance = float(sum(attendance_values) / max(len(attendance_values), 1))
+            avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
+            avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
+
+            has_topic_signal = str(aggregate.get("weakestTopic") or "").strip() not in {"", "Foundational Skills"}
+            inference = _infer_student_state(
+                avg_quiz=avg_quiz,
+                attendance=avg_attendance,
+                engagement=avg_engagement,
+                defaulted_metrics=set(),
+                has_topic_signal=has_topic_signal,
+            )
+            risk_level = str(inference["riskLevel"])
+            if risk_level == "High":
+                risk_high_count += 1
+            total_score += avg_quiz
+
+            fallback_name = str(aggregate.get("name") or "Imported Student").strip() or "Imported Student"
+            avatar_seed = urllib.parse.quote(fallback_name)
+            student_doc_id = hashlib.sha1(f"{user.uid}|{identity}".encode("utf-8")).hexdigest()[:36]
+            student_ref = students_ref.document(student_doc_id)
+            student_snapshot = cast(Any, student_ref.get())
+
+            payload: Dict[str, Any] = {
+                "teacherId": user.uid,
+                "name": fallback_name,
+                "email": str(aggregate.get("email") or ""),
+                "lrn": str(aggregate.get("lrn") or ""),
+                "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
+                "grade": grade,
+                "section": section,
+                "classSectionId": resolved_section_id,
+                "classroomId": classroom_doc_id,
+                "riskLevel": risk_level,
+                "inferredState": {
+                    "state": inference["state"],
+                    "confidence": inference["confidence"],
+                    "signals": inference["signals"],
+                    "explanation": inference["explanation"],
+                    "fallbackUsed": inference["fallbackUsed"],
+                },
+                "stateConfidence": inference["confidence"],
+                "stateSignals": inference["signals"],
+                "engagementScore": round(avg_engagement, 1),
+                "avgQuizScore": round(avg_quiz, 1),
+                "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
+                "attendance": round(avg_attendance, 1),
+                "assignmentCompletion": round(avg_completion, 1),
+                "struggles": [str(aggregate.get("weakestTopic") or "Foundational Skills")],
+                "lastActive": FIRESTORE_SERVER_TIMESTAMP,
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+
+            if _snapshot_exists(student_snapshot):
+                updated_students += 1
+            else:
+                created_students += 1
+                payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+            student_ref.set(payload, merge=True)
+
+        student_count = len(by_identity)
+        class_average = round(total_score / max(student_count, 1), 1)
+
+        classroom_payload: Dict[str, Any] = {
+            "teacherId": user.uid,
+            "name": resolved_class_name,
+            "grade": grade,
+            "section": section,
+            "classSectionId": resolved_section_id,
+            "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
+            "studentCount": student_count,
+            "avgScore": class_average,
+            "atRiskCount": risk_high_count,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+        if not _snapshot_exists(classroom_snapshot):
+            classroom_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+        classroom_ref.set(classroom_payload, merge=True)
+
+        return {
+            "synced": True,
+            "createdStudents": created_students,
+            "updatedStudents": updated_students,
+            "classroomsTouched": 1,
+            "classroomId": classroom_doc_id,
+            "classSectionId": resolved_section_id,
+            "warning": None,
+        }
+    except Exception as sync_err:
+        if _is_adc_missing_error(cast(Exception, sync_err)):
+            logger.warning("Dashboard sync skipped because Firestore ADC is not configured.")
+            warning = (
+                "Firestore ADC is not configured; dashboard sync skipped. "
+                "Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_FILE, "
+                "or set GOOGLE_APPLICATION_CREDENTIALS."
+            )
+        else:
+            logger.warning(f"Dashboard sync skipped due Firestore error: {sync_err}")
+            warning = f"Dashboard sync skipped due Firestore error: {sync_err}"
         return {
             "synced": False,
             "createdStudents": 0,
             "updatedStudents": 0,
             "classroomsTouched": 0,
-            "classroomId": resolved_section_id,
-            "classSectionId": resolved_section_id,
-            "warning": "No normalized student records were available for dashboard sync.",
+            "classroomId": None,
+            "classSectionId": fallback_class_section_id,
+            "warning": warning,
         }
-
-    client = firebase_firestore.client()
-    classrooms_ref = client.collection("classrooms")
-    students_ref = client.collection("managedStudents")
-
-    classroom_doc_id = resolved_section_id or f"imported_{hashlib.sha1((user.uid + resolved_class_name).encode('utf-8')).hexdigest()[:12]}"
-    classroom_ref = classrooms_ref.document(classroom_doc_id)
-    classroom_snapshot = cast(Any, classroom_ref.get())
-    existing_classroom = _snapshot_to_dict(classroom_snapshot) if _snapshot_exists(classroom_snapshot) else {}
-
-    created_students = 0
-    updated_students = 0
-    risk_high_count = 0
-    total_score = 0.0
-
-    for identity, aggregate in by_identity.items():
-        scores = aggregate.get("scores") or [0.0]
-        attendance_values = aggregate.get("attendance") or [0.0]
-        engagement_values = aggregate.get("engagement") or [0.0]
-        completion_values = aggregate.get("completion") or [0.0]
-
-        avg_quiz = float(sum(scores) / max(len(scores), 1))
-        avg_attendance = float(sum(attendance_values) / max(len(attendance_values), 1))
-        avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
-        avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
-
-        has_topic_signal = str(aggregate.get("weakestTopic") or "").strip() not in {"", "Foundational Skills"}
-        inference = _infer_student_state(
-            avg_quiz=avg_quiz,
-            attendance=avg_attendance,
-            engagement=avg_engagement,
-            defaulted_metrics=set(),
-            has_topic_signal=has_topic_signal,
-        )
-        risk_level = str(inference["riskLevel"])
-        if risk_level == "High":
-            risk_high_count += 1
-        total_score += avg_quiz
-
-        fallback_name = str(aggregate.get("name") or "Imported Student").strip() or "Imported Student"
-        avatar_seed = urllib.parse.quote(fallback_name)
-        student_doc_id = hashlib.sha1(f"{user.uid}|{identity}".encode("utf-8")).hexdigest()[:36]
-        student_ref = students_ref.document(student_doc_id)
-        student_snapshot = cast(Any, student_ref.get())
-
-        payload: Dict[str, Any] = {
-            "teacherId": user.uid,
-            "name": fallback_name,
-            "email": str(aggregate.get("email") or ""),
-            "lrn": str(aggregate.get("lrn") or ""),
-            "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
-            "grade": grade,
-            "section": section,
-            "classSectionId": resolved_section_id,
-            "classroomId": classroom_doc_id,
-            "riskLevel": risk_level,
-            "inferredState": {
-                "state": inference["state"],
-                "confidence": inference["confidence"],
-                "signals": inference["signals"],
-                "explanation": inference["explanation"],
-                "fallbackUsed": inference["fallbackUsed"],
-            },
-            "stateConfidence": inference["confidence"],
-            "stateSignals": inference["signals"],
-            "engagementScore": round(avg_engagement, 1),
-            "avgQuizScore": round(avg_quiz, 1),
-            "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
-            "attendance": round(avg_attendance, 1),
-            "assignmentCompletion": round(avg_completion, 1),
-            "struggles": [str(aggregate.get("weakestTopic") or "Foundational Skills")],
-            "lastActive": FIRESTORE_SERVER_TIMESTAMP,
-            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
-        }
-
-        if _snapshot_exists(student_snapshot):
-            updated_students += 1
-        else:
-            created_students += 1
-            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-
-        student_ref.set(payload, merge=True)
-
-    student_count = len(by_identity)
-    class_average = round(total_score / max(student_count, 1), 1)
-
-    classroom_payload: Dict[str, Any] = {
-        "teacherId": user.uid,
-        "name": resolved_class_name,
-        "grade": grade,
-        "section": section,
-        "classSectionId": resolved_section_id,
-        "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
-        "studentCount": student_count,
-        "avgScore": class_average,
-        "atRiskCount": risk_high_count,
-        "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
-    }
-    if not _snapshot_exists(classroom_snapshot):
-        classroom_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-
-    classroom_ref.set(classroom_payload, merge=True)
-
-    return {
-        "synced": True,
-        "createdStudents": created_students,
-        "updatedStudents": updated_students,
-        "classroomsTouched": 1,
-        "classroomId": classroom_doc_id,
-        "classSectionId": resolved_section_id,
-        "warning": None,
-    }
 
 
 def _resolve_uploaded_files(
@@ -8099,9 +8136,19 @@ async def get_imported_class_overview(
 
         normalized_class_section_id = (classSectionId or "").strip().lower() or None
         client = firebase_firestore.client()
-        query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
-
-        docs = list(query.limit(limit).stream())
+        try:
+            query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
+            docs = list(query.limit(limit).stream())
+        except Exception as firestore_err:
+            if _is_adc_missing_error(cast(Exception, firestore_err)):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Firestore ADC is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON "
+                        "or FIREBASE_SERVICE_ACCOUNT_FILE, or set GOOGLE_APPLICATION_CREDENTIALS."
+                    ),
+                )
+            raise
 
         class_agg: Dict[str, Dict[str, Any]] = {}
         student_agg: Dict[str, Dict[str, Any]] = {}
