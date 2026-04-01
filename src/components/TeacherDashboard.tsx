@@ -620,7 +620,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         transition={{ type: 'spring', stiffness: 360, damping: 34 }}
         onMouseEnter={() => !isMobileViewport && sidebarCollapsed && setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
-        className="fixed inset-y-0 left-0 z-40 bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex flex-col shadow-sm lg:static lg:z-auto p-5"
+        className="fixed inset-y-0 left-0 z-40 bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex flex-col shadow-sm lg:static lg:z-auto p-4 sm:p-5"
       >
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
@@ -657,7 +657,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-5">
+        <nav className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-1">
           {/* Overview Section */}
           <div>
             {sidebarCollapsed && !sidebarHovered ? (
@@ -784,10 +784,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-3 sticky top-0 z-30">
-          <div className="flex items-start justify-between gap-3">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-3 sticky top-0 z-30">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               {isMobileViewport && (
                 <button
@@ -840,7 +840,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
                 onClick={onOpenProfile}
                 className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
@@ -1036,7 +1036,7 @@ const ToolsPlaceholderView: React.FC<{
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -20 }}
-    className="p-6"
+    className="p-4 sm:p-6"
   >
     <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
       <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
@@ -1068,7 +1068,7 @@ const DashboardView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 space-y-6"
+      className="p-4 sm:p-6 space-y-6"
     >
       {/* Daily AI Insight Banner -€” compact, not dominating */}
       <div className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl p-5 text-white shadow-md">
@@ -1242,7 +1242,7 @@ const AnalyticsView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-4 sm:p-6"
     >
       {/* Back Button */}
       <button
@@ -1688,7 +1688,7 @@ const InterventionView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-4 sm:p-6"
     >
       {/* Back Button */}
       <button
@@ -2235,7 +2235,7 @@ const ImportView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-4 sm:p-6"
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
@@ -2524,7 +2524,7 @@ const EditRecordsView: React.FC<{
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="p-6 h-full flex flex-col"
+      className="p-4 sm:p-6 h-full flex flex-col"
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
