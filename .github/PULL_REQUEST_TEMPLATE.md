@@ -2,11 +2,19 @@
 - What changed:
 - Why this change is needed:
 
+## Automation Snapshot
+- Current branch:
+- Suggested normalized branch (from Branch Name Governor):
+- Inferred scope (from AI Change Audit):
+- Risk level (from AI Change Audit):
+- Agent event (if used):
+
 ## Scope
 - [ ] Frontend
-- [ ] Backend
+- [ ] Teacher UI
+- [ ] Backend API
 - [ ] Firebase Functions
-- [ ] Infrastructure or CI
+- [ ] Workflow or configuration
 - [ ] Documentation
 
 ## Risk and Impact
@@ -22,15 +30,19 @@
 - [ ] Manual QA notes added below
 
 Manual QA notes:
-- 
+-
 
 ## Screenshots or Logs (if applicable)
-- 
+-
+
+## GitHub Desktop Safe Branch Flow
+- [ ] If branch was non-compliant, I created and published the suggested replacement branch.
+- [ ] I did not force rename a remote branch.
+- [ ] I confirmed the replacement branch contains all commits before deleting old branch (if applicable).
 
 ## Checklist
-- [ ] Branch name follows convention (`feature/...`, `fix/...`, `hotfix/...`, `chore/...`, `release/...`)
-- [ ] Commit messages follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `build:`, `ci:`)
-- [ ] No direct push to protected branches was used
-- [ ] Security-sensitive files were not added (for example `.env`, service account keys)
-- [ ] Documentation was updated for behavior or workflow changes
-- [ ] All review comments are resolved before merge
+- [ ] Branch naming and commit naming suggestions were reviewed from workflow comments.
+- [ ] No direct push to protected branches was used.
+- [ ] Security-sensitive files were not added (for example `.env`, service account keys).
+- [ ] Documentation was updated for behavior or workflow changes.
+- [ ] All review comments are resolved before merge.

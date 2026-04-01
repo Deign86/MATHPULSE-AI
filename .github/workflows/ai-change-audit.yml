@@ -1,0 +1,175 @@
+name: AI Change Audit
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to analyze
+        required: false
+        type: string
+      summary:
+        description: Optional summary context
+        required: false
+        type: string
+      changed_files_json:
+        description: Optional JSON array of changed files
+        required: false
+        type: string
+      pull_request_number:
+        description: Optional PR number to update
+        required: false
+        type: string
+      task_type:
+        description: Optional task type
+        required: false
+        type: string
+  repository_dispatch:
+    types:
+      - agent.code_change
+      - agent.ui_fix
+      - agent.repo_standardization
+      - agent.bug_audit
+      - agent.docs_update
+      - agent.release_prep
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files
+        id: changed
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: tj-actions/changed-files@v45
+        with:
+          json: true
+          escape_json: false
+
+      - name: Build change audit report
+        env:
+          CURRENT_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.event_name == 'repository_dispatch' && github.event.client_payload.branch || github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}
+          SUMMARY: ${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.event_name == 'repository_dispatch' && github.event.client_payload.scope || inputs.summary }}
+          ISSUE_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'repository_dispatch' && github.event.client_payload.issue_number || inputs.pull_request_number }}
+          AGENT_TASK_TYPE: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.task_type || inputs.task_type }}
+          CHANGED_FILES_JSON: ${{ github.event_name == 'workflow_dispatch' && inputs.changed_files_json || github.event_name == 'repository_dispatch' && toJson(github.event.client_payload.paths) || steps.changed.outputs.all_changed_files }}
+        run: |
+          node scripts/suggest-branch-name.js --output-file ai-change-audit.json
+
+      - name: Write workflow summary
+        run: |
+          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('ai-change-audit.json','utf8'));process.stdout.write(data.reportMarkdown + '\n');" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply labels and review guidance
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' && inputs.pull_request_number != '' || github.event_name == 'repository_dispatch' && github.event.client_payload.pull_request_number != '' }}
+        uses: actions/github-script@v7
+        env:
+          MANUAL_PR_NUMBER: ${{ inputs.pull_request_number }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const marker = '<!-- ai-change-audit -->';
+            const report = JSON.parse(fs.readFileSync('ai-change-audit.json', 'utf8'));
+            const map = JSON.parse(fs.readFileSync('config/change-scope-map.json', 'utf8'));
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let prNumber = null;
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'repository_dispatch') {
+              prNumber = Number(context.payload.client_payload.pull_request_number || 0) || null;
+            } else {
+              prNumber = Number(process.env.MANUAL_PR_NUMBER || 0) || null;
+            }
+
+            if (!prNumber) {
+              core.info('No pull request number provided for label/comment actions.');
+              return;
+            }
+
+            const labels = Array.from(new Set([...(report.labels || []), `risk-${report.riskLevel}`]));
+            const defaults = map.labelDefaults || {};
+
+            for (const label of labels) {
+              const color = defaults[label] || '6E7781';
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label });
+              } catch {
+                await github.rest.issues.createLabel({ owner, repo, name: label, color, description: 'Auto-managed by AI Change Audit workflow' });
+              }
+            }
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels });
+            }
+
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            const author = pr.data.user.login;
+            const reviewers = (report.reviewers || [])
+              .map((value) => String(value).replace(/^@/, ''))
+              .filter((value) => value && value.toLowerCase() !== author.toLowerCase());
+
+            if (reviewers.length > 0 && report.riskLevel !== 'low') {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner,
+                  repo,
+                  pull_number: prNumber,
+                  reviewers
+                });
+              } catch (error) {
+                core.info(`Reviewer request skipped: ${error.message}`);
+              }
+            }
+
+            const nextActions = (report.nextActions || []).map((item) => `- ${item}`).join('\n') || '- No follow-up actions.';
+            const body = [
+              marker,
+              '### AI Change Audit',
+              `- Scope: ${report.matchedScopes && report.matchedScopes.length ? report.matchedScopes.join(', ') : 'none detected'}`,
+              `- Recommended branch: **${report.suggestedBranch}**`,
+              `- Risk level: **${report.riskLevel}**`,
+              `- Labels applied: ${labels.length ? labels.join(', ') : 'none'}`,
+              `- CI targets: ${report.ciTargets && report.ciTargets.length ? report.ciTargets.join(', ') : 'none'}`,
+              '',
+              '**What to do next**',
+              nextActions,
+              '',
+              '**Desktop-safe reminder**',
+              'If the branch name needs normalization, create a replacement branch in GitHub Desktop and publish it. Do not force rename or rewrite remote history.'
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100
+            });
+
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            }
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-change-audit
+          path: ai-change-audit.json

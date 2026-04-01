@@ -50,6 +50,7 @@ body:
     attributes:
       label: Primary area
       options:
+        - Teacher UI
         - Frontend
         - Backend API
         - Firebase Functions
@@ -74,3 +75,36 @@ body:
     attributes:
       label: Rollout and migration notes
       description: Include flags, backfills, or migration needs if relevant.
+
+  - type: dropdown
+    id: branch_type
+    attributes:
+      label: Suggested branch type
+      description: Helps branch normalization and PR automation.
+      options:
+        - feature
+        - fix
+        - refactor
+        - chore
+        - docs
+        - hotfix
+    validations:
+      required: true
+
+  - type: textarea
+    id: impacted_paths
+    attributes:
+      label: Expected impacted paths
+      description: Optional path hints for automation routing.
+      placeholder: |
+        src/components/TeacherDashboard.tsx
+        docs/team-github-desktop-workflow.md
+
+  - type: checkboxes
+    id: delivery_mode
+    attributes:
+      label: Delivery mode
+      options:
+        - label: AI agent should be used for part of implementation
+        - label: Agent dispatch workflow should run (`agent.code_change`)
+        - label: PR should request explicit review even if risk is low

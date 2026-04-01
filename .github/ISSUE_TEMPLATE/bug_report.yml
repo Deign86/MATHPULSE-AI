@@ -53,6 +53,7 @@ body:
     attributes:
       label: Impacted area
       options:
+        - Teacher UI
         - Frontend
         - Backend API
         - Firebase Functions
@@ -79,6 +80,39 @@ body:
       label: Environment
       description: Include OS, browser, branch, commit SHA, and role used.
       placeholder: Windows 11, Chrome 135, branch fix/example, student role
+
+  - type: dropdown
+    id: suggested_branch_type
+    attributes:
+      label: Suggested branch type
+      description: Pick what automation should propose for this work.
+      options:
+        - fix
+        - hotfix
+        - refactor
+        - chore
+        - docs
+        - feature
+    validations:
+      required: true
+
+  - type: textarea
+    id: changed_paths_hint
+    attributes:
+      label: Changed paths hint
+      description: Optional list of likely paths this bug affects. One per line.
+      placeholder: |
+        src/components/TeacherDashboard.tsx
+        backend/main.py
+
+  - type: checkboxes
+    id: automation_context
+    attributes:
+      label: Automation context
+      options:
+        - label: AI agent participated in reproduction or fix investigation
+        - label: Branch Name Governor recommendation is required
+        - label: AI Change Audit labels should be applied
 
   - type: textarea
     id: logs

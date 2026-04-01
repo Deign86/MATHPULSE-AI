@@ -3,6 +3,9 @@
 
 # Frontend app
 /src/ @Deign86
+/src/components/*Teacher* @Deign86
+/src/components/Admin* @Deign86
+/src/components/*Dashboard* @Deign86
 
 # Backend API and Python services
 /backend/ @Deign86
@@ -16,3 +19,4 @@
 /.github/ @Deign86
 /scripts/ @Deign86
 /docs/ @Deign86
+/config/ @Deign86
