@@ -263,6 +263,8 @@ const App = () => {
 
   // Trigger diagnostic on first student login
   useEffect(() => {
+    if (!profileReady) return;
+
     if (isLoggedIn && userRole === 'student' && !hasTakenDiagnostic) {
       // Small delay for better UX
       const timer = setTimeout(() => {
@@ -271,7 +273,7 @@ const App = () => {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isLoggedIn, userRole, hasTakenDiagnostic]);
+  }, [profileReady, isLoggedIn, userRole, hasTakenDiagnostic]);
 
   const handleDiagnosticComplete = async (payload: DiagnosticCompletionPayload) => {
     const lrn = (studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid;

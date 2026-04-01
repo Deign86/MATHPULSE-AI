@@ -99,6 +99,8 @@ const AIChatPage = () => {
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
             <Input
+              id="ai-chat-session-search"
+              name="aiChatSessionSearch"
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
@@ -139,6 +141,8 @@ const AIChatPage = () => {
                   <button
                     onClick={(e) => handleDeleteSession(session.id, e)}
                     className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 text-slate-500 hover:text-red-600 transition-all"
+                    aria-label={`Delete conversation ${session.title}`}
+                    title="Delete conversation"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -237,6 +241,8 @@ const AIChatPage = () => {
             <div className="p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
               <div className="flex gap-3">
                 <Input
+                  id="ai-chat-message-input"
+                  name="aiChatMessageInput"
                   type="text"
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
@@ -247,6 +253,7 @@ const AIChatPage = () => {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!currentMessage.trim() || isLoading}
+                  aria-label="Send message"
                   className="px-6 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                 >
                   <Send size={18} />
