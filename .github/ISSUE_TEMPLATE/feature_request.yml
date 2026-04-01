@@ -1,0 +1,76 @@
+name: Feature request
+description: Propose an improvement or new capability
+title: "feat: "
+labels:
+  - enhancement
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share the problem first, then the proposed solution and acceptance criteria.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user or operational problem does this solve?
+      placeholder: Teachers cannot bulk-review generated quizzes by class.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe your preferred implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional alternatives and why they are less suitable.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define testable outcomes.
+      placeholder: |
+        - [ ] Teacher can filter generated quizzes by class
+        - [ ] Filter state persists during session
+        - [ ] Existing quiz workflow remains unchanged
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Frontend
+        - Backend API
+        - Firebase Functions
+        - CI or Deployment
+        - Documentation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Delivery risk
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Rollout and migration notes
+      description: Include flags, backfills, or migration needs if relevant.

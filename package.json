@@ -81,6 +81,7 @@
             "test": "vitest run --passWithNoTests",
             "test:watch": "vitest",
             "typecheck:backend": "node scripts/backend-gate.mjs typecheck",
-            "check:backend": "node scripts/backend-gate.mjs check"
+            "check:backend": "node scripts/backend-gate.mjs check",
+            "checkpoint:if-large": "node scripts/checkpoint-if-large.mjs"
       }
 }

@@ -1,0 +1,88 @@
+name: Bug report
+description: Report a reproducible bug in MathPulse AI
+title: "bug: "
+labels:
+  - bug
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please provide enough detail for reproducibility.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One-sentence description of the problem.
+      placeholder: The app crashes when opening the quiz bank.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List exact steps in order.
+      placeholder: |
+        1. Sign in as teacher
+        2. Open Quiz Maker
+        3. Click Bank tab
+        4. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Impacted area
+      options:
+        - Frontend
+        - Backend API
+        - Firebase Functions
+        - CI or Deployment
+        - Documentation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, browser, branch, commit SHA, and role used.
+      placeholder: Windows 11, Chrome 135, branch fix/example, student role
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste relevant logs, stack traces, or screenshots.
+      render: shell

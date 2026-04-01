@@ -1,0 +1,18 @@
+# Global default ownership
+* @Deign86
+
+# Frontend app
+/src/ @Deign86
+
+# Backend API and Python services
+/backend/ @Deign86
+/services/ @Deign86
+/jobs/ @Deign86
+
+# Firebase Functions
+/functions/ @Deign86
+
+# CI, automation, and repository policy
+/.github/ @Deign86
+/scripts/ @Deign86
+/docs/ @Deign86
