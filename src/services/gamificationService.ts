@@ -80,7 +80,7 @@ export const awardXP = async (
   xpAmount: number,
   type: string,
   description: string
-): Promise<{ newLevel: number; leveledUp: boolean; xp: number }> => {
+): Promise<{ newLevel: number; leveledUp: boolean; xp: number; addedXp?: number }> => {
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
@@ -90,30 +90,48 @@ export const awardXP = async (
     }
 
     const userData = userDoc.data();
-    const currentXP = (userData.currentXP || 0) + xpAmount;
-    const totalXP = (userData.totalXP || 0) + xpAmount;
+    const previousCurrentXP = userData.currentXP || 0;
+    const previousTotalXP = userData.totalXP || 0;
+    const currentXP = previousCurrentXP + xpAmount;
+    const totalXP = previousTotalXP + xpAmount;
     const currentLevel = userData.level || 1;
+    
+    console.log(`🏆 XP Award - User: ${userId}, Amount: ${xpAmount}, Previous currentXP: ${previousCurrentXP}, New: ${currentXP}, Type: ${type}`);
 
-    // Calculate XP required for next level (exponential growth)
-    const xpForNextLevel = Math.floor(100 * Math.pow(1.5, currentLevel - 1));
     let newLevel = currentLevel;
-    let remainingXP = currentXP;
+    let accumulatedXP = totalXP;
     let leveledUp = false;
 
-    // Check for level up(s)
-    while (remainingXP >= xpForNextLevel) {
-      remainingXP -= xpForNextLevel;
-      newLevel++;
-      leveledUp = true;
+    // Determine correct level purely based on absolute lifetime totalXP 
+    // instead of spending currency (currentXP) for levels
+    while (true) {
+      const requiredForNext = Math.floor(100 * Math.pow(1.5, newLevel - 1));
+      
+      // We calculate their expected absolute total XP for newLevels from 1 upwards
+      // simplified iterative check:
+      let sumRequired = 0;
+      for (let i = 1; i <= newLevel; i++) {
+        sumRequired += Math.floor(100 * Math.pow(1.5, i - 1));
+      }
+      
+      if (totalXP >= sumRequired) {
+        newLevel++;
+        leveledUp = true;
+      } else {
+        break;
+      }
     }
 
-    // Update user data
-    await updateDoc(userRef, {
-      currentXP: remainingXP,
-      totalXP: totalXP,
+    // Update user data - ensure we're ALWAYS incrementing from the previous value, never resetting to a hardcoded constant
+    const updatePayload = {
+      currentXP: currentXP, // MUST be previous + increment, never a fixed value like 50
+      totalXP: totalXP,     // MUST be previous + increment, never a fixed value like 50
       level: newLevel,
       updatedAt: serverTimestamp(),
-    });
+    };
+    
+    await updateDoc(userRef, updatePayload);
+    console.log(`💾 Firebase Update - currentXP: ${previousCurrentXP} -> ${currentXP}, totalXP: ${previousTotalXP} -> ${totalXP}, level: ${newLevel}`);
 
     // Log XP activity
     const activityRef = doc(collection(db, 'xpActivities'));
@@ -126,7 +144,7 @@ export const awardXP = async (
       timestamp: serverTimestamp(),
     });
 
-    return { newLevel, leveledUp, xp: xpAmount };
+    return { newLevel, leveledUp, xp: currentXP, addedXp: xpAmount };
   } catch (error) {
     console.error('Error awarding XP:', error);
     throw error;
@@ -341,5 +359,59 @@ export const getUserAchievements = async (userId: string): Promise<Achievement[]
   } catch (error) {
     console.error('Error getting user achievements:', error);
     return [];
+  }
+};
+
+// Purchase avatar item with XP
+export const purchaseAvatarItem = async (
+  userId: string,
+  itemId: string,
+  xpCost: number
+): Promise<{ success: boolean; message: string; currentXP?: number }> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+
+    const userData = userDoc.data();
+    const currentXP = userData.currentXP || 0;
+    const ownedItems = userData.ownedAvatarItems || [];
+
+    // Check if user already owns the item
+    if (ownedItems.includes(itemId)) {
+      return { success: false, message: 'You already own this item', currentXP };
+    }
+
+    // Check if user has enough XP
+    if (currentXP < xpCost) {
+      return { success: false, message: `Not enough XP. Need ${xpCost}, but you have ${currentXP}`, currentXP };
+    }
+
+    // Deduct XP and add item to owned items
+    const newXP = currentXP - xpCost;
+    await updateDoc(userRef, {
+      currentXP: newXP,
+      ownedAvatarItems: arrayUnion(itemId),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Log the purchase activity
+    const activityRef = doc(collection(db, 'xpActivities'));
+    await setDoc(activityRef, {
+      activityId: activityRef.id,
+      userId,
+      type: 'item_purchase',
+      xpEarned: -xpCost,
+      description: `Purchased avatar item: ${itemId}`,
+      timestamp: serverTimestamp(),
+    });
+
+    return { success: true, message: 'Item purchased successfully!', currentXP: newXP };
+  } catch (error) {
+    console.error('Error purchasing avatar item:', error);
+    return { success: false, message: 'Failed to purchase item' };
   }
 };

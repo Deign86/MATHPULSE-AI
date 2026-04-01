@@ -145,8 +145,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <LessonViewer
           lesson={selectedLesson.lesson}
           onBack={() => setSelectedLesson(null)}
-          onComplete={() => {
-            onEarnXP?.(50, `Completed "${selectedLesson.lesson.title}"`);
+          onComplete={(score, totalXP) => {
+            // Ensure we have a valid XP amount (minimum 50 for lesson completion)
+            const xpAmount = Math.max(totalXP || 50, 50);
+            console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
+            onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
             setSelectedLesson(null);
           }}
         />
@@ -166,9 +169,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           }}
           questions={questions}
           onBack={() => setSelectedLesson(null)}
-          onComplete={(score) => {
-            console.log('Quiz completed with score:', score);
-            const xpReward = Math.round(score * 1.5);
+          onComplete={(score, totalXP) => {
+            console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
+            // Ensure we have a meaningful XP reward - use totalXP if available and > 0, otherwise calculate from score
+            const xpReward = (totalXP && totalXP > 0) ? totalXP : Math.max(100, Math.round(score * 1.5));
+            console.log('[QuizComplete] Awarding XP:', xpReward);
             onEarnXP?.(xpReward, `Scored ${score}% on "${selectedLesson.quiz.title}"`);
             setSelectedLesson(null);
           }}

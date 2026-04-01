@@ -34,7 +34,7 @@ interface Lesson {
 interface InteractiveLessonProps {
   lesson: Lesson;
   questions: Question[];
-  onComplete: (score: number) => void;
+  onComplete: (score: number, extraXP?: number) => void;
   onBack: () => void;
 }
 
@@ -472,7 +472,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 transition={{ delay: 0.8 }}
              >
                 <Button 
-                  onClick={() => onComplete(percentage)}
+                  onClick={() => onComplete(percentage, totalXP)}
                   className={`w-full py-5 rounded-2xl font-bold ${theme.gradient} text-white hover:opacity-90 shadow-xl hover:shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
                 >
                   Continue Learning
