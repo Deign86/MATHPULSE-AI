@@ -1,0 +1,16 @@
+{
+  "event_type": "agent.ui_fix",
+  "client_payload": {
+    "agent_name": "copilot",
+    "task_type": "ui_fix",
+    "scope": "teacher dashboard components",
+    "branch": "fix/teacher-ui-frontend-dashboard-tsx-fixes-analytics",
+    "paths": [
+      "src/components/TeacherDashboard.tsx",
+      "src/components/TeacherAnalytics.tsx"
+    ],
+    "requires_ci": true,
+    "requires_review": true,
+    "pull_request_number": 42
+  }
+}
