@@ -14,6 +14,7 @@ If you can do pull, edit, commit, and push, the automation in this repo handles 
 7. Merge with squash merge after approvals and checks.
 
 Detailed non-expert guide: `docs/team-github-desktop-workflow.md`.
+Live demo walkthrough: `docs/automation-demo-scenario.md`.
 
 ## Branch Naming Conventions
 Preferred prefixes:
