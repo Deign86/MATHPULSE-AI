@@ -277,7 +277,25 @@ export const updateUserProfile = async (
 
     const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers'];
     const roleAllowedMap: Record<UserRole, string[]> = {
-      student: ['lrn', 'grade', 'section', 'school', 'enrollmentDate', 'major', 'gpa'],
+      student: [
+        'lrn',
+        'grade',
+        'section',
+        'school',
+        'enrollmentDate',
+        'major',
+        'gpa',
+        'atRiskSubjects',
+        'hasTakenDiagnostic',
+        'learningPathState',
+        'remediationState',
+        'iarAssessmentState',
+        'recommendedNextTopicGroupId',
+        'recommendationRationale',
+        'recommendedPace',
+        'startingQuarterG11',
+        'currentCurriculumVersionSetId',
+      ],
       teacher: ['department', 'subject', 'yearsOfExperience', 'qualification'],
       admin: ['department', 'position'],
     };

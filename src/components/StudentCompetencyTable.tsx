@@ -460,6 +460,8 @@ const StudentCompetencyTable: React.FC<{
         <div className="relative flex-1 max-w-xs">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            id="student-competency-search"
+            name="studentCompetencySearch"
             type="text"
             placeholder="Search students..."
             value={searchQuery}
