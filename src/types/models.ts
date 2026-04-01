@@ -32,6 +32,7 @@ export interface StudentProfile extends User {
   totalXP: number;
   streak: number;
   streakHistory?: string[]; // Array of YYYY-MM-DD strings
+  ownedAvatarItems?: string[]; // Array of item IDs user has purchased
   atRiskSubjects: string[];
   hasTakenDiagnostic: boolean;
   iarAssessmentState?:
