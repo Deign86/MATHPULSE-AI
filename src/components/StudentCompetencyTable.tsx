@@ -436,7 +436,7 @@ const StudentCompetencyTable: React.FC<{
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Students', value: totalStudents, icon: <User size={20} />, color: 'bg-sky-50 text-sky-600' },
           { label: 'At-Risk Students', value: highRisk, icon: <AlertTriangle size={20} />, color: 'bg-red-50 text-red-600' },
@@ -456,8 +456,8 @@ const StudentCompetencyTable: React.FC<{
       </div>
 
       {/* Filter Bar */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 w-full sm:max-w-xs">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
@@ -469,7 +469,7 @@ const StudentCompetencyTable: React.FC<{
         </div>
 
         {/* Risk filter pills */}
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {['all', 'High', 'Medium', 'Low'].map(level => (
             <button
               key={level}
@@ -487,7 +487,7 @@ const StudentCompetencyTable: React.FC<{
 
         <button
           onClick={loadStudents}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-accent rounded-lg text-xs font-semibold text-muted-foreground transition-colors"
+          className="sm:ml-auto w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-accent rounded-lg text-xs font-semibold text-muted-foreground transition-colors"
         >
           <RefreshCw size={14} />
           Refresh
@@ -521,53 +521,55 @@ const StudentCompetencyTable: React.FC<{
 
       {/* Table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        {/* Header */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          <div className="col-span-1"></div>
-          <button className="col-span-3 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('name')}>
-            Student <SortIcon field="name" />
-          </button>
-          <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('riskLevel')}>
-            Risk Level <SortIcon field="riskLevel" />
-          </button>
-          <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('avgQuizScore')}>
-            Avg. Score <SortIcon field="avgQuizScore" />
-          </button>
-          <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('engagementScore')}>
-            Engagement <SortIcon field="engagementScore" />
-          </button>
-          <div className="col-span-2 text-right">Weakest Topic</div>
-        </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px]">
+            {/* Header */}
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="col-span-1"></div>
+              <button className="col-span-3 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('name')}>
+                Student <SortIcon field="name" />
+              </button>
+              <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('riskLevel')}>
+                Risk Level <SortIcon field="riskLevel" />
+              </button>
+              <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('avgQuizScore')}>
+                Avg. Score <SortIcon field="avgQuizScore" />
+              </button>
+              <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('engagementScore')}>
+                Engagement <SortIcon field="engagementScore" />
+              </button>
+              <div className="col-span-2 text-right">Weakest Topic</div>
+            </div>
 
-        {/* Rows */}
-        {filteredRows.length === 0 ? (
-          <div className="py-12 text-center text-slate-500">
-            <User size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No students match the current filters</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {filteredRows.map((row) => {
-              const recommendationTone = row.student.riskLevel === 'High'
-                ? {
-                    card: 'bg-rose-50 border-rose-200',
-                    title: 'text-rose-800',
-                    chip: 'bg-rose-100 text-rose-700',
-                  }
-                : row.student.riskLevel === 'Medium'
-                  ? {
-                      card: 'bg-amber-50 border-amber-200',
-                      title: 'text-amber-800',
-                      chip: 'bg-amber-100 text-amber-700',
-                    }
-                  : {
-                      card: 'bg-sky-50 border-sky-200',
-                      title: 'text-sky-800',
-                      chip: 'bg-sky-100 text-sky-700',
-                    };
+            {/* Rows */}
+            {filteredRows.length === 0 ? (
+              <div className="py-12 text-center text-slate-500">
+                <User size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No students match the current filters</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {filteredRows.map((row) => {
+                  const recommendationTone = row.student.riskLevel === 'High'
+                    ? {
+                        card: 'bg-rose-50 border-rose-200',
+                        title: 'text-rose-800',
+                        chip: 'bg-rose-100 text-rose-700',
+                      }
+                    : row.student.riskLevel === 'Medium'
+                      ? {
+                          card: 'bg-amber-50 border-amber-200',
+                          title: 'text-amber-800',
+                          chip: 'bg-amber-100 text-amber-700',
+                        }
+                      : {
+                          card: 'bg-sky-50 border-sky-200',
+                          title: 'text-sky-800',
+                          chip: 'bg-sky-100 text-sky-700',
+                        };
 
-              return (
-              <div key={row.rowKey}>
+                  return (
+                  <div key={row.rowKey}>
                 {/* Main row */}
                 <button
                   onClick={() => void toggleExpand(row.rowKey)}
@@ -727,10 +729,12 @@ const StudentCompetencyTable: React.FC<{
                     </motion.div>
                   )}
                 </AnimatePresence>
+                  </div>
+                );})}
               </div>
-            );})}
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -121,6 +121,50 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const [answerHistory, setAnswerHistory] = useState<boolean[]>([]);
   const [startTime] = useState(Date.now());
   const [streakBonusXP, setStreakBonusXP] = useState(0);
+  const [themeIndex, setThemeIndex] = useState(0);
+
+  const themes = [
+    {
+      gradient: 'bg-gradient-to-br from-indigo-600 via-sky-600 to-indigo-800',
+      text: 'text-sky-900',
+      bgLight: 'bg-sky-50',
+      border: 'border-sky-200',
+      accent: 'bg-sky-500',
+      iconColor: 'text-sky-200'
+    },
+    {
+      gradient: 'bg-gradient-to-br from-teal-500 via-emerald-500 to-teal-700',
+      text: 'text-teal-900',
+      bgLight: 'bg-teal-50',
+      border: 'border-teal-200',
+      accent: 'bg-teal-500',
+      iconColor: 'text-teal-200'
+    },
+    {
+      gradient: 'bg-gradient-to-br from-rose-500 via-pink-500 to-rose-700',
+      text: 'text-rose-900',
+      bgLight: 'bg-rose-50',
+      border: 'border-rose-200',
+      accent: 'bg-rose-500',
+      iconColor: 'text-rose-200'
+    },
+    {
+      gradient: 'bg-gradient-to-br from-amber-500 via-orange-500 to-amber-700',
+      text: 'text-amber-900',
+      bgLight: 'bg-amber-50',
+      border: 'border-amber-200',
+      accent: 'bg-amber-500',
+      iconColor: 'text-amber-200'
+    },
+    {
+      gradient: 'bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-800',
+      text: 'text-violet-900',
+      bgLight: 'bg-violet-50',
+      border: 'border-violet-200',
+      accent: 'bg-violet-500',
+      iconColor: 'text-violet-200'
+    }
+  ];
 
   const currentQuestion = questions[currentIndex];
   const title = lesson.title;
@@ -230,6 +274,17 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
       setSelectedOption(null);
       setTextInput('');
       setIsCorrect(false);
+      
+      // Select next random theme (not current)
+      if (type === 'quiz') {
+         setThemeIndex(prev => {
+            let nextId;
+            do {
+              nextId = Math.floor(Math.random() * themes.length);
+            } while (nextId === prev);
+            return nextId;
+         });
+      }
     } else {
       finishLesson();
     }
@@ -243,14 +298,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   };
 
   const theme = type === 'quiz' 
-    ? {
-        gradient: 'bg-gradient-to-br from-indigo-600 via-sky-600 to-indigo-800',
-        text: 'text-sky-900',
-        bgLight: 'bg-sky-50',
-        border: 'border-sky-200',
-        accent: 'bg-sky-500',
-        iconColor: 'text-sky-200'
-      }
+    ? themes[themeIndex % themes.length]
     : {
         gradient: 'bg-gradient-to-br from-teal-500 via-emerald-500 to-teal-700',
         text: 'text-teal-900',
@@ -598,10 +646,11 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="w-full max-w-3xl"
             >
-              <div className="bg-white rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#dde3eb] min-h-[450px] flex flex-col relative">
+              <div className="bg-white rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#dde3eb] min-h-[450px] max-h-[calc(100vh-[160px])] md:max-h-[calc(100vh-[200px])] flex flex-col relative w-full">
                 
+                <div className="flex-1 overflow-y-auto flex flex-col">
                 {/* Question Area */}
-                <div className="p-8 md:p-12 flex-1 flex flex-col items-center justify-center text-center">
+                <div className="p-8 md:p-12 shrink-0 flex flex-col items-center justify-center text-center">
                    <span className={`inline-block px-4 py-1.5 ${theme.bgLight} ${theme.text} rounded-full text-[11px] font-black mb-8 uppercase tracking-widest border ${theme.border}`}>
                      {currentQuestion.type === 'multiple-choice' ? 'Multiple Choice' : 
                       currentQuestion.type === 'true-false' ? 'True or False' : 'Fill in the Blank'}
@@ -612,7 +661,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 </div>
 
                 {/* Answer Area */}
-                <div className="p-6 md:p-10 bg-[#edf1f7]/80 backdrop-blur-sm border-t border-[#dde3eb]">
+                <div className="p-6 md:p-10 flex-1 bg-[#edf1f7]/80 backdrop-blur-sm border-t border-[#dde3eb]">
                   {/* Multiple Choice & True/False */}
                   {(currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'true-false') && (
                     <div className="space-y-4">
@@ -769,9 +818,10 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                     </div>
                   )}
                 </div>
+                </div>
                 
                 {/* Footer / Controls */}
-                <div className="p-6 border-t border-[#dde3eb] bg-white flex items-center justify-between">
+                <div className="p-6 border-t border-[#dde3eb] bg-white flex items-center justify-between shrink-0">
                    <Button 
                      variant="ghost" 
                      size="sm"

@@ -7,7 +7,8 @@ import { Lesson } from '../data/subjects';
 interface LessonViewerProps {
   lesson: Lesson;
   onBack: () => void;
-  onComplete: () => void;
+  onComplete: (score?: number, totalXP?: number) => void;
+  onProgressUpdate?: (percent: number) => void;
 }
 
 interface LessonContent {
@@ -77,7 +78,7 @@ const generateLessonContent = (lessonTitle: string): LessonContent => {
   };
 };
 
-const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete }) => {
+const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete, onProgressUpdate }) => {
   const [currentSection, setCurrentSection] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -87,8 +88,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete 
   const totalSections = content.sections.length;
 
   useEffect(() => {
-    setProgress(((currentSection + 1) / totalSections) * 100);
-  }, [currentSection, totalSections]);
+    const newProgress = ((currentSection + 1) / totalSections) * 100;
+    setProgress(newProgress);
+    onProgressUpdate?.(newProgress);
+  }, [currentSection, totalSections, onProgressUpdate]);
 
   const handleNext = () => {
     if (currentSection < totalSections - 1) {

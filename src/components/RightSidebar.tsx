@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, Trophy, Flame, Star, Crown } from 'lucide-react';
 import { motion } from 'motion/react';
 import DailyChallengeWidget from './DailyChallengeWidget';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { subscribeToLeaderboard } from '../services/gamificationService';
+import { LeaderboardEntry } from '../types/models';
+import { useAuth } from '../contexts/AuthContext';
 
 interface RightSidebarProps {
   onOpenRewards: () => void;
@@ -31,6 +34,32 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   streakHistory = [],
 }) => {
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
+  const { currentUser } = useAuth();
+  const [topUsers, setTopUsers] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    if (currentUser?.uid) {
+      try {
+        unsubscribe = subscribeToLeaderboard(
+          (users: LeaderboardEntry[]) => {
+            setTopUsers(users);
+          },
+          currentUser?.uid,
+          false,
+          'all',
+          3
+        );
+      } catch (err) {
+        console.error('Error subscribing to leaderboard preview:', err);
+      }
+    }
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [currentUser?.uid]);
 
   return (
     <div className="space-y-2.5">
@@ -110,93 +139,124 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         <DailyChallengeWidget streakHistory={streakHistory} />
       </motion.div>
 
-      {/* Leaderboard Preview with Miniature Stage */}
+      {/* Leaderboard Preview with Miniature Stage (Light Theme) */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         onClick={onOpenLeaderboard}
-        className="bg-white rounded-xl border border-slate-200/80 hover:shadow-md hover:border-amber-200/60 transition-all group overflow-hidden cursor-pointer"
+        className="bg-gradient-to-br from-white via-white to-purple-50 rounded-[24px] border border-slate-100 p-4 shadow-sm hover:shadow-md hover:border-purple-200 transition-all group overflow-hidden cursor-pointer relative mt-1"
       >
-        <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+        {/* Ambient Glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#f3e8ff_0%,transparent_70%)] opacity-80 pointer-events-none"></div>
+
+        <div className="flex items-center justify-between relative z-10 mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-200/60 transition-colors group-hover:bg-amber-100/50">
-              <Crown size={14} className="text-amber-500" />
+            <div className="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-100 transition-colors group-hover:bg-purple-100">
+              <Trophy size={16} className="text-purple-500" />
             </div>
-            <h3 className="font-display font-bold text-sm text-[#0a1628]">Leaderboards</h3>
+            <h3 className="font-display font-bold text-[15px] text-slate-800">Leaderboards</h3>
           </div>
-          <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 group-hover:text-amber-500 transition-transform" />
+          <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 group-hover:text-purple-500 transition-transform" />
         </div>
         
-        {/* Miniature Stage Podium */}
-        <div className="pt-8 pb-3 px-2 bg-gradient-to-b from-slate-50/30 to-white flex items-end justify-center gap-1.5 min-h-[170px]">
+        {/* Miniature Stage Podium (Updated Style) */}
+        <div className="pt-8 pb-5 px-1 flex items-end justify-center gap-1.5 min-h-[190px] relative z-10 perspective-1000">
           
+          {/* Yellow Spotlight Effect for Top 1 (Entirely at the back of all podiums) */}
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: '210px', opacity: 0.85 }}
+            transition={{ duration: 1.5, ease: 'easeOut' }}
+            className="absolute bottom-1 left-1/2 -translate-x-1/2 w-[65%] bg-gradient-to-t from-yellow-300/80 via-yellow-200/40 to-transparent blur-[4px] z-0 pointer-events-none"
+            style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)' }}
+          />
+
           {/* Rank 2 (Left) */}
-          <div className="flex flex-col items-center relative z-10">
+          <div className="flex flex-col items-center relative z-10 w-[30%]">
             <motion.div 
               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
-              className="relative mb-2"
+              className="relative mb-2 z-40 flex flex-col items-center"
             >
-              <img src="https://i.pravatar.cc/150?img=33" alt="You" className="w-10 h-10 rounded-full border-[3px] border-sky-400 z-10 relative object-cover shadow-sm bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">2</div>
+              <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center shadow-sm overflow-hidden z-10">
+                <img src={topUsers[1]?.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${topUsers[1]?.name || 'Player2'}`} alt={topUsers[1]?.name || "Player 2"} className="w-full h-full object-cover" />
+              </div>
+              <h3 className="font-semibold text-slate-700 mt-1 text-[11px] w-full text-center leading-tight truncate px-1">{topUsers[1] ? topUsers[1].name.split(' ')[0] : '...'}</h3>
             </motion.div>
-            <motion.div 
-              initial={{ height: 0 }} animate={{ height: '54px' }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
-              className="w-[70px] bg-gradient-to-b from-slate-200 to-slate-100 rounded-t-xl rounded-b-md border-t-2 border-slate-50 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.05)]"
-            >
-               <span className="text-slate-400 font-black text-2xl opacity-40 translate-y-1">2</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[12px] font-bold text-[#0a1628]">You</span>
-              <span className="block text-[10px] text-sky-600 font-bold">2.1k XP</span>
+            {/* Miniature 3D Cylinder */}
+            <div className="w-[85%] relative mt-1">
+              <div className="w-full h-6 absolute -bottom-3 bg-[#D96C6A] rounded-[50%] shadow-sm z-0"></div>
+              <motion.div 
+                initial={{ height: 0 }} animate={{ height: '45px' }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
+                className="w-full bg-[#D96C6A] relative z-10 flex flex-col items-center overflow-hidden"
+              >
+                <span className="absolute top-1 text-[28px] font-black text-white/30">2</span>
+              </motion.div>
+              <div className="w-full h-6 absolute -top-3 bg-[#FF8B8B] rounded-[50%] z-20 shadow-sm flex items-center justify-center">
+                 <div className="text-white font-black text-[9px] transform scale-y-75 uppercase tracking-widest z-30 drop-shadow-sm">
+                   {topUsers[1] ? (topUsers[1].xp >= 1000 ? (topUsers[1].xp / 1000).toFixed(1) + 'k' : topUsers[1].xp.toString()) : '-'}
+                 </div>
+              </div>
             </div>
           </div>
 
           {/* Rank 1 (Center) */}
-          <div className="flex flex-col items-center relative z-20 -mx-2">
+          <div className="flex flex-col items-center relative z-20 w-[36%] -mx-1">
+            
             <motion.div 
               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
-              className="relative mb-2"
+              className="relative mb-3 z-40 flex flex-col items-center"
             >
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                <Crown size={22} className="text-amber-400 drop-shadow-md mb-1" fill="#fbbf24" strokeWidth={1.5} />
+              <motion.div animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} className="mb-[-8px] z-30">
+                <Crown size={20} className="text-yellow-400 fill-yellow-400 drop-shadow-sm" />
+              </motion.div>
+              <div className="w-12 h-12 rounded-full border-[2.5px] border-white bg-white flex items-center justify-center shadow-md overflow-hidden z-10">
+                <img src={topUsers[0]?.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${topUsers[0]?.name || 'Player1'}`} alt={topUsers[0]?.name || "Player 1"} className="w-full h-full object-cover" />
               </div>
-              <img src="https://i.pravatar.cc/150?img=68" alt="Alex" className="w-[52px] h-[52px] rounded-full border-[3px] border-amber-400 z-10 relative object-cover shadow-md bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">1</div>
+              <h3 className="font-semibold text-slate-800 mt-1.5 text-[12px] w-full text-center leading-tight truncate px-1">{topUsers[0] ? topUsers[0].name.split(' ')[0] : '...'}</h3>
             </motion.div>
-            <motion.div 
-              initial={{ height: 0 }} animate={{ height: '74px' }} transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-              className="w-[78px] bg-gradient-to-b from-amber-100 to-amber-50 rounded-t-xl rounded-b-md border-t-2 border-amber-50 flex items-center justify-center relative shadow-[inset_0_-4px_8px_rgba(251,191,36,0.1),0_6px_8px_rgba(0,0,0,0.05)]"
-            >
-               <span className="text-amber-400 font-black text-3xl opacity-50 translate-y-1">1</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/80 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[13px] font-black text-[#0a1628]">Alex M.</span>
-              <span className="block text-[11px] text-amber-600 font-bold">2.4k XP</span>
+            {/* Miniature 3D Cylinder */}
+            <div className="w-[90%] relative mt-1">
+              <div className="w-full h-8 absolute -bottom-4 bg-[#6F2BAF] rounded-[50%] shadow-md z-0"></div>
+              <motion.div 
+                initial={{ height: 0 }} animate={{ height: '65px' }} transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+                className="w-full bg-[#6F2BAF] relative z-10 flex flex-col items-center overflow-hidden"
+              >
+                <span className="absolute top-1 text-[38px] font-black text-white/30">1</span>
+              </motion.div>
+              <div className="w-full h-8 absolute -top-4 bg-[#9956DE] rounded-[50%] z-20 shadow-md flex items-center justify-center">
+                 <div className="text-white font-black text-[11px] transform scale-y-75 uppercase tracking-widest z-30 drop-shadow-sm">
+                   {topUsers[0] ? (topUsers[0].xp >= 1000 ? (topUsers[0].xp / 1000).toFixed(1) + 'k' : topUsers[0].xp.toString()) : '-'}
+                 </div>
+              </div>
             </div>
           </div>
 
           {/* Rank 3 (Right) */}
-          <div className="flex flex-col items-center relative z-10">
+          <div className="flex flex-col items-center relative z-10 w-[30%]">
             <motion.div 
               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }}
-              className="relative mb-2"
+              className="relative mb-2 z-40 flex flex-col items-center"
             >
-              <img src="https://i.pravatar.cc/150?img=47" alt="Sarah" className="w-10 h-10 rounded-full border-[3px] border-orange-400 z-10 relative object-cover shadow-sm bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">3</div>
+              <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center shadow-sm overflow-hidden z-10">
+                <img src={topUsers[2]?.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${topUsers[2]?.name || 'Player3'}`} alt={topUsers[2]?.name || "Player 3"} className="w-full h-full object-cover" />
+              </div>
+              <h3 className="font-semibold text-slate-700 mt-1 text-[11px] w-full text-center leading-tight truncate px-1">{topUsers[2] ? topUsers[2].name.split(' ')[0] : '...'}</h3>
             </motion.div>
-            <motion.div 
-              initial={{ height: 0 }} animate={{ height: '38px' }} transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
-              className="w-[70px] bg-gradient-to-b from-orange-50 to-slate-50 rounded-t-xl rounded-b-md border-t-2 border-orange-100 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(249,115,22,0.05),0_4px_6px_rgba(0,0,0,0.02)]"
-            >
-               <span className="text-orange-400/60 font-black text-2xl opacity-60 translate-y-1">3</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[12px] font-bold text-[#0a1628]">Sarah K.</span>
-              <span className="block text-[10px] text-orange-600 font-bold">1.9k XP</span>
+            {/* Miniature 3D Cylinder */}
+            <div className="w-[85%] relative mt-1">
+              <div className="w-full h-6 absolute -bottom-3 bg-[#CC8F45] rounded-[50%] shadow-sm z-0"></div>
+              <motion.div 
+                initial={{ height: 0 }} animate={{ height: '35px' }} transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
+                className="w-full bg-[#CC8F45] relative z-10 flex flex-col items-center overflow-hidden"
+              >
+                <span className="absolute top-0.5 text-[24px] font-black text-white/30">3</span>
+              </motion.div>
+              <div className="w-full h-6 absolute -top-3 bg-[#FFB356] rounded-[50%] z-20 shadow-sm flex items-center justify-center">
+                 <div className="text-white font-black text-[9px] transform scale-y-75 uppercase tracking-widest z-30 drop-shadow-sm">
+                   {topUsers[2] ? (topUsers[2].xp >= 1000 ? (topUsers[2].xp / 1000).toFixed(1) + 'k' : topUsers[2].xp.toString()) : '-'}
+                 </div>
+              </div>
             </div>
           </div>
           

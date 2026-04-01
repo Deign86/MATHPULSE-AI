@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
+import { Progress } from './ui/progress';
 import InteractiveLesson, { Question } from './InteractiveLesson';
 import LessonViewer from './LessonViewer';
-import { Module, Lesson, Quiz } from '../data/subjects';
+import { subjects, Module, Lesson, Quiz } from '../data/subjects';
+import { useAuth } from '../contexts/AuthContext';
+import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import type { UserProgress } from '../types/models';
 
 interface ModuleDetailViewProps {
   module: Module;
@@ -129,13 +133,78 @@ const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Quest
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson' } | { quiz: Quiz; type: 'quiz' } | null>(null);
+  const { userProfile } = useAuth();
+  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
-  const completedLessons = module.lessons.filter(l => l.completed).length;
-  const completedQuizzes = module.quizzes.filter(q => q.completed).length;
+  const moduleLevel = useMemo(() => {
+    const candidate = Number(module.id.split('-').pop());
+    return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
+  }, [module.id]);
+
+  const subjectId = useMemo(() => {
+    const parent = subjects.find((s) => s.modules.some((m) => m.id === module.id));
+    return parent?.id ?? null;
+  }, [module.id]);
+
+  // Palette (requested) used for per-module accents where the curriculum data isn't differentiated.
+  const MODULE_PALETTE = ['#1FA7E1', '#9956DE', '#75D06A', '#FFB356', '#7274ED', '#FF8B8B', '#6ED1CF', '#FB96BB'];
+
+  const moduleAccentHex = useMemo(() => {
+    const parent = subjectId ? subjects.find((s) => s.id === subjectId) : null;
+    const idx = parent?.modules?.findIndex((m) => m.id === module.id) ?? 0;
+    const safeIdx = idx >= 0 ? idx : 0;
+    return MODULE_PALETTE[safeIdx % MODULE_PALETTE.length];
+  }, [module.id, subjectId]);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    return subscribeToUserProgress(userProfile.uid, setUserProgress);
+  }, [userProfile?.uid]);
+
+  const dbModuleProgress = useMemo(() => {
+    if (!subjectId) return null;
+    return userProgress?.subjects?.[subjectId]?.modulesProgress?.[module.id] ?? null;
+  }, [module.id, subjectId, userProgress?.subjects]);
+
+  const completedLessonIds = useMemo(() => {
+    const ids = dbModuleProgress?.lessonsCompleted ?? [];
+    return new Set(ids);
+  }, [dbModuleProgress?.lessonsCompleted]);
+
+  const completedQuizIds = useMemo(() => {
+    const ids = dbModuleProgress?.quizzesCompleted ?? [];
+    return new Set(ids);
+  }, [dbModuleProgress?.quizzesCompleted]);
+
+  const completedLessons = dbModuleProgress?.lessonsCompleted?.length ?? module.lessons.filter(l => l.completed).length;
+  const completedQuizzes = dbModuleProgress?.quizzesCompleted?.length ?? module.quizzes.filter(q => q.completed).length;
+  const moduleProgressPercentFromDb = dbModuleProgress?.progress ?? module.progress;
 
   // Calculate overall module progress
   const totalItems = module.lessons.length + module.quizzes.length;
   const completedItems = completedLessons + completedQuizzes;
+  const lessonProgressPercent = module.lessons.length ? (completedLessons / module.lessons.length) * 100 : 0;
+  const quizProgressPercent = module.quizzes.length ? (completedQuizzes / module.quizzes.length) * 100 : 0;
+
+  // Per-lesson progress (0-100) persisted in Firestore under progress.lessons[lessonId].
+  const getLessonProgressPercent = (lessonId: string, isCompleted: boolean) => {
+    const pct = userProgress?.lessons?.[lessonId]?.progressPercent;
+    if (typeof pct === 'number' && Number.isFinite(pct)) return Math.max(0, Math.min(100, pct));
+    return isCompleted ? 100 : 0;
+  };
+
+  // Derived module progress that includes partial lesson progress.
+  const derivedModuleProgressPercent = useMemo(() => {
+    if (!totalItems) return 0;
+    const lessonSum = module.lessons.reduce((sum, lesson) => {
+      const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
+      return sum + getLessonProgressPercent(lesson.id, isCompleted);
+    }, 0);
+    const quizSum = completedQuizzes * 100;
+    return Math.round((lessonSum + quizSum) / totalItems);
+  }, [completedLessonIds, completedQuizzes, module.lessons, module.quizzes.length, totalItems, userProgress?.lessons]);
+
+  const moduleProgressPercent = moduleProgressPercentFromDb > 0 ? moduleProgressPercentFromDb : derivedModuleProgressPercent;
 
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
@@ -145,11 +214,64 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <LessonViewer
           lesson={selectedLesson.lesson}
           onBack={() => setSelectedLesson(null)}
+          onProgressUpdate={(percent) => {
+            // This is lesson-scoped progress; no subject/module IDs needed.
+            if (userProfile?.uid) {
+              updateLessonProgressPercent(userProfile.uid, selectedLesson.lesson.id, percent);
+            }
+
+            // Optimistic UI update so the module lesson card rim reflects immediately.
+            setUserProgress((prev) => {
+              if (!prev) return prev;
+              const lessonId = selectedLesson.lesson.id;
+              const existingPct = prev.lessons?.[lessonId]?.progressPercent;
+              const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
+              const nextPct = Math.max(safeExistingPct, Math.max(0, Math.min(100, percent)));
+              return {
+                ...prev,
+                lessons: {
+                  ...(prev.lessons || {}),
+                  [lessonId]: {
+                    ...(prev.lessons?.[lessonId] || {}),
+                    lessonId,
+                    progressPercent: nextPct,
+                  },
+                },
+                updatedAt: new Date(),
+              };
+            });
+          }}
           onComplete={(score, totalXP) => {
             // Ensure we have a valid XP amount (minimum 50 for lesson completion)
             const xpAmount = Math.max(totalXP || 50, 50);
             console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
             onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
+
+            // Persist progress for Competency Matrix (Concept Grasp)
+            if (userProfile?.uid && subjectId) {
+              void (async () => {
+                try {
+                  await completeLesson(
+                    userProfile.uid,
+                    subjectId,
+                    module.id,
+                    selectedLesson.lesson.id,
+                    0,
+                    xpAmount
+                  );
+                  await recalculateAndUpdateModuleProgress(
+                    userProfile.uid,
+                    subjectId,
+                    module.id,
+                    module.lessons.length,
+                    module.quizzes.length
+                  );
+                } catch (err) {
+                  console.error('[LessonComplete] Failed to persist progress:', err);
+                }
+              })();
+            }
+
             setSelectedLesson(null);
           }}
         />
@@ -175,6 +297,33 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             const xpReward = (totalXP && totalXP > 0) ? totalXP : Math.max(100, Math.round(score * 1.5));
             console.log('[QuizComplete] Awarding XP:', xpReward);
             onEarnXP?.(xpReward, `Scored ${score}% on "${selectedLesson.quiz.title}"`);
+
+            // Persist progress for Competency Matrix (Application)
+            if (userProfile?.uid && subjectId) {
+              void (async () => {
+                try {
+                  await completeQuiz(
+                    userProfile.uid,
+                    subjectId,
+                    module.id,
+                    selectedLesson.quiz.id,
+                    score,
+                    [],
+                    0
+                  );
+                  await recalculateAndUpdateModuleProgress(
+                    userProfile.uid,
+                    subjectId,
+                    module.id,
+                    module.lessons.length,
+                    module.quizzes.length
+                  );
+                } catch (err) {
+                  console.error('[QuizComplete] Failed to persist progress:', err);
+                }
+              })();
+            }
+
             setSelectedLesson(null);
           }}
         />
@@ -183,15 +332,17 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8 lg:overflow-hidden">
-      {/* Header Back Button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-[#5a6578] hover:text-sky-600 font-bold mb-4 transition-colors group w-max shrink-0"
-      >
-        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Modules
-      </button>
+    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8 lg:overflow-hidden relative">
+      {/* Floating Header & Navigation */}
+      <div className="sticky top-0 sm:top-4 z-50 mb-6 xl:mb-8 w-full sm:w-max">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/80 backdrop-blur-xl border border-slate-200/60 text-slate-600 hover:text-indigo-600 font-bold text-sm tracking-wide transition-all hover:-translate-x-1 shadow-sm hover:shadow-md"
+        >
+          <ArrowLeft size={18} />
+          Back
+        </button>
+      </div>
 
       {/* Book Cover / Hero Banner */}
       <motion.div
@@ -208,14 +359,14 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
         
-        <div className="relative p-7 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+        <div className="relative p-5 sm:p-7 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
           <div className="flex-1 text-white">
             <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-5">
               <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1.5">
                 <Bookmark size={14} /> Chapter {module.id.split('-').pop() || '1'}
               </div>
               <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-400/30">
-                Lv {module.level || 1}
+                Lv {moduleLevel}
               </div>
             </div>
 
@@ -235,15 +386,15 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[12px] md:text-[13px] font-bold text-slate-400 mb-0.5">{completedItems}/{totalItems} steps</span>
-                  <span className="text-xl md:text-2xl font-black text-white shrink-0 leading-none">{module.progress}%</span>
+                  <span className="text-xl md:text-2xl font-black text-white shrink-0 leading-none">{Math.round(moduleProgressPercent)}%</span>
                 </div>
               </div>
               <div className="h-3 bg-black/40 rounded-full overflow-hidden shadow-inner ring-1 ring-white/10 p-0.5">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${module.progress}%` }}
+                  animate={{ width: `${moduleProgressPercent}%` }}
                   transition={{ duration: 1.5, ease: 'easeOut', delay: 0.2 }}
-                  className={`h-full rounded-full relative ${module.progress === 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-300' : module.accentColor}`}
+                  className={`h-full rounded-full relative ${moduleProgressPercent === 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-300' : module.accentColor}`}
                 >
                   <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=')] opacity-30 mix-blend-overlay" />
                 </motion.div>
@@ -254,7 +405,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           <div className="hidden lg:flex w-48 h-48 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md items-center justify-center transform rotate-[-3deg] shadow-2xl relative group hover:rotate-0 transition-all duration-500 shrink-0">
             <div className={`absolute inset-0 opacity-40 rounded-[2rem] ${module.progress === 100 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : module.accentColor}`} />
             
-            {module.progress === 100 ? (
+            {moduleProgressPercent === 100 ? (
               <Trophy size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
             ) : (
               <BookOpen size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
@@ -279,25 +430,30 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/60 pointer-events-none z-0"></div>
           <div className="absolute left-[54px] top-0 bottom-0 w-px bg-rose-100/40 pointer-events-none z-0"></div>
           
-          <div className="px-6 md:px-8 py-5 md:py-6 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm relative z-10 flex items-center justify-between sticky top-0 shrink-0">
+          <div className="px-4 sm:px-6 md:px-8 py-5 md:py-6 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm relative z-10 flex items-center justify-between sticky top-0 shrink-0">
             <h2 className="font-display font-black text-xl md:text-2xl text-slate-800 flex items-center gap-3">
               <BookOpen size={24} className="text-sky-500" />
               Study Notes
             </h2>
-            <div className="text-xs md:text-sm font-bold bg-sky-100 text-sky-600 px-3 py-1 rounded-full shadow-sm border border-sky-200/50">
-              {completedLessons}/{module.lessons.length}
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-xs md:text-sm font-bold bg-sky-100 text-sky-600 px-3 py-1 rounded-full shadow-sm border border-sky-200/50">
+                {completedLessons}/{module.lessons.length}
+              </div>
             </div>
           </div>
 
           <div 
-            className="flex-1 overflow-y-auto px-5 md:px-8 py-5 md:py-6 space-y-4 scrollbar-hide relative z-10" 
+            className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-8 py-5 md:py-6 space-y-4 scrollbar-hide relative z-10" 
             style={{ 
               backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #f1f5f9 31px, #f1f5f9 32px)', 
               backgroundAttachment: 'local', 
               lineHeight: '32px' 
             }}
           >
-            {module.lessons.map((lesson, index) => (
+            {module.lessons.map((lesson, index) => {
+              const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
+              const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
+              return (
               <motion.div
                 key={lesson.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -317,20 +473,30 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 <div className={`mt-5 rounded-[1.2rem] border p-3 md:p-4 relative overflow-hidden shadow-sm transition-all duration-300 ${
                   lesson.locked
                     ? 'border-slate-200 bg-slate-100'
-                    : lesson.completed
+                    : isCompleted
                     ? 'border-teal-200 bg-white hover:shadow-md'
                     : 'border-sky-200 bg-white hover:shadow-md'
                 }`}>
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-200 to-indigo-200" />
+                  {/* Top rim progress bar (fills the visible top shadow/rim area) */}
+                  <div className="absolute top-0 left-0 right-0 h-2.5 bg-slate-100 rounded-t-[1.2rem]" />
+                  <motion.div
+                    className="absolute top-0 left-0 h-2.5 rounded-t-[1.2rem]"
+                    initial={false}
+                    animate={{ width: `${lessonPct}%` }}
+                    transition={{ duration: 0.45, ease: 'easeOut' }}
+                    style={{
+                      background: `linear-gradient(90deg, ${moduleAccentHex}66, ${moduleAccentHex})`,
+                    }}
+                  />
 
                   <div className="flex items-center justify-between relative z-10 pt-1">
                     <div className="flex items-center gap-3 md:gap-4 flex-1">
                       <div className={`w-9 h-9 md:w-10 md:h-10 rounded-[10px] flex items-center justify-center shrink-0 shadow-sm ${
                       lesson.locked ? 'bg-slate-100 text-slate-400' :
-                      lesson.completed ? 'bg-teal-50 text-teal-600' : 'bg-sky-50 text-sky-600'
+                       isCompleted ? 'bg-teal-50 text-teal-600' : 'bg-sky-50 text-sky-600'
                     }`}>
                         {lesson.locked ? <Lock size={16} /> :
-                         lesson.completed ? <CheckCircle2 size={16} /> :
+                         isCompleted ? <CheckCircle2 size={16} /> :
                          <Play size={16} className="ml-1" />}
                       </div>
 
@@ -345,6 +511,19 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 ml-3 md:ml-4">
+                      {(lessonPct > 0 && lessonPct < 100) && (
+                        <div
+                          className="hidden sm:flex items-center justify-center px-2 py-1 rounded-md text-[11px] font-black"
+                          style={{
+                            backgroundColor: `${moduleAccentHex}1A`,
+                            color: moduleAccentHex,
+                            border: `1px solid ${moduleAccentHex}33`,
+                          }}
+                          title="Lesson progress"
+                        >
+                          {Math.round(lessonPct)}%
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 text-slate-400 text-[11px] md:text-xs font-bold bg-slate-50 px-2 py-1 rounded-md">
                         <Clock size={12} />
                         <span>{lesson.duration}</span>
@@ -353,7 +532,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                   </div>
                 </div>
               </motion.div>
-            ))}
+            );
+            })}
             
             {/* Spacer for bottom padding */}
             <div className="h-4 pointer-events-none"></div>
@@ -366,18 +546,20 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             <div className="w-16 h-1.5 bg-slate-300 rounded-full"></div>
           </div>
           
-          <div className="px-6 md:px-8 py-4 md:py-5 border-b-2 border-dashed border-slate-200 bg-white relative z-10 flex items-center justify-between sticky top-5 shrink-0">
+          <div className="px-4 sm:px-6 md:px-8 py-4 md:py-5 border-b-2 border-dashed border-slate-200 bg-white relative z-10 flex items-center justify-between sticky top-5 shrink-0">
             <h2 className="font-display font-black text-xl md:text-2xl text-slate-800 flex items-center gap-3">
               <PenTool size={24} className="text-rose-500" />
               Assessments
             </h2>
-            <div className="text-xs md:text-sm font-bold bg-rose-100 text-rose-600 px-3 py-1 rounded-full shadow-sm border border-rose-200/50">
-              {completedQuizzes}/{module.quizzes.length}
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-xs md:text-sm font-bold bg-rose-100 text-rose-600 px-3 py-1 rounded-full shadow-sm border border-rose-200/50">
+                {completedQuizzes}/{module.quizzes.length}
+              </div>
             </div>
           </div>
 
           <div 
-            className="flex-1 overflow-y-auto px-5 md:px-8 py-5 md:py-6 space-y-4 md:space-y-5 scrollbar-hide relative z-10"
+            className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-8 py-5 md:py-6 space-y-4 md:space-y-5 scrollbar-hide relative z-10"
             style={{
               backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
               backgroundSize: '24px 24px',
@@ -389,6 +571,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               const isFinal = quiz.type === 'final';
               const isModuleQuiz = quiz.type === 'module';
               const alignedLesson = module.lessons[Math.min(index, Math.max(module.lessons.length - 1, 0))];
+              const isCompleted = completedQuizIds.has(quiz.id) || quiz.completed;
 
               return (
                 <motion.div
@@ -400,7 +583,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                   className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${
                     isLocked
                       ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
-                      : quiz.completed
+                      : isCompleted
                       ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
                       : isFinal
                       ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
@@ -411,11 +594,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     <div className="flex items-center gap-3 md:gap-4 flex-1">
                       <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${
                         isLocked ? 'bg-slate-100 text-slate-400' :
-                        quiz.completed ? 'bg-teal-500 text-white' :
+                        isCompleted ? 'bg-teal-500 text-white' :
                         isFinal ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
                       }`}>
                         {isLocked ? <Lock size={18} /> :
-                         quiz.completed ? <Trophy size={18} /> :
+                         isCompleted ? <Trophy size={18} /> :
                          <PenTool size={18} />}
                       </div>
 
@@ -451,7 +634,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">
-                      {quiz.score !== undefined && quiz.completed && (
+                      {quiz.score !== undefined && isCompleted && (
                         <div className="text-right">
                           <div className="text-xl md:text-2xl font-black text-teal-600 leading-none">{quiz.score}%</div>
                         </div>

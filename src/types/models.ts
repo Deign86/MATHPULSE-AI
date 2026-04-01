@@ -237,6 +237,7 @@ export interface LessonProgress {
   completedAt?: Date;
   timeSpent: number; // in seconds
   score?: number;
+  progressPercent?: number;
 }
 
 export interface QuizAttempt {
