@@ -129,6 +129,16 @@ jobs:
               return;
             }
 
+            try {
+              await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            } catch (error) {
+              if (error.status === 404) {
+                core.warning(`PR #${prNumber} not found; skipping branch governor comment update.`);
+                return;
+              }
+              throw error;
+            }
+
             const nextActions = (report.nextActions || []).map((step) => `- ${step}`).join('\n') || '- No additional action required.';
             const body = [
               marker,

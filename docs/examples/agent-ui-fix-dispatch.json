@@ -11,6 +11,6 @@
     ],
     "requires_ci": true,
     "requires_review": true,
-    "pull_request_number": 42
+    "pull_request_number": ""
   }
 }
