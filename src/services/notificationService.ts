@@ -24,6 +24,7 @@ export const createNotification = async (
 ): Promise<Notification> => {
   try {
     const notificationRef = doc(collection(db, 'notifications'));
+    const optionalActionUrl = actionUrl ? { actionUrl } : {};
     const notification: Notification = {
       id: notificationRef.id,
       userId,
@@ -31,12 +32,13 @@ export const createNotification = async (
       title,
       message,
       read: false,
-      actionUrl,
+      ...optionalActionUrl,
       createdAt: new Date(),
     };
 
     await setDoc(notificationRef, {
       ...notification,
+      ...optionalActionUrl,
       createdAt: serverTimestamp(),
     });
 

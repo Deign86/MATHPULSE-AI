@@ -275,6 +275,8 @@ const GradesPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <select
+              id="grades-subject-filter"
+              name="gradesSubjectFilter"
               value={filterSubject}
               onChange={(e) => setFilterSubject(e.target.value)}
               className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm font-body bg-white text-[#0a1628]"
@@ -286,6 +288,8 @@ const GradesPage = () => {
             </select>
 
             <select
+              id="grades-type-filter"
+              name="gradesTypeFilter"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm font-body bg-white text-[#0a1628]"
