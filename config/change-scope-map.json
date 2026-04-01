@@ -1,0 +1,265 @@
+{
+  "version": 1,
+  "branch": {
+    "allowedPattern": "^(feature|fix|refactor|docs|chore|hotfix|release)\\/[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "genericNames": [
+      "main",
+      "master",
+      "develop",
+      "dev",
+      "branch",
+      "new-branch",
+      "my-branch",
+      "work",
+      "wip",
+      "changes",
+      "update",
+      "updates",
+      "test",
+      "temp",
+      "tmp"
+    ],
+    "protectedPatterns": [
+      "main",
+      "master",
+      "develop",
+      "release/*",
+      "hotfix/*"
+    ]
+  },
+  "scopes": [
+    {
+      "name": "teacher-ui",
+      "description": "Teacher-facing frontend components and dashboards",
+      "patterns": [
+        "src/components/**",
+        "src/contexts/**",
+        "src/styles/**",
+        "src/App.tsx",
+        "src/main.tsx",
+        "src/data/**"
+      ],
+      "fileKeywordsAny": [
+        "teacher",
+        "dashboard",
+        "analytics",
+        "widget",
+        "module",
+        "class"
+      ],
+      "labels": [
+        "frontend",
+        "teacher-ui",
+        "design"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [
+        "frontend"
+      ],
+      "defaultType": "fix",
+      "slugTokens": [
+        "teacher",
+        "ui"
+      ],
+      "riskLevel": "medium"
+    },
+    {
+      "name": "frontend",
+      "description": "General frontend application changes",
+      "patterns": [
+        "src/**",
+        "public/**",
+        "index.html",
+        "vite.config.ts",
+        "tsconfig.json"
+      ],
+      "labels": [
+        "frontend"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [
+        "frontend"
+      ],
+      "defaultType": "fix",
+      "slugTokens": [
+        "frontend"
+      ],
+      "riskLevel": "medium"
+    },
+    {
+      "name": "backend-api",
+      "description": "FastAPI backend and Python services",
+      "patterns": [
+        "backend/**",
+        "services/**",
+        "jobs/**",
+        "requirements.txt",
+        "mypy.ini"
+      ],
+      "labels": [
+        "backend",
+        "api"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [
+        "backend"
+      ],
+      "defaultType": "fix",
+      "slugTokens": [
+        "api"
+      ],
+      "riskLevel": "high"
+    },
+    {
+      "name": "functions",
+      "description": "Firebase Functions runtime and build outputs",
+      "patterns": [
+        "functions/**",
+        "src/functions/**"
+      ],
+      "labels": [
+        "functions",
+        "backend"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [
+        "functions"
+      ],
+      "defaultType": "fix",
+      "slugTokens": [
+        "functions"
+      ],
+      "riskLevel": "high"
+    },
+    {
+      "name": "docs",
+      "description": "Documentation and process guidance",
+      "patterns": [
+        "docs/**",
+        "README.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "BUG_AUDIT.md",
+        "REPO_STANDARDIZATION_AUDIT.md",
+        "*.md"
+      ],
+      "labels": [
+        "docs"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [],
+      "defaultType": "docs",
+      "slugTokens": [
+        "docs"
+      ],
+      "riskLevel": "low"
+    },
+    {
+      "name": "workflow-config",
+      "description": "Repository automation, CI, and configuration",
+      "patterns": [
+        ".github/**",
+        "scripts/**",
+        "config/**",
+        "docker-compose.yml",
+        "Dockerfile",
+        "nginx.conf",
+        "firebase.json",
+        "firestore.rules",
+        "firestore.indexes.json",
+        "auth_config.json",
+        "package.json"
+      ],
+      "labels": [
+        "devops",
+        "repo",
+        "automation"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [
+        "frontend",
+        "backend",
+        "functions"
+      ],
+      "defaultType": "chore",
+      "slugTokens": [
+        "github",
+        "workflow"
+      ],
+      "riskLevel": "high"
+    },
+    {
+      "name": "tests",
+      "description": "Test-only changes",
+      "patterns": [
+        "**/*test*.ts",
+        "**/*test*.tsx",
+        "**/*test*.js",
+        "**/*test*.mjs",
+        "**/*test*.py",
+        "**/tests/**"
+      ],
+      "labels": [
+        "tests"
+      ],
+      "reviewers": [
+        "@Deign86"
+      ],
+      "ciTargets": [
+        "frontend",
+        "backend"
+      ],
+      "defaultType": "refactor",
+      "slugTokens": [
+        "tests"
+      ],
+      "riskLevel": "low"
+    }
+  ],
+  "riskRules": {
+    "high": [
+      ".github/workflows/**",
+      "firestore.rules",
+      "firebase.json",
+      "backend/main.py",
+      "backend/pre_deploy_check.py",
+      "backend/startup_validation.py",
+      "Dockerfile",
+      "docker-compose.yml"
+    ],
+    "medium": [
+      "backend/**",
+      "functions/**",
+      "src/**",
+      "scripts/**"
+    ]
+  },
+  "labelDefaults": {
+    "frontend": "0E8A16",
+    "teacher-ui": "1D76DB",
+    "design": "BFD4F2",
+    "backend": "FBCA04",
+    "api": "C2E0C6",
+    "functions": "B60205",
+    "docs": "0075CA",
+    "devops": "5319E7",
+    "repo": "7057FF",
+    "automation": "3B82F6",
+    "tests": "2EA44F",
+    "risk-high": "D73A4A",
+    "risk-medium": "FBCA04",
+    "risk-low": "0E8A16"
+  }
+}
