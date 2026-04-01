@@ -18,16 +18,17 @@ const LogoutActionButton: React.FC<LogoutActionButtonProps> = ({
     <motion.button
       type="button"
       whileTap={{ scale: 0.98 }}
+      whileHover={{ x: 2 }}
       onClick={onClick}
       title={collapsed ? 'Log Out' : undefined}
       className={cn(
-        'w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition-colors',
-        collapsed && 'justify-center px-3',
+        'w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap',
+        collapsed && 'justify-center',
         className
       )}
     >
       <LogOut size={18} strokeWidth={1.5} className="flex-shrink-0" />
-      {!collapsed && <span className="font-body font-medium text-sm">Log Out</span>}
+      {!collapsed && <span className="font-body text-xs">Log Out</span>}
     </motion.button>
   );
 };

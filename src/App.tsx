@@ -707,6 +707,8 @@ const App = () => {
           userRole={userRole}
           onOpenSettings={() => setShowSettingsModal(true)}
           onLogout={() => setShowLogoutConfirm(true)}
+          sidebarCollapsed={isSidebarCollapsed}
+          setSidebarCollapsed={setIsSidebarCollapsed}
         />
 
         {/* Main Content */}

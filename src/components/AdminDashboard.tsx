@@ -36,6 +36,7 @@ interface SystemStats {
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
@@ -121,6 +122,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         userRole="admin"
         onOpenSettings={onOpenSettings}
         onLogout={() => setShowLogoutConfirm(true)}
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
       />
 
       {/* Main Content */}
