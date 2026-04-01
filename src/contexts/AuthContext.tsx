@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   isLoggedIn: boolean;
   userRole: UserRole;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isLoggedIn: false,
   userRole: 'student',
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => {
@@ -113,12 +115,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  const refreshProfile = async () => {
+    if (currentUser) {
+      const profile = await getUserProfile(currentUser.uid);
+      if (profile) {
+        setUserProfile(profile);
+      }
+    }
+  };
+
   const value: AuthContextType = {
     currentUser,
     userProfile,
     loading,
     isLoggedIn: !!currentUser,
     userRole: (userProfile?.role as UserRole) || resolvedRole,
+    refreshProfile,
   };
 
   return (

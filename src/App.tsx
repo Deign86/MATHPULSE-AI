@@ -45,7 +45,7 @@ type ProfileSaveData = Partial<User> &
 
 const App = () => {
   // Get authentication state from context
-  const { isLoggedIn, userProfile, userRole, loading } = useAuth();
+  const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   const constraintsRef = useRef<HTMLDivElement>(null);
@@ -60,6 +60,11 @@ const App = () => {
   const [currentXP, setCurrentXP] = useState(studentProfile?.currentXP || 0);
   const [totalXP, setTotalXP] = useState(studentProfile?.totalXP || 0);
   const xpToNextLevel = Math.floor(100 * Math.pow(1.5, userLevel - 1));
+  let sumRequiredForCurrentLevel = 0;
+  for (let i = 1; i < userLevel; i++) {
+    sumRequiredForCurrentLevel += Math.floor(100 * Math.pow(1.5, i - 1));
+  }
+  const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
   const [streak, setStreak] = useState(studentProfile?.streak || 0);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [xpNotification, setXpNotification] = useState({ show: false, xp: 0, message: '' });
@@ -358,19 +363,20 @@ const App = () => {
     try {
       const result = await awardXP(userProfile.uid, xp, 'manual', message);
       
-      // Update local state
-      setCurrentXP(prev => {
-        const newXP = prev + xp;
-        if (result.leveledUp) {
-          setUserLevel(result.newLevel);
-          return newXP % xpToNextLevel;
-        }
-        return newXP;
-      });
+      // Update local state and propagate to AuthContext's userProfile references 
+      // so other components like AvatarShop see the accurate current XP without needing to refresh
+      setCurrentXP(result.xp);
+      if (result.leveledUp) {
+        setUserLevel(result.newLevel);
+      }
       setTotalXP(prev => prev + xp);
+
+      // Refresh AuthContext profile to ensure globally read XP states are up to date 
+      // without needing to mutate Object references.
+      await refreshProfile();
       
       // Show notification
-      setXpNotification({ show: true, xp, message });
+      setXpNotification({ show: true, xp: xp, message });
     } catch (error) {
       console.error('Error awarding XP:', error);
     }
@@ -727,12 +733,12 @@ const App = () => {
                 <button
                   onClick={() => setShowRewardsModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer"
-                  title={`${currentXP}/${xpToNextLevel} XP to next level`}
+                  title={`${progressXPInLevel}/${xpToNextLevel} XP to next level`}
                 >
                   <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
                   <span className="text-xs font-display font-bold text-violet-700">{currentXP} XP</span>
                   <div className="w-12 h-1.5 bg-violet-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }} />
+                    <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(progressXPInLevel / xpToNextLevel) * 100}%` }} />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
@@ -822,9 +828,11 @@ const App = () => {
                         <RightSidebar 
                           onOpenRewards={() => setShowRewardsModal(true)}
                           onOpenLeaderboard={() => setActiveTab('Leaderboard')}
+                          onNavigateToModules={() => setActiveTab('Modules')}
                           userLevel={userLevel}
-                          currentXP={currentXP}
+                          currentXP={progressXPInLevel}
                           xpToNextLevel={xpToNextLevel}
+                          overallXP={currentXP}
                           streak={streak}
                           streakHistory={studentProfile?.streakHistory || []}
                         />
@@ -844,6 +852,7 @@ const App = () => {
                     onSaveProfile={(layers) => {
                       setProfileOverrides((prev) => ({ ...prev, avatarLayers: layers }));
                     }}
+                    onNavigateToModules={() => setActiveTab('Modules')}
                   />
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">

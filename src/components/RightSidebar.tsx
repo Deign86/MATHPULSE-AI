@@ -2,12 +2,15 @@ import React from 'react';
 import { ChevronRight, Trophy, Flame, Star, Crown } from 'lucide-react';
 import { motion } from 'motion/react';
 import DailyChallengeWidget from './DailyChallengeWidget';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 interface RightSidebarProps {
   onOpenRewards: () => void;
   onOpenLeaderboard?: () => void;
+  onNavigateToModules?: () => void;
   userLevel: number;
   currentXP: number;
+  overallXP?: number;
   xpToNextLevel: number;
   streak: number;
   streakHistory?: string[];
@@ -20,6 +23,7 @@ interface RightSidebarProps {
 const RightSidebar: React.FC<RightSidebarProps> = ({ 
   onOpenRewards, 
   onOpenLeaderboard,
+  onNavigateToModules,
   userLevel, 
   currentXP, 
   xpToNextLevel,
@@ -58,10 +62,20 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             <span className="font-bold">Lv {userLevel}</span>
           </div>
           <div className="w-px h-3 bg-white/35" />
-          <div className="flex items-center gap-1.5 text-xs font-body px-2 py-1 rounded-md bg-white/14 border border-white/25 text-white">
-            <Star size={12} className="text-[#6ED1CF]" />
-            <span className="font-bold">{currentXP} XP</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onNavigateToModules}
+                className="flex items-center gap-1.5 text-xs font-body px-2 py-1 rounded-md bg-white/14 border border-white/25 text-white cursor-pointer hover:bg-white/20 transition-colors active:scale-95"
+              >
+                <Star size={12} className="text-[#6ED1CF]" />
+                <span className="font-bold">{currentXP} XP</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-slate-900 text-white border border-slate-700">
+              Review more lessons to earn more XP!
+            </TooltipContent>
+          </Tooltip>
           <div className="w-px h-3 bg-white/35" />
           <div className="flex items-center gap-1.5 text-xs font-body px-2 py-1 rounded-md bg-white/14 border border-white/25 text-white">
             <Flame size={12} className="text-[#FF8B8B]" />
