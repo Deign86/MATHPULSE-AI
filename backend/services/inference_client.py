@@ -177,9 +177,9 @@ class InferenceClient:
             int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
         )
 
-        # Default task-to-model routing (chat defaults to fast 8B, with hard-prompt escalation to 70B)
+        # Default task-to-model routing (chat defaults to Qwen 2.5 7B, with hard-prompt escalation to 70B)
         self.task_model_map: Dict[str, str] = {
-            "chat": "meta-llama/Llama-3.1-8B-Instruct",
+            "chat": "Qwen/Qwen2.5-7B-Instruct",
             "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
             "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
             "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
@@ -191,7 +191,7 @@ class InferenceClient:
         # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
             "chat": [
-                "meta-llama/Llama-3.1-8B-Instruct",
+                "Qwen/Qwen2.5-7B-Instruct",
                 "google/gemma-2-2b-it",
             ],
             "verify_solution": [
