@@ -1,8 +1,8 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
-    (via Hugging Face Inference API)
+    - Qwen/Qwen2.5-7B-Instruct for interactive chat (30-50% faster inference via Hugging Face Inference API)
+- Qwen/Qwen2.5-7B-Instruct for quiz generation, lesson generation, learning paths, and solution verification
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
@@ -1848,7 +1848,7 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 4. Show ALL steps and equation manipulations clearly with intermediate results.
 5. Verify your answer by substituting back into the original problem (for equations/algebra).
 6. Double-check your arithmetic and final answer before presenting.
-7. Put your final answer inside \\boxed{}
+7. End with a single explicit line in this format: Final answer: <result>
 
 **Rules for Mathematical Accuracy:**
 - ALWAYS show complete working. Never skip steps or combine multiple operations.
@@ -1862,7 +1862,17 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 - Be encouraging but honest. If a problem is ambiguous, ask for clarification.
 - Respond in clear English suitable for Grade 11-12 students
 - If asked about non-math topics, politely redirect to mathematics
-- Never use external tools or functions — solve purely through mathematical reasoning"""
+- Never use external tools or functions — solve purely through mathematical reasoning
+
+**Formatting Rules (strict):**
+- Use clean markdown with short paragraphs and numbered steps like "1. ...", "2. ..."
+- Do NOT put equations inside square-bracket wrappers like "[ 2 + 2 = 4 ]"
+- Avoid raw TeX commands in plain text (e.g., "\\times", "\\boxed{...}")
+- Prefer readable symbols directly (×, ÷, √) or standard plain-text math when possible
+
+**Timing Rule:**
+- If asked to time yourself or give milliseconds, do NOT invent timing values
+- Say you cannot directly measure internal runtime, then continue helping with the math"""
 
 
 @app.post("/api/chat", response_model=ChatResponse)
