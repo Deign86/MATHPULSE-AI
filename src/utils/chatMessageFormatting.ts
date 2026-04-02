@@ -14,6 +14,7 @@ const INLINE_EQUATION_PATTERN = /^(\s*)(.+?)\s*(?::|-)\s*\[\s*([^\[\]\n]{1,260}?
 const INLINE_PAREN_EQUATION_PATTERN = /^(\s*)(.+?)\s*(?::|-)\s*\(\s*([^()\n]{1,260}?)\s*\)\.?\s*$/;
 const BRACKET_EQUATION_ONLY_PATTERN = /^\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
 const PAREN_EQUATION_ONLY_PATTERN = /^\(\s*([^()\n]{1,260}?)\s*\)\.?\s*$/;
+const BULLET_PAREN_EQUATION_PATTERN = /^\s*[-*]\s*\(\s*([^()\n]{1,260}?)\s*\)\.?\s*$/;
 const EQUATION_CONTENT_PATTERN = /(?:\d|=|\+|-|\*|\/|\^|\(|\)|×|÷|\u221A|\\(?:frac|sqrt|times|cdot|boxed))/;
 
 const TIMING_HEADER_PATTERN = /^(timing results|breakdown of response time|observations)\b/i;
@@ -147,7 +148,10 @@ function trimStepLabelText(content: string): string {
 }
 
 function toItalicFormula(formula: string): string {
-  const escaped = formula.trim().replace(/([*_])/g, '\\$1');
+  const core = formula.trim();
+  const parenthesized = core.startsWith('(') && core.endsWith(')') ? core : `(${core})`;
+  const withPeriod = /[.!?]$/.test(parenthesized) ? parenthesized : `${parenthesized}.`;
+  const escaped = withPeriod.replace(/([*_])/g, '\\$1');
   return `*${escaped}*`;
 }
 
@@ -282,6 +286,12 @@ function applyReadableStructure(input: string): string {
     const standaloneParenEquationMatch = trimmed.match(PAREN_EQUATION_ONLY_PATTERN);
     if (standaloneParenEquationMatch && looksLikeEquationContent(standaloneParenEquationMatch[1])) {
       formattedLines.push(toItalicFormula(standaloneParenEquationMatch[1]));
+      continue;
+    }
+
+    const bulletParenEquationMatch = trimmed.match(BULLET_PAREN_EQUATION_PATTERN);
+    if (bulletParenEquationMatch && looksLikeEquationContent(bulletParenEquationMatch[1])) {
+      formattedLines.push(toItalicFormula(bulletParenEquationMatch[1]));
       continue;
     }
 
