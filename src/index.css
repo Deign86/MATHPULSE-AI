@@ -78,6 +78,18 @@
 .chat-markdown em {
   font-style: italic;
 }
+.chat-markdown p > em:only-child {
+  display: block;
+  text-align: center;
+  font-style: italic;
+  font-size: 1.02rem;
+  color: #334155;
+  margin-top: 0.15rem;
+  margin-bottom: 0.45rem;
+}
+.dark .chat-markdown p > em:only-child {
+  color: #cbd5e1;
+}
 .chat-inline-code {
   background: var(--muted);
   color: var(--foreground);
@@ -118,8 +130,8 @@
   border: none;
 }
 .chat-markdown hr {
-  border-color: rgb(148 163 184 / 0.45);
-  margin: 1rem 0;
+  border-color: rgb(148 163 184 / 0.55);
+  margin: 0.8rem 0 1rem;
 }
 .chat-markdown-table-wrap {
   margin: 0.8rem 0;
