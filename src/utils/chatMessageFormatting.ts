@@ -7,11 +7,16 @@ const FINAL_ANSWER_BLOCK_PATTERN = /^\s*(?:>\s*)?\*\*\s*final\s+answer\s*:?\s*\*
 const STEP_WITH_PAREN_PATTERN = /^(\s*)(\d+)\)\s*(.*)$/;
 const STEP_LABEL_PATTERN = /^(\s*)step\s*(\d+)\s*[:.)-]\s*(.*)$/i;
 const TRANSITION_LINE_PATTERN = /^(now|next|then|after that|moving on)\s*:?$/i;
+const NUMBERED_STEP_PATTERN = /^(\s*)(\d+)\.\s*(.+)$/;
+const STEP_INLINE_EQUATION_PATTERN = /^(\s*)(\d+)\.\s*(.+?)\s*(?::|-)\s*\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const INLINE_EQUATION_PATTERN = /^(\s*)(.+?)\s*(?::|-)\s*\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const BRACKET_EQUATION_ONLY_PATTERN = /^\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const EQUATION_CONTENT_PATTERN = /(?:\d|=|\+|-|\*|\/|\^|\(|\)|×|÷|\u221A|\\(?:frac|sqrt|times|cdot|boxed))/;
 
 const TIMING_HEADER_PATTERN = /^(timing results|breakdown of response time|observations)\b/i;
 const TIMING_LINE_PATTERN = /\b\d+\s*ms\b/i;
 
-function sanitizeTutorArtifacts(input: string): string {
+function sanitizeTutorArtifacts(input: string, stripSquareBracketEquationWrappers: boolean): string {
   const lines = input.split('\n');
   const kept: string[] = [];
   let inTimingBlock = false;
@@ -38,14 +43,19 @@ function sanitizeTutorArtifacts(input: string): string {
     kept.push(rawLine);
   }
 
-  return kept
+  let sanitized = kept
     .join('\n')
-    // Remove square-bracket wrappers around inline equation snippets.
-    .replace(/\[\s*([^\[\]\n]{1,180}?)\s*\]/g, '$1')
     // Normalize frequent TeX command artifacts to readable symbols/text.
     .replace(/(^|[^\\])\\times/g, '$1×')
     .replace(/(^|[^\\])\\cdot/g, '$1·')
-    .replace(/(^|[^\\])\\boxed\{([^{}]+)\}/g, '$1$2')
+    .replace(/(^|[^\\])\\boxed\{([^{}]+)\}/g, '$1$2');
+
+  if (stripSquareBracketEquationWrappers) {
+    // Remove square-bracket wrappers around inline equation snippets.
+    sanitized = sanitized.replace(/\[\s*([^\[\]\n]{1,180}?)\s*\]/g, '$1');
+  }
+
+  return sanitized
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -123,6 +133,16 @@ function ensureFencedCodeSpacing(input: string): string {
   });
 }
 
+function looksLikeEquationContent(content: string): boolean {
+  return EQUATION_CONTENT_PATTERN.test(content);
+}
+
+function trimStepLabelText(content: string): string {
+  return content
+    .replace(/\s*(?::|-)\s*$/, '')
+    .trim();
+}
+
 function applyReadableStructure(input: string): string {
   if (!input.trim()) {
     return '';
@@ -131,6 +151,10 @@ function applyReadableStructure(input: string): string {
   const { text: protectedText, segments } = protectCodeSegments(input);
   const rawLines = protectedText.split('\n');
   const formattedLines: string[] = [];
+  const stepLikeLineCount = rawLines.reduce((count, line) => (
+    /^\s*(?:\d+[.)]|step\s*\d+\s*[:.)-])/i.test(line.trim()) ? count + 1 : count
+  ), 0);
+  const useStepSectionFormatting = stepLikeLineCount >= 2;
 
   let finalAnswer: string | null = null;
   let hasFinalAnswerBlock = false;
@@ -154,6 +178,44 @@ function applyReadableStructure(input: string): string {
     }
 
     const normalizedLine = normalizeStepMarker(rawLine);
+
+    const stepInlineEquationMatch = normalizedLine.match(STEP_INLINE_EQUATION_PATTERN);
+    if (useStepSectionFormatting && stepInlineEquationMatch) {
+      const [, indent, stepNumber, stepLabel, equation] = stepInlineEquationMatch;
+      if (looksLikeEquationContent(equation)) {
+        const headingText = trimStepLabelText(stepLabel) || `Step ${stepNumber}`;
+        if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
+          formattedLines.push('');
+        }
+        formattedLines.push(`${indent}### ${stepNumber}) ${headingText}`);
+        formattedLines.push('');
+        formattedLines.push(`${indent}$$${equation.trim()}$$`);
+        formattedLines.push('');
+        continue;
+      }
+    }
+
+    const inlineEquationMatch = normalizedLine.match(INLINE_EQUATION_PATTERN);
+    if (inlineEquationMatch) {
+      const [, indent, statement, equation] = inlineEquationMatch;
+      if (looksLikeEquationContent(equation)) {
+        const cleanedStatement = trimStepLabelText(statement);
+        if (cleanedStatement) {
+          formattedLines.push(`${indent}${cleanedStatement}`);
+          formattedLines.push('');
+        }
+        formattedLines.push(`${indent}$$${equation.trim()}$$`);
+        formattedLines.push('');
+        continue;
+      }
+    }
+
+    const standaloneBracketEquationMatch = trimmed.match(BRACKET_EQUATION_ONLY_PATTERN);
+    if (standaloneBracketEquationMatch && looksLikeEquationContent(standaloneBracketEquationMatch[1])) {
+      formattedLines.push(`$$${standaloneBracketEquationMatch[1].trim()}$$`);
+      continue;
+    }
+
     const finalAnswerMatch = normalizedLine.match(FINAL_ANSWER_LINE_PATTERN);
     if (finalAnswerMatch) {
       const candidate = finalAnswerMatch[1]
@@ -163,6 +225,17 @@ function applyReadableStructure(input: string): string {
       if (candidate) {
         finalAnswer = candidate;
       }
+      continue;
+    }
+
+    const numberedStepMatch = normalizedLine.match(NUMBERED_STEP_PATTERN);
+    if (useStepSectionFormatting && numberedStepMatch) {
+      const [, indent, stepNumber, stepLabel] = numberedStepMatch;
+      const headingText = trimStepLabelText(stepLabel) || `Step ${stepNumber}`;
+      if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
+        formattedLines.push('');
+      }
+      formattedLines.push(`${indent}### ${stepNumber}) ${headingText}`);
       continue;
     }
 
@@ -188,10 +261,17 @@ function applyReadableStructure(input: string): string {
  * Normalize model output before markdown rendering so common raw TeX commands
  * (for example \boxed{3}) are rendered as math instead of plain text.
  */
-export function normalizeChatMarkdownForRender(input: string): string {
+export function normalizeChatMarkdownForRender(
+  input: string,
+  options?: {
+    stripSquareBracketEquationWrappers?: boolean;
+  },
+): string {
   if (!input || typeof input !== 'string') {
     return '';
   }
+
+  const stripSquareBracketEquationWrappers = options?.stripSquareBracketEquationWrappers ?? true;
 
   const normalizedNewlines = input.replace(/\r\n?/g, '\n');
 
@@ -208,6 +288,7 @@ export function normalizeChatMarkdownForRender(input: string): string {
         segment
         .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int)\b|[()[\]{}])/g, '\\')
         .replace(/\\n/g, '\n'),
+        stripSquareBracketEquationWrappers,
       );
 
       const mathAwareSegments = unescapedAndSanitized.split(MATH_SEGMENT_PATTERN);
@@ -224,7 +305,11 @@ export function normalizeChatMarkdownForRender(input: string): string {
  * This function is safe to run repeatedly (idempotent behavior).
  */
 export function formatAssistantResponseForDisplay(input: string): string {
-  return applyReadableStructure(ensureFencedCodeSpacing(normalizeChatMarkdownForRender(input)));
+  return applyReadableStructure(
+    ensureFencedCodeSpacing(
+      normalizeChatMarkdownForRender(input, { stripSquareBracketEquationWrappers: false }),
+    ),
+  );
 }
 
 /**
