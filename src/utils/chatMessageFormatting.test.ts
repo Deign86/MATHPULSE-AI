@@ -70,8 +70,8 @@ describe('formatAssistantResponseForDisplay', () => {
 
     expect(output).toContain('1) Multiply first');
     expect(output).toContain('2) Subtract 9');
-    expect(output).toContain('*7 x 8 = 56*');
-    expect(output).toContain('*56 - 9 = 47*');
+    expect(output).toContain('*(7 x 8 = 56).*');
+    expect(output).toContain('*(56 - 9 = 47).*');
     expect(output).toContain('---');
     expect(output).not.toContain('Now:');
   });
@@ -88,9 +88,9 @@ describe('formatAssistantResponseForDisplay', () => {
 
     expect(output).toContain('1) Start with expression');
     expect(output).toContain('2) Subtract 9');
-    expect(output).toContain('*7 × 8 - 9 - 126 + 10000 - 5*');
-    expect(output).toContain('*56 - 9 = 47*');
-    expect(output).toContain('*47 - 126 + 10000 - 5*');
+    expect(output).toContain('*(7 × 8 - 9 - 126 + 10000 - 5).*');
+    expect(output).toContain('*(56 - 9 = 47).*');
+    expect(output).toContain('*(47 - 126 + 10000 - 5).*');
     expect(output).toContain('---');
     expect(output).toContain('> **Final answer:** 9916');
   });
@@ -106,12 +106,29 @@ describe('formatAssistantResponseForDisplay', () => {
     const output = formatAssistantResponseForDisplay(input);
 
     expect(output).toContain('1) Start with expression');
-    expect(output).toContain('*7 × 8 - 9 - 126 + 10000 - 5*');
+    expect(output).toContain('*(7 × 8 - 9 - 126 + 10000 - 5).*');
     expect(output).toContain('2) First, perform the multiplication');
-    expect(output).toContain('*7 × 8 = 56*');
+    expect(output).toContain('*(7 × 8 = 56).*');
     expect(output).toContain('3) Substitute back into the expression');
-    expect(output).toContain('*56 - 9 - 126 + 10000 - 5*');
+    expect(output).toContain('*(56 - 9 - 126 + 10000 - 5).*');
     expect(output).toContain('> **Final answer:** 9916');
+  });
+
+  it('converts bullet equation items into standalone italic formula lines', () => {
+    const input = [
+      '3) Next, we perform subtraction from left to right',
+      '- (56 - 9 = 47)',
+      '- (47 - 126 = -79)',
+      '- (9921 - 5 = 9916)',
+      'Final answer: 9916',
+    ].join('\n');
+
+    const output = formatAssistantResponseForDisplay(input);
+
+    expect(output).toContain('*(56 - 9 = 47).*');
+    expect(output).toContain('*(47 - 126 = -79).*');
+    expect(output).toContain('*(9921 - 5 = 9916).*');
+    expect(output).not.toContain('- (56 - 9 = 47)');
   });
 
   it('promotes explicit final-answer lines into a highlighted blockquote line', () => {
