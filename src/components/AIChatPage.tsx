@@ -192,7 +192,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Messages Container - Scrollable with Fixed Height */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#edf1f7] min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#edf1f7] min-h-0">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -202,10 +202,10 @@ const AIChatPage = () => {
                     className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[70%] rounded-2xl px-5 py-3 ${
+                      className={`rounded-2xl ${
                         message.sender === 'user'
-                          ? 'bg-gradient-to-r from-sky-600 to-sky-500 text-white'
-                          : 'bg-white text-[#0a1628] shadow-md border border-[#dde3eb]'
+                          ? 'max-w-[78%] bg-gradient-to-r from-sky-600 to-sky-500 text-white px-5 py-3.5 shadow-[0_2px_10px_rgba(29,78,216,0.15)]'
+                          : 'max-w-[86%] md:max-w-[82%] bg-white/95 text-[#0a1628] border border-slate-200 px-6 py-4 shadow-sm'
                       }`}
                     >
                       {message.sender === 'user' ? (
@@ -213,8 +213,8 @@ const AIChatPage = () => {
                       ) : (
                         <ChatMarkdown>{message.text}</ChatMarkdown>
                       )}
-                      <p className={`text-[10px] mt-1.5 ${
-                        message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
+                      <p className={`text-[10px] mt-2 ${
+                        message.sender === 'user' ? 'text-sky-100/90' : 'text-slate-400'
                       }`}>
                         {message.timestamp}
                       </p>
@@ -225,11 +225,11 @@ const AIChatPage = () => {
               
               {showTypingIndicator && (
                 <div className="flex justify-start">
-                  <div className="bg-white text-[#0a1628] shadow-md border border-[#dde3eb] rounded-2xl px-5 py-3 max-w-[70%]">
+                  <div className="bg-white/95 text-[#0a1628] border border-slate-200 rounded-2xl px-6 py-4 max-w-[86%] md:max-w-[82%] shadow-sm">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
-                      <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
+                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
+                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
                     </div>
                   </div>
                 </div>
