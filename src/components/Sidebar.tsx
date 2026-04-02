@@ -117,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         isMobile ? 'rounded-2xl p-4' : 'rounded-3xl p-5'
       )}
     >
-      <div className="flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
