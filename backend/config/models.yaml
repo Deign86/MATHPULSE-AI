@@ -26,9 +26,9 @@ models:
 
 routing:
   task_model_map:
-    # Chat default: Llama-3.1-8B for low latency.
+    # Chat default: Qwen2.5-7B for improved math quality and latency.
     # Hard prompts can escalate to 70B via runtime policy in inference_client.
-    chat: meta-llama/Llama-3.1-8B-Instruct
+    chat: Qwen/Qwen2.5-7B-Instruct
     verify_solution: NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO
     lesson_generation: meta-llama/Llama-3.1-8B-Instruct
     quiz_generation: meta-llama/Llama-3.1-8B-Instruct
