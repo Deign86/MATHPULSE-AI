@@ -60,20 +60,23 @@ describe('formatAssistantResponseForDisplay', () => {
   it('normalizes step markers and removes transitional filler lines', () => {
     const input = [
       '1) Multiply first',
-      '7 x 8 = 56',
+      '(7 x 8 = 56).',
       'Now:',
       '2) Subtract 9',
-      '56 - 9 = 47',
+      '(56 - 9 = 47).',
     ].join('\n');
 
     const output = formatAssistantResponseForDisplay(input);
 
-    expect(output).toContain('### 1) Multiply first');
-    expect(output).toContain('### 2) Subtract 9');
+    expect(output).toContain('1) Multiply first');
+    expect(output).toContain('2) Subtract 9');
+    expect(output).toContain('*7 x 8 = 56*');
+    expect(output).toContain('*56 - 9 = 47*');
+    expect(output).toContain('---');
     expect(output).not.toContain('Now:');
   });
 
-  it('converts bracketed equations into display-math blocks for multi-step solutions', () => {
+  it('converts bracketed equations into italic formulas with separators for multi-step solutions', () => {
     const input = [
       '1) Start with expression: [7 × 8 - 9 - 126 + 10000 - 5]',
       '2) Subtract 9: [56 - 9 = 47]',
@@ -83,11 +86,31 @@ describe('formatAssistantResponseForDisplay', () => {
 
     const output = formatAssistantResponseForDisplay(input);
 
-    expect(output).toContain('### 1) Start with expression');
-    expect(output).toContain('### 2) Subtract 9');
-    expect(output).toContain('$$7 × 8 - 9 - 126 + 10000 - 5$$');
-    expect(output).toContain('$$56 - 9 = 47$$');
-    expect(output).toContain('$$47 - 126 + 10000 - 5$$');
+    expect(output).toContain('1) Start with expression');
+    expect(output).toContain('2) Subtract 9');
+    expect(output).toContain('*7 × 8 - 9 - 126 + 10000 - 5*');
+    expect(output).toContain('*56 - 9 = 47*');
+    expect(output).toContain('*47 - 126 + 10000 - 5*');
+    expect(output).toContain('---');
+    expect(output).toContain('> **Final answer:** 9916');
+  });
+
+  it('supports parenthesized step equations in requested style', () => {
+    const input = [
+      '1) Start with expression: (7 × 8 - 9 - 126 + 10000 - 5).',
+      '2) First, perform the multiplication: (7 × 8 = 56).',
+      '3) Substitute back into the expression: (56 - 9 - 126 + 10000 - 5).',
+      'Final answer: 9916',
+    ].join('\n');
+
+    const output = formatAssistantResponseForDisplay(input);
+
+    expect(output).toContain('1) Start with expression');
+    expect(output).toContain('*7 × 8 - 9 - 126 + 10000 - 5*');
+    expect(output).toContain('2) First, perform the multiplication');
+    expect(output).toContain('*7 × 8 = 56*');
+    expect(output).toContain('3) Substitute back into the expression');
+    expect(output).toContain('*56 - 9 - 126 + 10000 - 5*');
     expect(output).toContain('> **Final answer:** 9916');
   });
 
@@ -100,7 +123,7 @@ describe('formatAssistantResponseForDisplay', () => {
 
     const output = formatAssistantResponseForDisplay(input);
 
-    expect(output).toContain('1. Multiply 7 x 8');
+    expect(output).toContain('1) Multiply 7 x 8');
     expect(output).toContain('> **Final answer:** 9916');
     expect(output).not.toContain('Final answer: 9916');
   });
@@ -117,7 +140,7 @@ describe('formatAssistantResponseForDisplay', () => {
 
     const output = formatAssistantResponseForDisplay(input);
 
-    expect(output).toContain('1. Review this snippet');
+    expect(output).toContain('1) Review this snippet');
     expect(output).toContain('```txt\nNow:\nFinal answer: leave this untouched\n```');
     expect(output).toContain('> **Final answer:** done');
   });

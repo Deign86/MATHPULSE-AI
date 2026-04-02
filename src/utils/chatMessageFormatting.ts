@@ -7,10 +7,13 @@ const FINAL_ANSWER_BLOCK_PATTERN = /^\s*(?:>\s*)?\*\*\s*final\s+answer\s*:?\s*\*
 const STEP_WITH_PAREN_PATTERN = /^(\s*)(\d+)\)\s*(.*)$/;
 const STEP_LABEL_PATTERN = /^(\s*)step\s*(\d+)\s*[:.)-]\s*(.*)$/i;
 const TRANSITION_LINE_PATTERN = /^(now|next|then|after that|moving on)\s*:?$/i;
-const NUMBERED_STEP_PATTERN = /^(\s*)(\d+)\.\s*(.+)$/;
-const STEP_INLINE_EQUATION_PATTERN = /^(\s*)(\d+)\.\s*(.+?)\s*(?::|-)\s*\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const NUMBERED_STEP_PATTERN = /^(\s*)(\d+)[.)]\s*(.+)$/;
+const STEP_INLINE_EQUATION_PATTERN = /^(\s*)(\d+)[.)]\s*(.+?)\s*(?::|-)\s*\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const STEP_INLINE_PAREN_EQUATION_PATTERN = /^(\s*)(\d+)[.)]\s*(.+?)\s*(?::|-)\s*\(\s*([^()\n]{1,260}?)\s*\)\.?\s*$/;
 const INLINE_EQUATION_PATTERN = /^(\s*)(.+?)\s*(?::|-)\s*\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const INLINE_PAREN_EQUATION_PATTERN = /^(\s*)(.+?)\s*(?::|-)\s*\(\s*([^()\n]{1,260}?)\s*\)\.?\s*$/;
 const BRACKET_EQUATION_ONLY_PATTERN = /^\[\s*([^\[\]\n]{1,260}?)\s*\]\s*$/;
+const PAREN_EQUATION_ONLY_PATTERN = /^\(\s*([^()\n]{1,260}?)\s*\)\.?\s*$/;
 const EQUATION_CONTENT_PATTERN = /(?:\d|=|\+|-|\*|\/|\^|\(|\)|×|÷|\u221A|\\(?:frac|sqrt|times|cdot|boxed))/;
 
 const TIMING_HEADER_PATTERN = /^(timing results|breakdown of response time|observations)\b/i;
@@ -69,14 +72,14 @@ function normalizeStepMarker(line: string): string {
   if (parenStepMatch) {
     const [, indent, number, content] = parenStepMatch;
     const text = content.trim() || `Step ${number}`;
-    return `${indent}${number}. ${text}`;
+    return `${indent}${number}) ${text}`;
   }
 
   const labelStepMatch = line.match(STEP_LABEL_PATTERN);
   if (labelStepMatch) {
     const [, indent, number, content] = labelStepMatch;
     const text = content.trim() || `Step ${number}`;
-    return `${indent}${number}. ${text}`;
+    return `${indent}${number}) ${text}`;
   }
 
   return line;
@@ -143,6 +146,39 @@ function trimStepLabelText(content: string): string {
     .trim();
 }
 
+function toItalicFormula(formula: string): string {
+  const escaped = formula.trim().replace(/([*_])/g, '\\$1');
+  return `*${escaped}*`;
+}
+
+function getLastNonBlankLine(lines: string[]): string | null {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim().length > 0) {
+      return lines[index];
+    }
+  }
+  return null;
+}
+
+function insertStepSeparatorIfNeeded(lines: string[], indent: string): void {
+  const hasVisibleContent = lines.some((line) => line.trim().length > 0);
+  if (!hasVisibleContent) {
+    return;
+  }
+
+  const lastNonBlank = getLastNonBlankLine(lines);
+  if (lastNonBlank?.trim() === '---') {
+    return;
+  }
+
+  if (lines.length > 0 && lines[lines.length - 1] !== '') {
+    lines.push('');
+  }
+
+  lines.push(`${indent}---`);
+  lines.push('');
+}
+
 function applyReadableStructure(input: string): string {
   if (!input.trim()) {
     return '';
@@ -184,12 +220,24 @@ function applyReadableStructure(input: string): string {
       const [, indent, stepNumber, stepLabel, equation] = stepInlineEquationMatch;
       if (looksLikeEquationContent(equation)) {
         const headingText = trimStepLabelText(stepLabel) || `Step ${stepNumber}`;
-        if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
-          formattedLines.push('');
-        }
-        formattedLines.push(`${indent}### ${stepNumber}) ${headingText}`);
+        insertStepSeparatorIfNeeded(formattedLines, indent);
+        formattedLines.push(`${indent}${stepNumber}) ${headingText}`);
         formattedLines.push('');
-        formattedLines.push(`${indent}$$${equation.trim()}$$`);
+        formattedLines.push(`${indent}${toItalicFormula(equation)}`);
+        formattedLines.push('');
+        continue;
+      }
+    }
+
+    const stepInlineParenEquationMatch = normalizedLine.match(STEP_INLINE_PAREN_EQUATION_PATTERN);
+    if (useStepSectionFormatting && stepInlineParenEquationMatch) {
+      const [, indent, stepNumber, stepLabel, equation] = stepInlineParenEquationMatch;
+      if (looksLikeEquationContent(equation)) {
+        const headingText = trimStepLabelText(stepLabel) || `Step ${stepNumber}`;
+        insertStepSeparatorIfNeeded(formattedLines, indent);
+        formattedLines.push(`${indent}${stepNumber}) ${headingText}`);
+        formattedLines.push('');
+        formattedLines.push(`${indent}${toItalicFormula(equation)}`);
         formattedLines.push('');
         continue;
       }
@@ -204,7 +252,22 @@ function applyReadableStructure(input: string): string {
           formattedLines.push(`${indent}${cleanedStatement}`);
           formattedLines.push('');
         }
-        formattedLines.push(`${indent}$$${equation.trim()}$$`);
+        formattedLines.push(`${indent}${toItalicFormula(equation)}`);
+        formattedLines.push('');
+        continue;
+      }
+    }
+
+    const inlineParenEquationMatch = normalizedLine.match(INLINE_PAREN_EQUATION_PATTERN);
+    if (inlineParenEquationMatch) {
+      const [, indent, statement, equation] = inlineParenEquationMatch;
+      if (looksLikeEquationContent(equation)) {
+        const cleanedStatement = trimStepLabelText(statement);
+        if (cleanedStatement) {
+          formattedLines.push(`${indent}${cleanedStatement}`);
+          formattedLines.push('');
+        }
+        formattedLines.push(`${indent}${toItalicFormula(equation)}`);
         formattedLines.push('');
         continue;
       }
@@ -212,7 +275,13 @@ function applyReadableStructure(input: string): string {
 
     const standaloneBracketEquationMatch = trimmed.match(BRACKET_EQUATION_ONLY_PATTERN);
     if (standaloneBracketEquationMatch && looksLikeEquationContent(standaloneBracketEquationMatch[1])) {
-      formattedLines.push(`$$${standaloneBracketEquationMatch[1].trim()}$$`);
+      formattedLines.push(toItalicFormula(standaloneBracketEquationMatch[1]));
+      continue;
+    }
+
+    const standaloneParenEquationMatch = trimmed.match(PAREN_EQUATION_ONLY_PATTERN);
+    if (standaloneParenEquationMatch && looksLikeEquationContent(standaloneParenEquationMatch[1])) {
+      formattedLines.push(toItalicFormula(standaloneParenEquationMatch[1]));
       continue;
     }
 
@@ -232,10 +301,8 @@ function applyReadableStructure(input: string): string {
     if (useStepSectionFormatting && numberedStepMatch) {
       const [, indent, stepNumber, stepLabel] = numberedStepMatch;
       const headingText = trimStepLabelText(stepLabel) || `Step ${stepNumber}`;
-      if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
-        formattedLines.push('');
-      }
-      formattedLines.push(`${indent}### ${stepNumber}) ${headingText}`);
+      insertStepSeparatorIfNeeded(formattedLines, indent);
+      formattedLines.push(`${indent}${stepNumber}) ${headingText}`);
       continue;
     }
 
@@ -248,6 +315,11 @@ function applyReadableStructure(input: string): string {
   }
 
   let output = collapseBlankLines(formattedLines).join('\n').trim();
+
+  // Keep separators between steps, but avoid a trailing separator before the final answer block.
+  output = output
+    .replace(/\n\s*---\s*\n\n(?=> \*\*Final answer:\*\*)/g, '\n\n')
+    .replace(/\n\s*---\s*$/g, '');
 
   if (!hasFinalAnswerBlock && finalAnswer) {
     const finalAnswerLine = `> **Final answer:** ${finalAnswer}`;
