@@ -82,13 +82,16 @@
   display: block;
   text-align: center;
   font-style: italic;
-  font-size: 1.02rem;
-  color: #334155;
+  font-size: 1.04rem;
+  font-family: 'KaTeX_Main', 'Cambria Math', 'Times New Roman', serif;
+  color: #1e293b;
+  letter-spacing: 0.01em;
   margin-top: 0.15rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.5rem;
+  padding: 0.15rem 0.35rem;
 }
 .dark .chat-markdown p > em:only-child {
-  color: #cbd5e1;
+  color: #e2e8f0;
 }
 .chat-inline-code {
   background: var(--muted);
