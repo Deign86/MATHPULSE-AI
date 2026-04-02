@@ -8,11 +8,24 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
+  Timestamp,
+  type QueryConstraint,
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ChatMessage, ChatSession } from '../types/models';
+
+const MAX_SESSION_LIST_ITEMS = 40;
+const MAX_SESSION_MESSAGE_ITEMS = 120;
+const DEFAULT_SESSION_MESSAGE_PAGE_SIZE = 40;
+
+export interface SessionMessagesPage {
+  messages: ChatMessage[];
+  hasMore: boolean;
+  nextCursor?: Date;
+}
 
 // Create chat session
 export const createChatSession = async (
@@ -51,7 +64,8 @@ export const getUserChatSessions = async (userId: string): Promise<ChatSession[]
       collection(db, 'chatSessions'),
       where('userId', '==', userId),
       where('isActive', '==', true),
-      orderBy('updatedAt', 'desc')
+      orderBy('updatedAt', 'desc'),
+      limit(MAX_SESSION_LIST_ITEMS)
     );
 
     const snapshot = await getDocs(sessionsQuery);
@@ -95,6 +109,7 @@ export const addMessageToSession = async (
   sessionId: string,
   role: 'user' | 'assistant' | 'system',
   content: string,
+  userId?: string,
   context?: {
     subjectId?: string;
     moduleId?: string;
@@ -105,17 +120,19 @@ export const addMessageToSession = async (
     const messageRef = doc(collection(db, 'chatMessages'));
     const message: ChatMessage = {
       id: messageRef.id,
-      userId: '', // Will be set from session
+      userId: userId || '',
       role,
       content,
       timestamp: new Date(),
       ...(context ? { context } : {}),
     };
 
-    // Get session to get userId
-    const sessionDoc = await getDoc(doc(db, 'chatSessions', sessionId));
-    if (sessionDoc.exists()) {
-      message.userId = sessionDoc.data().userId;
+    if (!message.userId) {
+      // Fall back to session lookup only when caller doesn't provide userId.
+      const sessionDoc = await getDoc(doc(db, 'chatSessions', sessionId));
+      if (sessionDoc.exists()) {
+        message.userId = sessionDoc.data().userId;
+      }
     }
 
     // Build Firestore payload, excluding undefined values
@@ -148,24 +165,57 @@ export const addMessageToSession = async (
 
 // Get session messages
 export const getSessionMessages = async (sessionId: string): Promise<ChatMessage[]> => {
+  const { messages } = await getSessionMessagesPage(sessionId, MAX_SESSION_MESSAGE_ITEMS);
+  return messages;
+};
+
+export const getSessionMessagesPage = async (
+  sessionId: string,
+  pageSize: number = DEFAULT_SESSION_MESSAGE_PAGE_SIZE,
+  beforeTimestamp?: Date,
+): Promise<SessionMessagesPage> => {
   try {
-    const messagesQuery = query(
-      collection(db, 'chatMessages'),
+    const safePageSize = Math.max(1, Math.min(pageSize, MAX_SESSION_MESSAGE_ITEMS));
+    const constraints: QueryConstraint[] = [
       where('sessionId', '==', sessionId),
-      orderBy('timestamp', 'asc')
-    );
+      orderBy('timestamp', 'desc'),
+    ];
+
+    if (beforeTimestamp instanceof Date && !Number.isNaN(beforeTimestamp.getTime())) {
+      constraints.push(startAfter(Timestamp.fromDate(beforeTimestamp)));
+    }
+
+    constraints.push(limit(safePageSize + 1));
+
+    const messagesQuery = query(collection(db, 'chatMessages'), ...constraints);
 
     const snapshot = await getDocs(messagesQuery);
-    return snapshot.docs.map(doc => {
+    const hasMore = snapshot.docs.length > safePageSize;
+    const pageDocs = hasMore ? snapshot.docs.slice(0, safePageSize) : snapshot.docs;
+
+    const messages = pageDocs.map(doc => {
       const data = doc.data();
+      const rawTimestamp = data.timestamp;
+      const resolvedTimestamp = rawTimestamp instanceof Date
+        ? rawTimestamp
+        : (typeof rawTimestamp?.toDate === 'function' ? rawTimestamp.toDate() : new Date());
+
       return {
         ...data,
-        timestamp: data.timestamp?.toDate() || new Date(),
+        timestamp: resolvedTimestamp,
       } as ChatMessage;
-    });
+    }).reverse();
+
+    const lastDoc = pageDocs.length > 0 ? pageDocs[pageDocs.length - 1] : null;
+    const lastTimestamp = lastDoc?.data()?.timestamp;
+    const nextCursor = hasMore && typeof lastTimestamp?.toDate === 'function'
+      ? lastTimestamp.toDate()
+      : undefined;
+
+    return { messages, hasMore, nextCursor };
   } catch (error) {
     console.error('Error getting session messages:', error);
-    return [];
+    return { messages: [], hasMore: false };
   }
 };
 

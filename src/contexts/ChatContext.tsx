@@ -48,6 +48,52 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+const CHAT_HISTORY_CONTEXT_LIMIT = 10;
+const STREAM_FLUSH_INTERVAL_MS = 60;
+
+const canUsePerformanceApi =
+  typeof performance !== 'undefined' &&
+  typeof performance.mark === 'function' &&
+  typeof performance.measure === 'function';
+
+const markPerformance = (markName: string): void => {
+  if (!canUsePerformanceApi) {
+    return;
+  }
+
+  try {
+    performance.mark(markName);
+  } catch {
+    // Ignore mark errors in unsupported browser/runtime environments.
+  }
+};
+
+const measurePerformance = (measureName: string, startMark: string, endMark: string): void => {
+  if (!canUsePerformanceApi) {
+    return;
+  }
+
+  try {
+    performance.measure(measureName, startMark, endMark);
+    performance.clearMarks(startMark);
+    performance.clearMarks(endMark);
+  } catch {
+    // Ignore measure errors to avoid affecting chat UX.
+  }
+};
+
+const clearPerformanceMark = (markName: string): void => {
+  if (!canUsePerformanceApi) {
+    return;
+  }
+
+  try {
+    performance.clearMarks(markName);
+  } catch {
+    // Ignore clear errors.
+  }
+};
+
 /** Generate a helpful math tutor response when backend is unavailable */
 function generateFallbackResponse(userText: string): string {
   const lower = userText.toLowerCase().trim();
@@ -183,52 +229,93 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const sessionsRef = useRef<ChatSession[]>([]);
   // Map of tempId → Promise<firebaseId> for sessions being created
   const pendingSessionsRef = useRef<Map<string, Promise<string>>>(new Map());
+  // Tracks which sessions already have message history hydrated in memory.
+  const hydratedSessionsRef = useRef<Set<string>>(new Set());
+  // Tracks in-flight hydration promises per session to dedupe reads.
+  const hydrationPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
+
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   // Load sessions from Firebase on mount / user change
   useEffect(() => {
+    pendingSessionsRef.current.clear();
+    hydratedSessionsRef.current.clear();
+    hydrationPromisesRef.current.clear();
+
     if (!currentUser) {
       setSessions([]);
       setSessionsLoaded(false);
       return;
     }
 
+    setSessionsLoaded(false);
+
     const loadSessions = async () => {
+      const perfBase = `chat.sessions.metadata.${Date.now()}`;
+      const metadataStartMark = `${perfBase}.start`;
+      const metadataEndMark = `${perfBase}.end`;
+      markPerformance(metadataStartMark);
+
       try {
         const firebaseSessions = await getUserChatSessions(currentUser.uid);
-        const loadedSessions: ChatSession[] = await Promise.all(
-          firebaseSessions.map(async (s) => {
-            const msgs = await getSessionMessages(s.id);
-            const messages: Message[] = msgs.map((m) => ({
-              id: m.id,
-              sender: m.role === 'user' ? 'user' : 'ai',
-              text: m.content,
-              timestamp: m.timestamp instanceof Date
-                ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            }));
-            return {
-              id: s.id,
-              title: s.title,
-              date: s.updatedAt instanceof Date
-                ? s.updatedAt.toLocaleDateString()
-                : new Date(s.updatedAt).toLocaleDateString(),
-              messageCount: messages.length,
-              preview: messages.length > 0
-                ? (toChatPreviewText(messages[messages.length - 1].text) || 'No messages yet')
-                : 'No messages yet',
-              topics: [],
-              messages,
-              createdAt: s.createdAt instanceof Date ? s.createdAt : new Date(s.createdAt),
-              updatedAt: s.updatedAt instanceof Date ? s.updatedAt : new Date(s.updatedAt),
-            };
-          })
-        );
+        const loadedSessions: ChatSession[] = firebaseSessions.map((sessionRecord) => {
+          const rawMessages = Array.isArray((sessionRecord as unknown as { messages?: unknown }).messages)
+            ? ((sessionRecord as unknown as { messages: Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; timestamp: Date | string }> }).messages)
+            : [];
+
+          const prefetchedMessages: Message[] = rawMessages.map((entry) => ({
+            id: entry.id,
+            sender: entry.role === 'user' ? 'user' : 'ai',
+            text: entry.content,
+            timestamp: entry.timestamp instanceof Date
+              ? entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }));
+
+          if (prefetchedMessages.length > 0) {
+            hydratedSessionsRef.current.add(sessionRecord.id);
+          }
+
+          const fallbackPreview = prefetchedMessages.length > 0
+            ? (toChatPreviewText(prefetchedMessages[prefetchedMessages.length - 1].text) || 'Open conversation')
+            : 'Open conversation';
+          const rawPreview = (sessionRecord as unknown as { preview?: unknown }).preview;
+          const preview = typeof rawPreview === 'string' && rawPreview.trim().length > 0
+            ? rawPreview
+            : fallbackPreview;
+
+          const rawMessageCount = (sessionRecord as unknown as { messageCount?: unknown }).messageCount;
+          const messageCount = typeof rawMessageCount === 'number' && Number.isFinite(rawMessageCount)
+            ? rawMessageCount
+            : prefetchedMessages.length;
+
+          return {
+            id: sessionRecord.id,
+            title: sessionRecord.title,
+            date: sessionRecord.updatedAt instanceof Date
+              ? sessionRecord.updatedAt.toLocaleDateString()
+              : new Date(sessionRecord.updatedAt).toLocaleDateString(),
+            messageCount,
+            preview,
+            topics: [],
+            messages: prefetchedMessages,
+            createdAt: sessionRecord.createdAt instanceof Date ? sessionRecord.createdAt : new Date(sessionRecord.createdAt),
+            updatedAt: sessionRecord.updatedAt instanceof Date ? sessionRecord.updatedAt : new Date(sessionRecord.updatedAt),
+          };
+        });
+
+        loadedSessions.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
         setSessions(loadedSessions);
       } catch (err) {
         console.error('Error loading chat sessions:', err);
       } finally {
+        markPerformance(metadataEndMark);
+        measurePerformance('chat.sessions.metadata_load_ms', metadataStartMark, metadataEndMark);
         setSessionsLoaded(true);
       }
     };
@@ -258,6 +345,80 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     return truncated.length < firstUserMessage.length ? truncated + '...' : truncated;
   };
 
+  const hydrateSessionMessages = useCallback(async (sessionId: string): Promise<void> => {
+    if (!currentUser || !sessionId) {
+      return;
+    }
+
+    if (hydratedSessionsRef.current.has(sessionId)) {
+      return;
+    }
+
+    const inFlightHydration = hydrationPromisesRef.current.get(sessionId);
+    if (inFlightHydration) {
+      await inFlightHydration;
+      return;
+    }
+
+    const perfBase = `chat.session.hydrate.${sessionId}.${Date.now()}`;
+    const hydrateStartMark = `${perfBase}.start`;
+    const hydrateEndMark = `${perfBase}.end`;
+    markPerformance(hydrateStartMark);
+
+    const hydrationPromise = (async () => {
+      const msgs = await getSessionMessages(sessionId);
+      const hydratedMessages: Message[] = msgs.map((m) => ({
+        id: m.id,
+        sender: m.role === 'user' ? 'user' : 'ai',
+        text: m.content,
+        timestamp: m.timestamp instanceof Date
+          ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }));
+
+      setSessions(prev => prev.map((session) => {
+        if (session.id !== sessionId) {
+          return session;
+        }
+
+        return {
+          ...session,
+          messages: hydratedMessages,
+          messageCount: hydratedMessages.length > 0 ? hydratedMessages.length : session.messageCount,
+          preview: hydratedMessages.length > 0
+            ? (toChatPreviewText(hydratedMessages[hydratedMessages.length - 1].text) || session.preview)
+            : session.preview,
+        };
+      }));
+
+      hydratedSessionsRef.current.add(sessionId);
+    })();
+
+    hydrationPromisesRef.current.set(sessionId, hydrationPromise);
+
+    try {
+      await hydrationPromise;
+    } catch (err) {
+      console.error(`Error hydrating chat session ${sessionId}:`, err);
+    } finally {
+      hydrationPromisesRef.current.delete(sessionId);
+      markPerformance(hydrateEndMark);
+      measurePerformance('chat.session_hydration_ms', hydrateStartMark, hydrateEndMark);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !activeSessionId) {
+      return;
+    }
+
+    if (pendingSessionsRef.current.has(activeSessionId)) {
+      return;
+    }
+
+    void hydrateSessionMessages(activeSessionId);
+  }, [activeSessionId, currentUser, hydrateSessionMessages]);
+
   const createNewSession = useCallback((firstMessage?: Message): string => {
     const tempId = Date.now().toString();
     const now = new Date();
@@ -276,6 +437,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       updatedAt: now,
     };
 
+    hydratedSessionsRef.current.add(tempId);
     setSessions(prev => [newSession, ...prev]);
 
     // Persist to Firebase in background, storing the promise so addMessageToSession can await it
@@ -288,7 +450,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             await addFirebaseMessage(
               firebaseSession.id,
               firstMessage.sender === 'user' ? 'user' : 'assistant',
-              firstMessage.text
+              firstMessage.text,
+              currentUser.uid
             );
           }
           return firebaseSession.id;
@@ -321,6 +484,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return session;
       })
     );
+    hydratedSessionsRef.current.add(sessionId);
 
     // Resolve temp ID to real Firebase ID before persisting
     const resolveFirebaseId = async (sid: string): Promise<string> => {
@@ -336,7 +500,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       addFirebaseMessage(
         realId,
         message.sender === 'user' ? 'user' : 'assistant',
-        message.text
+        message.text,
+        currentUser?.uid
       ).catch(err => console.error('Error persisting message:', err))
     );
 
@@ -352,15 +517,36 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
       return prev;
     });
-  }, []);
+  }, [currentUser]);
 
   /** Send a message and get AI response from the backend */
   const sendMessage = useCallback(async (sessionId: string, userText: string) => {
+    const trimmedMessage = userText.trim();
+    if (!trimmedMessage) {
+      return;
+    }
+
+    const hasPendingSession = pendingSessionsRef.current.has(sessionId);
+    if (!hasPendingSession && !hydratedSessionsRef.current.has(sessionId)) {
+      await hydrateSessionMessages(sessionId);
+    }
+
+    const sessionBeforeSend = sessionsRef.current.find(s => s.id === sessionId);
+    const perfBase = `chat.send.${sessionId}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
+    const sendStartMark = `${perfBase}.start`;
+    const firstTokenStartMark = `${perfBase}.first_token_start`;
+    const firstChunkMark = `${perfBase}.first_chunk`;
+    const sendEndMark = `${perfBase}.end`;
+    let firstChunkMeasured = false;
+
+    markPerformance(sendStartMark);
+    markPerformance(firstTokenStartMark);
+
     // Add user message
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text: userText.trim(),
+      text: trimmedMessage,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     addMessageToSession(sessionId, userMsg);
@@ -369,8 +555,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     try {
       // Build history from current session messages
-      const session = sessions.find(s => s.id === sessionId);
-      const history = (session?.messages || []).map(m => ({
+      const history = (sessionBeforeSend?.messages || []).slice(-CHAT_HISTORY_CONTEXT_LIMIT).map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
         content: m.text,
       }));
@@ -378,6 +563,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       let streamedText = '';
       let streamMessageId: string | null = null;
+      let pendingText = '';
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
       const upsertStreamingMessage = (text: string) => {
         setSessions(prev =>
@@ -429,11 +616,45 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         );
       };
 
+      const flushStreamingBuffer = () => {
+        if (flushTimer !== null) {
+          clearTimeout(flushTimer);
+          flushTimer = null;
+        }
+        if (!pendingText) {
+          return;
+        }
+        upsertStreamingMessage(pendingText);
+        pendingText = '';
+      };
+
+      const scheduleStreamingFlush = () => {
+        if (flushTimer !== null) {
+          return;
+        }
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          if (!pendingText) {
+            return;
+          }
+          upsertStreamingMessage(pendingText);
+          pendingText = '';
+        }, STREAM_FLUSH_INTERVAL_MS);
+      };
+
       try {
-        const { response } = await apiService.chat(userText.trim(), history, (chunk: string) => {
+        const { response } = await apiService.chat(trimmedMessage, history, (chunk: string) => {
+          if (!firstChunkMeasured) {
+            firstChunkMeasured = true;
+            markPerformance(firstChunkMark);
+            measurePerformance('chat.send.first_token_ms', firstTokenStartMark, firstChunkMark);
+          }
           streamedText += chunk;
-          upsertStreamingMessage(streamedText);
+          pendingText = streamedText;
+          scheduleStreamingFlush();
         });
+
+        flushStreamingBuffer();
 
         const finalResponse = (response || streamedText).trim();
         if (streamMessageId) {
@@ -449,17 +670,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         addMessageToSession(sessionId, aiMsg);
       } catch (streamError) {
         console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        flushStreamingBuffer();
         if (streamMessageId) {
           removeStreamingMessage();
         }
 
         let aiResponseText = '';
         try {
-          const { data } = await apiService.chatSafe(userText.trim(), history);
+          const { data } = await apiService.chatSafe(trimmedMessage, history);
           aiResponseText = data.response;
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
-          aiResponseText = generateFallbackResponse(userText.trim());
+          aiResponseText = generateFallbackResponse(trimmedMessage);
         }
 
         const aiMsg: Message = {
@@ -472,8 +694,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
 
       // Update session title if this is the first exchange
-      if (session && session.messages.length === 1) {
-        const updatedSession = sessions.find(s => s.id === sessionId);
+      if (sessionBeforeSend && sessionBeforeSend.messages.length === 1) {
+        const updatedSession = sessionsRef.current.find(s => s.id === sessionId);
         if (updatedSession && updatedSession.messages.length > 1) {
           const newTitle = generateTitleFromMessages(updatedSession.messages);
           const pending = pendingSessionsRef.current.get(sessionId);
@@ -487,8 +709,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
       setLoadingSessionId(null);
+      if (!firstChunkMeasured) {
+        clearPerformanceMark(firstTokenStartMark);
+      }
+      markPerformance(sendEndMark);
+      measurePerformance('chat.send.total_ms', sendStartMark, sendEndMark);
     }
-  }, [sessions, addMessageToSession]);
+  }, [addMessageToSession, hydrateSessionMessages]);
 
   const updateSessionTitle = useCallback((sessionId: string, title: string) => {
     setSessions(prev =>
@@ -517,6 +744,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     );
     // Clean up the pending map entry
     pendingSessionsRef.current.delete(sessionId);
+    hydrationPromisesRef.current.delete(sessionId);
+    hydratedSessionsRef.current.delete(sessionId);
   }, [activeSessionId]);
 
   const getActiveSession = useCallback((): ChatSession | null => {

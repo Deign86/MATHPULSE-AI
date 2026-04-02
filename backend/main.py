@@ -1,8 +1,8 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
-    (via Hugging Face Inference API)
+- meta-llama/Llama-3.1-8B-Instruct for interactive chat (via Hugging Face Inference API)
+- Qwen/Qwen2.5-7B-Instruct for quiz generation, lesson generation, learning paths, and solution verification
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
@@ -343,6 +343,191 @@ _async_tasks: Dict[str, Dict[str, Any]] = {}
 _async_tasks_lock = Lock()
 FIRESTORE_SERVER_TIMESTAMP: Any = getattr(cast(Any, firebase_firestore), "SERVER_TIMESTAMP", None)
 FIRESTORE_QUERY_DESCENDING: Any = getattr(getattr(cast(Any, firebase_firestore), "Query", None), "DESCENDING", "DESCENDING")
+
+REQUEST_LATENCY_BUCKET_BOUNDARIES_MS: Tuple[int, ...] = (100, 250, 500, 1000, 2000, 5000, 10000)
+_TASK_ENDPOINT_REGEX = re.compile(r"^/api/tasks/[^/]+")
+_api_telemetry_started_at = time.time()
+_api_telemetry_lock = Lock()
+
+
+def _new_latency_buckets() -> Dict[str, int]:
+    buckets: Dict[str, int] = {f"<= {boundary}ms": 0 for boundary in REQUEST_LATENCY_BUCKET_BOUNDARIES_MS}
+    buckets[f"> {REQUEST_LATENCY_BUCKET_BOUNDARIES_MS[-1]}ms"] = 0
+    return buckets
+
+
+def _latency_bucket_label(latency_ms: float) -> str:
+    for boundary in REQUEST_LATENCY_BUCKET_BOUNDARIES_MS:
+        if latency_ms <= boundary:
+            return f"<= {boundary}ms"
+    return f"> {REQUEST_LATENCY_BUCKET_BOUNDARIES_MS[-1]}ms"
+
+
+def _new_latency_stats() -> Dict[str, Any]:
+    return {
+        "count": 0,
+        "sum_ms": 0.0,
+        "avg_ms": 0.0,
+        "min_ms": None,
+        "max_ms": None,
+        "last_ms": None,
+    }
+
+
+_api_telemetry: Dict[str, Any] = {
+    "requests_total": 0,
+    "request_path_counts": {},
+    "status_counts": {},
+    "request_latency_buckets_ms": _new_latency_buckets(),
+    "chat_stream": {
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "duration_ms": _new_latency_stats(),
+        "duration_buckets_ms": _new_latency_buckets(),
+        "first_token_ms": _new_latency_stats(),
+        "first_token_latency_buckets_ms": _new_latency_buckets(),
+    },
+    "class_insights": {
+        "requests_total": 0,
+        "error_total": 0,
+        "latency_ms": _new_latency_stats(),
+        "latency_buckets_ms": _new_latency_buckets(),
+    },
+}
+
+
+def _normalize_metrics_path(path: str) -> str:
+    if not path:
+        return "unknown"
+    if path.startswith("/api/tasks/"):
+        return _TASK_ENDPOINT_REGEX.sub("/api/tasks/{taskId}", path)
+    return path
+
+
+def _update_latency_stats(stats: Dict[str, Any], latency_ms: float) -> None:
+    latency = max(0.0, float(latency_ms))
+    count = int(stats.get("count") or 0) + 1
+    sum_ms = float(stats.get("sum_ms") or 0.0) + latency
+    min_ms_raw = stats.get("min_ms")
+    max_ms_raw = stats.get("max_ms")
+
+    stats["count"] = count
+    stats["sum_ms"] = round(sum_ms, 3)
+    stats["avg_ms"] = round(sum_ms / count, 3)
+    stats["last_ms"] = round(latency, 3)
+    stats["min_ms"] = round(latency if min_ms_raw is None else min(float(min_ms_raw), latency), 3)
+    stats["max_ms"] = round(latency if max_ms_raw is None else max(float(max_ms_raw), latency), 3)
+
+
+def _record_request_latency(path: str, status_code: int, latency_ms: float) -> None:
+    normalized_path = _normalize_metrics_path(path)
+    status_key = str(status_code)
+    bucket = _latency_bucket_label(latency_ms)
+
+    with _api_telemetry_lock:
+        _api_telemetry["requests_total"] = int(_api_telemetry.get("requests_total") or 0) + 1
+
+        path_counts = _api_telemetry.get("request_path_counts")
+        if not isinstance(path_counts, dict):
+            path_counts = {}
+            _api_telemetry["request_path_counts"] = path_counts
+        path_counts[normalized_path] = int(path_counts.get(normalized_path) or 0) + 1
+
+        status_counts = _api_telemetry.get("status_counts")
+        if not isinstance(status_counts, dict):
+            status_counts = {}
+            _api_telemetry["status_counts"] = status_counts
+        status_counts[status_key] = int(status_counts.get(status_key) or 0) + 1
+
+        latency_buckets = _api_telemetry.get("request_latency_buckets_ms")
+        if not isinstance(latency_buckets, dict):
+            latency_buckets = _new_latency_buckets()
+            _api_telemetry["request_latency_buckets_ms"] = latency_buckets
+        latency_buckets[bucket] = int(latency_buckets.get(bucket) or 0) + 1
+
+
+def _record_chat_stream_started() -> None:
+    with _api_telemetry_lock:
+        stream_metrics = _api_telemetry.get("chat_stream")
+        if not isinstance(stream_metrics, dict):
+            return
+        stream_metrics["started"] = int(stream_metrics.get("started") or 0) + 1
+
+
+def _record_chat_stream_first_token(latency_ms: float) -> None:
+    bucket = _latency_bucket_label(latency_ms)
+    with _api_telemetry_lock:
+        stream_metrics = _api_telemetry.get("chat_stream")
+        if not isinstance(stream_metrics, dict):
+            return
+        stats = stream_metrics.get("first_token_ms")
+        if not isinstance(stats, dict):
+            stats = _new_latency_stats()
+            stream_metrics["first_token_ms"] = stats
+        _update_latency_stats(stats, latency_ms)
+
+        buckets = stream_metrics.get("first_token_latency_buckets_ms")
+        if not isinstance(buckets, dict):
+            buckets = _new_latency_buckets()
+            stream_metrics["first_token_latency_buckets_ms"] = buckets
+        buckets[bucket] = int(buckets.get(bucket) or 0) + 1
+
+
+def _record_chat_stream_finished(*, failed: bool, duration_ms: float) -> None:
+    bucket = _latency_bucket_label(duration_ms)
+    with _api_telemetry_lock:
+        stream_metrics = _api_telemetry.get("chat_stream")
+        if not isinstance(stream_metrics, dict):
+            return
+
+        if failed:
+            stream_metrics["failed"] = int(stream_metrics.get("failed") or 0) + 1
+        else:
+            stream_metrics["completed"] = int(stream_metrics.get("completed") or 0) + 1
+
+        stats = stream_metrics.get("duration_ms")
+        if not isinstance(stats, dict):
+            stats = _new_latency_stats()
+            stream_metrics["duration_ms"] = stats
+        _update_latency_stats(stats, duration_ms)
+
+        buckets = stream_metrics.get("duration_buckets_ms")
+        if not isinstance(buckets, dict):
+            buckets = _new_latency_buckets()
+            stream_metrics["duration_buckets_ms"] = buckets
+        buckets[bucket] = int(buckets.get(bucket) or 0) + 1
+
+
+def _record_class_insights_latency(latency_ms: float, *, failed: bool) -> None:
+    bucket = _latency_bucket_label(latency_ms)
+    with _api_telemetry_lock:
+        class_metrics = _api_telemetry.get("class_insights")
+        if not isinstance(class_metrics, dict):
+            return
+
+        class_metrics["requests_total"] = int(class_metrics.get("requests_total") or 0) + 1
+        if failed:
+            class_metrics["error_total"] = int(class_metrics.get("error_total") or 0) + 1
+
+        stats = class_metrics.get("latency_ms")
+        if not isinstance(stats, dict):
+            stats = _new_latency_stats()
+            class_metrics["latency_ms"] = stats
+        _update_latency_stats(stats, latency_ms)
+
+        buckets = class_metrics.get("latency_buckets_ms")
+        if not isinstance(buckets, dict):
+            buckets = _new_latency_buckets()
+            class_metrics["latency_buckets_ms"] = buckets
+        buckets[bucket] = int(buckets.get(bucket) or 0) + 1
+
+
+def _snapshot_api_telemetry() -> Dict[str, Any]:
+    with _api_telemetry_lock:
+        snapshot = json.loads(json.dumps(_api_telemetry))
+    snapshot["uptime_sec"] = round(max(0.0, time.time() - _api_telemetry_started_at), 2)
+    return snapshot
 
 
 def _snapshot_to_dict(snapshot: Any) -> Dict[str, Any]:
@@ -819,6 +1004,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # ─── Middleware: Request ID + Logging + Timeout ────────────────
 
 REQUEST_TIMEOUT_SECONDS = 120  # 2 minutes for AI-heavy endpoints
+LOG_FULL_TRACEBACK = os.getenv("LOG_FULL_TRACEBACK", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_cors_origins(raw_origins: str) -> List[str]:
+    origins = [origin.strip() for origin in (raw_origins or "").split(",") if origin.strip()]
+    return origins if origins else ["*"]
+
+
+CORS_ALLOW_ORIGINS = _parse_cors_origins(os.getenv("CORS_ALLOW_ORIGINS", "*"))
+CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "true").strip().lower() in {"1", "true", "yes", "on"}
+if "*" in CORS_ALLOW_ORIGINS and CORS_ALLOW_CREDENTIALS:
+    logger.warning("CORS_ALLOW_ORIGINS contains '*' so CORS_ALLOW_CREDENTIALS has been forced to false")
+    CORS_ALLOW_CREDENTIALS = False
 
 
 class RequestMiddleware(BaseHTTPMiddleware):
@@ -827,6 +1025,7 @@ class RequestMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         request_id = str(uuid.uuid4())[:8]
         start = time.time()
+        request_path = request.url.path
 
         # Attach request_id for downstream logging
         request.state.request_id = request_id
@@ -837,13 +1036,17 @@ class RequestMiddleware(BaseHTTPMiddleware):
                 call_next(request),
                 timeout=REQUEST_TIMEOUT_SECONDS,
             )
-            duration = round(time.time() - start, 3)
+            duration_seconds = time.time() - start
+            duration = round(duration_seconds, 3)
+            _record_request_latency(request_path, response.status_code, duration_seconds * 1000.0)
             response.headers["X-Request-ID"] = request_id
             response.headers["X-Response-Time"] = f"{duration}s"
             logger.info(f"[{request_id}] {response.status_code} in {duration}s")
             return response
         except asyncio.TimeoutError:
-            duration = round(time.time() - start, 3)
+            duration_seconds = time.time() - start
+            duration = round(duration_seconds, 3)
+            _record_request_latency(request_path, 504, duration_seconds * 1000.0)
             logger.error(f"[{request_id}] TIMEOUT after {duration}s on {request.url.path}")
             return JSONResponse(
                 status_code=504,
@@ -854,7 +1057,9 @@ class RequestMiddleware(BaseHTTPMiddleware):
                 headers={"X-Request-ID": request_id},
             )
         except Exception as exc:
-            duration = round(time.time() - start, 3)
+            duration_seconds = time.time() - start
+            duration = round(duration_seconds, 3)
+            _record_request_latency(request_path, 500, duration_seconds * 1000.0)
             logger.error(f"[{request_id}] Unhandled error after {duration}s: {exc}")
             return JSONResponse(
                 status_code=500,
@@ -890,7 +1095,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", "unknown")
-    logger.error(f"[{request_id}] Unhandled: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+    if LOG_FULL_TRACEBACK:
+        logger.error(f"[{request_id}] Unhandled: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+    else:
+        logger.error(f"[{request_id}] Unhandled: {type(exc).__name__}: {exc}")
     return JSONResponse(
         status_code=500,
         content={
@@ -903,8 +1111,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -1220,7 +1428,8 @@ async def _run_hf_blocking(func, /, *args, **kwargs):
 
 def _hf_retry_sleep_seconds(backoff_sec: float, attempt: int) -> float:
     jitter_factor = random.uniform(0.9, 1.2)
-    return backoff_sec * attempt * jitter_factor
+    retry_index = max(0, attempt - 1)
+    return backoff_sec * (2 ** retry_index) * jitter_factor
 
 
 def _resolve_async_hf_timeout(timeout_sec: int) -> httpx.Timeout:
@@ -1929,6 +2138,9 @@ async def chat_tutor_stream(request: ChatRequest):
             return "\n".join(body) + "\n\n"
 
         async def event_generator():
+            stream_started = time.perf_counter()
+            first_token_recorded = False
+            _record_chat_stream_started()
             try:
                 async for chunk in call_hf_chat_stream_async(
                     messages,
@@ -1937,11 +2149,20 @@ async def chat_tutor_stream(request: ChatRequest):
                     top_p=0.85,
                     task_type="chat",
                 ):
+                    if not first_token_recorded:
+                        first_token_recorded = True
+                        first_token_latency_ms = (time.perf_counter() - stream_started) * 1000.0
+                        _record_chat_stream_first_token(first_token_latency_ms)
                     payload = json.dumps({"chunk": chunk}, ensure_ascii=False)
                     yield _sse("chunk", payload)
                     await asyncio.sleep(0)
+
+                stream_duration_ms = (time.perf_counter() - stream_started) * 1000.0
+                _record_chat_stream_finished(failed=False, duration_ms=stream_duration_ms)
             except Exception as hf_err:
                 logger.error(f"HF chat stream failed: {hf_err}")
+                stream_duration_ms = (time.perf_counter() - stream_started) * 1000.0
+                _record_chat_stream_finished(failed=True, duration_ms=stream_duration_ms)
                 err_payload = json.dumps({
                     "detail": "AI model service is temporarily unavailable. Please try again.",
                 })
@@ -7615,6 +7836,30 @@ async def cancel_async_task(http_request: Request, task_id: str):
     )
 
 
+def _snapshot_async_task_queue() -> Dict[str, Any]:
+    with _async_tasks_lock:
+        _prune_async_tasks()
+        status_counter = Counter(
+            str(task.get("status") or "unknown").strip().lower()
+            for task in _async_tasks.values()
+        )
+        total_tasks = len(_async_tasks)
+
+    queued = int(status_counter.get("queued", 0))
+    running = int(status_counter.get("running", 0))
+    cancelling = int(status_counter.get("cancelling", 0))
+    in_flight = queued + running + cancelling
+
+    return {
+        "total": total_tasks,
+        "in_flight": in_flight,
+        "queued": queued,
+        "running": running,
+        "cancelling": cancelling,
+        "status_counts": dict(status_counter),
+    }
+
+
 @app.get("/api/ops/inference-metrics", response_model=InferenceMetricsResponse)
 async def get_inference_metrics(http_request: Request):
     user = get_current_user(http_request)
@@ -7624,6 +7869,8 @@ async def get_inference_metrics(http_request: Request):
     client = get_inference_client()
     metrics_snapshot = client.snapshot_metrics()
     metrics_snapshot["pro_enabled"] = bool(getattr(client, "pro_enabled", False))
+    metrics_snapshot["api_telemetry"] = _snapshot_api_telemetry()
+    metrics_snapshot["async_task_queue"] = _snapshot_async_task_queue()
     return InferenceMetricsResponse(success=True, metrics=metrics_snapshot)
 
 
@@ -8058,17 +8305,26 @@ async def student_analytics_summary(request: Request, studentId: str = Query(...
 
 
 @app.post("/api/analytics/class-insights", response_model=ClassInsightsResponse)
-async def class_analytics_insights(request: ClassInsightsRequest):
+async def class_analytics_insights(http_request: Request, request: ClassInsightsRequest):
     """
     Aggregate class-wide ML analytics for teacher dashboards.
     Includes risk distribution, common weak topics, learning velocity,
     engagement patterns, and intervention recommendations.
     """
+    started = time.perf_counter()
     try:
+        user = get_current_user(http_request)
+        if user.role != "admin" and request.teacherId != user.uid:
+            raise HTTPException(status_code=403, detail="Forbidden for this teacher scope")
         logger.info(f"Class insights requested by teacher {request.teacherId}")
         result = await get_class_insights(request)
+        _record_class_insights_latency((time.perf_counter() - started) * 1000.0, failed=False)
         return result
+    except HTTPException:
+        _record_class_insights_latency((time.perf_counter() - started) * 1000.0, failed=True)
+        raise
     except Exception as e:
+        _record_class_insights_latency((time.perf_counter() - started) * 1000.0, failed=True)
         logger.error(f"Class insights error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Class insights error: {str(e)}")
 
