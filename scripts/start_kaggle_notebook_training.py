@@ -62,6 +62,7 @@ def _prepare_kernel_bundle(
     dataset_sources: List[str],
     model_sources: List[str],
     hf_token: str,
+    accelerator: Optional[str],
 ) -> Path:
     if not notebook_path.exists():
         raise FileNotFoundError(f"Notebook file not found: {notebook_path}")
@@ -114,6 +115,8 @@ def _prepare_kernel_bundle(
         "kernel_sources": [],
         "model_sources": model_sources,
     }
+    if accelerator:
+        metadata["machine_shape"] = accelerator
 
     metadata_path = bundle_dir / "kernel-metadata.json"
     metadata_path.write_text(json.dumps(metadata, ensure_ascii=True, indent=2), encoding="utf-8")
@@ -190,6 +193,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--poll-seconds", type=int, default=60, help="Polling interval when --wait is used.")
     parser.add_argument("--stage-root", default=".kaggle-kernels", help="Directory for staged Kaggle kernel bundle.")
     parser.add_argument(
+        "--accelerator",
+        default="NvidiaTeslaT4",
+        help="Kaggle machine shape for this run (for example: NvidiaTeslaT4, NvidiaTeslaP100, Tpu1VmV38).",
+    )
+    parser.add_argument(
         "--hf-token-env-var",
         default="HF_BOOTSTRAP_TOKEN",
         help="Environment variable name used to read an HF token for one-run staged notebook injection.",
@@ -235,10 +243,14 @@ def main() -> None:
         dataset_sources=args.dataset_source,
         model_sources=args.model_source,
         hf_token=hf_token,
+        accelerator=args.accelerator,
     )
 
     kaggle_command = _build_kaggle_base_command()
-    _run_command([*kaggle_command, "kernels", "push", "-p", str(bundle_dir)], cwd=workspace_root, check=True)
+    push_command = [*kaggle_command, "kernels", "push", "-p", str(bundle_dir)]
+    if args.accelerator:
+        push_command.extend(["--accelerator", args.accelerator])
+    _run_command(push_command, cwd=workspace_root, check=True)
     print(f"Submitted Kaggle kernel: {kernel_ref}")
 
     if args.wait:
