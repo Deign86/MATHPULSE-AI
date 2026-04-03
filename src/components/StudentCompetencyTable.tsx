@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronDown, ChevronRight, ChevronUp, Loader2, Search,
@@ -14,7 +14,9 @@ import {
   type CourseMaterialTopicMapTopic,
   type ImportedStudentOverviewItem,
 } from '../services/apiService';
-import { getUserProgress } from '../services/progressService';
+import { getUserProgress, getUserProgressIfExists } from '../services/progressService';
+import { subjects } from '../data/subjects';
+import type { UserProgress } from '../types/models';
 
 // -”€-”€-”€ Types -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
@@ -22,9 +24,19 @@ interface StudentRow {
   rowKey: string;
   student: CompetencyStudent;
   competency: StudentCompetencyResponse | null;
+  competencyMatrix: CompetencyMatrixSummary | null;
+  competencyMatrixLoading: boolean;
   loading: boolean;
   expanded: boolean;
   error?: string;
+}
+
+interface CompetencyMatrixSummary {
+  mastery: number;
+  concept: number;
+  application: number;
+  engagement: number;
+  consistency: number;
 }
 
 interface CompetencyStudent {
@@ -138,6 +150,73 @@ function mergeCompetencyStudents(primary: CompetencyStudent[], imported: Compete
 type SortField = 'name' | 'avgQuizScore' | 'riskLevel' | 'engagementScore';
 type SortDir = 'asc' | 'desc';
 
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function computeCompetencyMatrixSummary(progress: UserProgress | null): CompetencyMatrixSummary | null {
+  if (!progress) return null;
+
+  const activeSubjectId = 'gen-math';
+  const validModules = subjects.find((subject) => subject.id === activeSubjectId)?.modules || [];
+  if (validModules.length === 0) return null;
+
+  const totals = {
+    mastery: 0,
+    concept: 0,
+    application: 0,
+    engagement: 0,
+    consistency: 0,
+  };
+
+  const lessonProgressMap = progress.lessons ?? {};
+
+  validModules.forEach((module) => {
+    const parentSubject = subjects.find((subject) => subject.modules.some((m) => m.id === module.id));
+    const moduleStats = parentSubject
+      ? progress?.subjects?.[parentSubject.id]?.modulesProgress?.[module.id]
+      : null;
+
+    const moduleProgress = clampPercent(moduleStats?.progress || 0);
+
+    const lessonsPct = module.lessons.length
+      ? module.lessons.reduce((sum, lesson) => {
+          const pct = lessonProgressMap?.[lesson.id]?.progressPercent;
+          if (typeof pct === 'number' && Number.isFinite(pct)) {
+            return sum + clampPercent(pct);
+          }
+          const completed = !!moduleStats?.lessonsCompleted?.includes?.(lesson.id);
+          return sum + (completed ? 100 : 0);
+        }, 0) / module.lessons.length
+      : 0;
+
+    const quizzesPct = module.quizzes.length
+      ? ((moduleStats?.quizzesCompleted?.length || 0) / module.quizzes.length) * 100
+      : 0;
+
+    const lessonsPctClamped = clampPercent(lessonsPct);
+    const quizzesPctClamped = clampPercent(quizzesPct);
+    const engagement = clampPercent(Math.min(100, (lessonsPctClamped + quizzesPctClamped * 2) / 1.5));
+    const consistency = clampPercent(Math.min(100, 40 + moduleProgress * 0.6));
+
+    totals.mastery += moduleProgress;
+    totals.concept += lessonsPctClamped;
+    totals.application += quizzesPctClamped;
+    totals.engagement += engagement;
+    totals.consistency += consistency;
+  });
+
+  const denom = validModules.length;
+  return {
+    mastery: Math.round(totals.mastery / denom),
+    concept: Math.round(totals.concept / denom),
+    application: Math.round(totals.application / denom),
+    engagement: Math.round(totals.engagement / denom),
+    consistency: Math.round(totals.consistency / denom),
+  };
+}
+
 const RISK_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
   High: { bg: 'bg-red-100', text: 'text-red-700', ring: 'ring-red-300' },
   Medium: { bg: 'bg-rose-100', text: 'text-rose-700', ring: 'ring-rose-300' },
@@ -151,6 +230,40 @@ const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string 
   beginner: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
 };
 
+const COMPETENCY_MATRIX_ITEMS: Array<{ key: keyof CompetencyMatrixSummary; short: string; label: string; header: string }> = [
+  { key: 'mastery', short: 'M', label: 'Overall Mastery', header: 'Mastery' },
+  { key: 'concept', short: 'C', label: 'Concept Grasp', header: 'Concept' },
+  { key: 'application', short: 'A', label: 'Application', header: 'Application' },
+  { key: 'engagement', short: 'E', label: 'Engagement', header: 'Engagement' },
+  { key: 'consistency', short: 'S', label: 'Consistency', header: 'Consistency' },
+];
+
+function getMatrixScoreTone(score: number): { bg: string; text: string; ring: string } {
+  const clamped = clampPercent(score);
+
+  if (clamped >= 80) {
+    return {
+      bg: 'bg-[color-mix(in_srgb,var(--chart-3)_14%,transparent)]',
+      text: 'text-[var(--chart-3)]',
+      ring: 'ring-[color-mix(in_srgb,var(--chart-3)_40%,transparent)]',
+    };
+  }
+
+  if (clamped >= 60) {
+    return {
+      bg: 'bg-[color-mix(in_srgb,var(--chart-4)_14%,transparent)]',
+      text: 'text-[var(--chart-4)]',
+      ring: 'ring-[color-mix(in_srgb,var(--chart-4)_40%,transparent)]',
+    };
+  }
+
+  return {
+    bg: 'bg-[color-mix(in_srgb,var(--chart-2)_14%,transparent)]',
+    text: 'text-[var(--chart-2)]',
+    ring: 'ring-[color-mix(in_srgb,var(--chart-2)_40%,transparent)]',
+  };
+}
+
 // -”€-”€-”€ Component -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
 const StudentCompetencyTable: React.FC<{
@@ -159,6 +272,8 @@ const StudentCompetencyTable: React.FC<{
   fallbackStudents?: FallbackStudentInput[];
 }> = ({ classSectionId, className, fallbackStudents = [] }) => {
   const { currentUser } = useAuth();
+
+  const competencyMatrixLoadIdRef = useRef(0);
 
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +311,40 @@ const StudentCompetencyTable: React.FC<{
     avgQuizScore: Number(student.avgQuizScore ?? student.avgScore ?? 0),
     weakestTopic: student.weakestTopic || 'Foundational Skills',
   }), []);
+
+  const loadCompetencyMatrices = useCallback(async (students: CompetencyStudent[], loadId: number) => {
+    const results = await Promise.allSettled(
+      students.map(async (student) => {
+        const progress = await getUserProgressIfExists(student.id);
+        return { studentId: student.id, summary: computeCompetencyMatrixSummary(progress) };
+      }),
+    );
+
+    if (competencyMatrixLoadIdRef.current !== loadId) return;
+
+    const summaryByStudentId = new Map<string, CompetencyMatrixSummary | null>();
+    students.forEach((student) => summaryByStudentId.set(student.id, null));
+
+    results.forEach((result, index) => {
+      const studentId = students[index]?.id;
+      if (!studentId) return;
+
+      if (result.status === 'fulfilled') {
+        summaryByStudentId.set(studentId, result.value.summary);
+      } else {
+        summaryByStudentId.set(studentId, null);
+      }
+    });
+
+    setRows((prev) => prev.map((row) => {
+      if (!summaryByStudentId.has(row.student.id)) return row;
+      return {
+        ...row,
+        competencyMatrix: summaryByStudentId.get(row.student.id) ?? null,
+        competencyMatrixLoading: false,
+      };
+    }));
+  }, []);
 
   // -”€-”€-”€ Load students -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
@@ -239,13 +388,19 @@ const StudentCompetencyTable: React.FC<{
 
       const dedupedStudents = dedupeCompetencyStudents(normalizedStudents, classSectionId);
 
+      const competencyMatrixLoadId = (competencyMatrixLoadIdRef.current += 1);
+
       setRows(dedupedStudents.map((student, index) => ({
         rowKey: `${buildCompetencyStudentKey(student)}|row:${index}`,
         student,
         competency: null,
+        competencyMatrix: null,
+        competencyMatrixLoading: true,
         loading: false,
         expanded: false,
       })));
+
+      void loadCompetencyMatrices(dedupedStudents, competencyMatrixLoadId);
     } catch (err) {
       console.error('Failed to load students:', err);
       if (fallbackStudents.length > 0) {
@@ -256,6 +411,8 @@ const StudentCompetencyTable: React.FC<{
             rowKey: `${buildCompetencyStudentKey(student)}|row:${index}`,
             student,
             competency: null,
+            competencyMatrix: null,
+            competencyMatrixLoading: false,
             loading: false,
             expanded: false,
           }));
@@ -268,7 +425,7 @@ const StudentCompetencyTable: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [classSectionId, currentUser?.uid, fallbackStudents, mapFallbackStudent, mapImportedStudentToCompetencyStudent]);
+  }, [classSectionId, currentUser?.uid, fallbackStudents, loadCompetencyMatrices, mapFallbackStudent, mapImportedStudentToCompetencyStudent]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
 
@@ -426,22 +583,27 @@ const StudentCompetencyTable: React.FC<{
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-sky-500" />
+      <div className="flex items-center justify-center py-20 p-6">
+        <Loader2 size={32} className="animate-spin text-[var(--primary)]" />
         <span className="ml-3 text-muted-foreground">Loading student data...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-6 space-y-6"
+    >
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Students', value: totalStudents, icon: <User size={20} />, color: 'bg-sky-50 text-sky-600' },
-          { label: 'At-Risk Students', value: highRisk, icon: <AlertTriangle size={20} />, color: 'bg-red-50 text-red-600' },
-          { label: 'Class Average', value: `${avgScore}%`, icon: <BarChart3 size={20} />, color: 'bg-emerald-50 text-emerald-600' },
-          { label: 'Avg. Engagement', value: `${avgEngagement}%`, icon: <TrendingUp size={20} />, color: 'bg-sky-50 text-sky-600' },
+          { label: 'Total Students', value: totalStudents, icon: <User size={20} />, color: 'bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)]' },
+          { label: 'At-Risk Students', value: highRisk, icon: <AlertTriangle size={20} />, color: 'bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] text-[var(--chart-2)]' },
+          { label: 'Class Average', value: `${avgScore}%`, icon: <BarChart3 size={20} />, color: 'bg-[color-mix(in_srgb,var(--chart-3)_10%,transparent)] text-[var(--chart-3)]' },
+          { label: 'Avg. Engagement', value: `${avgEngagement}%`, icon: <TrendingUp size={20} />, color: 'bg-[color-mix(in_srgb,var(--chart-1)_10%,transparent)] text-[var(--chart-1)]' },
         ].map((card, i) => (
           <div key={i} className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.color}`}>
@@ -476,7 +638,7 @@ const StudentCompetencyTable: React.FC<{
               onClick={() => setRiskFilter(level)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 riskFilter === level
-                  ? 'bg-sky-600 text-white'
+                  ? 'bg-[var(--primary)] text-white'
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
             >
@@ -495,23 +657,23 @@ const StudentCompetencyTable: React.FC<{
       </div>
 
       {/* Imported Topic Context */}
-      <div className="bg-secondary border border-border rounded-xl p-3">
-        <p className="text-xs font-semibold text-foreground">
+      <div className="bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--primary)_30%,transparent)] rounded-xl p-4">
+        <p className="text-sm font-semibold text-[var(--primary)]">
           Imported Topic Context{className ? ` for ${className}` : ''}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-[var(--primary)] mt-1 opacity-80">
           {importedTopicsLoading
             ? 'Loading class-scoped imported topics...'
             : importedTopicTitles.length > 0
             ? `${importedTopicTitles.length} imported topics loaded for competency guidance`
             : 'No imported topics found for this class context'}
         </p>
-        {importedTopicsWarning && <p className="text-[11px] text-amber-700 mt-1">{importedTopicsWarning}</p>}
-        {studentsWarning && <p className="text-[11px] text-amber-700 mt-1">{studentsWarning}</p>}
+        {importedTopicsWarning && <p className="text-[11px] text-[var(--chart-4)] mt-1">{importedTopicsWarning}</p>}
+        {studentsWarning && <p className="text-[11px] text-[var(--chart-4)] mt-1">{studentsWarning}</p>}
         {importedTopicTitles.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {importedTopicTitles.map((topic) => (
-              <span key={topic} className="text-[11px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded">
+              <span key={topic} className="text-[11px] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)] px-2 py-0.5 rounded">
                 {topic}
               </span>
             ))}
@@ -520,25 +682,30 @@ const StudentCompetencyTable: React.FC<{
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[760px]">
+      <div className="bg-card rounded-xl border border-border">
+        <div className="overflow-x-auto pb-2">
+          <div className="min-w-[1920px]">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <div className="col-span-1"></div>
-              <button className="col-span-3 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('name')}>
+            <div className="grid grid-cols-[48px_280px_120px_120px_120px_120px_120px_140px_170px_170px_220px] items-center gap-6 px-6 py-4 bg-muted/60 border-b border-border text-xs font-semibold text-muted-foreground tracking-normal">
+              <div></div>
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('name')}>
                 Student <SortIcon field="name" />
               </button>
-              <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('riskLevel')}>
+              {COMPETENCY_MATRIX_ITEMS.map((item) => (
+                <div key={item.key} className="text-center leading-none whitespace-nowrap tracking-normal">
+                  {item.header}
+                </div>
+              ))}
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('riskLevel')}>
                 Risk Level <SortIcon field="riskLevel" />
               </button>
-              <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('avgQuizScore')}>
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('avgQuizScore')}>
                 Avg. Score <SortIcon field="avgQuizScore" />
               </button>
-              <button className="col-span-2 flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('engagementScore')}>
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('engagementScore')}>
                 Engagement <SortIcon field="engagementScore" />
               </button>
-              <div className="col-span-2 text-right">Weakest Topic</div>
+              <div className="flex justify-end pr-2">Weakest Topic</div>
             </div>
 
             {/* Rows */}
@@ -569,21 +736,21 @@ const StudentCompetencyTable: React.FC<{
                         };
 
                   return (
-                  <div key={row.rowKey}>
+                  <div key={row.rowKey} className="border-b border-border last:border-0">
                 {/* Main row */}
                 <button
                   onClick={() => void toggleExpand(row.rowKey)}
-                  className="w-full grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-muted transition-colors text-left"
+                  className="w-full grid grid-cols-[48px_280px_120px_120px_120px_120px_120px_140px_170px_170px_220px] gap-6 px-6 py-5 items-center hover:bg-muted transition-colors text-left"
                 >
                   {/* Expand icon */}
-                  <div className="col-span-1 flex items-center">
+                  <div className="flex items-center">
                     <span className="inline-flex h-4 w-4 items-center justify-center text-slate-500">
                       {row.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>
                   </div>
 
                   {/* Student info */}
-                  <div className="col-span-3 flex items-center gap-3">
+                  <div className="flex items-center gap-3">
                     <img
                       src={row.student.avatar}
                       alt={row.student.name}
@@ -595,8 +762,30 @@ const StudentCompetencyTable: React.FC<{
                     </div>
                   </div>
 
+                  {/* Competency Matrix Categories */}
+                  {COMPETENCY_MATRIX_ITEMS.map((item) => {
+                    const value = row.competencyMatrix?.[item.key] ?? 0;
+                    const tone = getMatrixScoreTone(value);
+                    return (
+                      <div key={item.key} className="flex items-center justify-center">
+                        {row.competencyMatrixLoading ? (
+                          <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                        ) : row.competencyMatrix ? (
+                          <span
+                            title={`${item.label}: ${value}%`}
+                            className={`inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ${tone.bg} ${tone.text} ${tone.ring}`}
+                          >
+                            {value}%
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    );
+                  })}
+
                   {/* Risk Level */}
-                  <div className="col-span-2">
+                  <div>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ring-1 ${
                       RISK_COLORS[row.student.riskLevel]?.bg
                     } ${RISK_COLORS[row.student.riskLevel]?.text} ${RISK_COLORS[row.student.riskLevel]?.ring}`}>
@@ -606,14 +795,14 @@ const StudentCompetencyTable: React.FC<{
                   </div>
 
                   {/* Avg Score as bar */}
-                  <div className="col-span-2">
+                  <div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
-                            row.student.avgQuizScore >= 80 ? 'bg-emerald-500' :
-                            row.student.avgQuizScore >= 60 ? 'bg-sky-500' :
-                            row.student.avgQuizScore >= 40 ? 'bg-rose-500' : 'bg-red-500'
+                            row.student.avgQuizScore >= 80 ? 'bg-[var(--chart-3)]' :
+                            row.student.avgQuizScore >= 60 ? 'bg-[var(--chart-4)]' :
+                            'bg-[var(--chart-2)]'
                           }`}
                           style={{ width: `${row.student.avgQuizScore}%` }}
                         />
@@ -623,13 +812,14 @@ const StudentCompetencyTable: React.FC<{
                   </div>
 
                   {/* Engagement */}
-                  <div className="col-span-2">
+                  <div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
-                            row.student.engagementScore >= 75 ? 'bg-sky-500' :
-                            row.student.engagementScore >= 50 ? 'bg-sky-400' : 'bg-[#a8a5b3]'
+                            row.student.engagementScore >= 75 ? 'bg-[var(--primary)]' :
+                            row.student.engagementScore >= 50 ? 'bg-[var(--primary)]/60' :
+                            'bg-muted-foreground'
                           }`}
                           style={{ width: `${row.student.engagementScore}%` }}
                         />
@@ -639,7 +829,7 @@ const StudentCompetencyTable: React.FC<{
                   </div>
 
                   {/* Weakest Topic */}
-                  <div className="col-span-2 text-right">
+                  <div className="flex justify-end pr-2">
                     <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
                       {row.student.weakestTopic}
                     </span>
@@ -736,7 +926,7 @@ const StudentCompetencyTable: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

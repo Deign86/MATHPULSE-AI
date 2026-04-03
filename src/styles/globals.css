@@ -18,24 +18,34 @@
   --popover: #ffffff;
   --popover-foreground: #0a1628;
 
-  /* Primary — Purple / Violet */
-  --primary: #7c3aed;
+  /* Palette */
+  --amethyst: #9956DE;
+  --slate-blue: #7274ED;
+  --summer-sky: #1FA7E1;
+  --downy: #6ED1CF;
+  --pastel-green: #75D06A;
+  --texas-rose: #FFB356;
+  --mona-lisa: #FF8B8B;
+  --illusion: #FB96BB;
+
+  /* Primary — Amethyst */
+  --primary: #9956DE;
   --primary-foreground: #ffffff;
 
-  /* Secondary — Soft purple wash */
-  --secondary: #f3f0ff;
-  --secondary-foreground: #5b21b6;
+  /* Secondary — Slate Blue */
+  --secondary: #7274ED;
+  --secondary-foreground: #ffffff;
 
   /* Muted — Cool neutral */
   --muted: #f4f4f5;
   --muted-foreground: #71717a;
 
-  /* Accent — Rose/Orange (achievements, XP, CTAs) */
-  --accent: #fff1f2;
-  --accent-foreground: #ff8b8b;
+  /* Accent — Summer Sky */
+  --accent: #1FA7E1;
+  --accent-foreground: #ffffff;
 
-  /* Destructive — Red Orange */
-  --destructive: #ffb356;
+  /* Destructive — Mona Lisa */
+  --destructive: #FF8B8B;
   --destructive-foreground: #ffffff;
 
   /* Borders & Inputs */
@@ -49,14 +59,14 @@
   --font-weight-normal: 400;
 
   /* Focus ring */
-  --ring: #a78bfa;
+  --ring: #9956DE;
 
   /* Charts — vibrant distinct hues */
-  --chart-1: #7c3aed;
-  --chart-2: #f43f5e;
-  --chart-3: #10b981;
-  --chart-4: #fb923c;
-  --chart-5: #0ea5e9;
+  --chart-1: #9956DE; /* Amethyst */
+  --chart-2: #FF8B8B; /* Mona Lisa - High Risk */
+  --chart-3: #75D06A; /* Pastel Green - Low Risk */
+  --chart-4: #FFB356; /* Texas Rose - Medium Risk */
+  --chart-5: #1FA7E1; /* Summer Sky */
 
   --radius: 1.25rem; /* Increased from 0.75rem to 1.25rem for pronounced rounded corners */
 
@@ -132,6 +142,16 @@
   --color-input-background: var(--input-background);
   --color-switch-background: var(--switch-background);
   --color-ring: var(--ring);
+
+  --color-amethyst: var(--amethyst);
+  --color-slate-blue: var(--slate-blue);
+  --color-summer-sky: var(--summer-sky);
+  --color-downy: var(--downy);
+  --color-pastel-green: var(--pastel-green);
+  --color-texas-rose: var(--texas-rose);
+  --color-mona-lisa: var(--mona-lisa);
+  --color-illusion: var(--illusion);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

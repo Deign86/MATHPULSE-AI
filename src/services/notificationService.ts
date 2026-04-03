@@ -10,9 +10,30 @@ import {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  onSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Notification } from '../types/models';
+
+const mapNotificationDoc = (docSnap: { id: string; data: () => any }): Notification => {
+  const data = docSnap.data();
+  const createdAtRaw = data.createdAt;
+  const createdAt = typeof createdAtRaw?.toDate === 'function'
+    ? createdAtRaw.toDate()
+    : createdAtRaw instanceof Date
+      ? createdAtRaw
+      : new Date();
+
+  const actionUrl = (data.actionUrl ?? data.link ?? undefined) as string | undefined;
+
+  return {
+    ...(data as Omit<Notification, 'id' | 'createdAt' | 'actionUrl'>),
+    id: docSnap.id,
+    createdAt,
+    actionUrl,
+  } as Notification;
+};
 
 // Create notification
 export const createNotification = async (
@@ -37,6 +58,8 @@ export const createNotification = async (
 
     await setDoc(notificationRef, {
       ...notification,
+      // Backwards compatibility with older cloud-function payloads
+      link: actionUrl || null,
       createdAt: serverTimestamp(),
     });
 
@@ -72,17 +95,49 @@ export const getUserNotifications = async (
     }
 
     const snapshot = await getDocs(notificationsQuery);
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-      } as Notification;
-    });
+    return snapshot.docs.map((docSnap) => mapNotificationDoc(docSnap));
   } catch (error) {
     console.error('Error getting notifications:', error);
     return [];
   }
+};
+
+export const subscribeToUserNotifications = (
+  userId: string,
+  options: {
+    limitCount?: number;
+    unreadOnly?: boolean;
+  } = {},
+  onChange: (notifications: Notification[]) => void,
+  onError?: (error: unknown) => void
+): Unsubscribe => {
+  if (!userId) {
+    onChange([]);
+    return () => undefined;
+  }
+
+  const { limitCount = 50, unreadOnly = false } = options;
+
+  const baseConstraints = [
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(limitCount),
+  ] as const;
+
+  const notificationsQuery = unreadOnly
+    ? query(collection(db, 'notifications'), where('userId', '==', userId), where('read', '==', false), orderBy('createdAt', 'desc'), limit(limitCount))
+    : query(collection(db, 'notifications'), ...baseConstraints);
+
+  return onSnapshot(
+    notificationsQuery,
+    (snapshot) => {
+      onChange(snapshot.docs.map((docSnap) => mapNotificationDoc(docSnap)));
+    },
+    (error) => {
+      console.error('Error subscribing to notifications:', error);
+      onError?.(error);
+    }
+  );
 };
 
 // Mark notification as read

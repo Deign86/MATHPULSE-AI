@@ -73,6 +73,25 @@ export const getUserProgress = async (userId: string): Promise<UserProgress | nu
   }
 };
 
+// Get user progress if it exists (read-only; does not initialize a new document)
+export const getUserProgressIfExists = async (userId: string): Promise<UserProgress | null> => {
+  try {
+    const docRef = doc(db, 'progress', userId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) return null;
+
+    const data = docSnap.data();
+    return {
+      ...data,
+      updatedAt: data.updatedAt?.toDate?.() || new Date(),
+    } as UserProgress;
+  } catch (error) {
+    console.error('Error getting user progress (read-only):', error);
+    return null;
+  }
+};
+
 // Subscribe to user progress (realtime)
 export const subscribeToUserProgress = (
   userId: string,
