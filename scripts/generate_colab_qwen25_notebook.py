@@ -89,9 +89,11 @@ def build_cells() -> list[dict]:
             "install",
             dedent(
                 """
+                !pip install -q --upgrade pip
+                !pip uninstall -y bigframes gcsfs s3fs || true
                 !pip install -q "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
-                !pip install -q trl==0.22.2 peft accelerate bitsandbytes xformers lpw-stable-diffusion
-                !pip install -q datasets huggingface_hub transformers==4.57.3
+                !pip install -q trl==0.22.2 peft accelerate bitsandbytes xformers
+                !pip install -q datasets huggingface_hub==0.34.4 transformers==4.57.3 fsspec==2025.9.0
                 """
             ).strip()
             + "\n",
@@ -102,12 +104,16 @@ def build_cells() -> list[dict]:
             dedent(
                 """
                 import os
+                os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+                os.environ.setdefault("ABSL_MIN_LOG_LEVEL", "3")
+
                 import torch
+                import unsloth
+                from unsloth import FastLanguageModel
                 from datasets import load_dataset
                 from huggingface_hub import login
                 from transformers import TrainingArguments
                 from trl import SFTTrainer
-                from unsloth import FastLanguageModel
 
                 print("CUDA available:", torch.cuda.is_available())
                 if torch.cuda.is_available():
@@ -122,12 +128,13 @@ def build_cells() -> list[dict]:
             dedent(
                 f"""
                 HF_TOKEN = ''
-                HF_USERNAME = "yourusername"
+                HF_USERNAME = "deignlazaro"
                 DATASET_PATH = "/kaggle/input/deped-math-sft/train.jsonl"
+                DATASET_REPO = "deignlazaro/deped-math-sft"
                 BASE_MODEL = "Qwen/Qwen2.5-7B-Instruct"
                 REPO_ID = f"{{HF_USERNAME}}/deped-math-qwen2.5-7b"
 
-                max_seq_length = 8192
+                max_seq_length = 4096
                 dtype = None
                 load_in_4bit = True
 
@@ -148,6 +155,9 @@ def build_cells() -> list[dict]:
             "dataset",
             dedent(
                 """
+                import glob
+
+
                 def messages_to_chatml(messages):
                     chunks = []
                     for msg in messages:
@@ -189,12 +199,29 @@ def build_cells() -> list[dict]:
                     raise ValueError("Each row must provide one of: text/chatml/messages or system+user+assistant.")
 
 
-                if os.path.exists(DATASET_PATH):
-                    dataset = load_dataset("json", data_files=DATASET_PATH, split="train")
+                def find_kaggle_train_file() -> str | None:
+                    matches = sorted(glob.glob("/kaggle/input/**/train.jsonl", recursive=True))
+                    if not matches:
+                        return None
+                    deped_matches = [path for path in matches if "deped" in path.lower()]
+                    return deped_matches[0] if deped_matches else matches[0]
+
+
+                resolved_local_path = DATASET_PATH if os.path.exists(DATASET_PATH) else find_kaggle_train_file()
+                if resolved_local_path:
+                    print(f"Using local dataset file: {resolved_local_path}")
+                    dataset = load_dataset("json", data_files=resolved_local_path, split="train")
+                elif DATASET_REPO:
+                    print(f"Using Hub dataset repo: {DATASET_REPO}")
+                    dataset = load_dataset(DATASET_REPO, split="train")
                 elif "/" in DATASET_PATH and not DATASET_PATH.startswith("/"):
                     dataset = load_dataset(DATASET_PATH, split="train")
                 else:
-                    raise FileNotFoundError(f"Dataset not found: {DATASET_PATH}")
+                    available_inputs = sorted(glob.glob("/kaggle/input/*")) if os.path.isdir("/kaggle/input") else []
+                    raise FileNotFoundError(
+                        "Dataset not found. Checked DATASET_PATH and /kaggle/input/**/train.jsonl. "
+                        f"DATASET_PATH={DATASET_PATH}. Available /kaggle/input entries: {available_inputs}"
+                    )
 
                 dataset = dataset.map(row_to_text, remove_columns=dataset.column_names)
                 print("Train rows:", len(dataset))
@@ -237,8 +264,8 @@ def build_cells() -> list[dict]:
                     dataset_num_proc=2,
                     packing=False,
                     args=TrainingArguments(
-                        per_device_train_batch_size=2,
-                        gradient_accumulation_steps=4,
+                        per_device_train_batch_size=1,
+                        gradient_accumulation_steps=8,
                         warmup_steps=5,
                         max_steps=60,
                         learning_rate=2e-4,
