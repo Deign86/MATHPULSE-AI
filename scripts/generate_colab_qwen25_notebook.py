@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 from textwrap import dedent
 
@@ -82,7 +83,8 @@ def build_cells() -> list[dict]:
         md(
             "title",
             "# Complete Kaggle QLoRA Training for DepEd Math Qwen2.5-7B-Instruct\n"
-            "Compatible with Kaggle T4/P100 runtimes. This notebook expects train.jsonl in `/kaggle/input/deped-math-sft/`.\n",
+            "Production profile is enabled by default and supports Kaggle T4/P100 runtimes.\n"
+            "This notebook expects train.jsonl in `/kaggle/input/deped-math-sft/`.\n",
         ),
         md("install_md", "## 1) Install Dependencies"),
         code(
@@ -110,10 +112,15 @@ def build_cells() -> list[dict]:
                 import torch
                 import unsloth
                 from unsloth import FastLanguageModel
+                from pathlib import Path
                 from torch.utils.data import DataLoader
                 from datasets import load_dataset
                 from huggingface_hub import login
                 from transformers import DataCollatorForLanguageModeling, get_linear_schedule_with_warmup
+
+                if torch.cuda.is_available():
+                    torch.backends.cuda.matmul.allow_tf32 = True
+                    torch.backends.cudnn.allow_tf32 = True
 
                 print("CUDA available:", torch.cuda.is_available())
                 if torch.cuda.is_available():
@@ -133,12 +140,19 @@ def build_cells() -> list[dict]:
                 DATASET_REPO = "deignlazaro/deped-math-sft"
                 BASE_MODEL = "Qwen/Qwen2.5-7B-Instruct"
                 REPO_ID = f"{{HF_USERNAME}}/deped-math-qwen2.5-7b"
+                TRAIN_PROFILE = os.getenv("TRAIN_PROFILE", "production").strip().lower()
 
-                max_seq_length = 4096
+                if TRAIN_PROFILE not in {"production", "smoke"}:
+                    raise ValueError("Unsupported TRAIN_PROFILE=" + TRAIN_PROFILE + ". Use 'production' or 'smoke'.")
+
+                max_seq_length = int(os.getenv("MAX_SEQ_LENGTH", "4096"))
                 dtype = None
                 load_in_4bit = True
 
                 SYSTEM_PROMPT = {json.dumps(SYSTEM_PROMPT)}
+
+                print("Training profile:", TRAIN_PROFILE)
+                print("Max sequence length:", max_seq_length)
 
                 token = HF_TOKEN.strip() or os.getenv("HF_TOKEN", "").strip()
                 if token:
@@ -231,7 +245,8 @@ def build_cells() -> list[dict]:
 
                 dataset = dataset.map(row_to_text, remove_columns=dataset.column_names)
                 print("Train rows:", len(dataset))
-                print(dataset[0]["text"][:600])
+                if len(dataset) > 0:
+                    print(dataset[0]["text"][:600])
                 """
             ).strip()
             + "\n",
@@ -264,33 +279,120 @@ def build_cells() -> list[dict]:
                 if tokenizer.pad_token is None:
                     tokenizer.pad_token = tokenizer.eos_token
 
+                if len(dataset) == 0:
+                    raise RuntimeError("Dataset is empty; add training rows before launching production training.")
+
+                val_text_dataset = None
+                if len(dataset) >= 40:
+                    val_ratio = min(0.1, max(10 / len(dataset), 0.05))
+                    split_dataset = dataset.train_test_split(test_size=val_ratio, seed=3407, shuffle=True)
+                    train_text_dataset = split_dataset["train"]
+                    val_text_dataset = split_dataset["test"]
+                    print(f"Split dataset -> train={len(train_text_dataset)} val={len(val_text_dataset)}")
+                else:
+                    train_text_dataset = dataset
+                    print("Dataset too small for split. Validation is disabled for this run.")
+
                 def tokenize_batch(batch):
                     return tokenizer(batch["text"], truncation=True, max_length=max_seq_length)
 
-                map_workers = 1 if len(dataset) < 2 else 2
-                tokenized_dataset = dataset.map(
+                map_workers = 1 if len(train_text_dataset) < 200 else 2
+                tokenized_train_dataset = train_text_dataset.map(
                     tokenize_batch,
                     batched=True,
-                    remove_columns=dataset.column_names,
+                    remove_columns=train_text_dataset.column_names,
                     num_proc=map_workers,
-                    desc="Tokenizing dataset",
+                    desc="Tokenizing train dataset",
                 )
+
+                tokenized_val_dataset = None
+                if val_text_dataset is not None and len(val_text_dataset) > 0:
+                    tokenized_val_dataset = val_text_dataset.map(
+                        tokenize_batch,
+                        batched=True,
+                        remove_columns=val_text_dataset.column_names,
+                        num_proc=1,
+                        desc="Tokenizing validation dataset",
+                    )
 
                 data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
                 train_loader = DataLoader(
-                    tokenized_dataset,
+                    tokenized_train_dataset,
                     batch_size=1,
                     shuffle=True,
                     collate_fn=data_collator,
                     pin_memory=torch.cuda.is_available(),
                 )
 
-                max_steps = 60
-                gradient_accumulation_steps = 8
-                warmup_steps = 5
-                learning_rate = 2e-4
-                weight_decay = 0.01
-                logging_steps = 1
+                val_loader = None
+                if tokenized_val_dataset is not None:
+                    val_loader = DataLoader(
+                        tokenized_val_dataset,
+                        batch_size=1,
+                        shuffle=False,
+                        collate_fn=data_collator,
+                        pin_memory=torch.cuda.is_available(),
+                    )
+
+                if TRAIN_PROFILE == "production":
+                    default_max_steps = 600
+                    default_grad_accum = 16
+                    default_learning_rate = 1.5e-4
+                    default_weight_decay = 0.01
+                    default_logging_steps = 10
+                    default_eval_interval_steps = 50
+                    default_save_interval_steps = 100
+                    default_target_epochs = 3
+                    default_max_eval_batches = 16
+                else:
+                    default_max_steps = 60
+                    default_grad_accum = 8
+                    default_learning_rate = 2e-4
+                    default_weight_decay = 0.01
+                    default_logging_steps = 1
+                    default_eval_interval_steps = 20
+                    default_save_interval_steps = 0
+                    default_target_epochs = 1
+                    default_max_eval_batches = 4
+
+                gradient_accumulation_steps = max(
+                    1,
+                    int(os.getenv("GRADIENT_ACCUMULATION_STEPS", str(default_grad_accum))),
+                )
+                target_epochs = max(1, int(os.getenv("TARGET_EPOCHS", str(default_target_epochs))))
+                steps_per_epoch = max(1, math.ceil(len(train_loader) / gradient_accumulation_steps))
+                computed_steps = max(default_max_steps, steps_per_epoch * target_epochs)
+                max_steps = max(1, int(os.getenv("MAX_STEPS", str(computed_steps))))
+
+                warmup_default = max(10 if TRAIN_PROFILE == "production" else 5, int(max_steps * 0.05))
+                warmup_steps = int(os.getenv("WARMUP_STEPS", str(warmup_default)))
+                if max_steps > 1:
+                    warmup_steps = max(0, min(warmup_steps, max_steps - 1))
+                else:
+                    warmup_steps = 0
+
+                learning_rate = float(os.getenv("LEARNING_RATE", str(default_learning_rate)))
+                weight_decay = float(os.getenv("WEIGHT_DECAY", str(default_weight_decay)))
+                logging_steps = max(1, int(os.getenv("LOGGING_STEPS", str(default_logging_steps))))
+                eval_interval_steps = max(1, int(os.getenv("EVAL_INTERVAL_STEPS", str(default_eval_interval_steps))))
+                save_interval_steps = max(0, int(os.getenv("SAVE_INTERVAL_STEPS", str(default_save_interval_steps))))
+                max_eval_batches = max(1, int(os.getenv("MAX_EVAL_BATCHES", str(default_max_eval_batches))))
+
+                print(
+                    {
+                        "profile": TRAIN_PROFILE,
+                        "train_rows": len(tokenized_train_dataset),
+                        "val_rows": len(tokenized_val_dataset) if tokenized_val_dataset is not None else 0,
+                        "steps_per_epoch": steps_per_epoch,
+                        "max_steps": max_steps,
+                        "grad_accum": gradient_accumulation_steps,
+                        "warmup_steps": warmup_steps,
+                        "learning_rate": learning_rate,
+                        "weight_decay": weight_decay,
+                        "eval_interval_steps": eval_interval_steps,
+                        "save_interval_steps": save_interval_steps,
+                    }
+                )
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 model = model.to(device)
@@ -304,43 +406,93 @@ def build_cells() -> list[dict]:
                     num_training_steps=max_steps,
                 )
 
+                def evaluate_model(eval_loader):
+                    if eval_loader is None:
+                        return None
+
+                    model.eval()
+                    eval_loss_sum = 0.0
+                    eval_batches = 0
+                    with torch.no_grad():
+                        for eval_batch in eval_loader:
+                            eval_batch = {key: value.to(device) for key, value in eval_batch.items()}
+                            eval_outputs = model(**eval_batch)
+                            if eval_outputs.loss is None:
+                                continue
+                            eval_loss_sum += float(eval_outputs.loss.detach().item())
+                            eval_batches += 1
+                            if eval_batches >= max_eval_batches:
+                                break
+                    model.train()
+
+                    if eval_batches == 0:
+                        return None
+                    return eval_loss_sum / eval_batches
+
                 optimizer.zero_grad(set_to_none=True)
                 global_step = 0
                 micro_step = 0
                 loss_sum = 0.0
+                loss_count = 0
+                train_iterator = iter(train_loader)
 
                 while global_step < max_steps:
-                    for batch in train_loader:
-                        batch = {key: value.to(device) for key, value in batch.items()}
-                        outputs = model(**batch)
-                        loss = outputs.loss
-                        if loss is None:
-                            raise RuntimeError("Model forward returned no loss. Check labels in collator output.")
+                    try:
+                        batch = next(train_iterator)
+                    except StopIteration:
+                        train_iterator = iter(train_loader)
+                        continue
 
-                        loss_sum += float(loss.detach().item())
-                        (loss / gradient_accumulation_steps).backward()
-                        micro_step += 1
+                    batch = {key: value.to(device) for key, value in batch.items()}
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    if loss is None:
+                        raise RuntimeError("Model forward returned no loss. Check labels in collator output.")
 
-                        if micro_step % gradient_accumulation_steps == 0:
-                            torch.nn.utils.clip_grad_norm_(trainable_params, 1.0)
-                            optimizer.step()
-                            scheduler.step()
-                            optimizer.zero_grad(set_to_none=True)
-                            global_step += 1
+                    loss_sum += float(loss.detach().item())
+                    loss_count += 1
+                    (loss / gradient_accumulation_steps).backward()
+                    micro_step += 1
 
-                            if global_step % logging_steps == 0:
-                                avg_loss = loss_sum / logging_steps
-                                current_lr = scheduler.get_last_lr()[0]
-                                print(f"step={global_step}/{max_steps} loss={avg_loss:.6f} lr={current_lr:.6e}")
-                                loss_sum = 0.0
+                    should_step = micro_step % gradient_accumulation_steps == 0
+                    if not should_step:
+                        continue
 
-                            if global_step >= max_steps:
-                                break
+                    torch.nn.utils.clip_grad_norm_(trainable_params, 1.0)
+                    optimizer.step()
+                    scheduler.step()
+                    optimizer.zero_grad(set_to_none=True)
+                    global_step += 1
 
-                    if len(train_loader) == 0:
-                        raise RuntimeError("Tokenized dataset is empty; cannot train.")
+                    if global_step % logging_steps == 0 or global_step == 1:
+                        avg_loss = loss_sum / max(1, loss_count)
+                        current_lr = scheduler.get_last_lr()[0]
+                        log_line = f"step={global_step}/{max_steps} train_loss={avg_loss:.6f} lr={current_lr:.6e}"
+                        loss_sum = 0.0
+                        loss_count = 0
 
-                print({"global_step": global_step, "max_steps": max_steps})
+                        if val_loader is not None and (global_step % eval_interval_steps == 0 or global_step == 1):
+                            val_loss = evaluate_model(val_loader)
+                            if val_loss is not None:
+                                log_line += f" val_loss={val_loss:.6f}"
+                        print(log_line)
+
+                    if save_interval_steps > 0 and global_step % save_interval_steps == 0:
+                        checkpoint_dir = Path("checkpoints") / f"step-{global_step}"
+                        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                        model.save_pretrained(str(checkpoint_dir))
+                        tokenizer.save_pretrained(str(checkpoint_dir))
+                        print(f"Saved checkpoint at {checkpoint_dir}")
+
+                print(
+                    {
+                        "global_step": global_step,
+                        "max_steps": max_steps,
+                        "profile": TRAIN_PROFILE,
+                        "train_rows": len(tokenized_train_dataset),
+                        "val_rows": len(tokenized_val_dataset) if tokenized_val_dataset is not None else 0,
+                    }
+                )
                 """
             ).strip()
             + "\n",
@@ -358,7 +510,7 @@ def build_cells() -> list[dict]:
             ).strip()
             + "\n",
         ),
-        md("eval_md", "## 7) Quick Evaluation Smoke Test"),
+        md("eval_md", "## 7) Quick Evaluation Spot Check"),
         code(
             "eval",
             dedent(
