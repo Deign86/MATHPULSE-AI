@@ -112,8 +112,7 @@ def build_cells() -> list[dict]:
                 from unsloth import FastLanguageModel
                 from datasets import load_dataset
                 from huggingface_hub import login
-                from transformers import TrainingArguments
-                from trl import SFTTrainer
+                from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
 
                 print("CUDA available:", torch.cuda.is_available())
                 if torch.cuda.is_available():
@@ -163,6 +162,12 @@ def build_cells() -> list[dict]:
                     for msg in messages:
                         role = str(msg.get("role", "")).strip()
                         content = str(msg.get("content", "")).strip()
+
+                        prefix = f"<|im_start|>{role}\\n"
+                        suffix = "\\n<|im_end|>"
+                        if content.startswith(prefix) and content.endswith(suffix):
+                            content = content[len(prefix) : -len(suffix)].strip()
+
                         if role in {"system", "user", "assistant"} and content:
                             chunks.append(f"<|im_start|>{role}\\n{content}\\n<|im_end|>")
                     return "\\n".join(chunks)
@@ -255,32 +260,49 @@ def build_cells() -> list[dict]:
                     loftq_config=None,
                 )
 
-                trainer = SFTTrainer(
+                if tokenizer.pad_token is None:
+                    tokenizer.pad_token = tokenizer.eos_token
+
+                def tokenize_batch(batch):
+                    return tokenizer(batch["text"], truncation=True, max_length=max_seq_length)
+
+                map_workers = 1 if len(dataset) < 2 else 2
+                tokenized_dataset = dataset.map(
+                    tokenize_batch,
+                    batched=True,
+                    remove_columns=dataset.column_names,
+                    num_proc=map_workers,
+                    desc="Tokenizing dataset",
+                )
+
+                data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
+                training_args = TrainingArguments(
+                    per_device_train_batch_size=1,
+                    gradient_accumulation_steps=8,
+                    warmup_steps=5,
+                    max_steps=60,
+                    learning_rate=2e-4,
+                    fp16=not torch.cuda.is_bf16_supported(),
+                    bf16=torch.cuda.is_bf16_supported(),
+                    logging_steps=1,
+                    optim="adamw_8bit",
+                    weight_decay=0.01,
+                    lr_scheduler_type="linear",
+                    seed=3407,
+                    output_dir="outputs",
+                    save_strategy="steps",
+                    save_steps=60,
+                    report_to="none",
+                    remove_unused_columns=False,
+                )
+
+                trainer = Trainer(
                     model=model,
                     tokenizer=tokenizer,
-                    train_dataset=dataset,
-                    dataset_text_field="text",
-                    max_seq_length=max_seq_length,
-                    dataset_num_proc=2,
-                    packing=False,
-                    args=TrainingArguments(
-                        per_device_train_batch_size=1,
-                        gradient_accumulation_steps=8,
-                        warmup_steps=5,
-                        max_steps=60,
-                        learning_rate=2e-4,
-                        fp16=not torch.cuda.is_bf16_supported(),
-                        bf16=torch.cuda.is_bf16_supported(),
-                        logging_steps=1,
-                        optim="adamw_8bit",
-                        weight_decay=0.01,
-                        lr_scheduler_type="linear",
-                        seed=3407,
-                        output_dir="outputs",
-                        save_strategy="steps",
-                        save_steps=60,
-                        report_to="none",
-                    ),
+                    args=training_args,
+                    train_dataset=tokenized_dataset,
+                    data_collator=data_collator,
                 )
 
                 trainer_stats = trainer.train()
