@@ -38,6 +38,25 @@ tokenizer = AutoTokenizer.from_pretrained("yourusername/deped-math-qwen2.5-7b-me
 - Dataset: DepEd SHS math prompts in JSONL messages format
 - Hardware: Kaggle T4/P100
 
+## Production Defaults
+- Training profile defaults to production in the generated notebook.
+- Default optimizer schedule uses 600 max steps, 16 gradient accumulation, and 5% warmup.
+- Validation split is enabled automatically when at least 40 rows are available.
+- Checkpoints are saved every 100 optimizer steps to `checkpoints/step-<N>`.
+
+Environment variable overrides supported in the notebook runtime:
+- `TRAIN_PROFILE` (`production` or `smoke`)
+- `MAX_STEPS`
+- `TARGET_EPOCHS`
+- `GRADIENT_ACCUMULATION_STEPS`
+- `LEARNING_RATE`
+- `WEIGHT_DECAY`
+- `WARMUP_STEPS`
+- `EVAL_INTERVAL_STEPS`
+- `SAVE_INTERVAL_STEPS`
+- `MAX_EVAL_BATCHES`
+- `MAX_SEQ_LENGTH`
+
 ## File Map
 - `system_prompt.txt`: fixed training system prompt
 - `train.jsonl`: sample dataset line in required chat schema
@@ -65,3 +84,12 @@ kaggle kernels push -p .kaggle-kernels/<your-kernel-slug>
 3. Download artifacts or sync to working directory.
 4. Login: `huggingface-cli login`.
 5. Publish: `python training/deped_qwen25_pack/upload_to_hf.py --repo-id yourusername/deped-math-qwen2.5-7b`.
+
+## Launch Production Kernel
+```bash
+python scripts/start_kaggle_notebook_training.py \
+	--kernel-slug qwen25-deped-lora-production \
+	--kernel-title "MathPulse Qwen2.5 DepEd LoRA Production" \
+	--dataset-source deignlazaro/deped-math-sft \
+	--accelerator NvidiaTeslaT4
+```
