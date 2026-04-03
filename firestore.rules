@@ -30,6 +30,13 @@ service cloud.firestore {
       return isTeacher() || isAdmin();
     }
 
+    function ownsClassroom(classroomId) {
+      return isSignedIn()
+        && classroomId != null
+        && (isAdmin()
+          || (isTeacher() && get(/databases/$(database)/documents/classrooms/$(classroomId)).data.teacherId == request.auth.uid));
+    }
+
     function isSelf(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -80,6 +87,12 @@ service cloud.firestore {
     match /notifications/{docId} {
       allow read: if ownerByField('userId') || isTeacherOrAdmin();
       allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow delete: if ownerByField('userId') || isAdmin();
+    }
+
+    match /calendarEvents/{docId} {
+      allow read: if ownerByField('userId') || isAdmin();
+      allow create, update: if ownerByField('userId') || isAdmin();
       allow delete: if ownerByField('userId') || isAdmin();
     }
 
@@ -141,6 +154,23 @@ service cloud.firestore {
       allow read: if isSelf(studentId) || isTeacherOrAdmin();
       allow create, update: if isTeacherOrAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /classrooms/{docId} {
+      allow read: if ownerByField('teacherId') || isAdmin();
+      allow create, update, delete: if ownerByField('teacherId') || isAdmin();
+    }
+
+    match /activities/{docId} {
+      allow read: if ownsClassroom(resource.data.classroomId) || isAdmin();
+      allow create: if ownsClassroom(request.resource.data.classroomId) || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /announcements/{docId} {
+      allow read: if ownsClassroom(resource.data.classroomId) || isAdmin();
+      allow create: if ownerInIncoming('teacherId') || isAdmin();
+      allow update, delete: if ownerInExisting('teacherId') || isAdmin();
     }
 
     match /diagnosticResults/{docId} {
