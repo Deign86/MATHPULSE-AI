@@ -251,21 +251,12 @@ const LoginPage: React.FC = () => {
             className="flex flex-col justify-center space-y-8"
           >
             {/* Logo */}
-            <motion.div className="flex items-center gap-4">
-              <motion.div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center relative shadow-xl shadow-sky-500/20 bg-white/80 backdrop-blur-sm border border-white/50"
-                animate={{ boxShadow: ['0 0 20px rgba(14,165,233,0.15)', '0 0 40px rgba(14,165,233,0.3)', '0 0 20px rgba(14,165,233,0.15)'] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              >
+            <motion.div className="flex items-center gap-2.5">
+              <motion.div className="relative flex items-center justify-center drop-shadow-md">
                 <img 
-                  src="/avatar/avatar_icon.png" 
-                  alt="MathPulse AI Avatar" 
-                  className="w-14 h-14 object-contain"
-                />
-                <motion.div
-                  className="absolute inset-0 rounded-2xl border-2 border-sky-300/30"
-                  animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  src="/mathpulse_logo.png" 
+                  alt="MathPulse Logo" 
+                  className="w-16 h-16 object-contain flex-shrink-0"
                 />
               </motion.div>
               <div>
