@@ -110,9 +110,10 @@ def build_cells() -> list[dict]:
                 import torch
                 import unsloth
                 from unsloth import FastLanguageModel
+                from torch.utils.data import DataLoader
                 from datasets import load_dataset
                 from huggingface_hub import login
-                from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
+                from transformers import DataCollatorForLanguageModeling, get_linear_schedule_with_warmup
 
                 print("CUDA available:", torch.cuda.is_available())
                 if torch.cuda.is_available():
@@ -276,37 +277,70 @@ def build_cells() -> list[dict]:
                 )
 
                 data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-
-                training_args = TrainingArguments(
-                    per_device_train_batch_size=1,
-                    gradient_accumulation_steps=8,
-                    warmup_steps=5,
-                    max_steps=60,
-                    learning_rate=2e-4,
-                    fp16=not torch.cuda.is_bf16_supported(),
-                    bf16=torch.cuda.is_bf16_supported(),
-                    logging_steps=1,
-                    optim="adamw_8bit",
-                    weight_decay=0.01,
-                    lr_scheduler_type="linear",
-                    seed=3407,
-                    output_dir="outputs",
-                    save_strategy="steps",
-                    save_steps=60,
-                    report_to="none",
-                    remove_unused_columns=False,
+                train_loader = DataLoader(
+                    tokenized_dataset,
+                    batch_size=1,
+                    shuffle=True,
+                    collate_fn=data_collator,
+                    pin_memory=torch.cuda.is_available(),
                 )
 
-                trainer = Trainer(
-                    model=model,
-                    tokenizer=tokenizer,
-                    args=training_args,
-                    train_dataset=tokenized_dataset,
-                    data_collator=data_collator,
+                max_steps = 60
+                gradient_accumulation_steps = 8
+                warmup_steps = 5
+                learning_rate = 2e-4
+                weight_decay = 0.01
+                logging_steps = 1
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                model = model.to(device)
+                model.train()
+
+                trainable_params = [param for param in model.parameters() if param.requires_grad]
+                optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+                scheduler = get_linear_schedule_with_warmup(
+                    optimizer,
+                    num_warmup_steps=warmup_steps,
+                    num_training_steps=max_steps,
                 )
 
-                trainer_stats = trainer.train()
-                print(trainer_stats)
+                optimizer.zero_grad(set_to_none=True)
+                global_step = 0
+                micro_step = 0
+                loss_sum = 0.0
+
+                while global_step < max_steps:
+                    for batch in train_loader:
+                        batch = {key: value.to(device) for key, value in batch.items()}
+                        outputs = model(**batch)
+                        loss = outputs.loss
+                        if loss is None:
+                            raise RuntimeError("Model forward returned no loss. Check labels in collator output.")
+
+                        loss_sum += float(loss.detach().item())
+                        (loss / gradient_accumulation_steps).backward()
+                        micro_step += 1
+
+                        if micro_step % gradient_accumulation_steps == 0:
+                            torch.nn.utils.clip_grad_norm_(trainable_params, 1.0)
+                            optimizer.step()
+                            scheduler.step()
+                            optimizer.zero_grad(set_to_none=True)
+                            global_step += 1
+
+                            if global_step % logging_steps == 0:
+                                avg_loss = loss_sum / logging_steps
+                                current_lr = scheduler.get_last_lr()[0]
+                                print(f"step={global_step}/{max_steps} loss={avg_loss:.6f} lr={current_lr:.6e}")
+                                loss_sum = 0.0
+
+                            if global_step >= max_steps:
+                                break
+
+                    if len(train_loader) == 0:
+                        raise RuntimeError("Tokenized dataset is empty; cannot train.")
+
+                print({"global_step": global_step, "max_steps": max_steps})
                 """
             ).strip()
             + "\n",
