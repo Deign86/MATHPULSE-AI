@@ -106,6 +106,7 @@ def build_cells() -> list[dict]:
             dedent(
                 """
                 import os
+                import math
                 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
                 os.environ.setdefault("ABSL_MIN_LOG_LEVEL", "3")
 
