@@ -158,7 +158,7 @@ Runtime note:
    VITE_FIREBASE_APP_ID=your_app_id
 
    # Backend API (optional — defaults to hosted HF Spaces)
-   VITE_API_URL=https://deign86-mathpulse-api.hf.space
+   VITE_API_URL=https://deign86-mathpulse-api-v3test.hf.space
 
    # Import-grounded generation rollout flags (frontend)
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
@@ -183,7 +183,7 @@ Runtime note:
    export ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
    ```
-   > **Note:** The hosted backend at `https://deign86-mathpulse-api.hf.space` is used by default. Local backend is only needed for development. Port 7860 matches Hugging Face Spaces convention; Docker maps it to 8000.
+   > **Note:** The hosted backend at `https://deign86-mathpulse-api-v3test.hf.space` is used by default. Local backend is only needed for development. Port 7860 matches Hugging Face Spaces convention; Docker maps it to 8000.
 
 ### Build for Production
 ```bash
@@ -206,7 +206,7 @@ npm run check:backend
 ### Import-Grounded Pilot Operations
 ```bash
 # Telemetry summary (Query A-D equivalent) for the authenticated teacher
-curl -X GET "${VITE_API_URL:-https://deign86-mathpulse-api.hf.space}/api/feedback/import-grounded/summary?days=7&limit=5000" \
+curl -X GET "${VITE_API_URL:-https://deign86-mathpulse-api-v3test.hf.space}/api/feedback/import-grounded/summary?days=7&limit=5000" \
    -H "Authorization: Bearer <firebase_id_token>" \
    -H "Content-Type: application/json"
 ```
@@ -442,7 +442,7 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 - `VITE_ENABLE_ASYNC_GENERATION` controls frontend use of async submit/poll generation endpoints for quiz and lesson workflows.
 - All flags default to `true`; set any flag to `false` to disable that behavior without code changes.
 
-> **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api.hf.space`.
+> **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api-v3test.hf.space`.
 
 ### Math Verification System
 

@@ -38,10 +38,19 @@ const parseEnvBoolean = (value: string | undefined, defaultValue: boolean): bool
   return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 };
 
+const parseEnvPositiveInt = (value: string | undefined, defaultValue: number): number => {
+  if (value == null || value.trim() === '') return defaultValue;
+  const parsed = Number.parseInt(value.trim(), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return defaultValue;
+  return parsed;
+};
+
 const IMPORT_GROUNDED_QUIZ_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_QUIZ, true);
 const IMPORT_GROUNDED_LESSON_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_LESSON, true);
 const IMPORT_GROUNDED_FEEDBACK_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS, true);
 const ASYNC_GENERATION_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_ASYNC_GENERATION, true);
+const CHAT_STREAM_IDLE_TIMEOUT_MS = parseEnvPositiveInt(import.meta.env.VITE_CHAT_STREAM_IDLE_TIMEOUT_MS, 20_000);
+const CHAT_STREAM_TOTAL_TIMEOUT_MS = parseEnvPositiveInt(import.meta.env.VITE_CHAT_STREAM_TOTAL_TIMEOUT_MS, 120_000);
 let IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = true;
 let IMPORTED_CLASS_OVERVIEW_RETRY_AT_EPOCH_MS = 0;
 const IMPORTED_CLASS_OVERVIEW_RETRY_COOLDOWN_MS = 60_000;
@@ -1042,6 +1051,35 @@ export const apiService = {
     validateRequired('/api/chat', { message });
 
     if (onChunk) {
+      const streamController = new AbortController();
+      let streamAbortReason: 'idle' | 'total' | null = null;
+      let idleTimer: ReturnType<typeof setTimeout> | null = null;
+      let totalTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const abortStream = (reason: 'idle' | 'total') => {
+        if (streamAbortReason) return;
+        streamAbortReason = reason;
+        streamController.abort();
+      };
+
+      const clearStreamTimers = () => {
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        }
+        if (totalTimer) {
+          clearTimeout(totalTimer);
+          totalTimer = null;
+        }
+      };
+
+      const refreshIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => abortStream('idle'), CHAT_STREAM_IDLE_TIMEOUT_MS);
+      };
+
+      totalTimer = setTimeout(() => abortStream('total'), CHAT_STREAM_TOTAL_TIMEOUT_MS);
+
       const headers = new Headers({
         'Content-Type': 'application/json',
       });
@@ -1058,84 +1096,113 @@ export const apiService = {
         }
       }
 
-      const response = await fetch(`${API_URL}/api/chat/stream`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ message, history: history ?? [] }),
-      });
+      let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
-      if (!response.ok || !response.body) {
-        const bodyText = await response.text().catch(() => 'Unable to read response body');
-        throw new Error(`Streaming request failed (${response.status}): ${bodyText.slice(0, 300)}`);
-      }
+      try {
+        refreshIdleTimer();
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullResponse = '';
+        const response = await fetch(`${API_URL}/api/chat/stream`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ message, history: history ?? [] }),
+          signal: streamController.signal,
+        });
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+        if (!response.ok || !response.body) {
+          const bodyText = await response.text().catch(() => 'Unable to read response body');
+          throw new Error(`Streaming request failed (${response.status}): ${bodyText.slice(0, 300)}`);
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullResponse = '';
 
-        let boundary = buffer.indexOf('\n\n');
-        while (boundary !== -1) {
-          const rawEvent = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          refreshIdleTimer();
 
-          let eventType = 'message';
-          const dataLines: string[] = [];
-          for (const line of rawEvent.split('\n')) {
-            if (line.startsWith('event:')) {
-              eventType = line.slice(6).trim();
-            } else if (line.startsWith('data:')) {
-              dataLines.push(line.slice(5).trimStart());
+          buffer += decoder.decode(value, { stream: true });
+
+          let boundary = buffer.indexOf('\n\n');
+          while (boundary !== -1) {
+            const rawEvent = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
+
+            let eventType = 'message';
+            const dataLines: string[] = [];
+            for (const line of rawEvent.split('\n')) {
+              if (line.startsWith('event:')) {
+                eventType = line.slice(6).trim();
+              } else if (line.startsWith('data:')) {
+                dataLines.push(line.slice(5).trimStart());
+              }
             }
-          }
 
-          const eventData = dataLines.join('\n');
-          if (!eventData) {
+            const eventData = dataLines.join('\n');
+            if (!eventData) {
+              boundary = buffer.indexOf('\n\n');
+              continue;
+            }
+
+            if (eventType === 'chunk') {
+              let chunk = eventData;
+              try {
+                const parsed = JSON.parse(eventData) as { chunk?: string };
+                if (typeof parsed?.chunk === 'string') {
+                  chunk = parsed.chunk;
+                }
+              } catch {
+                // Keep raw chunk when payload is plain text.
+              }
+
+              if (chunk) {
+                fullResponse += chunk;
+                onChunk(chunk);
+                refreshIdleTimer();
+              }
+            } else if (eventType === 'error') {
+              let errorMessage = 'Streaming failed on server.';
+              try {
+                const parsed = JSON.parse(eventData) as { detail?: string };
+                if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
+                  errorMessage = parsed.detail;
+                }
+              } catch {
+                if (eventData.trim()) errorMessage = eventData.trim();
+              }
+              throw new Error(errorMessage);
+            } else if (eventType === 'end') {
+              return { response: fullResponse };
+            }
+
             boundary = buffer.indexOf('\n\n');
-            continue;
           }
+        }
 
-          if (eventType === 'chunk') {
-            let chunk = eventData;
-            try {
-              const parsed = JSON.parse(eventData) as { chunk?: string };
-              if (typeof parsed?.chunk === 'string') {
-                chunk = parsed.chunk;
-              }
-            } catch {
-              // Keep raw chunk when payload is plain text.
-            }
-
-            if (chunk) {
-              fullResponse += chunk;
-              onChunk(chunk);
-            }
-          } else if (eventType === 'error') {
-            let errorMessage = 'Streaming failed on server.';
-            try {
-              const parsed = JSON.parse(eventData) as { detail?: string };
-              if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
-                errorMessage = parsed.detail;
-              }
-            } catch {
-              if (eventData.trim()) errorMessage = eventData.trim();
-            }
-            throw new Error(errorMessage);
-          } else if (eventType === 'end') {
-            return { response: fullResponse };
+        return { response: fullResponse };
+      } catch (err) {
+        if (streamAbortReason === 'idle') {
+          throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_IDLE_TIMEOUT_MS);
+        }
+        if (streamAbortReason === 'total') {
+          throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_TOTAL_TIMEOUT_MS);
+        }
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_TOTAL_TIMEOUT_MS);
+        }
+        throw err;
+      } finally {
+        clearStreamTimers();
+        if (reader) {
+          try {
+            await reader.cancel();
+          } catch {
+            // Ignore cancellation errors during cleanup.
           }
-
-          boundary = buffer.indexOf('\n\n');
         }
       }
-
-      return { response: fullResponse };
     }
 
     const result = await apiFetch<ChatResponse>(

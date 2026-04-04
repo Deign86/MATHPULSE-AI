@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_IMPORT_GROUNDED_QUIZ?: string;
   readonly VITE_ENABLE_IMPORT_GROUNDED_LESSON?: string;
   readonly VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS?: string;
+  readonly VITE_CHAT_STREAM_IDLE_TIMEOUT_MS?: string;
+  readonly VITE_CHAT_STREAM_TOTAL_TIMEOUT_MS?: string;
 }
 
 interface ImportMeta {
