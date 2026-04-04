@@ -1,6 +1,8 @@
 transformers>=4.45.0
+peft>=0.13.0
 accelerate>=0.34.0
 torch>=2.3.0
+bitsandbytes>=0.43.0; platform_system != "Darwin"
 huggingface-hub>=0.31.0
 requests>=2.31.0
 PyYAML>=6.0.0
