@@ -11,6 +11,7 @@ import {
 } from '../services/chatService';
 import { toChatPreviewText } from '../utils/chatPreview';
 import { formatAssistantResponseForStorage } from '../utils/chatMessageFormatting';
+import { isMathRelatedQuery, MATH_ONLY_REFUSAL_MESSAGE } from '../utils/mathScope';
 
 export interface Message {
   id: string;
@@ -51,6 +52,10 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 /** Generate a helpful math tutor response when backend is unavailable */
 function generateFallbackResponse(userText: string): string {
+  if (!isMathRelatedQuery(userText)) {
+    return MATH_ONLY_REFUSAL_MESSAGE;
+  }
+
   const lower = userText.toLowerCase().trim();
 
   // --- Conversational / non-math inputs ---
@@ -357,11 +362,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   /** Send a message and get AI response from the backend */
   const sendMessage = useCallback(async (sessionId: string, userText: string) => {
+    const trimmedUserText = userText.trim();
+
     // Add user message
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text: userText.trim(),
+      text: trimmedUserText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     addMessageToSession(sessionId, userMsg);
@@ -375,6 +382,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
         content: m.text,
       }));
+
+      if (!isMathRelatedQuery(trimmedUserText)) {
+        const refusalMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: MATH_ONLY_REFUSAL_MESSAGE,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        addMessageToSession(sessionId, refusalMsg);
+        return;
+      }
 
       const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       let streamedText = '';
@@ -431,7 +449,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       };
 
       try {
-        const { response } = await apiService.chat(userText.trim(), history, (chunk: string) => {
+        const { response } = await apiService.chat(trimmedUserText, history, (chunk: string) => {
           streamedText += chunk;
           upsertStreamingMessage(streamedText);
         });
@@ -456,11 +474,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         let aiResponseText = '';
         try {
-          const { data } = await apiService.chatSafe(userText.trim(), history);
+          const { data } = await apiService.chatSafe(trimmedUserText, history);
           aiResponseText = data.response;
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
-          aiResponseText = generateFallbackResponse(userText.trim());
+          aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
         const finalFallbackResponse = formatAssistantResponseForStorage(aiResponseText);
