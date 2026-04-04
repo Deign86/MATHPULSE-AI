@@ -7,7 +7,7 @@ import { Lesson } from '../data/subjects';
 interface LessonViewerProps {
   lesson: Lesson;
   onBack: () => void;
-  onComplete: () => void;
+  onComplete: (score?: number, totalXP?: number) => void;
 }
 
 interface LessonContent {

@@ -72,10 +72,12 @@ export const getUserNotifications = async (
     }
 
     const snapshot = await getDocs(notificationsQuery);
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
+    return snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
       return {
         ...data,
+        id: docSnap.id,
+        actionUrl: data.actionUrl ?? data.link,
         createdAt: data.createdAt?.toDate() || new Date(),
       } as Notification;
     });

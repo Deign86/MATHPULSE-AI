@@ -73,10 +73,11 @@ export const completeLesson = async (
 ): Promise<void> => {
   try {
     const progressRef = doc(db, 'progress', userId);
-    const progressSnap = await getDoc(progressRef);
+    let progressSnap = await getDoc(progressRef);
 
     if (!progressSnap.exists()) {
       await initializeUserProgress(userId);
+      progressSnap = await getDoc(progressRef);
     }
 
     const progressData = progressSnap.data() as UserProgress;
@@ -115,7 +116,8 @@ export const completeLesson = async (
     }
 
     const moduleProgress = subjectProgress.modulesProgress[moduleId];
-    if (!moduleProgress.lessonsCompleted.includes(lessonId)) {
+    const isNewLesson = !moduleProgress.lessonsCompleted.includes(lessonId);
+    if (isNewLesson) {
       moduleProgress.lessonsCompleted.push(lessonId);
       moduleProgress.lastAccessedAt = new Date();
     }
@@ -126,7 +128,7 @@ export const completeLesson = async (
       {
         [`lessons.${lessonId}`]: lessonProgress,
         [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
-        totalLessonsCompleted: increment(1),
+        ...(isNewLesson && { totalLessonsCompleted: increment(1) }),
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -152,10 +154,11 @@ export const completeQuiz = async (
 ): Promise<void> => {
   try {
     const progressRef = doc(db, 'progress', userId);
-    const progressSnap = await getDoc(progressRef);
+    let progressSnap = await getDoc(progressRef);
 
     if (!progressSnap.exists()) {
       await initializeUserProgress(userId);
+      progressSnap = await getDoc(progressRef);
     }
 
     const progressData = progressSnap.data() as UserProgress;
@@ -199,7 +202,8 @@ export const completeQuiz = async (
     }
 
     const moduleProgress = subjectProgress.modulesProgress[moduleId];
-    if (!moduleProgress.quizzesCompleted.includes(quizId)) {
+    const isNewQuiz = !moduleProgress.quizzesCompleted.includes(quizId);
+    if (isNewQuiz) {
       moduleProgress.quizzesCompleted.push(quizId);
       moduleProgress.lastAccessedAt = new Date();
     }
@@ -208,7 +212,7 @@ export const completeQuiz = async (
     await updateDoc(progressRef, {
       quizAttempts: [...(progressData.quizAttempts || []), quizAttempt],
       [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
-      totalQuizzesCompleted: increment(1),
+      ...(isNewQuiz && { totalQuizzesCompleted: increment(1) }),
       updatedAt: serverTimestamp(),
     });
 
