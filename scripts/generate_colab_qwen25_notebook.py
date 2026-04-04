@@ -94,8 +94,9 @@ def build_cells() -> list[dict]:
                 !pip install -q --upgrade pip
                 !pip uninstall -y bigframes gcsfs s3fs || true
                 !pip install -q "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
-                !pip install -q trl==0.22.2 peft accelerate bitsandbytes xformers
+                !pip install -q trl==0.22.2 peft accelerate bitsandbytes
                 !pip install -q datasets huggingface_hub==0.34.4 transformers==4.57.3 fsspec==2025.9.0
+                !pip uninstall -y xformers || true
                 """
             ).strip()
             + "\n",
@@ -110,12 +111,13 @@ def build_cells() -> list[dict]:
                 import re
                 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
                 os.environ.setdefault("ABSL_MIN_LOG_LEVEL", "3")
+                os.environ.setdefault("UNSLOTH_DISABLE_XFORMERS", "1")
 
                 import torch
                 import unsloth
                 from unsloth import FastLanguageModel
                 from pathlib import Path
-                from peft import PeftModel
+                from safetensors.torch import load_file as safe_load_file
                 from torch.utils.data import DataLoader
                 from datasets import load_dataset
                 from huggingface_hub import login
@@ -268,6 +270,19 @@ def build_cells() -> list[dict]:
                     load_in_4bit=load_in_4bit,
                 )
 
+                model = FastLanguageModel.get_peft_model(
+                    model,
+                    r=32,
+                    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+                    lora_alpha=16,
+                    lora_dropout=0.05,
+                    bias="none",
+                    use_gradient_checkpointing="unsloth",
+                    random_state=3407,
+                    use_rslora=False,
+                    loftq_config=None,
+                )
+
                 def find_latest_step_checkpoint():
                     checkpoint_roots = [Path("checkpoints"), Path("/kaggle/working/checkpoints")]
                     if Path("/kaggle/input").exists():
@@ -303,7 +318,25 @@ def build_cells() -> list[dict]:
 
                 if resume_checkpoint_path is not None:
                     print(f"Resuming LoRA adapters from {resume_checkpoint_path} (step={resume_step})")
-                    model = PeftModel.from_pretrained(model, str(resume_checkpoint_path), is_trainable=True)
+                    adapter_safetensors = resume_checkpoint_path / "adapter_model.safetensors"
+                    adapter_bin = resume_checkpoint_path / "adapter_model.bin"
+
+                    if adapter_safetensors.exists():
+                        adapter_state = safe_load_file(str(adapter_safetensors), device="cpu")
+                    elif adapter_bin.exists():
+                        adapter_state = torch.load(str(adapter_bin), map_location="cpu")
+                    else:
+                        raise FileNotFoundError(
+                            f"No adapter_model.safetensors or adapter_model.bin found in {resume_checkpoint_path}"
+                        )
+
+                    missing_keys, unexpected_keys = model.load_state_dict(adapter_state, strict=False)
+                    if unexpected_keys:
+                        print(f"WARNING: Unexpected adapter keys while loading resume checkpoint: {len(unexpected_keys)}")
+                    if missing_keys:
+                        print(f"Note: Missing keys while loading resume checkpoint: {len(missing_keys)}")
+
+                    del adapter_state
                     print("Optimizer and scheduler states are reinitialized; LR schedule will continue from resumed step.")
                 else:
                     if adapter_only_found:
@@ -311,19 +344,6 @@ def build_cells() -> list[dict]:
                         print("WARNING: Full step resume is not possible. Starting from step 0.")
                     else:
                         print("No prior checkpoint detected. Starting from step 0.")
-
-                    model = FastLanguageModel.get_peft_model(
-                        model,
-                        r=32,
-                        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-                        lora_alpha=16,
-                        lora_dropout=0.05,
-                        bias="none",
-                        use_gradient_checkpointing="unsloth",
-                        random_state=3407,
-                        use_rslora=False,
-                        loftq_config=None,
-                    )
 
                 if tokenizer.pad_token is None:
                     tokenizer.pad_token = tokenizer.eos_token
