@@ -92,7 +92,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 transition={{ duration: 0.2 }}
                 className="font-display font-bold text-xl text-[#0a1628] whitespace-nowrap overflow-hidden"
               >
-                MathPulse
+                MathPulse AI
               </motion.span>
             )}
           </AnimatePresence>
