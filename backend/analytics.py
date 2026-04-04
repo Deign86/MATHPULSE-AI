@@ -1186,8 +1186,10 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
     if len(X_data) < 50:
         logger.info("Insufficient Firestore data; generating synthetic training data")
         synth_X, synth_y = _generate_synthetic_risk_data(500)
-        X_data.extend(synth_X.tolist())
-        y_data.extend(synth_y.tolist())
+        for row in synth_X:
+            X_data.append(list(row))
+        for label in synth_y:
+            y_data.append(int(label))
 
     X = np.array(X_data)
     y = np.array(y_data)
