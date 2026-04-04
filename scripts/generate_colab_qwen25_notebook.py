@@ -272,19 +272,6 @@ def build_cells() -> list[dict]:
                     load_in_4bit=load_in_4bit,
                 )
 
-                model = FastLanguageModel.get_peft_model(
-                    model,
-                    r=32,
-                    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-                    lora_alpha=16,
-                    lora_dropout=0.05,
-                    bias="none",
-                    use_gradient_checkpointing="unsloth",
-                    random_state=3407,
-                    use_rslora=False,
-                    loftq_config=None,
-                )
-
                 def find_latest_step_checkpoint():
                     checkpoint_roots = [Path("checkpoints"), Path("/kaggle/working/checkpoints")]
                     if Path("/kaggle/input").exists():
@@ -324,6 +311,18 @@ def build_cells() -> list[dict]:
                     print("Loaded resume adapter into trainable PEFT model.")
                     print("Optimizer and scheduler states are reinitialized; LR schedule will continue from resumed step.")
                 else:
+                    model = FastLanguageModel.get_peft_model(
+                        model,
+                        r=32,
+                        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+                        lora_alpha=16,
+                        lora_dropout=0.05,
+                        bias="none",
+                        use_gradient_checkpointing="unsloth",
+                        random_state=3407,
+                        use_rslora=False,
+                        loftq_config=None,
+                    )
                     if adapter_only_found:
                         print("WARNING: Adapter artifacts were found but no step-* checkpoint folder was detected.")
                         print("WARNING: Full step resume is not possible. Starting from step 0.")
@@ -571,7 +570,11 @@ def build_cells() -> list[dict]:
             dedent(
                 """
                 model.save_pretrained("deped-math-lora")
-                model.save_pretrained_merged("deped-math-7b-merged", tokenizer, save_method="merged_16bit")
+                if hasattr(model, "save_pretrained_merged"):
+                    model.save_pretrained_merged("deped-math-7b-merged", tokenizer, save_method="merged_16bit")
+                else:
+                    merged_model = model.merge_and_unload()
+                    merged_model.save_pretrained("deped-math-7b-merged")
                 tokenizer.save_pretrained("deped-math-7b-merged")
                 print("Saved: deped-math-lora and deped-math-7b-merged")
 
