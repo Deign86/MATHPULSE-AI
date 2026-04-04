@@ -7,33 +7,6 @@ import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole 
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
 
-const getFriendlyErrorMessage = (err: unknown, defaultMessage: string): string => {
-  const errorMessage = err instanceof Error ? err.message : defaultMessage;
-  
-  if (errorMessage.includes('auth/invalid-credential') || errorMessage.includes('auth/wrong-password') || errorMessage.includes('auth/user-not-found')) {
-    return 'Invalid email or password. Please check your credentials and try again.';
-  }
-  if (errorMessage.includes('auth/email-already-in-use')) {
-    return 'This email is already registered. Please sign in instead.';
-  }
-  if (errorMessage.includes('auth/weak-password')) {
-    return 'Password is too weak. It should be at least 6 characters.';
-  }
-  if (errorMessage.includes('auth/too-many-requests')) {
-    return 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
-  }
-  if (errorMessage.includes('auth/network-request-failed')) {
-    return 'Network error. Please check your internet connection and try again.';
-  }
-  
-  // If it's a generic Firebase error, hide it behind the default message
-  if (errorMessage.includes('Firebase:') || errorMessage.includes('auth/')) {
-    return defaultMessage;
-  }
-  
-  return errorMessage;
-};
-
 const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11', 'Grade 12'];
   const SECTION_OPTIONS: Record<string, string[]> = {
@@ -96,7 +69,7 @@ const LoginPage: React.FC = () => {
       setPendingAuthRole(role);
       await signInWithEmail(demoEmail, demoPassword);
     } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err, 'Demo sign-in failed'));
+      setError(err instanceof Error ? err.message : 'Demo sign-in failed');
       setLoading(false);
     }
   };
@@ -148,7 +121,7 @@ const LoginPage: React.FC = () => {
         await signInWithEmail(email, password);
       }
     } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err, 'Authentication failed'));
+      setError(err instanceof Error ? err.message : 'Authentication failed');
       setLoading(false);
     }
   };
@@ -168,7 +141,7 @@ const LoginPage: React.FC = () => {
       }
       await signInWithGoogle(isSignUp ? selectedRole : undefined);
     } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err, 'Google sign-in failed'));
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setLoading(false);
     }
   };
@@ -251,12 +224,17 @@ const LoginPage: React.FC = () => {
             className="flex flex-col justify-center space-y-8"
           >
             {/* Logo */}
-            <motion.div className="flex items-center gap-2.5">
-              <motion.div className="relative flex items-center justify-center drop-shadow-md">
-                <img 
-                  src="/mathpulse_logo.png" 
-                  alt="MathPulse Logo" 
-                  className="w-16 h-16 object-contain flex-shrink-0"
+            <motion.div className="flex items-center gap-4">
+              <motion.div
+                className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center relative shadow-xl shadow-sky-500/30"
+                animate={{ boxShadow: ['0 0 20px rgba(14,165,233,0.15)', '0 0 40px rgba(14,165,233,0.3)', '0 0 20px rgba(14,165,233,0.15)'] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <span className="text-white font-display font-extrabold text-2xl">M</span>
+                <motion.div
+                  className="absolute inset-0 rounded-xl border-2 border-sky-300/30"
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
               </motion.div>
               <div>
@@ -379,19 +357,16 @@ const LoginPage: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <label htmlFor="signup-full-name" className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                       Full Name
                     </label>
                     <div className="relative">
                       <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
-                        id="signup-full-name"
-                        name="fullName"
                         type="text"
                         placeholder="Your Name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        autoComplete="name"
                         className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                         required
                       />
@@ -435,14 +410,12 @@ const LoginPage: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <label htmlFor="signup-grade-level" className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                       Grade Level
                     </label>
                     <div className="relative">
                       <GraduationCap size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <select
-                        id="signup-grade-level"
-                        name="gradeLevel"
                         value={selectedGrade}
                         onChange={(e) => setSelectedGrade(e.target.value)}
                         className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
@@ -462,14 +435,12 @@ const LoginPage: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <label htmlFor="signup-section" className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                       Section
                     </label>
                     <div className="relative">
                       <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <select
-                        id="signup-section"
-                        name="section"
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
                         className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
@@ -489,14 +460,12 @@ const LoginPage: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <label htmlFor="signup-department" className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                       Department
                     </label>
                     <div className="relative">
                       <BookOpen size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <select
-                        id="signup-department"
-                        name="department"
                         value={selectedDepartment}
                         onChange={(e) => setSelectedDepartment(e.target.value)}
                         className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
@@ -516,19 +485,16 @@ const LoginPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <label htmlFor="auth-email" className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                     Email Address
                   </label>
                   <div className="relative">
                     <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <Input
-                      id="auth-email"
-                      name="email"
                       type="email"
                       placeholder="your.email@school.edu"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
                       className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                       required
                     />
@@ -541,19 +507,16 @@ const LoginPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
                 >
-                  <label htmlFor="auth-password" className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                     Password
                   </label>
                   <div className="relative">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <Input
-                      id="auth-password"
-                      name="password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      autoComplete={isSignUp ? 'new-password' : 'current-password'}
                       className="w-full pl-11 pr-11 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                       required
                       minLength={6}
@@ -562,7 +525,6 @@ const LoginPage: React.FC = () => {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                       whileTap={{ scale: 0.9 }}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}

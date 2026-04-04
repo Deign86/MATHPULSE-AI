@@ -18,12 +18,12 @@ const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading 
         <motion.div
           animate={{ y: [0, -10, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="relative flex items-center justify-center shadow-xl"
+          className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-sky-100 to-indigo-100 flex items-center justify-center border-2 border-white shadow-xl"
         >
           <img 
-            src="/mathpulse_logo.png" 
+            src="/avatar/avatar_icon.png" 
             alt="Loading..." 
-            className="w-24 h-24 object-contain drop-shadow-lg"
+            className="w-16 h-16 object-contain drop-shadow-md"
             onError={(e) => {
               // Fallback if image doesn't exist yet
               (e.target as HTMLImageElement).style.display = 'none';

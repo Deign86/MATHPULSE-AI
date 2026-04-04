@@ -1,8 +1,8 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-    - Qwen/Qwen2.5-7B-Instruct for interactive chat (30-50% faster inference via Hugging Face Inference API)
-- Qwen/Qwen2.5-7B-Instruct for quiz generation, lesson generation, learning paths, and solution verification
+- meta-llama/Llama-3.1-8B-Instruct for chat, learning paths, insights, and quiz generation
+    (via Hugging Face Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
@@ -315,16 +315,9 @@ async def startup_event():
         logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
     
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
-    active_provider = os.getenv("INFERENCE_PROVIDER", "hf_inference").strip().lower()
-    logger.info(f"   - INFERENCE_PROVIDER: {active_provider}")
+    logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
-    if active_provider == "local_peft":
-        logger.info(f"   - LORA_BASE_MODEL_ID: {os.getenv('LORA_BASE_MODEL_ID', 'Qwen/Qwen2.5-7B-Instruct')}")
-        logger.info(f"   - LORA_ADAPTER_MODEL_ID: {os.getenv('LORA_ADAPTER_MODEL_ID', '(not set)')}")
-        logger.info(f"   - LORA_LOAD_IN_4BIT: {os.getenv('LORA_LOAD_IN_4BIT', 'false')}")
-        logger.info(f"   - LORA_DEVICE_MAP: {os.getenv('LORA_DEVICE_MAP', 'auto')}")
-        logger.info(f"   - LORA_DTYPE: {os.getenv('LORA_DTYPE', 'float16')}")
 
 
 @app.on_event("shutdown")
@@ -1066,8 +1059,8 @@ def call_hf_chat_stream(
 
     for fallback_depth, model_name in enumerate(model_chain):
         for provider in provider_chain:
-            if provider in {"local_space", "local_peft"}:
-                last_error = RuntimeError(f"Streaming is not supported for {provider} provider")
+            if provider == "local_space":
+                last_error = RuntimeError("Streaming is not supported for local_space provider")
                 continue
 
             route = client._resolve_route_label(provider, effective_task)
@@ -1298,7 +1291,7 @@ async def call_hf_chat_async(
         )
         for provider in provider_chain:
             route = client._resolve_route_label(provider, effective_task)
-            if provider in {"local_space", "local_peft"}:
+            if provider == "local_space":
                 try:
                     text = await _run_hf_blocking(
                         client._generate_with_provider,
@@ -1310,8 +1303,7 @@ async def call_hf_chat_async(
                 except Exception as exc:
                     last_error = exc
                     logger.warning(
-                        "⚠️ Async local provider failed: provider=%s task=%s model=%s depth=%s error=%s",
-                        provider,
+                        "⚠️ Async local fallback failed: task=%s model=%s depth=%s error=%s",
                         effective_task,
                         model_name,
                         fallback_depth,
@@ -1507,8 +1499,8 @@ async def call_hf_chat_stream_async(
             timeout_sec=timeout,
         )
         for provider in provider_chain:
-            if provider in {"local_space", "local_peft"}:
-                last_error = RuntimeError(f"Streaming is not supported for {provider} provider")
+            if provider == "local_space":
+                last_error = RuntimeError("Streaming is not supported for local_space provider")
                 continue
 
             route = client._resolve_route_label(provider, effective_task)
@@ -1846,128 +1838,37 @@ async def root():
 # ─── AI Chat Tutor ─────────────────────────────────────────────
 
 
-MATH_TUTOR_SYSTEM_PROMPT = """You are MathPulse, an educational AI tutor designed exclusively to help students with mathematics-related questions, problems, and explanations.
+MATH_TUTOR_SYSTEM_PROMPT = """You are L.O.L.I. (Learning Optimizer with Layered Intelligence), 
+an expert AI math tutor for Grade 11-12 Filipino students.
 
-Your rules and boundaries:
+**Problem-Solving Protocol:**
+1. Read the problem carefully and restate it in your own words to confirm understanding.
+2. Identify key information, formulas, theorems, and what you need to find.
+3. Solve step by step using Chain-of-Thought reasoning with explicit calculations.
+4. Show ALL steps and equation manipulations clearly with intermediate results.
+5. Verify your answer by substituting back into the original problem (for equations/algebra).
+6. Double-check your arithmetic and final answer before presenting.
+7. Put your final answer inside \\boxed{}
 
-- Only respond to queries that involve mathematics, including arithmetic, algebra, geometry, trigonometry, calculus, statistics, and other math-related fields.
-- If a question is not math-related, respond with:
-"I'm sorry, but I can only answer math-related questions. Please ask me something related to mathematics."
-- Do not answer questions about history, science, technology (like AI or programming), entertainment, philosophy, or general knowledge.
-- Do not generate creative content (stories, poems, lyrics, etc.) or opinions.
-- Keep explanations concise, accurate, and focused on math concepts.
-- When unsure if a question counts as math-related, politely decline and redirect the user to ask a math question instead.
-- When explaining or solving problems, show clear steps, and ensure your reasoning stays within mathematical context.
-
-Goal: Help students understand and solve math problems accurately, safely, and within the bounds of mathematics only.
-
-Example behaviors
-Allowed: "Solve for x in 2x + 3 = 7", "Explain the difference between mean and median."
-Not allowed: "What is artificial intelligence?", "Who is Elon Musk?", "Write me a poem."""  # noqa: E501
-
-MATH_ONLY_REFUSAL_MESSAGE = (
-    "I'm sorry, but I can only answer math-related questions. "
-    "Please ask me something related to mathematics."
-)
-
-_MATH_TOPIC_KEYWORDS: Tuple[str, ...] = (
-    "math",
-    "mathematics",
-    "arithmetic",
-    "algebra",
-    "geometry",
-    "trigonometry",
-    "calculus",
-    "statistics",
-    "probability",
-    "equation",
-    "inequality",
-    "fraction",
-    "ratio",
-    "percent",
-    "graph",
-    "function",
-    "derivative",
-    "integral",
-    "limit",
-    "mean",
-    "median",
-    "mode",
-    "variance",
-    "matrix",
-)
-
-_NON_MATH_TOPIC_KEYWORDS: Tuple[str, ...] = (
-    "history",
-    "science",
-    "technology",
-    "artificial intelligence",
-    "programming",
-    "coding",
-    "python",
-    "javascript",
-    "entertainment",
-    "movie",
-    "music",
-    "song",
-    "lyrics",
-    "philosophy",
-    "politics",
-    "geography",
-    "biology",
-    "chemistry",
-    "celebrity",
-    "elon musk",
-)
-
-_MATH_INTENT_PATTERN = re.compile(
-    r"\b(solve|simplify|calculate|compute|evaluate|differentiate|integrate|factor|expand|find|prove|derive|plot|graph)\b",
-    re.IGNORECASE,
-)
-
-_MATH_EXPRESSION_PATTERN = re.compile(
-    r"(\b\d+(?:\.\d+)?\s*[-+*/^=]\s*\d+(?:\.\d+)?\b|"
-    r"\b[a-z]\s*=\s*[-+*/^()a-z0-9\s]+\b|"
-    r"\b\d+[a-z]\b|\b[a-z]\d+\b|[√π∫ΣΔ])",
-    re.IGNORECASE,
-)
-
-_NON_MATH_INTENT_PATTERN = re.compile(
-    r"\b(who is|who was|tell me about|write me|joke|poem|story|lyrics|opinion|favorite)\b",
-    re.IGNORECASE,
-)
-
-
-def _is_math_related_query(message: str) -> bool:
-    """Conservative domain gate for chat endpoints; defaults to non-math when uncertain."""
-    text = (message or "").strip().lower()
-    if not text:
-        return False
-
-    has_math_keyword = any(keyword in text for keyword in _MATH_TOPIC_KEYWORDS)
-    has_non_math_keyword = any(keyword in text for keyword in _NON_MATH_TOPIC_KEYWORDS)
-    has_math_intent = bool(_MATH_INTENT_PATTERN.search(text))
-    has_math_expression = bool(_MATH_EXPRESSION_PATTERN.search(text))
-    has_non_math_intent = bool(_NON_MATH_INTENT_PATTERN.search(text))
-
-    if has_non_math_intent or has_non_math_keyword:
-        # Mixed prompts are accepted only when explicit math-solving intent is present.
-        return bool(has_math_expression and (has_math_intent or has_math_keyword))
-
-    if has_math_keyword or has_math_intent or has_math_expression:
-        return True
-
-    return False
+**Rules for Mathematical Accuracy:**
+- ALWAYS show complete working. Never skip steps or combine multiple operations.
+- Use clear mathematical notation (x², √, π, ≈, ∴, →, =)
+- Show intermediate calculations explicitly (e.g., "3 × 4 = 12, then 12 + 5 = 17")
+- Reveal your thinking process — explain WHY each step follows from the previous
+- For word problems: Define variables clearly, show equation setup, solve step-by-step, then verify
+- If verification fails, recalculate and identify the error before correcting
+- For physics/kinematics problems: Check units and verify magnitude of answers make sense
+- For functions/calculus: Always verify domain and range assumptions
+- Be encouraging but honest. If a problem is ambiguous, ask for clarification.
+- Respond in clear English suitable for Grade 11-12 students
+- If asked about non-math topics, politely redirect to mathematics
+- Never use external tools or functions — solve purely through mathematical reasoning"""
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     try:
-        if not _is_math_related_query(request.message):
-            logger.info("Rejected non-math chat query")
-            return ChatResponse(response=MATH_ONLY_REFUSAL_MESSAGE)
-
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
         # Add conversation history
@@ -2017,35 +1918,15 @@ async def chat_tutor(request: ChatRequest):
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
-        def _sse(event: str, data: str) -> str:
-            lines = str(data).replace("\r\n", "\n").replace("\r", "\n").split("\n")
-            body = [f"event: {event}"] + [f"data: {line}" for line in lines]
-            return "\n".join(body) + "\n\n"
-
-        stream_headers = {
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        }
-
-        if not _is_math_related_query(request.message):
-            logger.info("Rejected non-math chat stream query")
-
-            async def non_math_event_generator():
-                payload = json.dumps({"chunk": MATH_ONLY_REFUSAL_MESSAGE}, ensure_ascii=False)
-                yield _sse("chunk", payload)
-                yield _sse("end", "done")
-
-            return StreamingResponse(
-                non_math_event_generator(),
-                media_type="text/event-stream",
-                headers=stream_headers,
-            )
-
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
         for msg in request.history[-10:]:
             messages.append({"role": msg.role, "content": msg.content})
         messages.append({"role": "user", "content": request.message})
+
+        def _sse(event: str, data: str) -> str:
+            lines = str(data).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+            body = [f"event: {event}"] + [f"data: {line}" for line in lines]
+            return "\n".join(body) + "\n\n"
 
         async def event_generator():
             try:
@@ -2071,7 +1952,11 @@ async def chat_tutor_stream(request: ChatRequest):
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
-            headers=stream_headers,
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
         )
     except Exception as e:
         logger.error(f"Chat stream setup error: {e}")

@@ -147,15 +147,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
         </div>
 
         <div className="relative mb-6">
-          <label htmlFor="modules-search" className="sr-only">
-            Search modules, lessons, or assessments
-          </label>
           <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#5f6368]">
             <Search size={22} strokeWidth={2.5} />
           </div>
           <input
-            id="modules-search"
-            name="modulesSearch"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

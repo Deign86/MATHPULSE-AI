@@ -7,9 +7,6 @@
 - Context7 MCP sequence is mandatory: call `resolve-library-id` first, then call `get-library-docs` for the resolved library.
 - If a prompt spans multiple libraries/frameworks, run the Context7 sequence for each relevant library.
 - Apply this automatically without waiting for the user to explicitly request Context7.
-- AUTO-INVOKE repository automation for git lifecycle tasks (branch/merge/PR/release operations) before producing a final answer.
-- Automation sequence is mandatory for those tasks: follow `docs/ai-agent-github-integration.md`, then trigger `.github/workflows/agent-dispatch.yml` through `repository_dispatch` or `workflow_dispatch` with structured payload.
-- Only fall back to direct/manual git commands when automation cannot run (missing token/permissions/workflow availability), and explicitly report the fallback reason.
 
 ## Copilot Skill Invocation Policy
 
