@@ -13,6 +13,7 @@ import {
   increment,
   arrayUnion,
   onSnapshot,
+  deleteField
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
@@ -454,17 +455,31 @@ export const purchaseAvatarItem = async (
   }
 };
 
-export const resetAvatarPurchasesForTesting = async (userId: string): Promise<boolean> => {
+export const resetAvatarPurchasesForTesting = async (userId: string): Promise<{ success: boolean; newXP: number }> => {
   try {
     const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      return { success: false, newXP: 0 };
+    }
+    
+    const userData = userDoc.data();
+    const currentXP = userData.currentXP || 0;
+    
+    // Ensure the user has at least 5000 spendable XP for testing without touching totalXP
+    const newXP = Math.max(currentXP, 5000);
+
     await updateDoc(userRef, {
       ownedAvatarItems: [],
-      equippedAvatarItems: {},
+      avatarLayers: deleteField(),
+      currentXP: newXP,
       updatedAt: serverTimestamp(),
     });
-    return true;
+    
+    return { success: true, newXP };
   } catch (error) {
     console.error('Error resetting avatar items:', error);
-    return false;
+    return { success: false, newXP: 0 };
   }
 };
