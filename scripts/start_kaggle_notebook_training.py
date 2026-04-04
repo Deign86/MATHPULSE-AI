@@ -65,6 +65,7 @@ def _prepare_kernel_bundle(
     hf_token: str,
     accelerator: Optional[str],
     target_total_steps: Optional[int],
+    train_gpu_index: Optional[int],
 ) -> Path:
     if not notebook_path.exists():
         raise FileNotFoundError(f"Notebook file not found: {notebook_path}")
@@ -102,7 +103,7 @@ def _prepare_kernel_bundle(
         else:
             print("HF token was provided but no matching HF_TOKEN assignment was found in notebook.")
 
-    if target_total_steps is not None:
+    if target_total_steps is not None or train_gpu_index is not None:
         notebook_data = json.loads(staged_notebook.read_text(encoding="utf-8"))
         injected = False
         for cell in notebook_data.get("cells", []):
@@ -116,8 +117,11 @@ def _prepare_kernel_bundle(
             updated_lines = []
             for line in source_lines:
                 if "TARGET_TOTAL_STEPS = int(os.getenv(\"TARGET_TOTAL_STEPS\", \"600\"))" in line:
-                    updated_lines.append(f'os.environ["TARGET_TOTAL_STEPS"] = "{target_total_steps}"\n')
-                    updated_lines.append(f'os.environ["MAX_STEPS"] = "{target_total_steps}"\n')
+                    if target_total_steps is not None:
+                        updated_lines.append(f'os.environ["TARGET_TOTAL_STEPS"] = "{target_total_steps}"\n')
+                        updated_lines.append(f'os.environ["MAX_STEPS"] = "{target_total_steps}"\n')
+                    if train_gpu_index is not None:
+                        updated_lines.append(f'os.environ["TRAIN_GPU_INDEX"] = "{train_gpu_index}"\n')
                     injected = True
                 updated_lines.append(line)
 
@@ -127,9 +131,12 @@ def _prepare_kernel_bundle(
 
         if injected:
             staged_notebook.write_text(json.dumps(notebook_data, ensure_ascii=True, indent=2), encoding="utf-8")
-            print(f"Injected continuation target steps override: {target_total_steps}")
+            if target_total_steps is not None:
+                print(f"Injected continuation target steps override: {target_total_steps}")
+            if train_gpu_index is not None:
+                print(f"Injected train GPU index override: {train_gpu_index}")
         else:
-            print("WARNING: Could not find TARGET_TOTAL_STEPS line for target-steps injection.")
+            print("WARNING: Could not find TARGET_TOTAL_STEPS line for env injection (steps/GPU index).")
 
     metadata = {
         "id": kernel_ref,
@@ -239,6 +246,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         help="Inject TARGET_TOTAL_STEPS and MAX_STEPS into staged notebook for continuation runs.",
     )
+    parser.add_argument(
+        "--train-gpu-index",
+        type=int,
+        help="Inject TRAIN_GPU_INDEX into staged notebook (for example: 1).",
+    )
     return parser
 
 
@@ -283,6 +295,7 @@ def main() -> None:
         hf_token=hf_token,
         accelerator=args.accelerator,
         target_total_steps=args.target_total_steps,
+        train_gpu_index=args.train_gpu_index,
     )
 
     kaggle_command = _build_kaggle_base_command()
