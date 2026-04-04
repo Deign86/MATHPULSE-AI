@@ -117,10 +117,10 @@ def build_cells() -> list[dict]:
                 import unsloth
                 from unsloth import FastLanguageModel
                 from pathlib import Path
-                from safetensors.torch import load_file as safe_load_file
+                from peft import PeftModel
                 from torch.utils.data import DataLoader
                 from datasets import load_dataset
-                from huggingface_hub import login
+                from huggingface_hub import HfApi, create_repo, login
                 from transformers import DataCollatorForLanguageModeling, get_linear_schedule_with_warmup
 
                 if torch.cuda.is_available():
@@ -147,6 +147,7 @@ def build_cells() -> list[dict]:
                 REPO_ID = f"{{HF_USERNAME}}/deped-math-qwen2.5-7b"
                 TRAIN_PROFILE = os.getenv("TRAIN_PROFILE", "production").strip().lower()
                 TARGET_TOTAL_STEPS = int(os.getenv("TARGET_TOTAL_STEPS", "600"))
+                UPLOAD_TO_HF = os.getenv("UPLOAD_TO_HF", "1").strip().lower() not in {"0", "false", "no"}
 
                 if TRAIN_PROFILE not in {"production", "smoke"}:
                     raise ValueError("Unsupported TRAIN_PROFILE=" + TRAIN_PROFILE + ". Use 'production' or 'smoke'.")
@@ -160,6 +161,7 @@ def build_cells() -> list[dict]:
                 print("Training profile:", TRAIN_PROFILE)
                 print("Max sequence length:", max_seq_length)
                 print("Target total steps:", TARGET_TOTAL_STEPS)
+                print("Upload to HF enabled:", UPLOAD_TO_HF)
 
                 token = HF_TOKEN.strip() or os.getenv("HF_TOKEN", "").strip()
                 if token:
@@ -318,25 +320,8 @@ def build_cells() -> list[dict]:
 
                 if resume_checkpoint_path is not None:
                     print(f"Resuming LoRA adapters from {resume_checkpoint_path} (step={resume_step})")
-                    adapter_safetensors = resume_checkpoint_path / "adapter_model.safetensors"
-                    adapter_bin = resume_checkpoint_path / "adapter_model.bin"
-
-                    if adapter_safetensors.exists():
-                        adapter_state = safe_load_file(str(adapter_safetensors), device="cpu")
-                    elif adapter_bin.exists():
-                        adapter_state = torch.load(str(adapter_bin), map_location="cpu")
-                    else:
-                        raise FileNotFoundError(
-                            f"No adapter_model.safetensors or adapter_model.bin found in {resume_checkpoint_path}"
-                        )
-
-                    missing_keys, unexpected_keys = model.load_state_dict(adapter_state, strict=False)
-                    if unexpected_keys:
-                        print(f"WARNING: Unexpected adapter keys while loading resume checkpoint: {len(unexpected_keys)}")
-                    if missing_keys:
-                        print(f"Note: Missing keys while loading resume checkpoint: {len(missing_keys)}")
-
-                    del adapter_state
+                    model = PeftModel.from_pretrained(model, str(resume_checkpoint_path), is_trainable=True)
+                    print("Loaded resume adapter into trainable PEFT model.")
                     print("Optimizer and scheduler states are reinitialized; LR schedule will continue from resumed step.")
                 else:
                     if adapter_only_found:
@@ -589,6 +574,36 @@ def build_cells() -> list[dict]:
                 model.save_pretrained_merged("deped-math-7b-merged", tokenizer, save_method="merged_16bit")
                 tokenizer.save_pretrained("deped-math-7b-merged")
                 print("Saved: deped-math-lora and deped-math-7b-merged")
+
+                if UPLOAD_TO_HF and token and REPO_ID.strip():
+                    api = HfApi(token=token)
+                    adapter_repo_id = REPO_ID.strip()
+                    merged_repo_id = f"{adapter_repo_id}-merged"
+
+                    create_repo(repo_id=adapter_repo_id, repo_type="model", token=token, exist_ok=True)
+                    api.upload_folder(
+                        folder_path="deped-math-lora",
+                        repo_id=adapter_repo_id,
+                        repo_type="model",
+                        commit_message="Upload LoRA adapter artifacts",
+                    )
+
+                    create_repo(repo_id=merged_repo_id, repo_type="model", token=token, exist_ok=True)
+                    api.upload_folder(
+                        folder_path="deped-math-7b-merged",
+                        repo_id=merged_repo_id,
+                        repo_type="model",
+                        commit_message="Upload merged model artifacts",
+                    )
+
+                    print(f"Uploaded LoRA adapter to {adapter_repo_id}")
+                    print(f"Uploaded merged model to {merged_repo_id}")
+                elif not UPLOAD_TO_HF:
+                    print("Skipping HF upload because UPLOAD_TO_HF is disabled.")
+                elif not token:
+                    print("Skipping HF upload because no Hugging Face token is available.")
+                else:
+                    print("Skipping HF upload because REPO_ID is empty.")
                 """
             ).strip()
             + "\n",
