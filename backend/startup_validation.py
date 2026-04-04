@@ -138,6 +138,8 @@ def validate_file_structure() -> None:
         ["services/inference_client.py", "backend/services/inference_client.py"],
         ["analytics.py", "backend/analytics.py"],
         ["automation_engine.py", "backend/automation_engine.py"],
+    ]
+    optional_path_sets = [
         ["Dockerfile", "backend/Dockerfile"],
     ]
 
@@ -156,6 +158,22 @@ def validate_file_structure() -> None:
             )
 
         logger.info(f"   ✓ Found {found}")
+
+    for candidates in optional_path_sets:
+        found = None
+        for candidate in candidates:
+            if Path(candidate).exists():
+                found = candidate
+                break
+
+        if found:
+            logger.info(f"   ✓ Found optional build file {found}")
+            continue
+
+        joined = " or ".join(candidates)
+        logger.info(
+            f"   ℹ Optional build file not present at runtime: {joined}"
+        )
     
     logger.info("✅ File structure OK")
 
