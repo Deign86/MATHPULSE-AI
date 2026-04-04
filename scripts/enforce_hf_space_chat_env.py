@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Enforce chat-focused Hugging Face Space environment variables.
+"""Enforce global/default Hugging Face Space model environment variables.
 
-This script keeps backend chat routing pinned to the intended model/provider by
-setting INFERENCE_CHAT_MODEL_ID and INFERENCE_PROVIDER, and clearing the global
-INFERENCE_MODEL_ID override unless explicitly disabled.
+This script keeps backend routing pinned to the intended provider and model by
+setting INFERENCE_MODEL_ID, INFERENCE_CHAT_MODEL_ID, and INFERENCE_PROVIDER.
 """
 
 from __future__ import annotations
@@ -16,25 +15,27 @@ from huggingface_hub import HfApi
 
 DEFAULT_SPACE_ID = "Deign86/mathpulse-api-v3test"
 DEFAULT_CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+DEFAULT_GLOBAL_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_PROVIDER = "hf_inference"
 GLOBAL_MODEL_KEY = "INFERENCE_MODEL_ID"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Enforce backend Space chat env variables")
+    parser = argparse.ArgumentParser(description="Enforce backend Space model env variables")
     parser.add_argument("--space-id", default=DEFAULT_SPACE_ID, help="HF Space repo id (owner/name)")
     parser.add_argument("--hf-token", default=os.getenv("HF_TOKEN", ""), help="HF token with write access")
     parser.add_argument("--chat-model", default=DEFAULT_CHAT_MODEL, help="Model id for INFERENCE_CHAT_MODEL_ID")
+    parser.add_argument("--global-model", default=DEFAULT_GLOBAL_MODEL, help="Model id for INFERENCE_MODEL_ID")
     parser.add_argument("--provider", default=DEFAULT_PROVIDER, help="Provider id for INFERENCE_PROVIDER")
     parser.add_argument(
         "--global-model-key",
         default=GLOBAL_MODEL_KEY,
-        help="Env key to clear so task maps are not globally overridden",
+        help="Env key used for global model override",
     )
     parser.add_argument(
-        "--keep-global-model",
+        "--clear-global-model",
         action="store_true",
-        help="Keep global model override key instead of deleting/clearing it",
+        help="Delete/clear global model override key instead of setting it",
     )
     return parser.parse_args()
 
@@ -78,8 +79,10 @@ def main() -> int:
         _set_variable(api, repo_id=space_id, key="INFERENCE_CHAT_MODEL_ID", value=args.chat_model.strip())
         _set_variable(api, repo_id=space_id, key="INFERENCE_PROVIDER", value=args.provider.strip().lower())
 
-        if not args.keep_global_model:
+        if args.clear_global_model:
             _clear_variable(api, repo_id=space_id, key=args.global_model_key.strip())
+        else:
+            _set_variable(api, repo_id=space_id, key=args.global_model_key.strip(), value=args.global_model.strip())
 
         print("[done] Space env enforcement completed")
         return 0
