@@ -112,6 +112,7 @@ def build_cells() -> list[dict]:
                 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
                 os.environ.setdefault("ABSL_MIN_LOG_LEVEL", "3")
                 os.environ.setdefault("UNSLOTH_DISABLE_XFORMERS", "1")
+                os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
                 import torch
                 import unsloth
@@ -152,7 +153,21 @@ def build_cells() -> list[dict]:
                 if TRAIN_PROFILE not in {"production", "smoke"}:
                     raise ValueError("Unsupported TRAIN_PROFILE=" + TRAIN_PROFILE + ". Use 'production' or 'smoke'.")
 
-                max_seq_length = int(os.getenv("MAX_SEQ_LENGTH", "4096"))
+                requested_max_seq_length = int(os.getenv("MAX_SEQ_LENGTH", "4096"))
+                t4_safe_max_seq_length = int(os.getenv("T4_SAFE_MAX_SEQ_LENGTH", "1536"))
+                allow_t4_long_context = os.getenv("ALLOW_T4_LONG_CONTEXT", "0").strip().lower() in {"1", "true", "yes"}
+
+                gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
+                is_t4 = "tesla t4" in gpu_name.lower()
+                if is_t4 and requested_max_seq_length > t4_safe_max_seq_length and not allow_t4_long_context:
+                    print(
+                        f"T4 detected: capping MAX_SEQ_LENGTH from {{requested_max_seq_length}} to {{t4_safe_max_seq_length}} "
+                        "for OOM safety. Set ALLOW_T4_LONG_CONTEXT=1 to bypass."
+                    )
+                    max_seq_length = t4_safe_max_seq_length
+                else:
+                    max_seq_length = requested_max_seq_length
+
                 dtype = None
                 load_in_4bit = True
 
@@ -457,6 +472,8 @@ def build_cells() -> list[dict]:
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 model = model.to(device)
                 model.train()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
                 trainable_params = [param for param in model.parameters() if param.requires_grad]
                 optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
