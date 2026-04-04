@@ -1683,9 +1683,23 @@ def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
 
 # ─── Math Tutor Prompt & Wrapper ──────────────────────────────
 
-MATH_ONLY_REFUSAL_MESSAGE = (
-    "I’m sorry, but I can only answer math-related questions. "
-    "Please ask me something related to mathematics."
+_GREETING_PATTERN = re.compile(r"^\s*(?:hi|hello|hey|good\s+(?:morning|afternoon|evening))\b")
+_THANKS_PATTERN = re.compile(r"\b(?:thanks|thank\s+you|thank\s+u|ty)\b")
+
+_GREETING_RESPONSES: Tuple[str, ...] = (
+    "Hi! I am MathPulse, your math tutor. I can help with algebra, geometry, calculus, and more. What math question would you like to try?",
+    "Hello! Great to see you. I am here for math topics and step-by-step solutions whenever you are ready.",
+)
+
+_THANKS_RESPONSES: Tuple[str, ...] = (
+    "You are very welcome. If you want, send another math question and we can work through it together.",
+    "Glad I could help. I am here anytime you want to practice more math.",
+)
+
+_NON_MATH_REDIRECT_RESPONSES: Tuple[str, ...] = (
+    "That topic is outside my math scope, but I would be happy to help with mathematics like algebra, calculus, geometry, trigonometry, or statistics.",
+    "I focus on math-only support, so I may not be the best for that request. Share a math question and I will guide you step by step.",
+    "I am built for math tutoring, so I can best help with mathematical problems and explanations. If you want, ask me any math question next.",
 )
 
 _MATH_SCOPE_KEYWORDS: Set[str] = {
@@ -1752,6 +1766,23 @@ def is_math_related_query(message: str) -> bool:
     return any(pattern.search(normalized) for pattern in _MATH_SCOPE_PATTERNS)
 
 
+def get_scope_boundary_response(message: str) -> Optional[str]:
+    normalized = (message or "").strip().lower()
+    if not normalized:
+        return random.choice(_NON_MATH_REDIRECT_RESPONSES)
+
+    if is_math_related_query(normalized):
+        return None
+
+    if _GREETING_PATTERN.search(normalized):
+        return random.choice(_GREETING_RESPONSES)
+
+    if _THANKS_PATTERN.search(normalized):
+        return random.choice(_THANKS_RESPONSES)
+
+    return random.choice(_NON_MATH_REDIRECT_RESPONSES)
+
+
 def build_math_tutor_prompt(question: str) -> str:
     """Build a structured math-tutor prompt for the LLM."""
     return f"""SYSTEM:
@@ -1768,8 +1799,8 @@ Your job is to:
 9) If the computation is long, summarize intermediate results so the student does not get lost.
 10) If the answer depends on approximations, specify whether the result is exact or rounded (and to how many decimal places).
 Speak in clear, concise English. Use short paragraphs and LaTeX-style math when helpful (e.g., x^2 + 3x + 2 = 0).
-If the user question is not about math, respond with EXACTLY this sentence and nothing else:
-"I’m sorry, but I can only answer math-related questions. Please ask me something related to mathematics."
+If the user question is not about math, politely and briefly redirect them to ask a math question.
+If the user sends a greeting or thanks, reply warmly, then invite a math question.
 
 USER:
 Student question:
@@ -1930,8 +1961,8 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 - For functions/calculus: Always verify domain and range assumptions
 - Be encouraging but honest. If a problem is ambiguous, ask for clarification.
 - Respond in clear English suitable for Grade 11-12 students
-- If asked about any non-math topic, respond with EXACTLY this sentence and nothing else:
-    "I’m sorry, but I can only answer math-related questions. Please ask me something related to mathematics."
+- If asked about any non-math topic, respond in a friendly tone and redirect to math support only.
+- If the user sends greetings or thanks, respond politely and invite a math-related question.
 - Never use external tools or functions — solve purely through mathematical reasoning
 
 **Formatting Rules (strict):**
@@ -1949,8 +1980,9 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     try:
-        if not is_math_related_query(request.message):
-            return ChatResponse(response=MATH_ONLY_REFUSAL_MESSAGE)
+        boundary_response = get_scope_boundary_response(request.message)
+        if boundary_response is not None:
+            return ChatResponse(response=boundary_response)
 
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
@@ -2001,7 +2033,7 @@ async def chat_tutor(request: ChatRequest):
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
-        is_math_query = is_math_related_query(request.message)
+        boundary_response = get_scope_boundary_response(request.message)
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
         for msg in request.history[-10:]:
             messages.append({"role": msg.role, "content": msg.content})
@@ -2013,8 +2045,8 @@ async def chat_tutor_stream(request: ChatRequest):
             return "\n".join(body) + "\n\n"
 
         async def event_generator():
-            if not is_math_query:
-                payload = json.dumps({"chunk": MATH_ONLY_REFUSAL_MESSAGE}, ensure_ascii=False)
+            if boundary_response is not None:
+                payload = json.dumps({"chunk": boundary_response}, ensure_ascii=False)
                 yield _sse("chunk", payload)
                 yield _sse("end", "done")
                 return

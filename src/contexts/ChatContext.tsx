@@ -11,7 +11,7 @@ import {
 } from '../services/chatService';
 import { toChatPreviewText } from '../utils/chatPreview';
 import { formatAssistantResponseForStorage } from '../utils/chatMessageFormatting';
-import { isMathRelatedQuery, MATH_ONLY_REFUSAL_MESSAGE } from '../utils/mathScope';
+import { getScopeBoundaryResponse } from '../utils/mathScope';
 
 export interface Message {
   id: string;
@@ -52,8 +52,9 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 /** Generate a helpful math tutor response when backend is unavailable */
 function generateFallbackResponse(userText: string): string {
-  if (!isMathRelatedQuery(userText)) {
-    return MATH_ONLY_REFUSAL_MESSAGE;
+  const scopeBoundaryResponse = getScopeBoundaryResponse(userText);
+  if (scopeBoundaryResponse) {
+    return scopeBoundaryResponse;
   }
 
   const lower = userText.toLowerCase().trim();
@@ -383,11 +384,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
-      if (!isMathRelatedQuery(trimmedUserText)) {
+      const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText);
+      if (scopeBoundaryResponse) {
         const refusalMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: MATH_ONLY_REFUSAL_MESSAGE,
+          text: scopeBoundaryResponse,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         addMessageToSession(sessionId, refusalMsg);
