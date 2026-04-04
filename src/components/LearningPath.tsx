@@ -7,7 +7,7 @@ import { UserProgress, type StudentProfile } from '../types/models';
 import ModuleFolderCard from './ModuleFolderCard';
 
 interface LearningPathProps {
-  onNavigateToModules?: () => void;
+  onNavigateToModules?: (moduleId?: string) => void;
   atRiskSubjects?: string[];
 }
 
@@ -56,7 +56,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
           <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">{learningPathHeading}</h2>
         </div>
         <button 
-          onClick={onNavigateToModules}
+          onClick={() => onNavigateToModules?.()}
           className="text-primary font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20"
         >
           View All <ArrowRight size={16} />
@@ -69,7 +69,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
             key={module.id} 
             module={module} 
             index={idx}
-            onClick={() => onNavigateToModules?.()} 
+            onClick={() => onNavigateToModules?.(module.id)} 
             isAtRisk={atRiskSubjects.includes(generalMathSubject.id)}
             badgeLabel={module.status !== 'Not Started' ? module.status : undefined}
           />

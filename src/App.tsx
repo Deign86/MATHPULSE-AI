@@ -73,6 +73,7 @@ const App = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
+  const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [dismissedSupplementalSignature, setDismissedSupplementalSignature] = useState<string>('');
 
@@ -165,7 +166,7 @@ const App = () => {
     setShowDiagnosticModal(true);
   };
 
-  const handleStudentNavigation = (tab: string) => {
+  const handleStudentNavigation = (tab: string, moduleId?: string) => {
     if (tab === 'Modules' && isLearningPathLocked) {
       toast.info(
         `Complete your deep diagnostic (${pendingDeepDiagnosticCount} outstanding) to unlock modules and regular practice.`,
@@ -174,6 +175,12 @@ const App = () => {
       setShowDiagnosticModal(true);
       setActiveTab('Dashboard');
       return;
+    }
+
+    if (moduleId) {
+      setTargetModuleId(moduleId);
+    } else if (tab === 'Modules' && activeTab !== 'Modules') { // Only clear if not navigating within modules itself or passing an explicit id doesn't happen
+      setTargetModuleId(null);
     }
 
     setActiveTab(tab);
@@ -821,7 +828,7 @@ const App = () => {
 
                         {profileReady && (
                           <div className="pb-4">
-                            <LearningPath onNavigateToModules={() => handleStudentNavigation('Modules')} atRiskSubjects={atRiskSubjects} />
+                            <LearningPath onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)} atRiskSubjects={atRiskSubjects} />
                           </div>
                         )}
                       </div>
@@ -842,7 +849,7 @@ const App = () => {
                     </div>
                   </div>
                 ) : activeTab === 'Modules' ? (
-                  <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} />
+                  <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} initialModuleId={targetModuleId} />
                 ) : activeTab === 'Leaderboard' ? (
                   <LeaderboardPage currentUserPhoto={profileData.photo} />
                 ) : activeTab === 'AI Chat' ? (
