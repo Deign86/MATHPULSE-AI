@@ -1,0 +1,16 @@
+{
+  "id": "deignlazaro/deped-qwen2-5-700-step-lora-merge-and-hf-publish",
+  "title": "DepEd Qwen2.5 700-Step LoRA Merge And HF Publish",
+  "code_file": "merge_deped_qwen_lora.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
