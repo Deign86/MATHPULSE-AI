@@ -66,7 +66,7 @@ def validate_imports() -> None:
                 try:
                     importlib.import_module("bitsandbytes")
                     logger.info("   ✓ bitsandbytes import OK")
-                except Exception as exc:
+                except (ImportError, OSError, RuntimeError) as exc:
                     raise StartupError(
                         "❌ local_peft dependency error: bitsandbytes is required when LORA_LOAD_IN_4BIT=true"
                     ) from exc
