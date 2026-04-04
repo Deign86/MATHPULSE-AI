@@ -222,7 +222,29 @@ class TestChatEndpoint:
         })
 
         assert response.status_code == 200
-        assert response.json()["response"] == main_module.MATH_ONLY_REFUSAL_MESSAGE
+        assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
+        mock_chat.assert_not_called()
+
+    @patch("main.call_hf_chat")
+    def test_chat_greeting_returns_friendly_response_and_skips_inference(self, mock_chat):
+        response = client.post("/api/chat", json={
+            "message": "hello",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._GREETING_RESPONSES
+        mock_chat.assert_not_called()
+
+    @patch("main.call_hf_chat")
+    def test_chat_thanks_returns_friendly_response_and_skips_inference(self, mock_chat):
+        response = client.post("/api/chat", json={
+            "message": "thanks",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._THANKS_RESPONSES
         mock_chat.assert_not_called()
 
     @patch("main.call_hf_chat")
@@ -321,14 +343,14 @@ class TestChatEndpoint:
     @patch("main.call_hf_chat_stream")
     def test_chat_stream_non_math_returns_refusal_and_skips_inference(self, mock_stream):
         with client.stream("POST", "/api/chat/stream", json={
-            "message": "hello there",
+            "message": "Who is Elon Musk?",
             "history": [],
         }) as response:
             assert response.status_code == 200
             content = "".join(response.iter_text())
 
         assert "event: chunk" in content
-        assert main_module.MATH_ONLY_REFUSAL_MESSAGE in content
+        assert any(candidate in content for candidate in main_module._NON_MATH_REDIRECT_RESPONSES)
         assert "event: end" in content
         mock_stream.assert_not_called()
 

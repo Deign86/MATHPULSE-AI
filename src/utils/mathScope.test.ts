@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isMathRelatedQuery, MATH_ONLY_REFUSAL_MESSAGE } from './mathScope';
+import {
+  getScopeBoundaryResponse,
+  GREETING_RESPONSES,
+  isMathRelatedQuery,
+  NON_MATH_REDIRECT_RESPONSES,
+  THANKS_RESPONSES,
+} from './mathScope';
 
 describe('isMathRelatedQuery', () => {
   it('accepts direct algebra prompts', () => {
@@ -23,10 +29,32 @@ describe('isMathRelatedQuery', () => {
   });
 });
 
-describe('MATH_ONLY_REFUSAL_MESSAGE', () => {
-  it('matches the required strict refusal sentence', () => {
-    expect(MATH_ONLY_REFUSAL_MESSAGE).toBe(
-      'I’m sorry, but I can only answer math-related questions. Please ask me something related to mathematics.',
-    );
+describe('getScopeBoundaryResponse', () => {
+  it('returns null for math-related input', () => {
+    expect(getScopeBoundaryResponse('Solve for x in 2x + 3 = 7')).toBeNull();
+  });
+
+  it('returns a friendly greeting response', () => {
+    const response = getScopeBoundaryResponse('hello');
+    expect(response).not.toBeNull();
+    expect(GREETING_RESPONSES).toContain(response as string);
+  });
+
+  it('returns a friendly thanks response', () => {
+    const response = getScopeBoundaryResponse('thanks for the help');
+    expect(response).not.toBeNull();
+    expect(THANKS_RESPONSES).toContain(response as string);
+  });
+
+  it('returns a friendly non-math redirect response', () => {
+    const response = getScopeBoundaryResponse('Who is Elon Musk?');
+    expect(response).not.toBeNull();
+    expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
+  });
+
+  it('returns a redirect response for empty input', () => {
+    const response = getScopeBoundaryResponse('');
+    expect(response).not.toBeNull();
+    expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
   });
 });
