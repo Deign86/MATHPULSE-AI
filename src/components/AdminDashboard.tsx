@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked, Menu } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import Sidebar from './Sidebar';
@@ -37,7 +37,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [activeTab, setActiveTab] = useState('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
@@ -114,69 +113,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
     return { text: 'text-sky-600', bg: 'bg-sky-50' };
   };
 
-  const handleNavigate = (tab: string) => {
-    setActiveTab(tab);
-    setMobileNavOpen(false);
-  };
-
   return (
     <div className="flex h-screen w-full bg-[#edf1f7] overflow-hidden">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={handleNavigate}
-          userRole="admin"
-          onOpenSettings={onOpenSettings}
-          onLogout={() => setShowLogoutConfirm(true)}
-          sidebarCollapsed={sidebarCollapsed}
-          setSidebarCollapsed={setSidebarCollapsed}
-        />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {mobileNavOpen && (
-        <>
-          <button
-            aria-label="Close navigation"
-            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
-            onClick={() => setMobileNavOpen(false)}
-          />
-          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden">
-            <Sidebar
-              mode="mobile"
-              onRequestClose={() => setMobileNavOpen(false)}
-              activeTab={activeTab}
-              setActiveTab={handleNavigate}
-              userRole="admin"
-              onOpenSettings={() => {
-                onOpenSettings?.();
-                setMobileNavOpen(false);
-              }}
-              onLogout={() => {
-                setShowLogoutConfirm(true);
-                setMobileNavOpen(false);
-              }}
-              sidebarCollapsed={false}
-            />
-          </div>
-        </>
-      )}
+      {/* Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        userRole="admin"
+        onOpenSettings={onOpenSettings}
+        onLogout={() => setShowLogoutConfirm(true)}
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+      />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-30 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-sky-700 transition-colors"
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Open navigation"
-            >
-              <Menu size={20} />
-            </button>
+        <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-lg sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">
+              <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
                 {activeTab === 'Overview' && 'Admin Dashboard'}
                 {activeTab === 'Content' && 'Content'}
                 {activeTab === 'Audit Log' && 'Audit Log'}
@@ -197,12 +153,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           <div className="flex items-center gap-2">
             <button 
               onClick={onOpenProfile}
-              className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
+              className="flex items-center gap-2.5 w-[152px] h-11 shrink-0 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
             >
               <div className="w-8 h-8 bg-gradient-to-br from-sky-600 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Shield size={16} className="text-white" />
               </div>
-              <div className="hidden sm:block min-w-0 flex-1 text-left">
+              <div className="min-w-0 flex-1 text-left">
                 <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-sky-600 transition-colors truncate">Admin</p>
               </div>
             </button>
@@ -211,13 +167,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         </header>
 
         {/* Main Grid */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-6">
           {activeTab === 'Overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+            <div className="grid grid-cols-12 gap-6">
               {/* Left Column - Stats & Activity */}
-            <div className="lg:col-span-8 space-y-4 sm:space-y-6">
+            <div className="col-span-8 space-y-6">
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 {systemStats.map((stat, index) => {
                   const Icon = stat.icon;
                   return (
@@ -296,7 +252,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
 
             {/* Right Column - Top Performers & Quick Actions */}
-            <div className="lg:col-span-4 space-y-4 sm:space-y-6">
+            <div className="col-span-4 space-y-6">
               {/* Quick Actions */}
               <div className="bg-gradient-to-br from-indigo-600 to-sky-600 rounded-3xl p-6 text-white shadow-lg">
                 <h2 className="text-lg font-bold mb-4">Quick Actions</h2>

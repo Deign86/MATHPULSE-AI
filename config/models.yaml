@@ -47,9 +47,7 @@ routing:
       - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
 
   task_provider_map:
-    # All tasks default to hf_inference router.
-    # Runtime note: when INFERENCE_PROVIDER=local_peft, chat is routed to local_peft first,
-    # then falls back to hf_inference while non-chat tasks remain on these mappings.
+    # All tasks use hf_inference router (native HF support for Qwen/Qwen2.5-7B-Instruct)
     chat: hf_inference
     verify_solution: hf_inference
     quiz_generation: hf_inference

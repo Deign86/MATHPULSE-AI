@@ -77,23 +77,6 @@ export interface TopPerformer {
   level: number;
 }
 
-function toTopPerformer(id: string, data: Record<string, unknown>): TopPerformer {
-  const level = (data.level as number) || 1;
-  const currentXP = (data.currentXP as number) || 0;
-  const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
-  return {
-    id,
-    name: (data.name as string) || 'Student',
-    avatar:
-      (data.photo as string) ||
-      (data.photoURL as string) ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
-    class: (data.grade as string) || 'Math',
-    performance,
-    level,
-  };
-}
-
 // ─── Helpers ─────────────────────────────────────────────────
 
 function capitalizeRole(role: string): string {
@@ -438,32 +421,33 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 /** Get top N students ordered by level descending. */
 export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
-  const baseConstraints = [collection(db, 'users'), where('role', '==', 'student')] as const;
-
   try {
-    const q = query(...baseConstraints, orderBy('level', 'desc'), limit(n));
+    const q = query(
+      collection(db, 'users'),
+      where('role', '==', 'student'),
+      orderBy('level', 'desc'),
+      limit(n)
+    );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => toTopPerformer(d.id, d.data() as Record<string, unknown>));
+    return snap.docs.map(d => {
+      const data = d.data() as Record<string, unknown>;
+      const level = (data.level as number) || 1;
+      const currentXP = (data.currentXP as number) || 0;
+      // Rough performance estimate: clamp level*8 to [0,100]
+      const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
+      return {
+        id: d.id,
+        name: (data.name as string) || 'Student',
+        avatar:
+          (data.photo as string) ||
+          (data.photoURL as string) ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
+        class: (data.grade as string) || 'Math',
+        performance,
+        level,
+      };
+    });
   } catch (err) {
-    const errorCode = (err as { code?: string } | null)?.code;
-    if (errorCode === 'failed-precondition') {
-      try {
-        const fallbackLimit = Math.max(n, 50);
-        const fallbackQuery = query(...baseConstraints, limit(fallbackLimit));
-        const fallbackSnap = await getDocs(fallbackQuery);
-        return fallbackSnap.docs
-          .map((d) => toTopPerformer(d.id, d.data() as Record<string, unknown>))
-          .sort((a, b) => {
-            if (b.level !== a.level) return b.level - a.level;
-            return b.performance - a.performance;
-          })
-          .slice(0, n);
-      } catch (fallbackErr) {
-        console.error('[adminService] getTopPerformers fallback error:', fallbackErr);
-        return [];
-      }
-    }
-
     console.error('[adminService] getTopPerformers error:', err);
     return [];
   }

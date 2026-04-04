@@ -9,7 +9,6 @@ import {
   orderBy,
   limit,
   updateDoc,
-  onSnapshot,
   serverTimestamp,
   increment,
   Timestamp,
@@ -23,16 +22,6 @@ import {
   QuizAttempt,
   QuizAnswer,
 } from '../types/models';
-
-const ensureProgressDocExists = async (userId: string) => {
-  const progressRef = doc(db, 'progress', userId);
-  let snap = await getDoc(progressRef);
-  if (!snap.exists()) {
-    await initializeUserProgress(userId);
-    snap = await getDoc(progressRef);
-  }
-  return { progressRef, snap };
-};
 
 // Initialize user progress
 export const initializeUserProgress = async (userId: string): Promise<UserProgress> => {
@@ -73,76 +62,6 @@ export const getUserProgress = async (userId: string): Promise<UserProgress | nu
   }
 };
 
-// Get user progress if it exists (read-only; does not initialize a new document)
-export const getUserProgressIfExists = async (userId: string): Promise<UserProgress | null> => {
-  try {
-    const docRef = doc(db, 'progress', userId);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) return null;
-
-    const data = docSnap.data();
-    return {
-      ...data,
-      updatedAt: data.updatedAt?.toDate?.() || new Date(),
-    } as UserProgress;
-  } catch (error) {
-    console.error('Error getting user progress (read-only):', error);
-    return null;
-  }
-};
-
-// Subscribe to user progress (realtime)
-export const subscribeToUserProgress = (
-  userId: string,
-  onChange: (progress: UserProgress | null) => void
-): (() => void) => {
-  const docRef = doc(db, 'progress', userId);
-  return onSnapshot(
-    docRef,
-    (snap) => {
-      if (!snap.exists()) {
-        onChange(null);
-        return;
-      }
-      const data = snap.data();
-      onChange({
-        ...data,
-        updatedAt: data.updatedAt?.toDate?.() || new Date(),
-      } as UserProgress);
-    },
-    (error) => {
-      console.error('Error subscribing to user progress:', error);
-      onChange(null);
-    }
-  );
-};
-
-// Update lesson progress percentage (partial completion)
-export const updateLessonProgressPercent = async (
-  userId: string,
-  lessonId: string,
-  progressPercent: number
-): Promise<void> => {
-  try {
-    const { progressRef, snap } = await ensureProgressDocExists(userId);
-
-    // Never decrease saved progress (re-opening a lesson should not reset progress).
-    const existingPctRaw = (snap.data() as any)?.lessons?.[lessonId]?.progressPercent;
-    const existingPct = typeof existingPctRaw === 'number' && Number.isFinite(existingPctRaw) ? existingPctRaw : 0;
-    const nextPct = Math.max(existingPct, Math.max(0, Math.min(100, progressPercent)));
-
-    // Use updateDoc field paths so we truly update nested maps.
-    await updateDoc(progressRef, {
-      [`lessons.${lessonId}.lessonId`]: lessonId,
-      [`lessons.${lessonId}.progressPercent`]: nextPct,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error('Error updating lesson progress percent:', error);
-  }
-};
-
 // Complete a lesson
 export const completeLesson = async (
   userId: string,
@@ -153,8 +72,14 @@ export const completeLesson = async (
   xpReward: number = 50
 ): Promise<void> => {
   try {
-    const { progressRef, snap } = await ensureProgressDocExists(userId);
-    const progressData = snap.data() as UserProgress;
+    const progressRef = doc(db, 'progress', userId);
+    const progressSnap = await getDoc(progressRef);
+
+    if (!progressSnap.exists()) {
+      await initializeUserProgress(userId);
+    }
+
+    const progressData = progressSnap.data() as UserProgress;
 
     // Update lesson progress
     const lessonProgress: LessonProgress = {
@@ -162,7 +87,6 @@ export const completeLesson = async (
       completed: true,
       completedAt: new Date(),
       timeSpent,
-      progressPercent: 100,
     };
 
     // Update subject and module progress
@@ -191,20 +115,22 @@ export const completeLesson = async (
     }
 
     const moduleProgress = subjectProgress.modulesProgress[moduleId];
-
-    const isNewCompletion = !moduleProgress.lessonsCompleted.includes(lessonId);
     if (!moduleProgress.lessonsCompleted.includes(lessonId)) {
       moduleProgress.lessonsCompleted.push(lessonId);
       moduleProgress.lastAccessedAt = new Date();
     }
 
     // Update Firestore
-    await updateDoc(progressRef, {
-      [`lessons.${lessonId}`]: lessonProgress,
-      [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
-      totalLessonsCompleted: increment(isNewCompletion ? 1 : 0),
-      updatedAt: serverTimestamp(),
-    });
+    await setDoc(
+      progressRef,
+      {
+        [`lessons.${lessonId}`]: lessonProgress,
+        [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
+        totalLessonsCompleted: increment(1),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     // Award XP
     await awardXP(userId, xpReward, 'lesson_complete', `Completed lesson: ${lessonId}`);
@@ -225,8 +151,14 @@ export const completeQuiz = async (
   timeSpent: number
 ): Promise<void> => {
   try {
-    const { progressRef, snap } = await ensureProgressDocExists(userId);
-    const progressData = snap.data() as UserProgress;
+    const progressRef = doc(db, 'progress', userId);
+    const progressSnap = await getDoc(progressRef);
+
+    if (!progressSnap.exists()) {
+      await initializeUserProgress(userId);
+    }
+
+    const progressData = progressSnap.data() as UserProgress;
 
     // Create quiz attempt
     const quizAttempt: QuizAttempt = {
@@ -267,8 +199,6 @@ export const completeQuiz = async (
     }
 
     const moduleProgress = subjectProgress.modulesProgress[moduleId];
-
-    const isNewCompletion = !moduleProgress.quizzesCompleted.includes(quizId);
     if (!moduleProgress.quizzesCompleted.includes(quizId)) {
       moduleProgress.quizzesCompleted.push(quizId);
       moduleProgress.lastAccessedAt = new Date();
@@ -278,7 +208,7 @@ export const completeQuiz = async (
     await updateDoc(progressRef, {
       quizAttempts: [...(progressData.quizAttempts || []), quizAttempt],
       [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
-      totalQuizzesCompleted: increment(isNewCompletion ? 1 : 0),
+      totalQuizzesCompleted: increment(1),
       updatedAt: serverTimestamp(),
     });
 
@@ -298,33 +228,20 @@ export const updateModuleProgress = async (
   progress: number
 ): Promise<void> => {
   try {
-    const { progressRef } = await ensureProgressDocExists(userId);
-    await updateDoc(progressRef, {
-      [`subjects.${subjectId}.modulesProgress.${moduleId}.progress`]: progress,
-      [`subjects.${subjectId}.modulesProgress.${moduleId}.lastAccessedAt`]: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    const progressRef = doc(db, 'progress', userId);
+    await setDoc(
+      progressRef,
+      {
+        [`subjects.${subjectId}.modulesProgress.${moduleId}.progress`]: progress,
+        [`subjects.${subjectId}.modulesProgress.${moduleId}.lastAccessedAt`]: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error('Error updating module progress:', error);
     throw error;
   }
-};
-
-export const recalculateAndUpdateModuleProgress = async (
-  userId: string,
-  subjectId: string,
-  moduleId: string,
-  totalLessons: number,
-  totalQuizzes: number
-): Promise<number> => {
-  const progress = await getUserProgress(userId);
-  const moduleProgress = progress?.subjects?.[subjectId]?.modulesProgress?.[moduleId];
-  const completedLessons = moduleProgress?.lessonsCompleted?.length ?? 0;
-  const completedQuizzes = moduleProgress?.quizzesCompleted?.length ?? 0;
-  const totalItems = totalLessons + totalQuizzes;
-  const pct = totalItems > 0 ? Math.min(100, Math.round(((completedLessons + completedQuizzes) / totalItems) * 100)) : 0;
-  await updateModuleProgress(userId, subjectId, moduleId, pct);
-  return pct;
 };
 
 // Update subject progress
@@ -336,13 +253,17 @@ export const updateSubjectProgress = async (
   totalModules: number
 ): Promise<void> => {
   try {
-    const { progressRef } = await ensureProgressDocExists(userId);
-    await updateDoc(progressRef, {
-      [`subjects.${subjectId}.progress`]: progress,
-      [`subjects.${subjectId}.completedModules`]: completedModules,
-      [`subjects.${subjectId}.totalModules`]: totalModules,
-      updatedAt: serverTimestamp(),
-    });
+    const progressRef = doc(db, 'progress', userId);
+    await setDoc(
+      progressRef,
+      {
+        [`subjects.${subjectId}.progress`]: progress,
+        [`subjects.${subjectId}.completedModules`]: completedModules,
+        [`subjects.${subjectId}.totalModules`]: totalModules,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error('Error updating subject progress:', error);
     throw error;

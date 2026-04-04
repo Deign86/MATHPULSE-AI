@@ -40,17 +40,11 @@ class InferenceRequest:
     model: Optional[str] = None
     task_type: str = "default"
     request_tag: str = ""
-    max_new_tokens: Optional[int] = None
+    max_new_tokens: int = 512
     temperature: float = 0.2
     top_p: float = 0.9
     repetition_penalty: float = 1.15
     timeout_sec: Optional[int] = None
-
-
-@dataclass
-class LocalPeftRuntime:
-    tokenizer: Any
-    model: Any
 
 
 class InferenceClient:
@@ -110,12 +104,6 @@ class InferenceClient:
             os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
         )
         self.local_generate_path = os.getenv("INFERENCE_LOCAL_SPACE_GENERATE_PATH", "/gradio_api/call/generate")
-        self.lora_base_model_id = os.getenv("LORA_BASE_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct").strip()
-        self.lora_adapter_model_id = os.getenv("LORA_ADAPTER_MODEL_ID", "").strip()
-        self.lora_load_in_4bit = os.getenv("LORA_LOAD_IN_4BIT", "false").strip().lower() in {"1", "true", "yes", "on"}
-        self.lora_device_map = os.getenv("LORA_DEVICE_MAP", "auto").strip() or "auto"
-        self.lora_dtype = os.getenv("LORA_DTYPE", "float16").strip().lower() or "float16"
-        self.lora_max_new_tokens = max(64, int(os.getenv("LORA_MAX_NEW_TOKENS", "576")))
         self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
@@ -189,9 +177,9 @@ class InferenceClient:
             int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
         )
 
-        # Default task-to-model routing (chat defaults to Qwen 2.5 7B, with hard-prompt escalation to 70B)
+        # Default task-to-model routing (chat defaults to fast 8B, with hard-prompt escalation to 70B)
         self.task_model_map: Dict[str, str] = {
-            "chat": "Qwen/Qwen2.5-7B-Instruct",
+            "chat": "meta-llama/Llama-3.1-8B-Instruct",
             "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
             "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
             "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
@@ -203,7 +191,7 @@ class InferenceClient:
         # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
             "chat": [
-                "Qwen/Qwen2.5-7B-Instruct",
+                "meta-llama/Llama-3.1-8B-Instruct",
                 "google/gemma-2-2b-it",
             ],
             "verify_solution": [
@@ -275,9 +263,6 @@ class InferenceClient:
 
         self._metrics_started_at = time.time()
         self._metrics_lock = Lock()
-        self._local_peft_lock = Lock()
-        self._local_peft_runtime: Optional[LocalPeftRuntime] = None
-        self._local_peft_runtime_key: Optional[Tuple[str, str, bool, str, str]] = None
         self._metrics: Dict[str, Any] = {
             "requests_total": 0,
             "requests_ok": 0,
@@ -289,17 +274,6 @@ class InferenceClient:
             "provider_counts": {},
             "status_code_counts": {},
         }
-
-        if self.provider == "local_peft":
-            LOGGER.info("   local_peft base model: %s", self.lora_base_model_id)
-            LOGGER.info("   local_peft adapter model: %s", self.lora_adapter_model_id or "(not set)")
-            LOGGER.info(
-                "   local_peft config: load_in_4bit=%s device_map=%s dtype=%s max_new_tokens=%s",
-                self.lora_load_in_4bit,
-                self.lora_device_map,
-                self.lora_dtype,
-                self.lora_max_new_tokens,
-            )
 
     def _bump_metric(self, key: str, inc: int = 1) -> None:
         with self._metrics_lock:
@@ -500,23 +474,6 @@ class InferenceClient:
     def _provider_chain_for_task(self, task_type: str) -> List[str]:
         normalized = (task_type or "default").strip().lower()
         forced_provider = self.task_provider_map.get(normalized)
-
-        # Chat can run directly on local PEFT while preserving fallback for all other tasks.
-        if normalized == "chat" and self.provider == "local_peft":
-            chain = ["local_peft"]
-            if self.enable_provider_fallback:
-                fallback_candidates = [
-                    forced_provider,
-                    self.gpu_provider,
-                    self.cpu_provider,
-                    "hf_inference",
-                ]
-                for candidate in fallback_candidates:
-                    candidate_name = (candidate or "").strip().lower()
-                    if candidate_name and candidate_name not in chain:
-                        chain.append(candidate_name)
-            return chain
-
         if forced_provider:
             return [forced_provider]
 
@@ -568,10 +525,6 @@ class InferenceClient:
         route = self._resolve_route_label(provider, req.task_type)
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        if provider == "local_peft":
-            return self._call_local_peft(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        if provider in {"featherless", "featherless-ai"}:
-            return self._call_featherless(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
         # All models use HF inference router directly (including Qwen/Qwen2.5-7B-Instruct)
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
@@ -599,134 +552,6 @@ class InferenceClient:
             if role == "user" and content:
                 return content
         return self._messages_to_prompt(messages)
-
-    def _resolve_torch_dtype(self, torch_module: Any) -> Any:
-        dtype_map = {
-            "float16": "float16",
-            "fp16": "float16",
-            "half": "float16",
-            "bfloat16": "bfloat16",
-            "bf16": "bfloat16",
-            "float32": "float32",
-            "fp32": "float32",
-        }
-        dtype_attr = dtype_map.get(self.lora_dtype, "float16")
-        dtype_obj = getattr(torch_module, dtype_attr, None)
-        if dtype_obj is None:
-            LOGGER.warning("Unknown LORA_DTYPE=%s. Falling back to torch.float16", self.lora_dtype)
-            dtype_obj = getattr(torch_module, "float16")
-        return dtype_obj
-
-    def _resolve_device_map(self) -> Any:
-        raw = (self.lora_device_map or "auto").strip().lower()
-        if raw in {"", "auto"}:
-            return "auto"
-        if raw in {"none", "null"}:
-            return None
-        return self.lora_device_map
-
-    def _build_local_peft_prompt(self, tokenizer: Any, messages: List[Dict[str, str]]) -> str:
-        if hasattr(tokenizer, "apply_chat_template"):
-            try:
-                rendered = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-                if isinstance(rendered, str) and rendered.strip():
-                    return rendered
-            except Exception:
-                pass
-        return self._messages_to_prompt(messages)
-
-    def _get_local_peft_runtime(self) -> LocalPeftRuntime:
-        runtime_key = (
-            self.lora_base_model_id,
-            self.lora_adapter_model_id,
-            self.lora_load_in_4bit,
-            self.lora_device_map,
-            self.lora_dtype,
-        )
-
-        if self._local_peft_runtime is not None and self._local_peft_runtime_key == runtime_key:
-            return self._local_peft_runtime
-
-        with self._local_peft_lock:
-            if self._local_peft_runtime is not None and self._local_peft_runtime_key == runtime_key:
-                return self._local_peft_runtime
-
-            if not self.lora_base_model_id:
-                raise RuntimeError("LORA_BASE_MODEL_ID is required for local_peft provider")
-            if not self.lora_adapter_model_id:
-                raise RuntimeError("LORA_ADAPTER_MODEL_ID is required for local_peft provider")
-
-            try:
-                import torch  # type: ignore[import-not-found]
-                from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore[import-not-found]
-            except Exception as exc:
-                raise RuntimeError(
-                    "local_peft provider requires torch and transformers dependencies"
-                ) from exc
-
-            try:
-                from peft import PeftModel  # type: ignore[import-not-found]
-            except Exception as exc:
-                raise RuntimeError("local_peft provider requires peft dependency") from exc
-
-            torch_dtype = self._resolve_torch_dtype(torch)
-            model_kwargs: Dict[str, Any] = {
-                "torch_dtype": torch_dtype,
-                "device_map": self._resolve_device_map(),
-            }
-
-            if self.lora_load_in_4bit:
-                try:
-                    from transformers import BitsAndBytesConfig  # type: ignore[import-not-found]
-                except Exception as exc:
-                    raise RuntimeError(
-                        "LORA_LOAD_IN_4BIT=true but BitsAndBytesConfig is unavailable. Install bitsandbytes."
-                    ) from exc
-
-                model_kwargs["quantization_config"] = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_quant_type="nf4",
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_compute_dtype=torch_dtype,
-                )
-
-            LOGGER.info(
-                "🧠 Loading local_peft runtime base=%s adapter=%s load_in_4bit=%s device_map=%s dtype=%s",
-                self.lora_base_model_id,
-                self.lora_adapter_model_id,
-                self.lora_load_in_4bit,
-                model_kwargs.get("device_map"),
-                self.lora_dtype,
-            )
-
-            tokenizer = AutoTokenizer.from_pretrained(self.lora_base_model_id)
-            if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
-                tokenizer.pad_token = tokenizer.eos_token
-
-            base_model = AutoModelForCausalLM.from_pretrained(
-                self.lora_base_model_id,
-                **model_kwargs,
-            )
-            peft_model = PeftModel.from_pretrained(
-                base_model,
-                self.lora_adapter_model_id,
-                is_trainable=False,
-            )
-            peft_model.eval()
-
-            runtime = LocalPeftRuntime(tokenizer=tokenizer, model=peft_model)
-            self._local_peft_runtime = runtime
-            self._local_peft_runtime_key = runtime_key
-            LOGGER.info(
-                "✅ local_peft runtime ready base=%s adapter=%s",
-                self.lora_base_model_id,
-                self.lora_adapter_model_id,
-            )
-            return runtime
 
     def _post_with_retry(
         self,
@@ -904,114 +729,6 @@ class InferenceClient:
             )
             raise
 
-    def _call_local_peft(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
-        runtime = self._get_local_peft_runtime()
-        tokenizer = runtime.tokenizer
-        model = runtime.model
-        target_model = f"{self.lora_base_model_id}+{self.lora_adapter_model_id}"
-
-        try:
-            import torch  # type: ignore[import-not-found]
-        except Exception as exc:
-            raise RuntimeError("local_peft provider requires torch dependency") from exc
-
-        prompt = self._build_local_peft_prompt(tokenizer, req.messages)
-        tokenized_inputs = tokenizer(prompt, return_tensors="pt")
-
-        input_ids = tokenized_inputs.get("input_ids")
-        if input_ids is None:
-            raise RuntimeError("local_peft tokenization failed: missing input_ids")
-
-        model_device = getattr(model, "device", None)
-        if model_device is None:
-            try:
-                model_device = next(model.parameters()).device
-            except Exception:
-                model_device = None
-
-        if model_device is not None:
-            tokenized_inputs = {
-                key: value.to(model_device) if hasattr(value, "to") else value
-                for key, value in tokenized_inputs.items()
-            }
-
-        max_new_tokens = req.max_new_tokens or self.lora_max_new_tokens
-        generation_temperature = req.temperature if req.temperature is not None else self.default_temperature
-        generation_top_p = req.top_p if req.top_p is not None else self.default_top_p
-        generation_repetition_penalty = (
-            req.repetition_penalty if req.repetition_penalty is not None else 1.15
-        )
-
-        self._record_attempt(
-            task_type=req.task_type,
-            provider=provider,
-            route=route,
-            fallback_depth=fallback_depth,
-        )
-        started = time.perf_counter()
-
-        try:
-            with torch.inference_mode():
-                outputs = model.generate(
-                    **tokenized_inputs,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=generation_temperature > 0,
-                    temperature=generation_temperature,
-                    top_p=generation_top_p,
-                    repetition_penalty=generation_repetition_penalty,
-                    pad_token_id=tokenizer.pad_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                )
-
-            latency_ms = (time.perf_counter() - started) * 1000
-            prompt_tokens = int(input_ids.shape[-1])
-            generated_tokens = outputs[0][prompt_tokens:] if prompt_tokens < outputs[0].shape[-1] else outputs[0]
-            text = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
-            if not text:
-                text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-
-            cleaned_text = self._clean_response_text(text)
-            self._bump_bucket("status_code_counts", "200", 1)
-            self._bump_metric("requests_ok", 1)
-            log_model_call(
-                LOGGER,
-                provider=provider,
-                model=target_model,
-                endpoint="local_peft.generate",
-                latency_ms=latency_ms,
-                input_tokens=None,
-                output_tokens=None,
-                status="ok",
-                task_type=req.task_type,
-                request_tag=req.request_tag,
-                retry_attempt=1,
-                fallback_depth=fallback_depth,
-                route=route,
-            )
-            return cleaned_text
-        except Exception as exc:
-            latency_ms = (time.perf_counter() - started) * 1000
-            self._bump_bucket("status_code_counts", "local_peft_error", 1)
-            self._bump_metric("requests_error", 1)
-            log_model_call(
-                LOGGER,
-                provider=provider,
-                model=target_model,
-                endpoint="local_peft.generate",
-                latency_ms=latency_ms,
-                input_tokens=None,
-                output_tokens=None,
-                status="error",
-                error_class=exc.__class__.__name__,
-                error_message=str(exc),
-                task_type=req.task_type,
-                request_tag=req.request_tag,
-                retry_attempt=1,
-                fallback_depth=fallback_depth,
-                route=route,
-            )
-            raise
-
     def _call_hf_inference(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         if not self.hf_token:
             raise RuntimeError("HF_TOKEN is not set")
@@ -1160,7 +877,7 @@ class InferenceClient:
                 [],
                 req.temperature,
                 req.top_p,
-                req.max_new_tokens or self.default_max_new_tokens,
+                req.max_new_tokens,
             ]
         }
         headers = {"Content-Type": "application/json"}

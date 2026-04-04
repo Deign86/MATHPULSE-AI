@@ -4,13 +4,10 @@ import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, 
 import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
 import { saveQuizResults } from '../services/quizService';
-import { completeQuiz, recalculateAndUpdateModuleProgress } from '../services/progressService';
 import ScientificCalculator from './ScientificCalculator';
 import MathAnswerInput from './MathAnswerInput';
 import SupplementalBanner from './SupplementalBanner';
 import type { AIQuizQuestion } from '../types/models';
-import type { QuizAnswer } from '../types/models';
-import { subjects } from '../data/subjects';
 
 export interface Quiz {
   id: string;
@@ -145,18 +142,7 @@ function getPromptForType(questionType?: string): string {
   }
 }
 
-// ─── MathPulse Theme Palettes ───────────────────────────────
-const themePalettes = [
-  'bg-[#0a1628]', // Navy Blue
-  'bg-blue-500',  // Light Blue
-  'bg-orange-500', // Red Orange
-  'bg-rose-500',   // Rose
-  'bg-violet-600'  // Primary
-];
-
 const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, studentId, atRiskSubjects = [] }) => {
-  const [themeIndex, setThemeIndex] = useState(0);
-  const [showFireGraphic, setShowFireGraphic] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [textAnswer, setTextAnswer] = useState('');
@@ -171,7 +157,6 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [showResults, setShowResults] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
-  const [bonusXP, setBonusXP] = useState(0); // Track bonus XP from streaks
   const [showCalculator, setShowCalculator] = useState(false);
 
   // Load AI questions or generate hardcoded fallback
@@ -296,41 +281,26 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       const newStreak = streak + 1;
       setStreak(newStreak);
 
-      let earnedBonus = 0;
       if (newStreak >= 5) {
         setComboMultiplier(3);
-        earnedBonus = 15 + (newStreak - 5) * 5; // Increases as streak gets longer
-        setShowFireGraphic(true);
         playSound('combo');
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
       } else if (newStreak >= 3) {
         setComboMultiplier(2);
-        earnedBonus = 5 + (newStreak - 3) * 5;
-        setShowFireGraphic(true);
         playSound('combo');
       } else {
         setComboMultiplier(1);
-        setShowFireGraphic(false);
       }
-      setBonusXP(prev => prev + earnedBonus);
     } else {
       playSound('incorrect');
       setStreak(0);
       setComboMultiplier(1);
-      setShowFireGraphic(false);
     }
 
     setShowExplanation(true);
   };
 
   const handleNextQuestion = () => {
-    // Randomly change color palette (but ensure it actually changes)
-    let nextIndex;
-    do {
-      nextIndex = Math.floor(Math.random() * themePalettes.length);
-    } while (nextIndex === themeIndex);
-    setThemeIndex(nextIndex);
-
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
@@ -361,52 +331,9 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       xpEarned = Math.round(xpEarned * 1.2);
     }
 
-    // Add accumulated streak bonus XP
-    xpEarned += bonusXP;
-
     setTotalXP(xpEarned);
 
     const timeSpent = totalTime - timeRemaining;
-
-    // Persist to progress doc so Competency Matrix updates (module-specific)
-    if (studentId) {
-      const parts = quiz.id.split('-');
-      const moduleId = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : null;
-      const parentSubject = moduleId ? subjects.find((s) => s.modules.some((m) => m.id === moduleId)) : null;
-      const subjectId = parentSubject?.id ?? null;
-      const module = moduleId ? parentSubject?.modules.find((m) => m.id === moduleId) : null;
-
-      if (moduleId && subjectId && module) {
-        const answersForProgress: QuizAnswer[] = answerRecords.map((r) => ({
-          questionId: r.questionId,
-          selectedAnswer: r.answer,
-          isCorrect: r.correct,
-        }));
-
-        void (async () => {
-          try {
-            await completeQuiz(
-              studentId,
-              subjectId,
-              moduleId,
-              quiz.id,
-              percentage,
-              answersForProgress,
-              timeSpent
-            );
-            await recalculateAndUpdateModuleProgress(
-              studentId,
-              subjectId,
-              moduleId,
-              module.lessons.length,
-              module.quizzes.length
-            );
-          } catch (err) {
-            console.error('[QuizExperience] Failed to persist progress:', err);
-          }
-        })();
-      }
-    }
 
     // Fire automation: quiz submitted
     if (studentId) {
@@ -560,7 +487,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           {/* Action Button */}
           <button
             onClick={onClose}
-            className={`w-full text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95 mt-4 ${themePalettes[themeIndex]}`}
+            className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white font-bold py-4 rounded-xl transition-all mt-4"
           >
             Continue
           </button>
@@ -574,30 +501,10 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col relative"
+        className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
-        {/* Fire Streak Graphic */}
-        <AnimatePresence>
-          {streak >= 3 && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0, y: -20, x: "-50%" }}
-              animate={{ scale: 1, opacity: 1, y: 0, x: "-50%" }}
-              exit={{ scale: 0, opacity: 0, y: -20, x: "-50%" }}
-              className="absolute top-0 left-1/2 z-50 -mt-6 drop-shadow-2xl"
-            >
-              <div className="bg-gradient-to-r from-orange-500 to-rose-500 text-white font-black text-2xl px-6 py-2 rounded-full border-4 border-white flex items-center justify-center gap-2 shadow-orange-500/50 shadow-xl" style={{ animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" }}>
-                <Flame size={32} className="text-yellow-300 fill-yellow-400" />
-                {streak} STREAK!
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Header */}
-        <motion.div 
-          className={`p-6 text-white rounded-t-3xl transition-colors duration-500 ${themePalettes[themeIndex]}`}
-          layout
-        >
+        <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 text-white">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-2xl font-bold">{quiz.title}</h2>
@@ -663,10 +570,10 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             </div>
             <div className="flex items-center gap-2 bg-rose-500/30 px-3 py-1 rounded-full">
               <Trophy size={16} />
-              <span className="text-sm font-bold">+{quiz.xpReward + bonusXP} XP</span>
+              <span className="text-sm font-bold">+{quiz.xpReward} XP</span>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Question Content */}
         <div className="flex-1 overflow-y-auto p-8 relative">
@@ -870,7 +777,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             {showExplanation ? (
               <button
                 onClick={handleNextQuestion}
-                className={`text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:scale-105 active:scale-95 ${themePalettes[themeIndex]}`}
+                className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all"
               >
                 {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
                 <ChevronRight size={18} />
@@ -883,12 +790,12 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                     ? !textAnswer.trim()
                     : selectedAnswer === null
                 }
-                className={`font-bold px-8 py-3 rounded-xl transition-all shadow-lg ${
+                className={`font-bold px-8 py-3 rounded-xl transition-all ${
                   (currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
                     ? textAnswer.trim()
                     : selectedAnswer !== null)
-                    ? `text-white hover:scale-105 active:scale-95 ${themePalettes[themeIndex]}`
-                    : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed opacity-70'
+                    ? 'bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white'
+                    : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
                 }`}
               >
                 Submit Answer

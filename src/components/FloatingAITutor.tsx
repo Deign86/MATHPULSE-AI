@@ -84,16 +84,12 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               onClick={handleFullScreenClick}
               className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
               title="Open fullscreen"
-              aria-label="Open fullscreen"
-              type="button"
             >
               <Maximize2 size={16} className="text-white" />
             </button>
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
-              aria-label="Close AI tutor"
-              type="button"
             >
               <X size={16} className="text-white" />
             </button>
@@ -145,9 +141,6 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         {/* Input Area - Fixed */}
         <div className="p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
           <div className="flex gap-2">
-            <label htmlFor="ai-tutor-input" className="sr-only">
-              Ask AI tutor a question
-            </label>
             <input
               id="ai-tutor-input"
               name="ai-tutor-input"
@@ -163,8 +156,6 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               onClick={handleSendMessage}
               className="p-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!currentMessage.trim() || isLoading}
-              aria-label="Send AI tutor message"
-              type="button"
             >
               <Send size={18} />
             </button>
@@ -186,8 +177,6 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
-          aria-label={isOpen ? 'Hide AI tutor' : 'Open AI tutor'}
-          type="button"
         >
           {isOpen ? <X size={28} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-14 h-14 object-contain drop-shadow-lg" />}
         </motion.button>
