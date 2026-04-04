@@ -7,6 +7,33 @@ import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole 
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
 
+const getFriendlyErrorMessage = (err: unknown, defaultMessage: string): string => {
+  const errorMessage = err instanceof Error ? err.message : defaultMessage;
+  
+  if (errorMessage.includes('auth/invalid-credential') || errorMessage.includes('auth/wrong-password') || errorMessage.includes('auth/user-not-found')) {
+    return 'Invalid email or password. Please check your credentials and try again.';
+  }
+  if (errorMessage.includes('auth/email-already-in-use')) {
+    return 'This email is already registered. Please sign in instead.';
+  }
+  if (errorMessage.includes('auth/weak-password')) {
+    return 'Password is too weak. It should be at least 6 characters.';
+  }
+  if (errorMessage.includes('auth/too-many-requests')) {
+    return 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
+  }
+  if (errorMessage.includes('auth/network-request-failed')) {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+  
+  // If it's a generic Firebase error, hide it behind the default message
+  if (errorMessage.includes('Firebase:') || errorMessage.includes('auth/')) {
+    return defaultMessage;
+  }
+  
+  return errorMessage;
+};
+
 const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11', 'Grade 12'];
   const SECTION_OPTIONS: Record<string, string[]> = {
@@ -69,7 +96,7 @@ const LoginPage: React.FC = () => {
       setPendingAuthRole(role);
       await signInWithEmail(demoEmail, demoPassword);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Demo sign-in failed');
+      setError(getFriendlyErrorMessage(err, 'Demo sign-in failed'));
       setLoading(false);
     }
   };
@@ -121,7 +148,7 @@ const LoginPage: React.FC = () => {
         await signInWithEmail(email, password);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(getFriendlyErrorMessage(err, 'Authentication failed'));
       setLoading(false);
     }
   };
@@ -141,7 +168,7 @@ const LoginPage: React.FC = () => {
       }
       await signInWithGoogle(isSignUp ? selectedRole : undefined);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      setError(getFriendlyErrorMessage(err, 'Google sign-in failed'));
       setLoading(false);
     }
   };
@@ -224,17 +251,12 @@ const LoginPage: React.FC = () => {
             className="flex flex-col justify-center space-y-8"
           >
             {/* Logo */}
-            <motion.div className="flex items-center gap-4">
-              <motion.div
-                className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center relative shadow-xl shadow-sky-500/30"
-                animate={{ boxShadow: ['0 0 20px rgba(14,165,233,0.15)', '0 0 40px rgba(14,165,233,0.3)', '0 0 20px rgba(14,165,233,0.15)'] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              >
-                <span className="text-white font-display font-extrabold text-2xl">M</span>
-                <motion.div
-                  className="absolute inset-0 rounded-xl border-2 border-sky-300/30"
-                  animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+            <motion.div className="flex items-center gap-2.5">
+              <motion.div className="relative flex items-center justify-center drop-shadow-md">
+                <img 
+                  src="/mathpulse_logo.png" 
+                  alt="MathPulse Logo" 
+                  className="w-16 h-16 object-contain flex-shrink-0"
                 />
               </motion.div>
               <div>

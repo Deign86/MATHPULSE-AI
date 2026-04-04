@@ -237,6 +237,7 @@ export interface LessonProgress {
   completedAt?: Date;
   timeSpent: number; // in seconds
   score?: number;
+  progressPercent?: number;
 }
 
 export interface QuizAttempt {
@@ -332,6 +333,18 @@ export interface Notification {
   read: boolean;
   actionUrl?: string;
   createdAt: Date;
+}
+
+// Calendar Types
+export interface CalendarEvent {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime?: Date;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
 // Leadership Goal Types

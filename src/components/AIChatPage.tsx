@@ -77,9 +77,7 @@ const AIChatPage = () => {
         {/* Header - Fixed */}
         <div className="p-4 border-b border-[#dde3eb] flex-shrink-0">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center">
-              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-10 h-10 object-contain drop-shadow-md" />
-            </div>
+            <img src="/mathpulse_logo.png" alt="AI Tutor" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
             <div>
               <h2 className="text-base font-bold font-display text-[#0a1628]">L.O.L.I.</h2>
               <p className="text-[10px] text-[#5a6578]">Your AI Math Tutor</p>
@@ -164,7 +162,7 @@ const AIChatPage = () => {
 
           {filteredSessions.length === 0 && (
             <div className="text-center py-8">
-              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-16 h-16 object-contain mx-auto mb-2 opacity-60 drop-shadow-sm grayscale contrast-50" />
+              <img src="/mathpulse_logo.png" alt="AI Tutor" className="w-16 h-16 object-contain mx-auto mb-2 opacity-60 drop-shadow-sm grayscale contrast-50" />
               <p className="text-sm text-slate-500">No conversations found</p>
               <p className="text-xs text-slate-500/60 mt-1">Start a new chat!</p>
             </div>
@@ -263,9 +261,7 @@ const AIChatPage = () => {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-24 h-24 bg-gradient-to-r from-sky-100 to-cyan-100 rounded-3xl flex items-center justify-center mb-6">
-              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-20 h-20 object-contain drop-shadow-lg" />
-            </div>
+            <img src="/mathpulse_logo.png" alt="AI Tutor" className="w-24 h-24 object-contain drop-shadow-lg mb-6 flex-shrink-0" />
             <h2 className="text-2xl font-bold font-display text-[#0a1628] mb-1">Welcome to L.O.L.I.</h2>
             <p className="text-sky-600 text-sm font-bold tracking-wide uppercase mb-4">Logical Operations & Learning Intelligence</p>
               <p className="text-[#5a6578] mb-6 max-w-md">
