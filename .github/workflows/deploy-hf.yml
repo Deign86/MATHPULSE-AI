@@ -163,12 +163,13 @@ jobs:
           git push origin main --force
           echo "✅ Deployed to https://huggingface.co/spaces/Deign86/mathpulse-api-v3test"
 
-      - name: Enforce backend Space chat environment variables
+      - name: Enforce backend Space model environment variables
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python scripts/enforce_hf_space_chat_env.py \
             --space-id Deign86/mathpulse-api-v3test \
+            --global-model Qwen/Qwen2.5-7B-Instruct \
             --chat-model Qwen/Qwen2.5-7B-Instruct \
             --provider hf_inference
 
