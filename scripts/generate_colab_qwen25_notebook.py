@@ -149,15 +149,30 @@ def build_cells() -> list[dict]:
                 TRAIN_PROFILE = os.getenv("TRAIN_PROFILE", "production").strip().lower()
                 TARGET_TOTAL_STEPS = int(os.getenv("TARGET_TOTAL_STEPS", "600"))
                 UPLOAD_TO_HF = os.getenv("UPLOAD_TO_HF", "1").strip().lower() not in {"0", "false", "no"}
+                requested_gpu_index = int(os.getenv("TRAIN_GPU_INDEX", "0"))
 
                 if TRAIN_PROFILE not in {"production", "smoke"}:
                     raise ValueError("Unsupported TRAIN_PROFILE=" + TRAIN_PROFILE + ". Use 'production' or 'smoke'.")
 
                 requested_max_seq_length = int(os.getenv("MAX_SEQ_LENGTH", "4096"))
-                t4_safe_max_seq_length = int(os.getenv("T4_SAFE_MAX_SEQ_LENGTH", "1536"))
+                t4_safe_max_seq_length = int(os.getenv("T4_SAFE_MAX_SEQ_LENGTH", "1024"))
                 allow_t4_long_context = os.getenv("ALLOW_T4_LONG_CONTEXT", "0").strip().lower() in {"1", "true", "yes"}
 
-                gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
+                if torch.cuda.is_available():
+                    available_gpu_count = torch.cuda.device_count()
+                    if requested_gpu_index < 0 or requested_gpu_index >= available_gpu_count:
+                        print(
+                            f"Requested TRAIN_GPU_INDEX={{requested_gpu_index}} is invalid for {{available_gpu_count}} GPUs; using 0."
+                        )
+                        selected_gpu_index = 0
+                    else:
+                        selected_gpu_index = requested_gpu_index
+                    gpu_name = torch.cuda.get_device_name(selected_gpu_index)
+                else:
+                    available_gpu_count = 0
+                    selected_gpu_index = -1
+                    gpu_name = "cpu"
+
                 is_t4 = "tesla t4" in gpu_name.lower()
                 if is_t4 and requested_max_seq_length > t4_safe_max_seq_length and not allow_t4_long_context:
                     print(
@@ -177,6 +192,9 @@ def build_cells() -> list[dict]:
                 print("Max sequence length:", max_seq_length)
                 print("Target total steps:", TARGET_TOTAL_STEPS)
                 print("Upload to HF enabled:", UPLOAD_TO_HF)
+                print("Available GPUs:", available_gpu_count)
+                print("Requested GPU index:", requested_gpu_index)
+                print("Selected GPU index:", selected_gpu_index)
 
                 token = HF_TOKEN.strip() or os.getenv("HF_TOKEN", "").strip()
                 if token:
@@ -469,11 +487,31 @@ def build_cells() -> list[dict]:
                     }
                 )
 
-                device = "cuda" if torch.cuda.is_available() else "cpu"
+                if torch.cuda.is_available() and selected_gpu_index >= 0:
+                    torch.cuda.set_device(selected_gpu_index)
+                    device = f"cuda:{selected_gpu_index}"
+                else:
+                    device = "cpu"
+                if hasattr(model, "config") and hasattr(model.config, "use_cache"):
+                    model.config.use_cache = False
+                try:
+                    FastLanguageModel.for_training(model)
+                except Exception as for_training_error:
+                    print(f"FastLanguageModel.for_training warning: {for_training_error}")
                 model = model.to(device)
                 model.train()
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
+
+                oom_fallback_seq_length = max(
+                    256,
+                    int(
+                        os.getenv(
+                            "OOM_FALLBACK_SEQ_LENGTH",
+                            str(min(max_seq_length, 768 if "tesla t4" in gpu_name.lower() else max_seq_length)),
+                        )
+                    ),
+                )
 
                 trainable_params = [param for param in model.parameters() if param.requires_grad]
                 optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
@@ -528,7 +566,26 @@ def build_cells() -> list[dict]:
                         continue
 
                     batch = {key: value.to(device) for key, value in batch.items()}
-                    outputs = model(**batch)
+                    try:
+                        outputs = model(**batch)
+                    except torch.cuda.OutOfMemoryError:
+                        if not torch.cuda.is_available():
+                            raise
+
+                        current_seq_len = batch.get("input_ids").shape[1] if "input_ids" in batch else -1
+                        torch.cuda.empty_cache()
+
+                        if current_seq_len <= oom_fallback_seq_length:
+                            raise
+
+                        print(
+                            f"OOM at seq_len={current_seq_len}; retrying with fallback_seq_len={oom_fallback_seq_length}."
+                        )
+                        for tensor_key in ("input_ids", "attention_mask", "labels"):
+                            if tensor_key in batch and batch[tensor_key] is not None and batch[tensor_key].dim() == 2:
+                                batch[tensor_key] = batch[tensor_key][:, -oom_fallback_seq_length:]
+
+                        outputs = model(**batch)
                     loss = outputs.loss
                     if loss is None:
                         raise RuntimeError("Model forward returned no loss. Check labels in collator output.")
