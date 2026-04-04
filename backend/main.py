@@ -206,6 +206,11 @@ FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
     if value.strip()
 }
 CHAT_MAX_NEW_TOKENS = max(256, int(os.getenv("CHAT_MAX_NEW_TOKENS", "576")))
+CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC = max(5, int(os.getenv("CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", "25")))
+CHAT_STREAM_TOTAL_TIMEOUT_SEC = max(
+    CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC,
+    int(os.getenv("CHAT_STREAM_TOTAL_TIMEOUT_SEC", "120")),
+)
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -1929,17 +1934,51 @@ async def chat_tutor_stream(request: ChatRequest):
             return "\n".join(body) + "\n\n"
 
         async def event_generator():
+            stream_iterator = None
+            stream_started_at = time.monotonic()
+            emitted_any_chunk = False
             try:
-                async for chunk in call_hf_chat_stream_async(
+                stream_iterator = call_hf_chat_stream_async(
                     messages,
                     max_tokens=CHAT_MAX_NEW_TOKENS,
                     temperature=0.3,
                     top_p=0.85,
                     task_type="chat",
-                ):
+                )
+
+                while True:
+                    elapsed = time.monotonic() - stream_started_at
+                    remaining_total = CHAT_STREAM_TOTAL_TIMEOUT_SEC - elapsed
+                    if remaining_total <= 0:
+                        raise TimeoutError("Chat stream exceeded total timeout")
+
+                    token_timeout = min(CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC, remaining_total)
+                    try:
+                        chunk = await asyncio.wait_for(stream_iterator.__anext__(), timeout=token_timeout)
+                    except StopAsyncIteration:
+                        break
+
+                    if not chunk:
+                        continue
+
+                    emitted_any_chunk = True
                     payload = json.dumps({"chunk": chunk}, ensure_ascii=False)
                     yield _sse("chunk", payload)
                     await asyncio.sleep(0)
+            except (asyncio.TimeoutError, TimeoutError):
+                logger.error(
+                    "HF chat stream timed out (idle=%ss total=%ss)",
+                    CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC,
+                    CHAT_STREAM_TOTAL_TIMEOUT_SEC,
+                )
+                err_payload = json.dumps({
+                    "detail": (
+                        "AI response stream timed out mid-response. Please retry."
+                        if emitted_any_chunk
+                        else "AI response stream timed out before any tokens were received. Please retry."
+                    ),
+                })
+                yield _sse("error", err_payload)
             except Exception as hf_err:
                 logger.error(f"HF chat stream failed: {hf_err}")
                 err_payload = json.dumps({

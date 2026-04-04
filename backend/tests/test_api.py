@@ -286,6 +286,26 @@ class TestChatEndpoint:
         assert "event: error" in content
         assert "event: end" in content
 
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_timeout_emits_error_and_end_events(self, mock_stream_async):
+        async def _slow_stream(*args, **kwargs):
+            await asyncio.sleep(0.05)
+            yield "late chunk"
+
+        mock_stream_async.return_value = _slow_stream()
+
+        with patch.object(main_module, "CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", 0.01), patch.object(main_module, "CHAT_STREAM_TOTAL_TIMEOUT_SEC", 0.03):
+            with client.stream("POST", "/api/chat/stream", json={
+                "message": "Say hello",
+                "history": [],
+            }) as response:
+                assert response.status_code == 200
+                content = "".join(response.iter_text())
+
+        assert "event: error" in content
+        assert "timed out" in content.lower()
+        assert "event: end" in content
+
 
 class TestHFChatTransport:
     @patch("main.http_requests.post")

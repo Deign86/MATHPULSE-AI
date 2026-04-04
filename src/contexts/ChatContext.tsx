@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { apiService } from '../services/apiService';
+import { ApiTimeoutError, apiService } from '../services/apiService';
 import { useAuth } from './AuthContext';
 import {
   createChatSession as createFirebaseSession,
@@ -448,7 +448,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         };
         addMessageToSession(sessionId, aiMsg);
       } catch (streamError) {
-        console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        if (streamError instanceof ApiTimeoutError) {
+          console.warn(
+            `Streaming timed out after ${streamError.timeoutMs}ms, falling back to non-streaming chat.`,
+            streamError,
+          );
+        } else {
+          console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        }
         if (streamMessageId) {
           removeStreamingMessage();
         }
