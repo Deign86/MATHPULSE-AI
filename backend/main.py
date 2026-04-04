@@ -315,9 +315,16 @@ async def startup_event():
         logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
     
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
-    logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
+    active_provider = os.getenv("INFERENCE_PROVIDER", "hf_inference").strip().lower()
+    logger.info(f"   - INFERENCE_PROVIDER: {active_provider}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
+    if active_provider == "local_peft":
+        logger.info(f"   - LORA_BASE_MODEL_ID: {os.getenv('LORA_BASE_MODEL_ID', 'Qwen/Qwen2.5-7B-Instruct')}")
+        logger.info(f"   - LORA_ADAPTER_MODEL_ID: {os.getenv('LORA_ADAPTER_MODEL_ID', '(not set)')}")
+        logger.info(f"   - LORA_LOAD_IN_4BIT: {os.getenv('LORA_LOAD_IN_4BIT', 'false')}")
+        logger.info(f"   - LORA_DEVICE_MAP: {os.getenv('LORA_DEVICE_MAP', 'auto')}")
+        logger.info(f"   - LORA_DTYPE: {os.getenv('LORA_DTYPE', 'float16')}")
 
 
 @app.on_event("shutdown")
@@ -1059,8 +1066,8 @@ def call_hf_chat_stream(
 
     for fallback_depth, model_name in enumerate(model_chain):
         for provider in provider_chain:
-            if provider == "local_space":
-                last_error = RuntimeError("Streaming is not supported for local_space provider")
+            if provider in {"local_space", "local_peft"}:
+                last_error = RuntimeError(f"Streaming is not supported for {provider} provider")
                 continue
 
             route = client._resolve_route_label(provider, effective_task)
@@ -1291,7 +1298,7 @@ async def call_hf_chat_async(
         )
         for provider in provider_chain:
             route = client._resolve_route_label(provider, effective_task)
-            if provider == "local_space":
+            if provider in {"local_space", "local_peft"}:
                 try:
                     text = await _run_hf_blocking(
                         client._generate_with_provider,
@@ -1303,7 +1310,8 @@ async def call_hf_chat_async(
                 except Exception as exc:
                     last_error = exc
                     logger.warning(
-                        "⚠️ Async local fallback failed: task=%s model=%s depth=%s error=%s",
+                        "⚠️ Async local provider failed: provider=%s task=%s model=%s depth=%s error=%s",
+                        provider,
                         effective_task,
                         model_name,
                         fallback_depth,
@@ -1499,8 +1507,8 @@ async def call_hf_chat_stream_async(
             timeout_sec=timeout,
         )
         for provider in provider_chain:
-            if provider == "local_space":
-                last_error = RuntimeError("Streaming is not supported for local_space provider")
+            if provider in {"local_space", "local_peft"}:
+                last_error = RuntimeError(f"Streaming is not supported for {provider} provider")
                 continue
 
             route = client._resolve_route_label(provider, effective_task)

@@ -1142,8 +1142,8 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
 
     # Fetch historical data from Firestore
     db = _get_firestore_db()
-    X_data = []
-    y_data = []
+    X_data: List[List[float]] = []
+    y_data: List[int] = []
 
     if db is not None:
         try:
@@ -1156,17 +1156,17 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
                     continue
 
                 features = [
-                    data.get("engagementScore", 50),
-                    data.get("avgQuizScore", 50),
-                    data.get("attendance", 80),
-                    data.get("assignmentCompletion", 60),
-                    data.get("streak", 0),
-                    data.get("xpGrowthRate", 0),
-                    data.get("timeOnPlatform", 0),
+                    float(data.get("engagementScore", 50)),
+                    float(data.get("avgQuizScore", 50)),
+                    float(data.get("attendance", 80)),
+                    float(data.get("assignmentCompletion", 60)),
+                    float(data.get("streak", 0)),
+                    float(data.get("xpGrowthRate", 0)),
+                    float(data.get("timeOnPlatform", 0)),
                     0.0,  # engagementTrend7d
                     0.0,  # quizScoreVariance
-                    data.get("consecutiveAbsences", 0),
-                    data.get("daysSinceLastActivity", 0),
+                    float(data.get("consecutiveAbsences", 0)),
+                    float(data.get("daysSinceLastActivity", 0)),
                 ]
                 X_data.append(features)
 
@@ -1186,8 +1186,13 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
     if len(X_data) < 50:
         logger.info("Insufficient Firestore data; generating synthetic training data")
         synth_X, synth_y = _generate_synthetic_risk_data(500)
-        X_data.extend(synth_X.tolist())
-        y_data.extend(synth_y.tolist())
+        synth_X_rows = np.asarray(synth_X, dtype=float)
+        synth_y_rows = np.asarray(synth_y, dtype=int)
+
+        for row in synth_X_rows:
+            X_data.append([float(value) for value in row.tolist()])
+        for label in synth_y_rows:
+            y_data.append(int(label))
 
     X = np.array(X_data)
     y = np.array(y_data)
