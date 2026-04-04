@@ -215,10 +215,21 @@ class TestChatEndpoint:
         assert "4" in response.json()["response"]
 
     @patch("main.call_hf_chat")
+    def test_chat_non_math_returns_refusal_and_skips_inference(self, mock_chat):
+        response = client.post("/api/chat", json={
+            "message": "Who is Elon Musk?",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] == main_module.MATH_ONLY_REFUSAL_MESSAGE
+        mock_chat.assert_not_called()
+
+    @patch("main.call_hf_chat")
     def test_chat_with_history(self, mock_chat):
         mock_chat.return_value = "Yes, that's right."
         response = client.post("/api/chat", json={
-            "message": "Is that correct?",
+            "message": "Is x = 4 correct for 2 + 2 = x?",
             "history": [
                 {"role": "user", "content": "What is 2+2?"},
                 {"role": "assistant", "content": "4"},
@@ -238,7 +249,7 @@ class TestChatEndpoint:
     def test_chat_hf_failure_returns_502(self, mock_chat):
         mock_chat.side_effect = Exception("HF API down")
         response = client.post("/api/chat", json={
-            "message": "Hello",
+            "message": "Solve 3x + 1 = 10",
             "history": [],
         })
         assert response.status_code == 502
@@ -263,7 +274,7 @@ class TestChatEndpoint:
         mock_stream.return_value = iter(["Hello", " world"])
 
         with client.stream("POST", "/api/chat/stream", json={
-            "message": "Say hello",
+            "message": "What is 2 + 2?",
             "history": [],
         }) as response:
             assert response.status_code == 200
@@ -278,7 +289,7 @@ class TestChatEndpoint:
         mock_stream.side_effect = Exception("HF stream down")
 
         with client.stream("POST", "/api/chat/stream", json={
-            "message": "Say hello",
+            "message": "Solve x + 2 = 5",
             "history": [],
         }) as response:
             assert response.status_code == 200
@@ -297,7 +308,7 @@ class TestChatEndpoint:
 
         with patch.object(main_module, "CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", 0.01), patch.object(main_module, "CHAT_STREAM_TOTAL_TIMEOUT_SEC", 0.03):
             with client.stream("POST", "/api/chat/stream", json={
-                "message": "Say hello",
+                "message": "Solve x + 2 = 5",
                 "history": [],
             }) as response:
                 assert response.status_code == 200
@@ -306,6 +317,20 @@ class TestChatEndpoint:
         assert "event: error" in content
         assert "timed out" in content.lower()
         assert "event: end" in content
+
+    @patch("main.call_hf_chat_stream")
+    def test_chat_stream_non_math_returns_refusal_and_skips_inference(self, mock_stream):
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "hello there",
+            "history": [],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert "event: chunk" in content
+        assert main_module.MATH_ONLY_REFUSAL_MESSAGE in content
+        assert "event: end" in content
+        mock_stream.assert_not_called()
 
 
 class TestHFChatTransport:

@@ -1701,6 +1701,74 @@ def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
 
 # ─── Math Tutor Prompt & Wrapper ──────────────────────────────
 
+MATH_ONLY_REFUSAL_MESSAGE = (
+    "I’m sorry, but I can only answer math-related questions. "
+    "Please ask me something related to mathematics."
+)
+
+_MATH_SCOPE_KEYWORDS: Set[str] = {
+    "math",
+    "mathematics",
+    "algebra",
+    "geometry",
+    "trigonometry",
+    "calculus",
+    "statistics",
+    "probability",
+    "arithmetic",
+    "equation",
+    "inequality",
+    "function",
+    "graph",
+    "slope",
+    "derivative",
+    "integral",
+    "limit",
+    "matrix",
+    "determinant",
+    "fraction",
+    "percentage",
+    "ratio",
+    "polynomial",
+    "quadratic",
+    "logarithm",
+    "exponent",
+    "angle",
+    "triangle",
+    "circle",
+    "perimeter",
+    "area",
+    "volume",
+    "mean",
+    "median",
+    "mode",
+    "standard deviation",
+    "solve",
+    "simplify",
+    "factor",
+    "evaluate",
+    "compute",
+    "calculate",
+}
+
+_MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(r"\d+\s*[%+\-*/^=]\s*[-+]?\d*"),
+    re.compile(r"\b(?:sin|cos|tan|cot|sec|csc|log|ln|sqrt)\s*\(?"),
+    re.compile(r"\b(?:differentiate|integrate|derive|proof|prove)\b"),
+    re.compile(r"\b(?:x|y|z)\s*[=+\-*/^]\s*[-+]?\d"),
+)
+
+
+def is_math_related_query(message: str) -> bool:
+    normalized = (message or "").strip().lower()
+    if not normalized:
+        return False
+
+    if any(keyword in normalized for keyword in _MATH_SCOPE_KEYWORDS):
+        return True
+
+    return any(pattern.search(normalized) for pattern in _MATH_SCOPE_PATTERNS)
+
 
 def build_math_tutor_prompt(question: str) -> str:
     """Build a structured math-tutor prompt for the LLM."""
@@ -1718,7 +1786,8 @@ Your job is to:
 9) If the computation is long, summarize intermediate results so the student does not get lost.
 10) If the answer depends on approximations, specify whether the result is exact or rounded (and to how many decimal places).
 Speak in clear, concise English. Use short paragraphs and LaTeX-style math when helpful (e.g., x^2 + 3x + 2 = 0).
-If the user question is not about math, politely say that you can only help with math-related questions.
+If the user question is not about math, respond with EXACTLY this sentence and nothing else:
+"I’m sorry, but I can only answer math-related questions. Please ask me something related to mathematics."
 
 USER:
 Student question:
@@ -1879,7 +1948,8 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 - For functions/calculus: Always verify domain and range assumptions
 - Be encouraging but honest. If a problem is ambiguous, ask for clarification.
 - Respond in clear English suitable for Grade 11-12 students
-- If asked about non-math topics, politely redirect to mathematics
+- If asked about any non-math topic, respond with EXACTLY this sentence and nothing else:
+    "I’m sorry, but I can only answer math-related questions. Please ask me something related to mathematics."
 - Never use external tools or functions — solve purely through mathematical reasoning"""
 
 
@@ -1887,6 +1957,9 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     try:
+        if not is_math_related_query(request.message):
+            return ChatResponse(response=MATH_ONLY_REFUSAL_MESSAGE)
+
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
         # Add conversation history
@@ -1936,6 +2009,7 @@ async def chat_tutor(request: ChatRequest):
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
+        is_math_query = is_math_related_query(request.message)
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
         for msg in request.history[-10:]:
             messages.append({"role": msg.role, "content": msg.content})
@@ -1947,6 +2021,12 @@ async def chat_tutor_stream(request: ChatRequest):
             return "\n".join(body) + "\n\n"
 
         async def event_generator():
+            if not is_math_query:
+                payload = json.dumps({"chunk": MATH_ONLY_REFUSAL_MESSAGE}, ensure_ascii=False)
+                yield _sse("chunk", payload)
+                yield _sse("end", "done")
+                return
+
             stream_iterator = None
             stream_started_at = time.monotonic()
             emitted_any_chunk = False
