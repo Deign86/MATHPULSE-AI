@@ -25,6 +25,7 @@ import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
 import AvatarShop from './components/AvatarShop';
 import AppLoadingScreen from './components/AppLoadingScreen';
+import ModelViabilityTester from './pages/staging/ModelViabilityTester';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService';
@@ -35,6 +36,7 @@ import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, Us
 import { triggerStudentEnrolled, getPendingDeepDiagnosticCount } from './services/automationService';
 import { resetTestingDataForRole } from './services/testResetService';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService';
+import { isStagingModelTestEnabled, isStagingModelTestRoute, stagingConfig } from './config/staging';
 import { Toaster, toast } from 'sonner';
 import { Crown, Flame, Zap, Brain, Calculator } from 'lucide-react';
 
@@ -621,6 +623,40 @@ const App = () => {
   // Show login page if not logged in
   if (!isLoggedIn) {
     return <LoginPage />;
+  }
+
+  const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const onStagingModelTestRoute = isStagingModelTestRoute(currentPathname);
+
+  if (onStagingModelTestRoute) {
+    if (!isStagingModelTestEnabled()) {
+      return (
+        <>
+          <div className="min-h-screen bg-slate-100 px-4 py-10 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-3xl rounded-2xl border border-amber-300 bg-amber-50 p-6 shadow-sm">
+              <h1 className="text-xl font-display font-bold text-amber-900">Staging Tester Disabled</h1>
+              <p className="mt-2 text-sm text-amber-800">
+                This route is reserved for staging-only model validation and is disabled by default.
+              </p>
+              <p className="mt-4 text-xs text-amber-700">
+                Required flags: VITE_APP_ENV=staging and VITE_ENABLE_STAGING_MODEL_TEST=true
+              </p>
+              <p className="mt-2 text-xs text-amber-700">
+                Current environment: {stagingConfig.appEnv || 'not set'}
+              </p>
+            </div>
+          </div>
+          <Toaster position="top-right" richColors closeButton />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <ModelViabilityTester />
+        <Toaster position="top-right" richColors closeButton />
+      </>
+    );
   }
 
   const isStudentProfileHydrated = userRole !== 'student' || profileReady;
