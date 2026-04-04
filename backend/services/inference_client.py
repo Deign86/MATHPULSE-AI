@@ -40,7 +40,7 @@ class InferenceRequest:
     model: Optional[str] = None
     task_type: str = "default"
     request_tag: str = ""
-    max_new_tokens: int = 512
+    max_new_tokens: Optional[int] = None
     temperature: float = 0.2
     top_p: float = 0.9
     repetition_penalty: float = 1.15
@@ -1160,7 +1160,7 @@ class InferenceClient:
                 [],
                 req.temperature,
                 req.top_p,
-                req.max_new_tokens,
+                req.max_new_tokens or self.default_max_new_tokens,
             ]
         }
         headers = {"Content-Type": "application/json"}

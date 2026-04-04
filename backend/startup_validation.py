@@ -58,14 +58,15 @@ def validate_imports() -> None:
             importlib.import_module("transformers")
             importlib.import_module("peft")
             importlib.import_module("accelerate")
-            logger.info("   ✓ local_peft deps import OK (transformers, peft, accelerate)")
+            importlib.import_module("torch")
+            logger.info("   ✓ local_peft deps import OK (transformers, peft, accelerate, torch)")
 
             load_in_4bit = os.getenv("LORA_LOAD_IN_4BIT", "false").strip().lower() in {"1", "true", "yes", "on"}
             if load_in_4bit:
                 try:
                     importlib.import_module("bitsandbytes")
                     logger.info("   ✓ bitsandbytes import OK")
-                except ImportError as exc:
+                except Exception as exc:
                     raise StartupError(
                         "❌ local_peft dependency error: bitsandbytes is required when LORA_LOAD_IN_4BIT=true"
                     ) from exc
