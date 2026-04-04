@@ -5,7 +5,7 @@ import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag }
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../services/authService';
-import { purchaseAvatarItem } from '../services/gamificationService';
+import { purchaseAvatarItem, resetAvatarPurchasesForTesting } from '../services/gamificationService';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
 import { MOCK_INVENTORY, AvatarCategory } from '../data/avatarData';
@@ -118,6 +118,36 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     }
   };
 
+  const handleResetForTesting = async () => {
+    if (!userProfile?.uid) return;
+    
+    // Disable reset logic if we're currently processing one
+    if (purchasingItemId === 'resetting') return;
+    
+    setPurchasingItemId('resetting');
+    try {
+      const success = await resetAvatarPurchasesForTesting(userProfile.uid);
+      if (success) {
+        setOwnedItems([]);
+        const resetEquipped = {
+          top: 'top_pink',
+          bottom: '',
+          shoes: '',
+          accessory: ''
+        };
+        setEquipped(resetEquipped);
+        toast.success('Purchases reset successfully! (Test Mode)');
+      } else {
+        toast.error('Failed to reset purchases');
+      }
+    } catch (err) {
+      console.error('Reset error:', err);
+      toast.error('Error resetting purchases');
+    } finally {
+      setPurchasingItemId(null);
+    }
+  };
+
   const handleSave = async () => {
     if (!userProfile?.uid) return;
     setIsSaving(true);
@@ -152,29 +182,40 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         </div>
 
         <div className="flex flex-col justify-center h-full relative z-10 w-full max-w-xl mx-auto xl:mx-0">
-          <div className="mb-8 flex items-start justify-between">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-display font-black text-[#0a1628] tracking-tight flex items-center gap-3">
-                Avatar Studio <Sparkles className="text-blue-500 fill-blue-500" size={32} />
+          <div className="mb-8 flex flex-col sm:flex-row items-start justify-between gap-6">
+            <div className="pr-4">
+              <h1 className="text-4xl md:text-5xl font-display font-black text-[#0a1628] tracking-tight flex flex-wrap items-center gap-3">
+                <span className="whitespace-nowrap">Avatar Studio</span> <Sparkles className="text-blue-500 fill-blue-500" size={32} />
               </h1>
               <p className="text-slate-500 font-medium text-lg mt-2">Design your perfect learning companion.</p>
             </div>
-            <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl px-4 py-3 shadow-lg flex items-center gap-2 h-fit">
-              <ShoppingBag className="text-white" size={20} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onNavigateToModules}
-                    className="cursor-pointer hover:opacity-90 transition-opacity active:scale-95"
-                  >
-                    <p className="text-white text-xs font-bold uppercase tracking-wider">XP Balance</p>
-                    <p className="text-white text-2xl font-black">{currentXP}</p>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
-                  Review more lessons to earn more XP!
-                </TooltipContent>
-              </Tooltip>
+            <div className="flex items-center gap-4 sm:ml-auto">
+              {/* Test Reset Button */}
+              <button
+                onClick={handleResetForTesting}
+                disabled={purchasingItemId === 'resetting'}
+                className="hidden sm:flex self-stretch items-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-2 rounded-2xl font-bold text-xs transition-colors border border-slate-200"
+              >
+                Reset (Test)
+              </button>
+
+              <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl px-4 py-3 shadow-lg flex items-center gap-2 h-fit">
+                <ShoppingBag className="text-white" size={20} />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onNavigateToModules}
+                      className="cursor-pointer hover:opacity-90 transition-opacity active:scale-95"
+                    >
+                      <p className="text-white text-xs font-bold uppercase tracking-wider">XP Balance</p>
+                      <p className="text-white text-2xl font-black">{currentXP}</p>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
+                    Review more lessons to earn more XP!
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
           </div>
 
@@ -193,11 +234,21 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
             </Tabs.List>
 
             <div className="flex-1 overflow-y-auto pb-6 scrollbar-hide px-2 -mx-2">
-              {categories.map(cat => (
-                <Tabs.Content key={cat.id} value={cat.id} className="outline-none pt-2">
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
-                    {MOCK_INVENTORY.filter(item => item.category === cat.id).map(item => {
-                      const isEquipped = equipped[cat.id as keyof typeof equipped] === item.id;
+              {categories.map(cat => {
+                const categoryItems = MOCK_INVENTORY.filter(item => item.category === cat.id);
+                
+                return (
+                  <Tabs.Content key={cat.id} value={cat.id} className="outline-none pt-2 h-full">
+                    {categoryItems.length === 0 ? (
+                      <div className="w-full h-full min-h-[250px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-[2rem] bg-slate-50/50 p-8 text-center">
+                        <Crown size={48} className="text-slate-300 mb-4 opacity-50" />
+                        <h3 className="font-bold text-xl text-slate-500 mb-2">Accessories coming soon</h3>
+                        <p className="text-slate-400 text-sm max-w-xs">We're crafting some awesome gear for your avatar! Check back later.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
+                        {categoryItems.map(item => {
+                          const isEquipped = equipped[cat.id as keyof typeof equipped] === item.id;
                       const isOwned = ownedItems.includes(item.id);
                       const isLocked = Boolean(item.price && item.price > 0 && !isOwned);
 
@@ -260,8 +311,10 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                       );
                     })}
                   </div>
+                )}
                 </Tabs.Content>
-              ))}
+              );
+            })}
             </div>
           </Tabs.Root>
         </div>

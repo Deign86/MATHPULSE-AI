@@ -6,7 +6,7 @@ interface AppLoadingScreenProps {
   message?: string;
 }
 
-const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading MathPulse...' }) => {
+const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading MathPulse AI...' }) => {
   return (
     <div className="fixed inset-0 bg-[#f7f9fc] z-50 flex flex-col items-center justify-center p-4">
       <motion.div
@@ -34,7 +34,7 @@ const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading 
         </motion.div>
         
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-display font-bold text-[#0a1628]">MathPulse</h2>
+          <h2 className="text-xl font-display font-bold text-[#0a1628]">MathPulse AI</h2>
           <div className="flex items-center justify-center gap-2">
             <motion.div 
               animate={{ rotate: 360 }}
