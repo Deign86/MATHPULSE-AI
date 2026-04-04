@@ -107,7 +107,7 @@ class InferenceClient:
         self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
-        default_model_fallback = str(primary.get("id") or "meta-llama/Llama-3.1-8B-Instruct")
+        default_model_fallback = str(primary.get("id") or "Qwen/Qwen2.5-7B-Instruct")
         env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
         self.default_model = env_model_id or default_model_fallback
         
@@ -177,16 +177,16 @@ class InferenceClient:
             int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
         )
 
-        # Default task-to-model routing (chat defaults to fast 8B, with hard-prompt escalation to 70B)
+        # Default task-to-model routing (global default set to Qwen2.5-7B)
         self.task_model_map: Dict[str, str] = {
-            "chat": "meta-llama/Llama-3.1-8B-Instruct",
+            "chat": "Qwen/Qwen2.5-7B-Instruct",
             "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
             "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
             "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
             "learning_path": "Qwen/Qwen2.5-7B-Instruct",
-            "daily_insight": self.default_model,
-            "risk_classification": self.default_model,
-            "risk_narrative": self.default_model,
+            "daily_insight": "Qwen/Qwen2.5-7B-Instruct",
+            "risk_classification": "Qwen/Qwen2.5-7B-Instruct",
+            "risk_narrative": "Qwen/Qwen2.5-7B-Instruct",
         }
         # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {

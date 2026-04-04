@@ -239,16 +239,18 @@ Flow overview:
 2. Offline evaluation and generation jobs consume datasets/eval and write artifacts to jobs/output and datasets/synthetic.
 3. Curated dataset artifacts sync to private Hugging Face Datasets repositories.
 
-### Chat-Only HF Inference Profile (Keep Full UI)
+### Global Qwen HF Inference Profile (Keep Full UI)
 
-If you only want the AI chatbot to use HF inference while the rest of the app stays on normal backend/provider paths, use this routing profile:
+To make Qwen/Qwen2.5-7B-Instruct the default model for all backend tasks while keeping your existing UI and Firebase flows, use this profile:
 
 INFERENCE_PROVIDER=hf_inference
 INFERENCE_GPU_PROVIDER=hf_inference
 INFERENCE_CPU_PROVIDER=hf_inference
+INFERENCE_MODEL_ID=Qwen/Qwen2.5-7B-Instruct
+INFERENCE_CHAT_MODEL_ID=Qwen/Qwen2.5-7B-Instruct
 INFERENCE_GPU_REQUIRED_TASKS=chat
 
-This keeps your unique React UI and Firebase flows unchanged, while chat generation is handled through the configured HF inference provider.
+This keeps your unique React UI and Firebase flows unchanged, while generation routes through the configured HF inference provider with Qwen as the global default.
 
 ### Quickstart: Run locally
 
