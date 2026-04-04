@@ -456,11 +456,17 @@ def build_cells() -> list[dict]:
 
                 trainable_params = [param for param in model.parameters() if param.requires_grad]
                 optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+                scheduler_last_epoch = -1
+                if resumed_global_step > 0:
+                    for parameter_group in optimizer.param_groups:
+                        parameter_group.setdefault("initial_lr", parameter_group["lr"])
+                    scheduler_last_epoch = resumed_global_step - 1
+
                 scheduler = get_linear_schedule_with_warmup(
                     optimizer,
                     num_warmup_steps=warmup_steps,
                     num_training_steps=max_steps,
-                    last_epoch=resumed_global_step - 1,
+                    last_epoch=scheduler_last_epoch,
                 )
 
                 def evaluate_model(eval_loader):
