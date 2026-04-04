@@ -376,6 +376,12 @@ def build_cells() -> list[dict]:
                     except Exception as gc_error:
                         print(f"gradient_checkpointing_enable warning: {gc_error}")
 
+                    try:
+                        if hasattr(model_obj, "enable_input_require_grads"):
+                            model_obj.enable_input_require_grads()
+                    except Exception as input_grad_error:
+                        print(f"enable_input_require_grads warning: {input_grad_error}")
+
                     patched_modules = 0
                     checkpoint_wrapper = functools.partial(torch_checkpoint, use_reentrant=False)
                     for submodule in model_obj.modules():
@@ -388,6 +394,31 @@ def build_cells() -> list[dict]:
 
                     if patched_modules > 0:
                         print(f"Patched missing _gradient_checkpointing_func on {patched_modules} modules.")
+
+                def ensure_adapter_params_trainable(model_obj):
+                    trainable_before = sum(
+                        parameter.numel() for parameter in model_obj.parameters() if parameter.requires_grad
+                    )
+                    if trainable_before > 0:
+                        return trainable_before
+
+                    recovered = 0
+                    for name, parameter in model_obj.named_parameters():
+                        lower_name = name.lower()
+                        if "lora_" in lower_name or ".lora" in lower_name:
+                            if not parameter.requires_grad:
+                                parameter.requires_grad_(True)
+                                recovered += 1
+
+                    trainable_after = sum(
+                        parameter.numel() for parameter in model_obj.parameters() if parameter.requires_grad
+                    )
+                    if recovered > 0:
+                        print(
+                            f"Recovered trainable LoRA params from frozen state: toggled {recovered} tensors; "
+                            f"trainable_elements={trainable_after}."
+                        )
+                    return trainable_after
 
                 ensure_gradient_checkpointing_ready(model)
 
@@ -532,6 +563,13 @@ def build_cells() -> list[dict]:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
+                trainable_elements = ensure_adapter_params_trainable(model)
+                if trainable_elements == 0:
+                    raise RuntimeError(
+                        "No trainable parameters found after resume/setup. "
+                        "Adapters may be loaded in inference mode."
+                    )
+
                 oom_fallback_seq_length = max(
                     256,
                     int(
@@ -624,6 +662,18 @@ def build_cells() -> list[dict]:
                     loss = outputs.loss
                     if loss is None:
                         raise RuntimeError("Model forward returned no loss. Check labels in collator output.")
+                    if not loss.requires_grad:
+                        print("Loss has no grad_fn; reapplying training/gradient hooks and retrying this batch.")
+                        ensure_gradient_checkpointing_ready(model)
+                        ensure_adapter_params_trainable(model)
+                        model.train()
+                        outputs = model(**batch)
+                        loss = outputs.loss
+                        if loss is None or not loss.requires_grad:
+                            raise RuntimeError(
+                                "Loss remains non-differentiable after recovery. "
+                                "Check adapter trainability and checkpoint compatibility."
+                            )
 
                     loss_sum += float(loss.detach().item())
                     loss_count += 1
