@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 
 # Add backend directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from services.inference_client import InferenceClient, InferenceRequest
 
 # automation_engine has Firebase dependencies - mock its heavy parts
 # but keep the Pydantic model classes
@@ -336,6 +337,123 @@ class TestHFChatTransport:
         assert payload["model"]
         assert payload["stream"] is False
         assert isinstance(payload["messages"], list)
+
+
+class TestInferenceRouting:
+    def test_chat_strict_model_lock_keeps_single_model_chain(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Show all steps and prove the result rigorously."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("chat", selected_model)
+
+        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert "chat_strict_model_only" in source
+        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
+
+    def test_chat_escalation_when_strict_lock_disabled(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "false")
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "false")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_PROMPT_CHARS", "256")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_HISTORY_CHARS", "256")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Show all steps and prove the result rigorously."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+
+        assert selected_model == "meta-llama/Meta-Llama-3-70B-Instruct"
+        assert source.startswith("chat_hard_escalation:")
+
+    def test_async_chat_posts_only_qwen_when_strict_enabled(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
+        monkeypatch.setenv("INFERENCE_HF_TIMEOUT_SEC", "15")
+
+        routing_client = InferenceClient()
+        requests_seen: List[Dict[str, Any]] = []
+
+        class FakeAsyncResponse:
+            def __init__(self, status_code: int, payload: Dict[str, Any]):
+                self.status_code = status_code
+                self._payload = payload
+                self.text = json.dumps(payload)
+
+            def json(self) -> Dict[str, Any]:
+                return self._payload
+
+        class FakeAsyncHttpClient:
+            async def post(self, _url, *, headers=None, json=None, timeout=None):
+                requests_seen.append({
+                    "headers": headers,
+                    "payload": json,
+                    "timeout": timeout,
+                })
+                return FakeAsyncResponse(
+                    200,
+                    {"choices": [{"message": {"content": "Final answer: 42"}}]},
+                )
+
+        async def _run() -> str:
+            real_getenv = os.getenv
+
+            def _patched_getenv(key: str, default=None):
+                if key == "PYTEST_CURRENT_TEST":
+                    return ""
+                return real_getenv(key, default)
+
+            with patch.object(main_module, "get_inference_client", return_value=routing_client), patch.object(
+                main_module,
+                "_get_hf_async_http_client",
+                new=AsyncMock(return_value=FakeAsyncHttpClient()),
+            ), patch.object(main_module.os, "getenv", side_effect=_patched_getenv):
+                return await main_module.call_hf_chat_async(
+                    [{"role": "user", "content": "Solve x^2 - 5x + 6 = 0."}],
+                    task_type="chat",
+                )
+
+        result = asyncio.run(_run())
+
+        assert "42" in result
+        assert len(requests_seen) == 1
+        sent_model = requests_seen[0]["payload"]["model"]
+        assert sent_model.startswith("Qwen/Qwen2.5-7B-Instruct")
+        assert "Meta-Llama" not in sent_model
+        assert "gemma" not in sent_model.lower()
+
+    def test_qwen_only_lock_replaces_explicit_non_qwen_model(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Solve this quickly."}],
+            model="meta-llama/Meta-Llama-3-70B-Instruct",
+            task_type="verify_solution",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("verify_solution", selected_model)
+
+        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert "qwen_only" in source
+        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
 
 
 # ─── Risk Prediction ──────────────────────────────────────────

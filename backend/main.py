@@ -173,7 +173,7 @@ CHAT_MODEL = HF_MATH_MODEL_ID
 
 # Dedicated quiz model override. When empty, routing.task_model_map decides quiz model.
 HF_QUIZ_MODEL_ID = (os.getenv("HF_QUIZ_MODEL_ID", "").strip() or None)
-HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
+HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -322,6 +322,19 @@ async def startup_event():
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
+    logger.info(f"   - INFERENCE_CHAT_MODEL_ID: {os.getenv('INFERENCE_CHAT_MODEL_ID', HF_MATH_MODEL_ID)}")
+    logger.info(
+        f"   - INFERENCE_CHAT_STRICT_MODEL_ONLY: "
+        f"{os.getenv('INFERENCE_CHAT_STRICT_MODEL_ONLY', 'true')}"
+    )
+    logger.info(
+        f"   - INFERENCE_CHAT_HARD_TRIGGER_ENABLED: "
+        f"{os.getenv('INFERENCE_CHAT_HARD_TRIGGER_ENABLED', 'false')}"
+    )
+    logger.info(
+        f"   - INFERENCE_ENFORCE_QWEN_ONLY: "
+        f"{os.getenv('INFERENCE_ENFORCE_QWEN_ONLY', 'true')}"
+    )
     logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
 
 

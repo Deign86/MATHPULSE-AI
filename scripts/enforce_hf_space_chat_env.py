@@ -2,7 +2,8 @@
 """Enforce global/default Hugging Face Space model environment variables.
 
 This script keeps backend routing pinned to the intended provider and model by
-setting INFERENCE_MODEL_ID, INFERENCE_CHAT_MODEL_ID, and INFERENCE_PROVIDER.
+setting INFERENCE_MODEL_ID, INFERENCE_CHAT_MODEL_ID, INFERENCE_PROVIDER, and
+chat strict-mode routing flags.
 """
 
 from __future__ import annotations
@@ -17,6 +18,10 @@ DEFAULT_SPACE_ID = "Deign86/mathpulse-api-v3test"
 DEFAULT_CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_GLOBAL_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_PROVIDER = "hf_inference"
+DEFAULT_CHAT_STRICT_MODEL_ONLY = "true"
+DEFAULT_CHAT_HARD_TRIGGER_ENABLED = "false"
+DEFAULT_ENFORCE_QWEN_ONLY = "true"
+DEFAULT_QWEN_LOCK_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 GLOBAL_MODEL_KEY = "INFERENCE_MODEL_ID"
 
 
@@ -27,6 +32,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chat-model", default=DEFAULT_CHAT_MODEL, help="Model id for INFERENCE_CHAT_MODEL_ID")
     parser.add_argument("--global-model", default=DEFAULT_GLOBAL_MODEL, help="Model id for INFERENCE_MODEL_ID")
     parser.add_argument("--provider", default=DEFAULT_PROVIDER, help="Provider id for INFERENCE_PROVIDER")
+    parser.add_argument(
+        "--chat-strict-model-only",
+        default=DEFAULT_CHAT_STRICT_MODEL_ONLY,
+        help="Value for INFERENCE_CHAT_STRICT_MODEL_ONLY (true/false)",
+    )
+    parser.add_argument(
+        "--chat-hard-trigger-enabled",
+        default=DEFAULT_CHAT_HARD_TRIGGER_ENABLED,
+        help="Value for INFERENCE_CHAT_HARD_TRIGGER_ENABLED (true/false)",
+    )
+    parser.add_argument(
+        "--enforce-qwen-only",
+        default=DEFAULT_ENFORCE_QWEN_ONLY,
+        help="Value for INFERENCE_ENFORCE_QWEN_ONLY (true/false)",
+    )
+    parser.add_argument(
+        "--qwen-lock-model",
+        default=DEFAULT_QWEN_LOCK_MODEL,
+        help="Value for INFERENCE_QWEN_LOCK_MODEL",
+    )
     parser.add_argument(
         "--global-model-key",
         default=GLOBAL_MODEL_KEY,
@@ -78,6 +103,36 @@ def main() -> int:
     try:
         _set_variable(api, repo_id=space_id, key="INFERENCE_CHAT_MODEL_ID", value=args.chat_model.strip())
         _set_variable(api, repo_id=space_id, key="INFERENCE_PROVIDER", value=args.provider.strip().lower())
+        _set_variable(
+            api,
+            repo_id=space_id,
+            key="INFERENCE_CHAT_STRICT_MODEL_ONLY",
+            value=args.chat_strict_model_only.strip().lower(),
+        )
+        _set_variable(
+            api,
+            repo_id=space_id,
+            key="INFERENCE_CHAT_HARD_TRIGGER_ENABLED",
+            value=args.chat_hard_trigger_enabled.strip().lower(),
+        )
+        _set_variable(
+            api,
+            repo_id=space_id,
+            key="INFERENCE_ENFORCE_QWEN_ONLY",
+            value=args.enforce_qwen_only.strip().lower(),
+        )
+        _set_variable(
+            api,
+            repo_id=space_id,
+            key="INFERENCE_QWEN_LOCK_MODEL",
+            value=args.qwen_lock_model.strip(),
+        )
+        _set_variable(
+            api,
+            repo_id=space_id,
+            key="INFERENCE_FALLBACK_MODELS",
+            value="",
+        )
 
         if args.clear_global_model:
             _clear_variable(api, repo_id=space_id, key=args.global_model_key.strip())
