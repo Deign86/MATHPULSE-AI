@@ -77,7 +77,9 @@ const AIChatPage = () => {
         {/* Header - Fixed */}
         <div className="p-4 border-b border-[#dde3eb] flex-shrink-0">
           <div className="flex items-center gap-3 mb-4">
-            <img src="/mathpulse_logo.png" alt="AI Tutor" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
+            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center">
+              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-10 h-10 object-contain drop-shadow-md" />
+            </div>
             <div>
               <h2 className="text-base font-bold font-display text-[#0a1628]">L.O.L.I.</h2>
               <p className="text-[10px] text-[#5a6578]">Your AI Math Tutor</p>
@@ -97,8 +99,6 @@ const AIChatPage = () => {
           <div className="relative mt-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
             <Input
-              id="ai-chat-session-search"
-              name="aiChatSessionSearch"
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
@@ -139,8 +139,6 @@ const AIChatPage = () => {
                   <button
                     onClick={(e) => handleDeleteSession(session.id, e)}
                     className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 text-slate-500 hover:text-red-600 transition-all"
-                    aria-label={`Delete conversation ${session.title}`}
-                    title="Delete conversation"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -162,7 +160,7 @@ const AIChatPage = () => {
 
           {filteredSessions.length === 0 && (
             <div className="text-center py-8">
-              <img src="/mathpulse_logo.png" alt="AI Tutor" className="w-16 h-16 object-contain mx-auto mb-2 opacity-60 drop-shadow-sm grayscale contrast-50" />
+              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-16 h-16 object-contain mx-auto mb-2 opacity-60 drop-shadow-sm grayscale contrast-50" />
               <p className="text-sm text-slate-500">No conversations found</p>
               <p className="text-xs text-slate-500/60 mt-1">Start a new chat!</p>
             </div>
@@ -190,7 +188,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Messages Container - Scrollable with Fixed Height */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#edf1f7] min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#edf1f7] min-h-0">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -200,10 +198,10 @@ const AIChatPage = () => {
                     className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`rounded-2xl ${
+                      className={`max-w-[70%] rounded-2xl px-5 py-3 ${
                         message.sender === 'user'
-                          ? 'max-w-[78%] bg-gradient-to-r from-sky-600 to-sky-500 text-white px-5 py-3.5 shadow-[0_2px_10px_rgba(29,78,216,0.15)]'
-                          : 'max-w-[86%] md:max-w-[82%] bg-white/95 text-[#0a1628] border border-slate-200 px-6 py-4 shadow-sm'
+                          ? 'bg-gradient-to-r from-sky-600 to-sky-500 text-white'
+                          : 'bg-white text-[#0a1628] shadow-md border border-[#dde3eb]'
                       }`}
                     >
                       {message.sender === 'user' ? (
@@ -211,8 +209,8 @@ const AIChatPage = () => {
                       ) : (
                         <ChatMarkdown>{message.text}</ChatMarkdown>
                       )}
-                      <p className={`text-[10px] mt-2 ${
-                        message.sender === 'user' ? 'text-sky-100/90' : 'text-slate-400'
+                      <p className={`text-[10px] mt-1.5 ${
+                        message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
                       }`}>
                         {message.timestamp}
                       </p>
@@ -223,11 +221,11 @@ const AIChatPage = () => {
               
               {showTypingIndicator && (
                 <div className="flex justify-start">
-                  <div className="bg-white/95 text-[#0a1628] border border-slate-200 rounded-2xl px-6 py-4 max-w-[86%] md:max-w-[82%] shadow-sm">
+                  <div className="bg-white text-[#0a1628] shadow-md border border-[#dde3eb] rounded-2xl px-5 py-3 max-w-[70%]">
                     <div className="flex gap-1">
-                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
-                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
-                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
+                      <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
+                      <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
                     </div>
                   </div>
                 </div>
@@ -239,8 +237,6 @@ const AIChatPage = () => {
             <div className="p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
               <div className="flex gap-3">
                 <Input
-                  id="ai-chat-message-input"
-                  name="aiChatMessageInput"
                   type="text"
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
@@ -251,7 +247,6 @@ const AIChatPage = () => {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!currentMessage.trim() || isLoading}
-                  aria-label="Send message"
                   className="px-6 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                 >
                   <Send size={18} />
@@ -261,7 +256,9 @@ const AIChatPage = () => {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <img src="/mathpulse_logo.png" alt="AI Tutor" className="w-24 h-24 object-contain drop-shadow-lg mb-6 flex-shrink-0" />
+            <div className="w-24 h-24 bg-gradient-to-r from-sky-100 to-cyan-100 rounded-3xl flex items-center justify-center mb-6">
+              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-20 h-20 object-contain drop-shadow-lg" />
+            </div>
             <h2 className="text-2xl font-bold font-display text-[#0a1628] mb-1">Welcome to L.O.L.I.</h2>
             <p className="text-sky-600 text-sm font-bold tracking-wide uppercase mb-4">Logical Operations & Learning Intelligence</p>
               <p className="text-[#5a6578] mb-6 max-w-md">

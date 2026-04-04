@@ -104,9 +104,6 @@ const SearchBar: React.FC<SearchBarProps> = ({
     <div className="relative w-full max-w-xl">
       {/* Search Input */}
       <div className="relative">
-        <label htmlFor="global-search" className="sr-only">
-          Search anything
-        </label>
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
         <input
           ref={inputRef}

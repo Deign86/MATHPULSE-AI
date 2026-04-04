@@ -337,8 +337,6 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
         <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-[#dde3eb]">
           <Search size={14} className="text-slate-500" />
           <input
-            id="topic-mastery-search"
-            name="topicMasterySearch"
             type="text"
             placeholder="Search topics..."
             value={searchQuery}
@@ -347,8 +345,6 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
           />
         </div>
         <select
-          id="topic-mastery-subject-filter"
-          name="topicMasterySubjectFilter"
           value={subjectFilter}
           onChange={(e) => setSubjectFilter(e.target.value)}
           className="bg-white border border-[#dde3eb] rounded-xl px-3 py-2 text-sm outline-none"
@@ -359,8 +355,6 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
           ))}
         </select>
         <select
-          id="topic-mastery-grade-filter"
-          name="topicMasteryGradeFilter"
           value={gradeFilter}
           onChange={(e) => setGradeFilter(e.target.value)}
           className="bg-white border border-[#dde3eb] rounded-xl px-3 py-2 text-sm outline-none"

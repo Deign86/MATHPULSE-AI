@@ -11,7 +11,6 @@ that's visible in HF Space logs.
 import os
 import sys
 import logging
-import importlib
 from pathlib import Path
 
 logger = logging.getLogger("mathpulse.startup")
@@ -52,24 +51,6 @@ def validate_imports() -> None:
         # ML & inference
         from huggingface_hub import InferenceClient as HFInferenceClient  # noqa
         logger.info("   ✓ HuggingFace Hub imports OK")
-
-        inference_provider = os.getenv("INFERENCE_PROVIDER", "hf_inference").strip().lower()
-        if inference_provider == "local_peft":
-            importlib.import_module("transformers")
-            importlib.import_module("peft")
-            importlib.import_module("accelerate")
-            importlib.import_module("torch")
-            logger.info("   ✓ local_peft deps import OK (transformers, peft, accelerate, torch)")
-
-            load_in_4bit = os.getenv("LORA_LOAD_IN_4BIT", "false").strip().lower() in {"1", "true", "yes", "on"}
-            if load_in_4bit:
-                try:
-                    importlib.import_module("bitsandbytes")
-                    logger.info("   ✓ bitsandbytes import OK")
-                except (ImportError, OSError, RuntimeError) as exc:
-                    raise StartupError(
-                        "❌ local_peft dependency error: bitsandbytes is required when LORA_LOAD_IN_4BIT=true"
-                    ) from exc
         
         logger.info("✅ All critical imports validated")
     except ImportError as e:
@@ -113,20 +94,6 @@ def validate_environment() -> None:
     # Check model IDs
     chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "Qwen/Qwen2.5-7B-Instruct"
     logger.info(f"   ✓ Chat model configured: {chat_model}")
-
-    if inference_provider.strip().lower() == "local_peft":
-        lora_base_model_id = os.getenv("LORA_BASE_MODEL_ID", "").strip()
-        lora_adapter_model_id = os.getenv("LORA_ADAPTER_MODEL_ID", "").strip()
-        if not lora_base_model_id:
-            raise StartupError("❌ LORA_BASE_MODEL_ID is required when INFERENCE_PROVIDER=local_peft")
-        if not lora_adapter_model_id:
-            raise StartupError("❌ LORA_ADAPTER_MODEL_ID is required when INFERENCE_PROVIDER=local_peft")
-
-        logger.info(f"   ✓ local_peft base model: {lora_base_model_id}")
-        logger.info(f"   ✓ local_peft adapter model: {lora_adapter_model_id}")
-        logger.info(f"   ✓ local_peft load_in_4bit: {os.getenv('LORA_LOAD_IN_4BIT', 'false')}")
-        logger.info(f"   ✓ local_peft device_map: {os.getenv('LORA_DEVICE_MAP', 'auto')}")
-        logger.info(f"   ✓ local_peft dtype: {os.getenv('LORA_DTYPE', 'float16')}")
     
     logger.info("✅ Environment variables OK")
 
@@ -220,17 +187,6 @@ def validate_inference_client_config() -> None:
             model = client.task_model_map[task]
             provider = client.task_provider_map.get(task, 'unknown')
             logger.info(f"   ✓ {task}: {model} ({provider})")
-
-        if getattr(client, "provider", "") == "local_peft":
-            if not getattr(client, "lora_base_model_id", ""):
-                raise StartupError("❌ local_peft missing LORA_BASE_MODEL_ID")
-            if not getattr(client, "lora_adapter_model_id", ""):
-                raise StartupError("❌ local_peft missing LORA_ADAPTER_MODEL_ID")
-            logger.info(
-                "   ✓ local_peft runtime config: base=%s adapter=%s",
-                client.lora_base_model_id,
-                client.lora_adapter_model_id,
-            )
         
         logger.info("✅ InferenceClient configuration OK")
         

@@ -14,7 +14,6 @@ export function toChatPreviewText(input: string, maxLength: number = DEFAULT_PRE
     // Preserve label text while removing markdown link wrappers.
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-    .replace(/\((https?:\/\/[^)\s]+)\)/g, '')
     .replace(/```(?:[a-zA-Z0-9_-]+\n)?([\s\S]*?)```/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\$\$([\s\S]+?)\$\$/g, '$1')
@@ -38,9 +37,6 @@ export function toChatPreviewText(input: string, maxLength: number = DEFAULT_PRE
     .replace(/\*{2,}|_{2,}|~{2,}/g, '')
     .replace(/`+/g, '')
     .replace(/\|/g, ' ')
-    .replace(/([A-Za-z0-9])-\s+(?=[A-Za-z])/g, '$1 ')
-    .replace(/:\s*(?=\S)/g, ': ')
-    .replace(/https?:\/\/\S+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
