@@ -38,9 +38,7 @@ routing:
     risk_narrative: Qwen/Qwen2.5-7B-Instruct
 
   task_fallback_model_map:
-    chat:
-      - meta-llama/Meta-Llama-3-70B-Instruct      # Hard/fallback quality tier
-      - google/gemma-2-2b-it                      # Fast safety fallback
+    chat: []                                       # Chat is strict-primary only (no fallback chain)
     verify_solution:
       - meta-llama/Meta-Llama-3-70B-Instruct      # Higher-capacity fallback
       - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
