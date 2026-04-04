@@ -235,7 +235,7 @@ export async function triggerStudentEnrolled(
   await createNotification(
     payload.lrn,
     'reminder',
-    'Welcome to MathPulse!',
+    'Welcome to MathPulse AI!',
     'Complete your diagnostic assessment to get started with personalised learning.',
   );
 

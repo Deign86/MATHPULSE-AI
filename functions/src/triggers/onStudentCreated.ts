@@ -62,7 +62,7 @@ export const onStudentCreated = functions.firestore
       await createNotification({
         userId,
         type: NOTIFICATION_TYPES.REMINDER,
-        title: "Welcome to MathPulse!",
+        title: "Welcome to MathPulse AI!",
         message:
           "Complete your diagnostic assessment to get started with personalised learning.",
       });

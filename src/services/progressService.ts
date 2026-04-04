@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   increment,
   Timestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
@@ -60,6 +61,93 @@ export const getUserProgress = async (userId: string): Promise<UserProgress | nu
     console.error('Error getting user progress:', error);
     return null;
   }
+};
+
+// Subscribe to user progress changes in real time
+export const subscribeToUserProgress = (
+  userId: string,
+  onChange: (progress: UserProgress | null) => void,
+): (() => void) => {
+  const progressRef = doc(db, 'progress', userId);
+
+  return onSnapshot(
+    progressRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        onChange(null);
+        return;
+      }
+
+      const data = snapshot.data();
+      onChange({
+        ...(data as UserProgress),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+      });
+    },
+    (error) => {
+      console.error('Error subscribing to user progress:', error);
+      onChange(null);
+    },
+  );
+};
+
+// Persist lesson-level progress percent (0-100) for partial completion tracking
+export const updateLessonProgressPercent = async (
+  userId: string,
+  lessonId: string,
+  percent: number,
+): Promise<void> => {
+  const clampedPercent = Math.max(0, Math.min(100, percent));
+  const progressRef = doc(db, 'progress', userId);
+
+  await setDoc(
+    progressRef,
+    {
+      [`lessons.${lessonId}.lessonId`]: lessonId,
+      [`lessons.${lessonId}.progressPercent`]: clampedPercent,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+};
+
+// Recalculate module progress percentage from persisted lesson/quiz completion
+export const recalculateAndUpdateModuleProgress = async (
+  userId: string,
+  subjectId: string,
+  moduleId: string,
+  totalLessons: number,
+  totalQuizzes: number,
+): Promise<number> => {
+  const progressRef = doc(db, 'progress', userId);
+  const progressSnap = await getDoc(progressRef);
+
+  if (!progressSnap.exists()) {
+    return 0;
+  }
+
+  const data = progressSnap.data() as UserProgress;
+  const moduleProgress = data.subjects?.[subjectId]?.modulesProgress?.[moduleId];
+  if (!moduleProgress) {
+    return 0;
+  }
+
+  const totalItems = Math.max(1, totalLessons + totalQuizzes);
+  const completedLessons = moduleProgress.lessonsCompleted?.length || 0;
+  const completedQuizzes = moduleProgress.quizzesCompleted?.length || 0;
+  const progress = Math.round(((completedLessons + completedQuizzes) / totalItems) * 100);
+
+  await setDoc(
+    progressRef,
+    {
+      [`subjects.${subjectId}.modulesProgress.${moduleId}.progress`]: progress,
+      [`subjects.${subjectId}.modulesProgress.${moduleId}.lastAccessedAt`]: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return progress;
 };
 
 // Complete a lesson
