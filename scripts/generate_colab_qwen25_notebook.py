@@ -107,6 +107,7 @@ def build_cells() -> list[dict]:
             dedent(
                 """
                 import os
+                import functools
                 import math
                 import re
                 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
@@ -120,6 +121,7 @@ def build_cells() -> list[dict]:
                 from pathlib import Path
                 from peft import PeftModel
                 from torch.utils.data import DataLoader
+                from torch.utils.checkpoint import checkpoint as torch_checkpoint
                 from datasets import load_dataset
                 from huggingface_hub import HfApi, create_repo, login
                 from transformers import DataCollatorForLanguageModeling, get_linear_schedule_with_warmup
@@ -362,6 +364,33 @@ def build_cells() -> list[dict]:
                     else:
                         print("No prior checkpoint detected. Starting from step 0.")
 
+                def ensure_gradient_checkpointing_ready(model_obj):
+                    try:
+                        if hasattr(model_obj, "gradient_checkpointing_enable"):
+                            try:
+                                model_obj.gradient_checkpointing_enable(
+                                    gradient_checkpointing_kwargs={"use_reentrant": False}
+                                )
+                            except TypeError:
+                                model_obj.gradient_checkpointing_enable()
+                    except Exception as gc_error:
+                        print(f"gradient_checkpointing_enable warning: {gc_error}")
+
+                    patched_modules = 0
+                    checkpoint_wrapper = functools.partial(torch_checkpoint, use_reentrant=False)
+                    for submodule in model_obj.modules():
+                        if getattr(submodule, "gradient_checkpointing", False) and not hasattr(
+                            submodule,
+                            "_gradient_checkpointing_func",
+                        ):
+                            submodule._gradient_checkpointing_func = checkpoint_wrapper
+                            patched_modules += 1
+
+                    if patched_modules > 0:
+                        print(f"Patched missing _gradient_checkpointing_func on {patched_modules} modules.")
+
+                ensure_gradient_checkpointing_ready(model)
+
                 if tokenizer.pad_token is None:
                     tokenizer.pad_token = tokenizer.eos_token
 
@@ -585,6 +614,12 @@ def build_cells() -> list[dict]:
                             if tensor_key in batch and batch[tensor_key] is not None and batch[tensor_key].dim() == 2:
                                 batch[tensor_key] = batch[tensor_key][:, -oom_fallback_seq_length:]
 
+                        outputs = model(**batch)
+                    except AttributeError as attr_error:
+                        if "_gradient_checkpointing_func" not in str(attr_error):
+                            raise
+                        print("Missing _gradient_checkpointing_func detected; patching and retrying this batch.")
+                        ensure_gradient_checkpointing_ready(model)
                         outputs = model(**batch)
                     loss = outputs.loss
                     if loss is None:
