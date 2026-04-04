@@ -19,7 +19,6 @@ import { normalizeChatMarkdownForRender } from '../utils/chatMessageFormatting';
  *  - Blockquotes (> …)
  *  - Horizontal rules (---, ***, ___)
  *  - Links [text](url)
- *  - Tables (GFM)
  *  - Line breaks
  *  - LaTeX math: \(...\) for inline, $$...$$ for display
  */
@@ -61,21 +60,6 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
               </code>
             );
           },
-          table: ({ children }) => (
-            <table className="border-collapse border border-gray-300 dark:border-gray-600 my-2">
-              {children}
-            </table>
-          ),
-          th: ({ children }) => (
-            <th className="border border-gray-300 dark:border-gray-600 p-2 bg-gray-100 dark:bg-gray-800">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border border-gray-300 dark:border-gray-600 p-2">
-              {children}
-            </td>
-          ),
           blockquote: ({ children }) => (
             <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-600 dark:text-gray-400 my-2">
               {children}

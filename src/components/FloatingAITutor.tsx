@@ -82,12 +82,16 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
           <div className="flex items-center gap-2">
             <button
               onClick={handleFullScreenClick}
+              type="button"
+              aria-label="Open fullscreen"
               className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
               title="Open fullscreen"
             >
               <Maximize2 size={16} className="text-white" />
             </button>
             <button
+              type="button"
+              aria-label="Close chat"
               onClick={() => setIsOpen(false)}
               className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
             >
@@ -153,6 +157,8 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               className="flex-1 px-4 py-2.5 rounded-xl border border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-[#f7f9fc]"
             />
             <button
+              type="button"
+              aria-label="Send message"
               onClick={handleSendMessage}
               className="p-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!currentMessage.trim() || isLoading}

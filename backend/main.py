@@ -1,7 +1,7 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
+- meta-llama/Llama-3.1-8B-Instruct for chat, learning paths, insights, and quiz generation
     (via Hugging Face Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
