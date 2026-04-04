@@ -107,6 +107,7 @@ def build_cells() -> list[dict]:
                 """
                 import os
                 import math
+                import re
                 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
                 os.environ.setdefault("ABSL_MIN_LOG_LEVEL", "3")
 
@@ -114,6 +115,7 @@ def build_cells() -> list[dict]:
                 import unsloth
                 from unsloth import FastLanguageModel
                 from pathlib import Path
+                from peft import PeftModel
                 from torch.utils.data import DataLoader
                 from datasets import load_dataset
                 from huggingface_hub import login
@@ -142,6 +144,7 @@ def build_cells() -> list[dict]:
                 BASE_MODEL = "Qwen/Qwen2.5-7B-Instruct"
                 REPO_ID = f"{{HF_USERNAME}}/deped-math-qwen2.5-7b"
                 TRAIN_PROFILE = os.getenv("TRAIN_PROFILE", "production").strip().lower()
+                TARGET_TOTAL_STEPS = int(os.getenv("TARGET_TOTAL_STEPS", "600"))
 
                 if TRAIN_PROFILE not in {"production", "smoke"}:
                     raise ValueError("Unsupported TRAIN_PROFILE=" + TRAIN_PROFILE + ". Use 'production' or 'smoke'.")
@@ -154,6 +157,7 @@ def build_cells() -> list[dict]:
 
                 print("Training profile:", TRAIN_PROFILE)
                 print("Max sequence length:", max_seq_length)
+                print("Target total steps:", TARGET_TOTAL_STEPS)
 
                 token = HF_TOKEN.strip() or os.getenv("HF_TOKEN", "").strip()
                 if token:
@@ -264,18 +268,62 @@ def build_cells() -> list[dict]:
                     load_in_4bit=load_in_4bit,
                 )
 
-                model = FastLanguageModel.get_peft_model(
-                    model,
-                    r=32,
-                    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-                    lora_alpha=16,
-                    lora_dropout=0.05,
-                    bias="none",
-                    use_gradient_checkpointing="unsloth",
-                    random_state=3407,
-                    use_rslora=False,
-                    loftq_config=None,
-                )
+                def find_latest_step_checkpoint():
+                    checkpoint_roots = [Path("checkpoints"), Path("/kaggle/working/checkpoints")]
+                    if Path("/kaggle/input").exists():
+                        checkpoint_roots.extend(Path("/kaggle/input").glob("*/checkpoints"))
+
+                    best_checkpoint = None
+                    best_step = 0
+                    adapter_artifacts_found = False
+                    step_pattern = re.compile(r"(?:step|checkpoint)-(\\d+)$")
+
+                    for root in checkpoint_roots:
+                        if not root.exists() or not root.is_dir():
+                            continue
+
+                        if list(root.glob("**/adapter_model.safetensors")) or list(root.glob("**/adapter_model.bin")):
+                            adapter_artifacts_found = True
+
+                        for candidate in root.iterdir():
+                            if not candidate.is_dir():
+                                continue
+                            matched = step_pattern.search(candidate.name)
+                            if not matched:
+                                continue
+                            step_value = int(matched.group(1))
+                            if step_value > best_step:
+                                best_step = step_value
+                                best_checkpoint = candidate
+
+                    return best_checkpoint, best_step, adapter_artifacts_found
+
+
+                resume_checkpoint_path, resume_step, adapter_only_found = find_latest_step_checkpoint()
+
+                if resume_checkpoint_path is not None:
+                    print(f"Resuming LoRA adapters from {resume_checkpoint_path} (step={resume_step})")
+                    model = PeftModel.from_pretrained(model, str(resume_checkpoint_path), is_trainable=True)
+                    print("Optimizer and scheduler states are reinitialized; LR schedule will continue from resumed step.")
+                else:
+                    if adapter_only_found:
+                        print("WARNING: Adapter artifacts were found but no step-* checkpoint folder was detected.")
+                        print("WARNING: Full step resume is not possible. Starting from step 0.")
+                    else:
+                        print("No prior checkpoint detected. Starting from step 0.")
+
+                    model = FastLanguageModel.get_peft_model(
+                        model,
+                        r=32,
+                        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+                        lora_alpha=16,
+                        lora_dropout=0.05,
+                        bias="none",
+                        use_gradient_checkpointing="unsloth",
+                        random_state=3407,
+                        use_rslora=False,
+                        loftq_config=None,
+                    )
 
                 if tokenizer.pad_token is None:
                     tokenizer.pad_token = tokenizer.eos_token
@@ -336,7 +384,7 @@ def build_cells() -> list[dict]:
                     )
 
                 if TRAIN_PROFILE == "production":
-                    default_max_steps = 600
+                    default_max_steps = max(600, TARGET_TOTAL_STEPS)
                     default_grad_accum = 16
                     default_learning_rate = 1.5e-4
                     default_weight_decay = 0.01
@@ -365,6 +413,12 @@ def build_cells() -> list[dict]:
                 computed_steps = max(default_max_steps, steps_per_epoch * target_epochs)
                 max_steps = max(1, int(os.getenv("MAX_STEPS", str(computed_steps))))
 
+                resumed_global_step = int(resume_step) if resume_checkpoint_path is not None else 0
+                if resumed_global_step > max_steps:
+                    max_steps = resumed_global_step
+                if resumed_global_step == max_steps:
+                    print(f"Checkpoint already reached target max_steps={max_steps}. Training loop will be skipped.")
+
                 warmup_default = max(10 if TRAIN_PROFILE == "production" else 5, int(max_steps * 0.05))
                 warmup_steps = int(os.getenv("WARMUP_STEPS", str(warmup_default)))
                 if max_steps > 1:
@@ -386,6 +440,7 @@ def build_cells() -> list[dict]:
                         "val_rows": len(tokenized_val_dataset) if tokenized_val_dataset is not None else 0,
                         "steps_per_epoch": steps_per_epoch,
                         "max_steps": max_steps,
+                        "resume_step": resumed_global_step,
                         "grad_accum": gradient_accumulation_steps,
                         "warmup_steps": warmup_steps,
                         "learning_rate": learning_rate,
@@ -405,6 +460,7 @@ def build_cells() -> list[dict]:
                     optimizer,
                     num_warmup_steps=warmup_steps,
                     num_training_steps=max_steps,
+                    last_epoch=resumed_global_step - 1,
                 )
 
                 def evaluate_model(eval_loader):
@@ -431,7 +487,7 @@ def build_cells() -> list[dict]:
                     return eval_loss_sum / eval_batches
 
                 optimizer.zero_grad(set_to_none=True)
-                global_step = 0
+                global_step = resumed_global_step
                 micro_step = 0
                 loss_sum = 0.0
                 loss_count = 0
