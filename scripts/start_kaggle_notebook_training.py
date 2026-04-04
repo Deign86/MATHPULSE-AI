@@ -60,9 +60,11 @@ def _prepare_kernel_bundle(
     public_kernel: bool,
     enable_internet: bool,
     dataset_sources: List[str],
+    kernel_sources: List[str],
     model_sources: List[str],
     hf_token: str,
     accelerator: Optional[str],
+    target_total_steps: Optional[int],
 ) -> Path:
     if not notebook_path.exists():
         raise FileNotFoundError(f"Notebook file not found: {notebook_path}")
@@ -100,6 +102,35 @@ def _prepare_kernel_bundle(
         else:
             print("HF token was provided but no matching HF_TOKEN assignment was found in notebook.")
 
+    if target_total_steps is not None:
+        notebook_data = json.loads(staged_notebook.read_text(encoding="utf-8"))
+        injected = False
+        for cell in notebook_data.get("cells", []):
+            if cell.get("cell_type") != "code":
+                continue
+
+            source_lines = cell.get("source", [])
+            if not source_lines:
+                continue
+
+            updated_lines = []
+            for line in source_lines:
+                updated_lines.append(line)
+                if "TRAIN_PROFILE = os.getenv(\"TRAIN_PROFILE\", \"production\").strip().lower()" in line:
+                    updated_lines.append(f'os.environ["TARGET_TOTAL_STEPS"] = "{target_total_steps}"\n')
+                    updated_lines.append(f'os.environ["MAX_STEPS"] = "{target_total_steps}"\n')
+                    injected = True
+
+            cell["source"] = updated_lines
+            if injected:
+                break
+
+        if injected:
+            staged_notebook.write_text(json.dumps(notebook_data, ensure_ascii=True, indent=2), encoding="utf-8")
+            print(f"Injected continuation target steps override: {target_total_steps}")
+        else:
+            print("WARNING: Could not find TRAIN_PROFILE line for target-steps injection.")
+
     metadata = {
         "id": kernel_ref,
         "title": kernel_title,
@@ -112,7 +143,7 @@ def _prepare_kernel_bundle(
         "enable_internet": enable_internet,
         "dataset_sources": dataset_sources,
         "competition_sources": [],
-        "kernel_sources": [],
+        "kernel_sources": kernel_sources,
         "model_sources": model_sources,
     }
     if accelerator:
@@ -186,6 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--public", action="store_true", help="Publish as a public notebook (default is private).")
     parser.add_argument("--disable-internet", action="store_true", help="Disable internet for the Kaggle run.")
     parser.add_argument("--dataset-source", action="append", default=[], help="Repeatable Kaggle dataset source refs.")
+    parser.add_argument("--kernel-source", action="append", default=[], help="Repeatable Kaggle kernel output source refs.")
     parser.add_argument("--model-source", action="append", default=[], help="Repeatable Kaggle model source refs.")
     parser.add_argument("--skip-generate", action="store_true", help="Skip notebook regeneration step.")
     parser.add_argument("--wait", action="store_true", help="Wait for kernel completion and print status updates.")
@@ -201,6 +233,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--hf-token-env-var",
         default="HF_BOOTSTRAP_TOKEN",
         help="Environment variable name used to read an HF token for one-run staged notebook injection.",
+    )
+    parser.add_argument(
+        "--target-total-steps",
+        type=int,
+        help="Inject TARGET_TOTAL_STEPS and MAX_STEPS into staged notebook for continuation runs.",
     )
     return parser
 
@@ -241,9 +278,11 @@ def main() -> None:
         public_kernel=args.public,
         enable_internet=not args.disable_internet,
         dataset_sources=args.dataset_source,
+        kernel_sources=args.kernel_source,
         model_sources=args.model_source,
         hf_token=hf_token,
         accelerator=args.accelerator,
+        target_total_steps=args.target_total_steps,
     )
 
     kaggle_command = _build_kaggle_base_command()
