@@ -10,7 +10,6 @@ import {
   getSessionMessages,
 } from '../services/chatService';
 import { toChatPreviewText } from '../utils/chatPreview';
-import { formatAssistantResponseForStorage } from '../utils/chatMessageFormatting';
 
 export interface Message {
   id: string;
@@ -436,7 +435,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           upsertStreamingMessage(streamedText);
         });
 
-        const finalResponse = formatAssistantResponseForStorage((response || streamedText).trim());
+        const finalResponse = (response || streamedText).trim();
         if (streamMessageId) {
           removeStreamingMessage();
         }
@@ -463,12 +462,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           aiResponseText = generateFallbackResponse(userText.trim());
         }
 
-        const finalFallbackResponse = formatAssistantResponseForStorage(aiResponseText);
-
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: finalFallbackResponse,
+          text: aiResponseText,
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
-import { cn } from './ui/utils';
 
 interface SidebarProps {
   activeTab: string;
@@ -12,8 +11,6 @@ interface SidebarProps {
   onLogout?: () => void;
   sidebarCollapsed?: boolean;
   setSidebarCollapsed?: (collapsed: boolean) => void;
-  mode?: 'desktop' | 'mobile';
-  onRequestClose?: () => void;
 }
 
 interface NavSection {
@@ -28,16 +25,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings, 
   onLogout,
   sidebarCollapsed = false,
-  setSidebarCollapsed,
-  mode = 'desktop',
-  onRequestClose,
+  setSidebarCollapsed
 }) => {
   const [sidebarHovered, setSidebarHovered] = useState(false);
-  const isMobile = mode === 'mobile';
   
   // Helper to determine if sidebar should show collapsed state
-  const isCollapsed = !isMobile && sidebarCollapsed && !sidebarHovered;
-  const canCollapse = !isMobile;
+  const isCollapsed = sidebarCollapsed && !sidebarHovered;
   // Grouped nav items for each role
   const getNavSections = (): NavSection[] => {
     if (userRole === 'admin') {
@@ -89,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {
           label: 'Progress',
           items: [
-            { icon: GraduationCap, label: 'Grades', displayLabel: 'Performance' },
+            { icon: GraduationCap, label: 'Grades', displayLabel: 'Assessment' },
             { icon: Trophy, label: 'Leaderboard', displayLabel: 'Leadership Board' },
           ],
         },
@@ -108,36 +101,28 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <motion.aside
       initial={false}
-      animate={isMobile ? { width: 280 } : { width: sidebarCollapsed && !sidebarHovered ? 80 : 280 }}
+      animate={{
+        width: sidebarCollapsed && !sidebarHovered ? 80 : 280,
+      }}
       transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-      onMouseEnter={() => canCollapse && sidebarCollapsed && setSidebarHovered(true)}
+      onMouseEnter={() => sidebarCollapsed && setSidebarHovered(true)}
       onMouseLeave={() => setSidebarHovered(false)}
-      className={cn(
-        'h-full bg-[#f7f9fc] border border-[#dde3eb] shadow-sm flex flex-col',
-        isMobile ? 'rounded-2xl p-4' : 'rounded-3xl p-5'
-      )}
+      className="h-full bg-[#f7f9fc] rounded-3xl p-5 flex flex-col justify-between border border-[#dde3eb] shadow-sm"
     >
-      <div className="flex-1 flex flex-col min-h-0">
+      <div>
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <img src="/mathpulse_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
-            {(!isCollapsed || sidebarHovered) && (
+            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
+              <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
+            </div>
+            {(!sidebarCollapsed || sidebarHovered) && (
               <div>
                 <h2 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h2>
               </div>
             )}
           </div>
-          {isMobile && onRequestClose && (
-            <button
-              onClick={onRequestClose}
-              className="p-2 hover:bg-[#dde3eb] rounded-lg transition-colors text-[#5a6578]"
-              aria-label="Close navigation"
-            >
-              <X size={20} />
-            </button>
-          )}
-          {!isMobile && setSidebarCollapsed && (!sidebarCollapsed || sidebarHovered) && (
+          {setSidebarCollapsed && (!sidebarCollapsed || sidebarHovered) && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -152,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Grouped Navigation */}
-        <nav className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-1">
+        <nav className="space-y-5">
           {sections.map((section, sIdx) => (
             <div key={sIdx}>
               {isCollapsed ? (
@@ -182,10 +167,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <item.icon size={18} strokeWidth={activeTab === item.label ? 2.5 : 2} className="flex-shrink-0" />
-                    {(!isCollapsed || sidebarHovered) && (
+                    {(!sidebarCollapsed || sidebarHovered) && (
                       <span className="font-body font-bold text-xs">{item.displayLabel || item.label}</span>
                     )}
-                    {activeTab === item.label && (!isCollapsed || sidebarHovered) && (
+                    {activeTab === item.label && (!sidebarCollapsed || sidebarHovered) && (
                       <motion.div
                         layoutId="sidebar-active-indicator"
                         className="ml-auto w-2 h-2 rounded-full bg-sky-500"
@@ -200,7 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      <div className="mt-4 space-y-2 border-t border-[#dde3eb] pt-4">
+      <div className="space-y-2 border-t border-[#dde3eb] pt-4">
         <motion.button
           whileHover={{ x: 2 }}
           whileTap={{ scale: 0.98 }}
@@ -211,7 +196,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           title={isCollapsed ? 'Settings' : ''}
         >
           <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
-          {(!isCollapsed || sidebarHovered) && <span className="font-body text-xs">Settings</span>}
+          {(!sidebarCollapsed || sidebarHovered) && <span className="font-body text-xs">Settings</span>}
         </motion.button>
 
         {onLogout && (

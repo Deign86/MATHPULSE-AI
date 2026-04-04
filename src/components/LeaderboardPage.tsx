@@ -366,7 +366,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
                 className={`flex items-center gap-4 p-3.5 md:p-4 rounded-3xl cursor-pointer bg-white border transition-all duration-300 ${
                   student.isYou 
                     ? 'border-[#8B5CF6]/40 shadow-xl shadow-[#8B5CF6]/20 ring-2 ring-[#8B5CF6]/10' 
-                    : 'border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.12)]'
+                    : 'border-slate-100 shadow-[0_12px_25px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_30px_rgba(0,0,0,0.12)]'
                 }`}
               >
                 {/* Rank Bubble */}

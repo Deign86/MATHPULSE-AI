@@ -26,9 +26,9 @@ models:
 
 routing:
   task_model_map:
-    # Chat default: Qwen2.5-7B for improved math quality and latency.
+    # Chat default: Llama-3.1-8B for low latency.
     # Hard prompts can escalate to 70B via runtime policy in inference_client.
-    chat: Qwen/Qwen2.5-7B-Instruct
+    chat: meta-llama/Llama-3.1-8B-Instruct
     verify_solution: NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO
     lesson_generation: meta-llama/Llama-3.1-8B-Instruct
     quiz_generation: meta-llama/Llama-3.1-8B-Instruct
@@ -47,9 +47,7 @@ routing:
       - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
 
   task_provider_map:
-    # All tasks default to hf_inference router.
-    # Runtime note: when INFERENCE_PROVIDER=local_peft, chat is routed to local_peft first,
-    # then falls back to hf_inference while non-chat tasks remain on these mappings.
+    # All tasks use hf_inference router (Qwen2.5-7B-Instruct natively supported)
     chat: hf_inference
     verify_solution: hf_inference
     lesson_generation: hf_inference

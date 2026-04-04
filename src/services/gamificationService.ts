@@ -12,7 +12,6 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
-  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
@@ -190,44 +189,7 @@ export const getLeaderboard = async (
     return [];
   }
 };
-export const subscribeToLeaderboard = (
-  callback: (leaderboard: LeaderboardEntry[]) => void,
-  userId?: string,
-  scopedOnly: boolean = false,
-  timeRange: 'all' | 'week' | 'month' = 'all',
-  limitCount: number = 10
-) => {
-  void userId;
-  void scopedOnly;
-  void timeRange;
 
-  const leaderboardQuery = query(
-    collection(db, 'users'),
-    where('role', '==', 'student'),
-    orderBy('totalXP', 'desc'),
-    limit(limitCount)
-  );
-
-  return onSnapshot(leaderboardQuery, (snapshot) => {
-    const leaderboard = snapshot.docs.map((doc, index) => {
-      const data = doc.data();
-      return {
-        userId: doc.id,
-        name: data.name || 'Unknown',
-        photo: data.photo,
-        xp: data.totalXP || 0,
-        level: data.level || 1,
-        rank: index + 1,
-        weeklyXP: data.weeklyXP || 0,
-        monthlyXP: data.monthlyXP || 0,
-      };
-    });
-    callback(leaderboard);
-  }, (error) => {
-    console.error('Error subscribing to leaderboard:', error);
-    callback([]);
-  });
-};
 // Get user's rank
 export const getUserRank = async (userId: string): Promise<number> => {
   try {

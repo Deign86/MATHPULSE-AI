@@ -208,8 +208,6 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
         {/* Subject filter */}
         <div className="relative">
           <select
-            id="mastery-heatmap-subject-filter"
-            name="masteryHeatmapSubjectFilter"
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
             className="appearance-none bg-[#edf1f7] border border-[#dde3eb] rounded-lg px-3 py-1.5 pr-8 text-xs font-semibold text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"

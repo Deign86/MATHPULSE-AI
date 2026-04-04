@@ -364,7 +364,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <h3 className="text-lg font-display font-bold text-[#0a1628]">
                 {sections.find((section) => section.id === activeSection)?.label}
               </h3>
-              <button onClick={handleCancel} className="p-2 hover:bg-[#edf1f7] rounded-xl transition-colors" aria-label="Close settings">
+              <button onClick={handleCancel} className="p-2 hover:bg-[#edf1f7] rounded-xl transition-colors">
                 <X size={20} className="text-[#5a6578]" />
               </button>
             </div>
@@ -373,38 +373,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeSection === 'account' && (
                 <div className="space-y-6">
                   <div>
-                    <label htmlFor="settings-full-name" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Full Name</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Full Name</label>
                     <Input
-                      id="settings-full-name"
-                      name="fullName"
                       type="text"
                       value={accountData.name || ''}
                       onChange={(event) => setAccountData((prev) => ({ ...prev, name: event.target.value }))}
-                      autoComplete="name"
                       className="max-w-md"
                     />
                   </div>
                   <div>
-                    <label htmlFor="settings-email" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Email Address</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Email Address</label>
                     <Input
-                      id="settings-email"
-                      name="email"
                       type="email"
                       value={accountData.email || ''}
                       onChange={(event) => setAccountData((prev) => ({ ...prev, email: event.target.value }))}
-                      autoComplete="email"
                       className="max-w-md"
                     />
                   </div>
                   <div>
-                    <label htmlFor="settings-phone" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Phone Number</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Phone Number</label>
                     <Input
-                      id="settings-phone"
-                      name="phone"
                       type="tel"
                       value={accountData.phone || ''}
                       onChange={(event) => setAccountData((prev) => ({ ...prev, phone: event.target.value }))}
-                      autoComplete="tel"
                       className="max-w-md"
                     />
                   </div>
@@ -412,10 +403,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   {accountData.role === 'student' && (
                     <>
                       <div>
-                        <label htmlFor="settings-lrn" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Learner's Reference Number (LRN)</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Learner's Reference Number (LRN)</label>
                         <Input
-                          id="settings-lrn"
-                          name="lrn"
                           type="text"
                           value={accountData.lrn || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, lrn: event.target.value }))}
@@ -423,10 +412,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-grade-level" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Grade Level</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Grade Level</label>
                         <Input
-                          id="settings-grade-level"
-                          name="gradeLevel"
                           type="text"
                           value={accountData.grade || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, grade: event.target.value }))}
@@ -434,10 +421,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-section" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Section</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Section</label>
                         <Input
-                          id="settings-section"
-                          name="section"
                           type="text"
                           value={accountData.section || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, section: event.target.value }))}
@@ -445,10 +430,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-school" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">School</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">School</label>
                         <Input
-                          id="settings-school"
-                          name="school"
                           type="text"
                           value={accountData.school || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, school: event.target.value }))}
@@ -461,10 +444,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   {accountData.role === 'teacher' && (
                     <>
                       <div>
-                        <label htmlFor="settings-teacher-department" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
                         <Input
-                          id="settings-teacher-department"
-                          name="teacherDepartment"
                           type="text"
                           value={accountData.department || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, department: event.target.value }))}
@@ -472,10 +453,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-teacher-subject" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Subject</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Subject</label>
                         <Input
-                          id="settings-teacher-subject"
-                          name="teacherSubject"
                           type="text"
                           value={accountData.subject || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, subject: event.target.value }))}
@@ -483,10 +462,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-teacher-experience" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Years of Experience</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Years of Experience</label>
                         <Input
-                          id="settings-teacher-experience"
-                          name="yearsOfExperience"
                           type="text"
                           value={accountData.yearsOfExperience || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, yearsOfExperience: event.target.value }))}
@@ -494,10 +471,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-teacher-qualification" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Qualification</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Qualification</label>
                         <Input
-                          id="settings-teacher-qualification"
-                          name="teacherQualification"
                           type="text"
                           value={accountData.qualification || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, qualification: event.target.value }))}
@@ -510,10 +485,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   {accountData.role === 'admin' && (
                     <>
                       <div>
-                        <label htmlFor="settings-admin-position" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Position</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Position</label>
                         <Input
-                          id="settings-admin-position"
-                          name="adminPosition"
                           type="text"
                           value={accountData.position || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, position: event.target.value }))}
@@ -521,10 +494,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label htmlFor="settings-admin-department" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
                         <Input
-                          id="settings-admin-department"
-                          name="adminDepartment"
                           type="text"
                           value={accountData.department || ''}
                           onChange={(event) => setAccountData((prev) => ({ ...prev, department: event.target.value }))}
@@ -535,12 +506,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
 
                   <div>
-                    <label htmlFor="settings-role" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Role</label>
-                    <Input id="settings-role" name="role" type="text" value={accountData.role || ''} className="max-w-md bg-slate-100" disabled />
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Role</label>
+                    <Input type="text" value={accountData.role || ''} className="max-w-md bg-slate-100" disabled />
                   </div>
 
                   <div>
-                    <p className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Change Password</p>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Change Password</label>
                     <Button variant="outline" className="rounded-xl" onClick={handleUpdatePasswordClick}>
                       <Lock size={16} className="mr-2" />
                       Update Password
@@ -569,7 +540,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Receive updates via email</p>
                     </div>
                     <Switch
-                      aria-label="Email notifications"
                       checked={localSettings.notifications.emailNotifications}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -586,7 +556,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Get notified on your device</p>
                     </div>
                     <Switch
-                      aria-label="Push notifications"
                       checked={localSettings.notifications.pushNotifications}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -603,7 +572,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Play sounds for notifications</p>
                     </div>
                     <Switch
-                      aria-label="Sound effects"
                       checked={localSettings.notifications.soundEnabled}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -623,46 +591,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         { key: 'achievements', label: 'Achievements' },
                         { key: 'streakAlerts', label: 'Streak Alerts' },
                         { key: 'weeklySummary', label: 'Weekly Summary' },
-                      ].map((item) => {
-                        const inputId = `settings-notification-type-${item.key}`;
-                        return (
-                          <label key={item.key} htmlFor={inputId} className="flex items-center gap-3 cursor-pointer">
-                            <input
-                              id={inputId}
-                              name={inputId}
-                              type="checkbox"
-                              checked={localSettings.notifications.notificationTypes[item.key as keyof UserSettings['notifications']['notificationTypes']]}
-                              onChange={(event) =>
-                                updateSettings((prev) => ({
-                                  ...prev,
-                                  notifications: {
-                                    ...prev.notifications,
-                                    notificationTypes: {
-                                      ...prev.notifications.notificationTypes,
-                                      [item.key]: event.target.checked,
-                                    },
+                      ].map((item) => (
+                        <div key={item.key} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={localSettings.notifications.notificationTypes[item.key as keyof UserSettings['notifications']['notificationTypes']]}
+                            onChange={(event) =>
+                              updateSettings((prev) => ({
+                                ...prev,
+                                notifications: {
+                                  ...prev.notifications,
+                                  notificationTypes: {
+                                    ...prev.notifications.notificationTypes,
+                                    [item.key]: event.target.checked,
                                   },
-                                }))
-                              }
-                              className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
-                            />
-                            <span className="text-sm text-[#0a1628] font-body">{item.label}</span>
-                          </label>
-                        );
-                      })}
+                                },
+                              }))
+                            }
+                            className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
+                          />
+                          <span className="text-sm text-[#0a1628] font-body">{item.label}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <div className="pt-4 border-t border-[#dde3eb]">
-                    <p className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
                       <Clock size={16} className="inline mr-2" />
                       Quiet Hours
-                    </p>
+                    </label>
                     <div className="flex items-center gap-3">
-                      <label htmlFor="settings-quiet-hours-start" className="sr-only">Quiet hours start</label>
                       <Input
-                        id="settings-quiet-hours-start"
-                        name="quietHoursStart"
                         type="time"
                         value={localSettings.notifications.quietHours.start}
                         onChange={(event) =>
@@ -677,10 +637,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="w-32"
                       />
                       <span className="text-[#5a6578]">to</span>
-                      <label htmlFor="settings-quiet-hours-end" className="sr-only">Quiet hours end</label>
                       <Input
-                        id="settings-quiet-hours-end"
-                        name="quietHoursEnd"
                         type="time"
                         value={localSettings.notifications.quietHours.end}
                         onChange={(event) =>
@@ -708,7 +665,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Smart invert colors like extension dark mode</p>
                     </div>
                     <Switch
-                      aria-label="Dark mode"
                       checked={localSettings.appearance.darkMode}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -720,12 +676,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="settings-font-size" className="text-sm font-bold text-[#5a6578] mb-3 block font-body uppercase tracking-wider text-xs">Font Size</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-3 block font-body uppercase tracking-wider text-xs">Font Size</label>
                     <div className="flex items-center gap-4">
                       <span className="text-xs text-slate-500">Small</span>
                       <input
-                        id="settings-font-size"
-                        name="fontSize"
                         type="range"
                         min="12"
                         max="20"
@@ -748,7 +702,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Show more content on screen</p>
                     </div>
                     <Switch
-                      aria-label="Compact view"
                       checked={localSettings.appearance.compactView}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -765,7 +718,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Minimize motion effects</p>
                     </div>
                     <Switch
-                      aria-label="Reduce animations"
                       checked={localSettings.appearance.reduceAnimations}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -786,9 +738,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Who can see your profile</p>
                     </div>
                     <select
-                      id="settings-profile-visibility"
-                      name="profileVisibility"
-                      aria-label="Profile visibility"
                       value={localSettings.privacy.profileVisibility}
                       onChange={(event) =>
                         updateSettings((prev) => ({
@@ -810,7 +759,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Let others see when you're online</p>
                     </div>
                     <Switch
-                      aria-label="Show activity status"
                       checked={localSettings.privacy.showActivityStatus}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -827,7 +775,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Share anonymous usage data</p>
                     </div>
                     <Switch
-                      aria-label="Data sharing"
                       checked={localSettings.privacy.dataSharing}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -843,10 +790,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeSection === 'learning' && (
                 <div className="space-y-6">
                   <div>
-                    <label htmlFor="settings-daily-xp-goal" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Daily XP Goal</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Daily XP Goal</label>
                     <Input
-                      id="settings-daily-xp-goal"
-                      name="dailyXpGoal"
                       type="number"
                       value={localSettings.learning.dailyXpGoal}
                       onChange={(event) =>
@@ -861,10 +806,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="settings-preferred-study-time" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Preferred Study Time</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Preferred Study Time</label>
                     <select
-                      id="settings-preferred-study-time"
-                      name="preferredStudyTime"
                       value={localSettings.learning.preferredStudyTime}
                       onChange={(event) =>
                         updateSettings((prev) => ({
@@ -887,7 +830,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Automatically start the next lesson</p>
                     </div>
                     <Switch
-                      aria-label="Auto-play next lesson"
                       checked={localSettings.learning.autoPlayLessons}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -904,7 +846,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Display helpful hints for questions</p>
                     </div>
                     <Switch
-                      aria-label="Show hints during quizzes"
                       checked={localSettings.learning.showHints}
                       onCheckedChange={(value) =>
                         updateSettings((prev) => ({
@@ -916,10 +857,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="settings-quiz-difficulty" className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Quiz Difficulty Preference</label>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Quiz Difficulty Preference</label>
                     <select
-                      id="settings-quiz-difficulty"
-                      name="quizDifficultyPreference"
                       value={localSettings.learning.quizDifficultyPreference}
                       onChange={(event) =>
                         updateSettings((prev) => ({
@@ -940,14 +879,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div className="pt-4 border-t border-[#dde3eb]">
-                    <p className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
                       <Smartphone size={16} className="inline mr-2" />
                       Study Reminders
-                    </p>
-                    <label htmlFor="settings-study-reminder-time" className="sr-only">Study reminder time</label>
+                    </label>
                     <Input
-                      id="settings-study-reminder-time"
-                      name="studyReminderTime"
                       type="time"
                       value={localSettings.learning.studyReminderTime}
                       onChange={(event) =>
@@ -1076,10 +1012,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div className="px-6 py-5 space-y-4">
               <p className="text-sm text-[#5a6578]">Enter a new password with at least 8 characters.</p>
-              <label htmlFor="settings-new-password" className="sr-only">New password</label>
               <Input
-                id="settings-new-password"
-                name="newPassword"
                 type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
