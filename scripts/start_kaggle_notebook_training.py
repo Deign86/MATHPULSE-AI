@@ -115,11 +115,11 @@ def _prepare_kernel_bundle(
 
             updated_lines = []
             for line in source_lines:
-                updated_lines.append(line)
-                if "TRAIN_PROFILE = os.getenv(\"TRAIN_PROFILE\", \"production\").strip().lower()" in line:
+                if "TARGET_TOTAL_STEPS = int(os.getenv(\"TARGET_TOTAL_STEPS\", \"600\"))" in line:
                     updated_lines.append(f'os.environ["TARGET_TOTAL_STEPS"] = "{target_total_steps}"\n')
                     updated_lines.append(f'os.environ["MAX_STEPS"] = "{target_total_steps}"\n')
                     injected = True
+                updated_lines.append(line)
 
             cell["source"] = updated_lines
             if injected:
@@ -129,7 +129,7 @@ def _prepare_kernel_bundle(
             staged_notebook.write_text(json.dumps(notebook_data, ensure_ascii=True, indent=2), encoding="utf-8")
             print(f"Injected continuation target steps override: {target_total_steps}")
         else:
-            print("WARNING: Could not find TRAIN_PROFILE line for target-steps injection.")
+            print("WARNING: Could not find TARGET_TOTAL_STEPS line for target-steps injection.")
 
     metadata = {
         "id": kernel_ref,
