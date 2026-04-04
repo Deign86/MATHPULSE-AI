@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BookOpen,
   Clock,
@@ -23,20 +23,34 @@ import { type StudentProfile } from '../types/models';
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
   atRiskSubjects?: string[];
+  initialModuleId?: string | null;
 }
 
 type ModulesTab = 'modules' | 'recommended' | 'practice';
 
-const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = [] }) => {
+const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = [], initialModuleId = null }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
+  
   const studentGrade = (userProfile as StudentProfile | null)?.grade;
   const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
   const gradeScopedSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
+  
+  const initialModule = initialModuleId 
+    ? gradeScopedSubjects.flatMap(s => s.modules).find(m => m.id === initialModuleId) || null
+    : null;
+
+  const [selectedModule, setSelectedModule] = useState<Module | null>(initialModule);
+  const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle navigation from initialModuleId when component is already mounted
+  useEffect(() => {
+    if (initialModuleId) {
+      const foundMod = gradeScopedSubjects.flatMap(s => s.modules).find(m => m.id === initialModuleId);
+      if (foundMod) setSelectedModule(foundMod);
+    }
+  }, [initialModuleId]);
 
   // Module-first UX: we always anchor to General Mathematics when present.
   const generalMathSubject = gradeScopedSubjects.find((subject) => subject.id === 'gen-math') ?? gradeScopedSubjects[0] ?? null;
@@ -92,7 +106,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
               Explore Modules
             </h1>
             <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
-              Welcome to your personalized learning hub for <span className="font-bold text-indigo-700">General Mathematics</span>. These modules are organized directly under the subject so you can jump straight into lessons and assessments without extra steps. MathPulse adapts challenge level and quiz support as you progress, helping you master each module with focus and momentum.
+              Welcome to your personalized learning hub for <span className="font-bold text-indigo-700">General Mathematics</span>. These modules are organized directly under the subject so you can jump straight into lessons and assessments without extra steps. MathPulse AI adapts challenge level and quiz support as you progress, helping you master each module with focus and momentum.
             </p>
           </div>
 

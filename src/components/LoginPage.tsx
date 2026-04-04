@@ -255,7 +255,7 @@ const LoginPage: React.FC = () => {
               <motion.div className="relative flex items-center justify-center drop-shadow-md">
                 <img 
                   src="/mathpulse_logo.png" 
-                  alt="MathPulse Logo" 
+                  alt="MathPulse AI Logo" 
                   className="w-16 h-16 object-contain flex-shrink-0"
                 />
               </motion.div>

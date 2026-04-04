@@ -241,7 +241,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               };
             });
           }}
-          onComplete={(score, totalXP) => {
+          onComplete={(score, totalXP, goToNext) => {
             // Ensure we have a valid XP amount (minimum 50 for lesson completion)
             const xpAmount = Math.max(totalXP || 50, 50);
             console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
@@ -272,7 +272,22 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               })();
             }
 
-            setSelectedLesson(null);
+            // Figure out the next index based on current lesson inside module.lessons
+            if (goToNext) {
+              const currentIdx = module.lessons.findIndex(l => l.id === selectedLesson.lesson.id);
+              if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
+                // Automatically move to the next lesson
+                setSelectedLesson({ type: 'lesson', lesson: module.lessons[currentIdx + 1] });
+              } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
+                // If it was the last lesson, move to the first quiz
+                setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
+              } else {
+                // Nothing left to go to
+                setSelectedLesson(null);
+              }
+            } else {
+              setSelectedLesson(null);
+            }
           }}
         />
       );

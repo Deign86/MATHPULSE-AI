@@ -453,3 +453,18 @@ export const purchaseAvatarItem = async (
     return { success: false, message: 'Failed to purchase item' };
   }
 };
+
+export const resetAvatarPurchasesForTesting = async (userId: string): Promise<boolean> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      ownedAvatarItems: [],
+      equippedAvatarItems: {},
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error resetting avatar items:', error);
+    return false;
+  }
+};

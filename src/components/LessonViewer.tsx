@@ -7,7 +7,7 @@ import { Lesson } from '../data/subjects';
 interface LessonViewerProps {
   lesson: Lesson;
   onBack: () => void;
-  onComplete: (score?: number, totalXP?: number) => void;
+  onComplete: (score?: number, totalXP?: number, goToNext?: boolean) => void;
   onProgressUpdate?: (percent: number) => void;
 }
 
@@ -84,6 +84,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
   const [progress, setProgress] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
 
+  useEffect(() => {
+    setCurrentSection(0);
+    setShowCompletion(false);
+    setIsPlaying(false);
+    setProgress(0);
+  }, [lesson.id, lesson.title]);
+
   const content = generateLessonContent(lesson.title);
   const totalSections = content.sections.length;
 
@@ -107,8 +114,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
     }
   };
 
-  const handleComplete = () => {
-    onComplete();
+  const handleComplete = (goToNext: boolean) => {
+    onComplete(undefined, undefined, goToNext);
   };
 
   const currentSectionData = content.sections[currentSection];
@@ -119,53 +126,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
     'key-point': '💡',
     practice: '✍️',
   };
-  const sectionSymbol = sectionSymbolMap[currentSectionData.type] || '📘';
-
-  if (showCompletion) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring' }}
-            className="w-20 h-20 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <CheckCircle size={40} className="text-white" />
-          </motion.div>
-
-          <h2 className="text-2xl font-bold text-[#0a1628] mb-3">Lesson Complete!</h2>
-          <p className="text-[#5a6578] mb-6">
-            Great job! You've finished learning about <strong>{lesson.title}</strong>.
-          </p>
-
-          <div className="bg-teal-50 rounded-2xl p-5 mb-6 border-2 border-teal-200">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Award className="text-teal-600" size={24} />
-            </div>
-            <p className="text-xs text-teal-600 font-bold uppercase mb-1">XP Earned</p>
-            <p className="text-3xl font-black text-teal-700">+50</p>
-          </div>
-
-          <Button
-            onClick={handleComplete}
-            className="w-full py-6 rounded-2xl font-bold text-lg bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:opacity-90 shadow-lg"
-          >
-            Continue to Next Lesson
-          </Button>
-        </motion.div>
-      </div>
-    );
-  }
+  const sectionSymbol = currentSectionData ? sectionSymbolMap[currentSectionData.type] || '📘' : '📘';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[radial-gradient(circle_at_top_left,#f8fbff_0%,#eef4ff_40%,#f8f4ff_100%)]">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[radial-gradient(circle_at_top_left,#f8fbff_0%,#eef4ff_40%,#f8f4ff_100%)] overflow-hidden">
+      
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 sm:px-10 lg:px-16 py-4 shadow-sm">
+      <header className="flex-none bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 sm:px-10 lg:px-16 py-4 shadow-sm relative z-40">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -375,6 +342,60 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
           </Button>
         </div>
       </footer>
+
+      {/* COMPLETION MODAL LAYER */}
+      {showCompletion && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-[2rem] p-8 max-w-md w-full text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden relative"
+          >
+            <div className="absolute -top-32 -left-32 w-64 h-64 bg-teal-100 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
+            <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-emerald-100 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
+
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="w-20 h-20 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-lg shadow-teal-500/30"
+            >
+              <CheckCircle size={40} className="text-white" />
+            </motion.div>
+
+            <h2 className="text-2xl font-bold text-[#0a1628] mb-3 relative z-10">Lesson Complete!</h2>
+            <p className="text-[#5a6578] mb-6 relative z-10 leading-relaxed px-2">
+              Great job! You've finished learning about <strong className="text-slate-800">{lesson.title}</strong>.
+            </p>
+
+            <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl p-5 mb-8 border border-teal-100 shadow-inner relative z-10">
+              <div className="flex items-center justify-center mb-2">
+                <div className="bg-teal-100 p-2 rounded-xl">
+                  <Award className="text-teal-600" size={24} />
+                </div>
+              </div>
+              <p className="text-xs text-teal-700 font-bold uppercase tracking-wider mb-1">XP Earned</p>
+              <p className="text-3xl font-black text-teal-600 drop-shadow-sm">+50</p>
+            </div>
+
+            <div className="flex flex-col gap-3 relative z-10">
+              <button
+                onClick={() => handleComplete(true)}
+                className="w-full py-3.5 rounded-xl font-bold text-[15px] bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:shadow-lg hover:shadow-teal-500/25 hover:-translate-y-0.5 transition-all outline-none"
+              >
+                Continue to Next Lesson
+              </button>
+              
+              <button
+                onClick={() => handleComplete(false)}
+                className="w-full py-3.5 rounded-xl font-bold text-[15px] bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-700 transition-all outline-none"
+              >
+                Back to Modules
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

@@ -81,7 +81,7 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
                   <GraduationCap size={22} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">Bloom's Taxonomy in MathPulse</h2>
+                  <h2 className="text-lg font-bold text-white">Bloom's Taxonomy in MathPulse AI</h2>
                   <p className="text-cyan-200 text-xs">Understanding cognitive levels in assessments</p>
                 </div>
               </div>
@@ -103,15 +103,15 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
                 <p className="text-sm text-slate-500 leading-relaxed">
                   Bloom's Taxonomy is an educational framework developed by Benjamin Bloom in 1956
                   and revised in 2001. It classifies learning objectives into six cognitive levels,
-                  from basic recall of facts up to complex evaluation and creation. MathPulse uses
+                  from basic recall of facts up to complex evaluation and creation. MathPulse AI uses
                   the first four levels most relevant to Senior High School mathematics.
                 </p>
               </div>
 
-              {/* Section 2 - Why MathPulse Uses It */}
+              {/* Section 2 - Why MathPulse AI Uses It */}
               <div>
                 <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wide mb-2">
-                  Why MathPulse Uses It
+                  Why MathPulse AI Uses It
                 </h3>
                 <p className="text-sm text-slate-500 leading-relaxed">
                   Using Bloom's Taxonomy ensures that assessments do not only test memorization.

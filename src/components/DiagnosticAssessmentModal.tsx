@@ -498,7 +498,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 </div>
                 
                 <h3 className="text-2xl font-bold text-[#0a1628]">
-                  {assessmentType === 'followup_diagnostic' ? 'Let\'s close the gaps' : 'Welcome to MathPulse!'}
+                  {assessmentType === 'followup_diagnostic' ? 'Let\'s close the gaps' : 'Welcome to MathPulse AI!'}
                 </h3>
                 <p className="text-[#5a6578] max-w-md mx-auto leading-relaxed">
                   {assessmentType === 'followup_diagnostic'
