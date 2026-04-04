@@ -147,6 +147,7 @@
         "README.md",
         "CONTRIBUTING.md",
         "SECURITY.md",
+        "BUG_AUDIT.md",
         "REPO_STANDARDIZATION_AUDIT.md",
         "*.md"
       ],
