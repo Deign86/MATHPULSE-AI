@@ -23,6 +23,7 @@ DEFAULT_CHAT_HARD_TRIGGER_ENABLED = "false"
 DEFAULT_ENFORCE_QWEN_ONLY = "true"
 DEFAULT_QWEN_LOCK_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 GLOBAL_MODEL_KEY = "INFERENCE_MODEL_ID"
+TEMP_CHAT_MODEL_KEY = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,6 +62,16 @@ def parse_args() -> argparse.Namespace:
         "--clear-global-model",
         action="store_true",
         help="Delete/clear global model override key instead of setting it",
+    )
+    parser.add_argument(
+        "--temp-chat-model",
+        default="",
+        help="Optional temporary chat override model for INFERENCE_CHAT_MODEL_TEMP_OVERRIDE",
+    )
+    parser.add_argument(
+        "--clear-temp-chat-model",
+        action="store_true",
+        help="Delete/clear temporary chat model override key",
     )
     return parser.parse_args()
 
@@ -138,6 +149,12 @@ def main() -> int:
             _clear_variable(api, repo_id=space_id, key=args.global_model_key.strip())
         else:
             _set_variable(api, repo_id=space_id, key=args.global_model_key.strip(), value=args.global_model.strip())
+
+        temp_chat_model = args.temp_chat_model.strip()
+        if args.clear_temp_chat_model:
+            _clear_variable(api, repo_id=space_id, key=TEMP_CHAT_MODEL_KEY)
+        elif temp_chat_model:
+            _set_variable(api, repo_id=space_id, key=TEMP_CHAT_MODEL_KEY, value=temp_chat_model)
 
         print("[done] Space env enforcement completed")
         return 0

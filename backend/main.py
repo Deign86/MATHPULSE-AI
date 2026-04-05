@@ -1940,7 +1940,19 @@ class VerifySolutionResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "models": {"chat": CHAT_MODEL, "risk": RISK_MODEL}}
+    chat_model = CHAT_MODEL
+    try:
+        routing_client = get_inference_client()
+        chat_model, _ = routing_client._resolve_primary_model(
+            InferenceRequest(
+                messages=[{"role": "user", "content": "health_check"}],
+                task_type="chat",
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "healthy", "models": {"chat": chat_model, "risk": RISK_MODEL}}
 
 
 @app.get("/")
