@@ -175,7 +175,8 @@ jobs:
             --chat-hard-trigger-enabled false \
             --enforce-qwen-only true \
             --qwen-lock-model Qwen/Qwen2.5-7B-Instruct \
-            --clear-global-model
+            --clear-global-model \
+            --temp-chat-model Qwen/Qwen3-32B
 
   deploy-frontend:
     needs: detect-changes
