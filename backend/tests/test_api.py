@@ -340,6 +340,31 @@ class TestChatEndpoint:
         assert "timed out" in content.lower()
         assert "event: end" in content
 
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_marker_mode_continues_until_marker(self, mock_stream_async):
+        async def _first_stream(*args, **kwargs):
+            yield "n=1: x=1\n"
+            yield "n=2: x=2"
+
+        async def _second_stream(*args, **kwargs):
+            yield "\nn=3: x=3\nEND_MARKER"
+
+        mock_stream_async.side_effect = [_first_stream(), _second_stream()]
+
+        with patch.object(main_module, "CHAT_STREAM_CONTINUATION_MAX_ROUNDS", 1):
+            with client.stream("POST", "/api/chat/stream", json={
+                "message": "Solve x+n=2n for n=1..3 and end with END_MARKER",
+                "history": [],
+                "completionMode": "marker",
+                "expectedEndMarker": "END_MARKER",
+            }) as response:
+                assert response.status_code == 200
+                content = "".join(response.iter_text())
+
+        assert "END_MARKER" in content
+        assert "event: end" in content
+        assert mock_stream_async.call_count == 2
+
     @patch("main.call_hf_chat_stream")
     def test_chat_stream_non_math_returns_refusal_and_skips_inference(self, mock_stream):
         with client.stream("POST", "/api/chat/stream", json={

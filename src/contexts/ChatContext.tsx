@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { ApiTimeoutError, apiService } from '../services/apiService';
+import { ApiTimeoutError, apiService, type ChatCompletionOptions } from '../services/apiService';
 import { useAuth } from './AuthContext';
 import {
   createChatSession as createFirebaseSession,
@@ -49,6 +49,68 @@ interface ChatContextType {
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
+const EXPECTED_END_MARKER_PATTERNS: RegExp[] = [
+  /\b(?:end|finish|stop)\s+with(?:\s+the\s+(?:exact\s+)?(?:marker|text))?\s*[:\-]?\s*(["'`]?)([A-Za-z0-9_:\-]{2,96})\1/i,
+  /\b(?:include|append)\s+(?:the\s+)?marker\s*[:\-]?\s*(["'`]?)([A-Za-z0-9_:\-]{2,96})\1/i,
+];
+
+function normalizeExpectedEndMarker(marker: string | null | undefined): string | null {
+  if (!marker) return null;
+
+  let normalized = marker.trim();
+  if (!normalized) return null;
+
+  if (
+    normalized.length >= 2
+    && normalized[0] === normalized[normalized.length - 1]
+    && ['"', '\'', '`'].includes(normalized[0])
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+
+  normalized = normalized.replace(/[.,;\s]+$/g, '');
+  if (!normalized) return null;
+
+  return normalized.slice(0, 120);
+}
+
+function extractExpectedEndMarker(prompt: string): string | null {
+  const source = (prompt ?? '').trim();
+  if (!source) return null;
+
+  for (const pattern of EXPECTED_END_MARKER_PATTERNS) {
+    const match = pattern.exec(source);
+    if (!match) continue;
+    const marker = normalizeExpectedEndMarker(match[2]);
+    if (marker) return marker;
+  }
+
+  return null;
+}
+
+function containsExpectedEndMarker(answer: string, marker: string | null | undefined): boolean {
+  const normalizedMarker = normalizeExpectedEndMarker(marker);
+  if (!normalizedMarker) return false;
+  return answer.toLowerCase().includes(normalizedMarker.toLowerCase());
+}
+
+function isAnswerStillIncomplete(
+  prompt: string,
+  answer: string,
+  expectedEndMarker: string | null,
+  enableHeuristicChecks: boolean,
+): boolean {
+  if (expectedEndMarker && !containsExpectedEndMarker(answer, expectedEndMarker)) {
+    return true;
+  }
+
+  if (!enableHeuristicChecks) {
+    return false;
+  }
+
+  return isPromptAnswerPairIncomplete(prompt, answer);
+}
 
 function isIncompleteResponse(text: string): boolean {
   const trimmed = text.trim();
@@ -240,8 +302,8 @@ function mergeAnswerContinuation(base: string, continuation: string): string {
   return dedupeRepeatedParagraphs(`${baseTrimmed}\n\n${contTrimmed}`.trim());
 }
 
-function buildContinuationPrompt(originalQuestion: string, partialAnswer: string): string {
-  return [
+function buildContinuationPrompt(originalQuestion: string, partialAnswer: string, expectedEndMarker?: string | null): string {
+  const lines = [
     'Continue the same solution from exactly where it stopped.',
     'Do not restart. Do not repeat completed parts. Keep the same formatting style.',
     'Finish all remaining steps and provide a complete final answer.',
@@ -250,11 +312,19 @@ function buildContinuationPrompt(originalQuestion: string, partialAnswer: string
     '',
     'Current partial answer:',
     partialAnswer,
-  ].join('\n');
+  ];
+
+  const marker = normalizeExpectedEndMarker(expectedEndMarker);
+  if (marker) {
+    lines.push('');
+    lines.push(`Include the exact marker "${marker}" at the very end when done.`);
+  }
+
+  return lines.join('\n');
 }
 
-function buildPlainContinuationPrompt(originalQuestion: string, partialAnswer: string): string {
-  return [
+function buildPlainContinuationPrompt(originalQuestion: string, partialAnswer: string, expectedEndMarker?: string | null): string {
+  const lines = [
     'Continue and complete the answer in plain text only.',
     'No markdown, no LaTeX, no code fences. Do not restart.',
     '',
@@ -262,20 +332,42 @@ function buildPlainContinuationPrompt(originalQuestion: string, partialAnswer: s
     '',
     'Current partial answer:',
     partialAnswer,
-  ].join('\n');
+  ];
+
+  const marker = normalizeExpectedEndMarker(expectedEndMarker);
+  if (marker) {
+    lines.push('');
+    lines.push(`End with the exact marker "${marker}".`);
+  }
+
+  return lines.join('\n');
 }
 
-function buildCoverageCompletionPrompt(originalQuestion: string): string {
-  return [
+function buildCoverageCompletionPrompt(originalQuestion: string, expectedEndMarker?: string | null): string {
+  const lines = [
     'Provide a complete final tutoring answer for the student question below.',
     'Do not include meta commentary, internal reasoning, or notes about instructions.',
     'Cover every requested part explicitly and include final results.',
     '',
     `Question: ${originalQuestion}`,
-  ].join('\n');
+  ];
+
+  const marker = normalizeExpectedEndMarker(expectedEndMarker);
+  if (marker) {
+    lines.push('');
+    lines.push(`Include the exact marker "${marker}" once all requested parts are complete.`);
+  }
+
+  return lines.join('\n');
 }
 
-function pickHigherQualityAnswer(prompt: string, current: string, candidate: string): string {
+function pickHigherQualityAnswer(
+  prompt: string,
+  current: string,
+  candidate: string,
+  expectedEndMarker: string | null = null,
+  enableHeuristicChecks = true,
+): string {
   const currentTrimmed = current.trim();
   const candidateTrimmed = candidate.trim();
   if (!candidateTrimmed) {
@@ -285,8 +377,18 @@ function pickHigherQualityAnswer(prompt: string, current: string, candidate: str
     return candidateTrimmed;
   }
 
-  const currentIncomplete = isPromptAnswerPairIncomplete(prompt, currentTrimmed);
-  const candidateIncomplete = isPromptAnswerPairIncomplete(prompt, candidateTrimmed);
+  const currentIncomplete = isAnswerStillIncomplete(
+    prompt,
+    currentTrimmed,
+    expectedEndMarker,
+    enableHeuristicChecks,
+  );
+  const candidateIncomplete = isAnswerStillIncomplete(
+    prompt,
+    candidateTrimmed,
+    expectedEndMarker,
+    enableHeuristicChecks,
+  );
 
   if (currentIncomplete !== candidateIncomplete) {
     return candidateIncomplete ? currentTrimmed : candidateTrimmed;
@@ -737,7 +839,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       let streamedText = '';
       let streamMessageId: string | null = null;
       const showStreamingChunks = shouldShowStreamingChunks(trimmedUserText);
-      const shouldRunRepairFlow = shouldAttemptCompletionRepair(trimmedUserText);
+      const shouldRunHeuristicRepairFlow = shouldAttemptCompletionRepair(trimmedUserText);
+      const expectedEndMarker = extractExpectedEndMarker(trimmedUserText);
+      const shouldRunAnyRepairFlow = shouldRunHeuristicRepairFlow || Boolean(expectedEndMarker);
+      const completionOptions: ChatCompletionOptions | undefined = expectedEndMarker
+        ? {
+            expectedEndMarker,
+            completionMode: 'marker',
+          }
+        : undefined;
+
+      const isAnswerIncomplete = (answer: string): boolean =>
+        isAnswerStillIncomplete(trimmedUserText, answer, expectedEndMarker, shouldRunHeuristicRepairFlow);
 
       const upsertStreamingMessage = (text: string) => {
         if (!text.trim()) {
@@ -799,14 +912,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           if (showStreamingChunks) {
             upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
           }
-        });
+        }, completionOptions);
 
         let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
-        if (shouldRunRepairFlow && finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+        if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
           try {
             const continuation = await apiService.chatSafe(
-              buildContinuationPrompt(trimmedUserText, finalResponse),
+              buildContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
               history,
+              completionOptions,
             );
             const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
             finalResponse = mergeAnswerContinuation(finalResponse, repairedResponse);
@@ -814,11 +928,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             console.warn('Streaming completion repair failed:', repairErr);
           }
 
-          if (shouldRunRepairFlow && finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+          if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
             try {
               const plainContinuation = await apiService.chatSafe(
-                buildPlainContinuationPrompt(trimmedUserText, finalResponse),
+                buildPlainContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
                 history,
+                completionOptions,
               );
               const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
               finalResponse = mergeAnswerContinuation(finalResponse, repairedPlain);
@@ -827,15 +942,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             }
           }
 
-          if (shouldRunRepairFlow && finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+          if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
             try {
               const completeAttempt = await apiService.chatSafe(
-                buildCoverageCompletionPrompt(trimmedUserText),
+                buildCoverageCompletionPrompt(trimmedUserText, expectedEndMarker),
                 history,
+                completionOptions,
               );
               const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
               if (regenerated) {
-                finalResponse = pickHigherQualityAnswer(trimmedUserText, finalResponse, regenerated);
+                finalResponse = pickHigherQualityAnswer(
+                  trimmedUserText,
+                  finalResponse,
+                  regenerated,
+                  expectedEndMarker,
+                  shouldRunHeuristicRepairFlow,
+                );
               }
             } catch (completeRepairErr) {
               console.warn('Streaming full completion repair failed:', completeRepairErr);
@@ -843,8 +965,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           }
         }
 
-        const finalResponseIncomplete = isPromptAnswerPairIncomplete(trimmedUserText, finalResponse);
-        if (!finalResponse || (finalResponseIncomplete && !shouldRunRepairFlow)) {
+        const finalResponseIncomplete = isAnswerIncomplete(finalResponse);
+        if (!finalResponse || (finalResponseIncomplete && !shouldRunAnyRepairFlow)) {
           finalResponse = generateFallbackResponse(trimmedUserText);
         }
 
@@ -874,14 +996,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         let aiResponseText = '';
         try {
-          const { data } = await apiService.chatSafe(trimmedUserText, history);
+          const { data } = await apiService.chatSafe(trimmedUserText, history, completionOptions);
           aiResponseText = formatAssistantResponseForStorage(data.response).trim();
 
-          if (shouldRunRepairFlow && aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+          if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
               const continuation = await apiService.chatSafe(
-                buildContinuationPrompt(trimmedUserText, aiResponseText),
+                buildContinuationPrompt(trimmedUserText, aiResponseText, expectedEndMarker),
                 history,
+                completionOptions,
               );
               const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedResponse);
@@ -890,11 +1013,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             }
           }
 
-          if (shouldRunRepairFlow && aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+          if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
               const plainContinuation = await apiService.chatSafe(
-                buildPlainContinuationPrompt(trimmedUserText, aiResponseText),
+                buildPlainContinuationPrompt(trimmedUserText, aiResponseText, expectedEndMarker),
                 history,
+                completionOptions,
               );
               const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedPlain);
@@ -903,15 +1027,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             }
           }
 
-          if (shouldRunRepairFlow && aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+          if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
               const completeAttempt = await apiService.chatSafe(
-                buildCoverageCompletionPrompt(trimmedUserText),
+                buildCoverageCompletionPrompt(trimmedUserText, expectedEndMarker),
                 history,
+                completionOptions,
               );
               const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
               if (regenerated) {
-                aiResponseText = pickHigherQualityAnswer(trimmedUserText, aiResponseText, regenerated);
+                aiResponseText = pickHigherQualityAnswer(
+                  trimmedUserText,
+                  aiResponseText,
+                  regenerated,
+                  expectedEndMarker,
+                  shouldRunHeuristicRepairFlow,
+                );
               }
             } catch (completeRepairErr) {
               console.warn('Non-stream full completion repair failed:', completeRepairErr);
@@ -922,8 +1053,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
-        const aiResponseIncomplete = isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText);
-        if (!aiResponseText || (aiResponseIncomplete && !shouldRunRepairFlow)) {
+        const aiResponseIncomplete = isAnswerIncomplete(aiResponseText);
+        if (!aiResponseText || (aiResponseIncomplete && !shouldRunAnyRepairFlow)) {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
