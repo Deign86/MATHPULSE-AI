@@ -792,7 +792,10 @@ const App = () => {
           </header>
 
           {/* Main Content Area */}
-          <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 lg:p-4">
+          <main
+            ref={scrollContainerRef}
+            className={`flex-1 min-h-0 p-3 lg:p-4 ${activeTab === 'AI Chat' ? 'overflow-hidden' : 'overflow-y-auto'}`}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -800,6 +803,7 @@ const App = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className={activeTab === 'AI Chat' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">

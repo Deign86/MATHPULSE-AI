@@ -50,6 +50,144 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+function isIncompleteResponse(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+
+  const trailingSignals = [
+    /```[^`]*$/,
+    /\$\$[^$]*$/,
+    /\$[^$\n]*$/,
+    /\\\[[^\]]*$/,
+    /\\\([^\)]*$/,
+    /\\boxed\{[^}]*$/,
+    /\\frac\{[^}]*\}\{?$/,
+    /\\[a-zA-Z]+\s*$/,
+    /(?:Step\s*\d+[:.]?)\s*$/i,
+    /(?:Final\s*Answer[:.]?)\s*$/i,
+  ];
+
+  if (trailingSignals.some((pattern) => pattern.test(trimmed))) {
+    return true;
+  }
+
+  const codeFenceCount = (trimmed.match(/```/g) ?? []).length;
+  if (codeFenceCount % 2 !== 0) {
+    return true;
+  }
+
+  const unescapedDollarCount = (() => {
+    let count = 0;
+    for (let i = 0; i < trimmed.length; i += 1) {
+      if (trimmed[i] !== '$') continue;
+      let slashCount = 0;
+      for (let j = i - 1; j >= 0 && trimmed[j] === '\\'; j -= 1) {
+        slashCount += 1;
+      }
+      if (slashCount % 2 === 0) {
+        count += 1;
+      }
+    }
+    return count;
+  })();
+  if (unescapedDollarCount % 2 !== 0) {
+    return true;
+  }
+
+  const leftCount = (trimmed.match(/\\left\b/g) ?? []).length;
+  const rightCount = (trimmed.match(/\\right\b/g) ?? []).length;
+  if (leftCount !== rightCount) {
+    return true;
+  }
+
+  const pairedChars: Array<[string, string]> = [
+    ['(', ')'],
+    ['[', ']'],
+    ['{', '}'],
+  ];
+  for (const [openChar, closeChar] of pairedChars) {
+    const openCount = (trimmed.match(new RegExp(`\\${openChar}`, 'g')) ?? []).length;
+    const closeCount = (trimmed.match(new RegExp(`\\${closeChar}`, 'g')) ?? []).length;
+    if (openCount > closeCount) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function mergeAnswerContinuation(base: string, continuation: string): string {
+  const baseTrimmed = base.trim();
+  const contTrimmed = continuation.trim();
+  if (!baseTrimmed) return contTrimmed;
+  if (!contTrimmed) return baseTrimmed;
+
+  const maxOverlap = Math.min(baseTrimmed.length, contTrimmed.length, 220);
+  for (let overlap = maxOverlap; overlap >= 24; overlap -= 1) {
+    const tail = baseTrimmed.slice(-overlap);
+    const head = contTrimmed.slice(0, overlap);
+    if (tail === head) {
+      return `${baseTrimmed}${contTrimmed.slice(overlap)}`.trim();
+    }
+  }
+
+  if (baseTrimmed.endsWith(contTrimmed)) {
+    return baseTrimmed;
+  }
+  if (contTrimmed.startsWith(baseTrimmed)) {
+    return contTrimmed;
+  }
+
+  return `${baseTrimmed}\n\n${contTrimmed}`.trim();
+}
+
+function buildContinuationPrompt(originalQuestion: string, partialAnswer: string): string {
+  return [
+    'Continue the same solution from exactly where it stopped.',
+    'Do not restart. Do not repeat completed parts. Keep the same formatting style.',
+    'Finish all remaining steps and provide a complete final answer.',
+    '',
+    `Question: ${originalQuestion}`,
+    '',
+    'Current partial answer:',
+    partialAnswer,
+  ].join('\n');
+}
+
+function buildPlainContinuationPrompt(originalQuestion: string, partialAnswer: string): string {
+  return [
+    'Continue and complete the answer in plain text only.',
+    'No markdown, no LaTeX, no code fences. Do not restart.',
+    '',
+    `Question: ${originalQuestion}`,
+    '',
+    'Current partial answer:',
+    partialAnswer,
+  ].join('\n');
+}
+
+function shouldShowStreamingChunks(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  const formatSensitiveSignals = [
+    'derivative',
+    'integral',
+    'equation',
+    'latex',
+    'step-by-step',
+    'step by step',
+    'formatting',
+    'proof',
+    'fraction',
+    'limit',
+    'matrix',
+    'sqrt',
+    'boxed',
+    '^',
+    'dx',
+  ];
+  return !formatSensitiveSignals.some((signal) => lower.includes(signal));
+}
+
 /** Generate a helpful math tutor response when backend is unavailable */
 function generateFallbackResponse(userText: string): string {
   const scopeBoundaryResponse = getScopeBoundaryResponse(userText);
@@ -408,6 +546,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       let streamedText = '';
       let streamMessageId: string | null = null;
+      const showStreamingChunks = shouldShowStreamingChunks(trimmedUserText);
 
       const upsertStreamingMessage = (text: string) => {
         setSessions(prev =>
@@ -462,10 +601,42 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       try {
         const { response } = await apiService.chat(trimmedUserText, history, (chunk: string) => {
           streamedText += chunk;
-          upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
+          if (showStreamingChunks) {
+            upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
+          }
         });
 
-        const finalResponse = formatAssistantResponseForStorage(response || streamedText);
+        let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
+        if (finalResponse && isIncompleteResponse(finalResponse)) {
+          try {
+            const continuation = await apiService.chatSafe(
+              buildContinuationPrompt(trimmedUserText, finalResponse),
+              history,
+            );
+            const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+            finalResponse = mergeAnswerContinuation(finalResponse, repairedResponse);
+          } catch (repairErr) {
+            console.warn('Streaming completion repair failed:', repairErr);
+          }
+
+          if (finalResponse && isIncompleteResponse(finalResponse)) {
+            try {
+              const plainContinuation = await apiService.chatSafe(
+                buildPlainContinuationPrompt(trimmedUserText, finalResponse),
+                history,
+              );
+              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
+              finalResponse = mergeAnswerContinuation(finalResponse, repairedPlain);
+            } catch (plainRepairErr) {
+              console.warn('Streaming plain continuation repair failed:', plainRepairErr);
+            }
+          }
+        }
+
+        if (!finalResponse || isIncompleteResponse(finalResponse)) {
+          finalResponse = generateFallbackResponse(trimmedUserText);
+        }
+
         if (streamMessageId) {
           removeStreamingMessage();
         }
@@ -493,9 +664,39 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         let aiResponseText = '';
         try {
           const { data } = await apiService.chatSafe(trimmedUserText, history);
-          aiResponseText = formatAssistantResponseForStorage(data.response);
+          aiResponseText = formatAssistantResponseForStorage(data.response).trim();
+
+          if (aiResponseText && isIncompleteResponse(aiResponseText)) {
+            try {
+              const continuation = await apiService.chatSafe(
+                buildContinuationPrompt(trimmedUserText, aiResponseText),
+                history,
+              );
+              const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+              aiResponseText = mergeAnswerContinuation(aiResponseText, repairedResponse);
+            } catch (repairErr) {
+              console.warn('Non-stream completion repair failed:', repairErr);
+            }
+          }
+
+          if (aiResponseText && isIncompleteResponse(aiResponseText)) {
+            try {
+              const plainContinuation = await apiService.chatSafe(
+                buildPlainContinuationPrompt(trimmedUserText, aiResponseText),
+                history,
+              );
+              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
+              aiResponseText = mergeAnswerContinuation(aiResponseText, repairedPlain);
+            } catch (plainRepairErr) {
+              console.warn('Non-stream plain continuation repair failed:', plainRepairErr);
+            }
+          }
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
+          aiResponseText = generateFallbackResponse(trimmedUserText);
+        }
+
+        if (!aiResponseText || isIncompleteResponse(aiResponseText)) {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
