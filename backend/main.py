@@ -211,6 +211,28 @@ CHAT_STREAM_TOTAL_TIMEOUT_SEC = max(
     CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC,
     int(os.getenv("CHAT_STREAM_TOTAL_TIMEOUT_SEC", "900")),
 )
+CHAT_STREAM_CONTINUATION_ENABLED = os.getenv(
+    "CHAT_STREAM_CONTINUATION_ENABLED",
+    "true",
+).strip().lower() in {"1", "true", "yes", "on"}
+CHAT_STREAM_CONTINUATION_MAX_ROUNDS = max(
+    0,
+    int(os.getenv("CHAT_STREAM_CONTINUATION_MAX_ROUNDS", "2")),
+)
+CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS = max(
+    1,
+    int(os.getenv("CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS", "24")),
+)
+CHAT_STREAM_CONTINUATION_TAIL_CHARS = max(
+    80,
+    int(os.getenv("CHAT_STREAM_CONTINUATION_TAIL_CHARS", "900")),
+)
+CHAT_STREAM_COMPLETION_MODE_DEFAULT = os.getenv(
+    "CHAT_STREAM_COMPLETION_MODE_DEFAULT",
+    "auto",
+).strip().lower()
+if CHAT_STREAM_COMPLETION_MODE_DEFAULT not in {"auto", "marker", "none"}:
+    CHAT_STREAM_COMPLETION_MODE_DEFAULT = "auto"
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -1846,6 +1868,28 @@ class ChatRequest(BaseModel):
     history: List[ChatMessage] = Field(default_factory=list)
     userId: Optional[str] = None
     verify: bool = Field(default=False, description="Enable self-consistency verification for math answers")
+    expectedEndMarker: Optional[str] = Field(
+        default=None,
+        description="Optional marker that should appear in the completed answer (for continuation checks).",
+    )
+    completionMode: str = Field(
+        default="auto",
+        description="Completion check mode: auto, marker, or none.",
+    )
+    continuationMaxRounds: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=8,
+        description="Optional override for max backend continuation rounds.",
+    )
+
+    @field_validator("completionMode")
+    @classmethod
+    def validate_completion_mode(cls, value: str) -> str:
+        normalized = (value or "").strip().lower()
+        if normalized in {"auto", "marker", "none"}:
+            return normalized
+        return "auto"
 
 
 class ChatResponse(BaseModel):
@@ -1997,6 +2041,210 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 - Never use external tools or functions — solve purely through mathematical reasoning"""
 
 
+_STREAM_COMPLETION_MODES: Set[str] = {"auto", "marker", "none"}
+_EXPECTED_END_MARKER_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\b(?:end|finish|stop)\s+with(?:\s+the\s+(?:exact\s+)?(?:marker|text))?\s*[:\-]?\s*([\"'`]?)([A-Za-z0-9_:\-]{2,96})\1",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:include|append)\s+(?:the\s+)?marker\s*[:\-]?\s*([\"'`]?)([A-Za-z0-9_:\-]{2,96})\1",
+        re.IGNORECASE,
+    ),
+)
+_EXPECTED_RANGE_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bfor\s+([a-zA-Z])\s*=\s*(-?\d+)\s*(?:\.\.|to)\s*(-?\d+)\b", re.IGNORECASE),
+    re.compile(r"\b([a-zA-Z])\s*=\s*(-?\d+)\s*\.\.\s*(-?\d+)\b", re.IGNORECASE),
+)
+
+
+def _normalize_expected_end_marker(marker: Optional[str]) -> Optional[str]:
+    if marker is None:
+        return None
+
+    normalized = str(marker).strip()
+    if not normalized:
+        return None
+
+    if len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {'"', "'", "`"}:
+        normalized = normalized[1:-1].strip()
+
+    normalized = normalized.rstrip(".,; ")
+    if not normalized:
+        return None
+
+    return normalized[:120]
+
+
+def _extract_expected_end_marker_from_prompt(prompt: str) -> Optional[str]:
+    source = (prompt or "").strip()
+    if not source:
+        return None
+
+    for pattern in _EXPECTED_END_MARKER_PATTERNS:
+        match = pattern.search(source)
+        if not match:
+            continue
+        marker = _normalize_expected_end_marker(match.group(2))
+        if marker:
+            return marker
+
+    return None
+
+
+def _contains_expected_end_marker(answer: str, marker: Optional[str]) -> bool:
+    marker_value = _normalize_expected_end_marker(marker)
+    if not marker_value:
+        return False
+    return marker_value.lower() in (answer or "").lower()
+
+
+def _extract_expected_prompt_range(prompt: str) -> Optional[Tuple[str, int, int]]:
+    source = (prompt or "").strip()
+    if not source:
+        return None
+
+    for pattern in _EXPECTED_RANGE_PATTERNS:
+        match = pattern.search(source)
+        if not match:
+            continue
+
+        var_name = match.group(1).lower()
+        start_value = int(match.group(2))
+        end_value = int(match.group(3))
+        if abs(end_value - start_value) > 4000:
+            return None
+        return var_name, start_value, end_value
+
+    return None
+
+
+def _response_covers_expected_range(answer: str, range_spec: Optional[Tuple[str, int, int]]) -> bool:
+    if range_spec is None:
+        return True
+
+    var_name, start_value, end_value = range_spec
+    sequence_pattern = re.compile(rf"\b{re.escape(var_name)}\s*=\s*(-?\d+)\b", re.IGNORECASE)
+    matches = [int(match) for match in sequence_pattern.findall(answer or "")]
+    if not matches:
+        return False
+
+    terminal_value = matches[-1]
+    if end_value >= start_value:
+        return terminal_value >= end_value
+    return terminal_value <= end_value
+
+
+def _response_looks_truncated(answer: str) -> bool:
+    trimmed = (answer or "").strip()
+    if not trimmed:
+        return True
+
+    trailing_signals = [
+        r"```[^`]*$",
+        r"\$\$[^$]*$",
+        r"\$[^$\n]*$",
+        r"\\\[[^\]]*$",
+        r"\\\([^\)]*$",
+        r"\\boxed\{[^}]*$",
+        r"(?:Step\s*\d+[:.]?)\s*$",
+        r"(?:Final\s*Answer[:.]?)\s*$",
+    ]
+    if any(re.search(pattern, trimmed, re.IGNORECASE) for pattern in trailing_signals):
+        return True
+
+    if len(trimmed) >= 96 and re.search(
+        r"\b(?:and|or|but|because|since|so|then|which|that|where|when|with|for|to|from|of|in|on|at|by)\s*$",
+        trimmed,
+        re.IGNORECASE,
+    ):
+        return True
+
+    return False
+
+
+def _normalize_stream_completion_mode(mode: Optional[str]) -> str:
+    candidate = (mode or "").strip().lower()
+    if candidate in _STREAM_COMPLETION_MODES:
+        return candidate
+    if CHAT_STREAM_COMPLETION_MODE_DEFAULT in _STREAM_COMPLETION_MODES:
+        return CHAT_STREAM_COMPLETION_MODE_DEFAULT
+    return "auto"
+
+
+def _resolve_stream_continuation_rounds(request: ChatRequest, completion_mode: str) -> int:
+    if not CHAT_STREAM_CONTINUATION_ENABLED:
+        return 0
+    if completion_mode == "none":
+        return 0
+    if request.continuationMaxRounds is None:
+        return CHAT_STREAM_CONTINUATION_MAX_ROUNDS
+    return max(0, min(int(request.continuationMaxRounds), 8))
+
+
+def _should_continue_stream_response(
+    *,
+    prompt: str,
+    accumulated_answer: str,
+    completion_mode: str,
+    expected_end_marker: Optional[str],
+    expected_range: Optional[Tuple[str, int, int]],
+) -> bool:
+    mode = _normalize_stream_completion_mode(completion_mode)
+    if mode == "none":
+        return False
+
+    marker_present = _contains_expected_end_marker(accumulated_answer, expected_end_marker)
+    if mode == "marker":
+        return not marker_present
+
+    if expected_end_marker and not marker_present:
+        return True
+
+    if expected_range and not _response_covers_expected_range(accumulated_answer, expected_range):
+        return True
+
+    if _response_looks_truncated(accumulated_answer):
+        return True
+
+    return False
+
+
+def _merge_answer_continuation(base: str, continuation: str) -> str:
+    base_trimmed = (base or "").strip()
+    continuation_trimmed = (continuation or "").strip()
+
+    if not base_trimmed:
+        return continuation_trimmed
+    if not continuation_trimmed:
+        return base_trimmed
+
+    max_overlap = min(len(base_trimmed), len(continuation_trimmed), 220)
+    for overlap in range(max_overlap, 23, -1):
+        if base_trimmed.endswith(continuation_trimmed[:overlap]):
+            return f"{base_trimmed}{continuation_trimmed[overlap:]}".strip()
+
+    if base_trimmed.endswith(continuation_trimmed):
+        return base_trimmed
+    if continuation_trimmed.startswith(base_trimmed):
+        return continuation_trimmed
+
+    return f"{base_trimmed}\n\n{continuation_trimmed}".strip()
+
+
+def _build_stream_continuation_prompt(original_question: str, expected_end_marker: Optional[str]) -> str:
+    lines = [
+        "Continue the exact same answer from where it stopped.",
+        "Do not restart. Do not repeat content that was already sent.",
+        "Only output the missing continuation.",
+        f"Original student question: {original_question}",
+    ]
+    marker = _normalize_expected_end_marker(expected_end_marker)
+    if marker:
+        lines.append(f'Include the exact marker "{marker}" at the very end once complete.')
+    return "\n".join(lines)
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
@@ -2072,37 +2320,123 @@ async def chat_tutor_stream(request: ChatRequest):
                 yield _sse("end", "done")
                 return
 
-            stream_iterator = None
             stream_started_at = time.monotonic()
             emitted_any_chunk = False
+            completion_mode = _normalize_stream_completion_mode(request.completionMode)
+            expected_end_marker = _normalize_expected_end_marker(request.expectedEndMarker)
+            if not expected_end_marker:
+                expected_end_marker = _extract_expected_end_marker_from_prompt(request.message)
+            if completion_mode == "marker" and not expected_end_marker:
+                completion_mode = "auto"
+
+            expected_range = _extract_expected_prompt_range(request.message) if completion_mode == "auto" else None
+            continuation_rounds = _resolve_stream_continuation_rounds(request, completion_mode)
+            max_attempts = 1 + continuation_rounds
+            assembled_response = ""
+
             try:
-                stream_iterator = call_hf_chat_stream_async(
-                    messages,
-                    max_tokens=CHAT_MAX_NEW_TOKENS,
-                    temperature=0.3,
-                    top_p=0.85,
-                    task_type="chat",
-                )
+                for attempt_index in range(max_attempts):
+                    response_len_before_attempt = len(assembled_response)
+                    if attempt_index == 0:
+                        attempt_messages = messages
+                    else:
+                        continuation_messages = list(messages)
+                        tail_context = assembled_response[-CHAT_STREAM_CONTINUATION_TAIL_CHARS:]
+                        if tail_context:
+                            continuation_messages.append({"role": "assistant", "content": tail_context})
+                        continuation_messages.append({
+                            "role": "user",
+                            "content": _build_stream_continuation_prompt(request.message, expected_end_marker),
+                        })
+                        attempt_messages = continuation_messages
 
-                while True:
-                    elapsed = time.monotonic() - stream_started_at
-                    remaining_total = CHAT_STREAM_TOTAL_TIMEOUT_SEC - elapsed
-                    if remaining_total <= 0:
-                        raise TimeoutError("Chat stream exceeded total timeout")
+                    stream_iterator = call_hf_chat_stream_async(
+                        attempt_messages,
+                        max_tokens=CHAT_MAX_NEW_TOKENS,
+                        temperature=0.3,
+                        top_p=0.85,
+                        task_type="chat",
+                    )
 
-                    token_timeout = min(CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC, remaining_total)
-                    try:
-                        chunk = await asyncio.wait_for(stream_iterator.__anext__(), timeout=token_timeout)
-                    except StopAsyncIteration:
+                    attempt_chunks: List[str] = []
+
+                    while True:
+                        elapsed = time.monotonic() - stream_started_at
+                        remaining_total = CHAT_STREAM_TOTAL_TIMEOUT_SEC - elapsed
+                        if remaining_total <= 0:
+                            raise TimeoutError("Chat stream exceeded total timeout")
+
+                        token_timeout = min(CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC, remaining_total)
+                        try:
+                            chunk = await asyncio.wait_for(stream_iterator.__anext__(), timeout=token_timeout)
+                        except StopAsyncIteration:
+                            break
+
+                        if not chunk:
+                            continue
+
+                        chunk_text = str(chunk)
+                        attempt_chunks.append(chunk_text)
+
+                        if attempt_index == 0:
+                            assembled_response += chunk_text
+                            emitted_any_chunk = True
+                            payload = json.dumps({"chunk": chunk_text}, ensure_ascii=False)
+                            yield _sse("chunk", payload)
+                            await asyncio.sleep(0)
+
+                    attempt_text = "".join(attempt_chunks)
+                    if attempt_index > 0 and attempt_text:
+                        merged_response = _merge_answer_continuation(assembled_response, attempt_text)
+                        if merged_response.startswith(assembled_response):
+                            delta_text = merged_response[len(assembled_response):]
+                        else:
+                            delta_text = attempt_text
+                            merged_response = _merge_answer_continuation(assembled_response, delta_text)
+
+                        assembled_response = merged_response
+                        if delta_text:
+                            emitted_any_chunk = True
+                            payload = json.dumps({"chunk": delta_text}, ensure_ascii=False)
+                            yield _sse("chunk", payload)
+                            await asyncio.sleep(0)
+
+                    added_chars = len(assembled_response) - response_len_before_attempt
+                    should_continue = _should_continue_stream_response(
+                        prompt=request.message,
+                        accumulated_answer=assembled_response,
+                        completion_mode=completion_mode,
+                        expected_end_marker=expected_end_marker,
+                        expected_range=expected_range,
+                    )
+
+                    if not should_continue:
                         break
 
-                    if not chunk:
-                        continue
+                    if attempt_index >= continuation_rounds:
+                        logger.info(
+                            "Reached chat stream continuation limit (rounds=%s mode=%s marker=%s)",
+                            continuation_rounds,
+                            completion_mode,
+                            expected_end_marker or "<none>",
+                        )
+                        break
 
-                    emitted_any_chunk = True
-                    payload = json.dumps({"chunk": chunk}, ensure_ascii=False)
-                    yield _sse("chunk", payload)
-                    await asyncio.sleep(0)
+                    if attempt_index > 0 and added_chars < CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS:
+                        logger.info(
+                            "Stopping chat stream continuation due to low progress (added_chars=%s min_required=%s)",
+                            added_chars,
+                            CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS,
+                        )
+                        break
+
+                    logger.info(
+                        "Continuing chat stream response (attempt=%s mode=%s marker=%s range=%s)",
+                        attempt_index + 2,
+                        completion_mode,
+                        expected_end_marker or "<none>",
+                        expected_range or "<none>",
+                    )
             except (asyncio.TimeoutError, TimeoutError):
                 logger.error(
                     "HF chat stream timed out (idle=%ss total=%ss)",

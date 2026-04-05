@@ -61,6 +61,16 @@ export interface ChatRequest {
   message: string;
   history: { role: 'user' | 'assistant'; content: string }[];
   userId?: string;
+  verify?: boolean;
+  expectedEndMarker?: string;
+  completionMode?: 'auto' | 'marker' | 'none';
+  continuationMaxRounds?: number;
+}
+
+export interface ChatCompletionOptions {
+  expectedEndMarker?: string;
+  completionMode?: 'auto' | 'marker' | 'none';
+  continuationMaxRounds?: number;
 }
 
 export interface ChatResponse {
@@ -1047,8 +1057,19 @@ export const apiService = {
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[],
     onChunk?: (chunk: string) => void,
+    options?: ChatCompletionOptions,
   ): Promise<ChatResponse> {
     validateRequired('/api/chat', { message });
+
+    const requestPayload: ChatRequest = {
+      message,
+      history: history ?? [],
+      ...(options?.expectedEndMarker ? { expectedEndMarker: options.expectedEndMarker } : {}),
+      ...(options?.completionMode ? { completionMode: options.completionMode } : {}),
+      ...(typeof options?.continuationMaxRounds === 'number'
+        ? { continuationMaxRounds: Math.max(0, Math.floor(options.continuationMaxRounds)) }
+        : {}),
+    };
 
     if (onChunk) {
       const streamController = new AbortController();
@@ -1104,7 +1125,7 @@ export const apiService = {
         const response = await fetch(`${API_URL}/api/chat/stream`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ message, history: history ?? [] }),
+          body: JSON.stringify(requestPayload),
           signal: streamController.signal,
         });
 
@@ -1234,7 +1255,7 @@ export const apiService = {
 
     const result = await apiFetch<ChatResponse>(
       '/api/chat',
-      { method: 'POST', body: JSON.stringify({ message, history: history ?? [] }) },
+      { method: 'POST', body: JSON.stringify(requestPayload) },
       CHAT_RETRY_OPTS,
     );
 
@@ -1245,9 +1266,10 @@ export const apiService = {
   async chatSafe(
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[],
+    options?: ChatCompletionOptions,
   ): Promise<{ data: ChatResponse; fromFallback: boolean }> {
     return withFallback(
-      () => apiService.chat(message, history),
+      () => apiService.chat(message, history, undefined, options),
       FALLBACK_CHAT,
       'chat',
     );
