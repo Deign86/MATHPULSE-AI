@@ -71,9 +71,9 @@ const AIChatPage = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-120px)] flex gap-4 px-4 sm:px-6 xl:px-10 py-6">
+    <div className="h-full min-h-0 flex gap-4 px-4 sm:px-6 xl:px-10 py-6">
       {/* Left Sidebar - Chat History (Fixed, Scrollable) */}
-      <div className="w-80 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
+      <div className="w-80 min-h-0 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
         {/* Header - Fixed */}
         <div className="p-4 border-b border-[#dde3eb] flex-shrink-0">
           <div className="flex items-center gap-3 mb-4">
@@ -169,7 +169,7 @@ const AIChatPage = () => {
       </div>
 
       {/* Main Chat Area - Fixed Viewport Layout */}
-      <div className="flex-1 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
         {activeSessionId ? (
           <>
             {/* Chat Header - Fixed */}

@@ -1117,6 +1117,7 @@ export const apiService = {
         const decoder = new TextDecoder();
         let buffer = '';
         let fullResponse = '';
+        let sawEndEvent = false;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -1174,6 +1175,7 @@ export const apiService = {
               }
               throw new Error(errorMessage);
             } else if (eventType === 'end') {
+              sawEndEvent = true;
               return { response: fullResponse };
             }
 
@@ -1181,7 +1183,11 @@ export const apiService = {
           }
         }
 
-        return { response: fullResponse };
+        if (sawEndEvent) {
+          return { response: fullResponse };
+        }
+
+        throw new Error('Stream closed before end event.');
       } catch (err) {
         if (streamAbortReason === 'idle') {
           throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_IDLE_TIMEOUT_MS);
