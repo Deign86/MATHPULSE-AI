@@ -45,7 +45,7 @@ describe('normalizeChatMarkdownForRender', () => {
   it('hides trailing partial think tags during streaming normalization', () => {
     const input = 'Visible answer <thi';
 
-    expect(normalizeChatMarkdownForRender(input)).toBe('Visible answer ');
+    expect(normalizeChatMarkdownForRender(input)).toBe('Visible answer');
   });
 });
 
@@ -60,6 +60,24 @@ describe('formatAssistantResponseForStorage', () => {
     const input = '<think>Multiply numerators and denominators to multiply fractions.';
 
     expect(formatAssistantResponseForStorage(input)).toBe('Multiply numerators and denominators to multiply fractions.');
+  });
+
+  it('keeps only content after orphan closing think tags', () => {
+    const input = 'Plan step 1\nPlan step 2</think>\n# Final Answer\n**Multiply numerators and denominators.**';
+
+    expect(formatAssistantResponseForStorage(input)).toBe('# Final Answer\n**Multiply numerators and denominators.**');
+  });
+
+  it('suppresses planning-style text when no final answer marker is present', () => {
+    const input = '<think>Okay, the user asked about fractions.\nLet me structure this clearly.\nI should include examples.';
+
+    expect(formatAssistantResponseForStorage(input)).toBe('');
+  });
+
+  it('extracts final section marker from leaked think content', () => {
+    const input = '<think>Okay, I will draft the solution.\nWait, I should be concise.\nFinal Answer: **Use cross-cancellation first.**';
+
+    expect(formatAssistantResponseForStorage(input)).toBe('Final Answer: **Use cross-cancellation first.**');
   });
 
   it('removes orphan think closing tags before persistence', () => {
