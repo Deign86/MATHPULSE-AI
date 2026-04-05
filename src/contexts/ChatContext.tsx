@@ -238,6 +238,24 @@ function shouldShowStreamingChunks(prompt: string): boolean {
   return !formatSensitiveSignals.some((signal) => lower.includes(signal));
 }
 
+function shouldAttemptCompletionRepair(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  return [
+    'derivative',
+    'integral',
+    'equation',
+    'step-by-step',
+    'step by step',
+    'solve',
+    'differentiat',
+    'integrat',
+    'limit',
+    'proof',
+    'find',
+    'compute',
+  ].some((signal) => lower.includes(signal));
+}
+
 /** Generate a helpful math tutor response when backend is unavailable */
 function generateFallbackResponse(userText: string): string {
   const scopeBoundaryResponse = getScopeBoundaryResponse(userText);
@@ -597,14 +615,19 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       let streamedText = '';
       let streamMessageId: string | null = null;
       const showStreamingChunks = shouldShowStreamingChunks(trimmedUserText);
+      const shouldRunRepairFlow = shouldAttemptCompletionRepair(trimmedUserText);
 
       const upsertStreamingMessage = (text: string) => {
+        if (!text.trim()) {
+          return;
+        }
+
         setSessions(prev =>
           prev.map(chatSession => {
             if (chatSession.id !== sessionId) return chatSession;
 
             if (!streamMessageId) {
-              streamMessageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              streamMessageId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
               const streamMsg: Message = {
                 id: streamMessageId,
                 sender: 'ai',
@@ -657,7 +680,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         });
 
         let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
-        if (finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+        if (shouldRunRepairFlow && finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
           try {
             const continuation = await apiService.chatSafe(
               buildContinuationPrompt(trimmedUserText, finalResponse),
@@ -683,7 +706,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           }
         }
 
-        if (!finalResponse || isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+        const finalResponseIncomplete = shouldRunRepairFlow
+          ? isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)
+          : isIncompleteResponse(finalResponse);
+        if (!finalResponse || finalResponseIncomplete) {
           finalResponse = generateFallbackResponse(trimmedUserText);
         }
 
@@ -692,7 +718,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         }
 
         const aiMsg: Message = {
-          id: streamMessageId || (Date.now() + 1).toString(),
+          id: (Date.now() + 1).toString(),
           sender: 'ai',
           text: finalResponse,
           timestamp: aiTimestamp,
@@ -716,7 +742,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           const { data } = await apiService.chatSafe(trimmedUserText, history);
           aiResponseText = formatAssistantResponseForStorage(data.response).trim();
 
-          if (aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+          if (shouldRunRepairFlow && aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
             try {
               const continuation = await apiService.chatSafe(
                 buildContinuationPrompt(trimmedUserText, aiResponseText),
@@ -746,7 +772,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
-        if (!aiResponseText || isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+        const aiResponseIncomplete = shouldRunRepairFlow
+          ? isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)
+          : isIncompleteResponse(aiResponseText);
+        if (!aiResponseText || aiResponseIncomplete) {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
