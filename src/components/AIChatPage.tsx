@@ -26,7 +26,11 @@ const AIChatPage = () => {
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
-  const showTypingIndicator = isLoading && activeSessionId === loadingSessionId;
+  const hasStreamingPlaceholder = messages.some(
+    message => message.sender === 'ai' && message.id.startsWith('stream-')
+  );
+  const showTypingIndicator =
+    isLoading && activeSessionId === loadingSessionId && !hasStreamingPlaceholder;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
