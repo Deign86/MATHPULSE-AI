@@ -9,6 +9,7 @@ const TRAILING_ESCAPED_THINK_PREFIX_PATTERN = /(?:&lt;\s*\/?\s*t(?:h(?:i(?:n(?:k
 
 interface ThinkTagStripOptions {
   streamingSafeTail?: boolean;
+  preserveUnclosedThinkBlocks?: boolean;
 }
 
 function normalizeEscapedThinkTags(input: string): string {
@@ -30,11 +31,13 @@ export function stripThinkTags(input: string, options: ThinkTagStripOptions = {}
   }
 
   // Hide unfinished think blocks while streaming.
-  const lowered = sanitized.toLowerCase();
-  const lastOpenIndex = lowered.lastIndexOf('<think');
-  const lastCloseIndex = lowered.lastIndexOf('</think>');
-  if (lastOpenIndex !== -1 && lastOpenIndex > lastCloseIndex) {
-    sanitized = sanitized.slice(0, lastOpenIndex);
+  if (!options.preserveUnclosedThinkBlocks) {
+    const lowered = sanitized.toLowerCase();
+    const lastOpenIndex = lowered.lastIndexOf('<think');
+    const lastCloseIndex = lowered.lastIndexOf('</think>');
+    if (lastOpenIndex !== -1 && lastOpenIndex > lastCloseIndex) {
+      sanitized = sanitized.slice(0, lastOpenIndex);
+    }
   }
 
   sanitized = sanitized.replace(THINK_TAG_PATTERN, '');
@@ -48,8 +51,22 @@ export function stripThinkTags(input: string, options: ThinkTagStripOptions = {}
   return sanitized;
 }
 
-export function formatAssistantResponseForStorage(input: string): string {
+export function formatAssistantResponseForStreaming(input: string): string {
   return stripThinkTags(input, { streamingSafeTail: true }).trim();
+}
+
+export function formatAssistantResponseForStorage(input: string): string {
+  const strictSanitized = stripThinkTags(input, { streamingSafeTail: true }).trim();
+  if (strictSanitized) {
+    return strictSanitized;
+  }
+
+  // Some model variants emit a leading <think> without a closing tag.
+  // Fall back to tag-only stripping so the message is not stored as blank.
+  return stripThinkTags(input, {
+    streamingSafeTail: true,
+    preserveUnclosedThinkBlocks: true,
+  }).trim();
 }
 
 function wrapBareTexCommands(segment: string): string {
@@ -65,7 +82,13 @@ export function normalizeChatMarkdownForRender(input: string): string {
     return '';
   }
 
-  const withoutThinkTags = stripThinkTags(input, { streamingSafeTail: true });
+  const strictThinkTagStrip = stripThinkTags(input, { streamingSafeTail: true });
+  const withoutThinkTags = strictThinkTagStrip.trim()
+    ? strictThinkTagStrip
+    : stripThinkTags(input, {
+        streamingSafeTail: true,
+        preserveUnclosedThinkBlocks: true,
+      });
   const normalizedNewlines = withoutThinkTags.replace(/\r\n?/g, '\n');
 
   const codeAwareSegments = normalizedNewlines.split(CODE_SEGMENT_PATTERN);

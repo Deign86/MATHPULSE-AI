@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatAssistantResponseForStorage, normalizeChatMarkdownForRender } from './chatMessageFormatting';
+import {
+  formatAssistantResponseForStorage,
+  formatAssistantResponseForStreaming,
+  normalizeChatMarkdownForRender,
+} from './chatMessageFormatting';
 
 describe('normalizeChatMarkdownForRender', () => {
   it('wraps bare \\boxed expressions in inline math delimiters', () => {
@@ -52,9 +56,23 @@ describe('formatAssistantResponseForStorage', () => {
     expect(formatAssistantResponseForStorage(input)).toBe('Answer');
   });
 
+  it('recovers content when output starts with an unclosed think block', () => {
+    const input = '<think>Multiply numerators and denominators to multiply fractions.';
+
+    expect(formatAssistantResponseForStorage(input)).toBe('Multiply numerators and denominators to multiply fractions.');
+  });
+
   it('removes orphan think closing tags before persistence', () => {
     const input = 'Answer</think>';
 
     expect(formatAssistantResponseForStorage(input)).toBe('Answer');
+  });
+});
+
+describe('formatAssistantResponseForStreaming', () => {
+  it('hides leading unclosed think blocks while streaming', () => {
+    const input = '<think>draft reasoning';
+
+    expect(formatAssistantResponseForStreaming(input)).toBe('');
   });
 });
