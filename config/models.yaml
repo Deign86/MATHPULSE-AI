@@ -26,9 +26,9 @@ models:
 
 routing:
   task_model_map:
-    # Global default: Qwen2.5-7B across all tasks.
+    # Non-chat defaults stay on Qwen2.5-7B; chat defaults to Qwen3-32B.
     # Hard prompts can still escalate via runtime policy in inference_client.
-    chat: Qwen/Qwen2.5-7B-Instruct
+    chat: Qwen/Qwen3-32B
     verify_solution: Qwen/Qwen2.5-7B-Instruct
     lesson_generation: Qwen/Qwen2.5-7B-Instruct
     quiz_generation: Qwen/Qwen2.5-7B-Instruct

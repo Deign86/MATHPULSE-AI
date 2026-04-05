@@ -169,14 +169,14 @@ jobs:
         run: |
           python scripts/enforce_hf_space_chat_env.py \
             --space-id Deign86/mathpulse-api-v3test \
-            --chat-model Qwen/Qwen2.5-7B-Instruct \
+            --chat-model Qwen/Qwen3-32B \
             --provider hf_inference \
             --chat-strict-model-only true \
             --chat-hard-trigger-enabled false \
             --enforce-qwen-only true \
             --qwen-lock-model Qwen/Qwen2.5-7B-Instruct \
             --clear-global-model \
-            --temp-chat-model Qwen/Qwen3-32B
+            --clear-temp-chat-model
 
   deploy-frontend:
     needs: detect-changes

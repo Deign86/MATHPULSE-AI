@@ -15,7 +15,7 @@ import sys
 from huggingface_hub import HfApi
 
 DEFAULT_SPACE_ID = "Deign86/mathpulse-api-v3test"
-DEFAULT_CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+DEFAULT_CHAT_MODEL = "Qwen/Qwen3-32B"
 DEFAULT_GLOBAL_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_PROVIDER = "hf_inference"
 DEFAULT_CHAT_STRICT_MODEL_ONLY = "true"

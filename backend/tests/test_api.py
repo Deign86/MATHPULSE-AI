@@ -406,6 +406,25 @@ class TestInferenceRouting:
         assert "chat_strict_model_only" in source
         assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
 
+    def test_chat_env_override_wins_under_qwen_only_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Find the roots and explain why."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("chat", selected_model)
+
+        assert selected_model == "Qwen/Qwen3-32B"
+        assert "chat_override_env" in source
+        assert model_chain == ["Qwen/Qwen3-32B"]
+
     def test_chat_temp_override_wins_under_qwen_only_lock(self, monkeypatch):
         monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
         monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
