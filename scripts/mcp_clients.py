@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError, RepositoryNotFoundError
@@ -241,15 +242,152 @@ def _parse_kaggle_status_text(raw: str) -> str:
     if explicit:
         return explicit.group(2)
 
-    for token in ["complete", "completed", "running", "queued", "pending", "starting", "failed", "error"]:
+    for token in [
+        "cancel_acknowledged",
+        "cancelled",
+        "canceled",
+        "canceling",
+        "complete",
+        "completed",
+        "running",
+        "queued",
+        "pending",
+        "starting",
+        "failed",
+        "error",
+    ]:
         if token in lowered:
             return token
     return "unknown"
 
 
+def _kaggle_cli_base_command() -> list[str]:
+    kaggle_cli = shutil.which("kaggle")
+    if kaggle_cli:
+        return [kaggle_cli]
+
+    uv_cli = shutil.which("uv")
+    if uv_cli:
+        return [uv_cli, "run", "--no-project", "--with", "kaggle", "--", "kaggle"]
+
+    return ["kaggle"]
+
+
+def _split_kernel_ref(kernel_id: str) -> Tuple[str, str]:
+    parts = [part.strip() for part in kernel_id.split("/", 1)]
+    if len(parts) != 2:
+        return "", ""
+    return parts[0], parts[1]
+
+
+def _kaggle_sdk_status(kernel_id: str) -> MCPResult:
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi
+    except Exception as exc:
+        return MCPResult(
+            ok=False,
+            payload={"kernel_id": kernel_id},
+            error=f"Kaggle SDK unavailable: {exc}",
+            retriable=True,
+            source="kaggle_sdk_fallback",
+        )
+
+    try:
+        api = KaggleApi()
+        api.authenticate()
+        response = api.kernels_status(kernel_id)
+        status_raw = str(getattr(response, "status", "unknown"))
+        failure_message = str(
+            getattr(response, "failure_message", "") or getattr(response, "failureMessage", "")
+        ).strip()
+        return MCPResult(
+            ok=True,
+            payload={
+                "kernel_id": kernel_id,
+                "status": _parse_kaggle_status_text(status_raw),
+                "raw": status_raw,
+                "failure_message": failure_message,
+            },
+            source="kaggle_sdk_fallback",
+        )
+    except Exception as exc:
+        return MCPResult(
+            ok=False,
+            payload={"kernel_id": kernel_id},
+            error=f"Kaggle SDK status failed: {exc}",
+            retriable=True,
+            source="kaggle_sdk_fallback",
+        )
+
+
+def _kaggle_sdk_session_output(kernel_id: str) -> MCPResult:
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        from kagglesdk.kernels.types import kernels_api_service as kernel_types
+    except Exception as exc:
+        return MCPResult(
+            ok=False,
+            payload={"kernel_id": kernel_id},
+            error=f"Kaggle SDK session output unavailable: {exc}",
+            retriable=True,
+            source="kaggle_sdk_fallback",
+        )
+
+    owner, slug = _split_kernel_ref(kernel_id)
+    if not owner or not slug:
+        return MCPResult(
+            ok=False,
+            payload={"kernel_id": kernel_id},
+            error="Invalid kernel id; expected owner/slug.",
+            retriable=False,
+            source="kaggle_sdk_fallback",
+        )
+
+    try:
+        api = KaggleApi()
+        api.authenticate()
+        client = api.build_kaggle_client().kernels.kernels_api_client
+
+        output_req = kernel_types.ApiListKernelSessionOutputRequest()
+        output_req.user_name = owner
+        output_req.kernel_slug = slug
+        output_res = client.list_kernel_session_output(output_req)
+
+        status_req = kernel_types.ApiGetKernelSessionStatusRequest()
+        status_req.user_name = owner
+        status_req.kernel_slug = slug
+        status_res = client.get_kernel_session_status(status_req)
+
+        log_text = str(getattr(output_res, "log", "") or "")
+        files = list(getattr(output_res, "files", []) or [])
+        status_raw = str(getattr(status_res, "status", "unknown"))
+
+        return MCPResult(
+            ok=True,
+            payload={
+                "kernel_id": kernel_id,
+                "status": _parse_kaggle_status_text(status_raw),
+                "raw": status_raw,
+                "logs": log_text,
+                "log_summary": log_text[-2000:],
+                "files": files,
+            },
+            source="kaggle_sdk_fallback",
+        )
+    except Exception as exc:
+        return MCPResult(
+            ok=False,
+            payload={"kernel_id": kernel_id},
+            error=f"Kaggle SDK session output failed: {exc}",
+            retriable=True,
+            source="kaggle_sdk_fallback",
+        )
+
+
 def _kaggle_cli_status(kernel_id: str) -> MCPResult:
+    base_command = _kaggle_cli_base_command()
     proc = subprocess.run(
-        ["kaggle", "kernels", "status", kernel_id],
+        [*base_command, "kernels", "status", kernel_id],
         check=False,
         text=True,
         capture_output=True,
@@ -266,6 +404,20 @@ def _kaggle_cli_status(kernel_id: str) -> MCPResult:
         retriable=True,
         source="kaggle_cli_fallback",
     )
+
+
+def _log_has_ready_marker(raw: str) -> bool:
+    lowered = raw.lower()
+    markers = [
+        "application startup complete",
+        "uvicorn running on",
+        "started server process",
+        "local api reachable at",
+        "server_ready: true",
+        "keep server running",
+        "openai-compatible",
+    ]
+    return any(marker in lowered for marker in markers)
 
 
 def hf_mcp_check_repo_exists(
@@ -332,6 +484,11 @@ def kaggle_mcp_get_run_status(
     mcp_result = kaggle_client.check_run_status(kernel_id)
     if mcp_result.ok and mcp_result.payload.get("status"):
         return mcp_result
+
+    sdk_result = _kaggle_sdk_status(kernel_id)
+    if sdk_result.ok and sdk_result.payload.get("status"):
+        return sdk_result
+
     return _kaggle_cli_status(kernel_id)
 
 
@@ -343,6 +500,10 @@ def kaggle_mcp_get_run_logs(
     mcp_result = kaggle_client.read_logs(kernel_id)
     if mcp_result.ok:
         return mcp_result
+
+    sdk_result = _kaggle_sdk_session_output(kernel_id)
+    if sdk_result.ok:
+        return sdk_result
 
     cli_status = _kaggle_cli_status(kernel_id)
     if cli_status.ok:
@@ -359,7 +520,7 @@ def kaggle_mcp_get_run_logs(
     return MCPResult(
         ok=False,
         payload={"kernel_id": kernel_id},
-        error=mcp_result.error or cli_status.error or "Unable to fetch Kaggle logs.",
+        error=mcp_result.error or sdk_result.error or cli_status.error or "Unable to fetch Kaggle logs.",
         retriable=True,
         source="kaggle_mcp_wrapper",
     )
@@ -375,6 +536,7 @@ def kaggle_mcp_wait_until_done(
     started = time.time()
     timeout_seconds = max(1, timeout_minutes) * 60
     history = []
+    terminal_failure_statuses = {"failed", "error", "cancel_acknowledged", "cancelled", "canceled", "canceling"}
 
     while True:
         status_result = kaggle_mcp_get_run_status(kernel_id, client=kaggle_client)
@@ -388,7 +550,7 @@ def kaggle_mcp_wait_until_done(
                 source=status_result.source,
             )
 
-        if status in {"failed", "error"}:
+        if status in terminal_failure_statuses:
             logs_result = kaggle_mcp_get_run_logs(kernel_id, client=kaggle_client)
             return MCPResult(
                 ok=False,
@@ -408,6 +570,87 @@ def kaggle_mcp_wait_until_done(
                 ok=False,
                 payload={"kernel_id": kernel_id, "status": "timeout", "history": history},
                 error="Timed out waiting for Kaggle kernel completion.",
+                retriable=True,
+                source=status_result.source,
+            )
+
+        time.sleep(max(10, poll_interval))
+
+
+def kaggle_mcp_wait_until_ready(
+    kernel_id: str,
+    poll_interval: int = 60,
+    timeout_minutes: int = 240,
+    client: Optional[KaggleMCPClient] = None,
+) -> MCPResult:
+    kaggle_client = client or KaggleMCPClient(transport=None)
+    started = time.time()
+    timeout_seconds = max(1, timeout_minutes) * 60
+    history = []
+    terminal_failure_statuses = {"failed", "error", "cancel_acknowledged", "cancelled", "canceled", "canceling"}
+
+    while True:
+        status_result = kaggle_mcp_get_run_status(kernel_id, client=kaggle_client)
+        status = str(status_result.payload.get("status", "unknown")).lower()
+
+        logs_result = kaggle_mcp_get_run_logs(kernel_id=kernel_id, client=kaggle_client)
+        logs_blob = ""
+        if logs_result.payload:
+            parts = [
+                str(logs_result.payload.get("log_summary", "")),
+                str(logs_result.payload.get("logs", "")),
+                str(logs_result.payload.get("raw", "")),
+            ]
+            logs_blob = "\n".join([part for part in parts if part.strip()])
+
+        ready_marker = _log_has_ready_marker(logs_blob)
+
+        history.append(
+            {
+                "status": status,
+                "has_ready_marker": ready_marker,
+                "status_source": status_result.source,
+                "logs_source": logs_result.source,
+                "timestamp": int(time.time()),
+            }
+        )
+
+        if status in terminal_failure_statuses:
+            return MCPResult(
+                ok=False,
+                payload={
+                    "kernel_id": kernel_id,
+                    "status": status,
+                    "history": history,
+                    "logs_excerpt": logs_blob[-2000:],
+                },
+                error=f"Kaggle kernel ended with status '{status}'.",
+                retriable=False,
+                source=status_result.source,
+            )
+
+        if ready_marker and status in {"running", "complete", "completed", "starting"}:
+            return MCPResult(
+                ok=True,
+                payload={
+                    "kernel_id": kernel_id,
+                    "status": status,
+                    "ready_marker_detected": True,
+                    "history": history,
+                },
+                source=status_result.source,
+            )
+
+        if time.time() - started > timeout_seconds:
+            return MCPResult(
+                ok=False,
+                payload={
+                    "kernel_id": kernel_id,
+                    "status": "timeout",
+                    "ready_marker_detected": ready_marker,
+                    "history": history,
+                },
+                error="Timed out waiting for Kaggle kernel readiness.",
                 retriable=True,
                 source=status_result.source,
             )

@@ -13,6 +13,13 @@ interface ImportMetaEnv {
   readonly VITE_VLLM_BASE_URL_BASELINE?: string;
   readonly VITE_VLLM_BASE_URL_CANDIDATE?: string;
   readonly VITE_STAGING_QUICKCHECK_MAX_LATENCY_MS?: string;
+  readonly VITE_STAGING_REQUEST_TIMEOUT_MS?: string;
+  readonly VITE_STAGING_HEALTH_TIMEOUT_MS?: string;
+  readonly VITE_STAGING_REQUEST_RETRY_COUNT?: string;
+  readonly VITE_STAGING_REQUEST_RETRY_DELAY_MS?: string;
+  readonly VITE_STAGING_QWEN_DEFAULT_TEMPERATURE?: string;
+  readonly VITE_STAGING_QWEN_DEFAULT_MAX_TOKENS?: string;
+  readonly VITE_STAGING_QWEN_DEFAULT_TOP_P?: string;
   readonly VITE_ENABLE_ASYNC_GENERATION?: string;
   readonly VITE_IAR_WORKFLOW_MODE?: string;
   readonly VITE_ENABLE_IMPORT_GROUNDED_QUIZ?: string;

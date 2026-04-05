@@ -18,5 +18,13 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    proxy: {
+      '/__staging_proxy/hf': {
+        target: 'https://router.huggingface.co',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (pathValue) => pathValue.replace(/^\/__staging_proxy\/hf/, ''),
+      },
+    },
   },
 });

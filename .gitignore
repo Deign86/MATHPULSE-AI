@@ -48,3 +48,7 @@ __pycache__/
 # Build outputs
 build/
 out/
+
+# Local automation cache artifacts
+.automation_cache/
+.kaggle-kernels/

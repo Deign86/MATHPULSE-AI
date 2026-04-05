@@ -1,0 +1,9 @@
+{
+  "base_model": "Qwen/Qwen2.5-7B-Instruct",
+  "adapter_repo": "Deign86/deped-math-qwen2.5-7b-checkpoint-700-lora",
+  "merged_repo": "Deign86/deped-math-qwen2.5-7b-deped-math-merged",
+  "merged_local_dir": "deped-math-merged",
+  "adapter_load_method": "peft.from_pretrained",
+  "merge_method": "peft.merge_and_unload(fp16) [reloaded_fp16_base_fallback]",
+  "success": true
+}

@@ -1,0 +1,16 @@
+{
+  "id": "deignlazaro/deped-math-qwen2-5-merged-openai-api",
+  "title": "DepEd Math Qwen2.5 Merged OpenAI API",
+  "code_file": "deped-math-qwen2-5-merged-openai-api.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

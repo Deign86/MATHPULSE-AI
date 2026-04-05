@@ -1,0 +1,13 @@
+{
+  "phase": "dependencies",
+  "verification": {
+    "vllm": "0.19.0 (ok)",
+    "huggingface-hub": "0.36.2 (ok)",
+    "requests": "2.32.4 (ok)",
+    "packaging": "26.0 (ok)",
+    "protobuf": "5.29.6 (ok)",
+    "opentelemetry-api": "1.39.1 (ok)",
+    "opentelemetry-sdk": "1.39.1 (ok)",
+    "torch": "2.10.0+cu128 (check)"
+  }
+}

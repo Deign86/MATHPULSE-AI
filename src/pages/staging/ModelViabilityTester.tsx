@@ -18,7 +18,11 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
 import { cn } from '../../components/ui/utils';
-import { stagingConfig } from '../../config/staging';
+import {
+  STAGING_REQUEST_TIMEOUT_MAX_MS,
+  STAGING_REQUEST_TIMEOUT_MIN_MS,
+  stagingConfig,
+} from '../../config/staging';
 import type {
   BackendConnectionConfig,
   EndpointHealthStatus,
@@ -78,6 +82,8 @@ const sideToneMap: Record<PanelSide, string> = {
 };
 
 const scoreChoices = [1, 2, 3, 4, 5];
+const REQUEST_TIMEOUT_MIN_SEC = Math.round(STAGING_REQUEST_TIMEOUT_MIN_MS / 1000);
+const REQUEST_TIMEOUT_MAX_SEC = Math.round(STAGING_REQUEST_TIMEOUT_MAX_MS / 1000);
 
 const subjectHelperMap: Record<SubjectPreset, string> = {
   'General Math': 'Provide concise and accurate math solutions suitable for Grade 11 and 12 students.',
@@ -92,6 +98,40 @@ const defaultScores: SideScore = {
   correctness: 3,
   clarity: 3,
   usefulness: 3,
+};
+
+const BATCH_WORKER_COUNT = 2;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const extractProbeLines = (health: EndpointHealthStatus | null): string[] => {
+  if (!health || !isRecord(health.raw)) return [];
+  const probes = health.raw.probes;
+  if (!Array.isArray(probes)) return [];
+
+  return probes
+    .map((probe) => {
+      if (!isRecord(probe)) return '';
+
+      const path = typeof probe.path === 'string' ? probe.path : 'probe';
+      const status = typeof probe.status === 'number' ? `HTTP ${probe.status}` : null;
+      const error = typeof probe.error === 'string' && probe.error ? probe.error : null;
+
+      if (status) return `${path}: ${status}`;
+      if (error) return `${path}: ${error}`;
+      return `${path}: no response`;
+    })
+    .filter(Boolean);
+};
+
+const formatCheckedAt = (checkedAt: string | undefined): string => {
+  if (!checkedAt) return 'Checking...';
+
+  const date = new Date(checkedAt);
+  if (Number.isNaN(date.getTime())) return checkedAt;
+  return date.toLocaleString();
 };
 
 const ModelViabilityTester: React.FC = () => {
@@ -112,9 +152,10 @@ const ModelViabilityTester: React.FC = () => {
   const [subjectPreset, setSubjectPreset] = useState<SubjectPreset>('General Math');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
-  const [temperature, setTemperature] = useState(0.4);
-  const [maxTokens, setMaxTokens] = useState(512);
-  const [topP, setTopP] = useState(0.95);
+  const [temperature, setTemperature] = useState(stagingConfig.qwenDefaultTemperature);
+  const [maxTokens, setMaxTokens] = useState(stagingConfig.qwenDefaultMaxTokens);
+  const [topP, setTopP] = useState(stagingConfig.qwenDefaultTopP);
+  const [requestTimeoutSec, setRequestTimeoutSec] = useState(Math.round(stagingConfig.requestTimeoutMs / 1000));
 
   const [baseHealth, setBaseHealth] = useState<EndpointHealthStatus | null>(null);
   const [candidateHealth, setCandidateHealth] = useState<EndpointHealthStatus | null>(null);
@@ -122,6 +163,10 @@ const ModelViabilityTester: React.FC = () => {
 
   const [baseResult, setBaseResult] = useState<NormalizedModelResponse | null>(null);
   const [candidateResult, setCandidateResult] = useState<NormalizedModelResponse | null>(null);
+  const [panelLoading, setPanelLoading] = useState<Record<PanelSide, boolean>>({
+    base: false,
+    candidate: false,
+  });
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -186,6 +231,9 @@ const ModelViabilityTester: React.FC = () => {
   }, []);
 
   const updateRuntimeConfig = (key: keyof RuntimeConfigState, value: string): void => {
+    if (key === 'hfBaseUrl' || key === 'hfBaseModel') {
+      return;
+    }
     setRuntimeConfig((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -193,12 +241,20 @@ const ModelViabilityTester: React.FC = () => {
     setRuntimeConfig(envDefaults);
   };
 
-  const requestPayload = (promptText: string): ComparisonRequestOptions => ({
+  const normalizedTimeoutMs = useMemo(() => {
+    const safeSeconds = Number.isFinite(requestTimeoutSec)
+      ? Math.max(REQUEST_TIMEOUT_MIN_SEC, Math.min(REQUEST_TIMEOUT_MAX_SEC, Math.round(requestTimeoutSec)))
+      : Math.round(stagingConfig.requestTimeoutMs / 1000);
+    return safeSeconds * 1000;
+  }, [requestTimeoutSec]);
+
+  const requestPayload = (promptText: string, overrideMaxTokens?: number): ComparisonRequestOptions => ({
     systemPrompt: systemPrompt.trim() || selectedSystemHint,
     userPrompt: promptText,
     temperature,
-    maxTokens,
+    maxTokens: overrideMaxTokens ?? maxTokens,
     topP,
+    timeoutMs: normalizedTimeoutMs,
   });
 
   const runComparison = async (): Promise<void> => {
@@ -207,23 +263,55 @@ const ModelViabilityTester: React.FC = () => {
       return;
     }
 
+    const trimmedPrompt = userPrompt.trim();
+
     setComparisonLoading(true);
     setErrorMessage('');
     setCopyState({ base: 'idle', candidate: 'idle' });
+    setWinnerChoice('');
+    setBaseResult(null);
+    setCandidateResult(null);
+    setPanelLoading({ base: true, candidate: true });
 
     try {
-      const [hfResponse, vllmResponse] = await Promise.all([
-        requestHuggingFaceComparison(toConnectionConfig('base'), requestPayload(userPrompt.trim())),
-        requestVllmComparison(toConnectionConfig('candidate'), requestPayload(userPrompt.trim())),
-      ]);
+      const comparisonMaxTokens = Math.min(maxTokens, 256);
+      const hfPromise = requestHuggingFaceComparison(
+        toConnectionConfig('base'),
+        requestPayload(trimmedPrompt, comparisonMaxTokens),
+      );
+      const vllmPromise = requestVllmComparison(
+        toConnectionConfig('candidate'),
+        requestPayload(trimmedPrompt, comparisonMaxTokens),
+      );
 
-      setBaseResult(hfResponse);
-      setCandidateResult(vllmResponse);
-      setWinnerChoice('');
-      await refreshHealth();
+      hfPromise
+        .then((hfResponse) => {
+          setBaseResult(hfResponse);
+        })
+        .finally(() => {
+          setPanelLoading((prev) => ({ ...prev, base: false }));
+        });
+
+      vllmPromise
+        .then((vllmResponse) => {
+          setCandidateResult(vllmResponse);
+        })
+        .finally(() => {
+          setPanelLoading((prev) => ({ ...prev, candidate: false }));
+        });
+
+      const [hfSettled, vllmSettled] = await Promise.allSettled([hfPromise, vllmPromise]);
+      const rejected = [hfSettled, vllmSettled].find((item) => item.status === 'rejected');
+
+      if (rejected && rejected.status === 'rejected') {
+        setErrorMessage(rejected.reason instanceof Error ? rejected.reason.message : String(rejected.reason));
+      }
+
+      void refreshHealth();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
+      setPanelLoading({ base: false, candidate: false });
       setComparisonLoading(false);
     }
   };
@@ -234,52 +322,74 @@ const ModelViabilityTester: React.FC = () => {
     setErrorMessage('');
 
     try {
-      for (const testCase of COMPARISON_BATCH_CASES) {
-        const [hfResponse, vllmResponse] = await Promise.all([
-          requestHuggingFaceComparison(toConnectionConfig('base'), requestPayload(testCase.prompt)),
-          requestVllmComparison(toConnectionConfig('candidate'), requestPayload(testCase.prompt)),
-        ]);
+      const orderMap = new Map(COMPARISON_BATCH_CASES.map((testCase, index) => [testCase.id, index]));
+      const batchMaxTokens = Math.min(maxTokens, 256);
+      const pendingCases = [...COMPARISON_BATCH_CASES];
+      const workerCount = Math.min(BATCH_WORKER_COUNT, pendingCases.length);
 
-        const hfHeuristics = evaluateLightweightHeuristics(
-          hfResponse.text,
-          hfResponse.latencyMs,
-          stagingConfig.quickCheckLatencyThresholdMs,
-        );
-        const vllmHeuristics = evaluateLightweightHeuristics(
-          vllmResponse.text,
-          vllmResponse.latencyMs,
-          stagingConfig.quickCheckLatencyThresholdMs,
-        );
-
-        const heuristicNotes = [
-          summarizeDualHeuristics(hfHeuristics, vllmHeuristics),
-          `HF notes: ${hfHeuristics.notes.join(' ')}`,
-          `vLLM notes: ${vllmHeuristics.notes.join(' ')}`,
-        ];
-
-        const heuristicWinner: WinnerChoice =
-          hfHeuristics.pass && !vllmHeuristics.pass
-            ? 'base'
-            : !hfHeuristics.pass && vllmHeuristics.pass
-              ? 'candidate'
-              : 'tie';
-
-        setBatchRows((prev) => [
-          ...prev,
-          {
-            id: testCase.id,
-            label: testCase.label,
-            category: testCase.category,
-            prompt: testCase.prompt,
-            baseResult: hfResponse,
-            candidateResult: vllmResponse,
-            heuristicNotes,
-            winner: heuristicWinner,
-          },
-        ]);
+      if (workerCount === 0) {
+        return;
       }
 
-      await refreshHealth();
+      await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          while (pendingCases.length > 0) {
+            const testCase = pendingCases.shift();
+            if (!testCase) {
+              return;
+            }
+
+            const [hfResponse, vllmResponse] = await Promise.all([
+              requestHuggingFaceComparison(toConnectionConfig('base'), requestPayload(testCase.prompt, batchMaxTokens)),
+              requestVllmComparison(toConnectionConfig('candidate'), requestPayload(testCase.prompt, batchMaxTokens)),
+            ]);
+
+            const hfHeuristics = evaluateLightweightHeuristics(
+              hfResponse.text,
+              hfResponse.latencyMs,
+              stagingConfig.quickCheckLatencyThresholdMs,
+            );
+            const vllmHeuristics = evaluateLightweightHeuristics(
+              vllmResponse.text,
+              vllmResponse.latencyMs,
+              stagingConfig.quickCheckLatencyThresholdMs,
+            );
+
+            const heuristicNotes = [
+              summarizeDualHeuristics(hfHeuristics, vllmHeuristics),
+              `HF notes: ${hfHeuristics.notes.join(' ')}`,
+              `vLLM notes: ${vllmHeuristics.notes.join(' ')}`,
+            ];
+
+            const heuristicWinner: WinnerChoice =
+              hfHeuristics.pass && !vllmHeuristics.pass
+                ? 'base'
+                : !hfHeuristics.pass && vllmHeuristics.pass
+                  ? 'candidate'
+                  : 'tie';
+
+            const nextRow: BatchComparisonRow = {
+              id: testCase.id,
+              label: testCase.label,
+              category: testCase.category,
+              prompt: testCase.prompt,
+              baseResult: hfResponse,
+              candidateResult: vllmResponse,
+              heuristicNotes,
+              winner: heuristicWinner,
+            };
+
+            setBatchRows((prev) => {
+              const withoutCurrent = prev.filter((row) => row.id !== nextRow.id);
+              const merged = [...withoutCurrent, nextRow];
+              merged.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+              return merged;
+            });
+          }
+        }),
+      );
+
+      void refreshHealth();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -341,7 +451,10 @@ const ModelViabilityTester: React.FC = () => {
     label: string,
     result: NormalizedModelResponse | null,
     health: EndpointHealthStatus | null,
+    isLoading: boolean,
   ): React.ReactNode => {
+    const probeLines = extractProbeLines(health);
+
     return (
       <Card className={cn('border shadow-sm', sideToneMap[side])}>
         <CardHeader>
@@ -373,21 +486,26 @@ const ModelViabilityTester: React.FC = () => {
           <CardContent className="space-y-3 text-sm">
             <div className="rounded-lg border border-slate-200 bg-white p-3">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <div>
+                <div className="col-span-2 min-w-0 md:col-span-2">
                   <div className="text-xs uppercase text-slate-500">Model</div>
-                  <div className="font-semibold text-slate-800">{result?.model || (side === 'base' ? runtimeConfig.hfBaseModel || 'Not set' : runtimeConfig.vllmModel || 'Not set')}</div>
+                  <div
+                    className="break-all whitespace-normal font-semibold leading-snug text-slate-800"
+                    title={result?.model || (side === 'base' ? runtimeConfig.hfBaseModel || 'Not set' : runtimeConfig.vllmModel || 'Not set')}
+                  >
+                    {result?.model || (side === 'base' ? runtimeConfig.hfBaseModel || 'Not set' : runtimeConfig.vllmModel || 'Not set')}
+                  </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs uppercase text-slate-500">Latency</div>
-                  <div className="font-semibold text-slate-800">{result ? `${result.latencyMs} ms` : 'N/A'}</div>
+                  <div className="font-semibold text-slate-800">{isLoading ? 'Running...' : result ? `${result.latencyMs} ms` : 'N/A'}</div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs uppercase text-slate-500">Total tokens</div>
-                  <div className="font-semibold text-slate-800">{result?.totalTokens ?? 'N/A'}</div>
+                  <div className="font-semibold text-slate-800">{isLoading ? 'Running...' : result?.totalTokens ?? 'N/A'}</div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs uppercase text-slate-500">Finish reason</div>
-                  <div className="font-semibold text-slate-800">{result?.finishReason || 'N/A'}</div>
+                  <div className="font-semibold text-slate-800">{isLoading ? 'Running...' : result?.finishReason || 'N/A'}</div>
                 </div>
               </div>
             </div>
@@ -411,14 +529,22 @@ const ModelViabilityTester: React.FC = () => {
                 </div>
               </div>
 
-              {result?.error ? (
+              {isLoading && !result ? (
+                <p className="text-slate-600">Awaiting response from this backend...</p>
+              ) : result?.error ? (
                 <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">{result.error}</div>
               ) : (
                 <p className="whitespace-pre-wrap leading-relaxed text-slate-800">{result?.text || 'No output yet.'}</p>
               )}
 
               <p className="mt-2 text-xs text-slate-500">Endpoint: {result?.endpoint || (side === 'base' ? runtimeConfig.hfBaseUrl : runtimeConfig.vllmBaseUrl)}</p>
+              <p className="mt-1 text-xs text-slate-500">Last checked: {formatCheckedAt(health?.checkedAt)}</p>
               <p className="mt-1 text-xs text-slate-500">Health detail: {health?.detail || 'Checking...'}</p>
+              {probeLines.map((line) => (
+                <p key={`${side}-probe-${line}`} className="mt-1 text-xs text-slate-500">
+                  Probe: {line}
+                </p>
+              ))}
             </div>
 
             {showRaw[side] && (
@@ -452,7 +578,7 @@ const ModelViabilityTester: React.FC = () => {
               Config Panel
             </CardTitle>
             <CardDescription>
-              Env defaults are preloaded. UI overrides are in-memory only and resettable.
+              HF base model and HF base URL are locked in staging code. Other overrides are in-memory only and resettable.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -462,11 +588,15 @@ const ModelViabilityTester: React.FC = () => {
                 <div className="space-y-2">
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase text-slate-600">HF base URL</label>
-                    <Input value={runtimeConfig.hfBaseUrl} onChange={(event) => updateRuntimeConfig('hfBaseUrl', event.target.value)} />
+                    <div className="rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm text-slate-800">
+                      {runtimeConfig.hfBaseUrl}
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase text-slate-600">HF base model</label>
-                    <Input value={runtimeConfig.hfBaseModel} onChange={(event) => updateRuntimeConfig('hfBaseModel', event.target.value)} />
+                    <div className="rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900">
+                      {runtimeConfig.hfBaseModel}
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase text-slate-600">HF API key (optional)</label>
@@ -519,10 +649,10 @@ const ModelViabilityTester: React.FC = () => {
         <Card className="mb-6 border-slate-200 bg-white/95 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Shared Prompt Composer</CardTitle>
-            <CardDescription>Same prompt and generation settings are sent to both backends in parallel.</CardDescription>
+            <CardDescription>Same prompt and generation settings are sent to both backends in parallel. Qwen2.5-7B-Instruct tuned defaults are preloaded.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase text-slate-600">Subject preset</label>
                 <Select value={subjectPreset} onValueChange={(value) => setSubjectPreset(value as SubjectPreset)}>
@@ -571,7 +701,25 @@ const ModelViabilityTester: React.FC = () => {
                   onChange={(event) => setTopP(Number(event.target.value))}
                 />
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-600">Timeout (sec)</label>
+                <Input
+                  type="number"
+                  min={REQUEST_TIMEOUT_MIN_SEC}
+                  max={REQUEST_TIMEOUT_MAX_SEC}
+                  step={5}
+                  value={requestTimeoutSec}
+                  onChange={(event) => {
+                    const parsed = Number(event.target.value);
+                    setRequestTimeoutSec(Number.isFinite(parsed) ? parsed : Math.round(stagingConfig.requestTimeoutMs / 1000));
+                  }}
+                />
+              </div>
             </div>
+
+            <p className="text-xs text-slate-500">
+              Slow vLLM endpoints can need 2 to 6 minutes for longer outputs. Single and batch comparisons cap max tokens at 256 for responsiveness.
+            </p>
 
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase text-slate-600">Optional system prompt</label>
@@ -640,8 +788,8 @@ const ModelViabilityTester: React.FC = () => {
         </Card>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {renderPanel('base', 'Base Model (Hugging Face Inference)', baseResult, baseHealth)}
-          {renderPanel('candidate', 'Fine-Tuned Model (vLLM)', candidateResult, candidateHealth)}
+          {renderPanel('base', 'Base Model (Hugging Face Inference)', baseResult, baseHealth, panelLoading.base)}
+          {renderPanel('candidate', 'Fine-Tuned Model (vLLM)', candidateResult, candidateHealth, panelLoading.candidate)}
         </div>
 
         <Card className="mt-6 border-slate-200 bg-white/95 shadow-sm">

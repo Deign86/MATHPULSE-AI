@@ -1,0 +1,12 @@
+{
+  "locked_model_id": "Deign86/deped-math-qwen2.5-7b-deped-math-merged",
+  "disallowed_model_references": [
+    "Deign86/deped-math-qwen2.5-7b-checkpoint-700-lora",
+    "Qwen/Qwen2.5-7B",
+    "Qwen/Qwen2.5-7B-Instruct",
+    "gpt2",
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "microsoft/DialoGPT-medium",
+    "microsoft/Phi-3-mini-4k-instruct"
+  ]
+}

@@ -4,3 +4,4 @@ torch>=2.3.0
 huggingface-hub>=0.31.0
 requests>=2.31.0
 PyYAML>=6.0.0
+ngrok>=1.7.0
