@@ -113,6 +113,24 @@ function isIncompleteResponse(text: string): boolean {
     }
   }
 
+  if (
+    trimmed.length >= 80 &&
+    /\b(?:and|or|but|because|since|so|then|which|that|where|when|with|for|to|from|of|in|on|at|by)\s*$/i.test(trimmed)
+  ) {
+    return true;
+  }
+
+  const nonEmptyLines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const lastLine = nonEmptyLines.length > 0 ? nonEmptyLines[nonEmptyLines.length - 1] : trimmed;
+  const hasTerminalPunctuation = /[.!?)]$/.test(lastLine);
+  const hasEquationLikeEnding = /(?:=|\\boxed|\\int|d\/dx|f\(x\)|x\^\d+|\b\d+(?:\.\d+)?\b)\s*$/.test(lastLine);
+  if (trimmed.length >= 140 && !hasTerminalPunctuation && !hasEquationLikeEnding) {
+    return true;
+  }
+
   return false;
 }
 
@@ -166,29 +184,60 @@ function isPromptAnswerPairIncomplete(prompt: string, answer: string): boolean {
   return false;
 }
 
+function dedupeRepeatedParagraphs(text: string): string {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length <= 1) {
+    return text.trim();
+  }
+
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    const normalized = paragraph
+      .toLowerCase()
+      .replace(/[#*_`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    deduped.push(paragraph);
+  }
+
+  return deduped.join('\n\n').trim();
+}
+
 function mergeAnswerContinuation(base: string, continuation: string): string {
   const baseTrimmed = base.trim();
   const contTrimmed = continuation.trim();
-  if (!baseTrimmed) return contTrimmed;
-  if (!contTrimmed) return baseTrimmed;
+  if (!baseTrimmed) return dedupeRepeatedParagraphs(contTrimmed);
+  if (!contTrimmed) return dedupeRepeatedParagraphs(baseTrimmed);
 
   const maxOverlap = Math.min(baseTrimmed.length, contTrimmed.length, 220);
   for (let overlap = maxOverlap; overlap >= 24; overlap -= 1) {
     const tail = baseTrimmed.slice(-overlap);
     const head = contTrimmed.slice(0, overlap);
     if (tail === head) {
-      return `${baseTrimmed}${contTrimmed.slice(overlap)}`.trim();
+      return dedupeRepeatedParagraphs(`${baseTrimmed}${contTrimmed.slice(overlap)}`.trim());
     }
   }
 
   if (baseTrimmed.endsWith(contTrimmed)) {
-    return baseTrimmed;
+    return dedupeRepeatedParagraphs(baseTrimmed);
   }
   if (contTrimmed.startsWith(baseTrimmed)) {
-    return contTrimmed;
+    return dedupeRepeatedParagraphs(contTrimmed);
   }
 
-  return `${baseTrimmed}\n\n${contTrimmed}`.trim();
+  return dedupeRepeatedParagraphs(`${baseTrimmed}\n\n${contTrimmed}`.trim());
 }
 
 function buildContinuationPrompt(originalQuestion: string, partialAnswer: string): string {
@@ -216,6 +265,40 @@ function buildPlainContinuationPrompt(originalQuestion: string, partialAnswer: s
   ].join('\n');
 }
 
+function buildCoverageCompletionPrompt(originalQuestion: string): string {
+  return [
+    'Provide a complete final tutoring answer for the student question below.',
+    'Do not include meta commentary, internal reasoning, or notes about instructions.',
+    'Cover every requested part explicitly and include final results.',
+    '',
+    `Question: ${originalQuestion}`,
+  ].join('\n');
+}
+
+function pickHigherQualityAnswer(prompt: string, current: string, candidate: string): string {
+  const currentTrimmed = current.trim();
+  const candidateTrimmed = candidate.trim();
+  if (!candidateTrimmed) {
+    return currentTrimmed;
+  }
+  if (!currentTrimmed) {
+    return candidateTrimmed;
+  }
+
+  const currentIncomplete = isPromptAnswerPairIncomplete(prompt, currentTrimmed);
+  const candidateIncomplete = isPromptAnswerPairIncomplete(prompt, candidateTrimmed);
+
+  if (currentIncomplete !== candidateIncomplete) {
+    return candidateIncomplete ? currentTrimmed : candidateTrimmed;
+  }
+
+  if (candidateTrimmed.length >= currentTrimmed.length + 80) {
+    return candidateTrimmed;
+  }
+
+  return currentTrimmed;
+}
+
 function shouldShowStreamingChunks(prompt: string): boolean {
   const lower = prompt.toLowerCase();
   const formatSensitiveSignals = [
@@ -240,6 +323,26 @@ function shouldShowStreamingChunks(prompt: string): boolean {
 
 function shouldAttemptCompletionRepair(prompt: string): boolean {
   const lower = prompt.toLowerCase();
+  const trimmed = lower.trim();
+  if (!trimmed) return false;
+
+  if (/^(hi|hello|hey|yo|sup|good morning|good afternoon|good evening)\b/.test(trimmed)) {
+    return false;
+  }
+  if (/^(thanks|thank you|thx|ty)\b/.test(trimmed)) {
+    return false;
+  }
+  if (/^(bye|goodbye|see you|later)\b/.test(trimmed)) {
+    return false;
+  }
+
+  if (
+    trimmed.includes('fun fact') &&
+    !/(solve|deriv|integr|equation|step|proof|show work|explain)/.test(trimmed)
+  ) {
+    return false;
+  }
+
   return [
     'derivative',
     'integral',
@@ -253,7 +356,26 @@ function shouldAttemptCompletionRepair(prompt: string): boolean {
     'proof',
     'find',
     'compute',
-  ].some((signal) => lower.includes(signal));
+    'simplify',
+    'factor',
+    'evaluate',
+    'calculate',
+    'graph',
+    'matrix',
+    'probability',
+    'statistics',
+    'trigonometry',
+    'algebra',
+    'geometry',
+    'calculus',
+    'show work',
+    'explain',
+    'define',
+    'describe',
+    'how',
+    'why',
+    'what is',
+  ].some((signal) => trimmed.includes(signal));
 }
 
 /** Generate a helpful math tutor response when backend is unavailable */
@@ -692,7 +814,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             console.warn('Streaming completion repair failed:', repairErr);
           }
 
-          if (finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+          if (shouldRunRepairFlow && finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
             try {
               const plainContinuation = await apiService.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, finalResponse),
@@ -704,12 +826,25 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               console.warn('Streaming plain continuation repair failed:', plainRepairErr);
             }
           }
+
+          if (shouldRunRepairFlow && finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
+            try {
+              const completeAttempt = await apiService.chatSafe(
+                buildCoverageCompletionPrompt(trimmedUserText),
+                history,
+              );
+              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
+              if (regenerated) {
+                finalResponse = pickHigherQualityAnswer(trimmedUserText, finalResponse, regenerated);
+              }
+            } catch (completeRepairErr) {
+              console.warn('Streaming full completion repair failed:', completeRepairErr);
+            }
+          }
         }
 
-        const finalResponseIncomplete = shouldRunRepairFlow
-          ? isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)
-          : isIncompleteResponse(finalResponse);
-        if (!finalResponse || finalResponseIncomplete) {
+        const finalResponseIncomplete = isPromptAnswerPairIncomplete(trimmedUserText, finalResponse);
+        if (!finalResponse || (finalResponseIncomplete && !shouldRunRepairFlow)) {
           finalResponse = generateFallbackResponse(trimmedUserText);
         }
 
@@ -755,7 +890,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             }
           }
 
-          if (aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+          if (shouldRunRepairFlow && aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
             try {
               const plainContinuation = await apiService.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, aiResponseText),
@@ -767,15 +902,28 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               console.warn('Non-stream plain continuation repair failed:', plainRepairErr);
             }
           }
+
+          if (shouldRunRepairFlow && aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
+            try {
+              const completeAttempt = await apiService.chatSafe(
+                buildCoverageCompletionPrompt(trimmedUserText),
+                history,
+              );
+              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
+              if (regenerated) {
+                aiResponseText = pickHigherQualityAnswer(trimmedUserText, aiResponseText, regenerated);
+              }
+            } catch (completeRepairErr) {
+              console.warn('Non-stream full completion repair failed:', completeRepairErr);
+            }
+          }
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
-        const aiResponseIncomplete = shouldRunRepairFlow
-          ? isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)
-          : isIncompleteResponse(aiResponseText);
-        if (!aiResponseText || aiResponseIncomplete) {
+        const aiResponseIncomplete = isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText);
+        if (!aiResponseText || (aiResponseIncomplete && !shouldRunRepairFlow)) {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
