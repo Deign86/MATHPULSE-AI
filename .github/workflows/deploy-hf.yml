@@ -174,7 +174,7 @@ jobs:
             --chat-strict-model-only true \
             --chat-hard-trigger-enabled false \
             --enforce-qwen-only true \
-            --qwen-lock-model Qwen/Qwen2.5-7B-Instruct \
+            --qwen-lock-model Qwen/Qwen3-32B \
             --clear-global-model \
             --clear-temp-chat-model
 
