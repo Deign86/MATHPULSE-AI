@@ -210,7 +210,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             const messages: Message[] = msgs.map((m) => ({
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',
-              text: m.content,
+              text: m.role === 'assistant'
+                ? formatAssistantResponseForStorage(m.content)
+                : m.content,
               timestamp: m.timestamp instanceof Date
                 ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -312,15 +314,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   }, [currentUser]);
 
   const addMessageToSession = useCallback((sessionId: string, message: Message) => {
+    const normalizedMessage = message.sender === 'ai'
+      ? {
+          ...message,
+          text: formatAssistantResponseForStorage(message.text),
+        }
+      : message;
+
     setSessions(prev =>
       prev.map(session => {
         if (session.id === sessionId) {
-          const updatedMessages = [...session.messages, message];
+          const updatedMessages = [...session.messages, normalizedMessage];
           return {
             ...session,
             messages: updatedMessages,
             messageCount: updatedMessages.length,
-            preview: toChatPreviewText(message.text) || session.preview,
+            preview: toChatPreviewText(normalizedMessage.text) || session.preview,
             updatedAt: new Date(),
             title: updatedMessages.length === 2 ? generateTitleFromMessages(updatedMessages) : session.title,
           };
@@ -342,8 +351,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     resolveFirebaseId(sessionId).then(realId =>
       addFirebaseMessage(
         realId,
-        message.sender === 'user' ? 'user' : 'assistant',
-        message.text
+        normalizedMessage.sender === 'user' ? 'user' : 'assistant',
+        normalizedMessage.text
       ).catch(err => console.error('Error persisting message:', err))
     );
 
@@ -453,10 +462,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       try {
         const { response } = await apiService.chat(trimmedUserText, history, (chunk: string) => {
           streamedText += chunk;
-          upsertStreamingMessage(streamedText);
+          upsertStreamingMessage(formatAssistantResponseForStorage(streamedText));
         });
 
-        const finalResponse = (response || streamedText).trim();
+        const finalResponse = formatAssistantResponseForStorage(response || streamedText);
         if (streamMessageId) {
           removeStreamingMessage();
         }
@@ -484,7 +493,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         let aiResponseText = '';
         try {
           const { data } = await apiService.chatSafe(trimmedUserText, history);
-          aiResponseText = data.response;
+          aiResponseText = formatAssistantResponseForStorage(data.response);
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
           aiResponseText = generateFallbackResponse(trimmedUserText);
@@ -493,7 +502,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: aiResponseText,
+          text: formatAssistantResponseForStorage(aiResponseText),
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);
