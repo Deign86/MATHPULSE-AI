@@ -23,6 +23,7 @@ const AIChatPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMessage, setCurrentMessage] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
@@ -32,10 +33,21 @@ const AIChatPage = () => {
   const showTypingIndicator =
     isLoading && activeSessionId === loadingSessionId && !hasStreamingPlaceholder;
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    container.scrollTo({ top: container.scrollHeight, behavior });
+  };
+
+  const isNearBottom = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distanceFromBottom <= 120;
+  };
+
+  const handleMessagesScroll = () => {
+    shouldAutoScrollRef.current = isNearBottom();
   };
 
   // Warm up the HuggingFace Space on mount to reduce cold-start latency
@@ -44,8 +56,15 @@ const AIChatPage = () => {
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    if (!shouldAutoScrollRef.current) return;
+    const frame = window.requestAnimationFrame(() => scrollToBottom('auto'));
+    return () => window.cancelAnimationFrame(frame);
   }, [messages, showTypingIndicator]);
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = true;
+    scrollToBottom('auto');
+  }, [activeSessionId]);
 
   const handleSendMessage = async () => {
     if (!currentMessage.trim() || isLoading) return;
@@ -77,7 +96,7 @@ const AIChatPage = () => {
   );
 
   return (
-    <div className="h-full min-h-0 flex gap-4 px-4 sm:px-6 xl:px-10 py-6">
+    <div className="h-full min-h-0 overflow-hidden flex gap-4 px-4 sm:px-6 xl:px-10 py-6">
       {/* Left Sidebar - Chat History (Fixed, Scrollable) */}
       <div className="w-80 min-h-0 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
         {/* Header - Fixed */}
@@ -194,7 +213,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Messages Container - Scrollable with Fixed Height */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#edf1f7] min-h-0">
+            <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-4 bg-[#edf1f7] min-h-0">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div

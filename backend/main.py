@@ -205,11 +205,11 @@ FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
     for value in os.getenv("FIREBASE_AUTH_PROJECT_ALLOWLIST", "").split(",")
     if value.strip()
 }
-CHAT_MAX_NEW_TOKENS = max(256, int(os.getenv("CHAT_MAX_NEW_TOKENS", "1400")))
-CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC = max(5, int(os.getenv("CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", "25")))
+CHAT_MAX_NEW_TOKENS = max(256, int(os.getenv("CHAT_MAX_NEW_TOKENS", "8192")))
+CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC = max(5, int(os.getenv("CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", "90")))
 CHAT_STREAM_TOTAL_TIMEOUT_SEC = max(
     CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC,
-    int(os.getenv("CHAT_STREAM_TOTAL_TIMEOUT_SEC", "180")),
+    int(os.getenv("CHAT_STREAM_TOTAL_TIMEOUT_SEC", "900")),
 )
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
