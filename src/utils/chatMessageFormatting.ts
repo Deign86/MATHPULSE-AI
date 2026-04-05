@@ -3,9 +3,12 @@ const MATH_SEGMENT_PATTERN = /(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\
 const BARE_TEX_PATTERN = /\\(?:boxed\{[^{}]+\}|frac\{[^{}]+\}\{[^{}]+\}|sqrt\{[^{}]+\}|(?:cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int)(?:_[a-zA-Z0-9]+|_\{[^{}]+\})?(?:\^[a-zA-Z0-9]+|\^\{[^{}]+\})?)/g;
 const THINK_TAG_BLOCK_PATTERN = /<\s*think\b[^>]*>[\s\S]*?<\s*\/\s*think\s*>/gi;
 const THINK_TAG_PATTERN = /<\s*\/?\s*think\b[^>]*>/gi;
+const THINK_CLOSE_TAG_PATTERN = /<\s*\/\s*think\s*>/gi;
 const ESCAPED_THINK_TAG_PATTERN = /&lt;\s*(\/?)\s*think\b([\s\S]*?)&gt;/gi;
 const TRAILING_THINK_PREFIX_PATTERN = /(?:<\s*\/?\s*t(?:h(?:i(?:n(?:k)?)?)?)?)\s*$/i;
 const TRAILING_ESCAPED_THINK_PREFIX_PATTERN = /(?:&lt;\s*\/?\s*t(?:h(?:i(?:n(?:k)?)?)?)?)\s*$/i;
+const FINAL_SECTION_MARKER_PATTERN = /\bfinal\s+answer\s*:|(?:^|\n)\s*#{1,6}\s+\S|(?:^|\n)\s*(?:answer|solution)\s*:|(?:^|\n)\s*here(?:'s| is)\b|(?:^|\n)\s*(?:\d+[.)]|[-*])\s+\S/i;
+const THINKING_PREAMBLE_PATTERN = /^\s*(?:okay|alright|let\s+me|i\s+should|i\s+need\s+to|i\s+will|wait|hmm|maybe|the\s+user\s+asked|let\s+us|let's)\b/i;
 
 interface ThinkTagStripOptions {
   streamingSafeTail?: boolean;
@@ -14,6 +17,54 @@ interface ThinkTagStripOptions {
 
 function normalizeEscapedThinkTags(input: string): string {
   return input.replace(ESCAPED_THINK_TAG_PATTERN, (_match, slash, suffix) => `<${slash ? '/' : ''}think${suffix}>`);
+}
+
+function findLastMatchEnd(input: string, pattern: RegExp): number {
+  pattern.lastIndex = 0;
+  let lastEnd = -1;
+  let match: RegExpExecArray | null = pattern.exec(input);
+  while (match) {
+    lastEnd = match.index + match[0].length;
+    match = pattern.exec(input);
+  }
+  return lastEnd;
+}
+
+function extractAfterOrphanThinkClose(input: string): string {
+  const normalized = normalizeEscapedThinkTags(input);
+  if (/<\s*think\b/i.test(normalized)) {
+    return '';
+  }
+
+  const lastCloseEnd = findLastMatchEnd(normalized, THINK_CLOSE_TAG_PATTERN);
+  if (lastCloseEnd === -1) {
+    return '';
+  }
+
+  return normalized.slice(lastCloseEnd).trim();
+}
+
+function pruneThinkingPreamble(input: string): string {
+  const normalized = input.replace(/\r\n?/g, '\n').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  const markerMatch = FINAL_SECTION_MARKER_PATTERN.exec(normalized);
+  if (markerMatch && typeof markerMatch.index === 'number') {
+    return normalized.slice(markerMatch.index).trim();
+  }
+
+  const lines = normalized.split('\n').map((line) => line.trim());
+  const planningLineCount = lines.filter((line) => line && THINKING_PREAMBLE_PATTERN.test(line)).length;
+
+  // If this looks like planning monologue with no clear final section marker,
+  // do not surface it to users.
+  if (planningLineCount >= 2) {
+    return '';
+  }
+
+  return normalized;
 }
 
 export function stripThinkTags(input: string, options: ThinkTagStripOptions = {}): string {
@@ -56,17 +107,24 @@ export function formatAssistantResponseForStreaming(input: string): string {
 }
 
 export function formatAssistantResponseForStorage(input: string): string {
+  const orphanCloseRecovery = extractAfterOrphanThinkClose(input);
+  if (orphanCloseRecovery) {
+    return orphanCloseRecovery;
+  }
+
   const strictSanitized = stripThinkTags(input, { streamingSafeTail: true }).trim();
   if (strictSanitized) {
     return strictSanitized;
   }
 
-  // Some model variants emit a leading <think> without a closing tag.
-  // Fall back to tag-only stripping so the message is not stored as blank.
-  return stripThinkTags(input, {
+  // Some model variants emit leading think tags without a clean close boundary.
+  // Keep only likely final answer content and suppress planning-style preambles.
+  const permissiveSanitized = stripThinkTags(input, {
     streamingSafeTail: true,
     preserveUnclosedThinkBlocks: true,
   }).trim();
+
+  return pruneThinkingPreamble(permissiveSanitized);
 }
 
 function wrapBareTexCommands(segment: string): string {
@@ -82,13 +140,7 @@ export function normalizeChatMarkdownForRender(input: string): string {
     return '';
   }
 
-  const strictThinkTagStrip = stripThinkTags(input, { streamingSafeTail: true });
-  const withoutThinkTags = strictThinkTagStrip.trim()
-    ? strictThinkTagStrip
-    : stripThinkTags(input, {
-        streamingSafeTail: true,
-        preserveUnclosedThinkBlocks: true,
-      });
+  const withoutThinkTags = formatAssistantResponseForStorage(input);
   const normalizedNewlines = withoutThinkTags.replace(/\r\n?/g, '\n');
 
   const codeAwareSegments = normalizedNewlines.split(CODE_SEGMENT_PATTERN);
