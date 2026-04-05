@@ -10,7 +10,7 @@ import {
   getSessionMessages,
 } from '../services/chatService';
 import { toChatPreviewText } from '../utils/chatPreview';
-import { formatAssistantResponseForStorage } from '../utils/chatMessageFormatting';
+import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming } from '../utils/chatMessageFormatting';
 import { getScopeBoundaryResponse } from '../utils/mathScope';
 
 export interface Message {
@@ -462,7 +462,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       try {
         const { response } = await apiService.chat(trimmedUserText, history, (chunk: string) => {
           streamedText += chunk;
-          upsertStreamingMessage(formatAssistantResponseForStorage(streamedText));
+          upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
         });
 
         const finalResponse = formatAssistantResponseForStorage(response || streamedText);
