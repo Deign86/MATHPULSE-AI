@@ -22,7 +22,7 @@ const AIChatPage = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
@@ -33,7 +33,9 @@ const AIChatPage = () => {
     isLoading && activeSessionId === loadingSessionId && !hasStreamingPlaceholder;
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   };
 
   // Warm up the HuggingFace Space on mount to reduce cold-start latency
@@ -192,7 +194,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Messages Container - Scrollable with Fixed Height */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#edf1f7] min-h-0">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#edf1f7] min-h-0">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -234,7 +236,6 @@ const AIChatPage = () => {
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area - Sticky at Bottom */}
