@@ -183,9 +183,10 @@ class InferenceClient:
             int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
         )
 
-        # Default task-to-model routing (global default set to Qwen2.5-7B)
+        # Default task-to-model routing.
+        # Chat defaults to Qwen3-32B while other tasks stay on Qwen2.5-7B.
         self.task_model_map: Dict[str, str] = {
-            "chat": "Qwen/Qwen2.5-7B-Instruct",
+            "chat": "Qwen/Qwen3-32B",
             "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
             "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
             "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
@@ -262,7 +263,6 @@ class InferenceClient:
         if self.enforce_qwen_only:
             qwen_map_before = dict(self.task_model_map)
             self.default_model = self.qwen_lock_model
-            self.chat_model_override = self.qwen_lock_model
             for task_key in list(self.task_model_map.keys()):
                 self.task_model_map[task_key] = self.qwen_lock_model
             self.fallback_models = []
@@ -276,9 +276,10 @@ class InferenceClient:
 
         # Log configuration loaded for debugging
         config_status = "from file" if config_path else "hardcoded defaults (no config file found)"
+        effective_chat_model_for_logs = self.chat_model_override or self.task_model_map.get("chat", self.default_model)
         LOGGER.info(f"✅ InferenceClient initialized {config_status}{env_override_note}")
         LOGGER.info(f"   Default model: {self.default_model}")
-        LOGGER.info(f"   Chat model: {self.task_model_map.get('chat', self.default_model)}")
+        LOGGER.info(f"   Chat model: {effective_chat_model_for_logs}")
         LOGGER.info(f"   Chat temp override ({TEMP_CHAT_MODEL_OVERRIDE_ENV}): {self.chat_model_temp_override or 'disabled'}")
         LOGGER.info(f"   Chat strict model lock: {self.chat_strict_model_only}")
         LOGGER.info(f"   Global Qwen-only lock: {self.enforce_qwen_only}")
@@ -418,8 +419,8 @@ class InferenceClient:
 
         if self.enforce_qwen_only:
             effective_qwen_lock_model = self.qwen_lock_model
-            if effective_task == "chat" and runtime_chat_override:
-                effective_qwen_lock_model = runtime_chat_override
+            if effective_task == "chat":
+                effective_qwen_lock_model = runtime_chat_override or self.chat_model_override or self.qwen_lock_model
 
             selected_base = _base_model(selected_model)
             lock_base = _base_model(effective_qwen_lock_model)
@@ -506,13 +507,17 @@ class InferenceClient:
     def _model_chain_for_task(self, task_type: str, selected_model: str) -> List[str]:
         normalized = (task_type or "default").strip().lower()
         runtime_chat_override = self._runtime_chat_model_override() if normalized == "chat" else ""
+        chat_qwen_lock_model = runtime_chat_override or (self.chat_model_override if normalized == "chat" else "")
 
         if self.enforce_qwen_only:
-            locked_model = (runtime_chat_override or self.qwen_lock_model or "").strip()
+            if normalized == "chat":
+                locked_model = (chat_qwen_lock_model or self.qwen_lock_model or "").strip()
+            else:
+                locked_model = (self.qwen_lock_model or "").strip()
             return [locked_model] if locked_model else []
 
         if normalized == "chat" and self.chat_strict_model_only:
-            chat_model = (runtime_chat_override or selected_model or "").strip()
+            chat_model = (chat_qwen_lock_model or selected_model or "").strip()
             return [chat_model] if chat_model else []
 
         per_task_candidates = self.task_fallback_model_map.get(task_type, [])
