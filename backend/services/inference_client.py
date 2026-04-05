@@ -109,9 +109,9 @@ class InferenceClient:
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
         self.enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
-        self.qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct").strip() or "Qwen/Qwen2.5-7B-Instruct"
+        self.qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-32B").strip() or "Qwen/Qwen3-32B"
 
-        default_model_fallback = str(primary.get("id") or "Qwen/Qwen2.5-7B-Instruct")
+        default_model_fallback = str(primary.get("id") or "Qwen/Qwen3-32B")
         env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
         self.default_model = env_model_id or default_model_fallback
         
@@ -184,16 +184,16 @@ class InferenceClient:
         )
 
         # Default task-to-model routing.
-        # Chat defaults to Qwen3-32B while other tasks stay on Qwen2.5-7B.
+        # Keep all tasks pinned to Qwen3-32B when qwen-only lock is active.
         self.task_model_map: Dict[str, str] = {
             "chat": "Qwen/Qwen3-32B",
-            "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
-            "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
-            "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
-            "learning_path": "Qwen/Qwen2.5-7B-Instruct",
-            "daily_insight": "Qwen/Qwen2.5-7B-Instruct",
-            "risk_classification": "Qwen/Qwen2.5-7B-Instruct",
-            "risk_narrative": "Qwen/Qwen2.5-7B-Instruct",
+            "verify_solution": "Qwen/Qwen3-32B",
+            "lesson_generation": "Qwen/Qwen3-32B",
+            "quiz_generation": "Qwen/Qwen3-32B",
+            "learning_path": "Qwen/Qwen3-32B",
+            "daily_insight": "Qwen/Qwen3-32B",
+            "risk_classification": "Qwen/Qwen3-32B",
+            "risk_narrative": "Qwen/Qwen3-32B",
         }
         # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
@@ -592,7 +592,7 @@ class InferenceClient:
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
-        # All models use HF inference router directly (including Qwen/Qwen2.5-7B-Instruct)
+        # All models use HF inference router directly (including Qwen/Qwen3-32B)
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -705,7 +705,7 @@ class InferenceClient:
 
     def _call_hf_inference_direct(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         """
-        Call Qwen models via Featherless AI provider (the only provider serving Qwen/Qwen2.5-7B-Instruct).
+        Call Qwen models via Featherless AI provider.
         Uses HF InferenceClient with provider="featherless-ai" for direct model access.
         """
         if not self.hf_token:
@@ -718,8 +718,7 @@ class InferenceClient:
         start = time.perf_counter()
         
         try:
-            # Use HF InferenceClient with featherless-ai provider for Qwen models
-            # This is the only provider that supports Qwen/Qwen2.5-7B-Instruct
+            # Use HF InferenceClient with featherless-ai provider for Qwen models.
             client = HFInferenceClient(
                 model=target_model_base,
                 token=self.hf_token,
