@@ -116,6 +116,56 @@ function isIncompleteResponse(text: string): boolean {
   return false;
 }
 
+function isPromptAnswerPairIncomplete(prompt: string, answer: string): boolean {
+  const normalizedAnswer = answer.trim();
+  const normalizedPrompt = prompt.toLowerCase();
+  if (!normalizedAnswer) return true;
+
+  if (isIncompleteResponse(normalizedAnswer)) {
+    return true;
+  }
+
+  const strippedMarkdown = normalizedAnswer
+    .replace(/[#*_`>|\-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!strippedMarkdown) {
+    return true;
+  }
+
+  if (
+    strippedMarkdown.length < 24 &&
+    /(derivative|integral|equation|complete|explain|step)/.test(normalizedPrompt)
+  ) {
+    return true;
+  }
+
+  if (normalizedPrompt.includes('derivative') && normalizedPrompt.includes('integral')) {
+    const lowerAnswer = normalizedAnswer.toLowerCase();
+    const hasDerivative = /derivative|f'|d\/dx/.test(lowerAnswer);
+    const hasIntegral = /integral|∫|\\int/.test(lowerAnswer);
+    if (!hasDerivative || !hasIntegral) {
+      return true;
+    }
+  }
+
+  if (
+    normalizedPrompt.includes('complete equation') ||
+    normalizedPrompt.includes('complete equations') ||
+    normalizedPrompt.includes('step-by-step') ||
+    normalizedPrompt.includes('step by step')
+  ) {
+    const equationSignalCount = (
+      normalizedAnswer.match(/=|\\frac|\\int|∫|\\boxed|d\/dx|\b(dx|x\^\d+)\b/g) ?? []
+    ).length;
+    if (equationSignalCount < 2 || normalizedAnswer.length < 120) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function mergeAnswerContinuation(base: string, continuation: string): string {
   const baseTrimmed = base.trim();
   const contTrimmed = continuation.trim();
@@ -607,7 +657,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         });
 
         let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
-        if (finalResponse && isIncompleteResponse(finalResponse)) {
+        if (finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
           try {
             const continuation = await apiService.chatSafe(
               buildContinuationPrompt(trimmedUserText, finalResponse),
@@ -619,7 +669,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             console.warn('Streaming completion repair failed:', repairErr);
           }
 
-          if (finalResponse && isIncompleteResponse(finalResponse)) {
+          if (finalResponse && isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
             try {
               const plainContinuation = await apiService.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, finalResponse),
@@ -633,7 +683,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           }
         }
 
-        if (!finalResponse || isIncompleteResponse(finalResponse)) {
+        if (!finalResponse || isPromptAnswerPairIncomplete(trimmedUserText, finalResponse)) {
           finalResponse = generateFallbackResponse(trimmedUserText);
         }
 
@@ -666,7 +716,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           const { data } = await apiService.chatSafe(trimmedUserText, history);
           aiResponseText = formatAssistantResponseForStorage(data.response).trim();
 
-          if (aiResponseText && isIncompleteResponse(aiResponseText)) {
+          if (aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
             try {
               const continuation = await apiService.chatSafe(
                 buildContinuationPrompt(trimmedUserText, aiResponseText),
@@ -679,7 +729,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             }
           }
 
-          if (aiResponseText && isIncompleteResponse(aiResponseText)) {
+          if (aiResponseText && isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
             try {
               const plainContinuation = await apiService.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, aiResponseText),
@@ -696,7 +746,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
-        if (!aiResponseText || isIncompleteResponse(aiResponseText)) {
+        if (!aiResponseText || isPromptAnswerPairIncomplete(trimmedUserText, aiResponseText)) {
           aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 

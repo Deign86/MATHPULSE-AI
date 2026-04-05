@@ -1119,6 +1119,25 @@ export const apiService = {
         let fullResponse = '';
         let sawEndEvent = false;
 
+        const findSseBoundary = (text: string): { index: number; length: number } | null => {
+          const lfBoundary = text.indexOf('\n\n');
+          const crlfBoundary = text.indexOf('\r\n\r\n');
+
+          if (lfBoundary === -1 && crlfBoundary === -1) {
+            return null;
+          }
+          if (lfBoundary === -1) {
+            return { index: crlfBoundary, length: 4 };
+          }
+          if (crlfBoundary === -1) {
+            return { index: lfBoundary, length: 2 };
+          }
+
+          return lfBoundary < crlfBoundary
+            ? { index: lfBoundary, length: 2 }
+            : { index: crlfBoundary, length: 4 };
+        };
+
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -1126,14 +1145,14 @@ export const apiService = {
 
           buffer += decoder.decode(value, { stream: true });
 
-          let boundary = buffer.indexOf('\n\n');
-          while (boundary !== -1) {
-            const rawEvent = buffer.slice(0, boundary);
-            buffer = buffer.slice(boundary + 2);
+          let boundaryInfo = findSseBoundary(buffer);
+          while (boundaryInfo) {
+            const rawEvent = buffer.slice(0, boundaryInfo.index);
+            buffer = buffer.slice(boundaryInfo.index + boundaryInfo.length);
 
             let eventType = 'message';
             const dataLines: string[] = [];
-            for (const line of rawEvent.split('\n')) {
+            for (const line of rawEvent.split(/\r?\n/)) {
               if (line.startsWith('event:')) {
                 eventType = line.slice(6).trim();
               } else if (line.startsWith('data:')) {
@@ -1141,9 +1160,14 @@ export const apiService = {
               }
             }
 
+            if (eventType === 'end') {
+              sawEndEvent = true;
+              return { response: fullResponse };
+            }
+
             const eventData = dataLines.join('\n');
             if (!eventData) {
-              boundary = buffer.indexOf('\n\n');
+              boundaryInfo = findSseBoundary(buffer);
               continue;
             }
 
@@ -1174,12 +1198,9 @@ export const apiService = {
                 if (eventData.trim()) errorMessage = eventData.trim();
               }
               throw new Error(errorMessage);
-            } else if (eventType === 'end') {
-              sawEndEvent = true;
-              return { response: fullResponse };
             }
 
-            boundary = buffer.indexOf('\n\n');
+            boundaryInfo = findSseBoundary(buffer);
           }
         }
 
