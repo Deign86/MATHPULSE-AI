@@ -23,6 +23,7 @@ RUN python -m pip install --upgrade pip setuptools wheel && \
 
 # Copy only runtime sources to reduce invalidation surface.
 COPY main.py /app/main.py
+COPY startup_validation.py /app/startup_validation.py
 COPY analytics.py /app/analytics.py
 COPY automation_engine.py /app/automation_engine.py
 COPY services /app/services

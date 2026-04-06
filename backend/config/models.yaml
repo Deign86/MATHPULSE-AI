@@ -1,7 +1,7 @@
 models:
   primary:
-    id: meta-llama/Llama-3.1-8B-Instruct
-    description: Fast default instruction model for interactive Grade 11-12 math tutoring
+    id: Qwen/Qwen3-32B
+    description: Global default instruction model for interactive Grade 11-12 math tutoring
     max_new_tokens: 640
     temperature: 0.25
     top_p: 0.9
@@ -26,28 +26,25 @@ models:
 
 routing:
   task_model_map:
-    # Chat default: Llama-3.1-8B for low latency.
-    # Hard prompts can escalate to 70B via runtime policy in inference_client.
-    chat: meta-llama/Llama-3.1-8B-Instruct
-    verify_solution: NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO
-    lesson_generation: meta-llama/Llama-3.1-8B-Instruct
-    quiz_generation: meta-llama/Llama-3.1-8B-Instruct
-    learning_path: meta-llama/Llama-3.1-8B-Instruct
-    daily_insight: meta-llama/Llama-3.1-8B-Instruct
-    risk_classification: meta-llama/Llama-3.1-8B-Instruct
-    risk_narrative: meta-llama/Llama-3.1-8B-Instruct
+    # Keep all task defaults aligned to Qwen3-32B.
+    # Hard prompts can still escalate via runtime policy in inference_client.
+    chat: Qwen/Qwen3-32B
+    verify_solution: Qwen/Qwen3-32B
+    lesson_generation: Qwen/Qwen3-32B
+    quiz_generation: Qwen/Qwen3-32B
+    learning_path: Qwen/Qwen3-32B
+    daily_insight: Qwen/Qwen3-32B
+    risk_classification: Qwen/Qwen3-32B
+    risk_narrative: Qwen/Qwen3-32B
 
   task_fallback_model_map:
-    chat:
-      - meta-llama/Meta-Llama-3-70B-Instruct      # Hard/fallback quality tier
-      - google/gemma-2-2b-it                      # Fast safety fallback
+    chat: []                                       # Chat is strict-primary only (no fallback chain)
     verify_solution:
-      - NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO  # Primary (reasoning-focused)
-      - meta-llama/Meta-Llama-3-70B-Instruct      # First fallback
+      - meta-llama/Meta-Llama-3-70B-Instruct      # Higher-capacity fallback
       - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
 
   task_provider_map:
-    # All tasks use hf_inference router (Qwen2.5-7B-Instruct natively supported)
+    # All tasks use hf_inference router (Qwen/Qwen3-32B natively supported)
     chat: hf_inference
     verify_solution: hf_inference
     lesson_generation: hf_inference

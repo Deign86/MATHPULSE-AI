@@ -15,6 +15,7 @@ from huggingface_hub import InferenceClient as HFInferenceClient
 from .logging_utils import configure_structured_logging, log_model_call
 
 LOGGER = configure_structured_logging("mathpulse.inference")
+TEMP_CHAT_MODEL_OVERRIDE_ENV = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
 
 
 def _normalize_local_space_url(raw_url: str) -> str:
@@ -107,7 +108,10 @@ class InferenceClient:
         self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
-        default_model_fallback = str(primary.get("id") or "meta-llama/Llama-3.1-8B-Instruct")
+        self.enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-32B").strip() or "Qwen/Qwen3-32B"
+
+        default_model_fallback = str(primary.get("id") or "Qwen/Qwen3-32B")
         env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
         self.default_model = env_model_id or default_model_fallback
         
@@ -122,8 +126,10 @@ class InferenceClient:
         
         # Task-specific model overrides via environment variables
         self.chat_model_override = os.getenv("INFERENCE_CHAT_MODEL_ID", "").strip()
+        self.chat_model_temp_override = os.getenv(TEMP_CHAT_MODEL_OVERRIDE_ENV, "").strip()
+        self.chat_strict_model_only = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.chat_hard_model = os.getenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct").strip()
-        self.chat_hard_trigger_enabled = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.chat_hard_trigger_enabled = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
         self.chat_hard_prompt_chars = max(256, int(os.getenv("INFERENCE_CHAT_HARD_PROMPT_CHARS", "800")))
         self.chat_hard_history_chars = max(
             self.chat_hard_prompt_chars,
@@ -177,16 +183,17 @@ class InferenceClient:
             int(os.getenv("INFERENCE_INTERACTIVE_MAX_FALLBACK_DEPTH", "1")),
         )
 
-        # Default task-to-model routing (chat defaults to fast 8B, with hard-prompt escalation to 70B)
+        # Default task-to-model routing.
+        # Keep all tasks pinned to Qwen3-32B when qwen-only lock is active.
         self.task_model_map: Dict[str, str] = {
-            "chat": "meta-llama/Llama-3.1-8B-Instruct",
-            "verify_solution": "Qwen/Qwen2.5-7B-Instruct",
-            "lesson_generation": "Qwen/Qwen2.5-7B-Instruct",
-            "quiz_generation": "Qwen/Qwen2.5-7B-Instruct",
-            "learning_path": "Qwen/Qwen2.5-7B-Instruct",
-            "daily_insight": self.default_model,
-            "risk_classification": self.default_model,
-            "risk_narrative": self.default_model,
+            "chat": "Qwen/Qwen3-32B",
+            "verify_solution": "Qwen/Qwen3-32B",
+            "lesson_generation": "Qwen/Qwen3-32B",
+            "quiz_generation": "Qwen/Qwen3-32B",
+            "learning_path": "Qwen/Qwen3-32B",
+            "daily_insight": "Qwen/Qwen3-32B",
+            "risk_classification": "Qwen/Qwen3-32B",
+            "risk_narrative": "Qwen/Qwen3-32B",
         }
         # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
@@ -253,11 +260,29 @@ class InferenceClient:
         else:
             env_override_note = ""
 
+        if self.enforce_qwen_only:
+            qwen_map_before = dict(self.task_model_map)
+            self.default_model = self.qwen_lock_model
+            for task_key in list(self.task_model_map.keys()):
+                self.task_model_map[task_key] = self.qwen_lock_model
+            self.fallback_models = []
+            self.task_fallback_model_map = {
+                task_key: [] for task_key in self.task_model_map.keys()
+            }
+            self.chat_hard_trigger_enabled = False
+            LOGGER.info(f"🔒 INFERENCE_ENFORCE_QWEN_ONLY enabled: locking all inference tasks to {self.qwen_lock_model}")
+            LOGGER.info(f"   Cleared fallback models and hard-escalation path")
+            LOGGER.info(f"   Task model mappings forced from: {qwen_map_before}")
+
         # Log configuration loaded for debugging
         config_status = "from file" if config_path else "hardcoded defaults (no config file found)"
+        effective_chat_model_for_logs = self.chat_model_override or self.task_model_map.get("chat", self.default_model)
         LOGGER.info(f"✅ InferenceClient initialized {config_status}{env_override_note}")
         LOGGER.info(f"   Default model: {self.default_model}")
-        LOGGER.info(f"   Chat model: {self.task_model_map.get('chat', self.default_model)}")
+        LOGGER.info(f"   Chat model: {effective_chat_model_for_logs}")
+        LOGGER.info(f"   Chat temp override ({TEMP_CHAT_MODEL_OVERRIDE_ENV}): {self.chat_model_temp_override or 'disabled'}")
+        LOGGER.info(f"   Chat strict model lock: {self.chat_strict_model_only}")
+        LOGGER.info(f"   Global Qwen-only lock: {self.enforce_qwen_only}")
         LOGGER.info(f"   Verify solution model: {self.task_model_map.get('verify_solution', self.default_model)}")
         LOGGER.info(f"   Full task_model_map: {self.task_model_map}")
 
@@ -368,11 +393,21 @@ class InferenceClient:
             raise last_error
         raise RuntimeError("Inference failed with empty model chain")
 
+    def _runtime_chat_model_override(self) -> str:
+        return os.getenv(TEMP_CHAT_MODEL_OVERRIDE_ENV, "").strip()
+
     def _resolve_primary_model(self, req: InferenceRequest) -> Tuple[str, str]:
         effective_task = (req.task_type or "default").strip().lower()
+        runtime_chat_override = self._runtime_chat_model_override()
+
+        def _base_model(model_name: str) -> str:
+            return (model_name or "").split(":", 1)[0].strip()
 
         # Check explicit request model first, then chat override env, then task map/default.
-        if req.model:
+        if effective_task == "chat" and runtime_chat_override:
+            selected_model = runtime_chat_override
+            model_selection_source = "chat_temp_override_env"
+        elif req.model:
             selected_model = req.model
             model_selection_source = "explicit_request"
         elif effective_task == "chat" and self.chat_model_override:
@@ -381,6 +416,23 @@ class InferenceClient:
         else:
             selected_model = self.task_model_map.get(effective_task, self.default_model)
             model_selection_source = "task_map"
+
+        if self.enforce_qwen_only:
+            effective_qwen_lock_model = self.qwen_lock_model
+            if effective_task == "chat":
+                effective_qwen_lock_model = runtime_chat_override or self.chat_model_override or self.qwen_lock_model
+
+            selected_base = _base_model(selected_model)
+            lock_base = _base_model(effective_qwen_lock_model)
+            if selected_base != lock_base:
+                LOGGER.warning(
+                    f"⚠️ Qwen-only lock replaced requested model {selected_model} with {effective_qwen_lock_model}"
+                )
+            selected_model = effective_qwen_lock_model
+            model_selection_source = f"{model_selection_source}:qwen_only"
+
+        if effective_task == "chat" and self.chat_strict_model_only:
+            return selected_model, f"{model_selection_source}:chat_strict_model_only"
 
         if effective_task == "chat" and self.chat_hard_trigger_enabled and self.chat_hard_model:
             should_escalate, reason = self._should_escalate_chat_to_hard_model(req.messages)
@@ -453,6 +505,21 @@ class InferenceClient:
         return True, ",".join(reasons) if reasons else "hard_prompt"
 
     def _model_chain_for_task(self, task_type: str, selected_model: str) -> List[str]:
+        normalized = (task_type or "default").strip().lower()
+        runtime_chat_override = self._runtime_chat_model_override() if normalized == "chat" else ""
+        chat_qwen_lock_model = runtime_chat_override or (self.chat_model_override if normalized == "chat" else "")
+
+        if self.enforce_qwen_only:
+            if normalized == "chat":
+                locked_model = (chat_qwen_lock_model or self.qwen_lock_model or "").strip()
+            else:
+                locked_model = (self.qwen_lock_model or "").strip()
+            return [locked_model] if locked_model else []
+
+        if normalized == "chat" and self.chat_strict_model_only:
+            chat_model = (chat_qwen_lock_model or selected_model or "").strip()
+            return [chat_model] if chat_model else []
+
         per_task_candidates = self.task_fallback_model_map.get(task_type, [])
         combined = [selected_model] + per_task_candidates + self.fallback_models
 
@@ -465,7 +532,6 @@ class InferenceClient:
             seen.add(model_name)
             deduped.append(model_name)
 
-        normalized = (task_type or "default").strip().lower()
         if normalized in self.interactive_tasks:
             max_models = 1 + self.interactive_max_fallback_depth
             return deduped[:max_models]
@@ -526,7 +592,7 @@ class InferenceClient:
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
         
-        # All models use HF inference router directly (including Qwen/Qwen2.5-7B-Instruct)
+        # All models use HF inference router directly (including Qwen/Qwen3-32B)
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -639,7 +705,7 @@ class InferenceClient:
 
     def _call_hf_inference_direct(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         """
-        Call Qwen models via Featherless AI provider (the only provider serving Qwen/Qwen2.5-7B-Instruct).
+        Call Qwen models via Featherless AI provider.
         Uses HF InferenceClient with provider="featherless-ai" for direct model access.
         """
         if not self.hf_token:
@@ -652,8 +718,7 @@ class InferenceClient:
         start = time.perf_counter()
         
         try:
-            # Use HF InferenceClient with featherless-ai provider for Qwen models
-            # This is the only provider that supports Qwen/Qwen2.5-7B-Instruct
+            # Use HF InferenceClient with featherless-ai provider for Qwen models.
             client = HFInferenceClient(
                 model=target_model_base,
                 token=self.hf_token,

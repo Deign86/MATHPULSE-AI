@@ -36,14 +36,12 @@ import { triggerStudentEnrolled, getPendingDeepDiagnosticCount } from './service
 import { resetTestingDataForRole } from './services/testResetService';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService';
 import { Toaster, toast } from 'sonner';
-import { Crown, Flame, Zap, Brain, Calculator, Menu } from 'lucide-react';
+import { Crown, Flame, Zap, Brain, Calculator } from 'lucide-react';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
   Partial<Omit<TeacherProfile, keyof User | 'role'>> &
   Partial<Omit<AdminProfile, keyof User | 'role'>>;
-
-import { CompetencyRadarChart } from './components/CompetencyRadarChart';
 
 const App = () => {
   // Get authentication state from context
@@ -55,7 +53,6 @@ const App = () => {
   
   // Sidebar State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Gamification State (derived from Firebase user profile)
   const studentProfile = userProfile as StudentProfile;
@@ -187,7 +184,6 @@ const App = () => {
     }
 
     setActiveTab(tab);
-    setIsMobileSidebarOpen(false);
   };
 
   // Update streak when user logs in (students only)
@@ -711,65 +707,27 @@ const App = () => {
     <>
     <ChatProvider>
       <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
-          <Sidebar 
-            activeTab={activeTab} 
-            setActiveTab={handleStudentNavigation}
-            userRole={userRole}
-            onOpenSettings={() => setShowSettingsModal(true)}
-            onLogout={() => setShowLogoutConfirm(true)}
-            sidebarCollapsed={isSidebarCollapsed}
-            setSidebarCollapsed={setIsSidebarCollapsed}
-          />
-        </div>
-
-        {/* Mobile Sidebar Overlay */}
-        {isMobileSidebarOpen && (
-          <>
-            <button
-              aria-label="Close navigation"
-              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
-              onClick={() => setIsMobileSidebarOpen(false)}
-            />
-            <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden">
-              <Sidebar
-                mode="mobile"
-                onRequestClose={() => setIsMobileSidebarOpen(false)}
-                activeTab={activeTab}
-                setActiveTab={handleStudentNavigation}
-                userRole={userRole}
-                onOpenSettings={() => {
-                  setShowSettingsModal(true);
-                  setIsMobileSidebarOpen(false);
-                }}
-                onLogout={() => {
-                  setShowLogoutConfirm(true);
-                  setIsMobileSidebarOpen(false);
-                }}
-                sidebarCollapsed={false}
-              />
-            </div>
-          </>
-        )}
+        {/* Sidebar */}
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={handleStudentNavigation}
+          userRole={userRole}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onLogout={() => setShowLogoutConfirm(true)}
+          sidebarCollapsed={isSidebarCollapsed}
+          setSidebarCollapsed={setIsSidebarCollapsed}
+        />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-indigo-200 via-fuchsia-50 to-orange-100 relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
+        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-gradient-to-br from-indigo-200 via-fuchsia-50 to-orange-100 relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
           <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
           
           {/* Header — compact with inline gamification stats */}
-          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sticky top-0 z-30 shadow-sm">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors"
-                onClick={() => setIsMobileSidebarOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu size={20} />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">{activeTab}</h1>
-                <p className="text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
+          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">{activeTab}</h1>
+                <p className="text-xs text-[#5a6578] font-body">Welcome back, {profileData.name.split(' ')[0]}!</p>
               </div>
               {/* Inline gamification badges — always visible */}
               <div className="hidden md:flex items-center gap-2 ml-2">
@@ -798,14 +756,12 @@ const App = () => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap md:flex-nowrap items-center gap-2 min-w-0">
-              <div className="hidden md:block flex-1 min-w-0 max-w-[420px]">
-                <SearchBar
-                  onSelect={(result) => {
-                    // TODO: Navigate to selected search result
-                  }}
-                />
-              </div>
+            <div className="flex items-center gap-2">
+              <SearchBar
+                onSelect={(result) => {
+                  // TODO: Navigate to selected search result
+                }}
+              />
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
@@ -818,7 +774,7 @@ const App = () => {
               
               <button 
                 onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
+                className="flex items-center gap-2.5 w-[152px] h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
                 aria-label={`Profile: ${profileData.name}`}
               >
                 <img 
@@ -826,7 +782,7 @@ const App = () => {
                   alt={profileData.name}
                   className="w-8 h-8 rounded-lg object-cover"
                 />
-                <div className="hidden sm:block text-left min-w-0 flex-1">
+                <div className="text-left min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
                     {firstName}
                   </p>
@@ -836,7 +792,10 @@ const App = () => {
           </header>
 
           {/* Main Content Area */}
-          <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 lg:p-4">
+          <main
+            ref={scrollContainerRef}
+            className={`flex-1 min-h-0 p-3 lg:p-4 ${activeTab === 'AI Chat' ? 'overflow-hidden' : 'overflow-y-auto'}`}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -844,10 +803,11 @@ const App = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className={activeTab === 'AI Chat' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-                    <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
+                    <div className="grid grid-cols-12 gap-8 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-0">
                         <HeroBanner 
                           userName={firstName} 
@@ -873,12 +833,6 @@ const App = () => {
                         {profileReady && (
                           <div className="pb-4">
                             <LearningPath onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)} atRiskSubjects={atRiskSubjects} />
-                          </div>
-                        )}
-
-                        {profileReady && (
-                          <div className="pb-4">
-                            <CompetencyRadarChart />
                           </div>
                         )}
                       </div>
@@ -924,7 +878,7 @@ const App = () => {
 
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page */}
           {activeTab !== 'AI Chat' && (
-            <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
+            <div className="fixed bottom-8 right-8 z-50">
               <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
             </div>
           )}

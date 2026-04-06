@@ -1,0 +1,185 @@
+name: Branch Name Governor
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+  push:
+    branches-ignore:
+      - main
+      - master
+      - develop
+      - release/**
+      - hotfix/**
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to analyze
+        required: false
+        type: string
+      summary:
+        description: Optional summary text for branch and commit inference
+        required: false
+        type: string
+      changed_files_json:
+        description: JSON array of changed files, for manual runs
+        required: false
+        type: string
+      issue_number:
+        description: Optional issue number for slug generation
+        required: false
+        type: string
+      task_type:
+        description: Optional task type (for agent parity)
+        required: false
+        type: string
+      pull_request_number:
+        description: Optional PR number for comment updates
+        required: false
+        type: string
+  repository_dispatch:
+    types:
+      - agent.code_change
+      - agent.ui_fix
+      - agent.repo_standardization
+      - agent.bug_audit
+      - agent.docs_update
+      - agent.release_prep
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    outputs:
+      suggested_branch: ${{ steps.infer.outputs.suggested_branch }}
+      branch_type: ${{ steps.infer.outputs.branch_type }}
+      labels: ${{ steps.infer.outputs.labels }}
+      ci_targets: ${{ steps.infer.outputs.ci_targets }}
+      risk_level: ${{ steps.infer.outputs.risk_level }}
+      is_compliant: ${{ steps.infer.outputs.is_compliant }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files
+        id: changed
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+        uses: tj-actions/changed-files@v45
+        with:
+          json: true
+          escape_json: false
+
+      - name: Infer branch normalization
+        id: infer
+        env:
+          CURRENT_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.event_name == 'repository_dispatch' && github.event.client_payload.branch || github.event_name == 'workflow_dispatch' && inputs.branch || github.ref_name }}
+          SUMMARY: ${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.event_name == 'push' && github.event.head_commit.message || github.event_name == 'repository_dispatch' && github.event.client_payload.scope || inputs.summary }}
+          ISSUE_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'repository_dispatch' && github.event.client_payload.issue_number || inputs.issue_number }}
+          AGENT_TASK_TYPE: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.task_type || inputs.task_type }}
+          CHANGED_FILES_JSON: ${{ github.event_name == 'workflow_dispatch' && inputs.changed_files_json || github.event_name == 'repository_dispatch' && toJson(github.event.client_payload.paths) || steps.changed.outputs.all_changed_files }}
+        run: |
+          node scripts/suggest-branch-name.js \
+            --write-github-output \
+            --output-file branch-governor.json
+
+      - name: Write workflow summary
+        run: |
+          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('branch-governor.json','utf8'));process.stdout.write(data.reportMarkdown + '\n');" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload branch normalization report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-normalization-report
+          path: branch-governor.json
+
+      - name: Upsert PR guidance comment
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' && inputs.pull_request_number != '' || github.event_name == 'repository_dispatch' && github.event.client_payload.pull_request_number != '' }}
+        uses: actions/github-script@v7
+        env:
+          MANUAL_PR_NUMBER: ${{ inputs.pull_request_number }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const marker = '<!-- branch-name-governor -->';
+            const report = JSON.parse(fs.readFileSync('branch-governor.json', 'utf8'));
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let prNumber = null;
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'repository_dispatch') {
+              prNumber = Number(context.payload.client_payload.pull_request_number || 0) || null;
+            } else {
+              prNumber = Number(process.env.MANUAL_PR_NUMBER || 0) || null;
+            }
+
+            if (!prNumber) {
+              core.info('No pull request number available for comment update.');
+              return;
+            }
+
+            try {
+              await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            } catch (error) {
+              if (error.status === 404) {
+                core.warning(`PR #${prNumber} not found; skipping branch governor comment update.`);
+                return;
+              }
+              throw error;
+            }
+
+            const nextActions = (report.nextActions || []).map((step) => `- ${step}`).join('\n') || '- No additional action required.';
+            const body = [
+              marker,
+              '### Branch Name Governor',
+              `- Branch compliant: **${report.isCurrentBranchCompliant ? 'yes' : 'no'}**`,
+              `- Suggested branch: **${report.suggestedBranch}**`,
+              `- Suggested commit title: **${report.suggestedCommitTitle}**`,
+              `- Matched scopes: ${report.matchedScopes && report.matchedScopes.length ? report.matchedScopes.join(', ') : 'none'}`,
+              `- Recommended labels: ${report.labels && report.labels.length ? report.labels.join(', ') : 'none'}`,
+              `- Risk level: **${report.riskLevel}**`,
+              '',
+              '**Safe GitHub Desktop flow when rename is needed**',
+              `1. Create a new branch named \`${report.suggestedBranch}\` from your current branch.`,
+              '2. Push that new branch.',
+              '3. Continue commits there and open the PR from the normalized branch.',
+              '4. Delete the old branch only after confirming the new branch has all commits.',
+              '',
+              '**Next actions**',
+              nextActions
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100
+            });
+
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body
+              });
+            }

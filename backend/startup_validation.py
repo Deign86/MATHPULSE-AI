@@ -92,8 +92,23 @@ def validate_environment() -> None:
     logger.info(f"   ✓ INFERENCE_PROVIDER: {inference_provider}")
     
     # Check model IDs
-    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "Qwen/Qwen2.5-7B-Instruct"
+    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "Qwen/Qwen3-32B"
     logger.info(f"   ✓ Chat model configured: {chat_model}")
+
+    chat_strict = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
+    chat_hard_trigger = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
+    qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-32B").strip() or "Qwen/Qwen3-32B"
+    logger.info(f"   ✓ INFERENCE_CHAT_STRICT_MODEL_ONLY: {chat_strict}")
+    logger.info(f"   ✓ INFERENCE_CHAT_HARD_TRIGGER_ENABLED: {chat_hard_trigger}")
+    logger.info(f"   ✓ INFERENCE_ENFORCE_QWEN_ONLY: {enforce_qwen_only}")
+    logger.info(f"   ✓ INFERENCE_QWEN_LOCK_MODEL: {qwen_lock_model}")
+    if not chat_strict:
+        logger.warning("   ⚠ Chat strict model lock is disabled; chat may fallback to alternate models")
+    if chat_strict and chat_hard_trigger:
+        logger.warning(
+            "   ⚠ Chat hard trigger is enabled while strict chat lock is on; hard escalation will be bypassed"
+        )
     
     logger.info("✅ Environment variables OK")
 
@@ -101,31 +116,44 @@ def validate_environment() -> None:
 def validate_config_files() -> None:
     """Verify config files exist and are readable."""
     logger.info("🔍 Validating configuration files...")
-    
-    config_paths = [
+
+    # Accept either deployment/runtime path without warning when one valid path exists.
+    model_config_candidates = [
         "config/models.yaml",
         "backend/config/models.yaml",
     ]
-    
-    for config_path in config_paths:
+
+    readable_model_config = None
+    for config_path in model_config_candidates:
         full_path = Path(config_path)
         if not full_path.exists():
-            logger.warning(f"   ⚠ Config file not found: {config_path}")
-        else:
-            try:
-                with open(full_path, 'r') as f:
-                    content = f.read()
-                    if not content.strip():
-                        raise StartupError(
-                            f"❌ CONFIG ERROR: {config_path} is empty!\n"
-                            f"   This will cause model routing to fail.\n"
-                        )
-                    logger.info(f"   ✓ {config_path} is readable and non-empty")
-            except Exception as e:
+            continue
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            if not content.strip():
                 raise StartupError(
-                    f"❌ CONFIG ERROR: Cannot read {config_path}:\n"
-                    f"   {e}\n"
-                ) from e
+                    f"❌ CONFIG ERROR: {config_path} is empty!\n"
+                    f"   This will cause model routing to fail.\n"
+                )
+            readable_model_config = config_path
+            break
+        except StartupError:
+            raise
+        except Exception as e:
+            raise StartupError(
+                f"❌ CONFIG ERROR: Cannot read {config_path}:\n"
+                f"   {e}\n"
+            ) from e
+
+    if not readable_model_config:
+        joined_paths = ", ".join(model_config_candidates)
+        raise StartupError(
+            f"❌ CONFIG ERROR: No readable model config found.\n"
+            f"   Checked: {joined_paths}\n"
+        )
+
+    logger.info(f"   ✓ Using model config: {readable_model_config}")
     
     logger.info("✅ Configuration files OK")
 
@@ -138,6 +166,8 @@ def validate_file_structure() -> None:
         ["services/inference_client.py", "backend/services/inference_client.py"],
         ["analytics.py", "backend/analytics.py"],
         ["automation_engine.py", "backend/automation_engine.py"],
+    ]
+    optional_path_sets = [
         ["Dockerfile", "backend/Dockerfile"],
     ]
 
@@ -156,6 +186,22 @@ def validate_file_structure() -> None:
             )
 
         logger.info(f"   ✓ Found {found}")
+
+    for candidates in optional_path_sets:
+        found = None
+        for candidate in candidates:
+            if Path(candidate).exists():
+                found = candidate
+                break
+
+        if found:
+            logger.info(f"   ✓ Found optional build file {found}")
+            continue
+
+        joined = " or ".join(candidates)
+        logger.info(
+            f"   ℹ Optional build file not present at runtime: {joined}"
+        )
     
     logger.info("✅ File structure OK")
 
@@ -187,6 +233,18 @@ def validate_inference_client_config() -> None:
             model = client.task_model_map[task]
             provider = client.task_provider_map.get(task, 'unknown')
             logger.info(f"   ✓ {task}: {model} ({provider})")
+
+        chat_model = client.task_model_map.get("chat", client.default_model)
+        chat_chain = client._model_chain_for_task("chat", chat_model)
+        logger.info(
+            f"   ✓ chat strict lock: {client.chat_strict_model_only}; "
+            f"effective chat chain length={len(chat_chain)}"
+        )
+        if client.chat_strict_model_only and len(chat_chain) != 1:
+            raise StartupError(
+                "❌ Chat strict model lock is enabled but effective chat model chain is not singular.\n"
+                "   Check INFERENCE_CHAT_STRICT_MODEL_ONLY and routing.task_fallback_model_map.chat\n"
+            )
         
         logger.info("✅ InferenceClient configuration OK")
         

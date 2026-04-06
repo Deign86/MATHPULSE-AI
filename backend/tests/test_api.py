@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 
 # Add backend directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from services.inference_client import InferenceClient, InferenceRequest
 
 # automation_engine has Firebase dependencies - mock its heavy parts
 # but keep the Pydantic model classes
@@ -214,10 +215,43 @@ class TestChatEndpoint:
         assert "4" in response.json()["response"]
 
     @patch("main.call_hf_chat")
+    def test_chat_non_math_returns_refusal_and_skips_inference(self, mock_chat):
+        response = client.post("/api/chat", json={
+            "message": "Who is Elon Musk?",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
+        mock_chat.assert_not_called()
+
+    @patch("main.call_hf_chat")
+    def test_chat_greeting_returns_friendly_response_and_skips_inference(self, mock_chat):
+        response = client.post("/api/chat", json={
+            "message": "hello",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._GREETING_RESPONSES
+        mock_chat.assert_not_called()
+
+    @patch("main.call_hf_chat")
+    def test_chat_thanks_returns_friendly_response_and_skips_inference(self, mock_chat):
+        response = client.post("/api/chat", json={
+            "message": "thanks",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._THANKS_RESPONSES
+        mock_chat.assert_not_called()
+
+    @patch("main.call_hf_chat")
     def test_chat_with_history(self, mock_chat):
         mock_chat.return_value = "Yes, that's right."
         response = client.post("/api/chat", json={
-            "message": "Is that correct?",
+            "message": "Is x = 4 correct for 2 + 2 = x?",
             "history": [
                 {"role": "user", "content": "What is 2+2?"},
                 {"role": "assistant", "content": "4"},
@@ -237,7 +271,7 @@ class TestChatEndpoint:
     def test_chat_hf_failure_returns_502(self, mock_chat):
         mock_chat.side_effect = Exception("HF API down")
         response = client.post("/api/chat", json={
-            "message": "Hello",
+            "message": "Solve 3x + 1 = 10",
             "history": [],
         })
         assert response.status_code == 502
@@ -262,7 +296,7 @@ class TestChatEndpoint:
         mock_stream.return_value = iter(["Hello", " world"])
 
         with client.stream("POST", "/api/chat/stream", json={
-            "message": "Say hello",
+            "message": "What is 2 + 2?",
             "history": [],
         }) as response:
             assert response.status_code == 200
@@ -277,7 +311,7 @@ class TestChatEndpoint:
         mock_stream.side_effect = Exception("HF stream down")
 
         with client.stream("POST", "/api/chat/stream", json={
-            "message": "Say hello",
+            "message": "Solve x + 2 = 5",
             "history": [],
         }) as response:
             assert response.status_code == 200
@@ -285,6 +319,65 @@ class TestChatEndpoint:
 
         assert "event: error" in content
         assert "event: end" in content
+
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_timeout_emits_error_and_end_events(self, mock_stream_async):
+        async def _slow_stream(*args, **kwargs):
+            await asyncio.sleep(0.05)
+            yield "late chunk"
+
+        mock_stream_async.return_value = _slow_stream()
+
+        with patch.object(main_module, "CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", 0.01), patch.object(main_module, "CHAT_STREAM_TOTAL_TIMEOUT_SEC", 0.03):
+            with client.stream("POST", "/api/chat/stream", json={
+                "message": "Solve x + 2 = 5",
+                "history": [],
+            }) as response:
+                assert response.status_code == 200
+                content = "".join(response.iter_text())
+
+        assert "event: error" in content
+        assert "timed out" in content.lower()
+        assert "event: end" in content
+
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_marker_mode_continues_until_marker(self, mock_stream_async):
+        async def _first_stream(*args, **kwargs):
+            yield "n=1: x=1\n"
+            yield "n=2: x=2"
+
+        async def _second_stream(*args, **kwargs):
+            yield "\nn=3: x=3\nEND_MARKER"
+
+        mock_stream_async.side_effect = [_first_stream(), _second_stream()]
+
+        with patch.object(main_module, "CHAT_STREAM_CONTINUATION_MAX_ROUNDS", 1):
+            with client.stream("POST", "/api/chat/stream", json={
+                "message": "Solve x+n=2n for n=1..3 and end with END_MARKER",
+                "history": [],
+                "completionMode": "marker",
+                "expectedEndMarker": "END_MARKER",
+            }) as response:
+                assert response.status_code == 200
+                content = "".join(response.iter_text())
+
+        assert "END_MARKER" in content
+        assert "event: end" in content
+        assert mock_stream_async.call_count == 2
+
+    @patch("main.call_hf_chat_stream")
+    def test_chat_stream_non_math_returns_refusal_and_skips_inference(self, mock_stream):
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "Who is Elon Musk?",
+            "history": [],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert "event: chunk" in content
+        assert any(candidate in content for candidate in main_module._NON_MATH_REDIRECT_RESPONSES)
+        assert "event: end" in content
+        mock_stream.assert_not_called()
 
 
 class TestHFChatTransport:
@@ -316,6 +409,180 @@ class TestHFChatTransport:
         assert payload["model"]
         assert payload["stream"] is False
         assert isinstance(payload["messages"], list)
+
+
+class TestInferenceRouting:
+    def test_chat_strict_model_lock_keeps_single_model_chain(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Show all steps and prove the result rigorously."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("chat", selected_model)
+
+        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert "chat_strict_model_only" in source
+        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
+
+    def test_chat_env_override_wins_under_qwen_only_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Find the roots and explain why."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("chat", selected_model)
+
+        assert selected_model == "Qwen/Qwen3-32B"
+        assert "chat_override_env" in source
+        assert model_chain == ["Qwen/Qwen3-32B"]
+
+    def test_chat_temp_override_wins_under_qwen_only_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Find the roots and explain why."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("chat", selected_model)
+
+        assert selected_model == "Qwen/Qwen3-32B"
+        assert "chat_temp_override_env" in source
+        assert model_chain == ["Qwen/Qwen3-32B"]
+
+    def test_chat_temp_override_does_not_change_non_chat_task_under_qwen_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Check if my solution is correct."}],
+            task_type="verify_solution",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("verify_solution", selected_model)
+
+        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert "chat_temp_override_env" not in source
+        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
+
+    def test_chat_escalation_when_strict_lock_disabled(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "false")
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "false")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_PROMPT_CHARS", "256")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_HISTORY_CHARS", "256")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Show all steps and prove the result rigorously."}],
+            task_type="chat",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+
+        assert selected_model == "meta-llama/Meta-Llama-3-70B-Instruct"
+        assert source.startswith("chat_hard_escalation:")
+
+    def test_async_chat_posts_only_qwen_when_strict_enabled(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
+        monkeypatch.setenv("INFERENCE_HF_TIMEOUT_SEC", "15")
+
+        routing_client = InferenceClient()
+        requests_seen: List[Dict[str, Any]] = []
+
+        class FakeAsyncResponse:
+            def __init__(self, status_code: int, payload: Dict[str, Any]):
+                self.status_code = status_code
+                self._payload = payload
+                self.text = json.dumps(payload)
+
+            def json(self) -> Dict[str, Any]:
+                return self._payload
+
+        class FakeAsyncHttpClient:
+            async def post(self, _url, *, headers=None, json=None, timeout=None):
+                requests_seen.append({
+                    "headers": headers,
+                    "payload": json,
+                    "timeout": timeout,
+                })
+                return FakeAsyncResponse(
+                    200,
+                    {"choices": [{"message": {"content": "Final answer: 42"}}]},
+                )
+
+        async def _run() -> str:
+            real_getenv = os.getenv
+
+            def _patched_getenv(key: str, default=None):
+                if key == "PYTEST_CURRENT_TEST":
+                    return ""
+                return real_getenv(key, default)
+
+            with patch.object(main_module, "get_inference_client", return_value=routing_client), patch.object(
+                main_module,
+                "_get_hf_async_http_client",
+                new=AsyncMock(return_value=FakeAsyncHttpClient()),
+            ), patch.object(main_module.os, "getenv", side_effect=_patched_getenv):
+                return await main_module.call_hf_chat_async(
+                    [{"role": "user", "content": "Solve x^2 - 5x + 6 = 0."}],
+                    task_type="chat",
+                )
+
+        result = asyncio.run(_run())
+
+        assert "42" in result
+        assert len(requests_seen) == 1
+        sent_model = requests_seen[0]["payload"]["model"]
+        assert sent_model.startswith("Qwen/Qwen2.5-7B-Instruct")
+        assert "Meta-Llama" not in sent_model
+        assert "gemma" not in sent_model.lower()
+
+    def test_qwen_only_lock_replaces_explicit_non_qwen_model(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
+
+        client = InferenceClient()
+        req = InferenceRequest(
+            messages=[{"role": "user", "content": "Solve this quickly."}],
+            model="meta-llama/Meta-Llama-3-70B-Instruct",
+            task_type="verify_solution",
+        )
+
+        selected_model, source = client._resolve_primary_model(req)
+        model_chain = client._model_chain_for_task("verify_solution", selected_model)
+
+        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert "qwen_only" in source
+        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
 
 
 # ─── Risk Prediction ──────────────────────────────────────────
@@ -719,6 +986,41 @@ class TestUploadClassRecordsGuardrails:
         assert any("missing required identity value: lrn_or_email" in key for key in reasons.keys())
         assert len(payload.get("rejectedRowDetails") or []) == 2
 
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_degrades_gracefully_when_firestore_adc_missing(self, _mock_chat):
+        class _FailingFirestoreModule:
+            def client(self):
+                raise Exception(
+                    "Your default credentials were not found. "
+                    "To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc"
+                )
+
+        files = {
+            "files": (
+                "records.csv",
+                (
+                    b"name,lrn,avgQuizScore,attendance,engagementScore\n"
+                    b"Ana Cruz,1001,81,92,88\n"
+                ),
+                "text/csv",
+            ),
+        }
+
+        with patch.object(main_module, "firebase_firestore", _FailingFirestoreModule()), patch.object(main_module, "_firebase_ready", True):
+            response = client.post(
+                "/api/upload/class-records",
+                files=files,
+                data={"datasetIntent": "synthetic_student_records"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["persisted"] is False
+        assert (payload.get("dashboardSync") or {}).get("synced") is False
+        warnings_blob = " ".join(payload.get("warnings", []))
+        assert "adc is not configured" in warnings_blob.lower()
+
 
 class TestImportedOverviewAndTopicMastery:
     def test_imported_class_overview_returns_inferred_state_for_realistic_minimal_records(self):
@@ -777,6 +1079,23 @@ class TestImportedOverviewAndTopicMastery:
         assert risk_levels == {"Low", "Medium", "High"}
         assert all(student.get("inferredState") for student in payload["students"])
         assert all("stateConfidence" in student for student in payload["students"])
+
+    def test_imported_class_overview_returns_503_when_firestore_adc_missing(self):
+        firestore = _FakeFirestoreModule(
+            {"normalizedClassRecords": []},
+            stream_error=(
+                "Your default credentials were not found. "
+                "To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc"
+            ),
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True):
+            response = client.get("/api/analytics/imported-class-overview?classSectionId=grade11_a&limit=100")
+
+        assert response.status_code == 503
+        detail = str((response.json() or {}).get("detail") or "").lower()
+        assert "firestore adc is not configured" in detail
+        assert "google_application_credentials" in detail
 
     def test_topic_mastery_reports_fallback_warning_without_topic_columns(self):
         firestore = _FakeFirestoreModule(
@@ -979,11 +1298,12 @@ class _FakeDocSnapshot:
 
 
 class _FakeQuery:
-    def __init__(self, docs: List[Dict[str, Any]], fail_order: bool = False):
+    def __init__(self, docs: List[Dict[str, Any]], fail_order: bool = False, stream_error: str | None = None):
         self._docs = docs
         self._filters: List[tuple[str, str, Any]] = []
         self._limit: int | None = None
         self._fail_order = fail_order
+        self._stream_error = stream_error
 
     def where(self, field: str, op: str, value: Any):
         self._filters.append((field, op, value))
@@ -999,6 +1319,9 @@ class _FakeQuery:
         return self
 
     def stream(self):
+        if self._stream_error:
+            raise Exception(self._stream_error)
+
         filtered: List[Dict[str, Any]] = []
         for doc in self._docs:
             include = True
@@ -1018,15 +1341,23 @@ class _FakeQuery:
 
 
 class _FakeCollection:
-    def __init__(self, name: str, store: Dict[str, List[Dict[str, Any]]], audit_logs: List[Dict[str, Any]], fail_order: bool = False):
+    def __init__(
+        self,
+        name: str,
+        store: Dict[str, List[Dict[str, Any]]],
+        audit_logs: List[Dict[str, Any]],
+        fail_order: bool = False,
+        stream_error: str | None = None,
+    ):
         self._name = name
         self._store = store
         self._audit_logs = audit_logs
         self._fail_order = fail_order
+        self._stream_error = stream_error
 
     def where(self, field: str, op: str, value: Any):
         docs = list(self._store.get(self._name, []))
-        query = _FakeQuery(docs, fail_order=self._fail_order)
+        query = _FakeQuery(docs, fail_order=self._fail_order, stream_error=self._stream_error)
         return query.where(field, op, value)
 
     def add(self, payload: Dict[str, Any]):
@@ -1035,13 +1366,20 @@ class _FakeCollection:
 
 
 class _FakeFirestoreClient:
-    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False):
+    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False, stream_error: str | None = None):
         self._store = store
         self.audit_logs: List[Dict[str, Any]] = []
         self._fail_order = fail_order
+        self._stream_error = stream_error
 
     def collection(self, name: str):
-        return _FakeCollection(name, self._store, self.audit_logs, fail_order=self._fail_order)
+        return _FakeCollection(
+            name,
+            self._store,
+            self.audit_logs,
+            fail_order=self._fail_order,
+            stream_error=self._stream_error,
+        )
 
 
 class _FakeFirestoreModule:
@@ -1050,8 +1388,13 @@ class _FakeFirestoreModule:
 
     SERVER_TIMESTAMP = object()
 
-    def __init__(self, store: Dict[str, List[Dict[str, Any]]], fail_order: bool = False):
-        self._client = _FakeFirestoreClient(store, fail_order=fail_order)
+    def __init__(
+        self,
+        store: Dict[str, List[Dict[str, Any]]],
+        fail_order: bool = False,
+        stream_error: str | None = None,
+    ):
+        self._client = _FakeFirestoreClient(store, fail_order=fail_order, stream_error=stream_error)
 
     def client(self):
         return self._client

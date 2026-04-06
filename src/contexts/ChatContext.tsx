@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { apiService } from '../services/apiService';
+import { ApiTimeoutError, apiService, type ChatCompletionOptions } from '../services/apiService';
 import { useAuth } from './AuthContext';
 import {
   createChatSession as createFirebaseSession,
@@ -10,6 +10,8 @@ import {
   getSessionMessages,
 } from '../services/chatService';
 import { toChatPreviewText } from '../utils/chatPreview';
+import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming } from '../utils/chatMessageFormatting';
+import { getScopeBoundaryResponse } from '../utils/mathScope';
 
 export interface Message {
   id: string;
@@ -48,8 +50,443 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+const EXPECTED_END_MARKER_PATTERNS: RegExp[] = [
+  /\b(?:end|finish|stop)\s+with(?:\s+the\s+(?:exact\s+)?(?:marker|text))?\s*[:\-]?\s*(["'`]?)([A-Za-z0-9_:\-]{2,96})\1/i,
+  /\b(?:include|append)\s+(?:the\s+)?marker\s*[:\-]?\s*(["'`]?)([A-Za-z0-9_:\-]{2,96})\1/i,
+];
+
+function normalizeExpectedEndMarker(marker: string | null | undefined): string | null {
+  if (!marker) return null;
+
+  let normalized = marker.trim();
+  if (!normalized) return null;
+
+  if (
+    normalized.length >= 2
+    && normalized[0] === normalized[normalized.length - 1]
+    && ['"', '\'', '`'].includes(normalized[0])
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+
+  normalized = normalized.replace(/[.,;\s]+$/g, '');
+  if (!normalized) return null;
+
+  return normalized.slice(0, 120);
+}
+
+function extractExpectedEndMarker(prompt: string): string | null {
+  const source = (prompt ?? '').trim();
+  if (!source) return null;
+
+  for (const pattern of EXPECTED_END_MARKER_PATTERNS) {
+    const match = pattern.exec(source);
+    if (!match) continue;
+    const marker = normalizeExpectedEndMarker(match[2]);
+    if (marker) return marker;
+  }
+
+  return null;
+}
+
+function containsExpectedEndMarker(answer: string, marker: string | null | undefined): boolean {
+  const normalizedMarker = normalizeExpectedEndMarker(marker);
+  if (!normalizedMarker) return false;
+  return answer.toLowerCase().includes(normalizedMarker.toLowerCase());
+}
+
+function isAnswerStillIncomplete(
+  prompt: string,
+  answer: string,
+  expectedEndMarker: string | null,
+  enableHeuristicChecks: boolean,
+): boolean {
+  if (expectedEndMarker && !containsExpectedEndMarker(answer, expectedEndMarker)) {
+    return true;
+  }
+
+  if (!enableHeuristicChecks) {
+    return false;
+  }
+
+  return isPromptAnswerPairIncomplete(prompt, answer);
+}
+
+function isIncompleteResponse(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+
+  const trailingSignals = [
+    /```[^`]*$/,
+    /\$\$[^$]*$/,
+    /\$[^$\n]*$/,
+    /\\\[[^\]]*$/,
+    /\\\([^\)]*$/,
+    /\\boxed\{[^}]*$/,
+    /\\frac\{[^}]*\}\{?$/,
+    /\\[a-zA-Z]+\s*$/,
+    /(?:Step\s*\d+[:.]?)\s*$/i,
+    /(?:Final\s*Answer[:.]?)\s*$/i,
+  ];
+
+  if (trailingSignals.some((pattern) => pattern.test(trimmed))) {
+    return true;
+  }
+
+  const codeFenceCount = (trimmed.match(/```/g) ?? []).length;
+  if (codeFenceCount % 2 !== 0) {
+    return true;
+  }
+
+  const unescapedDollarCount = (() => {
+    let count = 0;
+    for (let i = 0; i < trimmed.length; i += 1) {
+      if (trimmed[i] !== '$') continue;
+      let slashCount = 0;
+      for (let j = i - 1; j >= 0 && trimmed[j] === '\\'; j -= 1) {
+        slashCount += 1;
+      }
+      if (slashCount % 2 === 0) {
+        count += 1;
+      }
+    }
+    return count;
+  })();
+  if (unescapedDollarCount % 2 !== 0) {
+    return true;
+  }
+
+  const leftCount = (trimmed.match(/\\left\b/g) ?? []).length;
+  const rightCount = (trimmed.match(/\\right\b/g) ?? []).length;
+  if (leftCount !== rightCount) {
+    return true;
+  }
+
+  const pairedChars: Array<[string, string]> = [
+    ['(', ')'],
+    ['[', ']'],
+    ['{', '}'],
+  ];
+  for (const [openChar, closeChar] of pairedChars) {
+    const openCount = (trimmed.match(new RegExp(`\\${openChar}`, 'g')) ?? []).length;
+    const closeCount = (trimmed.match(new RegExp(`\\${closeChar}`, 'g')) ?? []).length;
+    if (openCount > closeCount) {
+      return true;
+    }
+  }
+
+  if (
+    trimmed.length >= 80 &&
+    /\b(?:and|or|but|because|since|so|then|which|that|where|when|with|for|to|from|of|in|on|at|by)\s*$/i.test(trimmed)
+  ) {
+    return true;
+  }
+
+  const nonEmptyLines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const lastLine = nonEmptyLines.length > 0 ? nonEmptyLines[nonEmptyLines.length - 1] : trimmed;
+  const hasTerminalPunctuation = /[.!?)]$/.test(lastLine);
+  const hasEquationLikeEnding = /(?:=|\\boxed|\\int|d\/dx|f\(x\)|x\^\d+|\b\d+(?:\.\d+)?\b)\s*$/.test(lastLine);
+  if (trimmed.length >= 140 && !hasTerminalPunctuation && !hasEquationLikeEnding) {
+    return true;
+  }
+
+  return false;
+}
+
+function isPromptAnswerPairIncomplete(prompt: string, answer: string): boolean {
+  const normalizedAnswer = answer.trim();
+  const normalizedPrompt = prompt.toLowerCase();
+  if (!normalizedAnswer) return true;
+
+  if (isIncompleteResponse(normalizedAnswer)) {
+    return true;
+  }
+
+  const strippedMarkdown = normalizedAnswer
+    .replace(/[#*_`>|\-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!strippedMarkdown) {
+    return true;
+  }
+
+  if (
+    strippedMarkdown.length < 24 &&
+    /(derivative|integral|equation|complete|explain|step)/.test(normalizedPrompt)
+  ) {
+    return true;
+  }
+
+  if (normalizedPrompt.includes('derivative') && normalizedPrompt.includes('integral')) {
+    const lowerAnswer = normalizedAnswer.toLowerCase();
+    const hasDerivative = /derivative|f'|d\/dx/.test(lowerAnswer);
+    const hasIntegral = /integral|∫|\\int/.test(lowerAnswer);
+    if (!hasDerivative || !hasIntegral) {
+      return true;
+    }
+  }
+
+  if (
+    normalizedPrompt.includes('complete equation') ||
+    normalizedPrompt.includes('complete equations') ||
+    normalizedPrompt.includes('step-by-step') ||
+    normalizedPrompt.includes('step by step')
+  ) {
+    const equationSignalCount = (
+      normalizedAnswer.match(/=|\\frac|\\int|∫|\\boxed|d\/dx|\b(dx|x\^\d+)\b/g) ?? []
+    ).length;
+    if (equationSignalCount < 2 || normalizedAnswer.length < 120) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function dedupeRepeatedParagraphs(text: string): string {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length <= 1) {
+    return text.trim();
+  }
+
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    const normalized = paragraph
+      .toLowerCase()
+      .replace(/[#*_`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    deduped.push(paragraph);
+  }
+
+  return deduped.join('\n\n').trim();
+}
+
+function mergeAnswerContinuation(base: string, continuation: string): string {
+  const baseTrimmed = base.trim();
+  const contTrimmed = continuation.trim();
+  if (!baseTrimmed) return dedupeRepeatedParagraphs(contTrimmed);
+  if (!contTrimmed) return dedupeRepeatedParagraphs(baseTrimmed);
+
+  const maxOverlap = Math.min(baseTrimmed.length, contTrimmed.length, 220);
+  for (let overlap = maxOverlap; overlap >= 24; overlap -= 1) {
+    const tail = baseTrimmed.slice(-overlap);
+    const head = contTrimmed.slice(0, overlap);
+    if (tail === head) {
+      return dedupeRepeatedParagraphs(`${baseTrimmed}${contTrimmed.slice(overlap)}`.trim());
+    }
+  }
+
+  if (baseTrimmed.endsWith(contTrimmed)) {
+    return dedupeRepeatedParagraphs(baseTrimmed);
+  }
+  if (contTrimmed.startsWith(baseTrimmed)) {
+    return dedupeRepeatedParagraphs(contTrimmed);
+  }
+
+  return dedupeRepeatedParagraphs(`${baseTrimmed}\n\n${contTrimmed}`.trim());
+}
+
+function buildContinuationPrompt(originalQuestion: string, partialAnswer: string, expectedEndMarker?: string | null): string {
+  const lines = [
+    'Continue the same solution from exactly where it stopped.',
+    'Do not restart. Do not repeat completed parts. Keep the same formatting style.',
+    'Finish all remaining steps and provide a complete final answer.',
+    '',
+    `Question: ${originalQuestion}`,
+    '',
+    'Current partial answer:',
+    partialAnswer,
+  ];
+
+  const marker = normalizeExpectedEndMarker(expectedEndMarker);
+  if (marker) {
+    lines.push('');
+    lines.push(`Include the exact marker "${marker}" at the very end when done.`);
+  }
+
+  return lines.join('\n');
+}
+
+function buildPlainContinuationPrompt(originalQuestion: string, partialAnswer: string, expectedEndMarker?: string | null): string {
+  const lines = [
+    'Continue and complete the answer in plain text only.',
+    'No markdown, no LaTeX, no code fences. Do not restart.',
+    '',
+    `Question: ${originalQuestion}`,
+    '',
+    'Current partial answer:',
+    partialAnswer,
+  ];
+
+  const marker = normalizeExpectedEndMarker(expectedEndMarker);
+  if (marker) {
+    lines.push('');
+    lines.push(`End with the exact marker "${marker}".`);
+  }
+
+  return lines.join('\n');
+}
+
+function buildCoverageCompletionPrompt(originalQuestion: string, expectedEndMarker?: string | null): string {
+  const lines = [
+    'Provide a complete final tutoring answer for the student question below.',
+    'Do not include meta commentary, internal reasoning, or notes about instructions.',
+    'Cover every requested part explicitly and include final results.',
+    '',
+    `Question: ${originalQuestion}`,
+  ];
+
+  const marker = normalizeExpectedEndMarker(expectedEndMarker);
+  if (marker) {
+    lines.push('');
+    lines.push(`Include the exact marker "${marker}" once all requested parts are complete.`);
+  }
+
+  return lines.join('\n');
+}
+
+function pickHigherQualityAnswer(
+  prompt: string,
+  current: string,
+  candidate: string,
+  expectedEndMarker: string | null = null,
+  enableHeuristicChecks = true,
+): string {
+  const currentTrimmed = current.trim();
+  const candidateTrimmed = candidate.trim();
+  if (!candidateTrimmed) {
+    return currentTrimmed;
+  }
+  if (!currentTrimmed) {
+    return candidateTrimmed;
+  }
+
+  const currentIncomplete = isAnswerStillIncomplete(
+    prompt,
+    currentTrimmed,
+    expectedEndMarker,
+    enableHeuristicChecks,
+  );
+  const candidateIncomplete = isAnswerStillIncomplete(
+    prompt,
+    candidateTrimmed,
+    expectedEndMarker,
+    enableHeuristicChecks,
+  );
+
+  if (currentIncomplete !== candidateIncomplete) {
+    return candidateIncomplete ? currentTrimmed : candidateTrimmed;
+  }
+
+  if (candidateTrimmed.length >= currentTrimmed.length + 80) {
+    return candidateTrimmed;
+  }
+
+  return currentTrimmed;
+}
+
+function shouldShowStreamingChunks(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  const formatSensitiveSignals = [
+    'derivative',
+    'integral',
+    'equation',
+    'latex',
+    'step-by-step',
+    'step by step',
+    'formatting',
+    'proof',
+    'fraction',
+    'limit',
+    'matrix',
+    'sqrt',
+    'boxed',
+    '^',
+    'dx',
+  ];
+  return !formatSensitiveSignals.some((signal) => lower.includes(signal));
+}
+
+function shouldAttemptCompletionRepair(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  const trimmed = lower.trim();
+  if (!trimmed) return false;
+
+  if (/^(hi|hello|hey|yo|sup|good morning|good afternoon|good evening)\b/.test(trimmed)) {
+    return false;
+  }
+  if (/^(thanks|thank you|thx|ty)\b/.test(trimmed)) {
+    return false;
+  }
+  if (/^(bye|goodbye|see you|later)\b/.test(trimmed)) {
+    return false;
+  }
+
+  if (
+    trimmed.includes('fun fact') &&
+    !/(solve|deriv|integr|equation|step|proof|show work|explain)/.test(trimmed)
+  ) {
+    return false;
+  }
+
+  return [
+    'derivative',
+    'integral',
+    'equation',
+    'step-by-step',
+    'step by step',
+    'solve',
+    'differentiat',
+    'integrat',
+    'limit',
+    'proof',
+    'find',
+    'compute',
+    'simplify',
+    'factor',
+    'evaluate',
+    'calculate',
+    'graph',
+    'matrix',
+    'probability',
+    'statistics',
+    'trigonometry',
+    'algebra',
+    'geometry',
+    'calculus',
+    'show work',
+    'explain',
+    'define',
+    'describe',
+    'how',
+    'why',
+    'what is',
+  ].some((signal) => trimmed.includes(signal));
+}
+
 /** Generate a helpful math tutor response when backend is unavailable */
 function generateFallbackResponse(userText: string): string {
+  const scopeBoundaryResponse = getScopeBoundaryResponse(userText);
+  if (scopeBoundaryResponse) {
+    return scopeBoundaryResponse;
+  }
+
   const lower = userText.toLowerCase().trim();
 
   // --- Conversational / non-math inputs ---
@@ -203,7 +640,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             const messages: Message[] = msgs.map((m) => ({
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',
-              text: m.content,
+              text: m.role === 'assistant'
+                ? formatAssistantResponseForStorage(m.content)
+                : m.content,
               timestamp: m.timestamp instanceof Date
                 ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -305,15 +744,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   }, [currentUser]);
 
   const addMessageToSession = useCallback((sessionId: string, message: Message) => {
+    const normalizedMessage = message.sender === 'ai'
+      ? {
+          ...message,
+          text: formatAssistantResponseForStorage(message.text),
+        }
+      : message;
+
     setSessions(prev =>
       prev.map(session => {
         if (session.id === sessionId) {
-          const updatedMessages = [...session.messages, message];
+          const updatedMessages = [...session.messages, normalizedMessage];
           return {
             ...session,
             messages: updatedMessages,
             messageCount: updatedMessages.length,
-            preview: toChatPreviewText(message.text) || session.preview,
+            preview: toChatPreviewText(normalizedMessage.text) || session.preview,
             updatedAt: new Date(),
             title: updatedMessages.length === 2 ? generateTitleFromMessages(updatedMessages) : session.title,
           };
@@ -335,8 +781,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     resolveFirebaseId(sessionId).then(realId =>
       addFirebaseMessage(
         realId,
-        message.sender === 'user' ? 'user' : 'assistant',
-        message.text
+        normalizedMessage.sender === 'user' ? 'user' : 'assistant',
+        normalizedMessage.text
       ).catch(err => console.error('Error persisting message:', err))
     );
 
@@ -356,11 +802,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   /** Send a message and get AI response from the backend */
   const sendMessage = useCallback(async (sessionId: string, userText: string) => {
+    const trimmedUserText = userText.trim();
+
     // Add user message
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text: userText.trim(),
+      text: trimmedUserText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     addMessageToSession(sessionId, userMsg);
@@ -375,17 +823,46 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
+      const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText);
+      if (scopeBoundaryResponse) {
+        const refusalMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: scopeBoundaryResponse,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        addMessageToSession(sessionId, refusalMsg);
+        return;
+      }
+
       const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       let streamedText = '';
       let streamMessageId: string | null = null;
+      const showStreamingChunks = shouldShowStreamingChunks(trimmedUserText);
+      const shouldRunHeuristicRepairFlow = shouldAttemptCompletionRepair(trimmedUserText);
+      const expectedEndMarker = extractExpectedEndMarker(trimmedUserText);
+      const shouldRunAnyRepairFlow = shouldRunHeuristicRepairFlow || Boolean(expectedEndMarker);
+      const completionOptions: ChatCompletionOptions | undefined = expectedEndMarker
+        ? {
+            expectedEndMarker,
+            completionMode: 'marker',
+          }
+        : undefined;
+
+      const isAnswerIncomplete = (answer: string): boolean =>
+        isAnswerStillIncomplete(trimmedUserText, answer, expectedEndMarker, shouldRunHeuristicRepairFlow);
 
       const upsertStreamingMessage = (text: string) => {
+        if (!text.trim()) {
+          return;
+        }
+
         setSessions(prev =>
           prev.map(chatSession => {
             if (chatSession.id !== sessionId) return chatSession;
 
             if (!streamMessageId) {
-              streamMessageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              streamMessageId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
               const streamMsg: Message = {
                 id: streamMessageId,
                 sender: 'ai',
@@ -430,42 +907,161 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       };
 
       try {
-        const { response } = await apiService.chat(userText.trim(), history, (chunk: string) => {
+        const { response } = await apiService.chat(trimmedUserText, history, (chunk: string) => {
           streamedText += chunk;
-          upsertStreamingMessage(streamedText);
-        });
+          if (showStreamingChunks) {
+            upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
+          }
+        }, completionOptions);
 
-        const finalResponse = (response || streamedText).trim();
+        let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
+        if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
+          try {
+            const continuation = await apiService.chatSafe(
+              buildContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
+              history,
+              completionOptions,
+            );
+            const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+            finalResponse = mergeAnswerContinuation(finalResponse, repairedResponse);
+          } catch (repairErr) {
+            console.warn('Streaming completion repair failed:', repairErr);
+          }
+
+          if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
+            try {
+              const plainContinuation = await apiService.chatSafe(
+                buildPlainContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
+                history,
+                completionOptions,
+              );
+              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
+              finalResponse = mergeAnswerContinuation(finalResponse, repairedPlain);
+            } catch (plainRepairErr) {
+              console.warn('Streaming plain continuation repair failed:', plainRepairErr);
+            }
+          }
+
+          if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
+            try {
+              const completeAttempt = await apiService.chatSafe(
+                buildCoverageCompletionPrompt(trimmedUserText, expectedEndMarker),
+                history,
+                completionOptions,
+              );
+              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
+              if (regenerated) {
+                finalResponse = pickHigherQualityAnswer(
+                  trimmedUserText,
+                  finalResponse,
+                  regenerated,
+                  expectedEndMarker,
+                  shouldRunHeuristicRepairFlow,
+                );
+              }
+            } catch (completeRepairErr) {
+              console.warn('Streaming full completion repair failed:', completeRepairErr);
+            }
+          }
+        }
+
+        const finalResponseIncomplete = isAnswerIncomplete(finalResponse);
+        if (!finalResponse || (finalResponseIncomplete && !shouldRunAnyRepairFlow)) {
+          finalResponse = generateFallbackResponse(trimmedUserText);
+        }
+
         if (streamMessageId) {
           removeStreamingMessage();
         }
 
         const aiMsg: Message = {
-          id: streamMessageId || (Date.now() + 1).toString(),
+          id: (Date.now() + 1).toString(),
           sender: 'ai',
           text: finalResponse,
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);
       } catch (streamError) {
-        console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        if (streamError instanceof ApiTimeoutError) {
+          console.warn(
+            `Streaming timed out after ${streamError.timeoutMs}ms, falling back to non-streaming chat.`,
+            streamError,
+          );
+        } else {
+          console.warn('Streaming failed, falling back to non-streaming chat:', streamError);
+        }
         if (streamMessageId) {
           removeStreamingMessage();
         }
 
         let aiResponseText = '';
         try {
-          const { data } = await apiService.chatSafe(userText.trim(), history);
-          aiResponseText = data.response;
+          const { data } = await apiService.chatSafe(trimmedUserText, history, completionOptions);
+          aiResponseText = formatAssistantResponseForStorage(data.response).trim();
+
+          if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
+            try {
+              const continuation = await apiService.chatSafe(
+                buildContinuationPrompt(trimmedUserText, aiResponseText, expectedEndMarker),
+                history,
+                completionOptions,
+              );
+              const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+              aiResponseText = mergeAnswerContinuation(aiResponseText, repairedResponse);
+            } catch (repairErr) {
+              console.warn('Non-stream completion repair failed:', repairErr);
+            }
+          }
+
+          if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
+            try {
+              const plainContinuation = await apiService.chatSafe(
+                buildPlainContinuationPrompt(trimmedUserText, aiResponseText, expectedEndMarker),
+                history,
+                completionOptions,
+              );
+              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
+              aiResponseText = mergeAnswerContinuation(aiResponseText, repairedPlain);
+            } catch (plainRepairErr) {
+              console.warn('Non-stream plain continuation repair failed:', plainRepairErr);
+            }
+          }
+
+          if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
+            try {
+              const completeAttempt = await apiService.chatSafe(
+                buildCoverageCompletionPrompt(trimmedUserText, expectedEndMarker),
+                history,
+                completionOptions,
+              );
+              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
+              if (regenerated) {
+                aiResponseText = pickHigherQualityAnswer(
+                  trimmedUserText,
+                  aiResponseText,
+                  regenerated,
+                  expectedEndMarker,
+                  shouldRunHeuristicRepairFlow,
+                );
+              }
+            } catch (completeRepairErr) {
+              console.warn('Non-stream full completion repair failed:', completeRepairErr);
+            }
+          }
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
-          aiResponseText = generateFallbackResponse(userText.trim());
+          aiResponseText = generateFallbackResponse(trimmedUserText);
+        }
+
+        const aiResponseIncomplete = isAnswerIncomplete(aiResponseText);
+        if (!aiResponseText || (aiResponseIncomplete && !shouldRunAnyRepairFlow)) {
+          aiResponseText = generateFallbackResponse(trimmedUserText);
         }
 
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: aiResponseText,
+          text: formatAssistantResponseForStorage(aiResponseText),
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);

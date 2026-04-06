@@ -28,7 +28,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   }, [userProfile?.uid]);
 
   // Combine static module with progress data
-  const modulesWithProgress = modulePool.slice(0, 3).map(mod => {
+  const modulesWithProgress = modulePool.slice(0, 4).map(mod => {
     const subjectProgress = progress?.subjects?.[generalMathSubject.id];
     const modProgress = subjectProgress?.modulesProgress?.[mod.id];
     const completedLessonsCount = modProgress?.lessonsCompleted?.length || 0;
@@ -63,7 +63,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
         {modulesWithProgress.map((module, idx) => (
           <ModuleFolderCard 
             key={module.id} 

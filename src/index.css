@@ -18,6 +18,8 @@
   font-family: var(--font-body);
   font-size: 0.875rem;
   line-height: 1.625;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .chat-markdown h1 {
   font-family: var(--font-display);
@@ -127,4 +129,10 @@
 }
 .chat-markdown > *:last-child {
   margin-bottom: 0;
+}
+
+.chat-markdown .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.15rem;
 }
