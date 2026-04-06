@@ -252,15 +252,6 @@ MathPulse now supports a PRO-oriented architecture for fast demos, low-cost expe
 - Qwen model lock rules enforced to prevent non-approved model drift in production routes.
 - Global default model is explicitly aligned to [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B).
 
-#### Validation Artifacts Captured
-
-- Manual chat validation screenshots are currently stored under `artifacts/`:
-   - `chat_validation_after_push_pre.png`
-   - `chat_validation_after_push_post.png`
-   - `chat_validation_pre_stream.png`
-   - `chat_validation_post_stream.png`
-   - `chat_validation_post_stress.png`
-
 Flow overview:
 
 1. Backend API calls route through the inference client and can switch provider mode by env.
