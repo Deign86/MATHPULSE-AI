@@ -123,7 +123,7 @@ function normalizeContinuationTokenInput(message: string): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, ' ')
-    .replace(/[.!?]+$/g, '');
+    .replace(/[\p{P}]+$/gu, '');
 }
 
 function isContinuationFollowupToken(message: string): boolean {
