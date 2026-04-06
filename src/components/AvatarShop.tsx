@@ -17,7 +17,7 @@ interface AvatarShopProps {
 }
 
 const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModules }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, refreshProfile } = useAuth();
 
   const [equipped, setEquipped] = useState<AvatarLayers>({
     top: userProfile?.avatarLayers?.top || 'top_pink',
@@ -107,6 +107,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         if (result.currentXP !== undefined) {
           setCurrentXP(result.currentXP);
         }
+        await refreshProfile();
       } else {
         toast.error(result.message || 'Failed to purchase item');
       }
@@ -126,8 +127,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     
     setPurchasingItemId('resetting');
     try {
-      const success = await resetAvatarPurchasesForTesting(userProfile.uid);
-      if (success) {
+      const result = await resetAvatarPurchasesForTesting(userProfile.uid);
+      if (result.success) {
         setOwnedItems([]);
         const resetEquipped = {
           top: 'top_pink',
@@ -136,7 +137,9 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           accessory: ''
         };
         setEquipped(resetEquipped);
-        toast.success('Purchases reset successfully! (Test Mode)');
+        setCurrentXP(result.newXP);
+        toast.success(`Purchases reset and XP updated to ${result.newXP}! (Test Mode)`);
+        await refreshProfile();
       } else {
         toast.error('Failed to reset purchases');
       }
@@ -157,6 +160,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         onSaveProfile(equipped);
       }
       toast.success('Avatar saved successfully');
+      await refreshProfile();
       setIsSaving(false);
     } catch (err) {
       console.error(err);
@@ -172,8 +176,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   ];
 
   return (
-    <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto">
-      <div className="relative w-full max-w-[1200px] min-h-[600px] rounded-[2rem] p-8 lg:p-12 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] grid grid-cols-1 xl:grid-cols-[1fr_450px] gap-12 items-center">
+    <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
+      <div className="relative w-full max-w-[1200px] h-[85vh] min-h-[600px] max-h-[850px] rounded-[2rem] p-8 lg:p-12 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12">
         
         <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
@@ -181,8 +185,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-100/30 rounded-full blur-3xl" />
         </div>
 
-        <div className="flex flex-col justify-center h-full relative z-10 w-full max-w-xl mx-auto xl:mx-0">
-          <div className="mb-8 flex flex-col sm:flex-row items-start justify-between gap-6">
+        <div className="flex flex-col h-full relative z-10 w-full xl:w-7/12 mx-auto xl:mx-0">
+          <div className="mb-8 flex flex-col sm:flex-row items-start justify-between gap-6 shrink-0">
             <div className="pr-4">
               <h1 className="text-4xl md:text-5xl font-display font-black text-[#0a1628] tracking-tight flex flex-wrap items-center gap-3">
                 <span className="whitespace-nowrap">Avatar Studio</span> <Sparkles className="text-blue-500 fill-blue-500" size={32} />
@@ -219,8 +223,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
             </div>
           </div>
 
-          <Tabs.Root defaultValue="top" className="flex flex-col flex-1 h-[400px]">
-            <Tabs.List className="flex flex-nowrap justify-start space-x-2 sm:space-x-4 mb-8 bg-white shadow-sm p-1.5 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
+          <Tabs.Root defaultValue="top" className="flex flex-col flex-1 min-h-0">
+            <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-2 sm:space-x-4 mb-4 sm:mb-8 bg-white shadow-sm p-1.5 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
               {categories.map((cat) => (
                 <Tabs.Trigger
                   key={cat.id}
@@ -233,7 +237,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
               ))}
             </Tabs.List>
 
-            <div className="flex-1 overflow-y-auto pb-6 scrollbar-hide px-2 -mx-2">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pb-6 scrollbar-hide px-2 -mx-2">
               {categories.map(cat => {
                 const categoryItems = MOCK_INVENTORY.filter(item => item.category === cat.id);
                 
@@ -319,8 +323,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           </Tabs.Root>
         </div>
 
-        <div className="flex flex-col gap-6 relative z-10 h-full justify-center">
-          <div className="bg-[#0f1422] rounded-[3rem] overflow-hidden relative shadow-[0_20px_50px_rgba(15,20,34,0.3)] h-[400px] xl:h-[480px] flex items-center justify-center w-full max-w-[450px] mx-auto border-8 border-slate-800">
+        <div className="flex flex-col gap-6 relative z-10 w-full xl:w-[450px] shrink-0 xl:self-center">
+          <div className="bg-[#0f1422] rounded-[3rem] overflow-hidden relative shadow-[0_20px_50px_rgba(15,20,34,0.3)] h-[400px] xl:h-[480px] w-full flex items-center justify-center mx-auto border-8 border-slate-800">
             
             <div
               className="absolute top-[-10%] left-0 right-0 h-[110%] pointer-events-none mix-blend-screen opacity-70"
