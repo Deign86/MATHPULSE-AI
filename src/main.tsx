@@ -15,17 +15,27 @@ createRoot(rootElement).render(
   </AuthProvider>
 );
 
+let safetyTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
+
 const fadeOutAndRemoveBootShell = () => {
   const bootShell = document.getElementById('boot-shell');
   if (!bootShell) return;
 
-  bootShell.style.opacity = '0';
+  if (safetyTimeoutId !== undefined) {
+    window.clearTimeout(safetyTimeoutId);
+    safetyTimeoutId = undefined;
+  }
+
   bootShell.style.pointerEvents = 'none';
   bootShell.style.transition = 'opacity 160ms ease';
 
+  requestAnimationFrame(() => {
+    bootShell.style.opacity = '0';
+  });
+
   window.setTimeout(() => {
     bootShell.remove();
-  }, 180);
+  }, 200);
 };
 
 const rootHasRenderedContent = () => {
@@ -46,7 +56,8 @@ if (rootHasRenderedContent()) {
   observer.observe(rootElement, { childList: true, subtree: true, characterData: true });
 
   // Safety valve: never leave the shell mounted forever if rendering stalls.
-  window.setTimeout(() => {
+  safetyTimeoutId = window.setTimeout(() => {
+    safetyTimeoutId = undefined;
     observer.disconnect();
     if (document.getElementById('boot-shell')) {
       requestAnimationFrame(fadeOutAndRemoveBootShell);

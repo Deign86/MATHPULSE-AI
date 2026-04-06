@@ -21,14 +21,6 @@ export default defineConfig({
             return undefined;
           }
 
-          if (id.includes('react') || id.includes('scheduler')) {
-            return 'vendor-react';
-          }
-
-          if (id.includes('firebase')) {
-            return 'vendor-firebase';
-          }
-
           if (
             id.includes('react-markdown') ||
             id.includes('remark-math') ||
@@ -36,6 +28,14 @@ export default defineConfig({
             id.includes('katex')
           ) {
             return 'vendor-markdown';
+          }
+
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) {
+            return 'vendor-react';
+          }
+
+          if (id.includes('firebase')) {
+            return 'vendor-firebase';
           }
 
           if (id.includes('@radix-ui')) {
