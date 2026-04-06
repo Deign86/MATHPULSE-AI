@@ -34,6 +34,48 @@ describe('getScopeBoundaryResponse', () => {
     expect(getScopeBoundaryResponse('Solve for x in 2x + 3 = 7')).toBeNull();
   });
 
+  it('allows minimal follow-up when assistant invited continuation', () => {
+    const response = getScopeBoundaryResponse('go', {
+      history: [
+        { role: 'assistant', content: 'Great work. Shall we continue?' },
+      ],
+    });
+    expect(response).toBeNull();
+  });
+
+  it('allows punctuated follow-up token when assistant invited continuation', () => {
+    const withContext = {
+      history: [{ role: 'assistant', content: 'Would you like to continue?' }],
+    };
+    expect(getScopeBoundaryResponse('ok,', withContext)).toBeNull();
+    expect(getScopeBoundaryResponse('ok.', withContext)).toBeNull();
+    expect(getScopeBoundaryResponse('go!', withContext)).toBeNull();
+  });
+
+  it('keeps follow-up token blocked without continuation context', () => {
+    const response = getScopeBoundaryResponse('go');
+    expect(response).not.toBeNull();
+    expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
+  });
+
+  it('keeps punctuated follow-up token blocked without continuation context', () => {
+    for (const token of ['ok,', 'ok.', 'go!']) {
+      const response = getScopeBoundaryResponse(token);
+      expect(response).not.toBeNull();
+      expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
+    }
+  });
+
+  it('still redirects explicit non-math prompts with continuation context', () => {
+    const response = getScopeBoundaryResponse('Who is Elon Musk?', {
+      history: [
+        { role: 'assistant', content: 'Would you like to continue?' },
+      ],
+    });
+    expect(response).not.toBeNull();
+    expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
+  });
+
   it('returns a friendly greeting response', () => {
     const response = getScopeBoundaryResponse('hello');
     expect(response).not.toBeNull();

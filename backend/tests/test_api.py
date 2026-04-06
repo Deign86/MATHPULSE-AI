@@ -247,6 +247,42 @@ class TestChatEndpoint:
         assert response.json()["response"] in main_module._THANKS_RESPONSES
         mock_chat.assert_not_called()
 
+    @patch("main.call_hf_chat_async", new_callable=AsyncMock)
+    def test_chat_allows_contextual_followup_token_and_calls_inference(self, mock_chat_async):
+        mock_chat_async.return_value = "Sure. Next step: isolate x on one side."
+        response = client.post("/api/chat", json={
+            "message": "go",
+            "history": [
+                {"role": "assistant", "content": "Nice work. Shall we continue?"},
+            ],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] == "Sure. Next step: isolate x on one side."
+        mock_chat_async.assert_called_once()
+
+    @patch("main.call_hf_chat_async", new_callable=AsyncMock)
+    def test_chat_followup_token_without_context_remains_blocked(self, mock_chat_async):
+        response = client.post("/api/chat", json={
+            "message": "go",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
+        mock_chat_async.assert_not_called()
+
+    @patch("main.call_hf_chat_async", new_callable=AsyncMock)
+    def test_chat_punctuated_followup_token_without_context_remains_blocked(self, mock_chat_async):
+        response = client.post("/api/chat", json={
+            "message": "go!",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
+        mock_chat_async.assert_not_called()
+
     @patch("main.call_hf_chat")
     def test_chat_with_history(self, mock_chat):
         mock_chat.return_value = "Yes, that's right."
@@ -378,6 +414,39 @@ class TestChatEndpoint:
         assert any(candidate in content for candidate in main_module._NON_MATH_REDIRECT_RESPONSES)
         assert "event: end" in content
         mock_stream.assert_not_called()
+
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_allows_contextual_followup_token_and_calls_inference(self, mock_stream_async):
+        async def _stream(*args, **kwargs):
+            yield "Sure, continuing with the next step."
+
+        mock_stream_async.return_value = _stream()
+
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "go",
+            "history": [
+                {"role": "assistant", "content": "Would you like to continue?"},
+            ],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert "Sure, continuing with the next step." in content
+        assert "event: end" in content
+        mock_stream_async.assert_called_once()
+
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_followup_token_without_context_remains_blocked(self, mock_stream_async):
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "go",
+            "history": [],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert any(candidate in content for candidate in main_module._NON_MATH_REDIRECT_RESPONSES)
+        assert "event: end" in content
+        mock_stream_async.assert_not_called()
 
 
 class TestHFChatTransport:
