@@ -138,7 +138,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         };
         setEquipped(resetEquipped);
         setCurrentXP(result.newXP);
-        toast.success('Purchases reset and XP boosted to 5000! (Test Mode)');
+        toast.success(`Purchases reset and XP updated to ${result.newXP}! (Test Mode)`);
         await refreshProfile();
       } else {
         toast.error('Failed to reset purchases');
