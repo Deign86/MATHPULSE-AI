@@ -50,6 +50,15 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+const CONTINUATION_INPUT_TOKENS = new Set([
+  'go',
+  'continue',
+  'next',
+  'more',
+  'yes',
+  'ok',
+]);
+
 const EXPECTED_END_MARKER_PATTERNS: RegExp[] = [
   /\b(?:end|finish|stop)\s+with(?:\s+the\s+(?:exact\s+)?(?:marker|text))?\s*[:\-]?\s*(["'`]?)([A-Za-z0-9_:\-]{2,96})\1/i,
   /\b(?:include|append)\s+(?:the\s+)?marker\s*[:\-]?\s*(["'`]?)([A-Za-z0-9_:\-]{2,96})\1/i,
@@ -73,6 +82,43 @@ function normalizeExpectedEndMarker(marker: string | null | undefined): string |
   if (!normalized) return null;
 
   return normalized.slice(0, 120);
+}
+
+function normalizeContinuationTokenInput(message: string): string {
+  return (message ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[\p{P}]+$/gu, '');
+}
+
+function isContinuationFollowupTokenInput(message: string): boolean {
+  const normalized = normalizeContinuationTokenInput(message);
+  if (!normalized) {
+    return false;
+  }
+  return CONTINUATION_INPUT_TOKENS.has(normalized);
+}
+
+function extractContinuationIntentFromHistory(history: Array<{ role: 'user' | 'assistant'; content: string }>): string | null {
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const entry = history[i];
+    if (entry.role !== 'user') continue;
+    const content = (entry.content ?? '').trim();
+    if (!content) continue;
+    if (isContinuationFollowupTokenInput(content)) continue;
+    return content;
+  }
+  return null;
+}
+
+function buildContinuationCarryForwardPrompt(intent: string): string {
+  return [
+    'Continue the ongoing math explanation for the same user request.',
+    'Do not refuse or reset the topic if the request is mathematical.',
+    'Original user request:',
+    intent,
+  ].join('\n');
 }
 
 function extractExpectedEndMarker(prompt: string): string | null {
@@ -826,6 +872,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
+      const continuationIntent = isContinuationFollowupTokenInput(trimmedUserText)
+        ? extractContinuationIntentFromHistory(history)
+        : null;
+      const backendPrompt = continuationIntent
+        ? buildContinuationCarryForwardPrompt(continuationIntent)
+        : trimmedUserText;
+      const fallbackPrompt = continuationIntent ?? trimmedUserText;
+
       const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText, { history });
       if (scopeBoundaryResponse) {
         const refusalMsg: Message = {
@@ -910,7 +964,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       };
 
       try {
-        const { response } = await apiService.chat(trimmedUserText, history, (chunk: string) => {
+        const { response } = await apiService.chat(backendPrompt, history, (chunk: string) => {
           streamedText += chunk;
           if (showStreamingChunks) {
             upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
@@ -970,7 +1024,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         const finalResponseIncomplete = isAnswerIncomplete(finalResponse);
         if (!finalResponse || (finalResponseIncomplete && !shouldRunAnyRepairFlow)) {
-          finalResponse = generateFallbackResponse(trimmedUserText, history);
+          finalResponse = generateFallbackResponse(fallbackPrompt, history);
         }
 
         if (streamMessageId) {
@@ -999,7 +1053,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         let aiResponseText = '';
         try {
-          const { data } = await apiService.chatSafe(trimmedUserText, history, completionOptions);
+          const { data } = await apiService.chatSafe(backendPrompt, history, completionOptions);
           aiResponseText = formatAssistantResponseForStorage(data.response).trim();
 
           if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
@@ -1053,12 +1107,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           }
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
-          aiResponseText = generateFallbackResponse(trimmedUserText, history);
+          aiResponseText = generateFallbackResponse(fallbackPrompt, history);
         }
 
         const aiResponseIncomplete = isAnswerIncomplete(aiResponseText);
         if (!aiResponseText || (aiResponseIncomplete && !shouldRunAnyRepairFlow)) {
-          aiResponseText = generateFallbackResponse(trimmedUserText, history);
+          aiResponseText = generateFallbackResponse(fallbackPrompt, history);
         }
 
         const aiMsg: Message = {

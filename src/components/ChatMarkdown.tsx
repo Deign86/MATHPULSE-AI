@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 import { normalizeChatMarkdownForRender } from '../utils/chatMessageFormatting';
 
 /**
@@ -27,7 +26,21 @@ interface ChatMarkdownProps {
   children: string;
 }
 
+let katexStylesPromise: Promise<unknown> | null = null;
+
+const ensureKatexStyles = () => {
+  if (!katexStylesPromise) {
+    katexStylesPromise = import('katex/dist/katex.min.css');
+  }
+
+  return katexStylesPromise;
+};
+
 const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
+  useEffect(() => {
+    void ensureKatexStyles();
+  }, []);
+
   if (!children || typeof children !== 'string') {
     return null;
   }

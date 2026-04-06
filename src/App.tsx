@@ -1,29 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Sidebar from './components/Sidebar';
 import HeroBanner from './components/HeroBanner';
 import LearningPath from './components/LearningPath';
 import RightSidebar from './components/RightSidebar';
-import ModulesPage from './components/ModulesPage';
-import AIChatPage from './components/AIChatPage';
-import FloatingAITutor from './components/FloatingAITutor';
 import XPNotification from './components/XPNotification';
-import RewardsModal from './components/RewardsModal';
-import TeacherDashboard from './components/TeacherDashboard';
-import AdminDashboard from './components/AdminDashboard';
-import LoginPage from './components/LoginPage';
-import ProfileModal from './components/ProfileModal';
 import NotificationCenter from './components/NotificationCenter';
-import ConfirmModal from './components/ConfirmModal';
 import SearchBar from './components/SearchBar';
-import GradesPage from './components/GradesPage';
-import SettingsModal from './components/SettingsModal';
-import LeaderboardPage from './components/LeaderboardPage';
-import DiagnosticAssessmentModal from './components/DiagnosticAssessmentModal';
 import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal';
-import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
-import AvatarShop from './components/AvatarShop';
 import AppLoadingScreen from './components/AppLoadingScreen';
 import { CompetencyRadarChart } from './components/CompetencyRadarChart';
 import { ChatProvider } from './contexts/ChatContext';
@@ -44,9 +29,30 @@ type ProfileSaveData = Partial<User> &
   Partial<Omit<TeacherProfile, keyof User | 'role'>> &
   Partial<Omit<AdminProfile, keyof User | 'role'>>;
 
+const LoginPage = lazy(() => import('./components/LoginPage'));
+const TeacherDashboard = lazy(() => import('./components/TeacherDashboard'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const ModulesPage = lazy(() => import('./components/ModulesPage'));
+const AIChatPage = lazy(() => import('./components/AIChatPage'));
+const GradesPage = lazy(() => import('./components/GradesPage'));
+const LeaderboardPage = lazy(() => import('./components/LeaderboardPage'));
+const AvatarShop = lazy(() => import('./components/AvatarShop'));
+const FloatingAITutor = lazy(() => import('./components/FloatingAITutor'));
+const RewardsModal = lazy(() => import('./components/RewardsModal'));
+const ProfileModal = lazy(() => import('./components/ProfileModal'));
+const ConfirmModal = lazy(() => import('./components/ConfirmModal'));
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const ScientificCalculator = lazy(() => import('./components/ScientificCalculator'));
+const DiagnosticAssessmentModal = lazy(() => import('./components/DiagnosticAssessmentModal'));
+
 const App = () => {
   // Get authentication state from context
   const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
+  const tabLoadingFallback = (
+    <div className="flex min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
+      Loading content...
+    </div>
+  );
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   const constraintsRef = useRef<HTMLDivElement>(null);
@@ -628,7 +634,11 @@ const App = () => {
 
   // Show login page if not logged in
   if (!isLoggedIn) {
-    return <LoginPage />;
+    return (
+      <Suspense fallback={<AppLoadingScreen message="Loading sign in..." />}>
+        <LoginPage />
+      </Suspense>
+    );
   }
 
   const isStudentProfileHydrated = userRole !== 'student' || profileReady;
@@ -641,31 +651,41 @@ const App = () => {
   if (userRole === 'teacher') {
     return (
       <>
-        <TeacherDashboard 
-          onLogout={handleLogout}
-          onOpenProfile={() => setShowProfileModal(true)}
-          onOpenSettings={() => setShowSettingsModal(true)}
-        />
-        <ProfileModal
-          isOpen={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          profileData={profileData}
-          onSave={handleSaveProfile}
-        />
-        <SettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          profileData={profileData}
-          onSave={handleSaveProfile}
-          settingsData={userSettings}
-          onSaveSettings={handleSaveSettings}
-          onApplySettingsPreview={setUserSettings}
-          onUpdatePassword={handleUpdatePassword}
-          onExportData={handleExportData}
-          onClearCache={handleClearCache}
-          onDeleteAccount={handleDeleteAccount}
-          onResetData={handleResetTestingData}
-        />
+        <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
+          <TeacherDashboard 
+            onLogout={handleLogout}
+            onOpenProfile={() => setShowProfileModal(true)}
+            onOpenSettings={() => setShowSettingsModal(true)}
+          />
+        </Suspense>
+        {showProfileModal && (
+          <Suspense fallback={null}>
+            <ProfileModal
+              isOpen={showProfileModal}
+              onClose={() => setShowProfileModal(false)}
+              profileData={profileData}
+              onSave={handleSaveProfile}
+            />
+          </Suspense>
+        )}
+        {showSettingsModal && (
+          <Suspense fallback={null}>
+            <SettingsModal
+              isOpen={showSettingsModal}
+              onClose={() => setShowSettingsModal(false)}
+              profileData={profileData}
+              onSave={handleSaveProfile}
+              settingsData={userSettings}
+              onSaveSettings={handleSaveSettings}
+              onApplySettingsPreview={setUserSettings}
+              onUpdatePassword={handleUpdatePassword}
+              onExportData={handleExportData}
+              onClearCache={handleClearCache}
+              onDeleteAccount={handleDeleteAccount}
+              onResetData={handleResetTestingData}
+            />
+          </Suspense>
+        )}
         <Toaster position="top-right" richColors closeButton />
       </>
     );
@@ -675,31 +695,41 @@ const App = () => {
   if (userRole === 'admin') {
     return (
       <>
-        <AdminDashboard 
-          onLogout={handleLogout}
-          onOpenProfile={() => setShowProfileModal(true)}
-          onOpenSettings={() => setShowSettingsModal(true)}
-        />
-        <ProfileModal
-          isOpen={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          profileData={profileData}
-          onSave={handleSaveProfile}
-        />
-        <SettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          profileData={profileData}
-          onSave={handleSaveProfile}
-          settingsData={userSettings}
-          onSaveSettings={handleSaveSettings}
-          onApplySettingsPreview={setUserSettings}
-          onUpdatePassword={handleUpdatePassword}
-          onExportData={handleExportData}
-          onClearCache={handleClearCache}
-          onDeleteAccount={handleDeleteAccount}
-          onResetData={handleResetTestingData}
-        />
+        <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
+          <AdminDashboard 
+            onLogout={handleLogout}
+            onOpenProfile={() => setShowProfileModal(true)}
+            onOpenSettings={() => setShowSettingsModal(true)}
+          />
+        </Suspense>
+        {showProfileModal && (
+          <Suspense fallback={null}>
+            <ProfileModal
+              isOpen={showProfileModal}
+              onClose={() => setShowProfileModal(false)}
+              profileData={profileData}
+              onSave={handleSaveProfile}
+            />
+          </Suspense>
+        )}
+        {showSettingsModal && (
+          <Suspense fallback={null}>
+            <SettingsModal
+              isOpen={showSettingsModal}
+              onClose={() => setShowSettingsModal(false)}
+              profileData={profileData}
+              onSave={handleSaveProfile}
+              settingsData={userSettings}
+              onSaveSettings={handleSaveSettings}
+              onApplySettingsPreview={setUserSettings}
+              onUpdatePassword={handleUpdatePassword}
+              onExportData={handleExportData}
+              onClearCache={handleClearCache}
+              onDeleteAccount={handleDeleteAccount}
+              onResetData={handleResetTestingData}
+            />
+          </Suspense>
+        )}
         <Toaster position="top-right" richColors closeButton />
       </>
     );
@@ -902,20 +932,30 @@ const App = () => {
                     </div>
                   </div>
                 ) : activeTab === 'Modules' ? (
-                  <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} initialModuleId={targetModuleId} />
+                  <Suspense fallback={tabLoadingFallback}>
+                    <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} initialModuleId={targetModuleId} />
+                  </Suspense>
                 ) : activeTab === 'Leaderboard' ? (
-                  <LeaderboardPage currentUserPhoto={profileData.photo} />
+                  <Suspense fallback={tabLoadingFallback}>
+                    <LeaderboardPage currentUserPhoto={profileData.photo} />
+                  </Suspense>
                 ) : activeTab === 'AI Chat' ? (
-                  <AIChatPage />
+                  <Suspense fallback={tabLoadingFallback}>
+                    <AIChatPage />
+                  </Suspense>
                 ) : activeTab === 'Grades' ? (
-                  <GradesPage />
+                  <Suspense fallback={tabLoadingFallback}>
+                    <GradesPage />
+                  </Suspense>
                 ) : activeTab === 'Avatar Studio' ? (
-                  <AvatarShop
-                    onSaveProfile={(layers) => {
-                      setProfileOverrides((prev) => ({ ...prev, avatarLayers: layers }));
-                    }}
-                    onNavigateToModules={() => setActiveTab('Modules')}
-                  />
+                  <Suspense fallback={tabLoadingFallback}>
+                    <AvatarShop
+                      onSaveProfile={(layers) => {
+                        setProfileOverrides((prev) => ({ ...prev, avatarLayers: layers }));
+                      }}
+                      onNavigateToModules={() => setActiveTab('Modules')}
+                    />
+                  </Suspense>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
@@ -927,9 +967,11 @@ const App = () => {
 
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page */}
           {activeTab !== 'AI Chat' && (
-            <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
-              <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
-            </div>
+            <Suspense fallback={null}>
+              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
+                <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
+              </div>
+            </Suspense>
           )}
 
 
@@ -943,69 +985,93 @@ const App = () => {
           />
 
           {/* Rewards Modal */}
-          <RewardsModal
-            isOpen={showRewardsModal}
-            onClose={() => setShowRewardsModal(false)}
-            userLevel={userLevel}
-            currentXP={currentXP}
-            xpToNextLevel={xpToNextLevel}
-            totalXP={totalXP}
-            streak={streak}
-          />
+          {showRewardsModal && (
+            <Suspense fallback={null}>
+              <RewardsModal
+                isOpen={showRewardsModal}
+                onClose={() => setShowRewardsModal(false)}
+                userLevel={userLevel}
+                currentXP={currentXP}
+                xpToNextLevel={xpToNextLevel}
+                totalXP={totalXP}
+                streak={streak}
+              />
+            </Suspense>
+          )}
 
           {/* Profile Modal */}
-          <ProfileModal
-            isOpen={showProfileModal}
-            onClose={() => setShowProfileModal(false)}
-            profileData={profileData}
-            onSave={handleSaveProfile}
-          />
+          {showProfileModal && (
+            <Suspense fallback={null}>
+              <ProfileModal
+                isOpen={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+                profileData={profileData}
+                onSave={handleSaveProfile}
+              />
+            </Suspense>
+          )}
 
           {/* Logout Confirmation Modal */}
-          <ConfirmModal
-            isOpen={showLogoutConfirm}
-            onClose={() => setShowLogoutConfirm(false)}
-            onConfirm={handleLogout}
-            title="Confirm Logout"
-            message="Are you sure you want to log out? Your progress is saved automatically."
-            confirmText="Logout"
-            cancelText="Stay"
-            type="warning"
-            icon="logout"
-          />
+          {showLogoutConfirm && (
+            <Suspense fallback={null}>
+              <ConfirmModal
+                isOpen={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={handleLogout}
+                title="Confirm Logout"
+                message="Are you sure you want to log out? Your progress is saved automatically."
+                confirmText="Logout"
+                cancelText="Stay"
+                type="warning"
+                icon="logout"
+              />
+            </Suspense>
+          )}
 
           {/* Settings Modal */}
-          <SettingsModal
-            isOpen={showSettingsModal}
-            onClose={() => setShowSettingsModal(false)}
-            profileData={profileData}
-            onSave={handleSaveProfile}
-            settingsData={userSettings}
-            onSaveSettings={handleSaveSettings}
-            onApplySettingsPreview={setUserSettings}
-            onUpdatePassword={handleUpdatePassword}
-            onExportData={handleExportData}
-            onClearCache={handleClearCache}
-            onDeleteAccount={handleDeleteAccount}
-            onResetData={handleResetTestingData}
-          />
+          {showSettingsModal && (
+            <Suspense fallback={null}>
+              <SettingsModal
+                isOpen={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+                profileData={profileData}
+                onSave={handleSaveProfile}
+                settingsData={userSettings}
+                onSaveSettings={handleSaveSettings}
+                onApplySettingsPreview={setUserSettings}
+                onUpdatePassword={handleUpdatePassword}
+                onExportData={handleExportData}
+                onClearCache={handleClearCache}
+                onDeleteAccount={handleDeleteAccount}
+                onResetData={handleResetTestingData}
+              />
+            </Suspense>
+          )}
 
           {/* Scientific Calculator */}
-          <ScientificCalculator
-            isOpen={showCalculator}
-            onClose={() => setShowCalculator(false)}
-          />
+          {showCalculator && (
+            <Suspense fallback={null}>
+              <ScientificCalculator
+                isOpen={showCalculator}
+                onClose={() => setShowCalculator(false)}
+              />
+            </Suspense>
+          )}
 
           {/* Diagnostic Assessment Modal */}
-          <DiagnosticAssessmentModal
-            isOpen={showDiagnosticModal}
-            onClose={() => setShowDiagnosticModal(false)}
-            onComplete={handleDiagnosticComplete}
-            lrn={(studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid}
-            gradeLevel={(studentProfile as StudentProfile)?.grade}
-            workflowMode={iarWorkflowMode}
-            assessmentType={diagnosticAssessmentType}
-          />
+          {showDiagnosticModal && (
+            <Suspense fallback={null}>
+              <DiagnosticAssessmentModal
+                isOpen={showDiagnosticModal}
+                onClose={() => setShowDiagnosticModal(false)}
+                onComplete={handleDiagnosticComplete}
+                lrn={(studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid}
+                gradeLevel={(studentProfile as StudentProfile)?.grade}
+                workflowMode={iarWorkflowMode}
+                assessmentType={diagnosticAssessmentType}
+              />
+            </Suspense>
+          )}
         </div>
       </div>
     </ChatProvider>

@@ -75,6 +75,7 @@ const CONTINUATION_FOLLOWUP_TOKENS = new Set([
   'yes',
   'ok',
   'next',
+  'more',
 ]);
 
 const CONTINUATION_INVITE_PATTERNS = [
@@ -87,6 +88,9 @@ const CONTINUATION_INVITE_PATTERNS = [
   /\bnext\s+step(?:s)?\s*\?\s*$/i,
   /\bkeep\s+going\s*\?\s*$/i,
 ] as const;
+
+export const CONTINUATION_CONTEXT_CLARIFY_RESPONSE =
+  'I can continue once I know which math problem you mean. Please share the problem again or tell me which step to continue.';
 
 export interface ScopeBoundaryHistoryEntry {
   role?: string;
@@ -135,6 +139,27 @@ function isContinuationFollowupToken(message: string): boolean {
   return CONTINUATION_FOLLOWUP_TOKENS.has(normalized);
 }
 
+function classifyScopeBoundaryWithoutContinuation(message: string): string | null {
+  const normalized = (message ?? '').trim();
+  if (!normalized) {
+    return pickRandomResponse(NON_MATH_REDIRECT_RESPONSES);
+  }
+
+  if (isMathRelatedQuery(normalized)) {
+    return null;
+  }
+
+  if (GREETING_PATTERN.test(normalized)) {
+    return pickRandomResponse(GREETING_RESPONSES);
+  }
+
+  if (THANKS_PATTERN.test(normalized)) {
+    return pickRandomResponse(THANKS_RESPONSES);
+  }
+
+  return pickRandomResponse(NON_MATH_REDIRECT_RESPONSES);
+}
+
 function getLatestAssistantContextMessage(context?: ScopeBoundaryContext): string | null {
   const directAssistantMessage = (context?.latestAssistantMessage ?? '').trim();
   if (directAssistantMessage) {
@@ -166,27 +191,61 @@ function assistantInvitedContinuation(context?: ScopeBoundaryContext): boolean {
   return CONTINUATION_INVITE_PATTERNS.some((pattern) => pattern.test(latestAssistantMessage));
 }
 
+function extractLatestUserIntentFromContext(context?: ScopeBoundaryContext): string | null {
+  const history = context?.history ?? [];
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const entry = history[i];
+    const role = (entry?.role ?? '').toLowerCase();
+    const content = (entry?.content ?? '').trim();
+    if (!content) {
+      continue;
+    }
+    if (role !== 'user') {
+      continue;
+    }
+    if (isContinuationFollowupToken(content)) {
+      continue;
+    }
+    return content;
+  }
+
+  return null;
+}
+
+function isGreetingOrThanksBoundaryResponse(response: string): boolean {
+  return (
+    (GREETING_RESPONSES as readonly string[]).includes(response)
+    || (THANKS_RESPONSES as readonly string[]).includes(response)
+  );
+}
+
 export function getScopeBoundaryResponse(message: string, context?: ScopeBoundaryContext): string | null {
-  const normalized = (message ?? '').trim();
-  if (!normalized) {
-    return pickRandomResponse(NON_MATH_REDIRECT_RESPONSES);
-  }
-
-  if (isMathRelatedQuery(normalized)) {
+  const boundaryResponse = classifyScopeBoundaryWithoutContinuation(message);
+  if (boundaryResponse === null) {
     return null;
   }
 
-  if (isContinuationFollowupToken(normalized) && assistantInvitedContinuation(context)) {
+  if (!isContinuationFollowupToken(message)) {
+    return boundaryResponse;
+  }
+
+  if (assistantInvitedContinuation(context)) {
     return null;
   }
 
-  if (GREETING_PATTERN.test(normalized)) {
-    return pickRandomResponse(GREETING_RESPONSES);
+  const reconstructedIntent = extractLatestUserIntentFromContext(context);
+  if (!reconstructedIntent) {
+    return CONTINUATION_CONTEXT_CLARIFY_RESPONSE;
   }
 
-  if (THANKS_PATTERN.test(normalized)) {
-    return pickRandomResponse(THANKS_RESPONSES);
+  const reconstructedBoundaryResponse = classifyScopeBoundaryWithoutContinuation(reconstructedIntent);
+  if (reconstructedBoundaryResponse === null) {
+    return null;
   }
 
-  return pickRandomResponse(NON_MATH_REDIRECT_RESPONSES);
+  if (isGreetingOrThanksBoundaryResponse(reconstructedBoundaryResponse)) {
+    return CONTINUATION_CONTEXT_CLARIFY_RESPONSE;
+  }
+
+  return reconstructedBoundaryResponse;
 }
