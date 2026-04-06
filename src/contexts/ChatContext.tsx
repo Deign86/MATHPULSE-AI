@@ -481,8 +481,11 @@ function shouldAttemptCompletionRepair(prompt: string): boolean {
 }
 
 /** Generate a helpful math tutor response when backend is unavailable */
-function generateFallbackResponse(userText: string): string {
-  const scopeBoundaryResponse = getScopeBoundaryResponse(userText);
+function generateFallbackResponse(
+  userText: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+): string {
+  const scopeBoundaryResponse = getScopeBoundaryResponse(userText, { history });
   if (scopeBoundaryResponse) {
     return scopeBoundaryResponse;
   }
@@ -823,7 +826,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content: m.text,
       }));
 
-      const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText);
+      const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText, { history });
       if (scopeBoundaryResponse) {
         const refusalMsg: Message = {
           id: (Date.now() + 1).toString(),
@@ -967,7 +970,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         const finalResponseIncomplete = isAnswerIncomplete(finalResponse);
         if (!finalResponse || (finalResponseIncomplete && !shouldRunAnyRepairFlow)) {
-          finalResponse = generateFallbackResponse(trimmedUserText);
+          finalResponse = generateFallbackResponse(trimmedUserText, history);
         }
 
         if (streamMessageId) {
@@ -1050,12 +1053,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           }
         } catch (chatError) {
           console.warn('Chat request failed, using local fallback response:', chatError);
-          aiResponseText = generateFallbackResponse(trimmedUserText);
+          aiResponseText = generateFallbackResponse(trimmedUserText, history);
         }
 
         const aiResponseIncomplete = isAnswerIncomplete(aiResponseText);
         if (!aiResponseText || (aiResponseIncomplete && !shouldRunAnyRepairFlow)) {
-          aiResponseText = generateFallbackResponse(trimmedUserText);
+          aiResponseText = generateFallbackResponse(trimmedUserText, history);
         }
 
         const aiMsg: Message = {

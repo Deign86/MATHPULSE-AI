@@ -22,7 +22,7 @@ import logging
 import traceback
 import urllib.parse
 import random
-from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, cast
+from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
 from threading import Lock
 
@@ -1794,6 +1794,25 @@ _MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(?:x|y|z)\s*[=+\-*/^]\s*[-+]?\d"),
 )
 
+_CONTINUATION_FOLLOWUP_TOKENS: Set[str] = {
+    "go",
+    "continue",
+    "yes",
+    "ok",
+    "next",
+}
+
+_CONTINUATION_INVITE_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bshall\s+we\s+continue\b", re.IGNORECASE),
+    re.compile(r"\b(?:would|do)\s+you\s+like\s+to\s+continue\b", re.IGNORECASE),
+    re.compile(r"\b(?:want|need)\s+me\s+to\s+continue\b", re.IGNORECASE),
+    re.compile(r"\bshould\s+(?:i|we)\s+continue\b", re.IGNORECASE),
+    re.compile(r"\bcontinue\s*\?\s*$", re.IGNORECASE),
+    re.compile(r"\b(?:ready\s+for|go\s+to)\s+the\s+next\s+step\b", re.IGNORECASE),
+    re.compile(r"\bnext\s+step(?:s)?\s*\?\s*$", re.IGNORECASE),
+    re.compile(r"\bkeep\s+going\s*\?\s*$", re.IGNORECASE),
+)
+
 
 def is_math_related_query(message: str) -> bool:
     normalized = (message or "").strip().lower()
@@ -1806,12 +1825,58 @@ def is_math_related_query(message: str) -> bool:
     return any(pattern.search(normalized) for pattern in _MATH_SCOPE_PATTERNS)
 
 
-def get_scope_boundary_response(message: str) -> Optional[str]:
+def _normalize_continuation_followup_token(message: str) -> str:
+    normalized = re.sub(r"\s+", " ", (message or "").strip().lower())
+    return re.sub(r"[.!?]+$", "", normalized)
+
+
+def _extract_latest_assistant_message(history: Optional[Sequence[Any]]) -> Optional[str]:
+    if not history:
+        return None
+
+    for entry in reversed(history):
+        role: Optional[Any] = None
+        content: Optional[Any] = None
+
+        if isinstance(entry, dict):
+            role = entry.get("role")
+            content = entry.get("content")
+        else:
+            role = getattr(entry, "role", None)
+            content = getattr(entry, "content", None)
+
+        role_text = str(role or "").strip().lower()
+        content_text = str(content or "").strip()
+        if not content_text:
+            continue
+
+        if role_text in {"assistant", "ai"}:
+            return content_text
+
+    return None
+
+
+def _is_contextual_continuation_followup(message: str, history: Optional[Sequence[Any]]) -> bool:
+    followup_token = _normalize_continuation_followup_token(message)
+    if followup_token not in _CONTINUATION_FOLLOWUP_TOKENS:
+        return False
+
+    latest_assistant_message = _extract_latest_assistant_message(history)
+    if not latest_assistant_message:
+        return False
+
+    return any(pattern.search(latest_assistant_message) for pattern in _CONTINUATION_INVITE_PATTERNS)
+
+
+def get_scope_boundary_response(message: str, history: Optional[Sequence[Any]] = None) -> Optional[str]:
     normalized = (message or "").strip().lower()
     if not normalized:
         return random.choice(_NON_MATH_REDIRECT_RESPONSES)
 
     if is_math_related_query(normalized):
+        return None
+
+    if _is_contextual_continuation_followup(normalized, history):
         return None
 
     if _GREETING_PATTERN.search(normalized):
@@ -2249,7 +2314,7 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     try:
-        boundary_response = get_scope_boundary_response(request.message)
+        boundary_response = get_scope_boundary_response(request.message, request.history)
         if boundary_response is not None:
             return ChatResponse(response=boundary_response)
 
@@ -2302,7 +2367,7 @@ async def chat_tutor(request: ChatRequest):
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
-        boundary_response = get_scope_boundary_response(request.message)
+        boundary_response = get_scope_boundary_response(request.message, request.history)
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
         for msg in request.history[-10:]:
             messages.append({"role": msg.role, "content": msg.content})
