@@ -1,0 +1,156 @@
+name: Cleanup Merged PR Branches
+
+on:
+  pull_request:
+    types:
+      - closed
+  schedule:
+    - cron: '27 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged PR branches (except New UI V2)
+        uses: actions/github-script@v7
+        env:
+          MAX_CLOSED_PRS_TO_SCAN: '200'
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repoFullName = `${owner}/${repo}`;
+
+            const protectedBranches = new Set([
+              'main',
+              'master',
+              'develop',
+              'development',
+              'staging',
+              'production'
+            ]);
+            const defaultBranch = String(context.payload.repository?.default_branch || 'main').toLowerCase();
+            protectedBranches.add(defaultBranch);
+
+            const keepBranchMatchers = [
+              /new[-_ ]?ui[-_ ]?v2/i
+            ];
+
+            const normalize = (value) => String(value || '').trim();
+            const isProtected = (branch) => protectedBranches.has(normalize(branch).toLowerCase());
+            const isKeptByRule = (branch) => keepBranchMatchers.some((matcher) => matcher.test(normalize(branch)));
+
+            const candidates = [];
+
+            if (context.eventName === 'pull_request') {
+              const pr = context.payload.pull_request;
+              candidates.push({
+                prNumber: pr?.number || null,
+                headRef: pr?.head?.ref || '',
+                headRepoFullName: pr?.head?.repo?.full_name || ''
+              });
+            } else {
+              const maxClosedPrs = Number(process.env.MAX_CLOSED_PRS_TO_SCAN || 200);
+              const pages = Math.max(1, Math.ceil(maxClosedPrs / 100));
+
+              for (let page = 1; page <= pages; page += 1) {
+                const response = await github.rest.pulls.list({
+                  owner,
+                  repo,
+                  state: 'closed',
+                  sort: 'updated',
+                  direction: 'desc',
+                  per_page: 100,
+                  page
+                });
+
+                if (!response.data.length) {
+                  break;
+                }
+
+                for (const pr of response.data) {
+                  if (!pr.merged_at) {
+                    continue;
+                  }
+
+                  candidates.push({
+                    prNumber: pr.number,
+                    headRef: pr.head?.ref || '',
+                    headRepoFullName: pr.head?.repo?.full_name || ''
+                  });
+                }
+
+                if (response.data.length < 100) {
+                  break;
+                }
+              }
+            }
+
+            const uniqueCandidates = new Map();
+            for (const candidate of candidates) {
+              const headRef = normalize(candidate.headRef);
+              if (!headRef || uniqueCandidates.has(headRef)) {
+                continue;
+              }
+
+              const fromSameRepo = normalize(candidate.headRepoFullName).toLowerCase() === repoFullName.toLowerCase();
+              if (!fromSameRepo) {
+                core.info(`Skip ${headRef}: branch belongs to fork or external repository.`);
+                continue;
+              }
+
+              if (isProtected(headRef)) {
+                core.info(`Skip ${headRef}: protected branch.`);
+                continue;
+              }
+
+              if (isKeptByRule(headRef)) {
+                core.info(`Keep ${headRef}: matches New UI V2 keep rule.`);
+                continue;
+              }
+
+              uniqueCandidates.set(headRef, candidate.prNumber);
+            }
+
+            const deleted = [];
+            const skipped = [];
+            const failed = [];
+
+            for (const [headRef, prNumber] of uniqueCandidates.entries()) {
+              try {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${headRef}`
+                });
+                deleted.push({ headRef, prNumber });
+                core.info(`Deleted branch ${headRef} (PR #${prNumber || 'unknown'}).`);
+              } catch (error) {
+                if (error.status === 404 || error.status === 422) {
+                  skipped.push({ headRef, prNumber, reason: error.message });
+                  core.info(`Skip ${headRef}: ${error.message}`);
+                } else {
+                  failed.push({ headRef, prNumber, reason: error.message });
+                  core.warning(`Failed deleting ${headRef}: ${error.message}`);
+                }
+              }
+            }
+
+            core.summary
+              .addHeading('Merged PR Branch Cleanup')
+              .addRaw(`Scanned candidates: ${candidates.length}\n`)
+              .addRaw(`Delete attempts: ${uniqueCandidates.size}\n`)
+              .addRaw(`Deleted: ${deleted.length}\n`)
+              .addRaw(`Skipped: ${skipped.length}\n`)
+              .addRaw(`Failed: ${failed.length}\n`)
+              .write();
+
+            if (failed.length > 0) {
+              core.setFailed(`Failed to delete ${failed.length} branch(es).`);
+            }
