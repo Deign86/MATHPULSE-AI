@@ -1,7 +1,7 @@
 """
 MathPulse AI - FastAPI Backend
 AI-powered math tutoring backend using Hugging Face models.
-- Qwen/Qwen2.5-Math-7B-Instruct for chat, learning paths, insights, and quiz generation
+- meta-llama/Llama-3.1-8B-Instruct for chat, learning paths, insights, and quiz generation
     (via Hugging Face Inference API)
 - facebook/bart-large-mnli for student risk classification
 - Multi-method verification system for math accuracy
@@ -166,14 +166,14 @@ HF_TOKEN = os.environ.get(
 )
 
 # Grade 11-12 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen3-32B")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
 
 # Dedicated quiz model override. When empty, routing.task_model_map decides quiz model.
 HF_QUIZ_MODEL_ID = (os.getenv("HF_QUIZ_MODEL_ID", "").strip() or None)
-HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "meta-llama/Llama-3.1-8B-Instruct")
+HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "Qwen/Qwen3-32B")
 
 RISK_MODEL = "facebook/bart-large-mnli"
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -205,7 +205,34 @@ FIREBASE_AUTH_PROJECT_ALLOWLIST: Set[str] = {
     for value in os.getenv("FIREBASE_AUTH_PROJECT_ALLOWLIST", "").split(",")
     if value.strip()
 }
-CHAT_MAX_NEW_TOKENS = max(256, int(os.getenv("CHAT_MAX_NEW_TOKENS", "576")))
+CHAT_MAX_NEW_TOKENS = max(256, int(os.getenv("CHAT_MAX_NEW_TOKENS", "8192")))
+CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC = max(5, int(os.getenv("CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC", "90")))
+CHAT_STREAM_TOTAL_TIMEOUT_SEC = max(
+    CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC,
+    int(os.getenv("CHAT_STREAM_TOTAL_TIMEOUT_SEC", "900")),
+)
+CHAT_STREAM_CONTINUATION_ENABLED = os.getenv(
+    "CHAT_STREAM_CONTINUATION_ENABLED",
+    "true",
+).strip().lower() in {"1", "true", "yes", "on"}
+CHAT_STREAM_CONTINUATION_MAX_ROUNDS = max(
+    0,
+    int(os.getenv("CHAT_STREAM_CONTINUATION_MAX_ROUNDS", "2")),
+)
+CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS = max(
+    1,
+    int(os.getenv("CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS", "24")),
+)
+CHAT_STREAM_CONTINUATION_TAIL_CHARS = max(
+    80,
+    int(os.getenv("CHAT_STREAM_CONTINUATION_TAIL_CHARS", "900")),
+)
+CHAT_STREAM_COMPLETION_MODE_DEFAULT = os.getenv(
+    "CHAT_STREAM_COMPLETION_MODE_DEFAULT",
+    "auto",
+).strip().lower()
+if CHAT_STREAM_COMPLETION_MODE_DEFAULT not in {"auto", "marker", "none"}:
+    CHAT_STREAM_COMPLETION_MODE_DEFAULT = "auto"
 
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
@@ -317,6 +344,19 @@ async def startup_event():
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
+    logger.info(f"   - INFERENCE_CHAT_MODEL_ID: {os.getenv('INFERENCE_CHAT_MODEL_ID', HF_MATH_MODEL_ID)}")
+    logger.info(
+        f"   - INFERENCE_CHAT_STRICT_MODEL_ONLY: "
+        f"{os.getenv('INFERENCE_CHAT_STRICT_MODEL_ONLY', 'true')}"
+    )
+    logger.info(
+        f"   - INFERENCE_CHAT_HARD_TRIGGER_ENABLED: "
+        f"{os.getenv('INFERENCE_CHAT_HARD_TRIGGER_ENABLED', 'false')}"
+    )
+    logger.info(
+        f"   - INFERENCE_ENFORCE_QWEN_ONLY: "
+        f"{os.getenv('INFERENCE_ENFORCE_QWEN_ONLY', 'true')}"
+    )
     logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
 
 
@@ -1683,6 +1723,105 @@ def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
 
 # ─── Math Tutor Prompt & Wrapper ──────────────────────────────
 
+_GREETING_PATTERN = re.compile(r"^\s*(?:hi|hello|hey|good\s+(?:morning|afternoon|evening))\b")
+_THANKS_PATTERN = re.compile(r"\b(?:thanks|thank\s+you|thank\s+u|ty)\b")
+
+_GREETING_RESPONSES: Tuple[str, ...] = (
+    "Hi! I am MathPulse, your math tutor. I can help with algebra, geometry, calculus, and more. What math question would you like to try?",
+    "Hello! Great to see you. I am here for math topics and step-by-step solutions whenever you are ready.",
+)
+
+_THANKS_RESPONSES: Tuple[str, ...] = (
+    "You are very welcome. If you want, send another math question and we can work through it together.",
+    "Glad I could help. I am here anytime you want to practice more math.",
+)
+
+_NON_MATH_REDIRECT_RESPONSES: Tuple[str, ...] = (
+    "That topic is outside my math scope, but I would be happy to help with mathematics like algebra, calculus, geometry, trigonometry, or statistics.",
+    "I focus on math-only support, so I may not be the best for that request. Share a math question and I will guide you step by step.",
+    "I am built for math tutoring, so I can best help with mathematical problems and explanations. If you want, ask me any math question next.",
+)
+
+_MATH_SCOPE_KEYWORDS: Set[str] = {
+    "math",
+    "mathematics",
+    "algebra",
+    "geometry",
+    "trigonometry",
+    "calculus",
+    "statistics",
+    "probability",
+    "arithmetic",
+    "equation",
+    "inequality",
+    "function",
+    "graph",
+    "slope",
+    "derivative",
+    "integral",
+    "limit",
+    "matrix",
+    "determinant",
+    "fraction",
+    "percentage",
+    "ratio",
+    "polynomial",
+    "quadratic",
+    "logarithm",
+    "exponent",
+    "angle",
+    "triangle",
+    "circle",
+    "perimeter",
+    "area",
+    "volume",
+    "mean",
+    "median",
+    "mode",
+    "standard deviation",
+    "solve",
+    "simplify",
+    "factor",
+    "evaluate",
+    "compute",
+    "calculate",
+}
+
+_MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(r"\d+\s*[%+\-*/^=]\s*[-+]?\d*"),
+    re.compile(r"\b(?:sin|cos|tan|cot|sec|csc|log|ln|sqrt)\s*\(?"),
+    re.compile(r"\b(?:differentiate|integrate|derive|proof|prove)\b"),
+    re.compile(r"\b(?:x|y|z)\s*[=+\-*/^]\s*[-+]?\d"),
+)
+
+
+def is_math_related_query(message: str) -> bool:
+    normalized = (message or "").strip().lower()
+    if not normalized:
+        return False
+
+    if any(keyword in normalized for keyword in _MATH_SCOPE_KEYWORDS):
+        return True
+
+    return any(pattern.search(normalized) for pattern in _MATH_SCOPE_PATTERNS)
+
+
+def get_scope_boundary_response(message: str) -> Optional[str]:
+    normalized = (message or "").strip().lower()
+    if not normalized:
+        return random.choice(_NON_MATH_REDIRECT_RESPONSES)
+
+    if is_math_related_query(normalized):
+        return None
+
+    if _GREETING_PATTERN.search(normalized):
+        return random.choice(_GREETING_RESPONSES)
+
+    if _THANKS_PATTERN.search(normalized):
+        return random.choice(_THANKS_RESPONSES)
+
+    return random.choice(_NON_MATH_REDIRECT_RESPONSES)
+
 
 def build_math_tutor_prompt(question: str) -> str:
     """Build a structured math-tutor prompt for the LLM."""
@@ -1700,7 +1839,8 @@ Your job is to:
 9) If the computation is long, summarize intermediate results so the student does not get lost.
 10) If the answer depends on approximations, specify whether the result is exact or rounded (and to how many decimal places).
 Speak in clear, concise English. Use short paragraphs and LaTeX-style math when helpful (e.g., x^2 + 3x + 2 = 0).
-If the user question is not about math, politely say that you can only help with math-related questions.
+If the user question is not about math, politely and briefly redirect them to ask a math question.
+If the user sends a greeting or thanks, reply warmly, then invite a math question.
 
 USER:
 Student question:
@@ -1728,6 +1868,28 @@ class ChatRequest(BaseModel):
     history: List[ChatMessage] = Field(default_factory=list)
     userId: Optional[str] = None
     verify: bool = Field(default=False, description="Enable self-consistency verification for math answers")
+    expectedEndMarker: Optional[str] = Field(
+        default=None,
+        description="Optional marker that should appear in the completed answer (for continuation checks).",
+    )
+    completionMode: str = Field(
+        default="auto",
+        description="Completion check mode: auto, marker, or none.",
+    )
+    continuationMaxRounds: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=8,
+        description="Optional override for max backend continuation rounds.",
+    )
+
+    @field_validator("completionMode")
+    @classmethod
+    def validate_completion_mode(cls, value: str) -> str:
+        normalized = (value or "").strip().lower()
+        if normalized in {"auto", "marker", "none"}:
+            return normalized
+        return "auto"
 
 
 class ChatResponse(BaseModel):
@@ -1822,7 +1984,19 @@ class VerifySolutionResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "models": {"chat": CHAT_MODEL, "risk": RISK_MODEL}}
+    chat_model = CHAT_MODEL
+    try:
+        routing_client = get_inference_client()
+        chat_model, _ = routing_client._resolve_primary_model(
+            InferenceRequest(
+                messages=[{"role": "user", "content": "health_check"}],
+                task_type="chat",
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "healthy", "models": {"chat": chat_model, "risk": RISK_MODEL}}
 
 
 @app.get("/")
@@ -1861,14 +2035,224 @@ an expert AI math tutor for Grade 11-12 Filipino students.
 - For functions/calculus: Always verify domain and range assumptions
 - Be encouraging but honest. If a problem is ambiguous, ask for clarification.
 - Respond in clear English suitable for Grade 11-12 students
-- If asked about non-math topics, politely redirect to mathematics
+- If asked about any non-math topic, respond in a friendly tone and redirect to math support only.
+- If the user sends greetings or thanks, respond politely and invite a math-related question.
+- Never use external tools or functions — solve purely through mathematical reasoning
 - Never use external tools or functions — solve purely through mathematical reasoning"""
+
+
+_STREAM_COMPLETION_MODES: Set[str] = {"auto", "marker", "none"}
+_EXPECTED_END_MARKER_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\b(?:end|finish|stop)\s+with(?:\s+the\s+(?:exact\s+)?(?:marker|text))?\s*[:\-]?\s*([\"'`]?)([A-Za-z0-9_:\-]{2,96})\1",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:include|append)\s+(?:the\s+)?marker\s*[:\-]?\s*([\"'`]?)([A-Za-z0-9_:\-]{2,96})\1",
+        re.IGNORECASE,
+    ),
+)
+_EXPECTED_RANGE_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bfor\s+([a-zA-Z])\s*=\s*(-?\d+)\s*(?:\.\.|to)\s*(-?\d+)\b", re.IGNORECASE),
+    re.compile(r"\b([a-zA-Z])\s*=\s*(-?\d+)\s*\.\.\s*(-?\d+)\b", re.IGNORECASE),
+)
+
+
+def _normalize_expected_end_marker(marker: Optional[str]) -> Optional[str]:
+    if marker is None:
+        return None
+
+    normalized = str(marker).strip()
+    if not normalized:
+        return None
+
+    if len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {'"', "'", "`"}:
+        normalized = normalized[1:-1].strip()
+
+    normalized = normalized.rstrip(".,; ")
+    if not normalized:
+        return None
+
+    return normalized[:120]
+
+
+def _extract_expected_end_marker_from_prompt(prompt: str) -> Optional[str]:
+    source = (prompt or "").strip()
+    if not source:
+        return None
+
+    for pattern in _EXPECTED_END_MARKER_PATTERNS:
+        match = pattern.search(source)
+        if not match:
+            continue
+        marker = _normalize_expected_end_marker(match.group(2))
+        if marker:
+            return marker
+
+    return None
+
+
+def _contains_expected_end_marker(answer: str, marker: Optional[str]) -> bool:
+    marker_value = _normalize_expected_end_marker(marker)
+    if not marker_value:
+        return False
+    return marker_value.lower() in (answer or "").lower()
+
+
+def _extract_expected_prompt_range(prompt: str) -> Optional[Tuple[str, int, int]]:
+    source = (prompt or "").strip()
+    if not source:
+        return None
+
+    for pattern in _EXPECTED_RANGE_PATTERNS:
+        match = pattern.search(source)
+        if not match:
+            continue
+
+        var_name = match.group(1).lower()
+        start_value = int(match.group(2))
+        end_value = int(match.group(3))
+        if abs(end_value - start_value) > 4000:
+            return None
+        return var_name, start_value, end_value
+
+    return None
+
+
+def _response_covers_expected_range(answer: str, range_spec: Optional[Tuple[str, int, int]]) -> bool:
+    if range_spec is None:
+        return True
+
+    var_name, start_value, end_value = range_spec
+    sequence_pattern = re.compile(rf"\b{re.escape(var_name)}\s*=\s*(-?\d+)\b", re.IGNORECASE)
+    matches = [int(match) for match in sequence_pattern.findall(answer or "")]
+    if not matches:
+        return False
+
+    terminal_value = matches[-1]
+    if end_value >= start_value:
+        return terminal_value >= end_value
+    return terminal_value <= end_value
+
+
+def _response_looks_truncated(answer: str) -> bool:
+    trimmed = (answer or "").strip()
+    if not trimmed:
+        return True
+
+    trailing_signals = [
+        r"```[^`]*$",
+        r"\$\$[^$]*$",
+        r"\$[^$\n]*$",
+        r"\\\[[^\]]*$",
+        r"\\\([^\)]*$",
+        r"\\boxed\{[^}]*$",
+        r"(?:Step\s*\d+[:.]?)\s*$",
+        r"(?:Final\s*Answer[:.]?)\s*$",
+    ]
+    if any(re.search(pattern, trimmed, re.IGNORECASE) for pattern in trailing_signals):
+        return True
+
+    if len(trimmed) >= 96 and re.search(
+        r"\b(?:and|or|but|because|since|so|then|which|that|where|when|with|for|to|from|of|in|on|at|by)\s*$",
+        trimmed,
+        re.IGNORECASE,
+    ):
+        return True
+
+    return False
+
+
+def _normalize_stream_completion_mode(mode: Optional[str]) -> str:
+    candidate = (mode or "").strip().lower()
+    if candidate in _STREAM_COMPLETION_MODES:
+        return candidate
+    if CHAT_STREAM_COMPLETION_MODE_DEFAULT in _STREAM_COMPLETION_MODES:
+        return CHAT_STREAM_COMPLETION_MODE_DEFAULT
+    return "auto"
+
+
+def _resolve_stream_continuation_rounds(request: ChatRequest, completion_mode: str) -> int:
+    if not CHAT_STREAM_CONTINUATION_ENABLED:
+        return 0
+    if completion_mode == "none":
+        return 0
+    if request.continuationMaxRounds is None:
+        return CHAT_STREAM_CONTINUATION_MAX_ROUNDS
+    return max(0, min(int(request.continuationMaxRounds), 8))
+
+
+def _should_continue_stream_response(
+    *,
+    prompt: str,
+    accumulated_answer: str,
+    completion_mode: str,
+    expected_end_marker: Optional[str],
+    expected_range: Optional[Tuple[str, int, int]],
+) -> bool:
+    mode = _normalize_stream_completion_mode(completion_mode)
+    if mode == "none":
+        return False
+
+    marker_present = _contains_expected_end_marker(accumulated_answer, expected_end_marker)
+    if mode == "marker":
+        return not marker_present
+
+    if expected_end_marker and not marker_present:
+        return True
+
+    if expected_range and not _response_covers_expected_range(accumulated_answer, expected_range):
+        return True
+
+    if _response_looks_truncated(accumulated_answer):
+        return True
+
+    return False
+
+
+def _merge_answer_continuation(base: str, continuation: str) -> str:
+    base_trimmed = (base or "").strip()
+    continuation_trimmed = (continuation or "").strip()
+
+    if not base_trimmed:
+        return continuation_trimmed
+    if not continuation_trimmed:
+        return base_trimmed
+
+    max_overlap = min(len(base_trimmed), len(continuation_trimmed), 220)
+    for overlap in range(max_overlap, 23, -1):
+        if base_trimmed.endswith(continuation_trimmed[:overlap]):
+            return f"{base_trimmed}{continuation_trimmed[overlap:]}".strip()
+
+    if base_trimmed.endswith(continuation_trimmed):
+        return base_trimmed
+    if continuation_trimmed.startswith(base_trimmed):
+        return continuation_trimmed
+
+    return f"{base_trimmed}\n\n{continuation_trimmed}".strip()
+
+
+def _build_stream_continuation_prompt(original_question: str, expected_end_marker: Optional[str]) -> str:
+    lines = [
+        "Continue the exact same answer from where it stopped.",
+        "Do not restart. Do not repeat content that was already sent.",
+        "Only output the missing continuation.",
+        f"Original student question: {original_question}",
+    ]
+    marker = _normalize_expected_end_marker(expected_end_marker)
+    if marker:
+        lines.append(f'Include the exact marker "{marker}" at the very end once complete.')
+    return "\n".join(lines)
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     try:
+        boundary_response = get_scope_boundary_response(request.message)
+        if boundary_response is not None:
+            return ChatResponse(response=boundary_response)
+
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
 
         # Add conversation history
@@ -1918,6 +2302,7 @@ async def chat_tutor(request: ChatRequest):
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
+        boundary_response = get_scope_boundary_response(request.message)
         messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
         for msg in request.history[-10:]:
             messages.append({"role": msg.role, "content": msg.content})
@@ -1929,17 +2314,143 @@ async def chat_tutor_stream(request: ChatRequest):
             return "\n".join(body) + "\n\n"
 
         async def event_generator():
+            if boundary_response is not None:
+                payload = json.dumps({"chunk": boundary_response}, ensure_ascii=False)
+                yield _sse("chunk", payload)
+                yield _sse("end", "done")
+                return
+
+            stream_started_at = time.monotonic()
+            emitted_any_chunk = False
+            completion_mode = _normalize_stream_completion_mode(request.completionMode)
+            expected_end_marker = _normalize_expected_end_marker(request.expectedEndMarker)
+            if not expected_end_marker:
+                expected_end_marker = _extract_expected_end_marker_from_prompt(request.message)
+            if completion_mode == "marker" and not expected_end_marker:
+                completion_mode = "auto"
+
+            expected_range = _extract_expected_prompt_range(request.message) if completion_mode == "auto" else None
+            continuation_rounds = _resolve_stream_continuation_rounds(request, completion_mode)
+            max_attempts = 1 + continuation_rounds
+            assembled_response = ""
+
             try:
-                async for chunk in call_hf_chat_stream_async(
-                    messages,
-                    max_tokens=CHAT_MAX_NEW_TOKENS,
-                    temperature=0.3,
-                    top_p=0.85,
-                    task_type="chat",
-                ):
-                    payload = json.dumps({"chunk": chunk}, ensure_ascii=False)
-                    yield _sse("chunk", payload)
-                    await asyncio.sleep(0)
+                for attempt_index in range(max_attempts):
+                    response_len_before_attempt = len(assembled_response)
+                    if attempt_index == 0:
+                        attempt_messages = messages
+                    else:
+                        continuation_messages = list(messages)
+                        tail_context = assembled_response[-CHAT_STREAM_CONTINUATION_TAIL_CHARS:]
+                        if tail_context:
+                            continuation_messages.append({"role": "assistant", "content": tail_context})
+                        continuation_messages.append({
+                            "role": "user",
+                            "content": _build_stream_continuation_prompt(request.message, expected_end_marker),
+                        })
+                        attempt_messages = continuation_messages
+
+                    stream_iterator = call_hf_chat_stream_async(
+                        attempt_messages,
+                        max_tokens=CHAT_MAX_NEW_TOKENS,
+                        temperature=0.3,
+                        top_p=0.85,
+                        task_type="chat",
+                    )
+
+                    attempt_chunks: List[str] = []
+
+                    while True:
+                        elapsed = time.monotonic() - stream_started_at
+                        remaining_total = CHAT_STREAM_TOTAL_TIMEOUT_SEC - elapsed
+                        if remaining_total <= 0:
+                            raise TimeoutError("Chat stream exceeded total timeout")
+
+                        token_timeout = min(CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC, remaining_total)
+                        try:
+                            chunk = await asyncio.wait_for(stream_iterator.__anext__(), timeout=token_timeout)
+                        except StopAsyncIteration:
+                            break
+
+                        if not chunk:
+                            continue
+
+                        chunk_text = str(chunk)
+                        attempt_chunks.append(chunk_text)
+
+                        if attempt_index == 0:
+                            assembled_response += chunk_text
+                            emitted_any_chunk = True
+                            payload = json.dumps({"chunk": chunk_text}, ensure_ascii=False)
+                            yield _sse("chunk", payload)
+                            await asyncio.sleep(0)
+
+                    attempt_text = "".join(attempt_chunks)
+                    if attempt_index > 0 and attempt_text:
+                        merged_response = _merge_answer_continuation(assembled_response, attempt_text)
+                        if merged_response.startswith(assembled_response):
+                            delta_text = merged_response[len(assembled_response):]
+                        else:
+                            delta_text = attempt_text
+                            merged_response = _merge_answer_continuation(assembled_response, delta_text)
+
+                        assembled_response = merged_response
+                        if delta_text:
+                            emitted_any_chunk = True
+                            payload = json.dumps({"chunk": delta_text}, ensure_ascii=False)
+                            yield _sse("chunk", payload)
+                            await asyncio.sleep(0)
+
+                    added_chars = len(assembled_response) - response_len_before_attempt
+                    should_continue = _should_continue_stream_response(
+                        prompt=request.message,
+                        accumulated_answer=assembled_response,
+                        completion_mode=completion_mode,
+                        expected_end_marker=expected_end_marker,
+                        expected_range=expected_range,
+                    )
+
+                    if not should_continue:
+                        break
+
+                    if attempt_index >= continuation_rounds:
+                        logger.info(
+                            "Reached chat stream continuation limit (rounds=%s mode=%s marker=%s)",
+                            continuation_rounds,
+                            completion_mode,
+                            expected_end_marker or "<none>",
+                        )
+                        break
+
+                    if attempt_index > 0 and added_chars < CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS:
+                        logger.info(
+                            "Stopping chat stream continuation due to low progress (added_chars=%s min_required=%s)",
+                            added_chars,
+                            CHAT_STREAM_CONTINUATION_MIN_NEW_CHARS,
+                        )
+                        break
+
+                    logger.info(
+                        "Continuing chat stream response (attempt=%s mode=%s marker=%s range=%s)",
+                        attempt_index + 2,
+                        completion_mode,
+                        expected_end_marker or "<none>",
+                        expected_range or "<none>",
+                    )
+            except (asyncio.TimeoutError, TimeoutError):
+                logger.error(
+                    "HF chat stream timed out (idle=%ss total=%ss)",
+                    CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC,
+                    CHAT_STREAM_TOTAL_TIMEOUT_SEC,
+                )
+                err_payload = json.dumps({
+                    "detail": (
+                        "AI response stream timed out mid-response. Please retry."
+                        if emitted_any_chunk
+                        else "AI response stream timed out before any tokens were received. Please retry."
+                    ),
+                })
+                yield _sse("error", err_payload)
             except Exception as hf_err:
                 logger.error(f"HF chat stream failed: {hf_err}")
                 err_payload = json.dumps({
@@ -3056,59 +3567,74 @@ def _persist_class_record_import_artifact(
     if normalized_class_name:
         import_payload["className"] = normalized_class_name
 
-    imports_ref = firebase_firestore.client().collection("classRecordImports").document(import_id)
-    import_doc = cast(Any, imports_ref.get())
-    if not _snapshot_exists(import_doc):
-        import_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-    imports_ref.set(import_payload, merge=True)
-
     inserted = 0
     updated = 0
-    client = firebase_firestore.client()
-    normalized_ref = client.collection("normalizedClassRecords")
-    batch = client.batch()
-    batch_count = 0
+    try:
+        imports_ref = firebase_firestore.client().collection("classRecordImports").document(import_id)
+        import_doc = cast(Any, imports_ref.get())
+        if not _snapshot_exists(import_doc):
+            import_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+        imports_ref.set(import_payload, merge=True)
 
-    for row in normalized_rows:
-        dedup_key = str(row.get("dedupKey", "")).strip()
-        if not dedup_key:
-            continue
+        client = firebase_firestore.client()
+        normalized_ref = client.collection("normalizedClassRecords")
+        batch = client.batch()
+        batch_count = 0
 
-        scoped_key_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{dedup_key}"
-        scoped_key = hashlib.sha1(scoped_key_seed.encode("utf-8")).hexdigest()[:36]
-        row_doc_ref = normalized_ref.document(scoped_key)
-        existing_doc = cast(Any, row_doc_ref.get())
+        for row in normalized_rows:
+            dedup_key = str(row.get("dedupKey", "")).strip()
+            if not dedup_key:
+                continue
 
-        payload = {
-            **row,
-            "recordId": scoped_key,
-            "teacherId": user.uid,
-            "teacherEmail": user.email,
-            "importId": import_id,
-            "sourceFile": file_name,
-            "retentionDays": IMPORT_RETENTION_DAYS,
-            "expiresAtEpoch": _artifact_expiry_epoch(),
-            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
-        }
-        if normalized_class_section_id:
-            payload["classSectionId"] = normalized_class_section_id
-        if normalized_class_name:
-            payload["className"] = normalized_class_name
-        if not _snapshot_exists(existing_doc):
-            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-            inserted += 1
-        else:
-            updated += 1
+            scoped_key_seed = f"{user.uid}|{normalized_class_section_id or 'global'}|{dedup_key}"
+            scoped_key = hashlib.sha1(scoped_key_seed.encode("utf-8")).hexdigest()[:36]
+            row_doc_ref = normalized_ref.document(scoped_key)
+            existing_doc = cast(Any, row_doc_ref.get())
 
-        batch.set(row_doc_ref, payload, merge=True)
-        batch_count += 1
-        if batch_count >= 400:
+            payload = {
+                **row,
+                "recordId": scoped_key,
+                "teacherId": user.uid,
+                "teacherEmail": user.email,
+                "importId": import_id,
+                "sourceFile": file_name,
+                "retentionDays": IMPORT_RETENTION_DAYS,
+                "expiresAtEpoch": _artifact_expiry_epoch(),
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+            if normalized_class_section_id:
+                payload["classSectionId"] = normalized_class_section_id
+            if normalized_class_name:
+                payload["className"] = normalized_class_name
+            if not _snapshot_exists(existing_doc):
+                payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+                inserted += 1
+            else:
+                updated += 1
+
+            batch.set(row_doc_ref, payload, merge=True)
+            batch_count += 1
+            if batch_count >= 400:
+                batch.commit()
+                batch = client.batch()
+                batch_count = 0
+
+        if batch_count > 0:
             batch.commit()
-            batch = client.batch()
-            batch_count = 0
-
-    if batch_count > 0:
-        batch.commit()
+    except Exception as persistence_err:
+        if _is_adc_missing_error(cast(Exception, persistence_err)):
+            logger.warning("Class record persistence skipped because Firestore ADC is not configured.")
+            return {
+                "persisted": False,
+                "importId": None,
+                "dedup": {"inserted": 0, "updated": 0},
+                "warning": (
+                    "Firestore ADC is not configured; class records were parsed but not persisted. "
+                    "Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_FILE, "
+                    "or set GOOGLE_APPLICATION_CREDENTIALS."
+                ),
+            }
+        raise
 
     return {
         "persisted": True,
@@ -3373,6 +3899,7 @@ def _sync_imported_students_to_teacher_dashboard(
     class_section_id: Optional[str],
     class_name: Optional[str],
 ) -> Dict[str, Any]:
+    fallback_class_section_id = (class_section_id or "").strip().lower() or None
     if not (_firebase_ready and firebase_firestore):
         return {
             "synced": False,
@@ -3380,180 +3907,201 @@ def _sync_imported_students_to_teacher_dashboard(
             "updatedStudents": 0,
             "classroomsTouched": 0,
             "classroomId": None,
-            "classSectionId": (class_section_id or "").strip().lower() or None,
+            "classSectionId": fallback_class_section_id,
             "warning": "Firestore unavailable; dashboard sync skipped.",
         }
 
-    user = get_current_user(request)
-    resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
-        class_section_id=class_section_id,
-        class_name=class_name,
-    )
+    try:
+        user = get_current_user(request)
+        resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
+            class_section_id=class_section_id,
+            class_name=class_name,
+        )
 
-    by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
-    for row in normalized_rows:
-        name = str(row.get("name") or "").strip()
-        email = str(row.get("email") or "").strip().lower()
-        lrn = str(row.get("lrn") or "").strip()
-        identity = lrn or email or re.sub(r"\s+", "_", name.lower())
-        if not identity:
-            continue
+        by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        for row in normalized_rows:
+            name = str(row.get("name") or "").strip()
+            email = str(row.get("email") or "").strip().lower()
+            lrn = str(row.get("lrn") or "").strip()
+            identity = lrn or email or re.sub(r"\s+", "_", name.lower())
+            if not identity:
+                continue
 
-        state = by_identity.get(identity)
-        if not state:
-            state = {
-                "name": name,
-                "email": email,
-                "lrn": lrn,
-                "scores": [],
-                "attendance": [],
-                "engagement": [],
-                "completion": [],
-                "weakestTopic": "",
+            state = by_identity.get(identity)
+            if not state:
+                state = {
+                    "name": name,
+                    "email": email,
+                    "lrn": lrn,
+                    "scores": [],
+                    "attendance": [],
+                    "engagement": [],
+                    "completion": [],
+                    "weakestTopic": "",
+                }
+                by_identity[identity] = state
+
+            avg_quiz = float(row.get("avgQuizScore") or 0.0)
+            attendance = float(row.get("attendance") or 0.0)
+            engagement = float(row.get("engagementScore") or 0.0)
+            completion = float(row.get("assignmentCompletion") or 0.0)
+
+            state["scores"].append(avg_quiz)
+            state["attendance"].append(attendance)
+            state["engagement"].append(engagement)
+            state["completion"].append(completion)
+            if not state.get("weakestTopic"):
+                state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
+
+            if name and not state.get("name"):
+                state["name"] = name
+            if email and not state.get("email"):
+                state["email"] = email
+            if lrn and not state.get("lrn"):
+                state["lrn"] = lrn
+
+        if not by_identity:
+            return {
+                "synced": False,
+                "createdStudents": 0,
+                "updatedStudents": 0,
+                "classroomsTouched": 0,
+                "classroomId": resolved_section_id,
+                "classSectionId": resolved_section_id,
+                "warning": "No normalized student records were available for dashboard sync.",
             }
-            by_identity[identity] = state
 
-        avg_quiz = float(row.get("avgQuizScore") or 0.0)
-        attendance = float(row.get("attendance") or 0.0)
-        engagement = float(row.get("engagementScore") or 0.0)
-        completion = float(row.get("assignmentCompletion") or 0.0)
+        client = firebase_firestore.client()
+        classrooms_ref = client.collection("classrooms")
+        students_ref = client.collection("managedStudents")
 
-        state["scores"].append(avg_quiz)
-        state["attendance"].append(attendance)
-        state["engagement"].append(engagement)
-        state["completion"].append(completion)
-        if not state.get("weakestTopic"):
-            state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
+        classroom_doc_id = resolved_section_id or f"imported_{hashlib.sha1((user.uid + resolved_class_name).encode('utf-8')).hexdigest()[:12]}"
+        classroom_ref = classrooms_ref.document(classroom_doc_id)
+        classroom_snapshot = cast(Any, classroom_ref.get())
+        existing_classroom = _snapshot_to_dict(classroom_snapshot) if _snapshot_exists(classroom_snapshot) else {}
 
-        if name and not state.get("name"):
-            state["name"] = name
-        if email and not state.get("email"):
-            state["email"] = email
-        if lrn and not state.get("lrn"):
-            state["lrn"] = lrn
+        created_students = 0
+        updated_students = 0
+        risk_high_count = 0
+        total_score = 0.0
 
-    if not by_identity:
+        for identity, aggregate in by_identity.items():
+            scores = aggregate.get("scores") or [0.0]
+            attendance_values = aggregate.get("attendance") or [0.0]
+            engagement_values = aggregate.get("engagement") or [0.0]
+            completion_values = aggregate.get("completion") or [0.0]
+
+            avg_quiz = float(sum(scores) / max(len(scores), 1))
+            avg_attendance = float(sum(attendance_values) / max(len(attendance_values), 1))
+            avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
+            avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
+
+            has_topic_signal = str(aggregate.get("weakestTopic") or "").strip() not in {"", "Foundational Skills"}
+            inference = _infer_student_state(
+                avg_quiz=avg_quiz,
+                attendance=avg_attendance,
+                engagement=avg_engagement,
+                defaulted_metrics=set(),
+                has_topic_signal=has_topic_signal,
+            )
+            risk_level = str(inference["riskLevel"])
+            if risk_level == "High":
+                risk_high_count += 1
+            total_score += avg_quiz
+
+            fallback_name = str(aggregate.get("name") or "Imported Student").strip() or "Imported Student"
+            avatar_seed = urllib.parse.quote(fallback_name)
+            student_doc_id = hashlib.sha1(f"{user.uid}|{identity}".encode("utf-8")).hexdigest()[:36]
+            student_ref = students_ref.document(student_doc_id)
+            student_snapshot = cast(Any, student_ref.get())
+
+            payload: Dict[str, Any] = {
+                "teacherId": user.uid,
+                "name": fallback_name,
+                "email": str(aggregate.get("email") or ""),
+                "lrn": str(aggregate.get("lrn") or ""),
+                "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
+                "grade": grade,
+                "section": section,
+                "classSectionId": resolved_section_id,
+                "classroomId": classroom_doc_id,
+                "riskLevel": risk_level,
+                "inferredState": {
+                    "state": inference["state"],
+                    "confidence": inference["confidence"],
+                    "signals": inference["signals"],
+                    "explanation": inference["explanation"],
+                    "fallbackUsed": inference["fallbackUsed"],
+                },
+                "stateConfidence": inference["confidence"],
+                "stateSignals": inference["signals"],
+                "engagementScore": round(avg_engagement, 1),
+                "avgQuizScore": round(avg_quiz, 1),
+                "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
+                "attendance": round(avg_attendance, 1),
+                "assignmentCompletion": round(avg_completion, 1),
+                "struggles": [str(aggregate.get("weakestTopic") or "Foundational Skills")],
+                "lastActive": FIRESTORE_SERVER_TIMESTAMP,
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+
+            if _snapshot_exists(student_snapshot):
+                updated_students += 1
+            else:
+                created_students += 1
+                payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+            student_ref.set(payload, merge=True)
+
+        student_count = len(by_identity)
+        class_average = round(total_score / max(student_count, 1), 1)
+
+        classroom_payload: Dict[str, Any] = {
+            "teacherId": user.uid,
+            "name": resolved_class_name,
+            "grade": grade,
+            "section": section,
+            "classSectionId": resolved_section_id,
+            "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
+            "studentCount": student_count,
+            "avgScore": class_average,
+            "atRiskCount": risk_high_count,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+        if not _snapshot_exists(classroom_snapshot):
+            classroom_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+        classroom_ref.set(classroom_payload, merge=True)
+
+        return {
+            "synced": True,
+            "createdStudents": created_students,
+            "updatedStudents": updated_students,
+            "classroomsTouched": 1,
+            "classroomId": classroom_doc_id,
+            "classSectionId": resolved_section_id,
+            "warning": None,
+        }
+    except Exception as sync_err:
+        if _is_adc_missing_error(cast(Exception, sync_err)):
+            logger.warning("Dashboard sync skipped because Firestore ADC is not configured.")
+            warning = (
+                "Firestore ADC is not configured; dashboard sync skipped. "
+                "Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_FILE, "
+                "or set GOOGLE_APPLICATION_CREDENTIALS."
+            )
+        else:
+            logger.warning(f"Dashboard sync skipped due Firestore error: {sync_err}")
+            warning = f"Dashboard sync skipped due Firestore error: {sync_err}"
         return {
             "synced": False,
             "createdStudents": 0,
             "updatedStudents": 0,
             "classroomsTouched": 0,
-            "classroomId": resolved_section_id,
-            "classSectionId": resolved_section_id,
-            "warning": "No normalized student records were available for dashboard sync.",
+            "classroomId": None,
+            "classSectionId": fallback_class_section_id,
+            "warning": warning,
         }
-
-    client = firebase_firestore.client()
-    classrooms_ref = client.collection("classrooms")
-    students_ref = client.collection("managedStudents")
-
-    classroom_doc_id = resolved_section_id or f"imported_{hashlib.sha1((user.uid + resolved_class_name).encode('utf-8')).hexdigest()[:12]}"
-    classroom_ref = classrooms_ref.document(classroom_doc_id)
-    classroom_snapshot = cast(Any, classroom_ref.get())
-    existing_classroom = _snapshot_to_dict(classroom_snapshot) if _snapshot_exists(classroom_snapshot) else {}
-
-    created_students = 0
-    updated_students = 0
-    risk_high_count = 0
-    total_score = 0.0
-
-    for identity, aggregate in by_identity.items():
-        scores = aggregate.get("scores") or [0.0]
-        attendance_values = aggregate.get("attendance") or [0.0]
-        engagement_values = aggregate.get("engagement") or [0.0]
-        completion_values = aggregate.get("completion") or [0.0]
-
-        avg_quiz = float(sum(scores) / max(len(scores), 1))
-        avg_attendance = float(sum(attendance_values) / max(len(attendance_values), 1))
-        avg_engagement = float(sum(engagement_values) / max(len(engagement_values), 1))
-        avg_completion = float(sum(completion_values) / max(len(completion_values), 1))
-
-        has_topic_signal = str(aggregate.get("weakestTopic") or "").strip() not in {"", "Foundational Skills"}
-        inference = _infer_student_state(
-            avg_quiz=avg_quiz,
-            attendance=avg_attendance,
-            engagement=avg_engagement,
-            defaulted_metrics=set(),
-            has_topic_signal=has_topic_signal,
-        )
-        risk_level = str(inference["riskLevel"])
-        if risk_level == "High":
-            risk_high_count += 1
-        total_score += avg_quiz
-
-        fallback_name = str(aggregate.get("name") or "Imported Student").strip() or "Imported Student"
-        avatar_seed = urllib.parse.quote(fallback_name)
-        student_doc_id = hashlib.sha1(f"{user.uid}|{identity}".encode("utf-8")).hexdigest()[:36]
-        student_ref = students_ref.document(student_doc_id)
-        student_snapshot = cast(Any, student_ref.get())
-
-        payload: Dict[str, Any] = {
-            "teacherId": user.uid,
-            "name": fallback_name,
-            "email": str(aggregate.get("email") or ""),
-            "lrn": str(aggregate.get("lrn") or ""),
-            "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
-            "grade": grade,
-            "section": section,
-            "classSectionId": resolved_section_id,
-            "classroomId": classroom_doc_id,
-            "riskLevel": risk_level,
-            "inferredState": {
-                "state": inference["state"],
-                "confidence": inference["confidence"],
-                "signals": inference["signals"],
-                "explanation": inference["explanation"],
-                "fallbackUsed": inference["fallbackUsed"],
-            },
-            "stateConfidence": inference["confidence"],
-            "stateSignals": inference["signals"],
-            "engagementScore": round(avg_engagement, 1),
-            "avgQuizScore": round(avg_quiz, 1),
-            "weakestTopic": str(aggregate.get("weakestTopic") or "Foundational Skills"),
-            "attendance": round(avg_attendance, 1),
-            "assignmentCompletion": round(avg_completion, 1),
-            "struggles": [str(aggregate.get("weakestTopic") or "Foundational Skills")],
-            "lastActive": FIRESTORE_SERVER_TIMESTAMP,
-            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
-        }
-
-        if _snapshot_exists(student_snapshot):
-            updated_students += 1
-        else:
-            created_students += 1
-            payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-
-        student_ref.set(payload, merge=True)
-
-    student_count = len(by_identity)
-    class_average = round(total_score / max(student_count, 1), 1)
-
-    classroom_payload: Dict[str, Any] = {
-        "teacherId": user.uid,
-        "name": resolved_class_name,
-        "grade": grade,
-        "section": section,
-        "classSectionId": resolved_section_id,
-        "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
-        "studentCount": student_count,
-        "avgScore": class_average,
-        "atRiskCount": risk_high_count,
-        "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
-    }
-    if not _snapshot_exists(classroom_snapshot):
-        classroom_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
-
-    classroom_ref.set(classroom_payload, merge=True)
-
-    return {
-        "synced": True,
-        "createdStudents": created_students,
-        "updatedStudents": updated_students,
-        "classroomsTouched": 1,
-        "classroomId": classroom_doc_id,
-        "classSectionId": resolved_section_id,
-        "warning": None,
-    }
 
 
 def _resolve_uploaded_files(
@@ -8099,9 +8647,19 @@ async def get_imported_class_overview(
 
         normalized_class_section_id = (classSectionId or "").strip().lower() or None
         client = firebase_firestore.client()
-        query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
-
-        docs = list(query.limit(limit).stream())
+        try:
+            query = client.collection("normalizedClassRecords").where("teacherId", "==", user.uid)
+            docs = list(query.limit(limit).stream())
+        except Exception as firestore_err:
+            if _is_adc_missing_error(cast(Exception, firestore_err)):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Firestore ADC is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON "
+                        "or FIREBASE_SERVICE_ACCOUNT_FILE, or set GOOGLE_APPLICATION_CREDENTIALS."
+                    ),
+                )
+            raise
 
         class_agg: Dict[str, Dict[str, Any]] = {}
         student_agg: Dict[str, Dict[str, Any]] = {}

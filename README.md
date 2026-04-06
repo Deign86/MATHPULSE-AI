@@ -28,7 +28,7 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 - **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
 - **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
 - **Practice Center** — Dedicated practice area for reinforcing concepts
-- **AI Chat Tutor** — On-demand math help via routed Hugging Face inference (Llama 3.1 8B default, hard-prompt escalation to Llama 3 70B), with optional self-consistency verification
+- **AI Chat Tutor** — On-demand math help via routed Hugging Face inference with global default model [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B), with optional self-consistency verification
 - **Floating AI Tutor** — Always-accessible AI help widget available from any page
 - **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
 - **XP Notifications** — Real-time animated XP gain notifications
@@ -106,12 +106,12 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 #### LLM Routing (defaults from `config/models.yaml`)
 | Model | Primary Use |
 |---|---|
-| **meta-llama/Llama-3.1-8B-Instruct** | Default chat + generation model (`chat`, `lesson_generation`, `quiz_generation`, `learning_path`, `daily_insight`, `risk_narrative`) |
-| **NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO** | Primary model for `verify_solution` reasoning flow |
-| **meta-llama/Meta-Llama-3-70B-Instruct** | Hard-prompt escalation target and high-quality fallback tier |
-| **google/gemma-2-2b-it** | Fast fallback model for degraded-provider or burst scenarios |
-| **mistralai/Mistral-7B-Instruct-v0.3** | Experimental prompt/procedure benchmarking |
-| **meta-llama/Meta-Llama-3-8B-Instruct** | Experimental baseline comparison |
+| **[Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B)** | Global default model for all key tasks (`chat`, `verify_solution`, `lesson_generation`, `quiz_generation`, `learning_path`, `daily_insight`, `risk_classification`, `risk_narrative`) |
+| **meta-llama/Meta-Llama-3-70B-Instruct** | Higher-capacity fallback for `verify_solution` _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **meta-llama/Llama-3.1-8B-Instruct** | Secondary fallback for `verify_solution` _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **google/gemma-2-2b-it** | Secondary backup with broad instruction coverage _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **mistralai/Mistral-7B-Instruct-v0.3** | Experimental prompt/procedure benchmarking _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **meta-llama/Meta-Llama-3-8B-Instruct** | Experimental baseline comparison _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
 
 #### Risk and Analytics Models
 | Model | Primary Use |
@@ -121,7 +121,9 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 
 Runtime note:
 - Environment variables can override routing at startup (`INFERENCE_MODEL_ID`, `INFERENCE_CHAT_MODEL_ID`, `HF_QUIZ_MODEL_ID`, `INFERENCE_FALLBACK_MODELS`).
-- If `INFERENCE_MODEL_ID` is set, task-specific defaults are overridden to that model.
+- If `INFERENCE_MODEL_ID` is set, task-specific defaults are overridden to that model **unless** `INFERENCE_ENFORCE_QWEN_ONLY=true`.
+- When `INFERENCE_ENFORCE_QWEN_ONLY=true`, runtime routing takes precedence and forces task routing to `INFERENCE_QWEN_LOCK_MODEL`, which can negate `INFERENCE_MODEL_ID` and other task-specific selections.
+- `config/models.yaml` and `backend/config/models.yaml` remain the baseline source of truth for configured model defaults, with environment variables and runtime enforcement applied on top of those defaults.
 
 ## 🚀 Getting Started
 
@@ -158,7 +160,7 @@ Runtime note:
    VITE_FIREBASE_APP_ID=your_app_id
 
    # Backend API (optional — defaults to hosted HF Spaces)
-   VITE_API_URL=https://deign86-mathpulse-api.hf.space
+   VITE_API_URL=https://deign86-mathpulse-api-v3test.hf.space
 
    # Import-grounded generation rollout flags (frontend)
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
@@ -183,7 +185,7 @@ Runtime note:
    export ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
    ```
-   > **Note:** The hosted backend at `https://deign86-mathpulse-api.hf.space` is used by default. Local backend is only needed for development. Port 7860 matches Hugging Face Spaces convention; Docker maps it to 8000.
+   > **Note:** The hosted backend at `https://deign86-mathpulse-api-v3test.hf.space` is used by default. Local backend is only needed for development. Port 7860 matches Hugging Face Spaces convention; Docker maps it to 8000.
 
 ### Build for Production
 ```bash
@@ -206,7 +208,7 @@ npm run check:backend
 ### Import-Grounded Pilot Operations
 ```bash
 # Telemetry summary (Query A-D equivalent) for the authenticated teacher
-curl -X GET "${VITE_API_URL:-https://deign86-mathpulse-api.hf.space}/api/feedback/import-grounded/summary?days=7&limit=5000" \
+curl -X GET "${VITE_API_URL:-https://deign86-mathpulse-api-v3test.hf.space}/api/feedback/import-grounded/summary?days=7&limit=5000" \
    -H "Authorization: Bearer <firebase_id_token>" \
    -H "Content-Type: application/json"
 ```
@@ -233,22 +235,44 @@ MathPulse now supports a PRO-oriented architecture for fast demos, low-cost expe
 - Enhanced risk pipeline expanded: zero-shot endpoint plus trainable ML endpoint (`/api/predict-risk/enhanced`) with optional LLM recommendations.
 - Startup and deployment safety checks added (`backend/startup_validation.py`, `backend/pre_deploy_check.py`).
 
+#### Chat Reliability and UX Hotfixes (Latest)
+
+- Marker-aware continuation and stream-resume loop added to reduce truncated assistant responses.
+- SSE stream parsing hardened for CRLF boundaries and partial chunks.
+- Empty stream bubbles and duplicate loader behavior fixed.
+- Completion-repair logic improved to recover from cutoff responses while preserving final answer quality.
+- Think-tag leakage sanitization hardened to avoid hidden-reasoning artifacts in user-visible output.
+- Assistant markdown formatting restored and stabilized after sanitizer passes.
+- Chat auto-scroll behavior confined to the message pane (prevents page-level scroll jumps).
+- Chat stream and token limits increased for long, multi-step math responses.
+
+#### Inference and Model Governance Updates
+
+- Qwen-first routing hardened across inference paths, including startup validation checks.
+- Temporary chat-model override toggles added for controlled rollouts.
+- Qwen model lock rules enforced to prevent non-approved model drift in production routes.
+- Global default model is explicitly aligned to [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B).
+
 Flow overview:
 
 1. Backend API calls route through the inference client and can switch provider mode by env.
 2. Offline evaluation and generation jobs consume datasets/eval and write artifacts to jobs/output and datasets/synthetic.
 3. Curated dataset artifacts sync to private Hugging Face Datasets repositories.
 
-### Chat-Only HF Inference Profile (Keep Full UI)
+### Global Qwen3 HF Inference Profile (Keep Full UI)
 
-If you only want the AI chatbot to use HF inference while the rest of the app stays on normal backend/provider paths, use this routing profile:
+To make [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B) the default model for all backend tasks while keeping your existing UI and Firebase flows, use this profile:
 
+```env
 INFERENCE_PROVIDER=hf_inference
 INFERENCE_GPU_PROVIDER=hf_inference
 INFERENCE_CPU_PROVIDER=hf_inference
+INFERENCE_MODEL_ID=Qwen/Qwen3-32B
+INFERENCE_CHAT_MODEL_ID=Qwen/Qwen3-32B
 INFERENCE_GPU_REQUIRED_TASKS=chat
+```
 
-This keeps your unique React UI and Firebase flows unchanged, while chat generation is handled through the configured HF inference provider.
+This keeps your unique React UI and Firebase flows unchanged, while generation routes through the configured HF inference provider with Qwen as the global default.
 
 ### Quickstart: Run locally
 
@@ -442,7 +466,7 @@ Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` w
 - `VITE_ENABLE_ASYNC_GENERATION` controls frontend use of async submit/poll generation endpoints for quiz and lesson workflows.
 - All flags default to `true`; set any flag to `false` to disable that behavior without code changes.
 
-> **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api.hf.space`.
+> **Fallback:** The frontend works with or without the backend. If the backend is unavailable, the app uses the hosted API at `https://deign86-mathpulse-api-v3test.hf.space`.
 
 ### Math Verification System
 

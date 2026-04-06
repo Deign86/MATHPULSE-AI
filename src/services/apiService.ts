@@ -38,10 +38,19 @@ const parseEnvBoolean = (value: string | undefined, defaultValue: boolean): bool
   return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 };
 
+const parseEnvPositiveInt = (value: string | undefined, defaultValue: number): number => {
+  if (value == null || value.trim() === '') return defaultValue;
+  const parsed = Number.parseInt(value.trim(), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return defaultValue;
+  return parsed;
+};
+
 const IMPORT_GROUNDED_QUIZ_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_QUIZ, true);
 const IMPORT_GROUNDED_LESSON_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_LESSON, true);
 const IMPORT_GROUNDED_FEEDBACK_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS, true);
 const ASYNC_GENERATION_ENABLED = parseEnvBoolean(import.meta.env.VITE_ENABLE_ASYNC_GENERATION, true);
+const CHAT_STREAM_IDLE_TIMEOUT_MS = parseEnvPositiveInt(import.meta.env.VITE_CHAT_STREAM_IDLE_TIMEOUT_MS, 90_000);
+const CHAT_STREAM_TOTAL_TIMEOUT_MS = parseEnvPositiveInt(import.meta.env.VITE_CHAT_STREAM_TOTAL_TIMEOUT_MS, 900_000);
 let IMPORTED_CLASS_OVERVIEW_ENDPOINT_AVAILABLE = true;
 let IMPORTED_CLASS_OVERVIEW_RETRY_AT_EPOCH_MS = 0;
 const IMPORTED_CLASS_OVERVIEW_RETRY_COOLDOWN_MS = 60_000;
@@ -52,6 +61,16 @@ export interface ChatRequest {
   message: string;
   history: { role: 'user' | 'assistant'; content: string }[];
   userId?: string;
+  verify?: boolean;
+  expectedEndMarker?: string;
+  completionMode?: 'auto' | 'marker' | 'none';
+  continuationMaxRounds?: number;
+}
+
+export interface ChatCompletionOptions {
+  expectedEndMarker?: string;
+  completionMode?: 'auto' | 'marker' | 'none';
+  continuationMaxRounds?: number;
 }
 
 export interface ChatResponse {
@@ -1038,10 +1057,50 @@ export const apiService = {
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[],
     onChunk?: (chunk: string) => void,
+    options?: ChatCompletionOptions,
   ): Promise<ChatResponse> {
     validateRequired('/api/chat', { message });
 
+    const requestPayload: ChatRequest = {
+      message,
+      history: history ?? [],
+      ...(options?.expectedEndMarker ? { expectedEndMarker: options.expectedEndMarker } : {}),
+      ...(options?.completionMode ? { completionMode: options.completionMode } : {}),
+      ...(typeof options?.continuationMaxRounds === 'number'
+        ? { continuationMaxRounds: Math.max(0, Math.floor(options.continuationMaxRounds)) }
+        : {}),
+    };
+
     if (onChunk) {
+      const streamController = new AbortController();
+      let streamAbortReason: 'idle' | 'total' | null = null;
+      let idleTimer: ReturnType<typeof setTimeout> | null = null;
+      let totalTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const abortStream = (reason: 'idle' | 'total') => {
+        if (streamAbortReason) return;
+        streamAbortReason = reason;
+        streamController.abort();
+      };
+
+      const clearStreamTimers = () => {
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        }
+        if (totalTimer) {
+          clearTimeout(totalTimer);
+          totalTimer = null;
+        }
+      };
+
+      const refreshIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => abortStream('idle'), CHAT_STREAM_IDLE_TIMEOUT_MS);
+      };
+
+      totalTimer = setTimeout(() => abortStream('total'), CHAT_STREAM_TOTAL_TIMEOUT_MS);
+
       const headers = new Headers({
         'Content-Type': 'application/json',
       });
@@ -1058,89 +1117,145 @@ export const apiService = {
         }
       }
 
-      const response = await fetch(`${API_URL}/api/chat/stream`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ message, history: history ?? [] }),
-      });
+      let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
-      if (!response.ok || !response.body) {
-        const bodyText = await response.text().catch(() => 'Unable to read response body');
-        throw new Error(`Streaming request failed (${response.status}): ${bodyText.slice(0, 300)}`);
-      }
+      try {
+        refreshIdleTimer();
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullResponse = '';
+        const response = await fetch(`${API_URL}/api/chat/stream`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestPayload),
+          signal: streamController.signal,
+        });
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+        if (!response.ok || !response.body) {
+          const bodyText = await response.text().catch(() => 'Unable to read response body');
+          throw new Error(`Streaming request failed (${response.status}): ${bodyText.slice(0, 300)}`);
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullResponse = '';
+        let sawEndEvent = false;
 
-        let boundary = buffer.indexOf('\n\n');
-        while (boundary !== -1) {
-          const rawEvent = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
+        const findSseBoundary = (text: string): { index: number; length: number } | null => {
+          const lfBoundary = text.indexOf('\n\n');
+          const crlfBoundary = text.indexOf('\r\n\r\n');
 
-          let eventType = 'message';
-          const dataLines: string[] = [];
-          for (const line of rawEvent.split('\n')) {
-            if (line.startsWith('event:')) {
-              eventType = line.slice(6).trim();
-            } else if (line.startsWith('data:')) {
-              dataLines.push(line.slice(5).trimStart());
-            }
+          if (lfBoundary === -1 && crlfBoundary === -1) {
+            return null;
+          }
+          if (lfBoundary === -1) {
+            return { index: crlfBoundary, length: 4 };
+          }
+          if (crlfBoundary === -1) {
+            return { index: lfBoundary, length: 2 };
           }
 
-          const eventData = dataLines.join('\n');
-          if (!eventData) {
-            boundary = buffer.indexOf('\n\n');
-            continue;
-          }
+          return lfBoundary < crlfBoundary
+            ? { index: lfBoundary, length: 2 }
+            : { index: crlfBoundary, length: 4 };
+        };
 
-          if (eventType === 'chunk') {
-            let chunk = eventData;
-            try {
-              const parsed = JSON.parse(eventData) as { chunk?: string };
-              if (typeof parsed?.chunk === 'string') {
-                chunk = parsed.chunk;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          refreshIdleTimer();
+
+          buffer += decoder.decode(value, { stream: true });
+
+          let boundaryInfo = findSseBoundary(buffer);
+          while (boundaryInfo) {
+            const rawEvent = buffer.slice(0, boundaryInfo.index);
+            buffer = buffer.slice(boundaryInfo.index + boundaryInfo.length);
+
+            let eventType = 'message';
+            const dataLines: string[] = [];
+            for (const line of rawEvent.split(/\r?\n/)) {
+              if (line.startsWith('event:')) {
+                eventType = line.slice(6).trim();
+              } else if (line.startsWith('data:')) {
+                dataLines.push(line.slice(5).trimStart());
               }
-            } catch {
-              // Keep raw chunk when payload is plain text.
             }
 
-            if (chunk) {
-              fullResponse += chunk;
-              onChunk(chunk);
+            if (eventType === 'end') {
+              sawEndEvent = true;
+              return { response: fullResponse };
             }
-          } else if (eventType === 'error') {
-            let errorMessage = 'Streaming failed on server.';
-            try {
-              const parsed = JSON.parse(eventData) as { detail?: string };
-              if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
-                errorMessage = parsed.detail;
+
+            const eventData = dataLines.join('\n');
+            if (!eventData) {
+              boundaryInfo = findSseBoundary(buffer);
+              continue;
+            }
+
+            if (eventType === 'chunk') {
+              let chunk = eventData;
+              try {
+                const parsed = JSON.parse(eventData) as { chunk?: string };
+                if (typeof parsed?.chunk === 'string') {
+                  chunk = parsed.chunk;
+                }
+              } catch {
+                // Keep raw chunk when payload is plain text.
               }
-            } catch {
-              if (eventData.trim()) errorMessage = eventData.trim();
-            }
-            throw new Error(errorMessage);
-          } else if (eventType === 'end') {
-            return { response: fullResponse };
-          }
 
-          boundary = buffer.indexOf('\n\n');
+              if (chunk) {
+                fullResponse += chunk;
+                onChunk(chunk);
+                refreshIdleTimer();
+              }
+            } else if (eventType === 'error') {
+              let errorMessage = 'Streaming failed on server.';
+              try {
+                const parsed = JSON.parse(eventData) as { detail?: string };
+                if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
+                  errorMessage = parsed.detail;
+                }
+              } catch {
+                if (eventData.trim()) errorMessage = eventData.trim();
+              }
+              throw new Error(errorMessage);
+            }
+
+            boundaryInfo = findSseBoundary(buffer);
+          }
+        }
+
+        if (sawEndEvent) {
+          return { response: fullResponse };
+        }
+
+        throw new Error('Stream closed before end event.');
+      } catch (err) {
+        if (streamAbortReason === 'idle') {
+          throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_IDLE_TIMEOUT_MS);
+        }
+        if (streamAbortReason === 'total') {
+          throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_TOTAL_TIMEOUT_MS);
+        }
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new ApiTimeoutError('/api/chat/stream', CHAT_STREAM_TOTAL_TIMEOUT_MS);
+        }
+        throw err;
+      } finally {
+        clearStreamTimers();
+        if (reader) {
+          try {
+            await reader.cancel();
+          } catch {
+            // Ignore cancellation errors during cleanup.
+          }
         }
       }
-
-      return { response: fullResponse };
     }
 
     const result = await apiFetch<ChatResponse>(
       '/api/chat',
-      { method: 'POST', body: JSON.stringify({ message, history: history ?? [] }) },
+      { method: 'POST', body: JSON.stringify(requestPayload) },
       CHAT_RETRY_OPTS,
     );
 
@@ -1151,9 +1266,10 @@ export const apiService = {
   async chatSafe(
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[],
+    options?: ChatCompletionOptions,
   ): Promise<{ data: ChatResponse; fromFallback: boolean }> {
     return withFallback(
-      () => apiService.chat(message, history),
+      () => apiService.chat(message, history, undefined, options),
       FALLBACK_CHAT,
       'chat',
     );

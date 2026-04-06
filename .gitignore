@@ -1,5 +1,16 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+functions/lib/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,30 +18,44 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
 
-# Editor directories and files
+# Editor / IDE
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Environment variables
-.env.local
-.env.*.local
-.env
+# OS files
+.DS_Store
+Thumbs.db
 
-# Firebase service account keys (NEVER commit these)
-**/serviceAccountKey.json
-serviceAccountKey.json
+# Python artifacts
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Tool / runtime caches
+.tmp/
+tmp/
+temp/
 
 # Firebase
 .firebase/
@@ -38,13 +63,9 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
-# Cloud Functions build output
-functions/lib/
-
-# Python
-__pycache__/
-*.pyc
-
-# Build outputs
-build/
-out/
+# Local automation + Kaggle outputs
+.automation_cache/
+.kaggle-kernels/
+**/_kaggle_outputs/
+kaggle_llm_api_job/
+kaggle_merge_job/

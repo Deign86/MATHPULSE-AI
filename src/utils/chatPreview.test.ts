@@ -24,6 +24,12 @@ describe('toChatPreviewText', () => {
     expect(toChatPreviewText(input)).toBe('Final Answer: 3 and 1/2');
   });
 
+  it('removes think-tag content from preview text', () => {
+    const input = 'Result<think>hidden reasoning</think>: 42';
+
+    expect(toChatPreviewText(input)).toBe('Result: 42');
+  });
+
   it('removes dangling markdown markers when response is malformed', () => {
     const input = 'Let\'s solve: **Final Answer: 40 boxes';
 
