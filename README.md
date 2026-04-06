@@ -233,6 +233,32 @@ MathPulse now supports a PRO-oriented architecture for fast demos, low-cost expe
 - Enhanced risk pipeline expanded: zero-shot endpoint plus trainable ML endpoint (`/api/predict-risk/enhanced`) with optional LLM recommendations.
 - Startup and deployment safety checks added (`backend/startup_validation.py`, `backend/pre_deploy_check.py`).
 
+#### Chat Reliability and UX Hotfixes (Latest)
+
+- Marker-aware continuation and stream-resume loop added to reduce truncated assistant responses.
+- SSE stream parsing hardened for CRLF boundaries and partial chunks.
+- Empty stream bubbles and duplicate loader behavior fixed.
+- Completion-repair logic improved to recover from cutoff responses while preserving final answer quality.
+- Think-tag leakage sanitization hardened to avoid hidden-reasoning artifacts in user-visible output.
+- Assistant markdown formatting restored and stabilized after sanitizer passes.
+- Chat auto-scroll behavior confined to the message pane (prevents page-level scroll jumps).
+- Chat stream and token limits increased for long, multi-step math responses.
+
+#### Inference and Model Governance Updates
+
+- Qwen-first routing hardened across inference paths, including startup validation checks.
+- Temporary chat-model override toggles added for controlled rollouts.
+- Qwen model lock rules enforced to prevent non-approved model drift in production routes.
+
+#### Validation Artifacts Captured
+
+- Manual chat validation screenshots are currently stored under `artifacts/`:
+   - `chat_validation_after_push_pre.png`
+   - `chat_validation_after_push_post.png`
+   - `chat_validation_pre_stream.png`
+   - `chat_validation_post_stream.png`
+   - `chat_validation_post_stress.png`
+
 Flow overview:
 
 1. Backend API calls route through the inference client and can switch provider mode by env.
