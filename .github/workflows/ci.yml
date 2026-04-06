@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+    inputs:
+      run_reason:
+        description: Optional reason for manual or agent-triggered CI
+        required: false
+        type: string
+      requires_ci:
+        description: Allow skipping CI run for dry routing tests
+        required: false
+        type: boolean
+        default: true
+      run_frontend:
+        description: Run frontend checks
+        required: false
+        type: boolean
+        default: true
+      run_backend:
+        description: Run backend checks
+        required: false
+        type: boolean
+        default: true
+      run_functions:
+        description: Run functions checks
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-frontend:
+    name: ci-frontend
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.requires_ci && inputs.run_frontend) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run frontend tests
+        run: npm test
+
+  ci-backend:
+    name: ci-backend
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.requires_ci && inputs.run_backend) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+
+      - name: Run backend checks
+        run: npm run check:backend
+
+  ci-functions:
+    name: ci-functions
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.requires_ci && inputs.run_functions) }}
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        run: npm ci
+
+      - name: Build functions
+        run: npm run build

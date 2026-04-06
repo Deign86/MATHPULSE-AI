@@ -1,0 +1,284 @@
+name: Agent Dispatch Router
+
+on:
+  repository_dispatch:
+    types:
+      - agent.code_change
+      - agent.ui_fix
+      - agent.repo_standardization
+      - agent.bug_audit
+      - agent.docs_update
+      - agent.release_prep
+  workflow_dispatch:
+    inputs:
+      agent_name:
+        description: Name of calling agent (copilot, claude, etc)
+        required: true
+        type: string
+      task_type:
+        description: One of code_change, ui_fix, repo_standardization, bug_audit, docs_update, release_prep
+        required: true
+        type: choice
+        options:
+          - code_change
+          - ui_fix
+          - repo_standardization
+          - bug_audit
+          - docs_update
+          - release_prep
+      scope:
+        description: Human-readable task scope
+        required: true
+        type: string
+      branch:
+        description: Target branch for routing checks
+        required: false
+        type: string
+      paths:
+        description: JSON array or comma/newline separated paths
+        required: false
+        type: string
+      requires_ci:
+        description: Whether to trigger CI workflow dispatch
+        required: false
+        type: boolean
+        default: true
+      requires_review:
+        description: Whether to trigger review-oriented audit routing
+        required: false
+        type: boolean
+        default: true
+      pull_request_number:
+        description: Optional PR number for comments and labels
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate and normalize payload
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+
+            const allowedTaskTypes = [
+              'code_change',
+              'ui_fix',
+              'repo_standardization',
+              'bug_audit',
+              'docs_update',
+              'release_prep'
+            ];
+
+            const toBool = (value, fallback = false) => {
+              if (value === undefined || value === null || value === '') return fallback;
+              if (typeof value === 'boolean') return value;
+              const normalized = String(value).toLowerCase();
+              if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+              if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+              return fallback;
+            };
+
+            const normalizePaths = (value) => {
+              if (!value) return [];
+              if (Array.isArray(value)) {
+                return value.map((item) => String(item).trim()).filter(Boolean);
+              }
+              const text = String(value).trim();
+              if (!text) return [];
+
+              try {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                  return parsed.map((item) => String(item).trim()).filter(Boolean);
+                }
+              } catch {}
+
+              return text
+                .split(/[\n,]/)
+                .map((item) => item.trim())
+                .filter(Boolean);
+            };
+
+            const branchFromContext = (context.ref || '').replace('refs/heads/', '');
+            const fromRepoDispatch = context.eventName === 'repository_dispatch';
+            const eventType = fromRepoDispatch ? context.payload.action : '';
+            const payload = fromRepoDispatch ? (context.payload.client_payload || {}) : (context.payload.inputs || {});
+
+            const taskType = String(payload.task_type || (eventType || '').replace(/^agent\./, '') || 'code_change').trim();
+            if (!allowedTaskTypes.includes(taskType)) {
+              core.setFailed(`Unsupported task_type: ${taskType}. Allowed: ${allowedTaskTypes.join(', ')}`);
+              return;
+            }
+
+            const branch = String(payload.branch || branchFromContext || context.payload.repository.default_branch || 'main').trim();
+            const normalized = {
+              event_name: context.eventName,
+              event_type: eventType,
+              agent_name: String(payload.agent_name || 'unknown-agent').trim(),
+              task_type: taskType,
+              scope: String(payload.scope || '').trim(),
+              branch,
+              paths: normalizePaths(payload.paths),
+              requires_ci: toBool(payload.requires_ci, true),
+              requires_review: toBool(payload.requires_review, true),
+              pull_request_number: String(payload.pull_request_number || '').trim()
+            };
+
+            fs.writeFileSync('agent-dispatch-payload.json', JSON.stringify(normalized, null, 2), 'utf8');
+
+            core.setOutput('agent_name', normalized.agent_name);
+            core.setOutput('task_type', normalized.task_type);
+            core.setOutput('scope', normalized.scope);
+            core.setOutput('branch', normalized.branch);
+            core.setOutput('paths_json', JSON.stringify(normalized.paths));
+            core.setOutput('requires_ci', String(normalized.requires_ci));
+            core.setOutput('requires_review', String(normalized.requires_review));
+            core.setOutput('pull_request_number', normalized.pull_request_number);
+
+      - name: Generate branch and scope intelligence
+        run: |
+          node scripts/suggest-branch-name.js \
+            --branch "${{ steps.validate.outputs.branch }}" \
+            --summary "${{ steps.validate.outputs.scope }}" \
+            --task-type "${{ steps.validate.outputs.task_type }}" \
+            --changed-files-json '${{ steps.validate.outputs.paths_json }}' \
+            --output-file agent-dispatch-analysis.json
+
+      - name: Write workflow summary
+        run: |
+          echo "## Agent Dispatch" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Agent: ${{ steps.validate.outputs.agent_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Task type: ${{ steps.validate.outputs.task_type }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Scope: ${{ steps.validate.outputs.scope }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: ${{ steps.validate.outputs.branch }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Requires CI: ${{ steps.validate.outputs.requires_ci }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Requires review: ${{ steps.validate.outputs.requires_review }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('agent-dispatch-analysis.json','utf8'));process.stdout.write(data.reportMarkdown + '\n');" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Trigger CI workflow
+        if: ${{ steps.validate.outputs.requires_ci == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ref = `${{ steps.validate.outputs.branch }}`;
+            const reason = `agent:${{ steps.validate.outputs.agent_name }}:${{ steps.validate.outputs.task_type }}`;
+            const analysis = JSON.parse(fs.readFileSync('agent-dispatch-analysis.json', 'utf8'));
+            const targets = new Set((analysis.ciTargets || []).map((value) => String(value).toLowerCase()));
+            const runFrontend = targets.size === 0 || targets.has('frontend');
+            const runBackend = targets.size === 0 || targets.has('backend');
+            const runFunctions = targets.size === 0 || targets.has('functions');
+
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: 'ci.yml',
+                ref,
+                inputs: {
+                  run_reason: reason,
+                  requires_ci: 'true',
+                  run_frontend: String(runFrontend),
+                  run_backend: String(runBackend),
+                  run_functions: String(runFunctions)
+                }
+              });
+              core.info(`Dispatched ci.yml on ref ${ref}`);
+            } catch (error) {
+              core.warning(`Dispatch on ref ${ref} failed: ${error.message}`);
+              const fallbackRef = context.payload.repository.default_branch || 'main';
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: 'ci.yml',
+                ref: fallbackRef,
+                inputs: {
+                  run_reason: `${reason}:fallback`,
+                  requires_ci: 'true',
+                  run_frontend: String(runFrontend),
+                  run_backend: String(runBackend),
+                  run_functions: String(runFunctions)
+                }
+              });
+              core.info(`Dispatched ci.yml on fallback ref ${fallbackRef}`);
+            }
+
+      - name: Trigger branch governor and audit for manual dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ref = `${{ steps.validate.outputs.branch }}`;
+            const fallbackRef = context.payload.repository.default_branch || 'main';
+            const inputs = {
+              branch: `${{ steps.validate.outputs.branch }}`,
+              summary: `${{ steps.validate.outputs.scope }}`,
+              changed_files_json: `${{ steps.validate.outputs.paths_json }}`,
+              task_type: `${{ steps.validate.outputs.task_type }}`,
+              pull_request_number: `${{ steps.validate.outputs.pull_request_number }}`
+            };
+
+            const dispatchWorkflow = async (workflowId) => {
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner,
+                  repo,
+                  workflow_id: workflowId,
+                  ref,
+                  inputs
+                });
+                core.info(`Triggered ${workflowId} on ref ${ref}.`);
+                return;
+              } catch (error) {
+                if (fallbackRef === ref) {
+                  throw error;
+                }
+                core.warning(`Dispatch for ${workflowId} on ref ${ref} failed: ${error.message}`);
+              }
+
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: workflowId,
+                ref: fallbackRef,
+                inputs
+              });
+              core.info(`Triggered ${workflowId} on fallback ref ${fallbackRef}.`);
+            };
+
+            await dispatchWorkflow('branch-name-governor.yml');
+
+            if (`${{ steps.validate.outputs.requires_review }}` === 'true') {
+              await dispatchWorkflow('ai-change-audit.yml');
+              core.info('Triggered branch-name-governor.yml and ai-change-audit.yml for manual dispatch flow.');
+            } else {
+              core.info('Triggered branch-name-governor.yml only (requires_review=false).');
+            }
+
+      - name: Upload dispatch artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-dispatch-artifacts
+          path: |
+            agent-dispatch-payload.json
+            agent-dispatch-analysis.json
