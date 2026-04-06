@@ -272,6 +272,17 @@ class TestChatEndpoint:
         assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
         mock_chat_async.assert_not_called()
 
+    @patch("main.call_hf_chat_async", new_callable=AsyncMock)
+    def test_chat_punctuated_followup_token_without_context_remains_blocked(self, mock_chat_async):
+        response = client.post("/api/chat", json={
+            "message": "go!",
+            "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
+        mock_chat_async.assert_not_called()
+
     @patch("main.call_hf_chat")
     def test_chat_with_history(self, mock_chat):
         mock_chat.return_value = "Yes, that's right."

@@ -1827,7 +1827,7 @@ def is_math_related_query(message: str) -> bool:
 
 def _normalize_continuation_followup_token(message: str) -> str:
     normalized = re.sub(r"\s+", " ", (message or "").strip().lower())
-    return re.sub(r"[.!?]+$", "", normalized)
+    return normalized.rstrip(".!?,\u2026")
 
 
 def _extract_latest_assistant_message(history: Optional[Sequence[Any]]) -> Optional[str]:
