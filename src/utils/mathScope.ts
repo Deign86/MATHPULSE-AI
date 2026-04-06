@@ -69,6 +69,35 @@ const MATH_SCOPE_PATTERNS = [
   /\b(?:x|y|z)\s*[=+\-*/^]\s*[-+]?\d/,
 ] as const;
 
+const CONTINUATION_FOLLOWUP_TOKENS = new Set([
+  'go',
+  'continue',
+  'yes',
+  'ok',
+  'next',
+]);
+
+const CONTINUATION_INVITE_PATTERNS = [
+  /\bshall\s+we\s+continue\b/i,
+  /\b(?:would|do)\s+you\s+like\s+to\s+continue\b/i,
+  /\b(?:want|need)\s+me\s+to\s+continue\b/i,
+  /\bshould\s+(?:i|we)\s+continue\b/i,
+  /\bcontinue\s*\?\s*$/i,
+  /\b(?:ready\s+for|go\s+to)\s+the\s+next\s+step\b/i,
+  /\bnext\s+step(?:s)?\s*\?\s*$/i,
+  /\bkeep\s+going\s*\?\s*$/i,
+] as const;
+
+export interface ScopeBoundaryHistoryEntry {
+  role?: string;
+  content?: string;
+}
+
+export interface ScopeBoundaryContext {
+  history?: ScopeBoundaryHistoryEntry[];
+  latestAssistantMessage?: string | null;
+}
+
 function pickRandomResponse(options: readonly string[]): string {
   if (options.length === 0) {
     return '';
@@ -89,13 +118,65 @@ export function isMathRelatedQuery(message: string): boolean {
   return MATH_SCOPE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
-export function getScopeBoundaryResponse(message: string): string | null {
+function normalizeContinuationTokenInput(message: string): string {
+  return (message ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[.!?]+$/g, '');
+}
+
+function isContinuationFollowupToken(message: string): boolean {
+  const normalized = normalizeContinuationTokenInput(message);
+  if (!normalized) {
+    return false;
+  }
+
+  return CONTINUATION_FOLLOWUP_TOKENS.has(normalized);
+}
+
+function getLatestAssistantContextMessage(context?: ScopeBoundaryContext): string | null {
+  const directAssistantMessage = (context?.latestAssistantMessage ?? '').trim();
+  if (directAssistantMessage) {
+    return directAssistantMessage;
+  }
+
+  const history = context?.history ?? [];
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const entry = history[i];
+    const role = (entry?.role ?? '').toLowerCase();
+    const content = (entry?.content ?? '').trim();
+    if (!content) {
+      continue;
+    }
+    if (role === 'assistant' || role === 'ai') {
+      return content;
+    }
+  }
+
+  return null;
+}
+
+function assistantInvitedContinuation(context?: ScopeBoundaryContext): boolean {
+  const latestAssistantMessage = getLatestAssistantContextMessage(context);
+  if (!latestAssistantMessage) {
+    return false;
+  }
+
+  return CONTINUATION_INVITE_PATTERNS.some((pattern) => pattern.test(latestAssistantMessage));
+}
+
+export function getScopeBoundaryResponse(message: string, context?: ScopeBoundaryContext): string | null {
   const normalized = (message ?? '').trim();
   if (!normalized) {
     return pickRandomResponse(NON_MATH_REDIRECT_RESPONSES);
   }
 
   if (isMathRelatedQuery(normalized)) {
+    return null;
+  }
+
+  if (isContinuationFollowupToken(normalized) && assistantInvitedContinuation(context)) {
     return null;
   }
 
