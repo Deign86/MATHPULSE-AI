@@ -45,13 +45,6 @@ export const DashboardAvatar: React.FC<DashboardAvatarProps> = ({ className = "w
           className={`${imageClass} z-[13]`}
         />
       )}
-      {accSrc && (
-        <img
-          src={accSrc}
-          alt="Accessory"
-          className={`${imageClass} z-[14]`}
-        />
-      )}
 
       {/* Swinging Head Container */}
       <motion.div
@@ -108,6 +101,15 @@ export const DashboardAvatar: React.FC<DashboardAvatarProps> = ({ className = "w
             className={imageClass}
           />
         </motion.div>
+
+        {/* Accessory attached to head */}
+        {accSrc && (
+          <img
+            src={accSrc}
+            alt="Accessory"
+            className={`${imageClass} z-[4]`}
+          />
+        )}
       </motion.div>
     </div>
   );
