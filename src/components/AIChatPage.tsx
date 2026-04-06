@@ -22,8 +22,10 @@ const AIChatPage = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMessage, setCurrentMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
+  const sendLockRef = useRef(false);
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
@@ -67,17 +69,25 @@ const AIChatPage = () => {
   }, [activeSessionId]);
 
   const handleSendMessage = async () => {
-    if (!currentMessage.trim() || isLoading) return;
+    if (!currentMessage.trim() || isLoading || isSendingMessage || sendLockRef.current) return;
 
-    let sessionId = activeSessionId;
-    if (!sessionId) {
-      sessionId = createNewSession();
-      setActiveSessionId(sessionId);
+    sendLockRef.current = true;
+    setIsSendingMessage(true);
+
+    try {
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        sessionId = createNewSession();
+        setActiveSessionId(sessionId);
+      }
+
+      const text = currentMessage.trim();
+      setCurrentMessage('');
+      await sendMessage(sessionId, text);
+    } finally {
+      sendLockRef.current = false;
+      setIsSendingMessage(false);
     }
-
-    const text = currentMessage.trim();
-    setCurrentMessage('');
-    await sendMessage(sessionId, text);
   };
 
   const handleNewChat = () => {
@@ -270,7 +280,7 @@ const AIChatPage = () => {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!currentMessage.trim() || isLoading}
+                  disabled={!currentMessage.trim() || isLoading || isSendingMessage}
                   className="px-6 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                 >
                   <Send size={18} />

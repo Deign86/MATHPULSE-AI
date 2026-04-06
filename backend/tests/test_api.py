@@ -262,21 +262,53 @@ class TestChatEndpoint:
         mock_chat_async.assert_called_once()
 
     @patch("main.call_hf_chat_async", new_callable=AsyncMock)
-    def test_chat_followup_token_without_context_remains_blocked(self, mock_chat_async):
+    def test_chat_followup_token_reconstructs_latest_math_intent_and_calls_inference(self, mock_chat_async):
+        mock_chat_async.return_value = "Continuing: subtract 3 from both sides first."
+        response = client.post("/api/chat", json={
+            "message": "more",
+            "history": [
+                {"role": "user", "content": "Solve for x in 2x + 3 = 7"},
+                {"role": "assistant", "content": "Start by isolating x."},
+            ],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] == "Continuing: subtract 3 from both sides first."
+        mock_chat_async.assert_called_once()
+
+    @patch("main.call_hf_chat_async", new_callable=AsyncMock)
+    def test_chat_followup_token_without_context_requests_clarification(self, mock_chat_async):
         response = client.post("/api/chat", json={
             "message": "go",
             "history": [],
         })
 
         assert response.status_code == 200
-        assert response.json()["response"] in main_module._NON_MATH_REDIRECT_RESPONSES
+        assert response.json()["response"] == main_module._CONTINUATION_CONTEXT_CLARIFY_RESPONSE
         mock_chat_async.assert_not_called()
 
     @patch("main.call_hf_chat_async", new_callable=AsyncMock)
-    def test_chat_punctuated_followup_token_without_context_remains_blocked(self, mock_chat_async):
+    def test_chat_punctuated_followup_token_without_context_requests_clarification(self, mock_chat_async):
         response = client.post("/api/chat", json={
             "message": "go!",
             "history": [],
+        })
+
+        assert response.status_code == 200
+        assert response.json()["response"] == main_module._CONTINUATION_CONTEXT_CLARIFY_RESPONSE
+        mock_chat_async.assert_not_called()
+
+    @patch("main.call_hf_chat_async", new_callable=AsyncMock)
+    def test_chat_followup_token_after_refused_request_remains_blocked(self, mock_chat_async):
+        response = client.post("/api/chat", json={
+            "message": "continue",
+            "history": [
+                {"role": "user", "content": "Who is Elon Musk?"},
+                {
+                    "role": "assistant",
+                    "content": main_module._NON_MATH_REDIRECT_RESPONSES[0],
+                },
+            ],
         })
 
         assert response.status_code == 200
@@ -436,10 +468,50 @@ class TestChatEndpoint:
         mock_stream_async.assert_called_once()
 
     @patch("main.call_hf_chat_stream_async")
-    def test_chat_stream_followup_token_without_context_remains_blocked(self, mock_stream_async):
+    def test_chat_stream_followup_token_reconstructs_latest_math_intent_and_calls_inference(self, mock_stream_async):
+        async def _stream(*args, **kwargs):
+            yield "Continuing the same solution from the previous step."
+
+        mock_stream_async.return_value = _stream()
+
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "more",
+            "history": [
+                {"role": "user", "content": "Solve 2x + 3 = 7"},
+                {"role": "assistant", "content": "We can isolate x now."},
+            ],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert "Continuing the same solution from the previous step." in content
+        assert "event: end" in content
+        mock_stream_async.assert_called_once()
+
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_followup_token_without_context_requests_clarification(self, mock_stream_async):
         with client.stream("POST", "/api/chat/stream", json={
             "message": "go",
             "history": [],
+        }) as response:
+            assert response.status_code == 200
+            content = "".join(response.iter_text())
+
+        assert main_module._CONTINUATION_CONTEXT_CLARIFY_RESPONSE in content
+        assert "event: end" in content
+        mock_stream_async.assert_not_called()
+
+    @patch("main.call_hf_chat_stream_async")
+    def test_chat_stream_followup_token_after_refused_request_remains_blocked(self, mock_stream_async):
+        with client.stream("POST", "/api/chat/stream", json={
+            "message": "continue",
+            "history": [
+                {"role": "user", "content": "Who is Elon Musk?"},
+                {
+                    "role": "assistant",
+                    "content": main_module._NON_MATH_REDIRECT_RESPONSES[1],
+                },
+            ],
         }) as response:
             assert response.status_code == 200
             content = "".join(response.iter_text())
