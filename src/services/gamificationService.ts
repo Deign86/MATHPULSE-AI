@@ -12,6 +12,8 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
+  onSnapshot,
+  deleteField
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
@@ -189,7 +191,44 @@ export const getLeaderboard = async (
     return [];
   }
 };
+export const subscribeToLeaderboard = (
+  callback: (leaderboard: LeaderboardEntry[]) => void,
+  userId?: string,
+  scopedOnly: boolean = false,
+  timeRange: 'all' | 'week' | 'month' = 'all',
+  limitCount: number = 10
+) => {
+  void userId;
+  void scopedOnly;
+  void timeRange;
 
+  const leaderboardQuery = query(
+    collection(db, 'users'),
+    where('role', '==', 'student'),
+    orderBy('totalXP', 'desc'),
+    limit(limitCount)
+  );
+
+  return onSnapshot(leaderboardQuery, (snapshot) => {
+    const leaderboard = snapshot.docs.map((doc, index) => {
+      const data = doc.data();
+      return {
+        userId: doc.id,
+        name: data.name || 'Unknown',
+        photo: data.photo,
+        xp: data.totalXP || 0,
+        level: data.level || 1,
+        rank: index + 1,
+        weeklyXP: data.weeklyXP || 0,
+        monthlyXP: data.monthlyXP || 0,
+      };
+    });
+    callback(leaderboard);
+  }, (error) => {
+    console.error('Error subscribing to leaderboard:', error);
+    callback([]);
+  });
+};
 // Get user's rank
 export const getUserRank = async (userId: string): Promise<number> => {
   try {
@@ -416,17 +455,31 @@ export const purchaseAvatarItem = async (
   }
 };
 
-export const resetAvatarPurchasesForTesting = async (userId: string): Promise<boolean> => {
+export const resetAvatarPurchasesForTesting = async (userId: string): Promise<{ success: boolean; newXP: number }> => {
   try {
     const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      return { success: false, newXP: 0 };
+    }
+    
+    const userData = userDoc.data();
+    const currentXP = userData.currentXP || 0;
+    
+    // Ensure the user has at least 5000 spendable XP for testing without touching totalXP
+    const newXP = Math.max(currentXP, 5000);
+
     await updateDoc(userRef, {
       ownedAvatarItems: [],
-      equippedAvatarItems: {},
+      avatarLayers: deleteField(),
+      currentXP: newXP,
       updatedAt: serverTimestamp(),
     });
-    return true;
+    
+    return { success: true, newXP };
   } catch (error) {
     console.error('Error resetting avatar items:', error);
-    return false;
+    return { success: false, newXP: 0 };
   }
 };
