@@ -107,11 +107,11 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 | Model | Primary Use |
 |---|---|
 | **[Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B)** | Global default model for all key tasks (`chat`, `verify_solution`, `lesson_generation`, `quiz_generation`, `learning_path`, `daily_insight`, `risk_classification`, `risk_narrative`) |
-| **meta-llama/Meta-Llama-3-70B-Instruct** | Higher-capacity fallback for `verify_solution` |
-| **meta-llama/Llama-3.1-8B-Instruct** | Secondary fallback for `verify_solution` |
-| **google/gemma-2-2b-it** | Secondary backup with broad instruction coverage |
-| **mistralai/Mistral-7B-Instruct-v0.3** | Experimental prompt/procedure benchmarking |
-| **meta-llama/Meta-Llama-3-8B-Instruct** | Experimental baseline comparison |
+| **meta-llama/Meta-Llama-3-70B-Instruct** | Higher-capacity fallback for `verify_solution` _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **meta-llama/Llama-3.1-8B-Instruct** | Secondary fallback for `verify_solution` _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **google/gemma-2-2b-it** | Secondary backup with broad instruction coverage _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **mistralai/Mistral-7B-Instruct-v0.3** | Experimental prompt/procedure benchmarking _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
+| **meta-llama/Meta-Llama-3-8B-Instruct** | Experimental baseline comparison _(only active when `INFERENCE_ENFORCE_QWEN_ONLY=false`)_ |
 
 #### Risk and Analytics Models
 | Model | Primary Use |
@@ -121,8 +121,9 @@ An interactive, gamified math learning platform featuring AI-powered tutoring, r
 
 Runtime note:
 - Environment variables can override routing at startup (`INFERENCE_MODEL_ID`, `INFERENCE_CHAT_MODEL_ID`, `HF_QUIZ_MODEL_ID`, `INFERENCE_FALLBACK_MODELS`).
-- If `INFERENCE_MODEL_ID` is set, task-specific defaults are overridden to that model.
-- Source of truth for model routing is `config/models.yaml` and `backend/config/models.yaml`, both of which set `Qwen/Qwen3-32B` as global primary.
+- If `INFERENCE_MODEL_ID` is set, task-specific defaults are overridden to that model **unless** `INFERENCE_ENFORCE_QWEN_ONLY=true`.
+- When `INFERENCE_ENFORCE_QWEN_ONLY=true`, runtime routing takes precedence and forces task routing to `INFERENCE_QWEN_LOCK_MODEL`, which can negate `INFERENCE_MODEL_ID` and other task-specific selections.
+- `config/models.yaml` and `backend/config/models.yaml` remain the baseline source of truth for configured model defaults, with environment variables and runtime enforcement applied on top of those defaults.
 
 ## 🚀 Getting Started
 
@@ -262,12 +263,14 @@ Flow overview:
 
 To make [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B) the default model for all backend tasks while keeping your existing UI and Firebase flows, use this profile:
 
+```env
 INFERENCE_PROVIDER=hf_inference
 INFERENCE_GPU_PROVIDER=hf_inference
 INFERENCE_CPU_PROVIDER=hf_inference
 INFERENCE_MODEL_ID=Qwen/Qwen3-32B
 INFERENCE_CHAT_MODEL_ID=Qwen/Qwen3-32B
 INFERENCE_GPU_REQUIRED_TASKS=chat
+```
 
 This keeps your unique React UI and Firebase flows unchanged, while generation routes through the configured HF inference provider with Qwen as the global default.
 

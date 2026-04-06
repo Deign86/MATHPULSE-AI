@@ -26,9 +26,9 @@
 - Backend stack: FastAPI + Hugging Face Inference routing via `backend/services/inference_client.py`.
 - Global primary model is `Qwen/Qwen3-32B` (source: `config/models.yaml` and `backend/config/models.yaml`).
 - Task routing maps all key tasks to `Qwen/Qwen3-32B` (chat, verify_solution, lesson_generation, quiz_generation, learning_path, daily_insight, risk_classification, risk_narrative).
-- Chat fallback policy is strict-primary-only (`chat: []` in `task_fallback_model_map`), while `verify_solution` has explicit fallback models.
+- Chat fallback policy is strict-primary-only (`chat: []` in `task_fallback_model_map`). `verify_solution` is configured with explicit fallback models in the model config files, but those fallbacks are only effective when the backend Qwen-only enforcement lock is disabled; with the default `INFERENCE_ENFORCE_QWEN_ONLY=true`, runtime behavior remains Qwen-only and the per-task fallback chains are cleared.
 - Provider routing is `hf_inference` across key tasks in both config files.
-- When model/version wording appears elsewhere (for example in README), treat the two model config files as authoritative.
+- When model/version wording appears elsewhere (for example in README), treat the two model config files as authoritative, but resolve any conflict in favor of runtime config/code.
 
 ## Copilot Skill Invocation Policy
 
