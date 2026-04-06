@@ -25,6 +25,7 @@ import ScientificCalculator from './components/ScientificCalculator';
 import SupplementalBanner from './components/SupplementalBanner';
 import AvatarShop from './components/AvatarShop';
 import AppLoadingScreen from './components/AppLoadingScreen';
+import { CompetencyRadarChart } from './components/CompetencyRadarChart';
 import { ChatProvider } from './contexts/ChatContext';
 import { useAuth } from './contexts/AuthContext';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService';
@@ -833,6 +834,12 @@ const App = () => {
                         {profileReady && (
                           <div className="pb-4">
                             <LearningPath onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)} atRiskSubjects={atRiskSubjects} />
+                          </div>
+                        )}
+
+                        {profileReady && (
+                          <div className="pb-4">
+                            <CompetencyRadarChart />
                           </div>
                         )}
                       </div>
