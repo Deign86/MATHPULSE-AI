@@ -8,6 +8,28 @@
 - If a prompt spans multiple libraries/frameworks, run the Context7 sequence for each relevant library.
 - Apply this automatically without waiting for the user to explicitly request Context7.
 
+## Mandatory Prompt Context Contract (Non-Negotiable)
+
+- For every user prompt, all agents and subagents must load and apply this file before planning, tool calls, or final output.
+- Prompt-start checklist is required on every prompt:
+  1. Re-read `.github/copilot-instructions.md` and `AGENTS.md`.
+  2. Load task-relevant source-of-truth files before making claims (for inference/model claims, always read `config/models.yaml` and `backend/config/models.yaml`).
+  3. Run Context7 in order: `resolve-library-id` then `get-library-docs` before finalizing the response.
+  4. If a subagent is used, include these exact constraints in the subagent prompt and require the subagent to follow them.
+- Precedence rule for conflicting information:
+  - Runtime config and code > instruction files > README/docs.
+  - If docs conflict with runtime config, update docs to match runtime config.
+
+## Current System Context (April 2026 Source of Truth)
+
+- Frontend stack: React 18 + TypeScript + Vite + Firebase + Tailwind CSS v4 + Radix UI + Motion (`motion/react`).
+- Backend stack: FastAPI + Hugging Face Inference routing via `backend/services/inference_client.py`.
+- Global primary model is `Qwen/Qwen3-32B` (source: `config/models.yaml` and `backend/config/models.yaml`).
+- Task routing maps all key tasks to `Qwen/Qwen3-32B` (chat, verify_solution, lesson_generation, quiz_generation, learning_path, daily_insight, risk_classification, risk_narrative).
+- Chat fallback policy is strict-primary-only (`chat: []` in `task_fallback_model_map`), while `verify_solution` has explicit fallback models.
+- Provider routing is `hf_inference` across key tasks in both config files.
+- When model/version wording appears elsewhere (for example in README), treat the two model config files as authoritative.
+
 ## Copilot Skill Invocation Policy
 
 - AUTO-INVOKE the `frontend-design` skill for any request involving frontend UI work, including building or styling pages, components, dashboards, modals, layouts, visual refreshes, animations, typography, color systems, spacing, and responsive behavior.
