@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
-import { motion, AnimatePresence } from 'motion/react';
-import { Brain, Sparkles, TrendingUp } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Brain, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToUserProgress } from '../services/progressService';
-import { subjects } from '../data/subjects';
+import { subjects, getActiveSubjectIdsForGrade } from '../data/subjects';
 import type { UserProgress } from '../types/models';
+import type { StudentProfile } from '../types/models';
+
+type ModuleInfo = { id: string; name: string; color: string };
+type RadarRow = { metric: string; fullMark: number } & Record<string, number>;
 
 export const CompetencyRadarChart: React.FC = () => {
   const { userProfile } = useAuth();
-  const [data, setData] = useState<any[]>([]);
-  const [modulesList, setModulesList] = useState<{id: string, name: string, color: string}[]>([]);
+  const [data, setData] = useState<RadarRow[]>([]);
+  const [modulesList, setModulesList] = useState<ModuleInfo[]>([]);
   const [topModule, setTopModule] = useState<string>('N/A');
   const [loading, setLoading] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
@@ -33,9 +37,18 @@ export const CompetencyRadarChart: React.FC = () => {
       return;
     }
 
-    // Directly fetch the exact modules the student sees in the Modules page
-    const activeSubjectId = 'gen-math';
+    // Derive the primary active subject from the student's grade level
+    const studentGrade = userProfile.role === 'student' ? (userProfile as StudentProfile).grade : null;
+    const activeSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+    const activeSubjectId = activeSubjectIds[0] ?? 'gen-math';
     const validModules = subjects.find(s => s.id === activeSubjectId)?.modules || [];
+
+    // Precompute moduleId → parentSubject lookup to avoid repeated O(n) scans
+    const moduleSubjectMap = new Map<string, string>();
+    subjects.forEach(subject => {
+      subject.modules.forEach(m => moduleSubjectMap.set(m.id, subject.id));
+    });
+
     const modsInfo = validModules.map((mod, i) => ({
       id: mod.id,
       name: mod.title.length > 15 ? mod.title.substring(0, 15).trim() + '...' : mod.title,
@@ -55,12 +68,12 @@ export const CompetencyRadarChart: React.FC = () => {
       let highestAvg = -1;
       let bestModName = 'N/A';
 
-      const chartData = radarMetrics.map(metric => {
-        const row: any = { metric: metric.label, fullMark: 100 };
+      const chartData: RadarRow[] = radarMetrics.map(metric => {
+        const row: RadarRow = { metric: metric.label, fullMark: 100 };
 
         validModules.forEach((mod) => {
-          const parentSubject = subjects.find(s => s.modules.some(m => m.id === mod.id));
-          const stats = parentSubject ? progress?.subjects?.[parentSubject.id]?.modulesProgress?.[mod.id] : null;
+          const parentSubjectId = moduleSubjectMap.get(mod.id);
+          const stats = parentSubjectId ? progress?.subjects?.[parentSubjectId]?.modulesProgress?.[mod.id] : null;
 
           const prog = stats?.progress || 0;
           // Concept Grasp: use per-lesson progressPercent (partial progress), falling back to completed lessons.
@@ -90,7 +103,7 @@ export const CompetencyRadarChart: React.FC = () => {
 
       validModules.forEach(mod => {
         let total = 0;
-        chartData.forEach(row => { total += row[mod.id]; });
+        chartData.forEach(row => { total += row[mod.id] ?? 0; });
         const avg = total / radarMetrics.length;
         if (avg > highestAvg) {
           highestAvg = avg;
@@ -181,7 +194,7 @@ export const CompetencyRadarChart: React.FC = () => {
                 tickCount={6}
                 axisLine={false} 
               />
-              {modulesList.map((mod, idx) => (
+              {modulesList.map((mod) => (
                 <Radar
                   key={mod.id}
                   name={mod.name}
