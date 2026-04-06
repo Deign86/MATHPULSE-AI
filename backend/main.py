@@ -1800,6 +1800,7 @@ _CONTINUATION_FOLLOWUP_TOKENS: Set[str] = {
     "yes",
     "ok",
     "next",
+    "more",
 }
 
 _CONTINUATION_INVITE_PATTERNS: Tuple[re.Pattern[str], ...] = (
@@ -1811,6 +1812,11 @@ _CONTINUATION_INVITE_PATTERNS: Tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(?:ready\s+for|go\s+to)\s+the\s+next\s+step\b", re.IGNORECASE),
     re.compile(r"\bnext\s+step(?:s)?\s*\?\s*$", re.IGNORECASE),
     re.compile(r"\bkeep\s+going\s*\?\s*$", re.IGNORECASE),
+)
+
+_CONTINUATION_CONTEXT_CLARIFY_RESPONSE = (
+    "I can continue once I know which math problem you mean. "
+    "Please share the problem again or tell me which step to continue."
 )
 
 
@@ -1828,6 +1834,11 @@ def is_math_related_query(message: str) -> bool:
 def _normalize_continuation_followup_token(message: str) -> str:
     normalized = re.sub(r"\s+", " ", (message or "").strip().lower())
     return normalized.rstrip(".!?,\u2026")
+
+
+def _is_continuation_followup_token(message: str) -> bool:
+    followup_token = _normalize_continuation_followup_token(message)
+    return followup_token in _CONTINUATION_FOLLOWUP_TOKENS
 
 
 def _extract_latest_assistant_message(history: Optional[Sequence[Any]]) -> Optional[str]:
@@ -1856,9 +1867,39 @@ def _extract_latest_assistant_message(history: Optional[Sequence[Any]]) -> Optio
     return None
 
 
+def _extract_latest_user_intent_message(history: Optional[Sequence[Any]]) -> Optional[str]:
+    if not history:
+        return None
+
+    for entry in reversed(history):
+        role: Optional[Any] = None
+        content: Optional[Any] = None
+
+        if isinstance(entry, dict):
+            role = entry.get("role")
+            content = entry.get("content")
+        else:
+            role = getattr(entry, "role", None)
+            content = getattr(entry, "content", None)
+
+        role_text = str(role or "").strip().lower()
+        content_text = str(content or "").strip()
+        if not content_text:
+            continue
+
+        if role_text != "user":
+            continue
+
+        if _is_continuation_followup_token(content_text):
+            continue
+
+        return content_text
+
+    return None
+
+
 def _is_contextual_continuation_followup(message: str, history: Optional[Sequence[Any]]) -> bool:
-    followup_token = _normalize_continuation_followup_token(message)
-    if followup_token not in _CONTINUATION_FOLLOWUP_TOKENS:
+    if not _is_continuation_followup_token(message):
         return False
 
     latest_assistant_message = _extract_latest_assistant_message(history)
@@ -1868,15 +1909,12 @@ def _is_contextual_continuation_followup(message: str, history: Optional[Sequenc
     return any(pattern.search(latest_assistant_message) for pattern in _CONTINUATION_INVITE_PATTERNS)
 
 
-def get_scope_boundary_response(message: str, history: Optional[Sequence[Any]] = None) -> Optional[str]:
+def _scope_boundary_response_without_continuation(message: str) -> Optional[str]:
     normalized = (message or "").strip().lower()
     if not normalized:
         return random.choice(_NON_MATH_REDIRECT_RESPONSES)
 
     if is_math_related_query(normalized):
-        return None
-
-    if _is_contextual_continuation_followup(normalized, history):
         return None
 
     if _GREETING_PATTERN.search(normalized):
@@ -1886,6 +1924,34 @@ def get_scope_boundary_response(message: str, history: Optional[Sequence[Any]] =
         return random.choice(_THANKS_RESPONSES)
 
     return random.choice(_NON_MATH_REDIRECT_RESPONSES)
+
+
+def get_scope_boundary_response(message: str, history: Optional[Sequence[Any]] = None) -> Optional[str]:
+    boundary_response = _scope_boundary_response_without_continuation(message)
+    if boundary_response is None:
+        return None
+
+    if not _is_continuation_followup_token(message):
+        return boundary_response
+
+    if _is_contextual_continuation_followup(message, history):
+        return None
+
+    reconstructed_intent = _extract_latest_user_intent_message(history)
+    if not reconstructed_intent:
+        return _CONTINUATION_CONTEXT_CLARIFY_RESPONSE
+
+    reconstructed_boundary_response = _scope_boundary_response_without_continuation(reconstructed_intent)
+    if reconstructed_boundary_response is None:
+        return None
+
+    if (
+        reconstructed_boundary_response in _GREETING_RESPONSES
+        or reconstructed_boundary_response in _THANKS_RESPONSES
+    ):
+        return _CONTINUATION_CONTEXT_CLARIFY_RESPONSE
+
+    return reconstructed_boundary_response
 
 
 def build_math_tutor_prompt(question: str) -> str:
