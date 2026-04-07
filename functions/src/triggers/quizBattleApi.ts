@@ -35,14 +35,33 @@ const asNumber = (value: unknown, fallback: number): number => {
   return fallback;
 };
 
-const generateRoomCode = (): string => {
+const generateRoomCode = async (): Promise<string> => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 6; i += 1) {
-    const idx = Math.floor(Math.random() * chars.length);
-    code += chars[idx];
+  const maxAttempts = 10;
+  const db = admin.firestore();
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    let code = "";
+    for (let i = 0; i < 6; i += 1) {
+      const idx = Math.floor(Math.random() * chars.length);
+      code += chars[idx];
+    }
+
+    const existingRoomSnapshot = await db
+      .collection("quizBattleRooms")
+      .where("roomCode", "==", code)
+      .limit(1)
+      .get();
+
+    if (existingRoomSnapshot.empty) {
+      return code;
+    }
   }
-  return code;
+
+  throw new functions.https.HttpsError(
+    "internal",
+    "Unable to generate a unique room code. Please try again.",
+  );
 };
 
 const normalizeSetup = (rawInput: unknown): NormalizedBattleSetup => {
@@ -145,7 +164,9 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
       queueType: setup.queueType,
       subjectId: setup.subjectId,
       topicId: setup.topicId,
-      difficulty: setup.mode === "bot" ? setup.botDifficulty : setup.difficulty,
+      difficulty: setup.mode === "bot" ?
+        (setup.adaptiveBot ? "adaptive" : setup.botDifficulty) :
+        setup.difficulty,
       rounds: setup.rounds,
       timePerQuestionSec: setup.timePerQuestionSec,
       status: "searching",
@@ -189,7 +210,7 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
 
   const db = admin.firestore();
   const roomRef = db.collection("quizBattleRooms").doc();
-  const roomCode = generateRoomCode();
+  const roomCode = await generateRoomCode();
 
   await roomRef.set({
     roomId: roomRef.id,
