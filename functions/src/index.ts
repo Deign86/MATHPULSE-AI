@@ -48,3 +48,10 @@ export {
   manualBackfillCurriculumVersion,
   manualRequestReassessment,
 } from "./triggers/manualTriggers";
+
+export {
+  quizBattleJoinQueue,
+  quizBattleLeaveQueue,
+  quizBattleCreatePrivateRoom,
+  quizBattleCreateBotMatch,
+} from "./triggers/quizBattleApi";

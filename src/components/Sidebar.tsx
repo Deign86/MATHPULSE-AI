@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
 import { cn } from './ui/utils';
@@ -90,6 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: 'Progress',
           items: [
             { icon: GraduationCap, label: 'Grades', displayLabel: 'Assessment' },
+            { icon: Swords, label: 'Quiz Battle', displayLabel: 'Quiz Battle' },
             { icon: Trophy, label: 'Leaderboard', displayLabel: 'Leadership Board' },
           ],
         },

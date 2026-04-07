@@ -322,6 +322,90 @@ export interface LeaderboardEntry {
   monthlyXP: number;
 }
 
+// Quiz Battle Types (Student-side)
+export type QuizBattleMode = 'online' | 'bot';
+export type QuizBattleQueueType = 'public_matchmaking' | 'private_room';
+export type QuizBattleDifficulty = 'easy' | 'medium' | 'hard' | 'adaptive';
+export type QuizBattleMatchStatus =
+  | 'idle'
+  | 'queued'
+  | 'room_waiting'
+  | 'ready'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+export type QuizBattleConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+export type QuizBattleOutcome = 'win' | 'loss' | 'draw';
+
+export interface QuizBattleSetupConfig {
+  mode: QuizBattleMode;
+  subjectId: string;
+  topicId: string;
+  difficulty: Exclude<QuizBattleDifficulty, 'adaptive'>;
+  rounds: number;
+  timePerQuestionSec: number;
+  queueType: QuizBattleQueueType;
+  botDifficulty: QuizBattleDifficulty;
+  adaptiveBot: boolean;
+}
+
+export interface QuizBattleQueueState {
+  status: 'idle' | 'searching' | 'matched' | 'error';
+  queueType: QuizBattleQueueType;
+  roomCode?: string;
+  estimatedWaitSeconds?: number;
+  elapsedSeconds?: number;
+  message?: string;
+}
+
+export interface QuizBattleMatchSummary {
+  matchId: string;
+  mode: QuizBattleMode;
+  status: QuizBattleMatchStatus;
+  subjectId: string;
+  topicId: string;
+  difficulty: QuizBattleDifficulty;
+  rounds: number;
+  timePerQuestionSec: number;
+  scoreFor: number;
+  scoreAgainst: number;
+  outcome: QuizBattleOutcome;
+  accuracy: number;
+  averageResponseMs: number;
+  bestStreak: number;
+  xpEarned: number;
+  opponentName: string;
+  opponentType: 'student' | 'bot';
+  createdAt: Date;
+  endedAt: Date;
+}
+
+export interface StudentBattleStats {
+  userId: string;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  averageAccuracy: number;
+  averageResponseMs: number;
+  bestStreak: number;
+  currentStreak: number;
+  favoriteTopicId?: string;
+  leaderboardScore: number;
+  updatedAt: Date;
+}
+
+export interface QuizBattleLeaderboardEntry {
+  userId: string;
+  displayName: string;
+  photo?: string;
+  rank: number;
+  leaderboardScore: number;
+  winRate: number;
+  bestStreak: number;
+}
+
 // Notification Types
 export interface Notification {
   id: string;
