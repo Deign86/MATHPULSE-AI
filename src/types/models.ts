@@ -336,6 +336,25 @@ export type QuizBattleMatchStatus =
   | 'cancelled';
 export type QuizBattleConnectionState = 'connected' | 'reconnecting' | 'disconnected';
 export type QuizBattleOutcome = 'win' | 'loss' | 'draw';
+export type QuizBattleLifecycleEventType =
+  | 'round_started'
+  | 'answer_locked'
+  | 'round_result'
+  | 'match_completed';
+
+export interface QuizBattleLifecycleState {
+  eventType: QuizBattleLifecycleEventType;
+  sequence: number;
+  roundNumber: number;
+  occurredAtMs: number;
+  deadlineAtMs?: number;
+  answeredCount?: number;
+  lockedByStudentId?: string;
+  winner?: 'playerA' | 'playerB' | 'draw';
+  scoreA?: number;
+  scoreB?: number;
+  resolvedBy?: 'submission' | 'timer';
+}
 
 export interface QuizBattleSetupConfig {
   mode: QuizBattleMode;

@@ -9,10 +9,14 @@ import {
   query,
   where,
 } from 'firebase/firestore';
+import { onDisconnect, ref as rtdbRef, serverTimestamp as rtdbServerTimestamp, set as rtdbSet } from 'firebase/database';
 import { httpsCallable } from 'firebase/functions';
-import { auth, cloudFunctions, db } from '../lib/firebase';
+import { auth, cloudFunctions, db, realtimeDb } from '../lib/firebase';
 import {
+  QuizBattleLifecycleEventType,
+  QuizBattleLifecycleState,
   QuizBattleMode,
+  QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
   QuizBattleSetupConfig,
   StudentBattleStats,
@@ -42,21 +46,123 @@ export interface QuizBattleSetupError {
 
 export interface QuizBattleQueueJoinResponse {
   success: boolean;
-  status: 'queued' | 'idle';
+  status: 'queued' | 'matched' | 'idle';
   queueEntryId?: string;
+  matchId?: string;
+}
+
+export interface QuizBattlePrivateRoomState {
+  roomId: string;
+  roomCode: string;
+  ownerStudentId: string;
+  participantIds: string[];
+  participantCount: number;
+  status: 'waiting' | 'ready' | 'cancelled' | 'expired';
+  subjectId: string;
+  topicId: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  rounds: number;
+  timePerQuestionSec: number;
+  matchId?: string;
+  isOwner: boolean;
 }
 
 export interface QuizBattlePrivateRoomResponse {
   success: boolean;
-  roomId: string;
-  roomCode: string;
+  room: QuizBattlePrivateRoomState;
+  match?: QuizBattleLiveMatchState;
 }
+
+export interface QuizBattleResumeSessionResponse {
+  success: boolean;
+  sessionType: 'idle' | 'queue' | 'room' | 'match';
+  queue?: {
+    status: 'searching' | 'matched' | 'cancelled';
+    queueType: 'public_matchmaking' | 'private_room';
+    matchId?: string;
+  };
+  room?: QuizBattlePrivateRoomState;
+  match?: QuizBattleLiveMatchState;
+}
+
+export type QuizBattleHeartbeatScope = 'queue' | 'room' | 'match';
+export type { QuizBattleLifecycleEventType, QuizBattleLifecycleState };
 
 export interface QuizBattleBotMatchResponse {
   success: boolean;
   matchId: string;
   status: 'ready';
   botDifficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
+}
+
+export interface QuizBattleLiveQuestion {
+  roundNumber: number;
+  questionId: string;
+  prompt: string;
+  choices: string[];
+}
+
+export interface QuizBattleRoundResult {
+  roundNumber: number;
+  questionId: string;
+  correctOptionIndex: number;
+  studentSelectedIndex: number | null;
+  studentCorrect: boolean;
+  botSelectedIndex: number;
+  botCorrect: boolean;
+  winner: 'playerA' | 'playerB' | 'draw';
+  playerAResponseMs: number;
+  botResponseMs: number;
+  resolvedAtMs: number;
+}
+
+export interface QuizBattleLiveMatchState {
+  matchId: string;
+  mode: QuizBattleMode;
+  status: 'ready' | 'in_progress' | 'completed' | 'cancelled';
+  subjectId: string;
+  topicId: string;
+  difficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
+  currentRound: number;
+  totalRounds: number;
+  timePerQuestionSec: number;
+  scoreFor: number;
+  scoreAgainst: number;
+  opponentName: string;
+  roundDeadlineAtMs?: number;
+  lifecycle?: QuizBattleLifecycleState;
+  currentQuestion: QuizBattleLiveQuestion | null;
+  roundResults: QuizBattleRoundResult[];
+  outcome?: 'win' | 'loss' | 'draw';
+  xpEarned?: number;
+}
+
+interface QuizBattleMatchStateCallableResponse {
+  success: boolean;
+  match: QuizBattleLiveMatchState;
+}
+
+interface QuizBattlePrivateRoomCallableResponse {
+  success: boolean;
+  room: QuizBattlePrivateRoomState;
+  match?: QuizBattleLiveMatchState;
+}
+
+interface QuizBattleHeartbeatResponse {
+  success: boolean;
+  scope: QuizBattleHeartbeatScope;
+  resourceId: string;
+}
+
+export interface QuizBattleSubmitAnswerResponse {
+  success: boolean;
+  duplicate: boolean;
+  roundResult: QuizBattleRoundResult | null;
+  completion?: {
+    outcome: 'win' | 'loss' | 'draw';
+    xpEarned: number;
+  };
+  match: QuizBattleLiveMatchState;
 }
 
 const DEFAULT_CALLABLE_TIMEOUT_MS = 15000;
@@ -118,7 +224,9 @@ const readLocalStore = (userId: string): LocalQuizBattleStore => {
     return {
       stats: parsedStats,
       history,
-      queueStatus: parsed.queueStatus === 'queued' ? 'queued' : 'idle',
+      queueStatus: parsed.queueStatus === 'queued' || parsed.queueStatus === 'matched'
+        ? parsed.queueStatus
+        : 'idle',
     };
   } catch (error) {
     console.error('Error reading local Quiz Battle fallback store:', error);
@@ -153,7 +261,30 @@ const shouldUseLocalFallbackForError = (error: unknown): boolean => {
   }
 
   const code = getFallbackCode(error);
-  return ['internal', 'not-found', 'unavailable', 'deadline-exceeded'].includes(code);
+  if (['internal', 'not-found', 'unavailable', 'deadline-exceeded'].includes(code)) {
+    return true;
+  }
+
+  const asRecord = (error as Record<string, unknown>) || {};
+  const message = (
+    typeof asRecord.message === 'string'
+      ? asRecord.message
+      : error instanceof Error
+        ? error.message
+        : ''
+  ).toLowerCase();
+
+  if (!message) {
+    return false;
+  }
+
+  return (
+    message.includes('cors policy') ||
+    message.includes('no access-control-allow-origin') ||
+    message.includes('failed to fetch') ||
+    message.includes('network error') ||
+    message.includes('err_failed')
+  );
 };
 
 const randomInRange = (min: number, max: number): number => {
@@ -282,6 +413,100 @@ const buildFallbackPrivateRoomCode = (): string => {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 };
 
+const buildFallbackPrivateRoomState = (roomCode?: string): QuizBattlePrivateRoomState => {
+  const activeStudentId = getActiveStudentId();
+  return {
+    roomId: `local-room-${Date.now()}`,
+    roomCode: roomCode || buildFallbackPrivateRoomCode(),
+    ownerStudentId: activeStudentId,
+    participantIds: [activeStudentId],
+    participantCount: 1,
+    status: 'waiting',
+    subjectId: 'gen-math',
+    topicId: 'functions',
+    difficulty: 'medium',
+    rounds: 5,
+    timePerQuestionSec: 30,
+    isOwner: true,
+  };
+};
+
+const canUseRealtimePresence = (): boolean => {
+  return isBrowser && Boolean(auth.currentUser?.uid) && Boolean(realtimeDb);
+};
+
+const buildPresencePath = (
+  scope: QuizBattleHeartbeatScope,
+  resourceId: string,
+  userId: string,
+): string => {
+  return `quizBattlePresence/${scope}/${resourceId}/${userId}`;
+};
+
+export const connectQuizBattlePresence = async (
+  scope: QuizBattleHeartbeatScope,
+  resourceId: string,
+): Promise<void> => {
+  if (!canUseRealtimePresence() || !resourceId.trim() || !realtimeDb) {
+    return;
+  }
+
+  const userId = auth.currentUser?.uid;
+  if (!userId) {
+    return;
+  }
+
+  const presenceRef = rtdbRef(realtimeDb, buildPresencePath(scope, resourceId, userId));
+
+  try {
+    await rtdbSet(presenceRef, {
+      studentId: userId,
+      scope,
+      resourceId,
+      online: true,
+      heartbeatAt: rtdbServerTimestamp(),
+      updatedAt: rtdbServerTimestamp(),
+    });
+
+    await onDisconnect(presenceRef).update({
+      online: false,
+      updatedAt: rtdbServerTimestamp(),
+      disconnectedAt: rtdbServerTimestamp(),
+    });
+  } catch (error) {
+    console.warn('Realtime presence connect failed:', error);
+  }
+};
+
+export const disconnectQuizBattlePresence = async (
+  scope: QuizBattleHeartbeatScope,
+  resourceId: string,
+): Promise<void> => {
+  if (!canUseRealtimePresence() || !resourceId.trim() || !realtimeDb) {
+    return;
+  }
+
+  const userId = auth.currentUser?.uid;
+  if (!userId) {
+    return;
+  }
+
+  const presenceRef = rtdbRef(realtimeDb, buildPresencePath(scope, resourceId, userId));
+
+  try {
+    await rtdbSet(presenceRef, {
+      studentId: userId,
+      scope,
+      resourceId,
+      online: false,
+      updatedAt: rtdbServerTimestamp(),
+      disconnectedAt: rtdbServerTimestamp(),
+    });
+  } catch (error) {
+    console.warn('Realtime presence disconnect failed:', error);
+  }
+};
+
 const mapCallableErrorMessage = (operation: string, error: unknown): string => {
   const fallback = `Unable to continue while ${operation}. Please try again.`;
 
@@ -303,6 +528,14 @@ const mapCallableErrorMessage = (operation: string, error: unknown): string => {
 
   if (normalizedCode === 'invalid-argument') {
     return messageValue || 'Battle setup is invalid. Review the selected options and try again.';
+  }
+
+  if (normalizedCode === 'already-exists') {
+    return messageValue || 'This room is already full. Try another room code.';
+  }
+
+  if (normalizedCode === 'failed-precondition') {
+    return messageValue || 'Battle state changed. Please refresh and continue.';
   }
 
   if (
@@ -635,7 +868,7 @@ export const leaveQuizBattleQueue = async (): Promise<QuizBattleQueueJoinRespons
 export const createQuizBattlePrivateRoom = async (
   setup: QuizBattleSetupConfig,
 ): Promise<QuizBattlePrivateRoomResponse> => {
-  const callable = httpsCallable<{ setup: QuizBattleSetupConfig }, QuizBattlePrivateRoomResponse>(
+  const callable = httpsCallable<{ setup: QuizBattleSetupConfig }, QuizBattlePrivateRoomCallableResponse>(
     cloudFunctions,
     'quizBattleCreatePrivateRoom',
   );
@@ -650,12 +883,119 @@ export const createQuizBattlePrivateRoom = async (
     if (shouldUseLocalFallbackForError(error)) {
       return {
         success: true,
-        roomId: `local-room-${Date.now()}`,
-        roomCode: buildFallbackPrivateRoomCode(),
+        room: buildFallbackPrivateRoomState(),
       };
     }
 
     throw new Error(mapCallableErrorMessage('creating Quiz Battle private room', error));
+  }
+};
+
+export const joinQuizBattlePrivateRoom = async (
+  roomCode: string,
+): Promise<QuizBattlePrivateRoomResponse> => {
+  const callable = httpsCallable<{ roomCode: string }, QuizBattlePrivateRoomCallableResponse>(
+    cloudFunctions,
+    'quizBattleJoinPrivateRoom',
+  );
+
+  try {
+    const result = await invokeWithTimeout(
+      'joining Quiz Battle private room',
+      callable({ roomCode }),
+      20000,
+    );
+    return result.data;
+  } catch (error) {
+    if (shouldUseLocalFallbackForError(error)) {
+      return {
+        success: true,
+        room: buildFallbackPrivateRoomState(roomCode.trim().toUpperCase() || undefined),
+      };
+    }
+
+    throw new Error(mapCallableErrorMessage('joining Quiz Battle private room', error));
+  }
+};
+
+export const getQuizBattlePrivateRoomState = async (payload: {
+  roomId?: string;
+  roomCode?: string;
+}): Promise<QuizBattlePrivateRoomResponse> => {
+  const callable = httpsCallable<
+    { roomId?: string; roomCode?: string },
+    QuizBattlePrivateRoomCallableResponse
+  >(cloudFunctions, 'quizBattleGetPrivateRoomState');
+
+  try {
+    const result = await invokeWithTimeout(
+      'loading Quiz Battle private room state',
+      callable(payload),
+      20000,
+    );
+    return result.data;
+  } catch (error) {
+    if (shouldUseLocalFallbackForError(error)) {
+      return {
+        success: true,
+        room: buildFallbackPrivateRoomState(payload.roomCode?.trim().toUpperCase() || undefined),
+      };
+    }
+
+    throw new Error(mapCallableErrorMessage('loading Quiz Battle private room state', error));
+  }
+};
+
+export const resumeQuizBattleSession = async (): Promise<QuizBattleResumeSessionResponse> => {
+  const callable = httpsCallable<Record<string, never>, QuizBattleResumeSessionResponse>(
+    cloudFunctions,
+    'quizBattleResumeSession',
+  );
+
+  try {
+    const result = await invokeWithTimeout(
+      'resuming Quiz Battle session',
+      callable({}),
+      20000,
+    );
+    return result.data;
+  } catch (error) {
+    if (shouldUseLocalFallbackForError(error)) {
+      return {
+        success: true,
+        sessionType: 'idle',
+      };
+    }
+
+    throw new Error(mapCallableErrorMessage('resuming Quiz Battle session', error));
+  }
+};
+
+export const sendQuizBattleHeartbeat = async (
+  scope: QuizBattleHeartbeatScope,
+  resourceId: string,
+): Promise<void> => {
+  if (!resourceId.trim()) {
+    return;
+  }
+
+  const callable = httpsCallable<
+    { scope: QuizBattleHeartbeatScope; resourceId: string },
+    QuizBattleHeartbeatResponse
+  >(cloudFunctions, 'quizBattleHeartbeat');
+
+  await connectQuizBattlePresence(scope, resourceId);
+
+  try {
+    await invokeWithTimeout(
+      'sending Quiz Battle heartbeat',
+      callable({ scope, resourceId }),
+      12000,
+    );
+  } catch (error) {
+    if (!shouldUseLocalFallbackForError(error)) {
+      throw new Error(mapCallableErrorMessage('sending Quiz Battle heartbeat', error));
+    }
   }
 };
 
@@ -679,5 +1019,129 @@ export const createQuizBattleBotMatch = async (
     }
 
     throw new Error(mapCallableErrorMessage('starting Quiz Battle bot match', error));
+  }
+};
+
+export const startQuizBattleMatch = async (
+  matchId: string,
+): Promise<QuizBattleLiveMatchState> => {
+  const callable = httpsCallable<{ matchId: string }, QuizBattleMatchStateCallableResponse>(
+    cloudFunctions,
+    'quizBattleStartMatch',
+  );
+
+  try {
+    const result = await invokeWithTimeout(
+      'starting Quiz Battle match',
+      callable({ matchId }),
+      20000,
+    );
+    return result.data.match;
+  } catch (error) {
+    throw new Error(mapCallableErrorMessage('starting Quiz Battle match', error));
+  }
+};
+
+export const getQuizBattleMatchState = async (
+  matchId: string,
+): Promise<QuizBattleLiveMatchState> => {
+  const callable = httpsCallable<{ matchId: string }, QuizBattleMatchStateCallableResponse>(
+    cloudFunctions,
+    'quizBattleGetMatchState',
+  );
+
+  try {
+    const result = await invokeWithTimeout(
+      'loading Quiz Battle match state',
+      callable({ matchId }),
+      20000,
+    );
+    return result.data.match;
+  } catch (error) {
+    throw new Error(mapCallableErrorMessage('loading Quiz Battle match state', error));
+  }
+};
+
+export const submitQuizBattleAnswer = async (payload: {
+  matchId: string;
+  roundNumber: number;
+  selectedOptionIndex: number | null;
+  responseMs: number;
+  idempotencyKey?: string;
+}): Promise<QuizBattleSubmitAnswerResponse> => {
+  const callable = httpsCallable<
+    {
+      matchId: string;
+      roundNumber: number;
+      selectedOptionIndex: number | null;
+      responseMs: number;
+      idempotencyKey: string;
+    },
+    QuizBattleSubmitAnswerResponse
+  >(cloudFunctions, 'quizBattleSubmitAnswer');
+
+  try {
+    const result = await invokeWithTimeout(
+      'submitting Quiz Battle answer',
+      callable({
+        ...payload,
+        idempotencyKey:
+          payload.idempotencyKey ||
+          `client-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      }),
+      20000,
+    );
+    return result.data;
+  } catch (error) {
+    throw new Error(mapCallableErrorMessage('submitting Quiz Battle answer', error));
+  }
+};
+
+export const requestQuizBattleRematch = async (
+  matchId: string,
+): Promise<QuizBattleBotMatchResponse> => {
+  const callable = httpsCallable<{ matchId: string }, QuizBattleBotMatchResponse>(
+    cloudFunctions,
+    'quizBattleRequestRematch',
+  );
+
+  try {
+    const result = await invokeWithTimeout(
+      'creating Quiz Battle rematch',
+      callable({ matchId }),
+      20000,
+    );
+    return result.data;
+  } catch (error) {
+    throw new Error(mapCallableErrorMessage('creating Quiz Battle rematch', error));
+  }
+};
+
+export const getStudentBattleLeaderboard = async (
+  limitCount = 20,
+): Promise<QuizBattleLeaderboardEntry[]> => {
+  try {
+    const leaderboardQuery = query(
+      collection(db, 'studentBattleLeaderboard'),
+      orderBy('leaderboardScore', 'desc'),
+      limit(limitCount),
+    );
+
+    const snap = await getDocs(leaderboardQuery);
+    return snap.docs.map((entry, index) => {
+      const data = entry.data() as Partial<QuizBattleLeaderboardEntry>;
+      return {
+        userId: data.userId || entry.id,
+        displayName: data.displayName || 'Student',
+        photo: data.photo,
+        rank: data.rank || index + 1,
+        leaderboardScore: data.leaderboardScore || 0,
+        winRate: data.winRate || 0,
+        bestStreak: data.bestStreak || 0,
+      };
+    });
+  } catch (error) {
+    console.error('Error loading Quiz Battle leaderboard:', error);
+    return [];
   }
 };

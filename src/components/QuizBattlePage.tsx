@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
 import {
+  QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
   QuizBattleMode,
   QuizBattleQueueType,
@@ -25,13 +26,28 @@ import {
   StudentProfile,
 } from '../types/models';
 import {
+  connectQuizBattlePresence,
   createQuizBattleBotMatch,
   createQuizBattlePrivateRoom,
   createDefaultQuizBattleSetup,
+  disconnectQuizBattlePresence,
+  getQuizBattleMatchState,
+  getQuizBattlePrivateRoomState,
+  getStudentBattleLeaderboard,
   getStudentBattleHistory,
   getStudentBattleStats,
+  joinQuizBattlePrivateRoom,
   joinQuizBattleQueue,
   leaveQuizBattleQueue,
+  QuizBattleHeartbeatScope,
+  QuizBattleLiveMatchState,
+  QuizBattlePrivateRoomState,
+  QuizBattleRoundResult,
+  requestQuizBattleRematch,
+  resumeQuizBattleSession,
+  sendQuizBattleHeartbeat,
+  startQuizBattleMatch,
+  submitQuizBattleAnswer,
   QuizBattleSetupError,
   validateQuizBattleSetup,
 } from '../services/quizBattleService';
@@ -46,11 +62,12 @@ import {
   SelectValue,
 } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
 
-type BattlePageTab = 'hub' | 'setup' | 'history' | 'stats' | 'leaderboard';
+type BattlePageTab = 'hub' | 'setup' | 'battle' | 'history' | 'stats' | 'leaderboard';
 
 type LaunchState =
   | { status: 'idle' }
@@ -72,6 +89,48 @@ const formatOutcomeChip = (outcome: QuizBattleMatchSummary['outcome']): string =
   return 'Draw';
 };
 
+const clampNumber = (value: number, min: number, max: number): number => {
+  return Math.max(min, Math.min(max, value));
+};
+
+const toInitials = (name: string): string => {
+  const tokens = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (tokens.length === 0) {
+    return 'ST';
+  }
+
+  return tokens.map((entry) => entry[0]?.toUpperCase() || '').join('');
+};
+
+const describeLifecycleEvent = (
+  lifecycle: QuizBattleLiveMatchState['lifecycle'] | undefined,
+  studentId?: string,
+): string | null => {
+  if (!lifecycle) return null;
+
+  if (lifecycle.eventType === 'round_started') {
+    return `Round ${lifecycle.roundNumber} started.`;
+  }
+
+  if (lifecycle.eventType === 'answer_locked') {
+    if (lifecycle.lockedByStudentId && studentId && lifecycle.lockedByStudentId === studentId) {
+      return `Round ${lifecycle.roundNumber}: your answer is locked.`;
+    }
+    return `Round ${lifecycle.roundNumber}: opponent answer locked.`;
+  }
+
+  if (lifecycle.eventType === 'round_result') {
+    return `Round ${lifecycle.roundNumber} resolved.`;
+  }
+
+  return 'Match completed.';
+};
+
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
@@ -81,11 +140,25 @@ const QuizBattlePage: React.FC = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [launchState, setLaunchState] = useState<LaunchState>({ status: 'idle' });
   const [queueActive, setQueueActive] = useState(false);
+  const [activeRoom, setActiveRoom] = useState<QuizBattlePrivateRoomState | null>(null);
+  const [privateRoomCodeInput, setPrivateRoomCodeInput] = useState('');
+  const [connectionState, setConnectionState] = useState<'connected' | 'reconnecting' | 'disconnected'>('connected');
   const [historyFilterMode, setHistoryFilterMode] = useState<'all' | QuizBattleMode>('all');
 
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsData, setStatsData] = useState<StudentBattleStats | null>(null);
   const [historyData, setHistoryData] = useState<QuizBattleMatchSummary[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<QuizBattleLeaderboardEntry[]>([]);
+  const [leaderboardNameMode, setLeaderboardNameMode] = useState<'alias' | 'initials' | 'full'>('alias');
+  const [showExactLeaderboardScores, setShowExactLeaderboardScores] = useState(false);
+
+  const [activeMatch, setActiveMatch] = useState<QuizBattleLiveMatchState | null>(null);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
+  const [answerSubmitting, setAnswerSubmitting] = useState(false);
+  const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
+  const [roundLocked, setRoundLocked] = useState(false);
+  const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
 
   const gradeScopedSubjects = useMemo(() => {
     const allowedSubjectIds = getActiveSubjectIdsForGrade(studentProfile?.grade);
@@ -176,6 +249,445 @@ const QuizBattlePage: React.FC = () => {
     return historyData.filter((entry) => entry.mode === historyFilterMode);
   }, [historyData, historyFilterMode]);
 
+  const leaderboardRows = useMemo(() => {
+    return leaderboardData.map((entry, index) => {
+      const rank = entry.rank || index + 1;
+      const isSelf = entry.userId === studentProfile?.uid;
+      const alias = `Student-${entry.userId.slice(-4).toUpperCase()}`;
+
+      const displayName =
+        leaderboardNameMode === 'full'
+          ? entry.displayName
+          : leaderboardNameMode === 'initials'
+            ? toInitials(entry.displayName)
+            : alias;
+
+      const scoreBandStart = Math.floor(entry.leaderboardScore / 25) * 25;
+      const scoreLabel = showExactLeaderboardScores || isSelf
+        ? `${entry.leaderboardScore} pts`
+        : `${scoreBandStart}-${scoreBandStart + 24} pts`;
+
+      return {
+        ...entry,
+        rank,
+        isSelf,
+        displayName,
+        scoreLabel,
+      };
+    });
+  }, [leaderboardData, leaderboardNameMode, showExactLeaderboardScores, studentProfile?.uid]);
+
+  useEffect(() => {
+    if (activeTab !== 'leaderboard') return;
+
+    let isMounted = true;
+    setLeaderboardLoading(true);
+
+    const loadLeaderboard = async () => {
+      const leaderboard = await getStudentBattleLeaderboard(20);
+
+      if (!isMounted) return;
+      setLeaderboardData(leaderboard);
+      setLeaderboardLoading(false);
+    };
+
+    void loadLeaderboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
+
+  const syncQuizBattleSession = useCallback(async () => {
+    if (!studentProfile?.uid) {
+      return;
+    }
+
+    try {
+      const resumed = await resumeQuizBattleSession();
+
+      if (resumed.sessionType === 'match' && resumed.match) {
+        setQueueActive(false);
+        setActiveRoom(resumed.room || null);
+        setActiveMatch(resumed.match);
+        setActiveTab('battle');
+        setConnectionState('connected');
+        return;
+      }
+
+      if (resumed.sessionType === 'room' && resumed.room) {
+        setQueueActive(false);
+        setActiveRoom(resumed.room);
+        setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+        setConnectionState('connected');
+        return;
+      }
+
+      if (resumed.sessionType === 'queue') {
+        setQueueActive(true);
+        setActiveRoom(null);
+        setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+        setConnectionState('connected');
+        return;
+      }
+
+      setQueueActive(false);
+      setActiveRoom(null);
+      setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+      setConnectionState('connected');
+    } catch (error) {
+      console.warn('Quiz Battle session resume failed:', error);
+      setConnectionState('reconnecting');
+    }
+  }, [studentProfile?.uid]);
+
+  useEffect(() => {
+    if (!studentProfile?.uid) {
+      return;
+    }
+    void syncQuizBattleSession();
+  }, [studentProfile?.uid, syncQuizBattleSession]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setConnectionState(window.navigator.onLine ? 'connected' : 'disconnected');
+
+    const handleOnline = () => {
+      setConnectionState('reconnecting');
+      void syncQuizBattleSession();
+    };
+
+    const handleOffline = () => {
+      setConnectionState('disconnected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [syncQuizBattleSession]);
+
+  useEffect(() => {
+    const isOnlineMatchActive =
+      activeMatch?.mode === 'online' &&
+      (activeMatch.status === 'ready' || activeMatch.status === 'in_progress');
+    const isRoomWaiting = Boolean(activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready'));
+
+    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        if (activeMatch?.mode === 'online') {
+          if (activeMatch.status === 'ready') {
+            const started = await startQuizBattleMatch(activeMatch.matchId);
+            if (cancelled) return;
+            setActiveMatch(started);
+            setConnectionState('connected');
+            if (started.status === 'in_progress') {
+              setLaunchState({ status: 'queued', message: 'Match started. Round timer is live.' });
+            }
+            return;
+          }
+
+          const latest = await getQuizBattleMatchState(activeMatch.matchId);
+          if (cancelled) return;
+          setActiveMatch(latest);
+          setConnectionState('connected');
+          return;
+        }
+
+        if (activeRoom?.roomId) {
+          const roomState = await getQuizBattlePrivateRoomState({ roomId: activeRoom.roomId });
+          if (cancelled) return;
+
+          setActiveRoom(roomState.room);
+
+          if (roomState.match) {
+            const started = await startQuizBattleMatch(roomState.match.matchId);
+            if (cancelled) return;
+
+            setActiveMatch(started);
+            setActiveRoom(roomState.room);
+            setQueueActive(false);
+            setActiveTab('battle');
+            setConnectionState('connected');
+            setLaunchState({
+              status: 'queued',
+              message: started.status === 'ready'
+                ? 'Opponent connected. Waiting for synchronized start...'
+                : 'Private room match started.',
+            });
+          }
+          return;
+        }
+
+        if (queueActive) {
+          const resumed = await resumeQuizBattleSession();
+          if (cancelled) return;
+
+          if (resumed.sessionType === 'match' && resumed.match) {
+            const started = await startQuizBattleMatch(resumed.match.matchId);
+            if (cancelled) return;
+
+            setActiveMatch(started);
+            setActiveRoom(resumed.room || null);
+            setQueueActive(false);
+            setActiveTab('battle');
+            setConnectionState('connected');
+            setLaunchState({ status: 'queued', message: 'Opponent found. Preparing synchronized start...' });
+            return;
+          }
+
+          if (resumed.sessionType === 'room' && resumed.room) {
+            setQueueActive(false);
+            setActiveRoom(resumed.room);
+            setConnectionState('connected');
+            return;
+          }
+
+          setConnectionState('connected');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Quiz Battle sync poll failed:', error);
+          setConnectionState('reconnecting');
+        }
+      }
+    };
+
+    void poll();
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [
+    activeMatch?.matchId,
+    activeMatch?.mode,
+    activeMatch?.status,
+    activeRoom?.roomId,
+    activeRoom?.status,
+    queueActive,
+  ]);
+
+  const heartbeatTarget = useMemo<
+    { scope: QuizBattleHeartbeatScope; resourceId: string } | null
+  >(() => {
+    if (activeMatch?.mode === 'online' && (activeMatch.status === 'ready' || activeMatch.status === 'in_progress')) {
+      return {
+        scope: 'match',
+        resourceId: activeMatch.matchId,
+      };
+    }
+
+    if (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')) {
+      return {
+        scope: 'room',
+        resourceId: activeRoom.roomId,
+      };
+    }
+
+    if (queueActive && studentProfile?.uid) {
+      return {
+        scope: 'queue',
+        resourceId: studentProfile.uid,
+      };
+    }
+
+    return null;
+  }, [activeMatch, activeRoom, queueActive, studentProfile?.uid]);
+
+  useEffect(() => {
+    if (!heartbeatTarget) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const sendHeartbeat = async () => {
+      try {
+        await sendQuizBattleHeartbeat(heartbeatTarget.scope, heartbeatTarget.resourceId);
+        if (!cancelled) {
+          setConnectionState('connected');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Quiz Battle heartbeat failed:', error);
+          setConnectionState('reconnecting');
+        }
+      }
+    };
+
+    void sendHeartbeat();
+
+    const intervalId = window.setInterval(() => {
+      void sendHeartbeat();
+    }, 8000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      void disconnectQuizBattlePresence(heartbeatTarget.scope, heartbeatTarget.resourceId);
+    };
+  }, [heartbeatTarget?.scope, heartbeatTarget?.resourceId]);
+
+  useEffect(() => {
+    if (!activeMatch || activeMatch.status !== 'in_progress') {
+      setRoundLocked(false);
+      return;
+    }
+
+    const deadlineBasedSeconds = activeMatch.roundDeadlineAtMs
+      ? Math.max(0, Math.ceil((activeMatch.roundDeadlineAtMs - Date.now()) / 1000))
+      : activeMatch.timePerQuestionSec;
+
+    setRoundSecondsLeft(deadlineBasedSeconds);
+    setSelectedOptionIndex(null);
+    setRoundLocked(false);
+  }, [
+    activeMatch?.matchId,
+    activeMatch?.status,
+    activeMatch?.currentRound,
+    activeMatch?.timePerQuestionSec,
+  ]);
+
+  const submitRoundAnswer = useCallback(
+    async (forcedSelection: number | null) => {
+      if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked) {
+        return;
+      }
+
+      setAnswerSubmitting(true);
+
+      try {
+        const elapsedMs = activeMatch.roundDeadlineAtMs
+          ? clampNumber(
+              activeMatch.timePerQuestionSec * 1000 - Math.max(0, activeMatch.roundDeadlineAtMs - Date.now()),
+              0,
+              activeMatch.timePerQuestionSec * 1000,
+            )
+          : Math.max(0, (activeMatch.timePerQuestionSec - roundSecondsLeft) * 1000);
+        const response = await submitQuizBattleAnswer({
+          matchId: activeMatch.matchId,
+          roundNumber: activeMatch.currentRound,
+          selectedOptionIndex: forcedSelection,
+          responseMs: elapsedMs,
+        });
+
+        setActiveMatch(response.match);
+        setLastRoundResult(response.roundResult);
+        setSelectedOptionIndex(null);
+
+        if (
+          response.match.mode === 'online' &&
+          response.match.status === 'in_progress' &&
+          !response.roundResult
+        ) {
+          setRoundLocked(true);
+          setLaunchState({
+            status: 'queued',
+            message: 'Answer locked. Waiting for opponent to finish the round...',
+          });
+        }
+
+        if (response.match.status === 'completed') {
+          void refreshBattleInsights();
+          setLaunchState({
+            status: 'queued',
+            message: response.completion
+              ? `Match finished (${response.completion.outcome.toUpperCase()}) +${response.completion.xpEarned} XP`
+              : 'Match finished. Results saved.',
+          });
+        }
+      } catch (error) {
+        const known = error as { message?: string };
+        setLaunchState({
+          status: 'error',
+          message: known?.message || 'Unable to submit answer right now. Please try again.',
+        });
+      } finally {
+        setAnswerSubmitting(false);
+      }
+    },
+    [activeMatch, refreshBattleInsights, roundLocked, roundSecondsLeft],
+  );
+
+  useEffect(() => {
+    if (!activeMatch || activeMatch.status !== 'in_progress') return;
+    if (answerSubmitting) return;
+    if (roundLocked) return;
+
+    const derivedSecondsLeft = activeMatch.roundDeadlineAtMs
+      ? Math.max(0, Math.ceil((activeMatch.roundDeadlineAtMs - Date.now()) / 1000))
+      : roundSecondsLeft;
+
+    if (activeMatch.roundDeadlineAtMs && derivedSecondsLeft !== roundSecondsLeft) {
+      setRoundSecondsLeft(derivedSecondsLeft);
+    }
+
+    if (derivedSecondsLeft <= 0) {
+      void submitRoundAnswer(null);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      if (activeMatch.roundDeadlineAtMs) {
+        setRoundSecondsLeft(Math.max(0, Math.ceil((activeMatch.roundDeadlineAtMs - Date.now()) / 1000)));
+      } else {
+        setRoundSecondsLeft((previous) => Math.max(0, previous - 1));
+      }
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [activeMatch, answerSubmitting, roundLocked, roundSecondsLeft, submitRoundAnswer]);
+
+  const handleRequestRematch = useCallback(async () => {
+    if (!activeMatch) return;
+
+    setAnswerSubmitting(true);
+    setLaunchState({ status: 'validating' });
+
+    try {
+      const rematch = await requestQuizBattleRematch(activeMatch.matchId);
+      const started = await startQuizBattleMatch(rematch.matchId);
+
+      setActiveMatch(started);
+      setActiveRoom(null);
+      setQueueActive(false);
+      setLastRoundResult(null);
+      setSelectedOptionIndex(null);
+      setRoundLocked(false);
+      setActiveTab('battle');
+      setLaunchState({
+        status: 'queued',
+        message: `Rematch ready (${rematch.botDifficulty}). Good luck!`,
+      });
+    } catch (error) {
+      const known = error as { message?: string };
+      setLaunchState({
+        status: 'error',
+        message: known?.message || 'Unable to start rematch right now.',
+      });
+    } finally {
+      setAnswerSubmitting(false);
+    }
+  }, [activeMatch]);
+
   if (userRole !== 'student') {
     return (
       <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
@@ -195,6 +707,12 @@ const QuizBattlePage: React.FC = () => {
     setSetupErrors([]);
     setLaunchState({ status: 'idle' });
     setQueueActive(false);
+    setActiveRoom(null);
+    setPrivateRoomCodeInput('');
+    setActiveMatch(null);
+    setLastRoundResult(null);
+    setSelectedOptionIndex(null);
+    setRoundLocked(false);
     setSetupConfig((previous) => ({
       ...previous,
       mode,
@@ -209,6 +727,7 @@ const QuizBattlePage: React.FC = () => {
     try {
       await leaveQuizBattleQueue();
       setQueueActive(false);
+      setActiveRoom(null);
       setLaunchState({ status: 'queued', message: 'Left matchmaking queue.' });
     } catch (error) {
       const known = error as { message?: string };
@@ -234,26 +753,79 @@ const QuizBattlePage: React.FC = () => {
     try {
       if (setupConfig.mode === 'online') {
         if (setupConfig.queueType === 'private_room') {
-          const roomResult = await createQuizBattlePrivateRoom(setupConfig);
+          const joinCode = privateRoomCodeInput.trim().toUpperCase();
+          const roomResult = joinCode
+            ? await joinQuizBattlePrivateRoom(joinCode)
+            : await createQuizBattlePrivateRoom(setupConfig);
+
           setQueueActive(false);
+          setActiveRoom(roomResult.room);
+          setPrivateRoomCodeInput('');
+
+          if (roomResult.match) {
+            const started = await startQuizBattleMatch(roomResult.match.matchId);
+            setActiveMatch(started);
+            setLastRoundResult(null);
+            setSelectedOptionIndex(null);
+            setRoundLocked(false);
+            setActiveTab('battle');
+            setLaunchState({
+              status: 'queued',
+              message: started.status === 'ready'
+                ? `Room ${roomResult.room.roomCode} linked. Waiting for synchronized start...`
+                : 'Private room match started.',
+            });
+            return;
+          }
+
+          setActiveMatch(null);
           setLaunchState({
             status: 'queued',
-            message: `Private room created. Share code: ${roomResult.roomCode}`,
+            message: joinCode
+              ? `Joined room ${roomResult.room.roomCode}. Waiting for opponent...`
+              : `Private room created. Share code: ${roomResult.room.roomCode}`,
           });
           return;
         }
 
-        await joinQuizBattleQueue(setupConfig);
+        const queueResponse = await joinQuizBattleQueue(setupConfig);
+
+        if (queueResponse.status === 'matched' && queueResponse.matchId) {
+          const started = await startQuizBattleMatch(queueResponse.matchId);
+          setQueueActive(false);
+          setActiveRoom(null);
+          setActiveMatch(started);
+          setLastRoundResult(null);
+          setSelectedOptionIndex(null);
+          setRoundLocked(false);
+          setActiveTab('battle');
+          setLaunchState({
+            status: 'queued',
+            message: 'Opponent found. Preparing synchronized start...',
+          });
+          return;
+        }
+
         setQueueActive(true);
+        setActiveRoom(null);
+        setActiveMatch(null);
         setLaunchState({ status: 'queued', message: 'Joined matchmaking queue. Waiting for an opponent...' });
         return;
       }
 
       const botMatch = await createQuizBattleBotMatch(setupConfig);
+      const liveMatch = await startQuizBattleMatch(botMatch.matchId);
       setQueueActive(false);
+      setActiveRoom(null);
+      setActiveMatch(liveMatch);
+      setLastRoundResult(null);
+      setSelectedOptionIndex(null);
+      setRoundLocked(false);
+      setRoundSecondsLeft(liveMatch.timePerQuestionSec);
+      setActiveTab('battle');
       setLaunchState({
         status: 'queued',
-        message: `Bot match ${botMatch.matchId.slice(0, 8)} ready (${botMatch.botDifficulty}).`,
+        message: `Bot match ${botMatch.matchId.slice(0, 8)} live (${botMatch.botDifficulty}).`,
       });
 
       void refreshBattleInsights().then((result) => {
@@ -277,6 +849,7 @@ const QuizBattlePage: React.FC = () => {
   };
 
   const historyWinRate = statsData?.winRate ?? 0;
+  const privateRoomBusy = Boolean(activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready'));
 
   return (
     <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
@@ -296,6 +869,9 @@ const QuizBattlePage: React.FC = () => {
             <CardDescription className="text-muted-foreground dark:text-[#c4cce0]">
               Timed student duels with synchronized rounds, instant feedback, and progression rewards.
             </CardDescription>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#9ea8c2]">
+              Connection: {connectionState}
+            </p>
           </CardHeader>
           <CardContent className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 pb-6">
             <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
@@ -321,6 +897,7 @@ const QuizBattlePage: React.FC = () => {
           <TabsList className="w-full md:w-auto rounded-2xl p-1.5">
             <TabsTrigger value="hub" className="rounded-xl">Hub</TabsTrigger>
             <TabsTrigger value="setup" className="rounded-xl">Setup</TabsTrigger>
+            <TabsTrigger value="battle" className="rounded-xl">Battle</TabsTrigger>
             <TabsTrigger value="history" className="rounded-xl">History</TabsTrigger>
             <TabsTrigger value="stats" className="rounded-xl">My Stats</TabsTrigger>
             <TabsTrigger value="leaderboard" className="rounded-xl">Leaderboard</TabsTrigger>
@@ -566,7 +1143,7 @@ const QuizBattlePage: React.FC = () => {
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-3 rounded-xl border border-border bg-muted/40 p-3 space-y-3 dark:border-[#2e364a] dark:bg-[#11151d]">
                         {setupConfig.mode === 'online' ? (
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Online Match Type</label>
                             <div className="grid grid-cols-2 gap-2">
                               {[
@@ -589,6 +1166,26 @@ const QuizBattlePage: React.FC = () => {
                                 </Button>
                               ))}
                             </div>
+
+                            {setupConfig.queueType === 'private_room' && (
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">
+                                  Room Code (optional)
+                                </label>
+                                <Input
+                                  value={privateRoomCodeInput}
+                                  onChange={(event) =>
+                                    setPrivateRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
+                                  }
+                                  placeholder="Leave blank to create a room"
+                                  className="rounded-xl uppercase tracking-[0.15em]"
+                                  maxLength={6}
+                                />
+                                <p className="text-xs text-muted-foreground dark:text-[#9fa9c4]">
+                                  Enter a room code to join, or leave blank to create and share your own code.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
@@ -636,19 +1233,199 @@ const QuizBattlePage: React.FC = () => {
                         <Button
                           type="button"
                           onClick={submitSetup}
-                          disabled={launchState.status === 'validating' || queueActive}
+                          disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
                           className="rounded-xl"
                         >
                           {launchState.status === 'validating' ? (
                             <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Starting...</span>
                           ) : (
-                            'Start battle'
+                            setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
+                              ? (privateRoomCodeInput.trim() ? 'Join room' : 'Create room')
+                              : 'Start battle'
                           )}
                         </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="battle" className="mt-5">
+              <motion.div
+                key="battle"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="space-y-4"
+              >
+                {!activeMatch ? (
+                  activeRoom ? (
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />Private Room Lobby</CardTitle>
+                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                          Room {activeRoom.roomCode} · {activeRoom.participantCount}/2 students connected.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                            {activeRoom.status === 'ready'
+                              ? 'Opponent connected. Syncing start...'
+                              : 'Waiting for another student to join this room.'}
+                          </p>
+                          <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                            Share room code {activeRoom.roomCode} with your classmate.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : queueActive ? (
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />Public Matchmaking</CardTitle>
+                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                          Searching for a student with the same setup...
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  ) : (
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2"><Swords className="h-4 w-4 text-primary dark:text-[#9e8fff]" />No active battle</CardTitle>
+                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                          Start from Setup to create a bot match, private room, or public queue session.
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  )
+                ) : (
+                  <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-2">
+                          {activeMatch.mode === 'bot'
+                            ? <Bot className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
+                            : <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />}
+                          vs {activeMatch.opponentName}
+                        </span>
+                        <span className="text-sm font-bold tabular-nums">{activeMatch.scoreFor} - {activeMatch.scoreAgainst}</span>
+                      </CardTitle>
+                      <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                        {activeMatch.status === 'completed'
+                          ? `Completed in ${activeMatch.totalRounds} rounds.`
+                          : activeMatch.status === 'ready'
+                            ? 'Waiting for both players to confirm and start together.'
+                            : `Round ${activeMatch.currentRound} of ${activeMatch.totalRounds}`}
+                      </CardDescription>
+                      {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid) && (
+                        <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
+                          {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid)}
+                        </p>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {activeMatch.status === 'ready' && (
+                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                            {activeMatch.mode === 'online'
+                              ? 'Waiting for both players to lock in start...'
+                              : 'Preparing match session...'}
+                          </p>
+                        </div>
+                      )}
+
+                      {activeMatch.status === 'in_progress' && activeMatch.currentQuestion && (
+                        <>
+                          <div className="rounded-xl border border-border bg-muted/40 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                            <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                              Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              {activeMatch.currentQuestion.prompt}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {activeMatch.currentQuestion.choices.map((choice, index) => (
+                              <Button
+                                key={`${activeMatch.currentQuestion?.questionId}-${index}`}
+                                type="button"
+                                variant={selectedOptionIndex === index ? 'default' : 'outline'}
+                                onClick={() => setSelectedOptionIndex(index)}
+                                disabled={answerSubmitting || roundLocked}
+                                className="h-auto min-h-11 rounded-xl justify-start text-left whitespace-normal"
+                              >
+                                <span className="mr-2 font-semibold">{String.fromCharCode(65 + index)}.</span>
+                                {choice}
+                              </Button>
+                            ))}
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              onClick={() => void submitRoundAnswer(selectedOptionIndex)}
+                              disabled={answerSubmitting || roundLocked}
+                              className="rounded-xl"
+                            >
+                              {answerSubmitting ? (
+                                <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</span>
+                              ) : roundLocked ? (
+                                'Waiting for opponent...'
+                              ) : (
+                                'Lock Answer'
+                              )}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+
+                      {lastRoundResult && (
+                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                            Last round: {lastRoundResult.studentCorrect ? 'Correct' : 'Incorrect'} · {activeMatch.mode === 'bot' ? 'Bot' : 'Opponent'} {lastRoundResult.botCorrect ? 'Correct' : 'Incorrect'}
+                          </p>
+                          <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                            Correct option: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
+                          </p>
+                        </div>
+                      )}
+
+                      {activeMatch.status === 'completed' && (
+                        <div className="space-y-3">
+                          <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              Result: {activeMatch.outcome ? activeMatch.outcome.toUpperCase() : 'COMPLETE'}
+                            </p>
+                            <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                              XP Earned: +{activeMatch.xpEarned || 0}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setActiveTab('setup')}
+                              className="rounded-xl"
+                            >
+                              Back to Setup
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => void handleRequestRematch()}
+                              disabled={answerSubmitting}
+                              className="rounded-xl"
+                            >
+                              Rematch
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </motion.div>
             </TabsContent>
 
@@ -761,11 +1538,69 @@ const QuizBattlePage: React.FC = () => {
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Student Leaderboard</CardTitle>
                     <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                      Privacy-safe rank view is coming in the next implementation slice.
+                      Student-only ranking using trusted backend aggregates.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground dark:text-[#a9b3ca]">This section will surface student-only ranking cards with alias display controls.</p>
+                    {leaderboardLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                      </div>
+                    ) : leaderboardRows.length === 0 ? (
+                      <p className="text-sm text-muted-foreground dark:text-[#a9b3ca]">No leaderboard entries yet. Finish a battle to place on the board.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                          <div className="rounded-xl border border-border bg-muted/30 p-2.5 dark:border-[#2f3547] dark:bg-[#11151d]">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#98a2bc]">Name display</p>
+                            <Select value={leaderboardNameMode} onValueChange={(value) => setLeaderboardNameMode(value as 'alias' | 'initials' | 'full')}>
+                              <SelectTrigger className="mt-1 h-8 rounded-lg">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="alias">Alias</SelectItem>
+                                <SelectItem value="initials">Initials</SelectItem>
+                                <SelectItem value="full">Full name</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <label className="rounded-xl border border-border bg-muted/30 p-2.5 flex items-center justify-between gap-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#98a2bc]">Score detail</p>
+                              <p className="text-xs text-muted-foreground dark:text-[#98a2bc]">Show exact score values</p>
+                            </div>
+                            <Switch checked={showExactLeaderboardScores} onCheckedChange={setShowExactLeaderboardScores} />
+                          </label>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">
+                          Privacy mode keeps classmate identities and scores obfuscated by default while preserving your own exact rank and score.
+                        </p>
+
+                        {leaderboardRows.map((entry) => (
+                          <div
+                            key={entry.userId}
+                            className={cn(
+                              'rounded-xl border bg-muted/30 px-3 py-2 flex items-center justify-between dark:bg-[#11151d]',
+                              entry.isSelf
+                                ? 'border-primary/60 dark:border-[#8d7fff]'
+                                : 'border-border dark:border-[#2f3547]',
+                            )}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">
+                                #{entry.rank} {entry.displayName}{entry.isSelf ? ' (You)' : ''}
+                              </p>
+                              <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">Win rate {entry.winRate.toFixed(1)}% · Best streak {entry.bestStreak}</p>
+                            </div>
+                            <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreLabel}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
