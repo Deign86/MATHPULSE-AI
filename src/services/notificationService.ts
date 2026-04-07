@@ -31,12 +31,18 @@ export const createNotification = async (
       title,
       message,
       read: false,
-      actionUrl,
+      ...(actionUrl ? { actionUrl } : {}),
       createdAt: new Date(),
     };
 
     await setDoc(notificationRef, {
-      ...notification,
+      id: notificationRef.id,
+      userId,
+      type,
+      title,
+      message,
+      read: false,
+      ...(actionUrl ? { actionUrl } : {}),
       createdAt: serverTimestamp(),
     });
 
