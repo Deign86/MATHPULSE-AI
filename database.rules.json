@@ -2,10 +2,25 @@
   "rules": {
     "quizBattlePresence": {
       "$scope": {
+        ".validate": "$scope.matches(/^[A-Za-z0-9_-]{1,32}$/)",
         "$resourceId": {
+          ".validate": "$resourceId.matches(/^[A-Za-z0-9_-]{1,64}$/)",
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid"
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.val() == null || (newData.hasChildren(['state', 'updatedAt']) && newData.childrenCount() <= 3)",
+            "state": {
+              ".validate": "newData.isString() && newData.val().matches(/^(online|matching|in_battle|offline)$/)"
+            },
+            "updatedAt": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
+            },
+            "displayName": {
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         }
       }
