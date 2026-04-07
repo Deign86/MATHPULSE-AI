@@ -36,6 +36,7 @@ const ModulesPage = lazy(() => import('./components/ModulesPage'));
 const AIChatPage = lazy(() => import('./components/AIChatPage'));
 const GradesPage = lazy(() => import('./components/GradesPage'));
 const LeaderboardPage = lazy(() => import('./components/LeaderboardPage'));
+const QuizBattlePage = lazy(() => import('./components/QuizBattlePage'));
 const AvatarShop = lazy(() => import('./components/AvatarShop'));
 const FloatingAITutor = lazy(() => import('./components/FloatingAITutor'));
 const RewardsModal = lazy(() => import('./components/RewardsModal'));
@@ -606,6 +607,10 @@ const App = () => {
             e.preventDefault();
             handleStudentNavigation('Grades');
             break;
+          case 'b':
+            e.preventDefault();
+            handleStudentNavigation('Quiz Battle');
+            break;
           case 's':
             e.preventDefault();
             setShowSettingsModal(true);
@@ -938,6 +943,10 @@ const App = () => {
                 ) : activeTab === 'Leaderboard' ? (
                   <Suspense fallback={tabLoadingFallback}>
                     <LeaderboardPage currentUserPhoto={profileData.photo} />
+                  </Suspense>
+                ) : activeTab === 'Quiz Battle' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <QuizBattlePage />
                   </Suspense>
                 ) : activeTab === 'AI Chat' ? (
                   <Suspense fallback={tabLoadingFallback}>

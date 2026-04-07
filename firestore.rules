@@ -198,6 +198,44 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /quizBattleQueue/{docId} {
+      allow read: if ownerByField('studentId') || isTeacherOrAdmin();
+      allow create, update, delete: if ownerByField('studentId') || isTeacherOrAdmin();
+    }
+
+    match /quizBattleHistory/{docId} {
+      allow read: if ownerByField('studentId') || isTeacherOrAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /quizBattleMatches/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.playerAId == request.auth.uid ||
+        resource.data.playerBId == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /quizBattleRooms/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerStudentId == request.auth.uid ||
+        (resource.data.participantIds is list && request.auth.uid in resource.data.participantIds) ||
+        isTeacherOrAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /studentBattleStats/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /studentBattleLeaderboard/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
     match /progressionAuditLog/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
       allow create, update, delete: if false;
