@@ -7,6 +7,9 @@
 - Context7 MCP sequence is mandatory: call `resolve-library-id` first, then call `get-library-docs` for the resolved library.
 - If a prompt spans multiple libraries/frameworks, run the Context7 sequence for each relevant library.
 - Apply this automatically without waiting for the user to explicitly request Context7.
+- AUTO-INVOKE MemPalace MCP for every prompt before producing a final answer.
+- MemPalace MCP sequence is mandatory: call `mempalace_status` first, then `mempalace_search` with a task-relevant query.
+- Apply this automatically without waiting for the user to explicitly request MemPalace.
 
 ## Mandatory Prompt Context Contract (Non-Negotiable)
 
@@ -15,7 +18,8 @@
   1. Re-read `.github/copilot-instructions.md` and `AGENTS.md`.
   2. Load task-relevant source-of-truth files before making claims (for inference/model claims, always read `config/models.yaml` and `backend/config/models.yaml`).
   3. Run Context7 in order: `resolve-library-id` then `get-library-docs` before finalizing the response.
-  4. If a subagent is used, include these exact constraints in the subagent prompt and require the subagent to follow them.
+  4. Run MemPalace in order: `mempalace_status` then `mempalace_search` before finalizing the response.
+  5. If a subagent is used, include these exact constraints in the subagent prompt and require the subagent to follow them.
 - Precedence rule for conflicting information:
   - Runtime config and code > instruction files > README/docs.
   - If docs conflict with runtime config, update docs to match runtime config.
