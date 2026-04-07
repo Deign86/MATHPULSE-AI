@@ -77,6 +77,11 @@
       },
       "scripts": {
             "dev": "vite",
+            "dev:open": "vite --open",
+            "dev:debug:plugin-transform": "vite --debug plugin-transform",
+            "dev:debug:transform": "vite --debug transform",
+            "dev:debug:css-probe": "set VITE_CSS_TIMING_PROBE=1&& vite --debug transform",
+            "dev:profile": "vite --profile --open",
             "build": "vite build",
             "test": "vitest run --passWithNoTests",
             "test:watch": "vitest",
