@@ -36,7 +36,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const cloudFunctions = getFunctions(app, 'us-east1');
+export const cloudFunctions = getFunctions(app);
 
 // Initialize Analytics (optional, only in browser and if measurementId is configured)
 let analytics = null;
