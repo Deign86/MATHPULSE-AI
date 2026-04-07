@@ -917,9 +917,21 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return;
       }
 
-      const apiServiceModule = await loadApiService();
-      apiServiceRef = apiServiceModule.apiService;
-      apiTimeoutErrorCtor = apiServiceModule.ApiTimeoutError;
+      try {
+        const apiServiceModule = await loadApiService();
+        apiServiceRef = apiServiceModule.apiService;
+        apiTimeoutErrorCtor = apiServiceModule.ApiTimeoutError;
+      } catch (importError) {
+        console.error('Failed to load API service for chat:', importError);
+        const importFailureMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: generateFallbackResponse(fallbackPrompt),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        addMessageToSession(sessionId, importFailureMsg);
+        return;
+      }
 
       const aiTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       let streamedText = '';
