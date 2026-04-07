@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Maximize2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
-import ChatMarkdown from './ChatMarkdown';
-import { warmupBackend } from '../services/apiService';
+
+const ChatMarkdown = lazy(() => import('./ChatMarkdown.tsx'));
 
 interface FloatingAITutorProps {
   constraintsRef: React.RefObject<HTMLDivElement | null>;
@@ -19,7 +19,13 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
   // Warm up the HuggingFace Space when chat is opened
   useEffect(() => {
     if (isOpen) {
-      warmupBackend();
+      import('../services/apiService.ts')
+        .then(({ warmupBackend }) => {
+          warmupBackend();
+        })
+        .catch((error) => {
+          console.warn('Floating tutor warmup skipped:', error);
+        });
     }
   }, [isOpen]);
 
@@ -117,7 +123,9 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
                 {message.sender === 'user' ? (
                   <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                 ) : (
-                  <ChatMarkdown>{message.text}</ChatMarkdown>
+                  <Suspense fallback={<p className="text-sm whitespace-pre-wrap">{message.text}</p>}>
+                    <ChatMarkdown>{message.text}</ChatMarkdown>
+                  </Suspense>
                 )}
                 <p className={`text-[10px] mt-1 ${
                   message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
