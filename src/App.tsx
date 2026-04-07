@@ -1,50 +1,52 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import Sidebar from './components/Sidebar';
-import HeroBanner from './components/HeroBanner';
-import LearningPath from './components/LearningPath';
-import RightSidebar from './components/RightSidebar';
-import XPNotification from './components/XPNotification';
-import NotificationCenter from './components/NotificationCenter';
-import SearchBar from './components/SearchBar';
-import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal';
-import SupplementalBanner from './components/SupplementalBanner';
-import AppLoadingScreen from './components/AppLoadingScreen';
-import { CompetencyRadarChart } from './components/CompetencyRadarChart';
-import { ChatProvider } from './contexts/ChatContext';
-import { useAuth } from './contexts/AuthContext';
-import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService';
-import { createNotification } from './services/notificationService';
-import { updateStreak, awardXP } from './services/gamificationService';
-import { getUserProgress } from './services/progressService';
-import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models';
-import { triggerStudentEnrolled, getPendingDeepDiagnosticCount } from './services/automationService';
-import { resetTestingDataForRole } from './services/testResetService';
-import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService';
+import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal.tsx';
+import AppLoadingScreen from './components/AppLoadingScreen.tsx';
+import { ChatProvider } from './contexts/ChatContext.tsx';
+import { useAuth } from './contexts/AuthContext.tsx';
+import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService.ts';
+import { createNotification } from './services/notificationService.ts';
+import { updateStreak, awardXP } from './services/gamificationService.ts';
+import { getUserProgress } from './services/progressService.ts';
+import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
+import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
-import { Crown, Flame, Zap, Brain, Calculator, Menu } from 'lucide-react';
+import { Crown, Flame, Zap, Calculator, Menu } from 'lucide-react';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
   Partial<Omit<TeacherProfile, keyof User | 'role'>> &
   Partial<Omit<AdminProfile, keyof User | 'role'>>;
 
-const LoginPage = lazy(() => import('./components/LoginPage'));
-const TeacherDashboard = lazy(() => import('./components/TeacherDashboard'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
-const ModulesPage = lazy(() => import('./components/ModulesPage'));
-const AIChatPage = lazy(() => import('./components/AIChatPage'));
-const GradesPage = lazy(() => import('./components/GradesPage'));
-const LeaderboardPage = lazy(() => import('./components/LeaderboardPage'));
-const QuizBattlePage = lazy(() => import('./components/QuizBattlePage'));
-const AvatarShop = lazy(() => import('./components/AvatarShop'));
-const FloatingAITutor = lazy(() => import('./components/FloatingAITutor'));
-const RewardsModal = lazy(() => import('./components/RewardsModal'));
-const ProfileModal = lazy(() => import('./components/ProfileModal'));
-const ConfirmModal = lazy(() => import('./components/ConfirmModal'));
-const SettingsModal = lazy(() => import('./components/SettingsModal'));
-const ScientificCalculator = lazy(() => import('./components/ScientificCalculator'));
-const DiagnosticAssessmentModal = lazy(() => import('./components/DiagnosticAssessmentModal'));
+const LoginPage = lazy(() => import('./components/LoginPage.tsx'));
+const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.tsx'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard.tsx'));
+const Sidebar = lazy(() => import('./components/Sidebar.tsx'));
+const HeroBanner = lazy(() => import('./components/HeroBanner.tsx'));
+const RightSidebar = lazy(() => import('./components/RightSidebar.tsx'));
+const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
+const NotificationCenter = lazy(() => import('./components/NotificationCenter.tsx'));
+const SearchBar = lazy(() => import('./components/SearchBar.tsx'));
+const SupplementalBanner = lazy(() => import('./components/SupplementalBanner.tsx'));
+const LearningPath = lazy(() => import('./components/LearningPath.tsx'));
+const CompetencyRadarChart = lazy(() =>
+  import('./components/CompetencyRadarChart.tsx').then((module) => ({
+    default: module.CompetencyRadarChart,
+  })),
+);
+const ModulesPage = lazy(() => import('./components/ModulesPage.tsx'));
+const AIChatPage = lazy(() => import('./components/AIChatPage.tsx'));
+const GradesPage = lazy(() => import('./components/GradesPage.tsx'));
+const LeaderboardPage = lazy(() => import('./components/LeaderboardPage.tsx'));
+const QuizBattlePage = lazy(() => import('./components/QuizBattlePage.tsx'));
+const AvatarShop = lazy(() => import('./components/AvatarShop.tsx'));
+const FloatingAITutor = lazy(() => import('./components/FloatingAITutor.tsx'));
+const RewardsModal = lazy(() => import('./components/RewardsModal.tsx'));
+const ProfileModal = lazy(() => import('./components/ProfileModal.tsx'));
+const ConfirmModal = lazy(() => import('./components/ConfirmModal.tsx'));
+const SettingsModal = lazy(() => import('./components/SettingsModal.tsx'));
+const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
+const DiagnosticAssessmentModal = lazy(() => import('./components/DiagnosticAssessmentModal.tsx'));
 
 const App = () => {
   // Get authentication state from context
@@ -53,6 +55,21 @@ const App = () => {
     <div className="flex min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
       Loading content...
     </div>
+  );
+  const dashboardWidgetFallback = (
+    <div className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>
+  );
+  const compactControlFallback = (
+    <div className="h-11 w-11 shrink-0 rounded-xl bg-[#edf1f7]" aria-hidden="true" />
+  );
+  const searchBarFallback = (
+    <div className="h-11 w-full rounded-xl bg-[#edf1f7]" aria-hidden="true" />
+  );
+  const sidebarShellFallback = (
+    <div className="h-screen w-72 border-r border-[#dde3eb] bg-white/70" aria-hidden="true" />
+  );
+  const dashboardPanelFallback = (
+    <div className="min-h-[240px] rounded-3xl border border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
 
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -85,6 +102,7 @@ const App = () => {
   const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [dismissedSupplementalSignature, setDismissedSupplementalSignature] = useState<string>('');
+  const [dashboardShellDeferredReady, setDashboardShellDeferredReady] = useState(false);
 
   // Diagnostic State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
@@ -135,6 +153,52 @@ const App = () => {
   }, [userProfile, userRole]);
 
   useEffect(() => {
+    if (!isLoggedIn || userRole !== 'student') {
+      setDashboardShellDeferredReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    const revealShell = () => {
+      if (!cancelled) {
+        setDashboardShellDeferredReady(true);
+      }
+    };
+
+    const requestIdle = (
+      window as {
+        requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+      }
+    ).requestIdleCallback;
+    const cancelIdle = (
+      window as {
+        cancelIdleCallback?: (handle: number) => void;
+      }
+    ).cancelIdleCallback;
+
+    const timeoutId = window.setTimeout(revealShell, 800);
+    const frameId = window.requestAnimationFrame(() => {
+      if (!requestIdle) {
+        revealShell();
+      }
+    });
+    const idleId = requestIdle?.(() => {
+      revealShell();
+    }, { timeout: 500 });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(frameId);
+      if (idleId !== undefined && cancelIdle) {
+        cancelIdle(idleId);
+      }
+    };
+  }, [isLoggedIn, userRole]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadPendingDiagnostics = async () => {
       if (!isLoggedIn || userRole !== 'student') {
         setPendingDeepDiagnosticCount(0);
@@ -148,14 +212,21 @@ const App = () => {
       }
 
       try {
+        const { getPendingDeepDiagnosticCount } = await import('./services/automationService.ts');
         const count = await getPendingDeepDiagnosticCount(lrn);
-        setPendingDeepDiagnosticCount(count);
+        if (!cancelled) {
+          setPendingDeepDiagnosticCount(count);
+        }
       } catch (error) {
         console.error('Error loading deep diagnostic assignments:', error);
       }
     };
 
     void loadPendingDiagnostics();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoggedIn, userRole, userProfile?.uid, studentProfile?.lrn, learningPathState]);
 
   const isLearningPathLocked =
@@ -526,6 +597,7 @@ const App = () => {
       ? (studentProfile as StudentProfile | undefined)?.lrn || userProfile.uid
       : undefined;
 
+    const { resetTestingDataForRole } = await import('./services/testResetService.ts');
     const result = await resetTestingDataForRole({
       uid: userProfile.uid,
       role: userRole,
@@ -747,15 +819,17 @@ const App = () => {
       <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
-          <Sidebar 
-            activeTab={activeTab} 
-            setActiveTab={handleStudentNavigation}
-            userRole={userRole}
-            onOpenSettings={() => setShowSettingsModal(true)}
-            onLogout={() => setShowLogoutConfirm(true)}
-            sidebarCollapsed={isSidebarCollapsed}
-            setSidebarCollapsed={setIsSidebarCollapsed}
-          />
+          <Suspense fallback={sidebarShellFallback}>
+            <Sidebar 
+              activeTab={activeTab} 
+              setActiveTab={handleStudentNavigation}
+              userRole={userRole}
+              onOpenSettings={() => setShowSettingsModal(true)}
+              onLogout={() => setShowLogoutConfirm(true)}
+              sidebarCollapsed={isSidebarCollapsed}
+              setSidebarCollapsed={setIsSidebarCollapsed}
+            />
+          </Suspense>
         </div>
 
         {/* Mobile Sidebar Overlay */}
@@ -767,22 +841,24 @@ const App = () => {
               onClick={() => setIsMobileSidebarOpen(false)}
             />
             <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden">
-              <Sidebar
-                mode="mobile"
-                onRequestClose={() => setIsMobileSidebarOpen(false)}
-                activeTab={activeTab}
-                setActiveTab={handleStudentNavigation}
-                userRole={userRole}
-                onOpenSettings={() => {
-                  setShowSettingsModal(true);
-                  setIsMobileSidebarOpen(false);
-                }}
-                onLogout={() => {
-                  setShowLogoutConfirm(true);
-                  setIsMobileSidebarOpen(false);
-                }}
-                sidebarCollapsed={false}
-              />
+              <Suspense fallback={sidebarShellFallback}>
+                <Sidebar
+                  mode="mobile"
+                  onRequestClose={() => setIsMobileSidebarOpen(false)}
+                  activeTab={activeTab}
+                  setActiveTab={handleStudentNavigation}
+                  userRole={userRole}
+                  onOpenSettings={() => {
+                    setShowSettingsModal(true);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  onLogout={() => {
+                    setShowLogoutConfirm(true);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  sidebarCollapsed={false}
+                />
+              </Suspense>
             </div>
           </>
         )}
@@ -834,11 +910,13 @@ const App = () => {
             </div>
             <div className="flex flex-wrap md:flex-nowrap items-center gap-2 min-w-0">
               <div className="hidden md:block flex-1 min-w-0 max-w-[420px]">
-                <SearchBar
-                  onSelect={(result) => {
-                    // TODO: Navigate to selected search result
-                  }}
-                />
+                <Suspense fallback={searchBarFallback}>
+                  <SearchBar
+                    onSelect={(result) => {
+                      // TODO: Navigate to selected search result
+                    }}
+                  />
+                </Suspense>
               </div>
               {/* Calculator toggle */}
               <button
@@ -848,7 +926,9 @@ const App = () => {
               >
                 <Calculator size={20} className="group-hover:scale-110 transition-transform" />
               </button>
-              <NotificationCenter userRole={userRole} />
+              <Suspense fallback={compactControlFallback}>
+                <NotificationCenter userRole={userRole} />
+              </Suspense>
               
               <button 
                 onClick={() => setShowProfileModal(true)}
@@ -887,52 +967,66 @@ const App = () => {
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
                     <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-0">
-                        <HeroBanner 
-                          userName={firstName} 
-                          userLevel={userLevel}
-                          avatarLayers={profileData.avatarLayers}
-                          onContinueLearning={() => handleStudentNavigation('Modules')}
-                          showAssessmentTooltip={showInitialAssessmentCTA}
-                          onOpenAssessment={handleOpenInitialAssessment}
-                        />
-
-                        {shouldShowSupplementalBanner && (
-                          <SupplementalBanner
-                            variant="full"
-                            atRiskSubjects={atRiskSubjects}
-                            onDismiss={dismissSupplementalBanner}
-                            onAction={() => {
-                              dismissSupplementalBanner();
-                              handleStudentNavigation('Modules');
-                            }}
+                        <Suspense fallback={dashboardPanelFallback}>
+                          <HeroBanner 
+                            userName={firstName} 
+                            userLevel={userLevel}
+                            avatarLayers={profileData.avatarLayers}
+                            onContinueLearning={() => handleStudentNavigation('Modules')}
+                            showAssessmentTooltip={showInitialAssessmentCTA}
+                            onOpenAssessment={handleOpenInitialAssessment}
                           />
+                        </Suspense>
+
+                        {dashboardShellDeferredReady && shouldShowSupplementalBanner && (
+                          <Suspense fallback={dashboardWidgetFallback}>
+                            <SupplementalBanner
+                              variant="full"
+                              atRiskSubjects={atRiskSubjects}
+                              onDismiss={dismissSupplementalBanner}
+                              onAction={() => {
+                                dismissSupplementalBanner();
+                                handleStudentNavigation('Modules');
+                              }}
+                            />
+                          </Suspense>
                         )}
 
-                        {profileReady && (
-                          <div className="pb-4">
-                            <LearningPath onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)} atRiskSubjects={atRiskSubjects} />
-                          </div>
+                        {profileReady && dashboardShellDeferredReady && (
+                          <Suspense fallback={dashboardWidgetFallback}>
+                            <div className="pb-4">
+                              <LearningPath onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)} atRiskSubjects={atRiskSubjects} />
+                            </div>
+                          </Suspense>
                         )}
 
-                        {profileReady && (
-                          <div className="pb-4">
-                            <CompetencyRadarChart />
-                          </div>
+                        {profileReady && dashboardShellDeferredReady && (
+                          <Suspense fallback={dashboardWidgetFallback}>
+                            <div className="pb-4">
+                              <CompetencyRadarChart />
+                            </div>
+                          </Suspense>
                         )}
                       </div>
 
                       <div className="col-span-12 xl:col-span-3 pt-2">
-                        <RightSidebar 
-                          onOpenRewards={() => setShowRewardsModal(true)}
-                          onOpenLeaderboard={() => setActiveTab('Leaderboard')}
-                          onNavigateToModules={() => setActiveTab('Modules')}
-                          userLevel={userLevel}
-                          currentXP={progressXPInLevel}
-                          xpToNextLevel={xpToNextLevel}
-                          overallXP={currentXP}
-                          streak={streak}
-                          streakHistory={studentProfile?.streakHistory || []}
-                        />
+                        {dashboardShellDeferredReady ? (
+                          <Suspense fallback={dashboardPanelFallback}>
+                            <RightSidebar 
+                              onOpenRewards={() => setShowRewardsModal(true)}
+                              onOpenLeaderboard={() => setActiveTab('Leaderboard')}
+                              onNavigateToModules={() => setActiveTab('Modules')}
+                              userLevel={userLevel}
+                              currentXP={progressXPInLevel}
+                              xpToNextLevel={xpToNextLevel}
+                              overallXP={currentXP}
+                              streak={streak}
+                              streakHistory={studentProfile?.streakHistory || []}
+                            />
+                          </Suspense>
+                        ) : (
+                          dashboardPanelFallback
+                        )}
                       </div>
                     </div>
                   </div>
@@ -986,12 +1080,14 @@ const App = () => {
 
 
           {/* XP Notification */}
-          <XPNotification
-            xp={xpNotification.xp}
-            message={xpNotification.message}
-            show={xpNotification.show}
-            onComplete={() => setXpNotification(prev => ({ ...prev, show: false }))}
-          />
+          <Suspense fallback={null}>
+            <XPNotification
+              xp={xpNotification.xp}
+              message={xpNotification.message}
+              show={xpNotification.show}
+              onComplete={() => setXpNotification(prev => ({ ...prev, show: false }))}
+            />
+          </Suspense>
 
           {/* Rewards Modal */}
           {showRewardsModal && (

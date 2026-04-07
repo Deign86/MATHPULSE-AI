@@ -1,14 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { ApiTimeoutError, apiService, type ChatCompletionOptions } from '../services/apiService';
-import { useAuth } from './AuthContext';
-import {
-  createChatSession as createFirebaseSession,
-  getUserChatSessions,
-  addMessageToSession as addFirebaseMessage,
-  updateSessionTitle as updateFirebaseTitle,
-  deleteSession as deleteFirebaseSession,
-  getSessionMessages,
-} from '../services/chatService';
+import type { ChatCompletionOptions } from '../services/apiService.ts';
+import { useAuth } from './AuthContext.tsx';
 import { toChatPreviewText } from '../utils/chatPreview';
 import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming } from '../utils/chatMessageFormatting';
 import { getScopeBoundaryResponse } from '../utils/mathScope';
@@ -49,6 +41,28 @@ interface ChatContextType {
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
+type ApiServiceModule = typeof import('../services/apiService.ts');
+type ChatServiceModule = typeof import('../services/chatService.ts');
+
+let apiServiceModulePromise: Promise<ApiServiceModule> | null = null;
+let chatServiceModulePromise: Promise<ChatServiceModule> | null = null;
+
+const loadApiService = (): Promise<ApiServiceModule> => {
+  if (!apiServiceModulePromise) {
+    apiServiceModulePromise = import('../services/apiService.ts');
+  }
+
+  return apiServiceModulePromise;
+};
+
+const loadChatService = (): Promise<ChatServiceModule> => {
+  if (!chatServiceModulePromise) {
+    chatServiceModulePromise = import('../services/chatService.ts');
+  }
+
+  return chatServiceModulePromise;
+};
 
 const CONTINUATION_INPUT_TOKENS = new Set([
   'go',
@@ -682,10 +696,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     const loadSessions = async () => {
       try {
-        const firebaseSessions = await getUserChatSessions(currentUser.uid);
+        const chatService = await loadChatService();
+        const firebaseSessions = await chatService.getUserChatSessions(currentUser.uid);
         const loadedSessions: ChatSession[] = await Promise.all(
           firebaseSessions.map(async (s) => {
-            const msgs = await getSessionMessages(s.id);
+            const msgs = await chatService.getSessionMessages(s.id);
             const messages: Message[] = msgs.map((m) => ({
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',
@@ -769,11 +784,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // Persist to Firebase in background, storing the promise so addMessageToSession can await it
     if (currentUser) {
       const title = firstMessage ? generateTitleFromMessages([firstMessage]) : 'New Chat';
-      const firebasePromise = createFirebaseSession(currentUser.uid, title)
-        .then(async (firebaseSession) => {
+      const firebasePromise = loadChatService()
+        .then(async (chatService) => {
+          const firebaseSession = await chatService.createChatSession(currentUser.uid, title);
+
           // If there was a first message, persist it
           if (firstMessage) {
-            await addFirebaseMessage(
+            await chatService.addMessageToSession(
               firebaseSession.id,
               firstMessage.sender === 'user' ? 'user' : 'assistant',
               firstMessage.text
@@ -827,23 +844,28 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     };
 
     // Persist message to Firebase in background (awaiting real session ID if needed)
-    resolveFirebaseId(sessionId).then(realId =>
-      addFirebaseMessage(
-        realId,
-        normalizedMessage.sender === 'user' ? 'user' : 'assistant',
-        normalizedMessage.text
-      ).catch(err => console.error('Error persisting message:', err))
-    );
+    resolveFirebaseId(sessionId)
+      .then(async (realId) => {
+        const chatService = await loadChatService();
+        await chatService.addMessageToSession(
+          realId,
+          normalizedMessage.sender === 'user' ? 'user' : 'assistant',
+          normalizedMessage.text,
+        );
+      })
+      .catch(err => console.error('Error persisting message:', err));
 
     // Update title in Firebase if this is the 2nd message
     setSessions(prev => {
       const session = prev.find(s => s.id === sessionId);
       if (session && session.messages.length === 2) {
         const newTitle = generateTitleFromMessages(session.messages);
-        resolveFirebaseId(sessionId).then(realId =>
-          updateFirebaseTitle(realId, newTitle)
-            .catch(err => console.error('Error updating title:', err))
-        );
+        resolveFirebaseId(sessionId)
+          .then(async (realId) => {
+            const chatService = await loadChatService();
+            await chatService.updateSessionTitle(realId, newTitle);
+          })
+          .catch(err => console.error('Error updating title:', err));
       }
       return prev;
     });
@@ -865,6 +887,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setIsLoading(true);
 
     try {
+      let apiServiceRef: ApiServiceModule['apiService'] | null = null;
+      let apiTimeoutErrorCtor: ApiServiceModule['ApiTimeoutError'] | null = null;
+
       // Build history from current session messages
       const session = sessions.find(s => s.id === sessionId);
       const history = (session?.messages || []).map(m => ({
@@ -889,6 +914,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         addMessageToSession(sessionId, refusalMsg);
+        return;
+      }
+
+      try {
+        const apiServiceModule = await loadApiService();
+        apiServiceRef = apiServiceModule.apiService;
+        apiTimeoutErrorCtor = apiServiceModule.ApiTimeoutError;
+      } catch (importError) {
+        console.error('Failed to load API service for chat:', importError);
+        const importFailureMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: generateFallbackResponse(fallbackPrompt),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        addMessageToSession(sessionId, importFailureMsg);
         return;
       }
 
@@ -964,7 +1005,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       };
 
       try {
-        const { response } = await apiService.chat(backendPrompt, history, (chunk: string) => {
+        const { response } = await apiServiceRef.chat(backendPrompt, history, (chunk: string) => {
           streamedText += chunk;
           if (showStreamingChunks) {
             upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
@@ -974,7 +1015,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
         if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
           try {
-            const continuation = await apiService.chatSafe(
+            const continuation = await apiServiceRef.chatSafe(
               buildContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
               history,
               completionOptions,
@@ -987,7 +1028,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
             try {
-              const plainContinuation = await apiService.chatSafe(
+              const plainContinuation = await apiServiceRef.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
                 history,
                 completionOptions,
@@ -1001,7 +1042,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
             try {
-              const completeAttempt = await apiService.chatSafe(
+              const completeAttempt = await apiServiceRef.chatSafe(
                 buildCoverageCompletionPrompt(trimmedUserText, expectedEndMarker),
                 history,
                 completionOptions,
@@ -1039,7 +1080,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         };
         addMessageToSession(sessionId, aiMsg);
       } catch (streamError) {
-        if (streamError instanceof ApiTimeoutError) {
+        if (apiTimeoutErrorCtor && streamError instanceof apiTimeoutErrorCtor) {
           console.warn(
             `Streaming timed out after ${streamError.timeoutMs}ms, falling back to non-streaming chat.`,
             streamError,
@@ -1053,12 +1094,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         let aiResponseText = '';
         try {
-          const { data } = await apiService.chatSafe(backendPrompt, history, completionOptions);
+          const service = apiServiceRef ?? (await loadApiService()).apiService;
+          const { data } = await service.chatSafe(backendPrompt, history, completionOptions);
           aiResponseText = formatAssistantResponseForStorage(data.response).trim();
 
           if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
-              const continuation = await apiService.chatSafe(
+              const continuation = await service.chatSafe(
                 buildContinuationPrompt(trimmedUserText, aiResponseText, expectedEndMarker),
                 history,
                 completionOptions,
@@ -1072,7 +1114,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
-              const plainContinuation = await apiService.chatSafe(
+              const plainContinuation = await service.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, aiResponseText, expectedEndMarker),
                 history,
                 completionOptions,
@@ -1086,7 +1128,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
-              const completeAttempt = await apiService.chatSafe(
+              const completeAttempt = await service.chatSafe(
                 buildCoverageCompletionPrompt(trimmedUserText, expectedEndMarker),
                 history,
                 completionOptions,
@@ -1131,10 +1173,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           const newTitle = generateTitleFromMessages(updatedSession.messages);
           const pending = pendingSessionsRef.current.get(sessionId);
           const realIdPromise = pending ? pending : Promise.resolve(sessionId);
-          realIdPromise.then(realId =>
-            updateFirebaseTitle(realId, newTitle)
-              .catch(err => console.error('Error updating title:', err))
-          );
+          realIdPromise
+            .then(async (realId) => {
+              const chatService = await loadChatService();
+              await chatService.updateSessionTitle(realId, newTitle);
+            })
+            .catch(err => console.error('Error updating title:', err));
         }
       }
     } finally {
@@ -1150,10 +1194,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // Persist to Firebase (resolve temp ID if needed)
     const pending = pendingSessionsRef.current.get(sessionId);
     const realIdPromise = pending ? pending : Promise.resolve(sessionId);
-    realIdPromise.then(realId =>
-      updateFirebaseTitle(realId, title)
-        .catch(err => console.error('Error updating session title:', err))
-    );
+    realIdPromise
+      .then(async (realId) => {
+        const chatService = await loadChatService();
+        await chatService.updateSessionTitle(realId, title);
+      })
+      .catch(err => console.error('Error updating session title:', err));
   }, []);
 
   const deleteSession = useCallback((sessionId: string) => {
@@ -1164,10 +1210,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // Persist to Firebase (soft delete, resolve temp ID if needed)
     const pending = pendingSessionsRef.current.get(sessionId);
     const realIdPromise = pending ? pending : Promise.resolve(sessionId);
-    realIdPromise.then(realId =>
-      deleteFirebaseSession(realId)
-        .catch(err => console.error('Error deleting session:', err))
-    );
+    realIdPromise
+      .then(async (realId) => {
+        const chatService = await loadChatService();
+        await chatService.deleteSession(realId);
+      })
+      .catch(err => console.error('Error deleting session:', err));
     // Clean up the pending map entry
     pendingSessionsRef.current.delete(sessionId);
   }, [activeSessionId]);

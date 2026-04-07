@@ -1,9 +1,9 @@
-﻿import React from 'react';
+﻿import React, { lazy, Suspense } from 'react';
 import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { AvatarLayers } from './CompositeAvatar';
-import DashboardAvatar from './DashboardAvatar';
+import type { AvatarLayers } from './CompositeAvatar';
+
+const DashboardAvatar = lazy(() => import('./DashboardAvatar.tsx'));
 
 interface HeroBannerProps {
   userName?: string;
@@ -107,7 +107,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
          <div className="relative w-full aspect-[4/5] translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
-           <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />
+           <Suspense fallback={<div className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />}>
+             <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />
+           </Suspense>
          </div>
       </div>
     </motion.div>
