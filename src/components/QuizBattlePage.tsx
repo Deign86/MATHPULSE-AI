@@ -344,7 +344,16 @@ const QuizBattlePage: React.FC = () => {
                           </div>
                           <div className="text-right">
                             <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreFor} - {entry.scoreAgainst}</p>
-                            <p className={cn('text-xs', entry.outcome === 'win' ? 'text-emerald-400' : entry.outcome === 'loss' ? 'text-rose-300' : 'text-amber-300')}>
+                            <p
+                              className={cn(
+                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                entry.outcome === 'win'
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                  : entry.outcome === 'loss'
+                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300'
+                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+                              )}
+                            >
                               {formatOutcomeChip(entry.outcome)}
                             </p>
                           </div>
