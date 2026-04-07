@@ -5,7 +5,6 @@ import { Input } from './ui/input';
 import { useChatContext } from '../contexts/ChatContext';
 import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
-import { warmupBackend } from '../services/apiService';
 
 const AIChatPage = () => {
   const { 
@@ -54,7 +53,13 @@ const AIChatPage = () => {
 
   // Warm up the HuggingFace Space on mount to reduce cold-start latency
   useEffect(() => {
-    warmupBackend();
+    import('../services/apiService.ts')
+      .then(({ warmupBackend }) => {
+        warmupBackend();
+      })
+      .catch((error) => {
+        console.warn('AI chat warmup skipped:', error);
+      });
   }, []);
 
   useEffect(() => {
