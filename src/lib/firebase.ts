@@ -2,8 +2,39 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
+
+const isValidRealtimeDatabaseUrl = (value: string): boolean => {
+  if (!value) return false;
+  if (value.includes('your_project') || value.includes('your_database') || value.includes('your_')) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    return (
+      parsed.hostname.endsWith('.firebaseio.com') ||
+      parsed.hostname.endsWith('.firebasedatabase.app')
+    );
+  } catch {
+    return false;
+  }
+};
+
+const rawDatabaseUrl = (import.meta.env.VITE_FIREBASE_DATABASE_URL || '').trim();
+const databaseUrl = isValidRealtimeDatabaseUrl(rawDatabaseUrl) ? rawDatabaseUrl : '';
+
+if (rawDatabaseUrl && !databaseUrl) {
+  console.warn(
+    '[FIREBASE] VITE_FIREBASE_DATABASE_URL is set but invalid. Expected an https URL ending in .firebaseio.com or .firebasedatabase.app. RTDB presence is disabled.',
+  );
+}
 
 // Firebase configuration for MathPulse AI
 // Configuration is loaded from environment variables (.env.local)
@@ -16,6 +47,7 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  ...(databaseUrl ? { databaseURL: databaseUrl } : {}),
 };
 
 if (!firebaseConfig.apiKey) {
@@ -37,6 +69,8 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const cloudFunctions = getFunctions(app);
+export const realtimeDb = databaseUrl ? getDatabase(app, databaseUrl) : null;
+export const isRealtimeDbEnabled = Boolean(databaseUrl);
 
 // Initialize Analytics (optional, only in browser and if measurementId is configured)
 let analytics = null;

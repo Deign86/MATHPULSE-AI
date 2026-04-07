@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Maximize2 } from 'lucide-react';
+import { Bot, X, Send, Maximize2, Minus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
 
@@ -13,8 +13,17 @@ interface FloatingAITutorProps {
 const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFullScreen }) => {
   const { activeSessionId, setActiveSessionId, createNewSession, getActiveSession, sendMessage, isLoading } = useChatContext();
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('floating_ai_tutor_minimized') === '1';
+  });
   const [currentMessage, setCurrentMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('floating_ai_tutor_minimized', isMinimized ? '1' : '0');
+  }, [isMinimized]);
 
   // Warm up the HuggingFace Space when chat is opened
   useEffect(() => {
@@ -65,6 +74,15 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
     onFullScreen();
   };
 
+  const handleMinimizeLauncher = () => {
+    setIsOpen(false);
+    setIsMinimized(true);
+  };
+
+  const handleRestoreLauncher = () => {
+    setIsMinimized(false);
+  };
+
   return (
     <div className="pointer-events-none flex flex-col items-end">
       {/* Chat Window (Popup) */}
@@ -94,6 +112,15 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               title="Open fullscreen"
             >
               <Maximize2 size={16} className="text-white" />
+            </button>
+            <button
+              type="button"
+              aria-label="Minimize AI tutor launcher"
+              onClick={handleMinimizeLauncher}
+              className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
+              title="Minimize"
+            >
+              <Minus size={16} className="text-white" />
             </button>
             <button
               type="button"
@@ -178,22 +205,53 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
       </div>
 
       {/* Floating Button */}
-      <div className="pointer-events-auto relative group self-end">
-        {/* Tooltip */}
-        {!isOpen && (
-          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-800 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-xl z-50">
-            Hello! I'm L.O.L.I., how may I help you?
-            <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-slate-800 rotate-45" />
+      <div className="pointer-events-auto relative self-end">
+        {isMinimized ? (
+          <motion.button
+            type="button"
+            onClick={handleRestoreLauncher}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            className="h-9 w-9 rounded-full bg-slate-900/85 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-sm flex items-center justify-center"
+            aria-label="Restore AI tutor launcher"
+            title="Show AI tutor"
+          >
+            <Bot size={14} />
+          </motion.button>
+        ) : (
+          <div className="relative group">
+            {/* Tooltip */}
+            {!isOpen && (
+              <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-800 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-xl z-50">
+                Hello! I'm L.O.L.I., how may I help you?
+                <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-slate-800 rotate-45" />
+              </div>
+            )}
+
+            {!isOpen && (
+              <button
+                type="button"
+                aria-label="Minimize AI tutor launcher"
+                title="Minimize"
+                onClick={handleMinimizeLauncher}
+                className="absolute -top-2 -left-2 z-10 h-6 w-6 rounded-full bg-white text-slate-700 border border-slate-200 shadow-md hover:bg-slate-100 transition-colors flex items-center justify-center"
+              >
+                <Minus size={12} />
+              </button>
+            )}
+
+            <motion.button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
+              aria-label={isOpen ? 'Close AI tutor chat' : 'Open AI tutor chat'}
+            >
+              {isOpen ? <X size={28} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-14 h-14 object-contain drop-shadow-lg" />}
+            </motion.button>
           </div>
         )}
-        <motion.button
-          onClick={() => setIsOpen(!isOpen)}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
-        >
-          {isOpen ? <X size={28} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-14 h-14 object-contain drop-shadow-lg" />}
-        </motion.button>
       </div>
     </div>
   );
