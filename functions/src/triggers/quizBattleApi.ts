@@ -2545,58 +2545,96 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
   }
 
   const db = admin.firestore();
-  await writePresenceHeartbeat(studentId, scope, resourceId);
+
+  let effectiveResourceId = resourceId;
+  let queueRef: FirebaseFirestore.DocumentReference | null = null;
+  let roomRef: FirebaseFirestore.DocumentReference | null = null;
+  let roomData: Record<string, unknown> | null = null;
+  let matchRef: FirebaseFirestore.DocumentReference | null = null;
 
   if (scope === "queue") {
-    const queueRef = db.collection("quizBattleQueue").doc(studentId);
-    const queueSnap = await queueRef.get();
-    if (queueSnap.exists) {
-      await queueRef.update({
-        heartbeatAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      await resolvePublicMatchmakingPass(db, 1);
+    if (resourceId !== studentId) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Queue heartbeat resourceId must match the authenticated student."
+      );
     }
+
+    queueRef = db.collection("quizBattleQueue").doc(studentId);
+    const queueSnap = await queueRef.get();
+    if (!queueSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Queue entry not found.");
+    }
+
+    effectiveResourceId = studentId;
   }
 
   if (scope === "room") {
-    const roomRef = db.collection("quizBattleRooms").doc(resourceId);
+    roomRef = db.collection("quizBattleRooms").doc(resourceId);
     const roomSnap = await roomRef.get();
-    if (roomSnap.exists) {
-      const roomData = roomSnap.data() as Record<string, unknown>;
-      assertRoomParticipant(studentId, roomData);
-      await roomRef.update({
-        [`participantHeartbeat.${studentId}`]: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    if (!roomSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Room not found.");
     }
+
+    roomData = roomSnap.data() as Record<string, unknown>;
+    assertRoomParticipant(studentId, roomData);
   }
 
   if (scope === "match") {
-    const matchRef = db.collection("quizBattleMatches").doc(resourceId);
+    matchRef = db.collection("quizBattleMatches").doc(resourceId);
     const matchSnap = await matchRef.get();
-    if (matchSnap.exists) {
-      const matchData = matchSnap.data() as Record<string, unknown>;
-      const participantA = asString(matchData.playerAId);
-      const participantB = asString(matchData.playerBId);
-      if (studentId !== participantA && studentId !== participantB) {
-        throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
-      }
-
-      await matchRef.update({
-        [`presence.${studentId}.heartbeatAt`]: admin.firestore.FieldValue.serverTimestamp(),
-        [`presence.${studentId}.online`]: true,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
+    if (!matchSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Match not found.");
     }
+
+    const matchData = matchSnap.data() as Record<string, unknown>;
+    const participantA = asString(matchData.playerAId);
+    const participantB = asString(matchData.playerBId);
+    if (studentId !== participantA && studentId !== participantB) {
+      throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
+    }
+  }
+
+  try {
+    await writePresenceHeartbeat(studentId, scope, effectiveResourceId);
+  } catch (error) {
+    functions.logger.warn("Failed to write quiz battle presence heartbeat.", {
+      studentId,
+      scope,
+      resourceId: effectiveResourceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  if (scope === "queue" && queueRef) {
+    await queueRef.update({
+      heartbeatAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await resolvePublicMatchmakingPass(db, 1);
+  }
+
+  if (scope === "room" && roomRef && roomData) {
+    await roomRef.update({
+      [`participantHeartbeat.${studentId}`]: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  if (scope === "match" && matchRef) {
+    await matchRef.update({
+      [`presence.${studentId}.heartbeatAt`]: admin.firestore.FieldValue.serverTimestamp(),
+      [`presence.${studentId}.online`]: true,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
   }
 
   return {
     success: true,
     scope,
-    resourceId,
+    resourceId: effectiveResourceId,
   };
 });
 

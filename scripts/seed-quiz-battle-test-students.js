@@ -7,7 +7,14 @@ let admin;
 try {
   admin = require(path.resolve(__dirname, '../functions/node_modules/firebase-admin'));
 } catch {
-  admin = require('firebase-admin');
+  try {
+    admin = require('firebase-admin');
+  } catch {
+    console.error(
+      'Unable to load firebase-admin. Install dependencies in either the functions directory or the project root (for example: "cd functions && npm install" or "npm install firebase-admin").'
+    );
+    process.exit(1);
+  }
 }
 
 const KEY_PATH = path.resolve(__dirname, 'serviceAccountKey.json');

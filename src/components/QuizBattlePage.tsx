@@ -519,7 +519,6 @@ const QuizBattlePage: React.FC = () => {
 
     const sendHeartbeat = async () => {
       try {
-        await connectQuizBattlePresence(heartbeatTarget.scope, heartbeatTarget.resourceId);
         await sendQuizBattleHeartbeat(heartbeatTarget.scope, heartbeatTarget.resourceId);
         if (!cancelled) {
           setConnectionState('connected');

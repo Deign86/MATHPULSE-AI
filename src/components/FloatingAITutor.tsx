@@ -108,7 +108,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               onClick={handleFullScreenClick}
               type="button"
               aria-label="Open fullscreen"
-              className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               title="Open fullscreen"
             >
               <Maximize2 size={16} className="text-white" />
@@ -117,7 +117,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               type="button"
               aria-label="Minimize AI tutor launcher"
               onClick={handleMinimizeLauncher}
-              className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               title="Minimize"
             >
               <Minus size={16} className="text-white" />
@@ -126,7 +126,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               type="button"
               aria-label="Close chat"
               onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-slate-200/70 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
             >
               <X size={16} className="text-white" />
             </button>
