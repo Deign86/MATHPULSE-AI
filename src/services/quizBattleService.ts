@@ -547,10 +547,8 @@ const mapCallableErrorMessage = (operation: string, error: unknown): string => {
     return 'Quiz Battle service is temporarily unavailable. Please retry in a moment.';
   }
 
-  if (messageValue && !['internal', 'unknown'].includes(messageValue.toLowerCase())) {
-    return messageValue;
-  }
-
+  // For any other unhandled code, return the generic fallback to avoid
+  // surfacing raw backend/Firebase messages to users.
   return fallback;
 };
 
