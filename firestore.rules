@@ -200,7 +200,7 @@ service cloud.firestore {
 
     match /quizBattleQueue/{docId} {
       allow read: if ownerByField('studentId') || isTeacherOrAdmin();
-      allow create, update, delete: if ownerByField('studentId') || isTeacherOrAdmin();
+      allow create, update, delete: if ownerByField('studentId');
     }
 
     match /quizBattleHistory/{docId} {
