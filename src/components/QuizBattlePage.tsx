@@ -173,9 +173,12 @@ const QuizBattlePage: React.FC = () => {
     }));
   }, [gradeScopedSubjects, setupConfig.subjectId]);
 
-  const refreshBattleInsights = useCallback(async () => {
+  const refreshBattleInsights = useCallback(async (): Promise<{
+    stats: StudentBattleStats | null;
+    history: QuizBattleMatchSummary[];
+  } | null> => {
     if (!studentProfile?.uid) {
-      return;
+      return null;
     }
 
     const [stats, history] = await Promise.all([
@@ -183,8 +186,7 @@ const QuizBattlePage: React.FC = () => {
       getStudentBattleHistory(studentProfile.uid, { mode: historyFilterMode, limitCount: 8 }),
     ]);
 
-    setStatsData(stats);
-    setHistoryData(history);
+    return { stats, history };
   }, [historyFilterMode, studentProfile?.uid]);
 
   useEffect(() => {
@@ -225,9 +227,13 @@ const QuizBattlePage: React.FC = () => {
     setStatsLoading(true);
 
     const load = async () => {
-      await refreshBattleInsights();
+      const result = await refreshBattleInsights();
 
       if (!isMounted) return;
+      if (result) {
+        setStatsData(result.stats);
+        setHistoryData(result.history);
+      }
       setStatsLoading(false);
     };
 
@@ -823,7 +829,12 @@ const QuizBattlePage: React.FC = () => {
         message: `Bot match ${botMatch.matchId.slice(0, 8)} live (${botMatch.botDifficulty}).`,
       });
 
-      void refreshBattleInsights();
+      void refreshBattleInsights().then((result) => {
+        if (result) {
+          setStatsData(result.stats);
+          setHistoryData(result.history);
+        }
+      });
     } catch (error) {
       setQueueActive(false);
       const known = error as { message?: string };
