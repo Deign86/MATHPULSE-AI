@@ -1,7 +1,58 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import './index.css';
-import { AuthProvider } from './contexts/AuthContext';
+import './critical.css';
+import { AuthProvider } from './contexts/AuthContext.tsx';
+
+let fullStylesLoadStarted = false;
+let resolveFullStylesReady: (() => void) | null = null;
+
+const fullStylesReady = new Promise<void>((resolve) => {
+  resolveFullStylesReady = resolve;
+});
+
+const finishFullStylesReady = () => {
+  if (!resolveFullStylesReady) return;
+  const resolve = resolveFullStylesReady;
+  resolveFullStylesReady = null;
+  resolve();
+};
+
+const loadFullStyles = () => {
+  if (fullStylesLoadStarted) return;
+  fullStylesLoadStarted = true;
+
+  import('./index.css')
+    .catch((error) => {
+      console.error('[styles] Deferred full stylesheet failed to load:', error);
+    })
+    .finally(() => {
+      finishFullStylesReady();
+    });
+};
+
+if (typeof window !== 'undefined') {
+  const requestIdle = (
+    window as {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+    }
+  ).requestIdleCallback;
+  const cancelIdle = (
+    window as {
+      cancelIdleCallback?: (handle: number) => void;
+    }
+  ).cancelIdleCallback;
+
+  const idleHandle = requestIdle?.(() => {
+    loadFullStyles();
+  }, { timeout: 1200 });
+
+  window.setTimeout(() => {
+    if (idleHandle !== undefined && cancelIdle) {
+      cancelIdle(idleHandle);
+    }
+    loadFullStyles();
+  }, 1200);
+}
 
 const rootElement = document.getElementById('root');
 
@@ -44,13 +95,24 @@ const rootHasRenderedContent = () => {
   return text.length > 0;
 };
 
+const waitForStylesThenFade = () => {
+  Promise.race([
+    fullStylesReady,
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 2200);
+    }),
+  ]).then(() => {
+    requestAnimationFrame(fadeOutAndRemoveBootShell);
+  });
+};
+
 if (rootHasRenderedContent()) {
-  requestAnimationFrame(fadeOutAndRemoveBootShell);
+  waitForStylesThenFade();
 } else {
   const observer = new MutationObserver(() => {
     if (!rootHasRenderedContent()) return;
     observer.disconnect();
-    requestAnimationFrame(fadeOutAndRemoveBootShell);
+    waitForStylesThenFade();
   });
 
   observer.observe(rootElement, { childList: true, subtree: true, characterData: true });
@@ -59,8 +121,9 @@ if (rootHasRenderedContent()) {
   safetyTimeoutId = window.setTimeout(() => {
     safetyTimeoutId = undefined;
     observer.disconnect();
+    loadFullStyles();
     if (document.getElementById('boot-shell')) {
-      requestAnimationFrame(fadeOutAndRemoveBootShell);
+      waitForStylesThenFade();
     }
   }, 6000);
 }
