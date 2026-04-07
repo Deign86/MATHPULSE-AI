@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Bot,
   ChevronRight,
@@ -31,6 +31,7 @@ import {
   getStudentBattleHistory,
   getStudentBattleStats,
   joinQuizBattleQueue,
+  leaveQuizBattleQueue,
   QuizBattleSetupError,
   validateQuizBattleSetup,
 } from '../services/quizBattleService';
@@ -79,6 +80,7 @@ const QuizBattlePage: React.FC = () => {
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [launchState, setLaunchState] = useState<LaunchState>({ status: 'idle' });
+  const [queueActive, setQueueActive] = useState(false);
   const [historyFilterMode, setHistoryFilterMode] = useState<'all' | QuizBattleMode>('all');
 
   const [statsLoading, setStatsLoading] = useState(true);
@@ -97,6 +99,20 @@ const QuizBattlePage: React.FC = () => {
       label: module.title,
     }));
   }, [gradeScopedSubjects, setupConfig.subjectId]);
+
+  const refreshBattleInsights = useCallback(async () => {
+    if (!studentProfile?.uid) {
+      return;
+    }
+
+    const [stats, history] = await Promise.all([
+      getStudentBattleStats(studentProfile.uid),
+      getStudentBattleHistory(studentProfile.uid, { mode: historyFilterMode, limitCount: 8 }),
+    ]);
+
+    setStatsData(stats);
+    setHistoryData(history);
+  }, [historyFilterMode, studentProfile?.uid]);
 
   useEffect(() => {
     if (gradeScopedSubjects.length === 0) return;
@@ -136,14 +152,9 @@ const QuizBattlePage: React.FC = () => {
     setStatsLoading(true);
 
     const load = async () => {
-      const [stats, history] = await Promise.all([
-        getStudentBattleStats(studentProfile.uid),
-        getStudentBattleHistory(studentProfile.uid, { mode: historyFilterMode, limitCount: 8 }),
-      ]);
+      await refreshBattleInsights();
 
       if (!isMounted) return;
-      setStatsData(stats);
-      setHistoryData(history);
       setStatsLoading(false);
     };
 
@@ -152,7 +163,7 @@ const QuizBattlePage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [studentProfile?.uid, historyFilterMode]);
+  }, [refreshBattleInsights, studentProfile?.uid]);
 
   const filteredHistory = useMemo(() => {
     if (historyFilterMode === 'all') return historyData;
@@ -177,12 +188,29 @@ const QuizBattlePage: React.FC = () => {
   const setMode = (mode: QuizBattleMode) => {
     setSetupErrors([]);
     setLaunchState({ status: 'idle' });
+    setQueueActive(false);
     setSetupConfig((previous) => ({
       ...previous,
       mode,
       queueType: mode === 'online' ? previous.queueType : 'public_matchmaking',
     }));
     setActiveTab('setup');
+  };
+
+  const handleLeaveQueue = async () => {
+    setLaunchState({ status: 'validating' });
+
+    try {
+      await leaveQuizBattleQueue();
+      setQueueActive(false);
+      setLaunchState({ status: 'queued', message: 'Left matchmaking queue.' });
+    } catch (error) {
+      const known = error as { message?: string };
+      setLaunchState({
+        status: 'error',
+        message: known?.message || 'Unable to leave the queue right now. Please try again.',
+      });
+    }
   };
 
   const submitSetup = async () => {
@@ -201,6 +229,7 @@ const QuizBattlePage: React.FC = () => {
       if (setupConfig.mode === 'online') {
         if (setupConfig.queueType === 'private_room') {
           const roomResult = await createQuizBattlePrivateRoom(setupConfig);
+          setQueueActive(false);
           setLaunchState({
             status: 'queued',
             message: `Private room created. Share code: ${roomResult.roomCode}`,
@@ -209,16 +238,21 @@ const QuizBattlePage: React.FC = () => {
         }
 
         await joinQuizBattleQueue(setupConfig);
+        setQueueActive(true);
         setLaunchState({ status: 'queued', message: 'Joined matchmaking queue. Waiting for an opponent...' });
         return;
       }
 
       const botMatch = await createQuizBattleBotMatch(setupConfig);
+      setQueueActive(false);
       setLaunchState({
         status: 'queued',
         message: `Bot match ${botMatch.matchId.slice(0, 8)} ready (${botMatch.botDifficulty}).`,
       });
+
+      void refreshBattleInsights();
     } catch (error) {
+      setQueueActive(false);
       const known = error as { message?: string };
       setLaunchState({
         status: 'error',
@@ -281,7 +315,6 @@ const QuizBattlePage: React.FC = () => {
             <TabsTrigger value="leaderboard" className="rounded-xl">Leaderboard</TabsTrigger>
           </TabsList>
 
-          <AnimatePresence mode="wait">
             <TabsContent value="hub" className="mt-5">
               <motion.div
                 key="hub"
@@ -577,18 +610,31 @@ const QuizBattlePage: React.FC = () => {
                           <span className="inline-flex items-center gap-2 text-foreground dark:text-[#d5dcf0]"><Loader2 className="h-4 w-4 animate-spin" /> Validating setup...</span>
                         )}
                       </div>
-                      <Button
-                        type="button"
-                        onClick={submitSetup}
-                        disabled={launchState.status === 'validating'}
-                        className="rounded-xl"
-                      >
-                        {launchState.status === 'validating' ? (
-                          <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Starting...</span>
-                        ) : (
-                          'Start battle'
+                      <div className="flex items-center gap-2">
+                        {queueActive && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleLeaveQueue}
+                            disabled={launchState.status === 'validating'}
+                            className="rounded-xl"
+                          >
+                            Leave queue
+                          </Button>
                         )}
-                      </Button>
+                        <Button
+                          type="button"
+                          onClick={submitSetup}
+                          disabled={launchState.status === 'validating' || queueActive}
+                          className="rounded-xl"
+                        >
+                          {launchState.status === 'validating' ? (
+                            <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Starting...</span>
+                          ) : (
+                            'Start battle'
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -713,7 +759,6 @@ const QuizBattlePage: React.FC = () => {
                 </Card>
               </motion.div>
             </TabsContent>
-          </AnimatePresence>
         </Tabs>
       </motion.div>
     </div>
