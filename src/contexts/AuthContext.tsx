@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
-import { getUserProfile, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService';
-import { triggerStudentEnrolled } from '../services/automationService';
+import { auth } from '../lib/firebase.ts';
+import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models.ts';
+import { getUserProfile, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService.ts';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -74,14 +73,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             // Fire automation for new student enrollment
             if (role === 'student') {
-              triggerStudentEnrolled({
-                lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
-                name,
-                email: user.email || '',
-                gradeLevel: '',
-              }).catch((err) =>
-                console.error('[WARN] Automation: enrollment pipeline failed:', err)
-              );
+              import('../services/automationService.ts')
+                .then(({ triggerStudentEnrolled }) =>
+                  triggerStudentEnrolled({
+                    lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
+                    name,
+                    email: user.email || '',
+                    gradeLevel: '',
+                  })
+                )
+                .catch((err) =>
+                  console.error('[WARN] Automation: enrollment pipeline failed:', err)
+                );
             }
           } catch (err) {
             console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
