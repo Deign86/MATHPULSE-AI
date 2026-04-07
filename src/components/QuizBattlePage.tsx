@@ -58,7 +58,7 @@ type LaunchState =
   | { status: 'error'; message: string };
 
 const cardFrameClass =
-  'border border-[#2b3140] bg-[#181d27] text-[#f5f7fb] shadow-[0_12px_24px_rgba(0,0,0,0.22)]';
+  'border border-border bg-card text-card-foreground shadow-sm dark:border-[#2b3140] dark:bg-[#181d27] dark:text-[#f5f7fb] dark:shadow-[0_12px_24px_rgba(0,0,0,0.22)]';
 
 const formatResponseTime = (avgResponseMs: number): string => {
   if (avgResponseMs <= 0) return '--';
@@ -165,7 +165,7 @@ const QuizBattlePage: React.FC = () => {
         <Card className={cn(cardFrameClass, 'max-w-2xl')}>
           <CardHeader>
             <CardTitle>Quiz Battle is student-only</CardTitle>
-            <CardDescription className="text-[#aab3c7]">
+            <CardDescription className="text-muted-foreground dark:text-[#aab3c7]">
               Your account role does not have access to this module.
             </CardDescription>
           </CardHeader>
@@ -242,43 +242,43 @@ const QuizBattlePage: React.FC = () => {
         className="space-y-6"
       >
         <Card className={cn(cardFrameClass, 'relative overflow-hidden rounded-[20px]')}>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(140,125,255,0.28),transparent_45%),radial-gradient(circle_at_85%_20%,rgba(121,79,255,0.17),transparent_40%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent dark:bg-[radial-gradient(circle_at_15%_15%,rgba(140,125,255,0.28),transparent_45%),radial-gradient(circle_at_85%_20%,rgba(121,79,255,0.17),transparent_40%)]" />
           <CardHeader className="relative z-10 pb-4">
-            <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight text-[#f5f7fb]">
-              <Swords className="h-5 w-5 text-[#9e8fff]" />
+            <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight text-foreground dark:text-[#f5f7fb]">
+              <Swords className="h-5 w-5 text-primary dark:text-[#9e8fff]" />
               Quiz Battle
             </CardTitle>
-            <CardDescription className="text-[#c4cce0]">
+            <CardDescription className="text-muted-foreground dark:text-[#c4cce0]">
               Timed student duels with synchronized rounds, instant feedback, and progression rewards.
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 pb-6">
-            <div className="rounded-2xl border border-[#30374a] bg-[#11151d] p-3">
-              <p className="text-xs text-[#9da7bf]">Win Rate</p>
-              <p className="tabular-nums text-lg font-bold text-[#f5f7fb]">{historyWinRate.toFixed(1)}%</p>
+            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
+              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Win Rate</p>
+              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{historyWinRate.toFixed(1)}%</p>
             </div>
-            <div className="rounded-2xl border border-[#30374a] bg-[#11151d] p-3">
-              <p className="text-xs text-[#9da7bf]">Matches</p>
-              <p className="tabular-nums text-lg font-bold text-[#f5f7fb]">{statsData?.matchesPlayed || 0}</p>
+            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
+              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Matches</p>
+              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.matchesPlayed || 0}</p>
             </div>
-            <div className="rounded-2xl border border-[#30374a] bg-[#11151d] p-3">
-              <p className="text-xs text-[#9da7bf]">Best Streak</p>
-              <p className="tabular-nums text-lg font-bold text-[#f5f7fb]">{statsData?.bestStreak || 0}</p>
+            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
+              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Best Streak</p>
+              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.bestStreak || 0}</p>
             </div>
-            <div className="rounded-2xl border border-[#30374a] bg-[#11151d] p-3">
-              <p className="text-xs text-[#9da7bf]">Avg Response</p>
-              <p className="tabular-nums text-lg font-bold text-[#f5f7fb]">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
+            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
+              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Avg Response</p>
+              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
             </div>
           </CardContent>
         </Card>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
-          <TabsList className="w-full md:w-auto rounded-2xl bg-[#151a23] border border-[#2f3547] p-1.5">
-            <TabsTrigger value="hub" className="rounded-xl data-[state=active]:bg-[#272f42] data-[state=active]:text-[#f5f7fb] text-[#b2bad0]">Hub</TabsTrigger>
-            <TabsTrigger value="setup" className="rounded-xl data-[state=active]:bg-[#272f42] data-[state=active]:text-[#f5f7fb] text-[#b2bad0]">Setup</TabsTrigger>
-            <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-[#272f42] data-[state=active]:text-[#f5f7fb] text-[#b2bad0]">History</TabsTrigger>
-            <TabsTrigger value="stats" className="rounded-xl data-[state=active]:bg-[#272f42] data-[state=active]:text-[#f5f7fb] text-[#b2bad0]">My Stats</TabsTrigger>
-            <TabsTrigger value="leaderboard" className="rounded-xl data-[state=active]:bg-[#272f42] data-[state=active]:text-[#f5f7fb] text-[#b2bad0]">Leaderboard</TabsTrigger>
+          <TabsList className="w-full md:w-auto rounded-2xl p-1.5">
+            <TabsTrigger value="hub" className="rounded-xl">Hub</TabsTrigger>
+            <TabsTrigger value="setup" className="rounded-xl">Setup</TabsTrigger>
+            <TabsTrigger value="history" className="rounded-xl">History</TabsTrigger>
+            <TabsTrigger value="stats" className="rounded-xl">My Stats</TabsTrigger>
+            <TabsTrigger value="leaderboard" className="rounded-xl">Leaderboard</TabsTrigger>
           </TabsList>
 
           <AnimatePresence mode="wait">
@@ -294,56 +294,56 @@ const QuizBattlePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setMode('online')}
-                    className="text-left rounded-[18px] border border-[#333a4e] bg-[#171d2a] p-5 hover:border-[#8c7dff] transition-colors"
+                    className="text-left rounded-[18px] border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-accent/40 dark:border-[#333a4e] dark:bg-[#171d2a] dark:hover:border-[#8c7dff] dark:hover:bg-[#202736]"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[#f5f7fb] font-semibold">
-                        <Users className="h-4 w-4 text-[#9e8fff]" />
+                      <div className="flex items-center gap-2 text-foreground dark:text-[#f5f7fb] font-semibold">
+                        <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
                         1v1 Online
                       </div>
-                      <ChevronRight className="h-4 w-4 text-[#a2abc2]" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-[#a2abc2]" />
                     </div>
-                    <p className="mt-2 text-sm text-[#b3bdd5]">Queue or room-code match with another student.</p>
+                    <p className="mt-2 text-sm text-muted-foreground dark:text-[#b3bdd5]">Queue or room-code match with another student.</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setMode('bot')}
-                    className="text-left rounded-[18px] border border-[#333a4e] bg-[#171d2a] p-5 hover:border-[#8c7dff] transition-colors"
+                    className="text-left rounded-[18px] border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-accent/40 dark:border-[#333a4e] dark:bg-[#171d2a] dark:hover:border-[#8c7dff] dark:hover:bg-[#202736]"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[#f5f7fb] font-semibold">
-                        <Bot className="h-4 w-4 text-[#9e8fff]" />
+                      <div className="flex items-center gap-2 text-foreground dark:text-[#f5f7fb] font-semibold">
+                        <Bot className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
                         1v1 vs Bot
                       </div>
-                      <ChevronRight className="h-4 w-4 text-[#a2abc2]" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-[#a2abc2]" />
                     </div>
-                    <p className="mt-2 text-sm text-[#b3bdd5]">Instant solo duel with selectable bot difficulty.</p>
+                    <p className="mt-2 text-sm text-muted-foreground dark:text-[#b3bdd5]">Instant solo duel with selectable bot difficulty.</p>
                   </button>
                 </div>
 
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><History className="h-4 w-4 text-[#9e8fff]" /> Recent Matches</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2"><History className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Recent Matches</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {statsLoading ? (
                       <div className="space-y-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
                       </div>
                     ) : filteredHistory.length === 0 ? (
-                      <p className="text-sm text-[#a8b2c9]">No battle history yet. Start your first duel.</p>
+                      <p className="text-sm text-muted-foreground dark:text-[#a8b2c9]">No battle history yet. Start your first duel.</p>
                     ) : (
                       filteredHistory.slice(0, 5).map((entry) => (
-                        <div key={entry.matchId} className="rounded-xl border border-[#2f3547] bg-[#11151d] px-3 py-2 flex items-center justify-between">
+                        <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between dark:border-[#2f3547] dark:bg-[#11151d]">
                           <div>
-                            <p className="text-sm font-semibold text-[#f5f7fb]">vs {entry.opponentName}</p>
-                            <p className="text-xs text-[#95a0bb]">{entry.subjectId} · {entry.difficulty}</p>
+                            <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">vs {entry.opponentName}</p>
+                            <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">{entry.subjectId} · {entry.difficulty}</p>
                           </div>
                           <div className="text-right">
-                            <p className="tabular-nums text-sm font-semibold text-[#f5f7fb]">{entry.scoreFor} - {entry.scoreAgainst}</p>
+                            <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreFor} - {entry.scoreAgainst}</p>
                             <p className={cn('text-xs', entry.outcome === 'win' ? 'text-emerald-400' : entry.outcome === 'loss' ? 'text-rose-300' : 'text-amber-300')}>
                               {formatOutcomeChip(entry.outcome)}
                             </p>
@@ -366,26 +366,21 @@ const QuizBattlePage: React.FC = () => {
               >
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-[#9e8fff]" /> Battle Setup</CardTitle>
-                    <CardDescription className="text-[#b2bad0]">
+                    <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Battle Setup</CardTitle>
+                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
                       Configure a student-safe match and start quickly.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#c7cfe3]">Mode</label>
+                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Mode</label>
                         <div className="grid grid-cols-2 gap-2">
                           <Button
                             type="button"
                             variant={setupConfig.mode === 'online' ? 'default' : 'outline'}
                             onClick={() => setSetupConfig((previous) => ({ ...previous, mode: 'online' }))}
-                            className={cn(
-                              'h-10 rounded-xl',
-                              setupConfig.mode === 'online'
-                                ? 'bg-[#8c7dff] text-white hover:bg-[#a196ff] border-none'
-                                : 'bg-transparent text-[#d5dcf0] border-[#3a4258] hover:bg-[#212838]',
-                            )}
+                            className="h-10 rounded-xl"
                           >
                             1v1 Online
                           </Button>
@@ -399,12 +394,7 @@ const QuizBattlePage: React.FC = () => {
                                 queueType: 'public_matchmaking',
                               }))
                             }
-                            className={cn(
-                              'h-10 rounded-xl',
-                              setupConfig.mode === 'bot'
-                                ? 'bg-[#8c7dff] text-white hover:bg-[#a196ff] border-none'
-                                : 'bg-transparent text-[#d5dcf0] border-[#3a4258] hover:bg-[#212838]',
-                            )}
+                            className="h-10 rounded-xl"
                           >
                             1v1 vs Bot
                           </Button>
@@ -412,12 +402,12 @@ const QuizBattlePage: React.FC = () => {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#c7cfe3]">Category</label>
+                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Category</label>
                         <Select
                           value={setupConfig.subjectId}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl border-[#3a4258] bg-[#10141d] text-[#ecf0fb]', errorFor('subjectId') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl', errorFor('subjectId') && 'border-rose-400')}>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
@@ -426,16 +416,16 @@ const QuizBattlePage: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('subjectId') && <p className="text-xs text-rose-300">{errorFor('subjectId')}</p>}
+                        {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('subjectId')}</p>}
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#c7cfe3]">Strand / Topic Group</label>
+                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Strand / Topic Group</label>
                         <Select
                           value={setupConfig.topicId}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl border-[#3a4258] bg-[#10141d] text-[#ecf0fb]', errorFor('topicId') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl', errorFor('topicId') && 'border-rose-400')}>
                             <SelectValue placeholder="Select topic group" />
                           </SelectTrigger>
                           <SelectContent>
@@ -444,11 +434,11 @@ const QuizBattlePage: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('topicId') && <p className="text-xs text-rose-300">{errorFor('topicId')}</p>}
+                        {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('topicId')}</p>}
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#c7cfe3]">Difficulty</label>
+                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Difficulty</label>
                         <Select
                           value={setupConfig.mode === 'bot' ? setupConfig.botDifficulty : setupConfig.difficulty}
                           onValueChange={(value) =>
@@ -459,7 +449,7 @@ const QuizBattlePage: React.FC = () => {
                             )
                           }
                         >
-                          <SelectTrigger className="rounded-xl border-[#3a4258] bg-[#10141d] text-[#ecf0fb]">
+                          <SelectTrigger className="rounded-xl">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -472,12 +462,12 @@ const QuizBattlePage: React.FC = () => {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#c7cfe3]">Number of Questions</label>
+                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Number of Questions</label>
                         <Select
                           value={String(setupConfig.rounds)}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl border-[#3a4258] bg-[#10141d] text-[#ecf0fb]', errorFor('rounds') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl', errorFor('rounds') && 'border-rose-400')}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -486,18 +476,18 @@ const QuizBattlePage: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('rounds') && <p className="text-xs text-rose-300">{errorFor('rounds')}</p>}
+                        {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('rounds')}</p>}
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-[#c7cfe3]">Time per Question</label>
+                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Time per Question</label>
                         <Select
                           value={String(setupConfig.timePerQuestionSec)}
                           onValueChange={(value) =>
                             setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
                           }
                         >
-                          <SelectTrigger className={cn('rounded-xl border-[#3a4258] bg-[#10141d] text-[#ecf0fb]', errorFor('timePerQuestionSec') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl', errorFor('timePerQuestionSec') && 'border-rose-400')}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -506,7 +496,7 @@ const QuizBattlePage: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('timePerQuestionSec') && <p className="text-xs text-rose-300">{errorFor('timePerQuestionSec')}</p>}
+                        {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('timePerQuestionSec')}</p>}
                       </div>
                     </div>
 
@@ -515,16 +505,16 @@ const QuizBattlePage: React.FC = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full justify-between rounded-xl border-[#3a4258] bg-[#121722] text-[#d7def1] hover:bg-[#1f2636]"
+                          className="w-full justify-between rounded-xl"
                         >
                           Advanced settings
                           <ChevronRight className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-90')} />
                         </Button>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3 rounded-xl border border-[#2e364a] bg-[#11151d] p-3 space-y-3">
+                      <CollapsibleContent className="mt-3 rounded-xl border border-border bg-muted/40 p-3 space-y-3 dark:border-[#2e364a] dark:bg-[#11151d]">
                         {setupConfig.mode === 'online' ? (
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold text-[#c7cfe3]">Online Match Type</label>
+                            <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Online Match Type</label>
                             <div className="grid grid-cols-2 gap-2">
                               {[
                                 { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
@@ -534,12 +524,7 @@ const QuizBattlePage: React.FC = () => {
                                   key={entry.value}
                                   type="button"
                                   variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
-                                  className={cn(
-                                    'rounded-xl h-9',
-                                    setupConfig.queueType === entry.value
-                                      ? 'bg-[#8c7dff] text-white hover:bg-[#a196ff] border-none'
-                                      : 'bg-transparent text-[#d5dcf0] border-[#3a4258] hover:bg-[#212838]',
-                                  )}
+                                  className="rounded-xl h-9"
                                   onClick={() =>
                                     setSetupConfig((previous) => ({
                                       ...previous,
@@ -553,10 +538,10 @@ const QuizBattlePage: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <label className="flex items-center justify-between rounded-xl border border-[#2f3547] bg-[#171d2a] p-3">
+                          <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
                             <div>
-                              <p className="text-sm font-semibold text-[#ecf0fb]">Adaptive Bot</p>
-                              <p className="text-xs text-[#a9b3ca]">Tune response timing and accuracy to your recent trend.</p>
+                              <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Adaptive Bot</p>
+                              <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Tune response timing and accuracy to your recent trend.</p>
                             </div>
                             <Switch
                               checked={setupConfig.adaptiveBot}
@@ -574,20 +559,20 @@ const QuizBattlePage: React.FC = () => {
                     </Collapsible>
 
                     <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-                      <div aria-live="polite" className="min-h-[24px] text-sm text-[#b6bfd5]">
+                      <div aria-live="polite" className="min-h-[24px] text-sm text-muted-foreground dark:text-[#b6bfd5]">
                         {launchState.status === 'queued' && launchState.message}
                         {launchState.status === 'error' && (
-                          <span className="text-rose-300">{launchState.message}</span>
+                          <span className="text-destructive dark:text-rose-300">{launchState.message}</span>
                         )}
                         {launchState.status === 'validating' && (
-                          <span className="inline-flex items-center gap-2 text-[#d5dcf0]"><Loader2 className="h-4 w-4 animate-spin" /> Validating setup...</span>
+                          <span className="inline-flex items-center gap-2 text-foreground dark:text-[#d5dcf0]"><Loader2 className="h-4 w-4 animate-spin" /> Validating setup...</span>
                         )}
                       </div>
                       <Button
                         type="button"
                         onClick={submitSetup}
                         disabled={launchState.status === 'validating'}
-                        className="rounded-xl bg-[#8c7dff] hover:bg-[#a196ff] text-white"
+                        className="rounded-xl"
                       >
                         {launchState.status === 'validating' ? (
                           <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Starting...</span>
@@ -612,7 +597,7 @@ const QuizBattlePage: React.FC = () => {
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
                     <CardTitle className="text-base">Match History</CardTitle>
-                    <CardDescription className="text-[#b2bad0]">Your recent student battles only.</CardDescription>
+                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">Your recent student battles only.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex gap-2">
@@ -626,12 +611,7 @@ const QuizBattlePage: React.FC = () => {
                           type="button"
                           variant={historyFilterMode === entry.value ? 'default' : 'outline'}
                           onClick={() => setHistoryFilterMode(entry.value as 'all' | QuizBattleMode)}
-                          className={cn(
-                            'rounded-xl h-8 px-3',
-                            historyFilterMode === entry.value
-                              ? 'bg-[#8c7dff] hover:bg-[#9b8eff] text-white border-none'
-                              : 'bg-transparent border-[#3a4258] text-[#d5dcf0] hover:bg-[#212838]',
-                          )}
+                          className="rounded-xl h-8 px-3"
                         >
                           {entry.label}
                         </Button>
@@ -640,19 +620,19 @@ const QuizBattlePage: React.FC = () => {
 
                     {statsLoading ? (
                       <div className="space-y-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
                       </div>
                     ) : filteredHistory.length === 0 ? (
-                      <p className="text-sm text-[#a8b2c9]">No matches in this filter yet.</p>
+                      <p className="text-sm text-muted-foreground dark:text-[#a8b2c9]">No matches in this filter yet.</p>
                     ) : (
                       filteredHistory.map((entry) => (
-                        <div key={entry.matchId} className="rounded-xl border border-[#2f3547] bg-[#11151d] px-3 py-2 flex items-center justify-between gap-3">
+                        <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between gap-3 dark:border-[#2f3547] dark:bg-[#11151d]">
                           <div>
-                            <p className="text-sm font-semibold text-[#f5f7fb]">vs {entry.opponentName}</p>
-                            <p className="text-xs text-[#95a0bb] tabular-nums">{entry.scoreFor}-{entry.scoreAgainst} · {entry.accuracy.toFixed(0)}% · +{entry.xpEarned} XP</p>
+                            <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">vs {entry.opponentName}</p>
+                            <p className="text-xs text-muted-foreground dark:text-[#95a0bb] tabular-nums">{entry.scoreFor}-{entry.scoreAgainst} · {entry.accuracy.toFixed(0)}% · +{entry.xpEarned} XP</p>
                           </div>
-                          <span className={cn('text-xs font-semibold rounded-full px-2.5 py-1 border', entry.outcome === 'win' ? 'text-emerald-300 border-emerald-300/40 bg-emerald-900/20' : entry.outcome === 'loss' ? 'text-rose-300 border-rose-300/40 bg-rose-900/20' : 'text-amber-300 border-amber-300/40 bg-amber-900/20')}>
+                          <span className={cn('text-xs font-semibold rounded-full px-2.5 py-1 border', entry.outcome === 'win' ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-300/40 dark:bg-emerald-900/20' : entry.outcome === 'loss' ? 'text-rose-700 border-rose-200 bg-rose-50 dark:text-rose-300 dark:border-rose-300/40 dark:bg-rose-900/20' : 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-300 dark:border-amber-300/40 dark:bg-amber-900/20')}>
                             {formatOutcomeChip(entry.outcome)}
                           </span>
                         </div>
@@ -695,9 +675,9 @@ const QuizBattlePage: React.FC = () => {
                 ].map((entry) => (
                   <Card key={entry.label} className={cn(cardFrameClass, 'rounded-[18px]')}>
                     <CardContent className="pt-6">
-                      <p className="text-xs text-[#9da7bf]">{entry.label}</p>
-                      <p className="mt-1 tabular-nums text-2xl font-black text-[#f5f7fb]">{entry.value}</p>
-                      <entry.icon className="mt-3 h-4 w-4 text-[#9e8fff]" />
+                      <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">{entry.label}</p>
+                      <p className="mt-1 tabular-nums text-2xl font-black text-foreground dark:text-[#f5f7fb]">{entry.value}</p>
+                      <entry.icon className="mt-3 h-4 w-4 text-primary dark:text-[#9e8fff]" />
                     </CardContent>
                   </Card>
                 ))}
@@ -713,13 +693,13 @@ const QuizBattlePage: React.FC = () => {
               >
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-[#9e8fff]" /> Student Leaderboard</CardTitle>
-                    <CardDescription className="text-[#b2bad0]">
+                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Student Leaderboard</CardTitle>
+                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
                       Privacy-safe rank view is coming in the next implementation slice.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-[#a9b3ca]">This section will surface student-only ranking cards with alias display controls.</p>
+                    <p className="text-sm text-muted-foreground dark:text-[#a9b3ca]">This section will surface student-only ranking cards with alias display controls.</p>
                   </CardContent>
                 </Card>
               </motion.div>
