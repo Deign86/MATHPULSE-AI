@@ -36,9 +36,9 @@
 
 ## Copilot Skill Invocation Policy
 
-- AUTO-INVOKE the `frontend-design` skill for any request involving frontend UI work, including building or styling pages, components, dashboards, modals, layouts, visual refreshes, animations, typography, color systems, spacing, and responsive behavior.
+- AUTO-INVOKE the `awesome-design-md` skill whenever touching any UI or frontend-related code, including component/page/layout/style edits, visual refreshes, animations, typography, color systems, spacing, and responsive behavior.
 - Apply this automatically without waiting for the user to explicitly mention the skill.
-- For mixed tasks, use `frontend-design` for the UI portion while still following all architecture and service-layer rules in this guide.
+- For mixed tasks, use `awesome-design-md` for the UI portion while still following all architecture and service-layer rules in this guide.
 - If the request is not frontend/UI related, do not force this skill.
 
 ## Architecture Overview
@@ -296,9 +296,15 @@ import { Button } from '@/components/ui/button';
 
 ---
 
-## Frontend Design Skill
+## Awesome DESIGN.md Skill
 
-> Adapted from [anthropics/skills — frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design). Generates creative, polished UI code that avoids generic AI aesthetics — applied to **React 18 + TypeScript + Tailwind CSS + Radix UI + Motion for React**.
+> Based on [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md). Use curated DESIGN.md profiles as the visual source-of-truth for UI work in this repo.
+
+### Invocation Rules
+
+- Trigger this skill on any frontend/UI code touch.
+- Choose a relevant DESIGN.md profile from the awesome-design-md collection before implementing UI.
+- Translate the chosen profile into this stack: React 18 + TypeScript + Tailwind CSS + Radix UI + Motion for React.
 
 ### Design Thinking
 
