@@ -1,6 +1,23 @@
 // User Types
 export type UserRole = 'student' | 'teacher' | 'admin';
 
+export interface ClassSectionMetadata {
+  classSectionId?: string | null;
+  className?: string | null;
+  grade?: string | null;
+  section?: string | null;
+  gradeLevel?: string | null;
+  classification?: string | null;
+  strand?: string | null;
+  schoolYear?: string | null;
+  ownerTeacherId?: string | null;
+  ownerTeacherName?: string | null;
+  adviserTeacherId?: string | null;
+  adviserTeacherName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+}
+
 export interface User {
   uid: string;
   email: string;

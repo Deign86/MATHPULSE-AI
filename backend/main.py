@@ -22,6 +22,8 @@ import logging
 import traceback
 import urllib.parse
 import random
+import secrets
+import string
 from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
 from threading import Lock
@@ -277,6 +279,8 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
     "/api/upload/class-records": TEACHER_OR_ADMIN,
     "/api/upload/class-records/risk-refresh/recent": TEACHER_OR_ADMIN,
+    "/api/import/student-accounts/preview": TEACHER_OR_ADMIN,
+    "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
@@ -299,6 +303,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/student-summary": ALL_APP_ROLES,
     "/api/analytics/class-insights": TEACHER_OR_ADMIN,
     "/api/analytics/refresh-cache": ADMIN_ONLY,
+    "/api/testing/reset-data": ALL_APP_ROLES,
     "/api/ops/inference-metrics": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
@@ -381,6 +386,9 @@ _firestore_topics_lookup_warning_emitted = False
 _rate_limit_buckets: Dict[str, List[float]] = {}
 _async_tasks: Dict[str, Dict[str, Any]] = {}
 _async_tasks_lock = Lock()
+_account_import_previews: Dict[str, Dict[str, Any]] = {}
+_account_import_previews_lock = Lock()
+ACCOUNT_IMPORT_PREVIEW_TTL_SECONDS = int(os.getenv("ACCOUNT_IMPORT_PREVIEW_TTL_SECONDS", "1200"))
 FIRESTORE_SERVER_TIMESTAMP: Any = getattr(cast(Any, firebase_firestore), "SERVER_TIMESTAMP", None)
 FIRESTORE_QUERY_DESCENDING: Any = getattr(getattr(cast(Any, firebase_firestore), "Query", None), "DESCENDING", "DESCENDING")
 
@@ -2108,6 +2116,24 @@ class VerifySolutionResponse(BaseModel):
     code_verification: Optional[CodeVerificationResult] = None
     llm_judge: Optional[LLMJudgeResult] = None
     warnings: List[str] = Field(default_factory=list)
+
+
+class TestingResetRequest(BaseModel):
+    role: Optional[str] = Field(
+        default=None,
+        description="Optional role hint. Must match the authenticated role when provided.",
+    )
+    lrn: Optional[str] = Field(
+        default=None,
+        description="Optional student LRN used by legacy testing datasets.",
+    )
+
+
+class TestingResetResponse(BaseModel):
+    role: str
+    deletedDocs: int
+    updatedDocs: int
+    summary: str
 
 
 # ─── Routes ────────────────────────────────────────────────────
@@ -3905,6 +3931,83 @@ def _slugify_class_token(value: str) -> str:
     return re.sub(r"_+", "_", token).strip("_")
 
 
+def _normalize_grade_level(raw_grade: Optional[str]) -> str:
+    text = (raw_grade or "").strip()
+    if not text:
+        return "Grade 11"
+
+    number_match = re.search(r"(\d{1,2})", text)
+    if number_match:
+        return f"Grade {number_match.group(1)}"
+
+    if text.lower().startswith("grade"):
+        return re.sub(r"\s+", " ", text).strip().replace("grade", "Grade", 1)
+
+    return text
+
+
+def _infer_classification(grade_level: Optional[str]) -> str:
+    level = _normalize_grade_level(grade_level)
+    grade_match = re.search(r"(\d{1,2})", level)
+    if grade_match:
+        grade_number = int(grade_match.group(1))
+        return "Senior High School" if grade_number >= 11 else "Junior High School"
+    return "Senior High School"
+
+
+def _infer_strand(*, class_name: Optional[str], section: Optional[str]) -> Optional[str]:
+    source = f"{class_name or ''} {section or ''}".upper()
+    if not source.strip():
+        return None
+
+    for token in ("STEM", "ABM", "HUMSS", "GAS", "TVL", "ICT"):
+        if re.search(rf"\b{token}\b", source):
+            return token
+
+    return None
+
+
+def _build_class_metadata(
+    *,
+    class_section_id: Optional[str],
+    class_name: Optional[str],
+    grade: Optional[str],
+    section: Optional[str],
+    school_year: Optional[str] = None,
+    owner_teacher_id: Optional[str] = None,
+    owner_teacher_name: Optional[str] = None,
+    adviser_teacher_id: Optional[str] = None,
+    adviser_teacher_name: Optional[str] = None,
+    manager_id: Optional[str] = None,
+    manager_name: Optional[str] = None,
+    classification: Optional[str] = None,
+    strand: Optional[str] = None,
+    grade_level: Optional[str] = None,
+) -> Dict[str, Any]:
+    normalized_grade = (grade or "").strip() or None
+    normalized_section = (section or "").strip() or None
+    normalized_grade_level = _normalize_grade_level(grade_level or normalized_grade)
+    normalized_classification = (classification or "").strip() or _infer_classification(normalized_grade_level)
+    normalized_strand = (strand or "").strip() or _infer_strand(class_name=class_name, section=normalized_section)
+
+    return {
+        "classSectionId": (class_section_id or "").strip() or None,
+        "className": (class_name or "").strip() or None,
+        "grade": normalized_grade,
+        "section": normalized_section,
+        "gradeLevel": normalized_grade_level,
+        "classification": normalized_classification,
+        "strand": normalized_strand,
+        "schoolYear": (school_year or "").strip() or str(datetime.now(timezone.utc).year),
+        "ownerTeacherId": (owner_teacher_id or "").strip() or None,
+        "ownerTeacherName": (owner_teacher_name or "").strip() or None,
+        "adviserTeacherId": (adviser_teacher_id or "").strip() or None,
+        "adviserTeacherName": (adviser_teacher_name or "").strip() or None,
+        "managerId": (manager_id or "").strip() or None,
+        "managerName": (manager_name or "").strip() or None,
+    }
+
+
 def _resolve_import_class_context(
     *,
     class_section_id: Optional[str],
@@ -4031,6 +4134,22 @@ def _sync_imported_students_to_teacher_dashboard(
     class_name: Optional[str],
 ) -> Dict[str, Any]:
     fallback_class_section_id = (class_section_id or "").strip().lower() or None
+    fallback_class_name = (class_name or "").strip() or None
+    fallback_grade: Optional[str] = None
+    fallback_section: Optional[str] = None
+    if fallback_class_section_id or fallback_class_name:
+        _, _, fallback_grade, fallback_section = _resolve_import_class_context(
+            class_section_id=fallback_class_section_id,
+            class_name=fallback_class_name,
+        )
+
+    fallback_class_metadata = _build_class_metadata(
+        class_section_id=fallback_class_section_id,
+        class_name=fallback_class_name,
+        grade=fallback_grade,
+        section=fallback_section,
+    )
+
     if not (_firebase_ready and firebase_firestore):
         return {
             "synced": False,
@@ -4039,6 +4158,8 @@ def _sync_imported_students_to_teacher_dashboard(
             "classroomsTouched": 0,
             "classroomId": None,
             "classSectionId": fallback_class_section_id,
+            "className": fallback_class_name,
+            "classMetadata": fallback_class_metadata,
             "warning": "Firestore unavailable; dashboard sync skipped.",
         }
 
@@ -4047,6 +4168,18 @@ def _sync_imported_students_to_teacher_dashboard(
         resolved_section_id, resolved_class_name, grade, section = _resolve_import_class_context(
             class_section_id=class_section_id,
             class_name=class_name,
+        )
+        resolved_class_metadata = _build_class_metadata(
+            class_section_id=resolved_section_id,
+            class_name=resolved_class_name,
+            grade=grade,
+            section=section,
+            owner_teacher_id=user.uid,
+            owner_teacher_name=user.email,
+            adviser_teacher_id=user.uid,
+            adviser_teacher_name=user.email,
+            manager_id=user.uid,
+            manager_name=user.email,
         )
 
         by_identity: Dict[str, Dict[str, Any]] = defaultdict(dict)
@@ -4099,6 +4232,8 @@ def _sync_imported_students_to_teacher_dashboard(
                 "classroomsTouched": 0,
                 "classroomId": resolved_section_id,
                 "classSectionId": resolved_section_id,
+                "className": resolved_class_name,
+                "classMetadata": resolved_class_metadata,
                 "warning": "No normalized student records were available for dashboard sync.",
             }
 
@@ -4153,9 +4288,16 @@ def _sync_imported_students_to_teacher_dashboard(
                 "lrn": str(aggregate.get("lrn") or ""),
                 "avatar": f"https://ui-avatars.com/api/?name={avatar_seed}&background=random",
                 "grade": grade,
+                "gradeLevel": resolved_class_metadata.get("gradeLevel"),
+                "classification": resolved_class_metadata.get("classification"),
+                "strand": resolved_class_metadata.get("strand"),
                 "section": section,
                 "classSectionId": resolved_section_id,
                 "classroomId": classroom_doc_id,
+                "className": resolved_class_name,
+                "managerId": resolved_class_metadata.get("managerId"),
+                "managerName": resolved_class_metadata.get("managerName"),
+                "classMetadata": resolved_class_metadata,
                 "riskLevel": risk_level,
                 "inferredState": {
                     "state": inference["state"],
@@ -4191,8 +4333,18 @@ def _sync_imported_students_to_teacher_dashboard(
             "teacherId": user.uid,
             "name": resolved_class_name,
             "grade": grade,
+            "gradeLevel": resolved_class_metadata.get("gradeLevel"),
+            "classification": resolved_class_metadata.get("classification"),
+            "strand": resolved_class_metadata.get("strand"),
             "section": section,
             "classSectionId": resolved_section_id,
+            "ownerTeacherId": user.uid,
+            "ownerTeacherName": user.email,
+            "adviserTeacherId": user.uid,
+            "adviserTeacherName": user.email,
+            "managerId": resolved_class_metadata.get("managerId"),
+            "managerName": resolved_class_metadata.get("managerName"),
+            "classMetadata": resolved_class_metadata,
             "schedule": str(existing_classroom.get("schedule") or "Mon-Fri"),
             "studentCount": student_count,
             "avgScore": class_average,
@@ -4211,6 +4363,8 @@ def _sync_imported_students_to_teacher_dashboard(
             "classroomsTouched": 1,
             "classroomId": classroom_doc_id,
             "classSectionId": resolved_section_id,
+            "className": resolved_class_name,
+            "classMetadata": resolved_class_metadata,
             "warning": None,
         }
     except Exception as sync_err:
@@ -4231,6 +4385,8 @@ def _sync_imported_students_to_teacher_dashboard(
             "classroomsTouched": 0,
             "classroomId": None,
             "classSectionId": fallback_class_section_id,
+            "className": fallback_class_name,
+            "classMetadata": fallback_class_metadata,
             "warning": warning,
         }
 
@@ -4535,6 +4691,592 @@ def _queue_post_import_risk_refresh(
     }
 
 
+def _prune_account_import_previews(now_ts: Optional[float] = None) -> None:
+    cutoff = (now_ts if now_ts is not None else time.time()) - ACCOUNT_IMPORT_PREVIEW_TTL_SECONDS
+    expired_tokens = [
+        token
+        for token, payload in _account_import_previews.items()
+        if float(payload.get("createdAtTs", 0.0)) < cutoff
+    ]
+    for token in expired_tokens:
+        _account_import_previews.pop(token, None)
+
+
+def _auth_user_not_found(error: Exception) -> bool:
+    message = str(error).lower()
+    return "not found" in message or "no user record" in message
+
+
+def _generate_temporary_password(length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        candidate = "".join(secrets.choice(alphabet) for _ in range(max(10, length)))
+        if any(ch.islower() for ch in candidate) and any(ch.isupper() for ch in candidate) and any(ch.isdigit() for ch in candidate):
+            return candidate
+
+
+def _parse_provisioning_dataframe(df: Any) -> Dict[str, Any]:
+    header_map: Dict[str, str] = {}
+    for column in df.columns.tolist():
+        normalized = re.sub(r"[^a-z0-9]+", "", str(column or "").strip().lower())
+        if normalized and normalized not in header_map:
+            header_map[normalized] = str(column)
+
+    def _pick(row: Any, candidates: Sequence[str]) -> str:
+        for alias in candidates:
+            source = header_map.get(alias)
+            if source is None:
+                continue
+            return _stringify_cell(row.get(source))
+        return ""
+
+    parsed_rows: List[Dict[str, Any]] = []
+    for idx, row in df.iterrows():
+        first_name = _pick(row, ["firstname", "first", "givenname", "given"])
+        last_name = _pick(row, ["lastname", "last", "surname", "familyname"])
+        middle_name = _pick(row, ["middlename", "middle", "middlenameinitial"]) or ""
+        student_id = _pick(row, ["studentid", "lrn", "learnerid", "learnerreferencenumber", "schoolid"])
+        email = _pick(row, ["email", "emailaddress", "studentemail"]).lower()
+        grade = _pick(row, ["grade", "gradelevel", "yearlevel"])
+        section = _pick(row, ["section", "classsection", "homeroom", "sectionname"])
+
+        parsed_rows.append(
+            {
+                "rowNumber": int(idx) + 2,
+                "firstName": first_name,
+                "lastName": last_name,
+                "middleName": middle_name,
+                "studentId": student_id,
+                "email": email,
+                "grade": grade,
+                "section": section,
+            }
+        )
+
+    return {
+        "rows": parsed_rows,
+        "headerMap": header_map,
+    }
+
+
+def _teacher_can_manage_section(user: AuthenticatedUser, class_section_id: str) -> bool:
+    if user.role == "admin":
+        return True
+    if not (_firebase_ready and firebase_firestore):
+        return False
+
+    normalized_section = (class_section_id or "").strip().lower()
+    if not normalized_section:
+        return False
+
+    try:
+        client = firebase_firestore.client()
+        ownership_ref = client.collection("classSectionOwnership").document(normalized_section)
+        ownership_doc = cast(Any, ownership_ref.get())
+        if _snapshot_exists(ownership_doc):
+            ownership = _snapshot_to_dict(ownership_doc)
+            if str(ownership.get("ownerTeacherId") or "").strip() == user.uid:
+                return True
+            if str(ownership.get("managerId") or "").strip() == user.uid:
+                return True
+
+        for field in ("teacherId", "ownerTeacherId", "managerId"):
+            query = (
+                client.collection("classrooms")
+                .where("classSectionId", "==", normalized_section)
+                .where(field, "==", user.uid)
+                .limit(1)
+            )
+            if list(query.stream()):
+                return True
+    except Exception as err:
+        logger.warning(f"Section ownership check failed for {class_section_id}: {err}")
+
+    return False
+
+
+class StudentAccountProvisionCommitRequest(BaseModel):
+    previewToken: str
+    defaultPassword: Optional[str] = None
+    forcePasswordChange: bool = True
+    createAuthUsers: bool = True
+
+
+@app.post("/api/import/student-accounts/preview")
+async def preview_student_account_import(
+    request: Request,
+    file: UploadFile = File(...),
+    classSectionId: Optional[str] = Form(default=None),
+    className: Optional[str] = Form(default=None),
+    defaultGrade: Optional[str] = Form(default=None),
+    defaultSection: Optional[str] = Form(default=None),
+):
+    """Parse and validate student account import rows before provisioning."""
+    try:
+        import pandas as pd  # type: ignore[import-not-found]
+
+        enforce_rate_limit(request, "import_student_accounts_preview", 8, 60)
+        user = get_current_user(request)
+
+        filename = file.filename or ""
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in {".csv", ".xlsx", ".xls"}:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Use .csv, .xlsx, or .xls")
+
+        contents = await file.read(UPLOAD_MAX_BYTES + 1)
+        if len(contents) > UPLOAD_MAX_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Max allowed size is {UPLOAD_MAX_BYTES // (1024 * 1024)} MB.",
+            )
+
+        if ext == ".csv":
+            df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip")
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="No rows found in uploaded file")
+        if df.shape[0] > UPLOAD_MAX_ROWS:
+            raise HTTPException(status_code=413, detail=f"Too many rows ({df.shape[0]}). Max allowed: {UPLOAD_MAX_ROWS}")
+
+        parsed = _parse_provisioning_dataframe(df)
+        parsed_rows = cast(List[Dict[str, Any]], parsed.get("rows") or [])
+        default_section_id, default_class_name, inferred_grade, inferred_section = _resolve_import_class_context(
+            class_section_id=(classSectionId or "").strip() or None,
+            class_name=(className or "").strip() or None,
+        )
+        effective_default_grade = (defaultGrade or "").strip() or inferred_grade
+        effective_default_section = (defaultSection or "").strip() or inferred_section
+
+        seen_student_ids: Set[str] = set()
+        seen_emails: Set[str] = set()
+        preview_rows: List[Dict[str, Any]] = []
+        warnings: List[str] = []
+        valid_rows: List[Dict[str, Any]] = []
+
+        firestore_client = firebase_firestore.client() if (_firebase_ready and firebase_firestore) else None
+        for row in parsed_rows:
+            first_name = str(row.get("firstName") or "").strip()
+            last_name = str(row.get("lastName") or "").strip()
+            middle_name = str(row.get("middleName") or "").strip()
+            student_id = str(row.get("studentId") or "").strip()
+            email = str(row.get("email") or "").strip().lower()
+            grade = str(row.get("grade") or "").strip() or effective_default_grade
+            section = str(row.get("section") or "").strip() or effective_default_section
+            full_name = " ".join(part for part in [first_name, middle_name, last_name] if part).strip()
+
+            issues: List[str] = []
+            if not first_name:
+                issues.append("Missing firstName")
+            if not last_name:
+                issues.append("Missing lastName")
+            if not student_id:
+                issues.append("Missing studentId/lrn")
+            if not grade:
+                issues.append("Missing grade")
+            if not section:
+                issues.append("Missing section")
+
+            resolved_row_section_id, _, resolved_grade, resolved_section = _resolve_import_class_context(
+                class_section_id=None,
+                class_name=f"{grade or effective_default_grade} - {section or effective_default_section}",
+            )
+
+            generated_email = email
+            if not generated_email and student_id:
+                generated_email = f"{_slugify_class_token(student_id)}@mathpulse.local"
+
+            duplicate_in_file = False
+            duplicate_in_firestore = False
+            duplicate_in_auth = False
+
+            student_id_key = student_id.lower()
+            email_key = generated_email.lower()
+            if student_id_key and student_id_key in seen_student_ids:
+                duplicate_in_file = True
+                issues.append("Duplicate studentId in file")
+            if email_key and email_key in seen_emails:
+                duplicate_in_file = True
+                issues.append("Duplicate email in file")
+
+            if student_id_key:
+                seen_student_ids.add(student_id_key)
+            if email_key:
+                seen_emails.add(email_key)
+
+            if firestore_client:
+                try:
+                    if student_id:
+                        existing_by_lrn = list(
+                            firestore_client.collection("users").where("lrn", "==", student_id).limit(1).stream()
+                        )
+                        duplicate_in_firestore = duplicate_in_firestore or len(existing_by_lrn) > 0
+                    if generated_email:
+                        existing_by_email = list(
+                            firestore_client.collection("users").where("email", "==", generated_email).limit(1).stream()
+                        )
+                        duplicate_in_firestore = duplicate_in_firestore or len(existing_by_email) > 0
+                except Exception as firestore_err:
+                    warnings.append(f"Firestore duplicate check skipped for row {row.get('rowNumber')}: {firestore_err}")
+
+            if generated_email and firebase_auth:
+                try:
+                    cast(Any, firebase_auth).get_user_by_email(generated_email)
+                    duplicate_in_auth = True
+                except Exception as auth_err:
+                    if not _auth_user_not_found(cast(Exception, auth_err)):
+                        warnings.append(f"Auth duplicate check warning for {generated_email}: {auth_err}")
+
+            if duplicate_in_firestore:
+                issues.append("Duplicate with existing Firestore profile")
+            if duplicate_in_auth:
+                issues.append("Duplicate with existing Auth account")
+
+            status = "valid"
+            if issues:
+                status = "invalid"
+            if duplicate_in_file or duplicate_in_firestore or duplicate_in_auth:
+                status = "duplicate"
+
+            preview_row = {
+                "rowNumber": int(row.get("rowNumber") or 0),
+                "studentId": student_id,
+                "firstName": first_name,
+                "lastName": last_name,
+                "middleName": middle_name,
+                "fullName": full_name or "Imported Student",
+                "email": generated_email,
+                "grade": resolved_grade,
+                "section": resolved_section,
+                "classSectionId": resolved_row_section_id,
+                "status": status,
+                "issues": issues,
+                "duplicateInFile": duplicate_in_file,
+                "duplicateInFirestore": duplicate_in_firestore,
+                "duplicateInAuth": duplicate_in_auth,
+            }
+            preview_rows.append(preview_row)
+            if status == "valid":
+                valid_rows.append(preview_row)
+
+        preview_token = uuid.uuid4().hex
+        with _account_import_previews_lock:
+            _prune_account_import_previews()
+            _account_import_previews[preview_token] = {
+                "createdAtTs": time.time(),
+                "ownerUid": user.uid,
+                "classSectionId": default_section_id,
+                "className": default_class_name,
+                "rows": preview_rows,
+                "validRows": valid_rows,
+            }
+
+        invalid_rows = sum(1 for row in preview_rows if row.get("status") == "invalid")
+        duplicate_rows = sum(1 for row in preview_rows if row.get("status") == "duplicate")
+        return {
+            "success": True,
+            "previewToken": preview_token,
+            "classSectionId": default_section_id,
+            "className": default_class_name,
+            "summary": {
+                "totalRows": len(preview_rows),
+                "validRows": len(valid_rows),
+                "invalidRows": invalid_rows,
+                "duplicateRows": duplicate_rows,
+            },
+            "rows": preview_rows,
+            "warnings": list(dict.fromkeys(warnings))[:50],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Student account preview error: {exc}")
+        raise HTTPException(status_code=500, detail=f"Student account preview error: {str(exc)}")
+
+
+@app.post("/api/import/student-accounts/commit")
+async def commit_student_account_import(
+    request: Request,
+    payload: StudentAccountProvisionCommitRequest,
+):
+    """Commit previously validated student-account preview rows into Auth + Firestore."""
+    try:
+        user = get_current_user(request)
+        preview_token = payload.previewToken.strip()
+        if not preview_token:
+            raise HTTPException(status_code=400, detail="previewToken is required")
+
+        with _account_import_previews_lock:
+            _prune_account_import_previews()
+            preview = _account_import_previews.get(preview_token)
+
+        if not preview:
+            raise HTTPException(status_code=404, detail="Preview token not found or expired")
+        if str(preview.get("ownerUid") or "") != user.uid:
+            raise HTTPException(status_code=403, detail="Preview token does not belong to the current user")
+
+        if not (_firebase_ready and firebase_firestore):
+            raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+        client = firebase_firestore.client()
+        preview_rows = cast(List[Dict[str, Any]], preview.get("rows") or [])
+        candidate_rows = [row for row in preview_rows if str(row.get("status") or "") == "valid"]
+
+        result_rows: List[Dict[str, Any]] = []
+        warnings: List[str] = []
+        created_rows = 0
+        updated_rows = 0
+        skipped_rows = 0
+        blocked_rows = 0
+        failed_rows = 0
+
+        for row in candidate_rows:
+            row_number = int(row.get("rowNumber") or 0)
+            student_id = str(row.get("studentId") or "").strip()
+            full_name = str(row.get("fullName") or "Imported Student").strip() or "Imported Student"
+            email = str(row.get("email") or "").strip().lower()
+            grade = str(row.get("grade") or "Grade 11").strip() or "Grade 11"
+            section = str(row.get("section") or "Section A").strip() or "Section A"
+            class_section_id = str(row.get("classSectionId") or "").strip().lower() or _slugify_class_token(f"{grade}_{section}")
+
+            if user.role != "admin" and not _teacher_can_manage_section(user, class_section_id):
+                blocked_rows += 1
+                result_rows.append(
+                    {
+                        "rowNumber": row_number,
+                        "studentId": student_id,
+                        "fullName": full_name,
+                        "email": email,
+                        "uid": None,
+                        "classSectionId": class_section_id,
+                        "status": "blocked",
+                        "message": "Teacher is not allowed to provision this class section.",
+                        "temporaryPassword": None,
+                    }
+                )
+                continue
+
+            existing_profile_doc = None
+            existing_uid: Optional[str] = None
+            try:
+                if student_id:
+                    docs = list(client.collection("users").where("lrn", "==", student_id).limit(1).stream())
+                    if docs:
+                        existing_profile_doc = docs[0]
+                        existing_uid = docs[0].id
+                if not existing_uid and email:
+                    docs = list(client.collection("users").where("email", "==", email).limit(1).stream())
+                    if docs:
+                        existing_profile_doc = docs[0]
+                        existing_uid = docs[0].id
+            except Exception as duplicate_err:
+                warnings.append(f"Duplicate re-check warning for row {row_number}: {duplicate_err}")
+
+            auth_uid: Optional[str] = None
+            temporary_password: Optional[str] = None
+            auth_existing = False
+
+            if payload.createAuthUsers and firebase_auth and email:
+                try:
+                    auth_user = cast(Any, firebase_auth).get_user_by_email(email)
+                    auth_uid = str(getattr(auth_user, "uid", "") or "").strip() or None
+                    auth_existing = auth_uid is not None
+                except Exception as auth_lookup_err:
+                    if not _auth_user_not_found(cast(Exception, auth_lookup_err)):
+                        warnings.append(f"Auth lookup warning for {email}: {auth_lookup_err}")
+
+            if payload.createAuthUsers and firebase_auth and not auth_uid and email:
+                try:
+                    temporary_password = (payload.defaultPassword or "").strip() or _generate_temporary_password()
+                    created_auth_user = cast(Any, firebase_auth).create_user(
+                        email=email,
+                        password=temporary_password,
+                        display_name=full_name,
+                    )
+                    auth_uid = str(getattr(created_auth_user, "uid", "") or "").strip() or None
+                except Exception as create_auth_err:
+                    failed_rows += 1
+                    result_rows.append(
+                        {
+                            "rowNumber": row_number,
+                            "studentId": student_id,
+                            "fullName": full_name,
+                            "email": email,
+                            "uid": None,
+                            "classSectionId": class_section_id,
+                            "status": "failed",
+                            "message": f"Auth user provisioning failed: {create_auth_err}",
+                            "temporaryPassword": None,
+                        }
+                    )
+                    continue
+
+            if payload.createAuthUsers and auth_uid:
+                # Always write profile under auth_uid so lookup via request.auth.uid works at login.
+                if existing_uid and existing_uid != auth_uid:
+                    warnings.append(
+                        f"Row {row_number}: existing Firestore profile UID ({existing_uid}) differs from "
+                        f"Auth UID ({auth_uid}); profile will be written under Auth UID."
+                    )
+                target_uid = auth_uid
+            else:
+                target_uid = existing_uid or auth_uid
+            if not target_uid:
+                seed = f"{student_id}|{email}|{class_section_id}"
+                target_uid = hashlib.sha1(seed.encode("utf-8")).hexdigest()[:28]
+
+            class_section_name = f"{grade} - {section}"
+            class_metadata = _build_class_metadata(
+                class_section_id=class_section_id,
+                class_name=class_section_name,
+                grade=grade,
+                section=section,
+                owner_teacher_id=user.uid,
+                owner_teacher_name=user.email,
+                adviser_teacher_id=user.uid,
+                adviser_teacher_name=user.email,
+                manager_id=user.uid,
+                manager_name=user.email,
+            )
+
+            profile_payload: Dict[str, Any] = {
+                "name": full_name,
+                "email": email,
+                "role": "student",
+                "lrn": student_id,
+                "grade": grade,
+                "gradeLevel": class_metadata.get("gradeLevel"),
+                "classification": class_metadata.get("classification"),
+                "strand": class_metadata.get("strand"),
+                "section": section,
+                "classSectionId": class_section_id,
+                "adviserTeacherId": user.uid,
+                "adviserTeacherName": user.email,
+                "forcePasswordChange": bool(payload.forcePasswordChange),
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+            if not existing_profile_doc:
+                profile_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+
+            client.collection("users").document(target_uid).set(profile_payload, merge=True)
+
+            managed_student_payload = {
+                "teacherId": user.uid,
+                "name": full_name,
+                "email": email,
+                "lrn": student_id,
+                "className": class_section_name,
+                "grade": grade,
+                "gradeLevel": class_metadata.get("gradeLevel"),
+                "classification": class_metadata.get("classification"),
+                "strand": class_metadata.get("strand"),
+                "section": section,
+                "classSectionId": class_section_id,
+                "classroomId": class_section_id,
+                "managerId": user.uid,
+                "managerName": user.email,
+                "classMetadata": class_metadata,
+                "riskLevel": "Low",
+                "engagementScore": 0,
+                "avgQuizScore": 0,
+                "weakestTopic": "Foundational Skills",
+                "attendance": 0,
+                "assignmentCompletion": 0,
+                "struggles": ["Foundational Skills"],
+                "lastActive": FIRESTORE_SERVER_TIMESTAMP,
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+            client.collection("managedStudents").document(target_uid).set(managed_student_payload, merge=True)
+
+            ownership_ref = client.collection("classSectionOwnership").document(class_section_id)
+            ownership_doc = cast(Any, ownership_ref.get())
+            ownership_data = _snapshot_to_dict(ownership_doc) if _snapshot_exists(ownership_doc) else {}
+            existing_student_uids = cast(List[str], ownership_data.get("studentUids") or [])
+            merged_student_uids = sorted(set([*existing_student_uids, target_uid]))
+            ownership_payload = {
+                "classSectionId": class_section_id,
+                "className": class_section_name,
+                "grade": grade,
+                "gradeLevel": class_metadata.get("gradeLevel"),
+                "classification": class_metadata.get("classification"),
+                "strand": class_metadata.get("strand"),
+                "section": section,
+                "schoolYear": str(datetime.now(timezone.utc).year),
+                "ownerTeacherId": str(ownership_data.get("ownerTeacherId") or user.uid),
+                "ownerTeacherName": str(ownership_data.get("ownerTeacherName") or user.email),
+                "managerId": str(ownership_data.get("managerId") or user.uid),
+                "managerName": str(ownership_data.get("managerName") or user.email),
+                "studentUids": merged_student_uids,
+                "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+            }
+            if not _snapshot_exists(ownership_doc):
+                ownership_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+            ownership_ref.set(ownership_payload, merge=True)
+
+            row_status = "updated" if (existing_profile_doc or auth_existing) else "created"
+            if row_status == "created":
+                created_rows += 1
+            else:
+                updated_rows += 1
+
+            result_rows.append(
+                {
+                    "rowNumber": row_number,
+                    "studentId": student_id,
+                    "fullName": full_name,
+                    "email": email,
+                    "uid": target_uid,
+                    "classSectionId": class_section_id,
+                    "status": row_status,
+                    "message": "Provisioned successfully." if row_status == "created" else "Existing profile updated.",
+                    "temporaryPassword": temporary_password,
+                }
+            )
+
+        skipped_rows = max(0, len(preview_rows) - len(candidate_rows))
+
+        with _account_import_previews_lock:
+            _account_import_previews.pop(preview_token, None)
+
+        _write_access_audit_log(
+            request,
+            action="student_account_import_commit",
+            status="success",
+            class_section_id=str(preview.get("classSectionId") or "") or None,
+            metadata={
+                "previewToken": preview_token,
+                "totalRows": len(preview_rows),
+                "candidateRows": len(candidate_rows),
+                "createdRows": created_rows,
+                "updatedRows": updated_rows,
+                "skippedRows": skipped_rows,
+                "blockedRows": blocked_rows,
+                "failedRows": failed_rows,
+            },
+        )
+
+        return {
+            "success": failed_rows == 0,
+            "previewToken": preview_token,
+            "summary": {
+                "totalRows": len(preview_rows),
+                "createdRows": created_rows,
+                "updatedRows": updated_rows,
+                "skippedRows": skipped_rows,
+                "blockedRows": blocked_rows,
+                "failedRows": failed_rows,
+            },
+            "rows": result_rows,
+            "warnings": list(dict.fromkeys(warnings))[:100],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Student account import commit error: {exc}")
+        raise HTTPException(status_code=500, detail=f"Student account import commit error: {str(exc)}")
+
+
 @app.get("/api/upload/class-records/risk-refresh/recent")
 async def get_recent_risk_refresh_status(
     request: Request,
@@ -4660,6 +5402,29 @@ async def upload_class_records(
                     + ", ".join(sorted(SUPPORTED_DATASET_INTENTS))
                 ),
             )
+
+        user = get_current_user(request)
+        (
+            resolved_upload_class_section_id,
+            resolved_upload_class_name,
+            resolved_upload_grade,
+            resolved_upload_section,
+        ) = _resolve_import_class_context(
+            class_section_id=(classSectionId or "").strip() or None,
+            class_name=(className or "").strip() or None,
+        )
+        upload_class_metadata = _build_class_metadata(
+            class_section_id=resolved_upload_class_section_id,
+            class_name=resolved_upload_class_name,
+            grade=resolved_upload_grade,
+            section=resolved_upload_section,
+            owner_teacher_id=user.uid,
+            owner_teacher_name=user.email,
+            adviser_teacher_id=user.uid,
+            adviser_teacher_name=user.email,
+            manager_id=user.uid,
+            manager_name=user.email,
+        )
 
         all_students: List[Dict[str, Any]] = []
         all_unknown_columns: Set[str] = set()
@@ -4919,8 +5684,9 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "datasetIntent": normalized_dataset_intent,
                 "columnInterpretations": file_column_interpretations,
                 "interpretationSummary": file_interpretation_summary,
-                "classSectionId": (classSectionId or "").strip() or None,
-                "className": (className or "").strip() or None,
+                "classSectionId": resolved_upload_class_section_id,
+                "className": resolved_upload_class_name,
+                "classMetadata": upload_class_metadata,
                 "importId": file_import_id,
                 "persisted": bool(file_import_id),
                 "dedup": file_dedup,
@@ -4997,6 +5763,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
 
         response_payload = {
             "success": overall_success,
+            "classMetadata": upload_class_metadata,
             "students": all_students,
             "columnMapping": (first_file_with_mapping or {}).get("columnMapping") or {},
             "datasetIntent": normalized_dataset_intent,
@@ -8751,6 +9518,288 @@ async def generate_mock_data(request: MockDataRequest):
         raise HTTPException(status_code=500, detail=f"Mock data error: {str(e)}")
 
 
+TESTING_RESET_BATCH_SIZE = 400
+
+
+def _testing_reset_timestamp_value() -> Any:
+    if FIRESTORE_SERVER_TIMESTAMP is not None:
+        return FIRESTORE_SERVER_TIMESTAMP
+    return datetime.now(timezone.utc)
+
+
+def _testing_reset_delete_by_field(
+    client: Any,
+    collection_name: str,
+    field_name: str,
+    field_value: str,
+) -> int:
+    normalized_value = str(field_value or "").strip()
+    if not normalized_value:
+        return 0
+
+    docs = list(
+        client.collection(collection_name).where(field_name, "==", normalized_value).stream()
+    )
+    if not docs:
+        return 0
+
+    deleted_docs = 0
+    batch = client.batch()
+    pending_writes = 0
+
+    for doc_snapshot in docs:
+        batch.delete(doc_snapshot.reference)
+        deleted_docs += 1
+        pending_writes += 1
+
+        if pending_writes >= TESTING_RESET_BATCH_SIZE:
+            batch.commit()
+            batch = client.batch()
+            pending_writes = 0
+
+    if pending_writes > 0:
+        batch.commit()
+
+    return deleted_docs
+
+
+def _testing_reset_try_delete_by_field(
+    client: Any,
+    collection_name: str,
+    field_name: str,
+    field_value: str,
+) -> int:
+    try:
+        return _testing_reset_delete_by_field(
+            client,
+            collection_name,
+            field_name,
+            field_value,
+        )
+    except Exception as err:
+        logger.warning(
+            "Testing reset skipped delete for %s (%s == %s): %s",
+            collection_name,
+            field_name,
+            field_value,
+            err,
+        )
+        return 0
+
+
+def _testing_reset_try_delete_doc(doc_ref: Any, label: str) -> int:
+    try:
+        doc_ref.delete()
+        return 1
+    except Exception as err:
+        logger.warning("Testing reset skipped delete for %s: %s", label, err)
+        return 0
+
+
+def _testing_reset_try_set_doc(doc_ref: Any, payload: Dict[str, Any], label: str, merge: bool = False) -> int:
+    try:
+        if merge:
+            doc_ref.set(payload, merge=True)
+        else:
+            doc_ref.set(payload)
+        return 1
+    except Exception as err:
+        logger.warning("Testing reset skipped update for %s: %s", label, err)
+        return 0
+
+
+def _reset_student_testing_data_admin(
+    client: Any,
+    uid: str,
+    lrn: Optional[str],
+) -> Tuple[int, int]:
+    deleted_docs = 0
+    updated_docs = 0
+    effective_lrn = (lrn or uid or "").strip() or uid
+    timestamp_value = _testing_reset_timestamp_value()
+
+    updated_docs += _testing_reset_try_set_doc(
+        client.collection("progress").document(uid),
+        {
+            "userId": uid,
+            "subjects": {},
+            "lessons": {},
+            "quizAttempts": [],
+            "totalLessonsCompleted": 0,
+            "totalQuizzesCompleted": 0,
+            "averageScore": 0,
+            "updatedAt": timestamp_value,
+        },
+        f"progress/{uid}",
+        merge=False,
+    )
+
+    updated_docs += _testing_reset_try_set_doc(
+        client.collection("users").document(uid),
+        {
+            "level": 1,
+            "currentXP": 0,
+            "totalXP": 0,
+            "streak": 0,
+            "streakHistory": [],
+            "atRiskSubjects": [],
+            "hasTakenDiagnostic": False,
+            "iarAssessmentState": "not_started",
+            "learningPathState": "unlocked",
+            "remediationState": "not_required",
+            "subjectBadges": {},
+            "riskClassifications": {},
+            "overallRisk": "Low",
+            "updatedAt": timestamp_value,
+        },
+        f"users/{uid}",
+        merge=True,
+    )
+
+    deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "chatSessions", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "chatMessages", "userId", uid)
+
+    if effective_lrn != uid:
+        deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", effective_lrn)
+
+    updated_docs += _testing_reset_try_set_doc(
+        client.collection("achievements").document(uid),
+        {
+            "userId": uid,
+            "achievements": [],
+            "totalAchievements": 0,
+            "updatedAt": timestamp_value,
+        },
+        f"achievements/{uid}",
+        merge=True,
+    )
+
+    return deleted_docs, updated_docs
+
+
+def _reset_teacher_testing_data_admin(client: Any, uid: str) -> Tuple[int, int]:
+    deleted_docs = 0
+    updated_docs = 0
+    timestamp_value = _testing_reset_timestamp_value()
+
+    classroom_docs = list(client.collection("classrooms").where("teacherId", "==", uid).stream())
+    classroom_ids = [doc_snapshot.id for doc_snapshot in classroom_docs]
+
+    deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "chatSessions", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "chatMessages", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "announcements", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "classSectionOwnership", "ownerTeacherId", uid)
+
+    deleted_docs += _testing_reset_try_delete_by_field(client, "managedStudents", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "classrooms", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "normalizedClassRecords", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "classRecordImports", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "courseMaterials", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "riskRefreshEvents", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "riskRefreshJobs", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "importGroundedFeedbackEvents", "teacherId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "accessAuditLogs", "actorUid", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "accessAuditLogs", "teacherId", uid)
+
+    for classroom_id in classroom_ids:
+        deleted_docs += _testing_reset_try_delete_by_field(client, "managedStudents", "classroomId", classroom_id)
+        deleted_docs += _testing_reset_try_delete_by_field(client, "activities", "classroomId", classroom_id)
+        deleted_docs += _testing_reset_try_delete_by_field(client, "announcements", "classroomId", classroom_id)
+
+    deleted_docs += _testing_reset_try_delete_doc(
+        client.collection("riskRefreshStats").document(uid),
+        f"riskRefreshStats/{uid}",
+    )
+
+    updated_docs += _testing_reset_try_set_doc(
+        client.collection("users").document(uid),
+        {
+            "testingResetAt": timestamp_value,
+            "updatedAt": timestamp_value,
+        },
+        f"users/{uid}",
+        merge=True,
+    )
+
+    return deleted_docs, updated_docs
+
+
+def _reset_admin_testing_data_admin(client: Any, uid: str) -> Tuple[int, int]:
+    deleted_docs = 0
+    updated_docs = 0
+    timestamp_value = _testing_reset_timestamp_value()
+
+    deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "chatSessions", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "chatMessages", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "curriculumContent", "updatedBy", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "curriculumContent", "deletedBy", uid)
+
+    updated_docs += _testing_reset_try_set_doc(
+        client.collection("users").document(uid),
+        {
+            "testingResetAt": timestamp_value,
+            "updatedAt": timestamp_value,
+        },
+        f"users/{uid}",
+        merge=True,
+    )
+
+    return deleted_docs, updated_docs
+
+
+@app.post("/api/testing/reset-data", response_model=TestingResetResponse)
+async def reset_testing_data(request: Request, payload: TestingResetRequest):
+    user = get_current_user(request)
+
+    requested_role = (payload.role or "").strip().lower()
+    if requested_role and requested_role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail="Invalid role for testing reset.")
+    if requested_role and requested_role != user.role:
+        raise HTTPException(status_code=403, detail="Reset role does not match authenticated user role.")
+
+    if not (_firebase_ready and firebase_firestore):
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    try:
+        client = firebase_firestore.client()
+        if user.role == "student":
+            deleted_docs, updated_docs = _reset_student_testing_data_admin(client, user.uid, payload.lrn)
+        elif user.role == "teacher":
+            deleted_docs, updated_docs = _reset_teacher_testing_data_admin(client, user.uid)
+        else:
+            deleted_docs, updated_docs = _reset_admin_testing_data_admin(client, user.uid)
+    except Exception as firestore_err:
+        if _is_adc_missing_error(cast(Exception, firestore_err)):
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Firestore ADC is not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON "
+                    "or FIREBASE_SERVICE_ACCOUNT_FILE, or set GOOGLE_APPLICATION_CREDENTIALS."
+                ),
+            )
+        logger.error(
+            "Testing reset failed for uid=%s role=%s: %s",
+            user.uid,
+            user.role,
+            firestore_err,
+        )
+        raise HTTPException(status_code=500, detail="Failed to reset testing data.")
+
+    summary = (
+        f"{user.role} reset complete: {deleted_docs} records deleted, "
+        f"{updated_docs} records reset."
+    )
+    return TestingResetResponse(
+        role=user.role,
+        deletedDocs=deleted_docs,
+        updatedDocs=updated_docs,
+        summary=summary,
+    )
+
+
 @app.get("/api/analytics/config")
 async def get_analytics_config():
     """Return current ML analytics configuration parameters."""
@@ -8801,6 +9850,18 @@ async def get_imported_class_overview(
                 class_section_id=str(row.get("classSectionId") or "").strip() or None,
                 class_name=str(row.get("className") or "").strip() or None,
             )
+            row_class_metadata = _build_class_metadata(
+                class_section_id=resolved_class_section_id,
+                class_name=resolved_class_name,
+                grade=grade,
+                section=section,
+                owner_teacher_id=user.uid,
+                owner_teacher_name=user.email,
+                adviser_teacher_id=user.uid,
+                adviser_teacher_name=user.email,
+                manager_id=user.uid,
+                manager_name=user.email,
+            )
 
             if normalized_class_section_id and resolved_class_section_id != normalized_class_section_id:
                 continue
@@ -8840,7 +9901,13 @@ async def get_imported_class_overview(
                     "classSectionId": resolved_class_section_id,
                     "className": resolved_class_name,
                     "grade": grade,
+                    "gradeLevel": row_class_metadata.get("gradeLevel"),
+                    "classification": row_class_metadata.get("classification"),
+                    "strand": row_class_metadata.get("strand"),
                     "section": section,
+                    "managerId": row_class_metadata.get("managerId"),
+                    "managerName": row_class_metadata.get("managerName"),
+                    "classMetadata": row_class_metadata,
                     "scores": [avg_quiz],
                     "attendanceValues": [attendance],
                     "engagementValues": [engagement],
@@ -8882,7 +9949,13 @@ async def get_imported_class_overview(
                     "name": resolved_class_name,
                     "classSectionId": resolved_class_section_id,
                     "grade": grade,
+                    "gradeLevel": row_class_metadata.get("gradeLevel"),
+                    "classification": row_class_metadata.get("classification"),
+                    "strand": row_class_metadata.get("strand"),
                     "section": section,
+                    "managerId": row_class_metadata.get("managerId"),
+                    "managerName": row_class_metadata.get("managerName"),
+                    "classMetadata": row_class_metadata,
                     "schedule": "Mon-Fri",
                     "students": set(),
                     "scoreValues": [],
@@ -8920,6 +9993,14 @@ async def get_imported_class_overview(
                     "id": classroom["id"],
                     "name": classroom["name"],
                     "classSectionId": classroom["classSectionId"],
+                    "grade": classroom.get("grade"),
+                    "gradeLevel": classroom.get("gradeLevel"),
+                    "classification": classroom.get("classification"),
+                    "strand": classroom.get("strand"),
+                    "section": classroom.get("section"),
+                    "managerId": classroom.get("managerId"),
+                    "managerName": classroom.get("managerName"),
+                    "classMetadata": classroom.get("classMetadata"),
                     "schedule": classroom["schedule"],
                     "studentCount": len(classroom.get("students") or set()),
                     "avgScore": round(float(sum(score_values) / max(len(score_values), 1)), 1) if score_values else 0.0,

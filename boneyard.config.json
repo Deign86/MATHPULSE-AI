@@ -1,0 +1,23 @@
+{
+  "outputDir": "src/bones",
+  "breakpoints": [375, 768, 1024, 1440],
+  "theme": {
+    "light": {
+      "background": "var(--background)",
+      "surface": "var(--card)",
+      "border": "var(--border)",
+      "accent": "var(--color-sky-200)"
+    },
+    "dark": {
+      "background": "var(--background)",
+      "surface": "var(--card)",
+      "border": "var(--border)",
+      "accent": "var(--color-sky-700)"
+    }
+  },
+  "targets": [
+    "src/components/TeacherDashboard.tsx",
+    "src/components/TopicMasteryView.tsx",
+    "src/components/StudentCompetencyTable.tsx"
+  ]
+}

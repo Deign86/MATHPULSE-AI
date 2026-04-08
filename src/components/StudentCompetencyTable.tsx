@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ChevronDown, ChevronRight, ChevronUp, Loader2, Search,
+  ChevronDown, ChevronRight, ChevronUp, Search,
   AlertTriangle, Award, TrendingUp, TrendingDown, BarChart3,
   User, BookOpen, Brain, RefreshCw,
 } from 'lucide-react';
+import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentsByTeacher } from '../services/studentService';
 import {
@@ -15,6 +16,7 @@ import {
   type ImportedStudentOverviewItem,
 } from '../services/apiService';
 import { getUserProgress } from '../services/progressService';
+import { Skeleton } from './ui/skeleton';
 
 // -”€-”€-”€ Types -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
@@ -65,13 +67,15 @@ function buildCompetencyStudentKey(student: CompetencyStudent): string {
   const emailKey = (student.email || '').trim().toLowerCase();
   if (emailKey) return `email:${emailKey}`;
 
-  const nameKey = student.name.trim().toLowerCase();
-  if (nameKey) return `name:${nameKey}`;
-
   const classKey = normalizeClassSectionId(student.classSectionId);
   const idKey = (student.id || '').trim().toLowerCase();
   if (classKey && idKey) return `${classKey}|id:${idKey}`;
   if (idKey) return `id:${idKey}`;
+
+  const nameKey = student.name.trim().toLowerCase();
+  if (classKey && nameKey) return `${classKey}|name:${nameKey}`;
+  if (nameKey) return `name:${nameKey}`;
+
   return `${classKey}|anonymous`;
 }
 
@@ -151,6 +155,49 @@ const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string 
   beginner: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
 };
 
+const StudentCompetencyLoadingState: React.FC = () => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={`competency-summary-skeleton-${index}`} className="bg-card rounded-xl border border-border p-4 space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-20" />
+        </div>
+      ))}
+    </div>
+
+    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+      <Skeleton className="h-10 w-full lg:w-72 rounded-lg" />
+      <div className="flex gap-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={`risk-pill-skeleton-${index}`} className="h-8 w-20 rounded-lg" />
+        ))}
+      </div>
+    </div>
+
+    <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Skeleton key={`competency-row-skeleton-${index}`} className="h-14 w-full rounded-lg" />
+      ))}
+    </div>
+  </div>
+);
+
+const CompetencyDetailLoadingState: React.FC = () => (
+  <div className="space-y-3 py-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={`competency-detail-card-skeleton-${index}`} className="bg-card rounded-lg border border-border p-3 space-y-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-11/12" />
+        </div>
+      ))}
+    </div>
+    <Skeleton className="h-20 w-full rounded-lg" />
+  </div>
+);
+
 // -”€-”€-”€ Component -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
 const StudentCompetencyTable: React.FC<{
@@ -207,6 +254,7 @@ const StudentCompetencyTable: React.FC<{
       const students = await getStudentsByTeacher(currentUser.uid);
       let normalizedStudents: CompetencyStudent[] = students.map((student) => ({
         id: student.id,
+        lrn: student.lrn || undefined,
         name: student.name,
         email: student.email || '',
         avatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
@@ -225,7 +273,10 @@ const StudentCompetencyTable: React.FC<{
       }
 
       if (classSectionId) {
-        normalizedStudents = normalizedStudents.filter((student) => student.classSectionId === classSectionId);
+        const normalizedClassSectionId = normalizeClassSectionId(classSectionId);
+        normalizedStudents = normalizedStudents.filter(
+          (student) => normalizeClassSectionId(student.classSectionId) === normalizedClassSectionId,
+        );
       }
 
       const importedOverview = await apiService.getImportedClassOverview({ classSectionId, limit: 3000 });
@@ -239,8 +290,8 @@ const StudentCompetencyTable: React.FC<{
 
       const dedupedStudents = dedupeCompetencyStudents(normalizedStudents, classSectionId);
 
-      setRows(dedupedStudents.map((student, index) => ({
-        rowKey: `${buildCompetencyStudentKey(student)}|row:${index}`,
+      setRows(dedupedStudents.map((student) => ({
+        rowKey: buildCompetencyStudentKey(student),
         student,
         competency: null,
         loading: false,
@@ -251,9 +302,12 @@ const StudentCompetencyTable: React.FC<{
       if (fallbackStudents.length > 0) {
         const fallbackRows = fallbackStudents
           .map(mapFallbackStudent)
-          .filter((student) => !classSectionId || student.classSectionId === classSectionId)
-          .map((student, index) => ({
-            rowKey: `${buildCompetencyStudentKey(student)}|row:${index}`,
+          .filter(
+            (student) => !classSectionId
+              || normalizeClassSectionId(student.classSectionId) === normalizeClassSectionId(classSectionId),
+          )
+          .map((student) => ({
+            rowKey: buildCompetencyStudentKey(student),
             student,
             competency: null,
             loading: false,
@@ -303,27 +357,23 @@ const StudentCompetencyTable: React.FC<{
   // -”€-”€-”€ Load competency on expand -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
   const toggleExpand = async (rowKey: string) => {
-    setRows(prev => prev.map(r => {
-      if (r.rowKey !== rowKey) return r;
+    const targetRow = rows.find((r) => r.rowKey === rowKey);
+    if (!targetRow) return;
 
-      const newExpanded = !r.expanded;
+    const newExpanded = !targetRow.expanded;
 
-      // If expanding and no competency data yet, fetch it
-      if (newExpanded && !r.competency && !r.loading) {
-        // Start loading
-        void fetchCompetency(rowKey);
-        return { ...r, expanded: true, loading: true };
-      }
+    if (newExpanded && !targetRow.competency && !targetRow.loading) {
+      setRows((prev) => prev.map((r) => (r.rowKey === rowKey ? { ...r, expanded: true, loading: true } : r)));
+      void fetchCompetency(rowKey, targetRow.student);
+      return;
+    }
 
-      return { ...r, expanded: newExpanded };
-    }));
+    setRows((prev) => prev.map((r) => (r.rowKey === rowKey ? { ...r, expanded: newExpanded } : r)));
   };
 
-  const fetchCompetency = async (rowKey: string) => {
+  const fetchCompetency = async (rowKey: string, sourceStudent: CompetencyStudent) => {
     try {
-      const row = rows.find(r => r.rowKey === rowKey);
-      if (!row) return;
-      const studentId = row.student.id;
+      const studentId = sourceStudent.id;
 
       // Fetch real quiz history from Firestore progress data
       const progress = await getUserProgress(studentId);
@@ -343,18 +393,17 @@ const StudentCompetencyTable: React.FC<{
       ));
     } catch (err) {
       // Fallback competency data
-      const row = rows.find(r => r.rowKey === rowKey);
-      const avg = row?.student.avgQuizScore || 50;
-      const studentId = row?.student.id || '';
+      const avg = sourceStudent.avgQuizScore || 50;
+      const studentId = sourceStudent.id || '';
 
       const fallback: StudentCompetencyResponse = {
         studentId,
         competencies: [
-          { topic: row?.student.weakestTopic || 'Unknown', efficiencyScore: Math.max(15, avg - 20), competencyLevel: avg < 50 ? 'beginner' : 'developing', perspective: `Student needs focused practice in ${row?.student.weakestTopic}.` },
+          { topic: sourceStudent.weakestTopic || 'Unknown', efficiencyScore: Math.max(15, avg - 20), competencyLevel: avg < 50 ? 'beginner' : 'developing', perspective: `Student needs focused practice in ${sourceStudent.weakestTopic}.` },
           { topic: 'Functions and Relations', efficiencyScore: Math.min(95, avg + 10), competencyLevel: avg > 70 ? 'proficient' : 'developing', perspective: 'Shows solid understanding of function concepts.' },
           { topic: 'Problem Solving', efficiencyScore: avg, competencyLevel: avg > 80 ? 'advanced' : avg > 60 ? 'proficient' : 'developing', perspective: 'Applies mathematical reasoning consistently.' },
         ],
-        recommendedTopics: [row?.student.weakestTopic || 'Review fundamentals'],
+        recommendedTopics: [sourceStudent.weakestTopic || 'Review fundamentals'],
         excludeTopics: [],
       };
 
@@ -424,17 +473,14 @@ const StudentCompetencyTable: React.FC<{
 
   // -”€-”€-”€ Render -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-sky-500" />
-        <span className="ml-3 text-muted-foreground">Loading student data...</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <BoneSkeleton
+      name="teacher-student-competency-table"
+      loading={loading}
+      fixture={<StudentCompetencyLoadingState />}
+      fallback={<StudentCompetencyLoadingState />}
+    >
+      <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         {[
@@ -460,6 +506,9 @@ const StudentCompetencyTable: React.FC<{
         <div className="relative flex-1 max-w-xs">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            id="competency-student-search"
+            name="competency-student-search"
+            aria-label="Search students"
             type="text"
             placeholder="Search students..."
             value={searchQuery}
@@ -499,13 +548,20 @@ const StudentCompetencyTable: React.FC<{
         <p className="text-xs font-semibold text-foreground">
           Imported Topic Context{className ? ` for ${className}` : ''}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {importedTopicsLoading
-            ? 'Loading class-scoped imported topics...'
-            : importedTopicTitles.length > 0
-            ? `${importedTopicTitles.length} imported topics loaded for competency guidance`
-            : 'No imported topics found for this class context'}
-        </p>
+        <div className="mt-1">
+          {importedTopicsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-64" />
+              <Skeleton className="h-3.5 w-52" />
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {importedTopicTitles.length > 0
+                ? `${importedTopicTitles.length} imported topics loaded for competency guidance`
+                : 'No imported topics found for this class context'}
+            </p>
+          )}
+        </div>
         {importedTopicsWarning && <p className="text-[11px] text-amber-700 mt-1">{importedTopicsWarning}</p>}
         {studentsWarning && <p className="text-[11px] text-amber-700 mt-1">{studentsWarning}</p>}
         {importedTopicTitles.length > 0 && (
@@ -655,10 +711,7 @@ const StudentCompetencyTable: React.FC<{
                     >
                       <div className="px-6 py-4 bg-muted border-t border-border">
                         {row.loading ? (
-                          <div className="flex items-center justify-center py-6">
-                            <Loader2 size={20} className="animate-spin text-sky-500" />
-                            <span className="ml-2 text-sm text-muted-foreground">Analyzing competency data...</span>
-                          </div>
+                          <CompetencyDetailLoadingState />
                         ) : row.competency ? (
                           <div className="space-y-4">
                             {/* Competency breakdown */}
@@ -732,7 +785,8 @@ const StudentCompetencyTable: React.FC<{
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </BoneSkeleton>
   );
 };
 
