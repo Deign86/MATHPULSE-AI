@@ -216,6 +216,30 @@
         { "fieldPath": "teacherId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "classrooms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classSectionId", "order": "ASCENDING" },
+        { "fieldPath": "teacherId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "classrooms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classSectionId", "order": "ASCENDING" },
+        { "fieldPath": "ownerTeacherId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "classrooms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classSectionId", "order": "ASCENDING" },
+        { "fieldPath": "managerId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

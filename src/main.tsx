@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './critical.css';
 import { AuthProvider } from './contexts/AuthContext.tsx';
+import { registerBoneyardRegistry } from './bones/registry';
 
 let fullStylesLoadStarted = false;
 let resolveFullStylesReady: (() => void) | null = null;
@@ -65,6 +66,8 @@ createRoot(rootElement).render(
     <App />
   </AuthProvider>
 );
+
+registerBoneyardRegistry();
 
 let safetyTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
 
