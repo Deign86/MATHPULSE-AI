@@ -608,6 +608,9 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                       </>
                     ) : (
                       <input
+                        id="diagnostic-short-answer"
+                        name="diagnostic-short-answer"
+                        aria-label="Short answer response"
                         value={currentInput}
                         onChange={(event) => setCurrentInput(event.target.value)}
                         onKeyDown={(event) => {

@@ -165,6 +165,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
             <Search size={22} strokeWidth={2.5} />
           </div>
           <input
+            id="modules-search"
+            name="modules-search"
+            aria-label="Search modules"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

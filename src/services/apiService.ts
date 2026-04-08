@@ -27,6 +27,7 @@ import {
   type RetryFetchOptions,
 } from './apiUtils';
 import { auth } from '../lib/firebase';
+import type { ClassSectionMetadata } from '../types/models';
 
 // Re-export error classes so consumers can catch them
 export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
@@ -124,6 +125,14 @@ export interface ImportedClassroomOverviewItem {
   id: string;
   name: string;
   classSectionId?: string | null;
+  grade?: string;
+  gradeLevel?: string;
+  classification?: string;
+  strand?: string;
+  section?: string;
+  managerId?: string | null;
+  managerName?: string | null;
+  classMetadata?: ClassSectionMetadata | null;
   schedule: string;
   studentCount: number;
   avgScore: number;
@@ -146,7 +155,13 @@ export interface ImportedStudentOverviewItem {
   classSectionId?: string | null;
   className: string;
   grade?: string;
+  gradeLevel?: string;
+  classification?: string;
+  strand?: string;
   section?: string;
+  managerId?: string | null;
+  managerName?: string | null;
+  classMetadata?: ClassSectionMetadata | null;
   avgQuizScore: number;
   attendance: number;
   engagementScore: number;
@@ -173,6 +188,7 @@ export interface ImportedClassOverviewResponse {
 
 export interface UploadResponse {
   success: boolean;
+  classMetadata?: ClassSectionMetadata | null;
   datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
   students: {
     name: string;
@@ -247,6 +263,8 @@ export interface UploadResponse {
     classroomsTouched: number;
     classroomId?: string | null;
     classSectionId?: string | null;
+    className?: string | null;
+    classMetadata?: ClassSectionMetadata | null;
     warning?: string | null;
   };
   files?: {
@@ -265,6 +283,7 @@ export interface UploadResponse {
     rejectedRows?: { row: number; reason: string }[];
     classSectionId?: string | null;
     className?: string | null;
+    classMetadata?: ClassSectionMetadata | null;
     importId?: string | null;
     persisted?: boolean;
     dedup?: { inserted: number; updated: number };
@@ -629,6 +648,69 @@ export interface ImportGroundedAccessAuditResponse {
   lookbackDays: number;
   entries: ImportGroundedAccessAuditItem[];
   summary: ImportGroundedAccessAuditSummary;
+  warnings: string[];
+}
+
+export type StudentAccountPreviewStatus = 'valid' | 'invalid' | 'duplicate';
+export type StudentAccountCommitStatus = 'created' | 'updated' | 'skipped' | 'blocked' | 'failed';
+
+export interface StudentAccountProvisionPreviewRow {
+  rowNumber: number;
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  fullName: string;
+  email: string;
+  grade: string;
+  section: string;
+  classSectionId: string;
+  status: StudentAccountPreviewStatus;
+  issues: string[];
+  duplicateInFile?: boolean;
+  duplicateInFirestore?: boolean;
+  duplicateInAuth?: boolean;
+}
+
+export interface StudentAccountImportPreviewResponse {
+  success: boolean;
+  previewToken?: string | null;
+  classSectionId?: string | null;
+  className?: string | null;
+  summary: {
+    totalRows: number;
+    validRows: number;
+    invalidRows: number;
+    duplicateRows: number;
+  };
+  rows: StudentAccountProvisionPreviewRow[];
+  warnings: string[];
+}
+
+export interface StudentAccountProvisionCommitRow {
+  rowNumber: number;
+  studentId: string;
+  fullName: string;
+  email: string;
+  uid?: string | null;
+  classSectionId: string;
+  status: StudentAccountCommitStatus;
+  message: string;
+  temporaryPassword?: string | null;
+}
+
+export interface StudentAccountImportCommitResponse {
+  success: boolean;
+  previewToken: string;
+  summary: {
+    totalRows: number;
+    createdRows: number;
+    updatedRows: number;
+    skippedRows: number;
+    blockedRows: number;
+    failedRows: number;
+  };
+  rows: StudentAccountProvisionCommitRow[];
   warnings: string[];
 }
 
@@ -1457,6 +1539,63 @@ export const apiService = {
       '/api/upload/class-records',
       { method: 'POST', body: formData },
       UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /** Parse and validate student account rows before provisioning Auth/Firestore users. */
+  async previewStudentAccountImport(
+    file: File,
+    options?: {
+      classSectionId?: string;
+      className?: string;
+      defaultGrade?: string;
+      defaultSection?: string;
+    },
+  ): Promise<StudentAccountImportPreviewResponse> {
+    if (!file || file.size === 0) {
+      throw new ApiValidationError('/api/import/student-accounts/preview', 'A non-empty file is required');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new ApiValidationError('/api/import/student-accounts/preview', 'File exceeds 10 MB size limit');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (options?.classSectionId) {
+      formData.append('classSectionId', options.classSectionId);
+    }
+    if (options?.className) {
+      formData.append('className', options.className);
+    }
+    if (options?.defaultGrade) {
+      formData.append('defaultGrade', options.defaultGrade);
+    }
+    if (options?.defaultSection) {
+      formData.append('defaultSection', options.defaultSection);
+    }
+
+    return apiFetch<StudentAccountImportPreviewResponse>(
+      '/api/import/student-accounts/preview',
+      { method: 'POST', body: formData },
+      UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /** Commit validated preview rows and provision student profiles/auth accounts. */
+  async commitStudentAccountImport(payload: {
+    previewToken: string;
+    defaultPassword?: string;
+    forcePasswordChange?: boolean;
+    createAuthUsers?: boolean;
+  }): Promise<StudentAccountImportCommitResponse> {
+    validateRequired('/api/import/student-accounts/commit', {
+      previewToken: payload.previewToken,
+    });
+
+    return apiFetch<StudentAccountImportCommitResponse>(
+      '/api/import/student-accounts/commit',
+      { method: 'POST', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
     );
   },
 

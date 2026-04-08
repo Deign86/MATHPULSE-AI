@@ -143,6 +143,45 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /classrooms/{classroomId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isAdmin() || (isTeacher() && (
+        ownerInIncoming('teacherId') ||
+        ownerInExisting('teacherId') ||
+        ownerInIncoming('ownerTeacherId') ||
+        ownerInExisting('ownerTeacherId') ||
+        ownerInIncoming('managerId') ||
+        ownerInExisting('managerId')
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /classSectionOwnership/{classSectionId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isAdmin() || (isTeacher() && (
+        ownerInIncoming('ownerTeacherId') ||
+        ownerInExisting('ownerTeacherId') ||
+        ownerInIncoming('managerId') ||
+        ownerInExisting('managerId')
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /classRecordImports/{importId} {
+      allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
+      allow create, update, delete: if false;
+    }
+
+    match /normalizedClassRecords/{recordId} {
+      allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
+      allow create, update, delete: if false;
+    }
+
+    match /accessAuditLogs/{auditId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /diagnosticResults/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('studentId');
       allow create, update: if isTeacherOrAdmin() || ownerByField('studentId');
