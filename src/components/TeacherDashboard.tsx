@@ -27,6 +27,12 @@ import {
   getTeacherDirectoryOptions,
   addManagedStudentsBatch,
   deleteManagedStudent,
+  buildClassSectionId,
+  normalizeGradeLevel,
+  inferClassification,
+  inferStrand,
+  parseClassName,
+  resolveClassMetadata,
   type Classroom,
   type ManagedStudent,
   type ClassActivity,
@@ -110,122 +116,6 @@ interface StudentView {
   engagementScore: number;
   attendance: number;
   assignmentCompletion: number;
-}
-
-function parseClassName(className?: string | null): { grade: string; section: string } {
-  const normalized = (className || '').trim();
-  if (!normalized) {
-    return { grade: 'Grade 11', section: 'Section A' };
-  }
-
-  const [grade = 'Grade 11', section = 'Section A'] = normalized
-    .split(' - ')
-    .map((token) => token.trim()) as [string?, string?];
-
-  return {
-    grade: grade || 'Grade 11',
-    section: section || 'Section A',
-  };
-}
-
-function normalizeGradeLevel(rawGrade?: string | null): string | null {
-  const value = (rawGrade || '').trim();
-  if (!value) return null;
-
-  const match = value.match(/(\d{1,2})/);
-  if (match) {
-    return `Grade ${match[1]}`;
-  }
-
-  if (/^grade\s+/i.test(value)) {
-    return value.replace(/\s+/g, ' ').trim().replace(/^grade/i, 'Grade');
-  }
-
-  return value;
-}
-
-function inferClassification(gradeLevel?: string | null): string | null {
-  const normalized = normalizeGradeLevel(gradeLevel);
-  const match = normalized?.match(/(\d{1,2})/);
-  const gradeNumber = match ? Number.parseInt(match[1], 10) : Number.NaN;
-
-  if (Number.isFinite(gradeNumber)) {
-    return gradeNumber >= 11 ? 'Senior High School' : 'Junior High School';
-  }
-
-  return null;
-}
-
-function inferStrand(className?: string | null, section?: string | null): string | null {
-  const source = `${className || ''} ${section || ''}`.toUpperCase();
-  if (!source.trim()) return null;
-
-  const strands = ['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'ICT'];
-  for (const token of strands) {
-    if (new RegExp(`\\b${token}\\b`).test(source)) {
-      return token;
-    }
-  }
-
-  return null;
-}
-
-function resolveClassMetadata(input: {
-  metadata?: ClassSectionMetadata | null;
-  classSectionId?: string | null;
-  className?: string | null;
-  grade?: string | null;
-  gradeLevel?: string | null;
-  classification?: string | null;
-  strand?: string | null;
-  section?: string | null;
-  schoolYear?: string | null;
-  ownerTeacherId?: string | null;
-  ownerTeacherName?: string | null;
-  adviserTeacherId?: string | null;
-  adviserTeacherName?: string | null;
-  managerId?: string | null;
-  managerName?: string | null;
-}): ClassSectionMetadata {
-  const metadata = input.metadata || {};
-  const preferredClassName = input.className || metadata.className;
-  const parsed = parseClassName(preferredClassName);
-  const grade = (input.grade || metadata.grade || parsed.grade || '').trim() || null;
-  const section = (input.section || metadata.section || parsed.section || '').trim() || null;
-  const classSectionId =
-    (input.classSectionId || metadata.classSectionId || '').trim()
-    || (grade && section ? buildClassSectionId(grade, section) : '')
-    || null;
-  const className =
-    (preferredClassName || '').trim()
-    || (grade && section ? `${grade} - ${section}` : '')
-    || null;
-  const gradeLevel = normalizeGradeLevel(input.gradeLevel || metadata.gradeLevel || grade);
-  const classification =
-    (input.classification || metadata.classification || '').trim()
-    || inferClassification(gradeLevel)
-    || null;
-  const strand =
-    (input.strand || metadata.strand || '').trim()
-    || inferStrand(className, section)
-    || null;
-
-  return {
-    classSectionId,
-    className,
-    grade,
-    section,
-    gradeLevel,
-    classification,
-    strand,
-    schoolYear: (input.schoolYear || metadata.schoolYear || '').trim() || null,
-    ownerTeacherId: (input.ownerTeacherId || metadata.ownerTeacherId || '').trim() || null,
-    ownerTeacherName: (input.ownerTeacherName || metadata.ownerTeacherName || '').trim() || null,
-    adviserTeacherId: (input.adviserTeacherId || metadata.adviserTeacherId || '').trim() || null,
-    adviserTeacherName: (input.adviserTeacherName || metadata.adviserTeacherName || '').trim() || null,
-    managerId: (input.managerId || metadata.managerId || '').trim() || null,
-    managerName: (input.managerName || metadata.managerName || '').trim() || null,
-  };
 }
 
 function toClassView(c: Classroom): ClassView {
@@ -484,13 +374,6 @@ function formatRelativeTime(date: Date): string {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
-function buildClassSectionId(grade: string, section: string): string {
-  return [grade, section]
-    .filter(Boolean)
-    .join('_')
-    .replace(/\s+/g, '_')
-    .toLowerCase();
-}
 
 function normalizeClassSectionId(value?: string): string {
   return (value || '').trim().toLowerCase();

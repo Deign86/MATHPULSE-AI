@@ -144,7 +144,12 @@ service cloud.firestore {
     }
 
     match /classrooms/{classroomId} {
-      allow read: if isTeacherOrAdmin();
+      allow read: if isAdmin() || (isTeacher() && (
+        ownerInExisting('teacherId') ||
+        ownerInExisting('ownerTeacherId') ||
+        ownerInExisting('adviserTeacherId') ||
+        ownerInExisting('managerId')
+      ));
       allow create, update: if isAdmin() || (isTeacher() && (
         ownerInIncoming('teacherId') ||
         ownerInExisting('teacherId') ||
@@ -157,7 +162,10 @@ service cloud.firestore {
     }
 
     match /classSectionOwnership/{classSectionId} {
-      allow read: if isTeacherOrAdmin();
+      allow read: if isAdmin() || (isTeacher() && (
+        ownerInExisting('ownerTeacherId') ||
+        ownerInExisting('managerId')
+      ));
       allow create, update: if isAdmin() || (isTeacher() && (
         ownerInIncoming('ownerTeacherId') ||
         ownerInExisting('ownerTeacherId') ||

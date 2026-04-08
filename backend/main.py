@@ -21,7 +21,7 @@ import hashlib
 import logging
 import traceback
 import urllib.parse
-import random
+import secrets
 import string
 from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
@@ -3960,7 +3960,7 @@ def _infer_strand(*, class_name: Optional[str], section: Optional[str]) -> Optio
         return None
 
     for token in ("STEM", "ABM", "HUMSS", "GAS", "TVL", "ICT"):
-        if re.search(rf"\\b{token}\\b", source):
+        if re.search(rf"\b{token}\b", source):
             return token
 
     return None
@@ -4709,7 +4709,7 @@ def _auth_user_not_found(error: Exception) -> bool:
 def _generate_temporary_password(length: int = 12) -> str:
     alphabet = string.ascii_letters + string.digits
     while True:
-        candidate = "".join(random.choice(alphabet) for _ in range(max(10, length)))
+        candidate = "".join(secrets.choice(alphabet) for _ in range(max(10, length)))
         if any(ch.islower() for ch in candidate) and any(ch.isupper() for ch in candidate) and any(ch.isdigit() for ch in candidate):
             return candidate
 
@@ -5111,7 +5111,16 @@ async def commit_student_account_import(
                     )
                     continue
 
-            target_uid = existing_uid or auth_uid
+            if payload.createAuthUsers and auth_uid:
+                # Always write profile under auth_uid so lookup via request.auth.uid works at login.
+                if existing_uid and existing_uid != auth_uid:
+                    warnings.append(
+                        f"Row {row_number}: existing Firestore profile UID ({existing_uid}) differs from "
+                        f"Auth UID ({auth_uid}); profile will be written under Auth UID."
+                    )
+                target_uid = auth_uid
+            else:
+                target_uid = existing_uid or auth_uid
             if not target_uid:
                 seed = f"{student_id}|{email}|{class_section_id}"
                 target_uid = hashlib.sha1(seed.encode("utf-8")).hexdigest()[:28]

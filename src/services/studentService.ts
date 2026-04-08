@@ -252,7 +252,7 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(entries) as T;
 }
 
-function normalizeGradeLevel(rawGrade?: string | null): string | null {
+export function normalizeGradeLevel(rawGrade?: string | null): string | null {
   const value = (rawGrade || '').trim();
   if (!value) return null;
 
@@ -271,7 +271,7 @@ function normalizeGradeLevel(rawGrade?: string | null): string | null {
   return value;
 }
 
-function inferClassification(gradeLevel?: string | null): string | null {
+export function inferClassification(gradeLevel?: string | null): string | null {
   const normalized = normalizeGradeLevel(gradeLevel);
   const gradeMatch = normalized?.match(/(\d{1,2})/);
   const gradeNumber = gradeMatch ? Number.parseInt(gradeMatch[1], 10) : Number.NaN;
@@ -284,7 +284,7 @@ function inferClassification(gradeLevel?: string | null): string | null {
   return null;
 }
 
-function inferStrand(className?: string | null, section?: string | null): string | null {
+export function inferStrand(className?: string | null, section?: string | null): string | null {
   const source = `${className || ''} ${section || ''}`.toUpperCase();
   if (!source.trim()) return null;
 
@@ -296,6 +296,80 @@ function inferStrand(className?: string | null, section?: string | null): string
   }
 
   return null;
+}
+
+export function parseClassName(className?: string | null): { grade: string; section: string } {
+  const normalized = (className || '').trim();
+  if (!normalized) {
+    return { grade: 'Grade 11', section: 'Section A' };
+  }
+
+  const [grade = 'Grade 11', section = 'Section A'] = normalized
+    .split(' - ')
+    .map((token) => token.trim()) as [string?, string?];
+
+  return {
+    grade: grade || 'Grade 11',
+    section: section || 'Section A',
+  };
+}
+
+export function resolveClassMetadata(input: {
+  metadata?: ClassSectionMetadata | null;
+  classSectionId?: string | null;
+  className?: string | null;
+  grade?: string | null;
+  gradeLevel?: string | null;
+  classification?: string | null;
+  strand?: string | null;
+  section?: string | null;
+  schoolYear?: string | null;
+  ownerTeacherId?: string | null;
+  ownerTeacherName?: string | null;
+  adviserTeacherId?: string | null;
+  adviserTeacherName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+}): ClassSectionMetadata {
+  const metadata = input.metadata || {};
+  const preferredClassName = input.className || metadata.className;
+  const parsed = parseClassName(preferredClassName);
+  const grade = (input.grade || metadata.grade || parsed.grade || '').trim() || null;
+  const section = (input.section || metadata.section || parsed.section || '').trim() || null;
+  const classSectionId =
+    (input.classSectionId || metadata.classSectionId || '').trim()
+    || (grade && section ? buildClassSectionId(grade, section) : '')
+    || null;
+  const className =
+    (preferredClassName || '').trim()
+    || (grade && section ? `${grade} - ${section}` : '')
+    || null;
+  const gradeLevel = normalizeGradeLevel(input.gradeLevel || metadata.gradeLevel || grade);
+  const classification =
+    (input.classification || metadata.classification || '').trim()
+    || inferClassification(gradeLevel)
+    || null;
+  const strand =
+    (input.strand || metadata.strand || '').trim()
+    || inferStrand(className, section)
+    || null;
+
+  return {
+    classSectionId,
+    className,
+    grade,
+    section,
+    gradeLevel,
+    classification,
+    strand,
+    schoolYear: (input.schoolYear || metadata.schoolYear || '').trim() || null,
+    ownerTeacherId: (input.ownerTeacherId || metadata.ownerTeacherId || '').trim() || null,
+    ownerTeacherName: (input.ownerTeacherName || metadata.ownerTeacherName || '').trim() || null,
+    adviserTeacherId: (input.adviserTeacherId || metadata.adviserTeacherId || '').trim() || null,
+    adviserTeacherName: (input.adviserTeacherName || metadata.adviserTeacherName || '').trim() || null,
+    managerId: (input.managerId || metadata.managerId || '').trim() || null,
+    managerName: (input.managerName || metadata.managerName || '').trim() || null,
+  };
 }
 
 export function buildClassSectionMetadata(input: {
