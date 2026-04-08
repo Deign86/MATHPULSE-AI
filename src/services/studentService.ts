@@ -12,12 +12,14 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   serverTimestamp,
   Timestamp,
   addDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import type { ClassSectionMetadata } from '../types/models';
 
 // Types for the teacher's student management
 export interface ManagedStudent {
@@ -26,9 +28,17 @@ export interface ManagedStudent {
   name: string;
   email: string;
   avatar: string;
+  teacherId?: string;
+  className?: string;
   grade?: string;
+  gradeLevel?: string;
+  classification?: string;
+  strand?: string;
   section?: string;
   classSectionId?: string;
+  managerId?: string;
+  managerName?: string;
+  classMetadata?: ClassSectionMetadata;
   riskLevel: 'High' | 'Medium' | 'Low';
   engagementScore: number;
   avgQuizScore: number;
@@ -47,8 +57,19 @@ export interface Classroom {
   name: string;
   teacherId: string;
   grade?: string;
+  gradeLevel?: string;
+  classification?: string;
+  strand?: string;
   section?: string;
   classSectionId?: string;
+  schoolYear?: string;
+  ownerTeacherId?: string;
+  ownerTeacherName?: string;
+  adviserTeacherId?: string;
+  adviserTeacherName?: string;
+  managerId?: string;
+  managerName?: string;
+  classMetadata?: ClassSectionMetadata;
   schedule: string;
   studentCount: number;
   avgScore: number;
@@ -80,13 +101,41 @@ export interface ClassSectionOwnershipRecord {
   id: string;
   classSectionId: string;
   grade: string;
+  gradeLevel?: string;
+  classification?: string;
+  strand?: string;
   section: string;
   schoolYear: string;
   ownerTeacherId: string;
   ownerTeacherName?: string;
+  managerId?: string;
+  managerName?: string;
+  className?: string;
   studentUids: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface TeacherDirectoryOption {
+  uid: string;
+  name: string;
+  email: string;
+  photo?: string;
+}
+
+export interface AssignClassSectionManagerInput {
+  classSectionId: string;
+  grade: string;
+  section: string;
+  schoolYear: string;
+  ownerTeacherId: string;
+  ownerTeacherName?: string;
+  managerId: string;
+  managerName?: string;
+  className?: string;
+  classification?: string;
+  strand?: string;
+  gradeLevel?: string;
 }
 
 // ─── Student Operations ───────────────────────────────────────
@@ -198,17 +247,201 @@ export function buildClassSectionId(grade: string, section: string): string {
   return [grade, section].filter(Boolean).join('_').replace(/\s+/g, '_').toLowerCase();
 }
 
+function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
+  const entries = Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined);
+  return Object.fromEntries(entries) as T;
+}
+
+export function normalizeGradeLevel(rawGrade?: string | null): string | null {
+  const value = (rawGrade || '').trim();
+  if (!value) return null;
+
+  const match = value.match(/(\d{1,2})/);
+  if (match) {
+    return `Grade ${match[1]}`;
+  }
+
+  if (/^grade\s+/i.test(value)) {
+    return value
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^grade/i, 'Grade');
+  }
+
+  return value;
+}
+
+export function inferClassification(gradeLevel?: string | null): string | null {
+  const normalized = normalizeGradeLevel(gradeLevel);
+  const gradeMatch = normalized?.match(/(\d{1,2})/);
+  const gradeNumber = gradeMatch ? Number.parseInt(gradeMatch[1], 10) : Number.NaN;
+
+  if (Number.isFinite(gradeNumber)) {
+    if (gradeNumber >= 11) return 'Senior High School';
+    return 'Junior High School';
+  }
+
+  return null;
+}
+
+export function inferStrand(className?: string | null, section?: string | null): string | null {
+  const source = `${className || ''} ${section || ''}`.toUpperCase();
+  if (!source.trim()) return null;
+
+  const known = ['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'ICT'];
+  for (const token of known) {
+    if (new RegExp(`\\b${token}\\b`).test(source)) {
+      return token;
+    }
+  }
+
+  return null;
+}
+
+export function parseClassName(className?: string | null): { grade: string; section: string } {
+  const normalized = (className || '').trim();
+  if (!normalized) {
+    return { grade: 'Grade 11', section: 'Section A' };
+  }
+
+  const [grade = 'Grade 11', section = 'Section A'] = normalized
+    .split(' - ')
+    .map((token) => token.trim()) as [string?, string?];
+
+  return {
+    grade: grade || 'Grade 11',
+    section: section || 'Section A',
+  };
+}
+
+export function resolveClassMetadata(input: {
+  metadata?: ClassSectionMetadata | null;
+  classSectionId?: string | null;
+  className?: string | null;
+  grade?: string | null;
+  gradeLevel?: string | null;
+  classification?: string | null;
+  strand?: string | null;
+  section?: string | null;
+  schoolYear?: string | null;
+  ownerTeacherId?: string | null;
+  ownerTeacherName?: string | null;
+  adviserTeacherId?: string | null;
+  adviserTeacherName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+}): ClassSectionMetadata {
+  const metadata = input.metadata || {};
+  const preferredClassName = input.className || metadata.className;
+  const parsed = parseClassName(preferredClassName);
+  const grade = (input.grade || metadata.grade || parsed.grade || '').trim() || null;
+  const section = (input.section || metadata.section || parsed.section || '').trim() || null;
+  const classSectionId =
+    (input.classSectionId || metadata.classSectionId || '').trim()
+    || (grade && section ? buildClassSectionId(grade, section) : '')
+    || null;
+  const className =
+    (preferredClassName || '').trim()
+    || (grade && section ? `${grade} - ${section}` : '')
+    || null;
+  const gradeLevel = normalizeGradeLevel(input.gradeLevel || metadata.gradeLevel || grade);
+  const classification =
+    (input.classification || metadata.classification || '').trim()
+    || inferClassification(gradeLevel)
+    || null;
+  const strand =
+    (input.strand || metadata.strand || '').trim()
+    || inferStrand(className, section)
+    || null;
+
+  return {
+    classSectionId,
+    className,
+    grade,
+    section,
+    gradeLevel,
+    classification,
+    strand,
+    schoolYear: (input.schoolYear || metadata.schoolYear || '').trim() || null,
+    ownerTeacherId: (input.ownerTeacherId || metadata.ownerTeacherId || '').trim() || null,
+    ownerTeacherName: (input.ownerTeacherName || metadata.ownerTeacherName || '').trim() || null,
+    adviserTeacherId: (input.adviserTeacherId || metadata.adviserTeacherId || '').trim() || null,
+    adviserTeacherName: (input.adviserTeacherName || metadata.adviserTeacherName || '').trim() || null,
+    managerId: (input.managerId || metadata.managerId || '').trim() || null,
+    managerName: (input.managerName || metadata.managerName || '').trim() || null,
+  };
+}
+
+export function buildClassSectionMetadata(input: {
+  classSectionId?: string | null;
+  className?: string | null;
+  grade?: string | null;
+  section?: string | null;
+  gradeLevel?: string | null;
+  classification?: string | null;
+  strand?: string | null;
+  schoolYear?: string | null;
+  ownerTeacherId?: string | null;
+  ownerTeacherName?: string | null;
+  adviserTeacherId?: string | null;
+  adviserTeacherName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+}): ClassSectionMetadata {
+  const normalizedClassName = (input.className || '').trim();
+  const [derivedGrade = '', derivedSection = ''] = normalizedClassName.split(' - ');
+  const grade = (input.grade || derivedGrade || '').trim() || null;
+  const section = (input.section || derivedSection || '').trim() || null;
+  const classSectionId = (input.classSectionId || '').trim() || (grade && section ? buildClassSectionId(grade, section) : '') || null;
+  const className = normalizedClassName || (grade && section ? `${grade} - ${section}` : null);
+  const gradeLevel = normalizeGradeLevel(input.gradeLevel || grade);
+  const classification = (input.classification || '').trim() || inferClassification(gradeLevel);
+  const strand = (input.strand || '').trim() || inferStrand(className, section);
+
+  return {
+    classSectionId,
+    className,
+    grade,
+    section,
+    gradeLevel,
+    classification,
+    strand,
+    schoolYear: (input.schoolYear || '').trim() || null,
+    ownerTeacherId: (input.ownerTeacherId || '').trim() || null,
+    ownerTeacherName: (input.ownerTeacherName || '').trim() || null,
+    adviserTeacherId: (input.adviserTeacherId || '').trim() || null,
+    adviserTeacherName: (input.adviserTeacherName || '').trim() || null,
+    managerId: (input.managerId || '').trim() || null,
+    managerName: (input.managerName || '').trim() || null,
+  };
+}
+
 // ─── Classroom Operations ─────────────────────────────────────
 
 export async function getClassroomsByTeacher(teacherId: string): Promise<Classroom[]> {
   const classroomsRef = collection(db, 'classrooms');
-  const q = query(classroomsRef, where('teacherId', '==', teacherId));
-  const snapshot = await getDocs(q);
+  const deduped = new Map<string, Classroom>();
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Classroom[];
+  const teacherOwnedQuery = query(classroomsRef, where('teacherId', '==', teacherId));
+  const teacherOwnedSnapshot = await getDocs(teacherOwnedQuery);
+  teacherOwnedSnapshot.docs.forEach((entry) => {
+    deduped.set(entry.id, {
+      id: entry.id,
+      ...entry.data(),
+    } as Classroom);
+  });
+
+  // Include classes where this teacher is currently assigned as manager.
+  const managerQuery = query(classroomsRef, where('managerId', '==', teacherId));
+  const managerSnapshot = await getDocs(managerQuery);
+  managerSnapshot.docs.forEach((entry) => {
+    deduped.set(entry.id, {
+      id: entry.id,
+      ...entry.data(),
+    } as Classroom);
+  });
+
+  return Array.from(deduped.values()).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
 export async function createClassroom(classroom: Omit<Classroom, 'id' | 'createdAt'>): Promise<string> {
@@ -230,22 +463,121 @@ export async function upsertClassSectionOwnership(
   const existing = await getDoc(ref);
   const existingStudentUids = existing.exists() ? (((existing.data() as { studentUids?: string[] }).studentUids) || []) : [];
   const mergedStudentUids = Array.from(new Set([...(payload.studentUids || []), ...existingStudentUids]));
+  const basePayload = withoutUndefined(payload);
 
   if (existing.exists()) {
     await updateDoc(ref, {
-      ...payload,
+      ...basePayload,
       classSectionId,
       studentUids: mergedStudentUids,
       updatedAt: serverTimestamp(),
     });
   } else {
     await setDoc(ref, {
-      ...payload,
+      ...basePayload,
       classSectionId,
       studentUids: mergedStudentUids,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  }
+
+  return classSectionId;
+}
+
+export async function assignClassSectionManager(input: AssignClassSectionManagerInput): Promise<string> {
+  const classSectionId = (input.classSectionId || '').trim() || buildClassSectionId(input.grade, input.section);
+  const className = (input.className || '').trim() || `${input.grade} - ${input.section}`;
+  const classMetadata = buildClassSectionMetadata({
+    classSectionId,
+    className,
+    grade: input.grade,
+    section: input.section,
+    schoolYear: input.schoolYear,
+    ownerTeacherId: input.ownerTeacherId,
+    ownerTeacherName: input.ownerTeacherName,
+    adviserTeacherId: input.ownerTeacherId,
+    adviserTeacherName: input.ownerTeacherName,
+    managerId: input.managerId,
+    managerName: input.managerName,
+    classification: input.classification,
+    strand: input.strand,
+    gradeLevel: input.gradeLevel,
+  });
+
+  await upsertClassSectionOwnership({
+    classSectionId,
+    className,
+    grade: classMetadata.grade || input.grade,
+    gradeLevel: classMetadata.gradeLevel || input.gradeLevel || input.grade,
+    classification: classMetadata.classification || input.classification,
+    strand: classMetadata.strand || input.strand,
+    section: classMetadata.section || input.section,
+    schoolYear: input.schoolYear,
+    ownerTeacherId: input.ownerTeacherId,
+    ownerTeacherName: input.ownerTeacherName,
+    managerId: input.managerId,
+    managerName: input.managerName,
+    studentUids: [],
+  });
+
+  const classroomsRef = collection(db, 'classrooms');
+  const classroomQuery = query(classroomsRef, where('classSectionId', '==', classSectionId));
+  const classroomSnapshot = await getDocs(classroomQuery);
+
+  if (classroomSnapshot.empty) {
+    const createPayload = withoutUndefined({
+      name: className,
+      teacherId: input.ownerTeacherId,
+      grade: classMetadata.grade,
+      gradeLevel: classMetadata.gradeLevel,
+      classification: classMetadata.classification,
+      strand: classMetadata.strand,
+      section: classMetadata.section,
+      classSectionId,
+      schoolYear: input.schoolYear,
+      ownerTeacherId: input.ownerTeacherId,
+      ownerTeacherName: input.ownerTeacherName || '',
+      adviserTeacherId: input.ownerTeacherId,
+      adviserTeacherName: input.ownerTeacherName || '',
+      managerId: input.managerId,
+      managerName: input.managerName || '',
+      classMetadata,
+      schedule: 'Mon-Fri',
+      studentCount: 0,
+      avgScore: 0,
+      atRiskCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    await setDoc(
+      doc(db, 'classrooms', classSectionId),
+      createPayload,
+      { merge: true }
+    );
+  } else {
+    for (const classroomDoc of classroomSnapshot.docs) {
+      const updatePayload = withoutUndefined({
+        name: className,
+        grade: classMetadata.grade,
+        gradeLevel: classMetadata.gradeLevel,
+        classification: classMetadata.classification,
+        strand: classMetadata.strand,
+        section: classMetadata.section,
+        schoolYear: input.schoolYear,
+        ownerTeacherId: input.ownerTeacherId,
+        ownerTeacherName: input.ownerTeacherName || '',
+        adviserTeacherId: input.ownerTeacherId,
+        adviserTeacherName: input.ownerTeacherName || '',
+        managerId: input.managerId,
+        managerName: input.managerName || '',
+        classMetadata,
+        updatedAt: serverTimestamp(),
+      });
+
+      await updateDoc(classroomDoc.ref, updatePayload);
+    }
   }
 
   return classSectionId;
@@ -287,9 +619,53 @@ export async function assignStudentToClassSection(
 
 export async function getClassSectionOwnershipByTeacher(teacherId: string): Promise<ClassSectionOwnershipRecord[]> {
   const ref = collection(db, 'classSectionOwnership');
-  const q = query(ref, where('ownerTeacherId', '==', teacherId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })) as ClassSectionOwnershipRecord[];
+  const byId = new Map<string, ClassSectionOwnershipRecord>();
+
+  const ownerQuery = query(ref, where('ownerTeacherId', '==', teacherId));
+  const ownerSnapshot = await getDocs(ownerQuery);
+  ownerSnapshot.docs.forEach((entry) => {
+    byId.set(entry.id, { id: entry.id, ...entry.data() } as ClassSectionOwnershipRecord);
+  });
+
+  const managerQuery = query(ref, where('managerId', '==', teacherId));
+  const managerSnapshot = await getDocs(managerQuery);
+  managerSnapshot.docs.forEach((entry) => {
+    byId.set(entry.id, { id: entry.id, ...entry.data() } as ClassSectionOwnershipRecord);
+  });
+
+  return Array.from(byId.values()).sort((a, b) => String(a.classSectionId || '').localeCompare(String(b.classSectionId || '')));
+}
+
+export async function getTeacherDirectoryOptions(searchText = '', maxResults = 25): Promise<TeacherDirectoryOption[]> {
+  const usersRef = collection(db, 'users');
+  const cappedLimit = Math.max(1, Math.min(100, maxResults));
+  const teacherQuery = query(usersRef, where('role', '==', 'teacher'), limit(cappedLimit * 4));
+  const snapshot = await getDocs(teacherQuery);
+
+  const normalizedQuery = searchText.trim().toLowerCase();
+  const mapped = snapshot.docs
+    .map((entry) => {
+      const data = entry.data() as Record<string, unknown>;
+      const name = String(data.name || '').trim();
+      const email = String(data.email || '').trim();
+      return {
+        uid: entry.id,
+        name: name || 'Teacher',
+        email,
+        photo: String(data.photo || data.photoURL || '').trim() || undefined,
+      } as TeacherDirectoryOption;
+    })
+    .filter((teacher) => {
+      if (!normalizedQuery) return true;
+      return (
+        teacher.name.toLowerCase().includes(normalizedQuery)
+        || teacher.email.toLowerCase().includes(normalizedQuery)
+      );
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, cappedLimit);
+
+  return mapped;
 }
 
 // ─── Activity Feed ────────────────────────────────────────────

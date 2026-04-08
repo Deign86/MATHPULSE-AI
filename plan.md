@@ -22,6 +22,8 @@ Track discoveries and fixes in teacher-facing UI, with live progress updates aft
 - Validation note: loading spinner seen briefly during reload was transient; dashboard resolves after data load.
 - Discovery 3 (Student Competency): duplicated student rows appear in the competency table, and row expansion can become ambiguous when rows share the same student id.
 - Discovery 4 (Intervention UX): low-risk students still receive a red warning-styled “AI Analysis - Learning Barriers” panel, which overstates urgency.
+- Discovery 3 status: resolved by stable composite student keys, normalized class-section matching, and safer competency expansion identity handling.
+- Discovery 4 status: resolved with risk-sensitive intervention framing and non-urgent visual tone for low-risk students.
 
 ## Changes Log
 - Created `plan.md` and initialized progress workflow.
@@ -29,4 +31,6 @@ Track discoveries and fixes in teacher-facing UI, with live progress updates aft
 - Fixed Discovery 1: AI Insight now renders through `ChatMarkdown` instead of plain text, preventing raw markdown tokens from leaking to UI.
 - Fixed Discovery 2: analytics now uses an `effectiveAnalyticsClass` to keep selected class context and filtered students aligned, plus a fallback placeholder if no classes exist.
 - Revalidated via MCP snapshots and `npm run build` (success).
-- Began second pass based on new screenshots: isolating competency-table dedup/row-key behavior and intervention severity styling.
+- Completed second pass hardening: competency-table dedup/row-key behavior and intervention severity styling.
+- Final hardening: switched teacher analytics/edit-record views to composite student identity keys to prevent row key/state collisions when imported and managed data overlap.
+- Final validation: frontend build and focused backend tests pass with updated changes.

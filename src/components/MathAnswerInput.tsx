@@ -275,6 +275,9 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
       {/* ── Input ─────────────────────────────────────────── */}
       <input
         ref={inputRef}
+        id="math-answer-input"
+        name="math-answer-input"
+        aria-label="Math answer input"
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}

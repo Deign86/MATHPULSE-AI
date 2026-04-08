@@ -11,11 +11,12 @@ import {
   type Query,
   type DocumentData,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { UserRole } from '../types/models';
 import { initializeUserProgress } from './progressService';
 
 const BATCH_SIZE = 400;
+const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
 export interface ResetTestingDataParams {
   uid: string;
@@ -28,6 +29,46 @@ export interface ResetTestingDataResult {
   deletedDocs: number;
   updatedDocs: number;
   summary: string;
+}
+
+async function resetTestingDataViaBackend(params: ResetTestingDataParams): Promise<ResetTestingDataResult> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Authentication is required to reset testing data.');
+  }
+
+  const token = await currentUser.getIdToken();
+  const response = await fetch(`${API_URL}/api/testing/reset-data`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      role: params.role,
+      ...(params.lrn ? { lrn: params.lrn } : {}),
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = typeof payload?.detail === 'string' ? payload.detail : '';
+    throw new Error(detail || `Reset request failed with status ${response.status}.`);
+  }
+
+  const role = typeof payload?.role === 'string' ? payload.role : params.role;
+  const deletedDocs = Number(payload?.deletedDocs ?? 0);
+  const updatedDocs = Number(payload?.updatedDocs ?? 0);
+  const summary = typeof payload?.summary === 'string'
+    ? payload.summary
+    : `${role} reset complete: ${deletedDocs} records deleted, ${updatedDocs} records reset.`;
+
+  return {
+    role: role as UserRole,
+    deletedDocs,
+    updatedDocs,
+    summary,
+  };
 }
 
 async function deleteByQuery(q: Query<DocumentData>): Promise<number> {
@@ -204,6 +245,10 @@ export async function resetTestingDataForRole(
 
   if (!uid) {
     throw new Error('Missing user id for reset.');
+  }
+
+  if (role === 'teacher' || role === 'admin') {
+    return resetTestingDataViaBackend(params);
   }
 
   let result: { deletedDocs: number; updatedDocs: number };

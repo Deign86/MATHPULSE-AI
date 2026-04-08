@@ -1058,6 +1058,13 @@ class TestUploadClassRecordsGuardrails:
         summary = payload.get("interpretationSummary") or {}
         assert summary.get("storageOnlyColumns", 0) >= 1
         assert summary.get("domainMismatchWarnings", 0) >= 1
+        class_metadata = payload.get("classMetadata") or {}
+        assert class_metadata.get("classSectionId")
+        assert class_metadata.get("className")
+        assert class_metadata.get("grade")
+        assert class_metadata.get("section")
+        assert class_metadata.get("gradeLevel")
+        assert class_metadata.get("classification")
 
         patient_column = next(
             (item for item in payload["columnInterpretations"] if item.get("columnName") == "patient_diagnosis"),
@@ -1095,6 +1102,13 @@ class TestUploadClassRecordsGuardrails:
         assert payload["inferredStateCoverage"]["inferredRows"] == 2
         assert payload["inferredStateCoverage"]["coveragePct"] == 100.0
         assert all("inferredState" in row for row in payload["students"])
+        class_metadata = payload.get("classMetadata") or {}
+        assert class_metadata.get("classSectionId")
+        assert class_metadata.get("className")
+        assert class_metadata.get("grade") == "Grade 11"
+        assert class_metadata.get("section") == "Section A"
+        assert class_metadata.get("gradeLevel") == "Grade 11"
+        assert class_metadata.get("classification") == "Senior High School"
 
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_upload_class_records_reports_explicit_row_rejections(self, _mock_chat):
@@ -1220,6 +1234,14 @@ class TestImportedOverviewAndTopicMastery:
         assert risk_levels == {"Low", "Medium", "High"}
         assert all(student.get("inferredState") for student in payload["students"])
         assert all("stateConfidence" in student for student in payload["students"])
+        assert all(student.get("classMetadata") for student in payload["students"])
+        assert all(student.get("classMetadata", {}).get("classSectionId") == "grade11_a" for student in payload["students"])
+        assert all(student.get("classMetadata", {}).get("gradeLevel") for student in payload["students"])
+        assert all(student.get("classMetadata", {}).get("classification") for student in payload["students"])
+        assert all(classroom.get("classMetadata") for classroom in payload["classrooms"])
+        assert all(classroom.get("classMetadata", {}).get("classSectionId") == "grade11_a" for classroom in payload["classrooms"])
+        assert all(classroom.get("classMetadata", {}).get("gradeLevel") for classroom in payload["classrooms"])
+        assert all(classroom.get("classMetadata", {}).get("classification") for classroom in payload["classrooms"])
 
     def test_imported_class_overview_returns_503_when_firestore_adc_missing(self):
         firestore = _FakeFirestoreModule(
@@ -1626,6 +1648,206 @@ class TestRecentCourseMaterials:
         warning_text = " ".join(data.get("warnings", []))
         assert "expired course-material artifact" in warning_text.lower()
         assert "fallback query path" in warning_text.lower()
+
+
+# ─── Student Account Provisioning ───────────────────────────
+
+
+class _ProvisionDocSnapshot:
+    def __init__(self, doc_id: str, data: Dict[str, Any] | None):
+        self.id = doc_id
+        self._data = data
+
+    @property
+    def exists(self) -> bool:
+        return self._data is not None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return dict(self._data or {})
+
+
+class _ProvisionDocumentRef:
+    def __init__(self, store: Dict[str, Dict[str, Dict[str, Any]]], collection_name: str, doc_id: str):
+        self._store = store
+        self._collection_name = collection_name
+        self._doc_id = doc_id
+
+    def get(self):
+        data = self._store.get(self._collection_name, {}).get(self._doc_id)
+        return _ProvisionDocSnapshot(self._doc_id, data)
+
+    def set(self, payload: Dict[str, Any], merge: bool = False):
+        collection = self._store.setdefault(self._collection_name, {})
+        existing = dict(collection.get(self._doc_id, {})) if merge else {}
+        existing.update(payload)
+        collection[self._doc_id] = existing
+
+
+class _ProvisionQuery:
+    def __init__(self, store: Dict[str, Dict[str, Dict[str, Any]]], collection_name: str):
+        self._store = store
+        self._collection_name = collection_name
+        self._filters: List[tuple[str, str, Any]] = []
+        self._limit: int | None = None
+
+    def where(self, field: str, op: str, value: Any):
+        self._filters.append((field, op, value))
+        return self
+
+    def limit(self, value: int):
+        self._limit = value
+        return self
+
+    def stream(self):
+        collection = self._store.get(self._collection_name, {})
+        docs: List[_ProvisionDocSnapshot] = []
+        for doc_id, data in collection.items():
+            include = True
+            for field, op, expected in self._filters:
+                if op != "==":
+                    continue
+                if data.get(field) != expected:
+                    include = False
+                    break
+            if include:
+                docs.append(_ProvisionDocSnapshot(doc_id, data))
+
+        if self._limit is not None:
+            docs = docs[: self._limit]
+        return docs
+
+
+class _ProvisionCollectionRef:
+    def __init__(self, store: Dict[str, Dict[str, Dict[str, Any]]], collection_name: str):
+        self._store = store
+        self._collection_name = collection_name
+
+    def where(self, field: str, op: str, value: Any):
+        return _ProvisionQuery(self._store, self._collection_name).where(field, op, value)
+
+    def document(self, doc_id: str):
+        return _ProvisionDocumentRef(self._store, self._collection_name, doc_id)
+
+    def add(self, payload: Dict[str, Any]):
+        collection = self._store.setdefault(self._collection_name, {})
+        doc_id = f"auto-{len(collection) + 1}"
+        collection[doc_id] = dict(payload)
+        return (None, None)
+
+
+class _ProvisionFirestoreClient:
+    def __init__(self, store: Dict[str, Dict[str, Dict[str, Any]]]):
+        self.store = store
+
+    def collection(self, name: str):
+        return _ProvisionCollectionRef(self.store, name)
+
+
+class _ProvisionFirestoreModule:
+    class Query:
+        DESCENDING = "DESCENDING"
+
+    SERVER_TIMESTAMP = object()
+
+    def __init__(self, seed: Dict[str, Dict[str, Dict[str, Any]]] | None = None):
+        self._client = _ProvisionFirestoreClient(seed or {})
+
+    def client(self):
+        return self._client
+
+
+class TestStudentAccountProvisioningImport:
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_preview_student_account_import_returns_validation_summary(self, _mock_chat):
+        firestore = _ProvisionFirestoreModule(
+            {
+                "users": {
+                    "existing-student": {
+                        "email": "existing@student.com",
+                        "lrn": "1002",
+                        "role": "student",
+                    }
+                }
+            }
+        )
+
+        def _lookup_user(email: str):
+            if email == "existing@student.com":
+                return type("AuthUser", (), {"uid": "auth-existing"})()
+            raise Exception("user not found")
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=_lookup_user):
+            response = client.post(
+                "/api/import/student-accounts/preview",
+                files={
+                    "file": (
+                        "accounts.csv",
+                        (
+                            b"First Name,Last Name,Student ID,Email,Grade,Section\n"
+                            b"Ana,Cruz,1001,ana@student.com,Grade 11,STEM-A\n"
+                            b"Ben,Dela,1002,existing@student.com,Grade 11,STEM-A\n"
+                            b",Lim,1003,cara@student.com,Grade 11,STEM-A\n"
+                        ),
+                        "text/csv",
+                    )
+                },
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload.get("previewToken")
+        assert payload["summary"]["totalRows"] == 3
+        assert payload["summary"]["validRows"] == 1
+        assert payload["summary"]["duplicateRows"] >= 1
+        assert payload["summary"]["invalidRows"] >= 1
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_commit_student_account_import_provisions_profiles(self, _mock_chat):
+        firestore = _ProvisionFirestoreModule({"users": {}, "managedStudents": {}, "classSectionOwnership": {}, "accessAuditLogs": {}})
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")), patch.object(main_module.firebase_auth, "create_user", return_value=type("AuthUser", (), {"uid": "auth-created-1"})()):
+            preview_response = client.post(
+                "/api/import/student-accounts/preview",
+                files={
+                    "file": (
+                        "accounts.csv",
+                        b"First Name,Last Name,Student ID,Email,Grade,Section\nAna,Cruz,1001,ana@student.com,Grade 11,STEM-A\n",
+                        "text/csv",
+                    )
+                },
+            )
+
+            assert preview_response.status_code == 200
+            preview_payload = preview_response.json()
+            assert preview_payload["summary"]["validRows"] == 1
+
+            commit_response = client.post(
+                "/api/import/student-accounts/commit",
+                json={
+                    "previewToken": preview_payload["previewToken"],
+                    "forcePasswordChange": True,
+                    "createAuthUsers": True,
+                },
+            )
+
+        assert commit_response.status_code == 200
+        commit_payload = commit_response.json()
+        assert commit_payload["summary"]["createdRows"] == 1
+        assert commit_payload["summary"]["failedRows"] == 0
+        assert len(commit_payload["rows"]) == 1
+        assert commit_payload["rows"][0]["status"] in {"created", "updated"}
+        assert commit_payload["rows"][0]["uid"]
+
+        users_store = firestore.client().store.get("users", {})
+        assert len(users_store) == 1
+        provisioned_profile = next(iter(users_store.values()))
+        assert provisioned_profile.get("role") == "student"
+        assert provisioned_profile.get("forcePasswordChange") is True
 
 
 # ─── Run ───────────────────────────────────────────────────────
