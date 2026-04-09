@@ -10,7 +10,7 @@ Track discoveries and fixes in teacher-facing UI, with live progress updates aft
 
 ## Work Plan
 - [x] Create this tracking file and define working structure.
-- [x] Re-audit teacher-facing screens on desktop/mobile with Chrome DevTools MCP.
+- [x] Re-audit teacher-facing screens on desktop/mobile with Chrome DevTools.
 - [x] Capture new discoveries with evidence.
 - [x] Implement highest-impact UI/UX fixes.
 - [x] Validate via snapshot + build and summarize final deltas.
@@ -27,10 +27,10 @@ Track discoveries and fixes in teacher-facing UI, with live progress updates aft
 
 ## Changes Log
 - Created `plan.md` and initialized progress workflow.
-- Re-audited teacher dashboard via Chrome DevTools MCP at desktop/mobile breakpoints.
+- Re-audited teacher dashboard via Chrome DevTools at desktop/mobile breakpoints.
 - Fixed Discovery 1: AI Insight now renders through `ChatMarkdown` instead of plain text, preventing raw markdown tokens from leaking to UI.
 - Fixed Discovery 2: analytics now uses an `effectiveAnalyticsClass` to keep selected class context and filtered students aligned, plus a fallback placeholder if no classes exist.
-- Revalidated via MCP snapshots and `npm run build` (success).
+- Revalidated via snapshots and `npm run build` (success).
 - Completed second pass hardening: competency-table dedup/row-key behavior and intervention severity styling.
 - Final hardening: switched teacher analytics/edit-record views to composite student identity keys to prevent row key/state collisions when imported and managed data overlap.
 - Final validation: frontend build and focused backend tests pass with updated changes.
