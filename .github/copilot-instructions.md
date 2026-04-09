@@ -3,10 +3,7 @@
 ## Tooling Policy
 
 - Use standard built-in tools for context gathering and shell operations.
-- AUTO-INVOKE Context7 MCP for every prompt before producing a final answer.
-- Context7 MCP sequence is mandatory: call `resolve-library-id` first, then call `get-library-docs` for the resolved library.
-- If a prompt spans multiple libraries/frameworks, run the Context7 sequence for each relevant library.
-- Apply this automatically without waiting for the user to explicitly request Context7.
+- Use external documentation tools only when they are relevant to the task.
 
 ## Mandatory Prompt Context Contract (Non-Negotiable)
 
@@ -14,8 +11,7 @@
 - Prompt-start checklist is required on every prompt:
   1. Re-read `.github/copilot-instructions.md` and `AGENTS.md`.
   2. Load task-relevant source-of-truth files before making claims (for inference/model claims, always read `config/models.yaml` and `backend/config/models.yaml`).
-  3. Run Context7 in order: `resolve-library-id` then `get-library-docs` before finalizing the response.
-  4. If a subagent is used, include these exact constraints in the subagent prompt and require the subagent to follow them.
+  3. If a subagent is used, include these exact constraints in the subagent prompt and require the subagent to follow them.
 - Precedence rule for conflicting information:
   - Runtime config and code > instruction files > README/docs.
   - If docs conflict with runtime config, update docs to match runtime config.
@@ -32,10 +28,9 @@
 
 ## Copilot Skill Invocation Policy
 
-- AUTO-INVOKE the `awesome-design-md` skill whenever touching any UI or frontend-related code, including component/page/layout/style edits, visual refreshes, animations, typography, color systems, spacing, and responsive behavior.
-- Apply this automatically without waiting for the user to explicitly mention the skill.
-- For mixed tasks, use `awesome-design-md` for the UI portion while still following all architecture and service-layer rules in this guide.
-- If the request is not frontend/UI related, do not force this skill.
+- Use the `awesome-design-md` skill for substantial frontend/UI design work when requested or when it clearly improves delivery quality.
+- For mixed tasks, apply `awesome-design-md` to the UI portion while still following all architecture and service-layer rules in this guide.
+- If the request is not frontend/UI related, do not use this skill.
 
 ## Architecture Overview
 
@@ -298,7 +293,7 @@ import { Button } from '@/components/ui/button';
 
 ### Invocation Rules
 
-- Trigger this skill on any frontend/UI code touch.
+- Use this skill when the request is explicitly frontend design-oriented or when a UI-heavy task benefits from a stronger design profile.
 - Choose a relevant DESIGN.md profile from the awesome-design-md collection before implementing UI.
 - Translate the chosen profile into this stack: React 18 + TypeScript + Tailwind CSS + Radix UI + Motion for React.
 
