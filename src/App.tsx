@@ -12,23 +12,7 @@ import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, Us
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
-
-type DiagnosticTopicKey = 'Functions' | 'BusinessMath' | 'Logic';
-
-const DIAGNOSTIC_TOPIC_LABELS: Record<DiagnosticTopicKey, string> = {
-  Functions: 'Functions and Graphs',
-  BusinessMath: 'Business and Financial Mathematics',
-  Logic: 'Logic and Reasoning',
-};
-
-const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {
-  const normalized = value.trim().toLowerCase();
-
-  if (normalized === 'functions' || normalized.includes('function')) return 'Functions';
-  if (normalized === 'businessmath' || normalized.includes('business')) return 'BusinessMath';
-  if (normalized === 'logic' || normalized.includes('reason')) return 'Logic';
-  return null;
-};
+import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &

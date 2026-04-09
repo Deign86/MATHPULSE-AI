@@ -5,22 +5,7 @@ import { getUserProgress } from '../services/progressService';
 import { subjects, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { UserProgress, type StudentProfile } from '../types/models';
 import ModuleFolderCard from './ModuleFolderCard';
-
-type DiagnosticTopicKey = 'Functions' | 'BusinessMath' | 'Logic';
-
-const TOPIC_TO_MODULE_ID: Record<DiagnosticTopicKey, string> = {
-  Functions: 'gm-1',
-  BusinessMath: 'gm-2',
-  Logic: 'gm-3',
-};
-
-const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === 'functions' || normalized.includes('function')) return 'Functions';
-  if (normalized === 'businessmath' || normalized.includes('business')) return 'BusinessMath';
-  if (normalized === 'logic' || normalized.includes('reason')) return 'Logic';
-  return null;
-};
+import { type DiagnosticTopicKey, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 
 interface LearningPathProps {
   onNavigateToModules?: (moduleId?: string) => void;

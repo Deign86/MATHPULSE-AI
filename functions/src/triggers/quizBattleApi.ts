@@ -3113,6 +3113,8 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     }
   }
 
+  let nonAiSourceDetectedInTransaction = false;
+
   try {
     await db.runTransaction(async (tx) => {
       const matchSnap = await tx.get(matchRef);
@@ -3145,6 +3147,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
       const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
       const questionSetSource = asString(metadata.questionSetSource, "");
       if (questionSetSource !== "ai") {
+        nonAiSourceDetectedInTransaction = true;
         throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
       }
 
@@ -3210,7 +3213,11 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
       tx.update(matchRef, updatePayload);
     });
   } catch (error) {
-    if (error instanceof functions.https.HttpsError && error.code === "unavailable") {
+    if (
+      error instanceof functions.https.HttpsError &&
+      error.code === "unavailable" &&
+      nonAiSourceDetectedInTransaction
+    ) {
       await matchRef.update({
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         "metadata.aiGenerationAttempted": true,
