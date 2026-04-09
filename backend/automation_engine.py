@@ -14,13 +14,9 @@ Each event is routed to a dedicated handler that orchestrates
 classification, quiz generation, notifications and dashboard updates.
 """
 
-import os
-import json
 import math
 import logging
-import traceback
-from typing import List, Optional, Dict, Any, Tuple
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field
 
@@ -287,25 +283,6 @@ class MathPulseAutomationEngine:
         """
         student_id = payload.studentId
         logger.info(f"🆕 NEW STUDENT ENROLLED: {student_id}")
-
-        progress_skeleton = {
-            "userId": student_id,
-            "subjects": {},
-            "lessons": {},
-            "quizAttempts": [],
-            "totalLessonsCompleted": 0,
-            "totalQuizzesCompleted": 0,
-            "averageScore": 0,
-        }
-
-        gamification_init = {
-            "level": 1,
-            "currentXP": 0,
-            "totalXP": 0,
-            "streak": 0,
-            "hasTakenDiagnostic": False,
-            "atRiskSubjects": [],
-        }
 
         notifications: list[str] = [
             f"Welcome {payload.name}! Please complete the diagnostic assessment to personalise your learning path.",
