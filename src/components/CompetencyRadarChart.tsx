@@ -9,7 +9,7 @@ import type { UserProgress } from '../types/models';
 import type { StudentProfile } from '../types/models';
 
 type ModuleInfo = { id: string; name: string; color: string };
-type RadarRow = { metric: string; fullMark: number } & Record<string, number>;
+type RadarRow = { metric: string; fullMark: number; [key: string]: string | number };
 
 export const CompetencyRadarChart: React.FC = () => {
   const { userProfile } = useAuth();
@@ -103,7 +103,10 @@ export const CompetencyRadarChart: React.FC = () => {
 
       validModules.forEach(mod => {
         let total = 0;
-        chartData.forEach(row => { total += row[mod.id] ?? 0; });
+        chartData.forEach(row => {
+          const value = row[mod.id];
+          total += typeof value === 'number' ? value : 0;
+        });
         const avg = total / radarMetrics.length;
         if (avg > highestAvg) {
           highestAvg = avg;
