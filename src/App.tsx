@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal.tsx';
 import AppLoadingScreen from './components/AppLoadingScreen.tsx';
@@ -11,7 +11,24 @@ import { getUserProgress } from './services/progressService.ts';
 import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
-import { Crown, Flame, Zap, Calculator, Menu } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
+
+type DiagnosticTopicKey = 'Functions' | 'BusinessMath' | 'Logic';
+
+const DIAGNOSTIC_TOPIC_LABELS: Record<DiagnosticTopicKey, string> = {
+  Functions: 'Functions and Graphs',
+  BusinessMath: 'Business and Financial Mathematics',
+  Logic: 'Logic and Reasoning',
+};
+
+const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === 'functions' || normalized.includes('function')) return 'Functions';
+  if (normalized === 'businessmath' || normalized.includes('business')) return 'BusinessMath';
+  if (normalized === 'logic' || normalized.includes('reason')) return 'Logic';
+  return null;
+};
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -109,6 +126,9 @@ const App = () => {
   const [diagnosticAssessmentType, setDiagnosticAssessmentType] = useState<'initial_assessment' | 'followup_diagnostic'>('initial_assessment');
   const [hasTakenDiagnostic, setHasTakenDiagnostic] = useState(studentProfile?.hasTakenDiagnostic || false);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
+  const [priorityTopics, setPriorityTopics] = useState<DiagnosticTopicKey[]>(
+    (studentProfile?.priorityTopics || []) as DiagnosticTopicKey[],
+  );
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0.00');
   const [learningPathState, setLearningPathState] = useState<StudentProfile['learningPathState']>(
     studentProfile?.learningPathState || 'unlocked',
@@ -143,6 +163,7 @@ const App = () => {
       setTotalXP(studentProfile.totalXP || 0);
       setStreak(studentProfile.streak || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
+      setPriorityTopics((studentProfile.priorityTopics || []) as DiagnosticTopicKey[]);
       setHasTakenDiagnostic(studentProfile.hasTakenDiagnostic || false);
       setLearningPathState(studentProfile.learningPathState || 'unlocked');
       setIarAssessmentState(studentProfile.iarAssessmentState || 'not_started');
@@ -240,6 +261,30 @@ const App = () => {
 
   const showInitialAssessmentCTA =
     userRole === 'student' && iarAssessmentState === 'skipped_unassessed';
+
+  const normalizedAtRiskTopics = useMemo<DiagnosticTopicKey[]>(() => {
+    const seen = new Set<DiagnosticTopicKey>();
+    const normalized = atRiskSubjects
+      .map((entry) => normalizeDiagnosticTopic(entry))
+      .filter((entry): entry is DiagnosticTopicKey => entry !== null)
+      .filter((entry) => {
+        if (seen.has(entry)) return false;
+        seen.add(entry);
+        return true;
+      });
+
+    return normalized;
+  }, [atRiskSubjects]);
+
+  const prioritizedFocusTopics = useMemo<DiagnosticTopicKey[]>(() => {
+    const primary = priorityTopics.length > 0 ? priorityTopics : normalizedAtRiskTopics;
+    const seen = new Set<DiagnosticTopicKey>();
+    return primary.filter((entry) => {
+      if (seen.has(entry)) return false;
+      seen.add(entry);
+      return true;
+    });
+  }, [priorityTopics, normalizedAtRiskTopics]);
 
   const handleOpenInitialAssessment = () => {
     setDiagnosticAssessmentType('initial_assessment');
@@ -351,7 +396,7 @@ const App = () => {
 
   // Trigger diagnostic on first student login
   useEffect(() => {
-    if (isLoggedIn && userRole === 'student' && !hasTakenDiagnostic) {
+    if (isLoggedIn && userRole === 'student' && profileReady && !hasTakenDiagnostic) {
       // Small delay for better UX
       const timer = setTimeout(() => {
         setDiagnosticAssessmentType('initial_assessment');
@@ -359,13 +404,14 @@ const App = () => {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isLoggedIn, userRole, hasTakenDiagnostic]);
+  }, [isLoggedIn, userRole, profileReady, hasTakenDiagnostic]);
 
   const handleDiagnosticComplete = async (payload: DiagnosticCompletionPayload) => {
     const lrn = (studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid;
 
     if (payload.status === 'skipped') {
       setAtRiskSubjects([]);
+      setPriorityTopics([]);
       setHasTakenDiagnostic(true);
       setLearningPathState('unlocked');
       setIarAssessmentState('skipped_unassessed');
@@ -375,6 +421,7 @@ const App = () => {
           await updateUserProfile(userProfile.uid, {
             hasTakenDiagnostic: true,
             atRiskSubjects: [],
+            priorityTopics: [],
             learningPathState: 'unlocked',
             remediationState: 'not_required',
             iarAssessmentState: 'skipped_unassessed',
@@ -409,7 +456,15 @@ const App = () => {
     // Fresh diagnostic completion should always re-surface supplemental banner once.
     resetSupplementalBannerDismissal();
 
-    setAtRiskSubjects(payload.atRiskSubjectIds || []);
+    const normalizedRiskTopics = (payload.atRiskSubjectIds || [])
+      .map((entry) => normalizeDiagnosticTopic(entry))
+      .filter((entry): entry is DiagnosticTopicKey => entry !== null);
+    const normalizedPriorityTopics = (payload.priorityTopics || [])
+      .map((entry) => normalizeDiagnosticTopic(entry))
+      .filter((entry): entry is DiagnosticTopicKey => entry !== null);
+
+    setAtRiskSubjects(normalizedRiskTopics.length > 0 ? normalizedRiskTopics : (payload.atRiskSubjectIds || []));
+    setPriorityTopics(normalizedPriorityTopics);
     setHasTakenDiagnostic(true);
     setIarAssessmentState('in_progress');
 
@@ -417,6 +472,11 @@ const App = () => {
       try {
         await updateUserProfile(userProfile.uid, {
           hasTakenDiagnostic: true,
+          atRiskSubjects: normalizedRiskTopics,
+          priorityTopics: normalizedPriorityTopics,
+          topicScores: payload.topicScores,
+          iarTopicClassifications: payload.topicClassifications,
+          g12ReadinessIndicators: payload.g12ReadinessIndicators,
           iarAssessmentState: 'in_progress',
           iarQuestionSetVersion: payload.questionSetVersion,
         });
@@ -952,7 +1012,7 @@ const App = () => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 p-3 lg:p-4 ${activeTab === 'AI Chat' ? 'overflow-hidden' : 'overflow-y-auto'}`}
+            className={`flex-1 min-h-0 p-3 lg:p-4 ${activeTab === 'AI Chat' ? 'overflow-hidden' : 'overflow-y-auto pb-24 sm:pb-28'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -978,6 +1038,41 @@ const App = () => {
                           />
                         </Suspense>
 
+                        {dashboardShellDeferredReady && hasTakenDiagnostic && normalizedAtRiskTopics.length > 0 && (
+                          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-400/40 dark:bg-amber-400/10">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="inline-flex items-center gap-2 text-sm font-black text-amber-900 dark:text-amber-200">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  Assessment Focus Review
+                                </p>
+                                <p className="mt-1 text-sm text-amber-900/85 dark:text-amber-100/90">
+                                  Your latest diagnostic flagged these topics for review. Modules are prioritized based on this focus order.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleStudentNavigation('Modules')}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700"
+                              >
+                                Open Modules
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {prioritizedFocusTopics.map((topic, index) => (
+                                <span
+                                  key={topic}
+                                  className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm dark:bg-amber-100/20 dark:text-amber-100"
+                                >
+                                  {index + 1}. {DIAGNOSTIC_TOPIC_LABELS[topic]}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {dashboardShellDeferredReady && shouldShowSupplementalBanner && (
                           <Suspense fallback={dashboardWidgetFallback}>
                             <SupplementalBanner
@@ -995,7 +1090,11 @@ const App = () => {
                         {profileReady && dashboardShellDeferredReady && (
                           <Suspense fallback={dashboardWidgetFallback}>
                             <div className="pb-4">
-                              <LearningPath onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)} atRiskSubjects={atRiskSubjects} />
+                              <LearningPath
+                                onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)}
+                                atRiskSubjects={atRiskSubjects}
+                                priorityTopics={prioritizedFocusTopics}
+                              />
                             </div>
                           </Suspense>
                         )}
@@ -1032,7 +1131,12 @@ const App = () => {
                   </div>
                 ) : activeTab === 'Modules' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <ModulesPage onEarnXP={handleEarnXP} atRiskSubjects={atRiskSubjects} initialModuleId={targetModuleId} />
+                    <ModulesPage
+                      onEarnXP={handleEarnXP}
+                      atRiskSubjects={atRiskSubjects}
+                      priorityTopics={prioritizedFocusTopics}
+                      initialModuleId={targetModuleId}
+                    />
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (
                   <Suspense fallback={tabLoadingFallback}>

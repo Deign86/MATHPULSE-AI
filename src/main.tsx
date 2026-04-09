@@ -69,7 +69,7 @@ createRoot(rootElement).render(
 
 registerBoneyardRegistry();
 
-let safetyTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
+let safetyTimeoutId: number | undefined;
 
 const fadeOutAndRemoveBootShell = () => {
   const bootShell = document.getElementById('boot-shell');
