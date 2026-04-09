@@ -76,7 +76,7 @@ export const createTask = async (
   category: TaskCategory,
 ): Promise<TaskRecord> => {
   const now = new Date();
-  const payload = {
+  const baseFields = {
     userId,
     title: title.trim(),
     description: description.trim(),
@@ -84,21 +84,17 @@ export const createTask = async (
     priority,
     category,
     status: 'todo' as TaskStatus,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   };
 
-  const ref = await addDoc(collection(db, 'tasks'), payload);
+  const ref = await addDoc(collection(db, 'tasks'), {
+    ...baseFields,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 
   return {
     id: ref.id,
-    userId,
-    title: title.trim(),
-    description: description.trim(),
-    dueDate,
-    priority,
-    category,
-    status: 'todo' as TaskStatus,
+    ...baseFields,
     createdAt: now,
     updatedAt: now,
   };

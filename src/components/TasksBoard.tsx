@@ -75,7 +75,7 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
   const addTask = async () => {
     if (newTaskTitle.trim() === '') return;
     
-    const tempId = `_tmp_${Date.now()}`;
+    const tempId = `_tmp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newTask: Task = {
       id: tempId,
       title: newTaskTitle,
@@ -161,7 +161,15 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
     // Persist to Firebase (skip tasks with temporary IDs not yet synced)
     if (!id.startsWith('_tmp_')) {
       try {
-        await updateFirebaseTask(id, { title: editTitle });
+        const updates: Parameters<typeof updateFirebaseTask>[1] = { title: editTitle };
+        // Persist dueDate if the entered date string is parseable
+        if (editDate && editDate !== 'No date') {
+          const parsed = new Date(editDate);
+          if (!isNaN(parsed.getTime())) {
+            updates.dueDate = parsed;
+          }
+        }
+        await updateFirebaseTask(id, updates);
       } catch (err) {
         console.error('Error saving task edit:', err);
       }
