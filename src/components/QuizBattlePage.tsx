@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
+  Check,
   Bot,
   ChevronRight,
   Clock3,
+  Copy,
   Crown,
   History,
   Loader2,
@@ -13,6 +15,8 @@ import {
   Target,
   Trophy,
   Users,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
@@ -93,6 +97,12 @@ const clampNumber = (value: number, min: number, max: number): number => {
   return Math.max(min, Math.min(max, value));
 };
 
+const formatWaitClock = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  return `${mins}:${String(rem).padStart(2, '0')}`;
+};
+
 const toInitials = (name: string): string => {
   const tokens = name
     .trim()
@@ -142,6 +152,12 @@ const QuizBattlePage: React.FC = () => {
   const [queueActive, setQueueActive] = useState(false);
   const [activeRoom, setActiveRoom] = useState<QuizBattlePrivateRoomState | null>(null);
   const [privateRoomCodeInput, setPrivateRoomCodeInput] = useState('');
+  const [copiedRoomCode, setCopiedRoomCode] = useState<string | null>(null);
+  const [queueWaitSeconds, setQueueWaitSeconds] = useState(0);
+  const [battleSoundEnabled, setBattleSoundEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('quiz_battle_sound_enabled') !== '0';
+  });
   const [connectionState, setConnectionState] = useState<'connected' | 'reconnecting' | 'disconnected'>('connected');
   const [historyFilterMode, setHistoryFilterMode] = useState<'all' | QuizBattleMode>('all');
 
@@ -159,6 +175,11 @@ const QuizBattlePage: React.FC = () => {
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
   const [roundLocked, setRoundLocked] = useState(false);
   const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
+  const lifecycleEventRef = useRef<string>('');
+  const countdownSoundRef = useRef<number | null>(null);
+  const autoSubmitRoundRef = useRef<number | null>(null);
+  const autoSubmitRetryAtMsRef = useRef(0);
+  const celebratedMatchIdRef = useRef<string>('');
 
   const gradeScopedSubjects = useMemo(() => {
     const allowedSubjectIds = getActiveSubjectIdsForGrade(studentProfile?.grade);
@@ -172,6 +193,65 @@ const QuizBattlePage: React.FC = () => {
       label: module.title,
     }));
   }, [gradeScopedSubjects, setupConfig.subjectId]);
+
+  const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss') => {
+    if (!battleSoundEnabled || typeof window === 'undefined') return;
+
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    try {
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+
+      const presets: Record<typeof kind, { frequency: number; duration: number; type: OscillatorType; volume: number }> = {
+        tick: { frequency: 740, duration: 0.06, type: 'triangle', volume: 0.035 },
+        lock: { frequency: 520, duration: 0.08, type: 'square', volume: 0.04 },
+        result: { frequency: 660, duration: 0.1, type: 'sine', volume: 0.045 },
+        win: { frequency: 920, duration: 0.18, type: 'triangle', volume: 0.05 },
+        loss: { frequency: 240, duration: 0.16, type: 'sawtooth', volume: 0.045 },
+      };
+
+      const preset = presets[kind];
+      const now = context.currentTime;
+
+      oscillator.type = preset.type;
+      oscillator.frequency.setValueAtTime(preset.frequency, now);
+
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(preset.volume, now + 0.015);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + preset.duration + 0.02);
+
+      window.setTimeout(() => {
+        void context.close();
+      }, Math.ceil((preset.duration + 0.06) * 1000));
+    } catch (error) {
+      console.debug('Battle tone playback skipped:', error);
+    }
+  }, [battleSoundEnabled]);
+
+  const handleCopyRoomCode = useCallback(async (roomCode: string) => {
+    if (!roomCode || typeof window === 'undefined') return;
+
+    try {
+      await window.navigator.clipboard.writeText(roomCode);
+      setCopiedRoomCode(roomCode);
+      window.setTimeout(() => {
+        setCopiedRoomCode((current) => (current === roomCode ? null : current));
+      }, 1600);
+    } catch {
+      setLaunchState({
+        status: 'error',
+        message: 'Unable to copy room code automatically. Please copy it manually.',
+      });
+    }
+  }, []);
 
   const refreshBattleInsights = useCallback(async (): Promise<{
     stats: StudentBattleStats | null;
@@ -349,6 +429,26 @@ const QuizBattlePage: React.FC = () => {
   }, [studentProfile?.uid, syncQuizBattleSession]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('quiz_battle_sound_enabled', battleSoundEnabled ? '1' : '0');
+  }, [battleSoundEnabled]);
+
+  useEffect(() => {
+    if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')))) {
+      setQueueWaitSeconds(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setQueueWaitSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [queueActive, activeRoom?.status, activeRoom?.roomId]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -402,6 +502,10 @@ const QuizBattlePage: React.FC = () => {
           const latest = await getQuizBattleMatchState(activeMatch.matchId);
           if (cancelled) return;
           setActiveMatch(latest);
+          if (latest.status === 'completed') {
+            setQueueActive(false);
+            setActiveRoom(null);
+          }
           setConnectionState('connected');
           return;
         }
@@ -486,6 +590,12 @@ const QuizBattlePage: React.FC = () => {
   const heartbeatTarget = useMemo<
     { scope: QuizBattleHeartbeatScope; resourceId: string } | null
   >(() => {
+    if (import.meta.env.DEV) {
+      return null;
+    }
+
+    const allowRoomHeartbeat = true;
+
     if (activeMatch?.mode === 'online' && (activeMatch.status === 'ready' || activeMatch.status === 'in_progress')) {
       return {
         scope: 'match',
@@ -493,7 +603,7 @@ const QuizBattlePage: React.FC = () => {
       };
     }
 
-    if (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')) {
+    if (allowRoomHeartbeat && activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')) {
       return {
         scope: 'room',
         resourceId: activeRoom.roomId,
@@ -547,8 +657,13 @@ const QuizBattlePage: React.FC = () => {
   useEffect(() => {
     if (!activeMatch || activeMatch.status !== 'in_progress') {
       setRoundLocked(false);
+      autoSubmitRoundRef.current = null;
+      autoSubmitRetryAtMsRef.current = 0;
       return;
     }
+
+    autoSubmitRoundRef.current = null;
+    autoSubmitRetryAtMsRef.current = 0;
 
     const deadlineBasedSeconds = activeMatch.roundDeadlineAtMs
       ? Math.max(0, Math.ceil((activeMatch.roundDeadlineAtMs - Date.now()) / 1000))
@@ -564,6 +679,56 @@ const QuizBattlePage: React.FC = () => {
     activeMatch?.timePerQuestionSec,
   ]);
 
+  useEffect(() => {
+    const lifecycle = activeMatch?.lifecycle;
+    if (!lifecycle?.eventType) return;
+
+    const dedupeKey = `${lifecycle.eventType}:${lifecycle.sequence}`;
+    if (lifecycleEventRef.current === dedupeKey) return;
+    lifecycleEventRef.current = dedupeKey;
+
+    if (lifecycle.eventType === 'answer_locked') {
+      playBattleTone('lock');
+    } else if (lifecycle.eventType === 'round_result') {
+      playBattleTone('result');
+    }
+  }, [activeMatch?.lifecycle?.eventType, activeMatch?.lifecycle?.sequence, playBattleTone]);
+
+  useEffect(() => {
+    if (!activeMatch || activeMatch.status !== 'completed') return;
+    if (celebratedMatchIdRef.current === activeMatch.matchId) return;
+    celebratedMatchIdRef.current = activeMatch.matchId;
+
+    playBattleTone(activeMatch.outcome === 'loss' ? 'loss' : 'win');
+
+    if (activeMatch.outcome === 'win') {
+      void import('canvas-confetti')
+        .then((module) => {
+          module.default({
+            particleCount: 110,
+            spread: 78,
+            origin: { y: 0.62 },
+            ticks: 160,
+          });
+        })
+        .catch(() => {
+          // Non-blocking celebratory effect.
+        });
+    }
+  }, [activeMatch?.matchId, activeMatch?.status, activeMatch?.outcome, playBattleTone]);
+
+  useEffect(() => {
+    if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || answerSubmitting) {
+      countdownSoundRef.current = null;
+      return;
+    }
+
+    if (roundSecondsLeft <= 3 && roundSecondsLeft > 0 && countdownSoundRef.current !== roundSecondsLeft) {
+      countdownSoundRef.current = roundSecondsLeft;
+      playBattleTone('tick');
+    }
+  }, [activeMatch?.status, roundSecondsLeft, roundLocked, answerSubmitting, playBattleTone]);
+
   const submitRoundAnswer = useCallback(
     async (forcedSelection: number | null) => {
       if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked) {
@@ -571,6 +736,24 @@ const QuizBattlePage: React.FC = () => {
       }
 
       setAnswerSubmitting(true);
+      const submissionWatchdog = window.setTimeout(() => {
+        setAnswerSubmitting(false);
+        setLaunchState({
+          status: 'error',
+          message: 'Submission took too long. Syncing latest match state now...',
+        });
+        void getQuizBattleMatchState(activeMatch.matchId)
+          .then((latest) => {
+            setActiveMatch(latest);
+            if (latest.status === 'completed') {
+              setQueueActive(false);
+              setActiveRoom(null);
+            }
+          })
+          .catch(() => {
+            // keep the action retryable for the learner.
+          });
+      }, 12000);
 
       try {
         const elapsedMs = activeMatch.roundDeadlineAtMs
@@ -586,6 +769,9 @@ const QuizBattlePage: React.FC = () => {
           selectedOptionIndex: forcedSelection,
           responseMs: elapsedMs,
         });
+
+        autoSubmitRoundRef.current = null;
+        autoSubmitRetryAtMsRef.current = 0;
 
         setActiveMatch(response.match);
         setLastRoundResult(response.roundResult);
@@ -604,6 +790,8 @@ const QuizBattlePage: React.FC = () => {
         }
 
         if (response.match.status === 'completed') {
+          setQueueActive(false);
+          setActiveRoom(null);
           void refreshBattleInsights();
           setLaunchState({
             status: 'queued',
@@ -614,11 +802,60 @@ const QuizBattlePage: React.FC = () => {
         }
       } catch (error) {
         const known = error as { message?: string };
+        const message = known?.message || 'Unable to submit answer right now. Please try again.';
+        const shouldSyncLatestMatch =
+          forcedSelection === null ||
+          message.includes('Round timer elapsed') ||
+          message.includes('Expected round') ||
+          message.includes('Match is not currently active');
+
+        if (shouldSyncLatestMatch) {
+          try {
+            const latest = await getQuizBattleMatchState(activeMatch.matchId);
+            const advancedRound = latest.currentRound !== activeMatch.currentRound;
+
+            setActiveMatch(latest);
+            setSelectedOptionIndex(null);
+            setRoundLocked(false);
+
+            if (advancedRound || latest.status === 'completed') {
+              autoSubmitRoundRef.current = null;
+              autoSubmitRetryAtMsRef.current = 0;
+            } else if (forcedSelection === null) {
+              autoSubmitRetryAtMsRef.current = Date.now() + 3000;
+            }
+
+            if (latest.status === 'completed') {
+              setQueueActive(false);
+              setActiveRoom(null);
+              void refreshBattleInsights();
+              setLaunchState({
+                status: 'queued',
+                message: 'Match finished. Results synchronized.',
+              });
+              return;
+            }
+
+            setLaunchState({
+              status: 'queued',
+              message: 'Round timed out. Synced to the latest battle state.',
+            });
+            return;
+          } catch {
+            // If syncing fails, surface the original submission message.
+          }
+        }
+
+        if (forcedSelection === null) {
+          autoSubmitRetryAtMsRef.current = Date.now() + 3000;
+        }
+
         setLaunchState({
           status: 'error',
-          message: known?.message || 'Unable to submit answer right now. Please try again.',
+          message,
         });
       } finally {
+        window.clearTimeout(submissionWatchdog);
         setAnswerSubmitting(false);
       }
     },
@@ -638,7 +875,20 @@ const QuizBattlePage: React.FC = () => {
       setRoundSecondsLeft(derivedSecondsLeft);
     }
 
-    if (derivedSecondsLeft <= 0) {
+    const shouldAutoSubmitRound = selectedOptionIndex === null
+      ? derivedSecondsLeft <= 1
+      : derivedSecondsLeft <= 0;
+
+    if (shouldAutoSubmitRound) {
+      if (
+        autoSubmitRoundRef.current === activeMatch.currentRound &&
+        Date.now() < autoSubmitRetryAtMsRef.current
+      ) {
+        return;
+      }
+
+      autoSubmitRoundRef.current = activeMatch.currentRound;
+      autoSubmitRetryAtMsRef.current = Date.now() + 3000;
       void submitRoundAnswer(null);
       return;
     }
@@ -654,10 +904,10 @@ const QuizBattlePage: React.FC = () => {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [activeMatch, answerSubmitting, roundLocked, roundSecondsLeft, submitRoundAnswer]);
+  }, [activeMatch, answerSubmitting, roundLocked, roundSecondsLeft, selectedOptionIndex, submitRoundAnswer]);
 
   const handleRequestRematch = useCallback(async () => {
-    if (!activeMatch) return;
+    if (!activeMatch || activeMatch.mode !== 'bot') return;
 
     setAnswerSubmitting(true);
     setLaunchState({ status: 'validating' });
@@ -718,7 +968,26 @@ const QuizBattlePage: React.FC = () => {
       mode,
       queueType: mode === 'online' ? previous.queueType : 'public_matchmaking',
     }));
+    setQueueWaitSeconds(0);
     setActiveTab('setup');
+  };
+
+  const handleSetupModeChange = (mode: QuizBattleMode) => {
+    setSetupErrors([]);
+    setLaunchState({ status: 'idle' });
+    setQueueActive(false);
+    setActiveRoom(null);
+    setPrivateRoomCodeInput('');
+    setActiveMatch(null);
+    setLastRoundResult(null);
+    setSelectedOptionIndex(null);
+    setRoundLocked(false);
+    setQueueWaitSeconds(0);
+    setSetupConfig((previous) => ({
+      ...previous,
+      mode,
+      queueType: mode === 'online' ? previous.queueType : 'public_matchmaking',
+    }));
   };
 
   const handleLeaveQueue = async () => {
@@ -728,6 +997,7 @@ const QuizBattlePage: React.FC = () => {
       await leaveQuizBattleQueue();
       setQueueActive(false);
       setActiveRoom(null);
+      setQueueWaitSeconds(0);
       setLaunchState({ status: 'queued', message: 'Left matchmaking queue.' });
     } catch (error) {
       const known = error as { message?: string };
@@ -809,6 +1079,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(true);
         setActiveRoom(null);
         setActiveMatch(null);
+        setQueueWaitSeconds(0);
         setLaunchState({ status: 'queued', message: 'Joined matchmaking queue. Waiting for an opponent...' });
         return;
       }
@@ -849,7 +1120,12 @@ const QuizBattlePage: React.FC = () => {
   };
 
   const historyWinRate = statsData?.winRate ?? 0;
-  const privateRoomBusy = Boolean(activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready'));
+  const privateRoomBusy = Boolean(
+    setupConfig.mode === 'online' &&
+    activeRoom &&
+      (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
+      (!activeMatch || activeMatch.status !== 'completed'),
+  );
 
   return (
     <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
@@ -1009,7 +1285,7 @@ const QuizBattlePage: React.FC = () => {
                           <Button
                             type="button"
                             variant={setupConfig.mode === 'online' ? 'default' : 'outline'}
-                            onClick={() => setSetupConfig((previous) => ({ ...previous, mode: 'online' }))}
+                            onClick={() => handleSetupModeChange('online')}
                             className="h-10 rounded-xl"
                           >
                             1v1 Online
@@ -1017,13 +1293,7 @@ const QuizBattlePage: React.FC = () => {
                           <Button
                             type="button"
                             variant={setupConfig.mode === 'bot' ? 'default' : 'outline'}
-                            onClick={() =>
-                              setSetupConfig((previous) => ({
-                                ...previous,
-                                mode: 'bot',
-                                queueType: 'public_matchmaking',
-                              }))
-                            }
+                            onClick={() => handleSetupModeChange('bot')}
                             className="h-10 rounded-xl"
                           >
                             1v1 vs Bot
@@ -1168,7 +1438,7 @@ const QuizBattlePage: React.FC = () => {
                             </div>
 
                             {setupConfig.queueType === 'private_room' && (
-                              <div className="space-y-1.5">
+                              <div className="space-y-2">
                                 <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">
                                   Room Code (optional)
                                 </label>
@@ -1181,28 +1451,69 @@ const QuizBattlePage: React.FC = () => {
                                   className="rounded-xl uppercase tracking-[0.15em]"
                                   maxLength={6}
                                 />
-                                <p className="text-xs text-muted-foreground dark:text-[#9fa9c4]">
-                                  Enter a room code to join, or leave blank to create and share your own code.
-                                </p>
+                                <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[13px] font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                                  Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
+                                </div>
+                                {activeRoom?.roomCode && (
+                                  <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 dark:border-[#2f3547] dark:bg-[#11151d]">
+                                    <p className="text-xs font-semibold text-foreground dark:text-[#e9eefb]">
+                                      Active room: <span className="ml-1 rounded-md bg-black/10 px-2 py-0.5 font-black tracking-[0.14em]">{activeRoom.roomCode}</span>
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-8 rounded-lg px-2"
+                                      onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                                    >
+                                      {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} 
+                                      {copiedRoomCode === activeRoom.roomCode ? 'Copied' : 'Copy'}
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
                         ) : (
+                          <>
+                            <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Adaptive Bot</p>
+                                <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Tune response timing and accuracy to your recent trend.</p>
+                              </div>
+                              <Switch
+                                checked={setupConfig.adaptiveBot}
+                                onCheckedChange={(checked) =>
+                                  setSetupConfig((previous) => ({
+                                    ...previous,
+                                    adaptiveBot: checked,
+                                    botDifficulty: checked ? 'adaptive' : previous.botDifficulty === 'adaptive' ? 'medium' : previous.botDifficulty,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
+                              <div className="flex items-center gap-2">
+                                {battleSoundEnabled ? <Volume2 className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Battle Sounds</p>
+                                  <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Play audio cues for countdowns and results.</p>
+                                </div>
+                              </div>
+                              <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
+                            </label>
+                          </>
+                        )}
+
+                        {setupConfig.mode === 'online' && (
                           <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Adaptive Bot</p>
-                              <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Tune response timing and accuracy to your recent trend.</p>
+                            <div className="flex items-center gap-2">
+                              {battleSoundEnabled ? <Volume2 className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+                              <div>
+                                <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Battle Sounds</p>
+                                <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Play audio cues for countdowns and results.</p>
+                              </div>
                             </div>
-                            <Switch
-                              checked={setupConfig.adaptiveBot}
-                              onCheckedChange={(checked) =>
-                                setSetupConfig((previous) => ({
-                                  ...previous,
-                                  adaptiveBot: checked,
-                                  botDifficulty: checked ? 'adaptive' : previous.botDifficulty === 'adaptive' ? 'medium' : previous.botDifficulty,
-                                }))
-                              }
-                            />
+                            <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
                           </label>
                         )}
                       </CollapsibleContent>
@@ -1210,7 +1521,16 @@ const QuizBattlePage: React.FC = () => {
 
                     <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
                       <div aria-live="polite" className="min-h-[24px] text-sm text-muted-foreground dark:text-[#b6bfd5]">
-                        {launchState.status === 'queued' && launchState.message}
+                        {launchState.status === 'queued' && (
+                          <span>
+                            {launchState.message}
+                            {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
+                              <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-[#8c7dff]/20 dark:text-[#c7c0ff]">
+                                Waiting {formatWaitClock(queueWaitSeconds)}
+                              </span>
+                            )}
+                          </span>
+                        )}
                         {launchState.status === 'error' && (
                           <span className="text-destructive dark:text-rose-300">{launchState.message}</span>
                         )}
@@ -1278,6 +1598,17 @@ const QuizBattlePage: React.FC = () => {
                           <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
                             Share room code {activeRoom.roomCode} with your classmate.
                           </p>
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 rounded-lg"
+                              onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                            >
+                              {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} 
+                              {copiedRoomCode === activeRoom.roomCode ? 'Copied' : 'Copy code'}
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1395,9 +1726,25 @@ const QuizBattlePage: React.FC = () => {
 
                       {activeMatch.status === 'completed' && (
                         <div className="space-y-3">
-                          <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                              Result: {activeMatch.outcome ? activeMatch.outcome.toUpperCase() : 'COMPLETE'}
+                          <div
+                            className={cn(
+                              'rounded-2xl border p-4',
+                              activeMatch.outcome === 'win'
+                                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-400/40 dark:bg-emerald-900/20'
+                                : activeMatch.outcome === 'loss'
+                                  ? 'border-rose-300 bg-rose-50 dark:border-rose-400/40 dark:bg-rose-900/20'
+                                  : 'border-amber-300 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-900/20',
+                            )}
+                          >
+                            <p className="text-lg font-black tracking-wide text-foreground dark:text-[#ecf0fb]">
+                              {activeMatch.outcome === 'win'
+                                ? 'Victory!'
+                                : activeMatch.outcome === 'loss'
+                                  ? 'Match Complete'
+                                  : 'Draw Match'}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
                             </p>
                             <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
                               XP Earned: +{activeMatch.xpEarned || 0}
@@ -1407,19 +1754,25 @@ const QuizBattlePage: React.FC = () => {
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => setActiveTab('setup')}
+                              onClick={() => {
+                                setActiveRoom(null);
+                                setQueueActive(false);
+                                setActiveTab('setup');
+                              }}
                               className="rounded-xl"
                             >
-                              Back to Setup
+                              Start New Match
                             </Button>
-                            <Button
-                              type="button"
-                              onClick={() => void handleRequestRematch()}
-                              disabled={answerSubmitting}
-                              className="rounded-xl"
-                            >
-                              Rematch
-                            </Button>
+                            {activeMatch.mode === 'bot' && (
+                              <Button
+                                type="button"
+                                onClick={() => void handleRequestRematch()}
+                                disabled={answerSubmitting}
+                                className="rounded-xl"
+                              >
+                                Rematch
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}

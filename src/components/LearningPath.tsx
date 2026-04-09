@@ -5,13 +5,19 @@ import { getUserProgress } from '../services/progressService';
 import { subjects, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { UserProgress, type StudentProfile } from '../types/models';
 import ModuleFolderCard from './ModuleFolderCard';
+import { type DiagnosticTopicKey, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 
 interface LearningPathProps {
   onNavigateToModules?: (moduleId?: string) => void;
   atRiskSubjects?: string[];
+  priorityTopics?: DiagnosticTopicKey[];
 }
 
-const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRiskSubjects = [] }) => {
+const LearningPath: React.FC<LearningPathProps> = ({
+  onNavigateToModules,
+  atRiskSubjects = [],
+  priorityTopics = [],
+}) => {
   const { userProfile } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
   
@@ -20,7 +26,37 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
   const gradeScopedSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
   
   const generalMathSubject = gradeScopedSubjects.find((s) => s.id === 'gen-math') ?? gradeScopedSubjects[0];
-  const modulePool = generalMathSubject?.modules ?? [];
+
+  const normalizedRiskTopics = React.useMemo<DiagnosticTopicKey[]>(() => {
+    const primary =
+      priorityTopics.length > 0
+        ? priorityTopics
+        : atRiskSubjects
+            .map((entry) => normalizeDiagnosticTopic(entry))
+            .filter((entry): entry is DiagnosticTopicKey => entry !== null);
+
+    const seen = new Set<DiagnosticTopicKey>();
+    return primary.filter((entry) => {
+      if (seen.has(entry)) return false;
+      seen.add(entry);
+      return true;
+    });
+  }, [priorityTopics, atRiskSubjects]);
+
+  const modulePool = React.useMemo(() => {
+    const base = generalMathSubject?.modules ?? [];
+    if (normalizedRiskTopics.length === 0) return base;
+
+    const ranking = new Map<string, number>(
+      normalizedRiskTopics.map((topic, index) => [TOPIC_TO_MODULE_ID[topic], index]),
+    );
+
+    return [...base].sort((left, right) => {
+      const leftRank = ranking.get(left.id) ?? Number.POSITIVE_INFINITY;
+      const rightRank = ranking.get(right.id) ?? Number.POSITIVE_INFINITY;
+      return leftRank - rightRank;
+    });
+  }, [generalMathSubject?.modules, normalizedRiskTopics]);
 
   useEffect(() => {
     if (!userProfile?.uid) return;
@@ -70,7 +106,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigateToModules, atRisk
             module={module} 
             index={idx}
             onClick={() => onNavigateToModules?.(module.id)} 
-            isAtRisk={atRiskSubjects.includes(generalMathSubject.id)}
+            isAtRisk={normalizedRiskTopics.length > 0}
             badgeLabel={module.status !== 'Not Started' ? module.status : undefined}
           />
         ))}

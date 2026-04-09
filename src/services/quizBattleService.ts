@@ -137,10 +137,30 @@ export interface QuizBattleLiveMatchState {
   xpEarned?: number;
 }
 
+export interface QuizBattleGenerationAudit {
+  success: boolean;
+  matchId: string;
+  status: 'ready' | 'in_progress' | 'completed' | 'cancelled';
+  questionSetSource: string;
+  questionSetId: string;
+  generatedQuestionCount: number;
+  questionFingerprints: string[];
+  aiGenerationAttempted: boolean;
+  aiGenerationAttempts: number;
+  aiGenerationLatencyMs: number;
+  aiGenerationModel: string;
+  generationFailureReason: string;
+  questionSetGeneratedAtMs?: number;
+  isAiSource: boolean;
+  auditSchemaVersion: 'qb-generation-audit-v1';
+}
+
 interface QuizBattleMatchStateCallableResponse {
   success: boolean;
   match: QuizBattleLiveMatchState;
 }
+
+interface QuizBattleGenerationAuditCallableResponse extends QuizBattleGenerationAudit {}
 
 interface QuizBattlePrivateRoomCallableResponse {
   success: boolean;
@@ -167,6 +187,8 @@ export interface QuizBattleSubmitAnswerResponse {
 
 const DEFAULT_CALLABLE_TIMEOUT_MS = 15000;
 const QUIZ_BATTLE_LOCAL_STORE_KEY = 'mathpulse.quizBattle.local';
+const QUIZ_BATTLE_STRICT_GENERATION_AUDIT =
+  String(import.meta.env.VITE_QUIZ_BATTLE_STRICT_GENERATION_AUDIT || '').toLowerCase() === 'true';
 
 type LocalQuizBattleStore = {
   stats: StudentBattleStats;
@@ -544,6 +566,9 @@ const mapCallableErrorMessage = (operation: string, error: unknown): string => {
     normalizedCode === 'not-found' ||
     normalizedCode === 'deadline-exceeded'
   ) {
+    if (/question generation temporarily unavailable/i.test(messageValue)) {
+      return messageValue;
+    }
     return 'Quiz Battle service is temporarily unavailable. Please retry in a moment.';
   }
 
@@ -1022,6 +1047,23 @@ export const createQuizBattleBotMatch = async (
   }
 };
 
+export const getQuizBattleGenerationAudit = async (
+  matchId: string,
+): Promise<QuizBattleGenerationAudit> => {
+  const callable = httpsCallable<{ matchId: string }, QuizBattleGenerationAuditCallableResponse>(
+    cloudFunctions,
+    'quizBattleGetGenerationAudit',
+  );
+
+  const result = await invokeWithTimeout(
+    'verifying Quiz Battle generation metadata',
+    callable({ matchId }),
+    20000,
+  );
+
+  return result.data;
+};
+
 export const startQuizBattleMatch = async (
   matchId: string,
 ): Promise<QuizBattleLiveMatchState> => {
@@ -1036,7 +1078,29 @@ export const startQuizBattleMatch = async (
       callable({ matchId }),
       20000,
     );
-    return result.data.match;
+    const match = result.data.match;
+
+    try {
+      const audit = await getQuizBattleGenerationAudit(matchId);
+      console.info('[QUIZ_BATTLE_GENERATION_AUDIT]', audit);
+
+      if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT && !audit.isAiSource) {
+        throw new Error(
+          `Quiz Battle generation audit failed: expected AI source, got "${audit.questionSetSource || 'unknown'}".`,
+        );
+      }
+    } catch (auditError) {
+      if (auditError instanceof Error && auditError.message.startsWith('Quiz Battle generation audit failed')) {
+        throw auditError;
+      }
+
+      console.warn('Quiz Battle generation audit unavailable:', auditError);
+      if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT) {
+        throw new Error('Unable to verify Quiz Battle generation metadata. Please retry in a moment.');
+      }
+    }
+
+    return match;
   } catch (error) {
     throw new Error(mapCallableErrorMessage('starting Quiz Battle match', error));
   }

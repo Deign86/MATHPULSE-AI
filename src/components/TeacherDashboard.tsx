@@ -2627,7 +2627,7 @@ const InterventionView: React.FC<{
                   <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
-                    {' -€¢ '}Imported topic count: {lessonPlan.importedTopicCount}
+                    {' | '}Imported topic count: {lessonPlan.importedTopicCount}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
@@ -2644,7 +2644,7 @@ const InterventionView: React.FC<{
                       {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} -€¢ Review: {lessonPlan.sourceLegitimacy.reviewMaterials} -€¢ Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
+                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} | Review: {lessonPlan.sourceLegitimacy.reviewMaterials} | Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
                     </p>
                     {lessonPlan.sourceLegitimacy.issues.length > 0 && (
                       <p className="text-xs text-amber-700 mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
@@ -2702,12 +2702,12 @@ const InterventionView: React.FC<{
                   {filteredLessonBlocks.map((block) => (
                     <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
                       <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins -€¢ {block.strategy}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins | {block.strategy}</p>
                       <p className="text-sm text-foreground mt-2">{block.objective}</p>
                       <div className="mt-3">
                         <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
                         {block.activities.slice(0, 2).map((activity, idx) => (
-                          <p key={idx} className="text-xs text-muted-foreground">-€¢ {activity}</p>
+                          <p key={idx} className="text-xs text-muted-foreground">- {activity}</p>
                         ))}
                       </div>
                       {block.provenance && (
@@ -3226,23 +3226,23 @@ const ImportView: React.FC<{
           <h3 className="text-lg font-display font-bold text-sky-800 mb-3">How AI Uses Your Data</h3>
           <div className="space-y-2 text-sky-900/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-sky-600 font-bold">-</span>
               <span><strong className="text-sky-800">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-sky-600 font-bold">-</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-sky-600 font-bold">-</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-sky-600 font-bold">-</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-sky-600 font-bold">-</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -3296,8 +3296,8 @@ const ImportView: React.FC<{
                     <p className="text-sm font-semibold text-foreground">{column.columnName}</p>
                     <p className="text-xs text-muted-foreground">
                       mapped: {column.mappedField || 'none'}
-                      {' -€¢ '}usage: {column.usagePolicy}
-                      {' -€¢ '}confidence: {column.confidenceBand}
+                      {' | '}usage: {column.usagePolicy}
+                      {' | '}confidence: {column.confidenceBand}
                     </p>
                     {column.domainSignals && column.domainSignals.length > 0 && (
                       <p className="text-xs text-amber-700 mt-1">domain signals: {column.domainSignals.join(', ')}</p>

@@ -1,3 +1,5 @@
+import axios from "axios";
+import { createHash } from "crypto";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 
@@ -112,6 +114,24 @@ interface QuizBattleMatchStateResponse {
   xpEarned?: number;
 }
 
+interface QuizBattleGenerationAuditResponse {
+  success: boolean;
+  matchId: string;
+  status: MatchStatus;
+  questionSetSource: string;
+  questionSetId: string;
+  generatedQuestionCount: number;
+  questionFingerprints: string[];
+  aiGenerationAttempted: boolean;
+  aiGenerationAttempts: number;
+  aiGenerationLatencyMs: number;
+  aiGenerationModel: string;
+  generationFailureReason: string;
+  questionSetGeneratedAtMs?: number;
+  isAiSource: boolean;
+  auditSchemaVersion: "qb-generation-audit-v1";
+}
+
 interface PrivateRoomStateResponse {
   roomId: string;
   roomCode: string;
@@ -156,6 +176,51 @@ interface NormalizedBattleSetup {
   queueType: "public_matchmaking" | "private_room";
   botDifficulty: "easy" | "medium" | "hard" | "adaptive";
   adaptiveBot: boolean;
+}
+
+interface BattleQuestionCandidate {
+  questionId: string;
+  prompt: string;
+  choices: string[];
+  correctOptionIndex: number;
+}
+
+interface QuestionSetBundle {
+  questions: BattleQuestionPublic[];
+  answerKeys: number[];
+  source: "ai" | "bank";
+}
+
+type QuizBattleGenerationFailureReason =
+  | "missing_ai_token"
+  | "non_qwen_model_override"
+  | "ai_timeout"
+  | "ai_upstream_error"
+  | "ai_payload_invalid"
+  | "ai_insufficient_unique_questions"
+  | "ai_generation_in_progress"
+  | "ai_non_ai_source_blocked"
+  | "ai_unknown_error";
+
+interface GeneratedAiQuestionSet {
+  questions: BattleQuestionPublic[];
+  answerKeys: number[];
+  questionSetId: string;
+  questionFingerprints: string[];
+  attempts: number;
+  latencyMs: number;
+  model: string;
+}
+
+class QuizBattleGenerationError extends Error {
+  readonly reason: QuizBattleGenerationFailureReason;
+  readonly retriable: boolean;
+
+  constructor(reason: QuizBattleGenerationFailureReason, message: string, retriable: boolean) {
+    super(message);
+    this.reason = reason;
+    this.retriable = retriable;
+  }
 }
 
 const BOT_PROFILES: Record<
@@ -354,6 +419,729 @@ const asTimestampMillis = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const SUBJECT_LABELS: Record<string, string> = {
+  "gen-math": "General Mathematics",
+  "stats-prob": "Statistics and Probability",
+  "pre-calc": "Pre-Calculus",
+  "basic-calc": "Basic Calculus",
+};
+
+const QUIZ_BATTLE_AI_CHAT_URL =
+  process.env.QUIZ_BATTLE_AI_CHAT_URL ||
+  process.env.INFERENCE_HF_CHAT_URL ||
+  "https://router.huggingface.co/v1/chat/completions";
+
+const QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE =
+  "Question generation temporarily unavailable. Please retry in a moment.";
+const DEFAULT_QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
+const QUIZ_BATTLE_AI_BACKOFF_BASE_MS = 300;
+const QUIZ_BATTLE_AI_BACKOFF_MAX_MS = 3200;
+const QUIZ_BATTLE_AI_BACKOFF_JITTER_MS = 250;
+const QUIZ_BATTLE_AI_GENERATION_LOCK_TTL_MS = 45000;
+
+const quizBattleAiTimeoutRaw = Number(process.env.QUIZ_BATTLE_AI_TIMEOUT_MS || "25000");
+const QUIZ_BATTLE_AI_TIMEOUT_MS = Number.isFinite(quizBattleAiTimeoutRaw)
+  ? Math.max(8000, Math.min(120000, Math.floor(quizBattleAiTimeoutRaw)))
+  : 25000;
+
+const quizBattleAiRetriesRaw = Number(process.env.QUIZ_BATTLE_AI_MAX_RETRIES || "2");
+const QUIZ_BATTLE_AI_MAX_RETRIES = Number.isFinite(quizBattleAiRetriesRaw)
+  ? Math.max(1, Math.min(4, Math.floor(quizBattleAiRetriesRaw)))
+  : 2;
+
+const resolveQuizBattleAiToken = (): string => {
+  return asString(
+    process.env.QUIZ_BATTLE_AI_TOKEN ||
+    process.env.HF_TOKEN ||
+    process.env.HUGGING_FACE_API_TOKEN ||
+    process.env.HUGGINGFACE_API_TOKEN ||
+    "",
+  );
+};
+
+const normalizeModelBaseId = (modelId: string): string => {
+  return asString(modelId).split(":")[0].trim();
+};
+
+const isQwenFamilyModel = (modelId: string): boolean => {
+  return /^qwen\//i.test(normalizeModelBaseId(modelId));
+};
+
+const resolveQuizBattleAiModel = (): string => {
+  const explicitOverride = asString(process.env.QUIZ_BATTLE_AI_MODEL, "");
+  if (explicitOverride) {
+    if (!isQwenFamilyModel(explicitOverride)) {
+      throw new QuizBattleGenerationError(
+        "non_qwen_model_override",
+        `QUIZ_BATTLE_AI_MODEL must be a Qwen-family model for Quiz Battle. Received '${explicitOverride}'.`,
+        false,
+      );
+    }
+    return explicitOverride;
+  }
+
+  return DEFAULT_QUIZ_BATTLE_AI_MODEL;
+};
+
+const resolveQuizBattleAiModelName = (): string => {
+  const resolved = resolveQuizBattleAiModel();
+  return resolved.includes(":") ? resolved : `${resolved}:fastest`;
+};
+
+const waitForMs = async (durationMs: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, Math.max(0, Math.floor(durationMs))));
+};
+
+const computeRetryDelayMs = (
+  attempt: number,
+  randomInt: (min: number, max: number) => number = randomInRange,
+): number => {
+  const exponent = Math.max(0, attempt - 1);
+  const baseDelayMs = Math.min(
+    QUIZ_BATTLE_AI_BACKOFF_MAX_MS,
+    QUIZ_BATTLE_AI_BACKOFF_BASE_MS * (2 ** exponent),
+  );
+  const jitterMs = randomInt(0, QUIZ_BATTLE_AI_BACKOFF_JITTER_MS);
+  return baseDelayMs + jitterMs;
+};
+
+const normalizeTopicLabel = (topicId: string): string => {
+  const normalized = asString(topicId, "topic").replace(/[-_]+/g, " ").trim();
+  if (!normalized) return "topic";
+  return normalized.replace(/\b\w/g, (token) => token.toUpperCase());
+};
+
+const areChoiceArraysEqual = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) return false;
+  return left.every((entry, index) => entry === right[index]);
+};
+
+const shuffleDecoratedChoices = (
+  decoratedChoices: Array<{ choice: string; isCorrect: boolean }>,
+  randomInt: (min: number, max: number) => number,
+): Array<{ choice: string; isCorrect: boolean }> => {
+  const clone = decoratedChoices.map((entry) => ({ ...entry }));
+  for (let idx = clone.length - 1; idx > 0; idx -= 1) {
+    const swapIndex = randomInt(0, idx);
+    const tmp = clone[idx];
+    clone[idx] = clone[swapIndex];
+    clone[swapIndex] = tmp;
+  }
+  return clone;
+};
+
+const shuffleChoicesPreservingCorrect = (
+  choices: string[],
+  correctOptionIndex: number,
+  randomInt: (min: number, max: number) => number = randomInRange,
+): { choices: string[]; correctOptionIndex: number } => {
+  const decorated = choices.map((choice, index) => ({
+    choice,
+    isCorrect: index === correctOptionIndex,
+  }));
+
+  const originalChoices = [...choices];
+  const choicesAreDistinct = new Set(choices.map((entry) => entry.trim().toLowerCase())).size === choices.length;
+  const maxReshuffleAttempts = 4;
+
+  let shuffledDecorated = shuffleDecoratedChoices(decorated, randomInt);
+  let reshuffleAttempts = 0;
+
+  while (
+    choicesAreDistinct &&
+    areChoiceArraysEqual(shuffledDecorated.map((entry) => entry.choice), originalChoices) &&
+    reshuffleAttempts < maxReshuffleAttempts
+  ) {
+    shuffledDecorated = shuffleDecoratedChoices(decorated, randomInt);
+    reshuffleAttempts += 1;
+  }
+
+  let shuffledChoices = shuffledDecorated.map((entry) => entry.choice);
+  let shuffledCorrectIndex = shuffledDecorated.findIndex((entry) => entry.isCorrect);
+
+  if (choicesAreDistinct && areChoiceArraysEqual(shuffledChoices, originalChoices) && shuffledChoices.length > 1) {
+    const forcedChoices = [...shuffledChoices];
+    const tmp = forcedChoices[0];
+    forcedChoices[0] = forcedChoices[1];
+    forcedChoices[1] = tmp;
+    shuffledChoices = forcedChoices;
+
+    const correctChoice = choices[correctOptionIndex];
+    const forcedCorrectIndex = forcedChoices.findIndex((entry) => entry === correctChoice);
+    shuffledCorrectIndex = forcedCorrectIndex >= 0 ? forcedCorrectIndex : 0;
+  }
+
+  return {
+    choices: shuffledChoices,
+    correctOptionIndex: shuffledCorrectIndex >= 0 ? shuffledCorrectIndex : 0,
+  };
+};
+
+const materializeQuestionSet = (
+  candidates: BattleQuestionCandidate[],
+  randomInt: (min: number, max: number) => number = randomInRange,
+): { questions: BattleQuestionPublic[]; answerKeys: number[] } => {
+  const answerKeys: number[] = [];
+  const questions = candidates.map((candidate, index) => {
+    const shuffled = shuffleChoicesPreservingCorrect(candidate.choices, candidate.correctOptionIndex, randomInt);
+    answerKeys.push(shuffled.correctOptionIndex);
+    return {
+      roundNumber: index + 1,
+      questionId: candidate.questionId,
+      prompt: candidate.prompt,
+      choices: shuffled.choices,
+    };
+  });
+
+  return {
+    questions,
+    answerKeys,
+  };
+};
+
+const extractMessageContentText = (content: unknown): string => {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    const joined = content
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return entry;
+        }
+
+        if (!isRecord(entry)) {
+          return "";
+        }
+
+        return asString(entry.text, "") || asString(entry.content, "") || asString(entry.value, "");
+      })
+      .filter((entry) => entry.length > 0)
+      .join("\n")
+      .trim();
+
+    return joined;
+  }
+
+  if (isRecord(content)) {
+    return asString(content.text, "") || asString(content.content, "") || asString(content.value, "");
+  }
+
+  return "";
+};
+
+const extractChatCompletionText = (raw: unknown): string => {
+  if (!isRecord(raw)) return "";
+
+  const choicesRaw = raw.choices;
+  if (Array.isArray(choicesRaw) && choicesRaw.length > 0) {
+    for (const choice of choicesRaw) {
+      if (!isRecord(choice)) {
+        continue;
+      }
+
+      const message = choice.message;
+      if (isRecord(message)) {
+        const content = extractMessageContentText(message.content);
+        if (content) {
+          return content;
+        }
+
+        const parsed = extractMessageContentText(message.parsed);
+        if (parsed) {
+          return parsed;
+        }
+      }
+
+      const delta = choice.delta;
+      if (isRecord(delta)) {
+        const deltaContent = extractMessageContentText(delta.content);
+        if (deltaContent) {
+          return deltaContent;
+        }
+      }
+
+      const text = asString(choice.text, "");
+      if (text) {
+        return text;
+      }
+    }
+  }
+
+  const outputText = asString(raw.output_text, "");
+  if (outputText) {
+    return outputText;
+  }
+
+  const generatedText = asString(raw.generated_text, "");
+  if (generatedText) {
+    return generatedText;
+  }
+
+  const message = raw.message;
+  if (isRecord(message)) {
+    const content = extractMessageContentText(message.content);
+    if (content) {
+      return content;
+    }
+  }
+
+  return "";
+};
+
+const extractJsonPayloadCandidate = (rawText: string): string | null => {
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch && fencedMatch[1]) {
+    return fencedMatch[1].trim();
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  const firstBracket = trimmed.indexOf("[");
+  const lastBracket = trimmed.lastIndexOf("]");
+  if (firstBracket >= 0 && lastBracket > firstBracket) {
+    return trimmed.slice(firstBracket, lastBracket + 1).trim();
+  }
+
+  return trimmed.startsWith("{") || trimmed.startsWith("[") ? trimmed : null;
+};
+
+const parseJsonValue = (rawText: string): unknown => {
+  const candidate = extractJsonPayloadCandidate(rawText);
+  if (!candidate) return null;
+
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+};
+
+const extractQuestionsArrayFromPayload = (payload: unknown): unknown[] | null => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  if (Array.isArray(payload.questions)) {
+    return payload.questions;
+  }
+
+  if (Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  if (isRecord(payload.data) && Array.isArray(payload.data.questions)) {
+    return payload.data.questions;
+  }
+
+  if (isRecord(payload.quiz) && Array.isArray(payload.quiz.questions)) {
+    return payload.quiz.questions;
+  }
+
+  if (isRecord(payload.result) && Array.isArray(payload.result.questions)) {
+    return payload.result.questions;
+  }
+
+  return null;
+};
+
+const normalizeQuestionPromptKey = (prompt: string): string => {
+  return prompt.replace(/\s+/g, " ").trim().toLowerCase();
+};
+
+const normalizeQuestionIdKey = (questionId: string): string => {
+  return questionId.replace(/\s+/g, " ").trim().toLowerCase();
+};
+
+const computeQuestionFingerprint = (question: BattleQuestionPublic): string => {
+  const promptKey = normalizeQuestionPromptKey(question.prompt);
+  const choicesKey = question.choices.map((entry) => entry.trim().toLowerCase()).join("|");
+  const raw = `${normalizeQuestionIdKey(question.questionId)}::${promptKey}::${choicesKey}`;
+  return createHash("sha256").update(raw).digest("hex").slice(0, 24);
+};
+
+const buildGeneratedQuestionSetId = (questionFingerprints: string[]): string => {
+  const digest = createHash("sha256").update(questionFingerprints.join("|")).digest("hex").slice(0, 14);
+  return `qb-ai-${Date.now()}-${digest}`;
+};
+
+const normalizeAiQuestionCandidate = (
+  rawQuestion: unknown,
+  index: number,
+  setup: NormalizedBattleSetup,
+): BattleQuestionCandidate | null => {
+  if (!isRecord(rawQuestion)) return null;
+
+  const prompt = asString(rawQuestion.prompt, "") || asString(rawQuestion.question, "") || asString(rawQuestion.stem, "");
+  const normalizedPrompt = prompt.replace(/\s+/g, " ").trim();
+  if (normalizedPrompt.length < 8) {
+    return null;
+  }
+
+  const rawChoicesFromArray = Array.isArray(rawQuestion.choices)
+    ? rawQuestion.choices.map((choice) => asString(choice, "")).filter((choice) => choice.length > 0)
+    : [];
+
+  const rawChoicesFromMap = isRecord(rawQuestion.options)
+    ? Object.values(rawQuestion.options).map((choice) => asString(choice, "")).filter((choice) => choice.length > 0)
+    : [];
+
+  const rawChoices = rawChoicesFromArray.length >= 4 ? rawChoicesFromArray : rawChoicesFromMap;
+
+  if (rawChoices.length < 4) {
+    return null;
+  }
+
+  const dedupedChoices: string[] = [];
+  const seenChoices = new Set<string>();
+  rawChoices.forEach((choice) => {
+    const key = choice.toLowerCase();
+    if (!seenChoices.has(key)) {
+      seenChoices.add(key);
+      dedupedChoices.push(choice);
+    }
+  });
+
+  let choices = dedupedChoices.slice(0, 4);
+  if (choices.length < 4) {
+    // Preserve minimally valid multiple choice format even when AI repeats distractors.
+    choices = rawChoices.slice(0, 4);
+  }
+
+  let correctOptionIndex = Math.floor(asNumber(rawQuestion.correctOptionIndex, -1));
+  if (correctOptionIndex < 0 || correctOptionIndex >= choices.length) {
+    const correctAnswerText =
+      asString(rawQuestion.correctAnswer, "") ||
+      asString(rawQuestion.answer, "") ||
+      asString(rawQuestion.correctChoice, "");
+
+    if (correctAnswerText) {
+      const trimmedAnswer = correctAnswerText.trim();
+      if (/^[A-D]$/i.test(trimmedAnswer)) {
+        correctOptionIndex = trimmedAnswer.toUpperCase().charCodeAt(0) - "A".charCodeAt(0);
+      }
+
+      const matchIndex = choices.findIndex((choice) => choice.toLowerCase() === trimmedAnswer.toLowerCase());
+      if (matchIndex >= 0) {
+        correctOptionIndex = matchIndex;
+      }
+    }
+  }
+
+  if (correctOptionIndex < 0 || correctOptionIndex >= choices.length) {
+    return null;
+  }
+
+  const explicitQuestionId = asString(rawQuestion.questionId, "") || asString(rawQuestion.id, "");
+  const generatedQuestionId = explicitQuestionId || `qb-ai-${setup.subjectId}-${setup.topicId}-${index + 1}`;
+  const normalizedQuestionId = generatedQuestionId.replace(/\s+/g, "-").slice(0, 120);
+
+  return {
+    questionId: normalizedQuestionId,
+    prompt: normalizedPrompt.slice(0, 260),
+    choices,
+    correctOptionIndex,
+  };
+};
+
+const dedupeAiQuestionCandidates = (
+  candidates: BattleQuestionCandidate[],
+  requiredRounds: number,
+): BattleQuestionCandidate[] => {
+  const seenPromptKeys = new Set<string>();
+  const seenQuestionIdKeys = new Set<string>();
+  const deduped: BattleQuestionCandidate[] = [];
+
+  candidates.forEach((candidate) => {
+    const promptKey = normalizeQuestionPromptKey(candidate.prompt);
+    const questionIdKey = normalizeQuestionIdKey(candidate.questionId);
+
+    if (!promptKey || !questionIdKey) {
+      return;
+    }
+
+    if (seenPromptKeys.has(promptKey) || seenQuestionIdKeys.has(questionIdKey)) {
+      return;
+    }
+
+    seenPromptKeys.add(promptKey);
+    seenQuestionIdKeys.add(questionIdKey);
+    deduped.push(candidate);
+  });
+
+  if (deduped.length < requiredRounds) {
+    throw new QuizBattleGenerationError(
+      "ai_insufficient_unique_questions",
+      `AI returned insufficient unique questions (${deduped.length}/${requiredRounds}).`,
+      true,
+    );
+  }
+
+  return deduped.slice(0, requiredRounds);
+};
+
+const classifyGenerationError = (error: unknown): QuizBattleGenerationError => {
+  if (error instanceof QuizBattleGenerationError) {
+    return error;
+  }
+
+  if (axios.isAxiosError(error)) {
+    const statusCode = error.response?.status ?? 0;
+    const errorMessage = error.message || "AI request failed.";
+
+    if (error.code === "ECONNABORTED" || /timeout/i.test(errorMessage)) {
+      return new QuizBattleGenerationError("ai_timeout", errorMessage, true);
+    }
+
+    if (statusCode === 408 || statusCode === 429 || statusCode >= 500) {
+      return new QuizBattleGenerationError(
+        "ai_upstream_error",
+        `AI upstream error (${statusCode || "unknown"}). ${errorMessage}`,
+        true,
+      );
+    }
+
+    if (statusCode >= 400) {
+      return new QuizBattleGenerationError(
+        "ai_upstream_error",
+        `AI request rejected (${statusCode}). ${errorMessage}`,
+        false,
+      );
+    }
+  }
+
+  const fallbackMessage = error instanceof Error ? error.message : String(error);
+  return new QuizBattleGenerationError(
+    "ai_unknown_error",
+    fallbackMessage || "Unknown Quiz Battle AI generation failure.",
+    true,
+  );
+};
+
+type InvokeAiGenerationRequest = (
+  requestPayload: Record<string, unknown>,
+  timeoutMs: number,
+  requestHeaders: Record<string, string>,
+) => Promise<unknown>;
+
+interface GenerateAiQuestionSetOptions {
+  invokeRequest?: InvokeAiGenerationRequest;
+  sleepMs?: (durationMs: number) => Promise<void>;
+  randomInt?: (min: number, max: number) => number;
+  now?: () => number;
+}
+
+const invokeQuizBattleAiRequest: InvokeAiGenerationRequest = async (
+  requestPayload,
+  timeoutMs,
+  requestHeaders,
+): Promise<unknown> => {
+  const response = await axios.post(QUIZ_BATTLE_AI_CHAT_URL, requestPayload, {
+    timeout: timeoutMs,
+    headers: requestHeaders,
+  });
+  return response.data;
+};
+
+const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCount: number): string => {
+  const requestedDifficulty = setup.mode === "bot" ? setup.botDifficulty : setup.difficulty;
+  const subjectLabel = SUBJECT_LABELS[setup.subjectId] || "Mathematics";
+  const topicLabel = normalizeTopicLabel(setup.topicId);
+
+  return [
+    `Generate ${requestedQuestionCount} Grade 11-12 multiple-choice battle quiz questions.`,
+    `Subject: ${subjectLabel}`,
+    `Topic: ${topicLabel}`,
+    `Difficulty: ${requestedDifficulty === "adaptive" ? "mixed medium and hard" : requestedDifficulty}`,
+    "Each question must have exactly 4 choices and exactly 1 correct choice.",
+    "Correct answers must not follow a fixed index pattern.",
+    `Return at least ${setup.rounds} valid questions in the questions array.`,
+    "Return ONLY valid JSON in this exact shape:",
+    '{"questions":[{"prompt":"...","choices":["...","...","...","..."],"correctOptionIndex":0}]}',
+    "No markdown fences. No explanations. JSON only.",
+    "Do not include <think> tags, reasoning traces, or text outside the JSON object.",
+  ].join("\n");
+};
+
+const generateAiQuestionSet = async (
+  setup: NormalizedBattleSetup,
+  options: GenerateAiQuestionSetOptions = {},
+): Promise<GeneratedAiQuestionSet> => {
+  const quizBattleToken = resolveQuizBattleAiToken();
+  if (!quizBattleToken) {
+    throw new QuizBattleGenerationError(
+      "missing_ai_token",
+      "Missing QUIZ_BATTLE_AI_TOKEN/HF_TOKEN for quiz battle AI generation.",
+      false,
+    );
+  }
+
+  const modelName = resolveQuizBattleAiModelName();
+  const invokeRequest = options.invokeRequest || invokeQuizBattleAiRequest;
+  const sleepMs = options.sleepMs || waitForMs;
+  const randomInt = options.randomInt || randomInRange;
+  const now = options.now || (() => Date.now());
+
+  const requestedQuestionCount = Math.max(setup.rounds + 3, setup.rounds * 2);
+
+  const messages = [
+    {
+      role: "system",
+      content: "You generate strict JSON for Grade 11-12 multiple-choice math battle questions.",
+    },
+    {
+      role: "user",
+      content: buildAiQuestionPrompt(setup, requestedQuestionCount),
+    },
+  ];
+
+  const generationStartedAtMs = now();
+  let lastError = new QuizBattleGenerationError(
+    "ai_unknown_error",
+    "Unknown Quiz Battle AI generation failure.",
+    true,
+  );
+
+  for (let attempt = 1; attempt <= QUIZ_BATTLE_AI_MAX_RETRIES; attempt += 1) {
+    const attemptStartedAtMs = now();
+    functions.logger.info("[QUIZ_BATTLE] AI generation attempt started", {
+      attempt,
+      maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
+      model: modelName,
+      subjectId: setup.subjectId,
+      topicId: setup.topicId,
+      rounds: setup.rounds,
+    });
+
+    try {
+      const responseData = await invokeRequest(
+        {
+          model: modelName,
+          messages,
+          stream: false,
+          max_tokens: Math.max(1000, requestedQuestionCount * 180),
+          temperature: 0.2,
+          top_p: 0.9,
+          response_format: {
+            type: "json_object",
+          },
+        },
+        QUIZ_BATTLE_AI_TIMEOUT_MS,
+        {
+          Authorization: `Bearer ${quizBattleToken}`,
+          "Content-Type": "application/json",
+          "X-MathPulse-Task": "quiz_generation",
+        },
+      );
+
+      const text = extractChatCompletionText(responseData);
+      const payload = parseJsonValue(text);
+      const payloadQuestions = extractQuestionsArrayFromPayload(payload);
+
+      if (!payloadQuestions) {
+        functions.logger.warn("[QUIZ_BATTLE] AI payload missing questions array", {
+          model: modelName,
+          subjectId: setup.subjectId,
+          topicId: setup.topicId,
+          rounds: setup.rounds,
+          responsePreview: text.slice(0, 1200),
+          parsedPayloadType: Array.isArray(payload) ? "array" : typeof payload,
+          parsedPayloadKeys: isRecord(payload) ? Object.keys(payload).slice(0, 20) : [],
+          rawResponseKeys: isRecord(responseData) ? Object.keys(responseData).slice(0, 20) : [],
+        });
+
+        throw new QuizBattleGenerationError(
+          "ai_payload_invalid",
+          "AI response did not contain a valid questions array.",
+          true,
+        );
+      }
+
+      const normalizedCandidates = payloadQuestions
+        .map((entry, index) => normalizeAiQuestionCandidate(entry, index, setup))
+        .filter((entry): entry is BattleQuestionCandidate => entry !== null);
+
+      if (normalizedCandidates.length < setup.rounds) {
+        throw new QuizBattleGenerationError(
+          "ai_payload_invalid",
+          `AI returned insufficient valid questions (${normalizedCandidates.length}/${setup.rounds}).`,
+          true,
+        );
+      }
+
+      const dedupedCandidates = dedupeAiQuestionCandidates(normalizedCandidates, setup.rounds);
+      const materializedSet = materializeQuestionSet(dedupedCandidates, randomInt);
+      const questionFingerprints = materializedSet.questions.map((question) => computeQuestionFingerprint(question));
+
+      if (new Set(questionFingerprints).size < setup.rounds) {
+        throw new QuizBattleGenerationError(
+          "ai_insufficient_unique_questions",
+          "AI generation produced duplicate fingerprints after shuffle.",
+          true,
+        );
+      }
+
+      const totalLatencyMs = now() - generationStartedAtMs;
+      functions.logger.info("[QUIZ_BATTLE] AI generation succeeded", {
+        attempt,
+        maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
+        model: modelName,
+        subjectId: setup.subjectId,
+        topicId: setup.topicId,
+        rounds: setup.rounds,
+        latencyMs: totalLatencyMs,
+      });
+
+      return {
+        ...materializedSet,
+        questionSetId: buildGeneratedQuestionSetId(questionFingerprints),
+        questionFingerprints,
+        attempts: attempt,
+        latencyMs: totalLatencyMs,
+        model: modelName,
+      };
+    } catch (error) {
+      const classified = classifyGenerationError(error);
+      lastError = classified;
+
+      functions.logger.warn("[QUIZ_BATTLE] AI generation attempt failed", {
+        attempt,
+        maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
+        model: modelName,
+        subjectId: setup.subjectId,
+        topicId: setup.topicId,
+        rounds: setup.rounds,
+        latencyMs: now() - attemptStartedAtMs,
+        reason: classified.reason,
+        retriable: classified.retriable,
+        error: classified.message,
+      });
+
+      if (attempt < QUIZ_BATTLE_AI_MAX_RETRIES && classified.retriable) {
+        const backoffMs = computeRetryDelayMs(attempt, randomInt);
+        await sleepMs(backoffMs);
+        continue;
+      }
+
+      break;
+    }
+  }
+
+  throw new QuizBattleGenerationError(lastError.reason, lastError.message, lastError.retriable);
+};
+
 const normalizeRoundWinner = (raw: unknown): RoundWinner => {
   const candidate = asString(raw);
   if (candidate === "playerA" || candidate === "playerB" || candidate === "draw") {
@@ -506,7 +1294,7 @@ const xpForOutcome = (outcome: MatchOutcome): number => {
 
 const selectQuestionSet = (
   setup: NormalizedBattleSetup,
-): { questions: BattleQuestionPublic[]; answerKeys: number[] } => {
+): QuestionSetBundle => {
   const targetDifficulty = setup.mode === "bot" ? setup.botDifficulty : setup.difficulty;
   const normalizedDifficulty = targetDifficulty === "adaptive" ? "medium" : targetDifficulty;
 
@@ -522,14 +1310,18 @@ const selectQuestionSet = (
     selected.push(fallbackPool[idx]);
   }
 
+  const candidates: BattleQuestionCandidate[] = selected.map((entry) => ({
+    questionId: entry.questionId,
+    prompt: entry.prompt,
+    choices: entry.choices,
+    correctOptionIndex: entry.correctOptionIndex,
+  }));
+
+  const materialized = materializeQuestionSet(candidates);
+
   return {
-    questions: selected.map((entry, index) => ({
-      roundNumber: index + 1,
-      questionId: entry.questionId,
-      prompt: entry.prompt,
-      choices: entry.choices,
-    })),
-    answerKeys: selected.map((entry) => entry.correctOptionIndex),
+    ...materialized,
+    source: "bank",
   };
 };
 
@@ -718,6 +1510,45 @@ const mapMatchStateForStudent = (
   return baseState;
 };
 
+const mapGenerationAuditForStudent = (
+  matchId: string,
+  data: Record<string, unknown>,
+): QuizBattleGenerationAuditResponse => {
+  const statusRaw = asString(data.status, "ready");
+  const status: MatchStatus = ["ready", "in_progress", "completed", "cancelled"].includes(statusRaw)
+    ? (statusRaw as MatchStatus)
+    : "ready";
+
+  const metadata = isRecord(data.metadata) ? data.metadata : {};
+  const questionFingerprints = Array.isArray(metadata.questionFingerprints)
+    ? metadata.questionFingerprints.map((entry) => asString(entry)).filter((entry) => entry.length > 0)
+    : [];
+
+  const questionSetSource = asString(metadata.questionSetSource, "");
+  const generatedQuestionCount = (Array.isArray(data.questions) ? data.questions : [])
+    .filter((entry) => isRecord(entry))
+    .length;
+  const questionSetGeneratedAtMs = asTimestampMillis(metadata.questionSetGeneratedAt, 0);
+
+  return {
+    success: true,
+    matchId,
+    status,
+    questionSetSource,
+    questionSetId: asString(metadata.questionSetId, ""),
+    generatedQuestionCount,
+    questionFingerprints,
+    aiGenerationAttempted: asBoolean(metadata.aiGenerationAttempted, false),
+    aiGenerationAttempts: Math.max(0, Math.floor(asNumber(metadata.aiGenerationAttempts, 0))),
+    aiGenerationLatencyMs: Math.max(0, Math.floor(asNumber(metadata.aiGenerationLatencyMs, 0))),
+    aiGenerationModel: asString(metadata.aiGenerationModel, ""),
+    generationFailureReason: asString(metadata.generationFailureReason, ""),
+    questionSetGeneratedAtMs: questionSetGeneratedAtMs > 0 ? questionSetGeneratedAtMs : undefined,
+    isAiSource: questionSetSource === "ai",
+    auditSchemaVersion: "qb-generation-audit-v1",
+  };
+};
+
 const mapRoomStateForStudent = (
   roomId: string,
   studentId: string,
@@ -771,7 +1602,7 @@ const createOnlineMatchInTransaction = async (
     loadUserDisplayInfoFromTx(tx, db, playerAId),
     loadUserDisplayInfoFromTx(tx, db, playerBId),
   ]);
-  const { questions, answerKeys } = selectQuestionSet(setup);
+  const { questions, answerKeys, source: questionSetSource } = selectQuestionSet(setup);
 
   tx.set(matchRef, {
     matchId: matchRef.id,
@@ -800,6 +1631,13 @@ const createOnlineMatchInTransaction = async (
     metadata: {
       source,
       seededQuestionSet: true,
+      questionSetSource,
+      questionSetId: `qb-scaffold-${matchRef.id}`,
+      questionFingerprints: [],
+      aiGenerationAttempted: false,
+      aiGenerationAttempts: 0,
+      aiGenerationLatencyMs: 0,
+      generationFailureReason: "",
       implementationStatus: "live_online_v1",
       playerAPhoto: playerAProfile.photo,
       playerBPhoto: playerBProfile.photo,
@@ -825,7 +1663,7 @@ const createBotMatchRecord = async (
   const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
   const playerADisplayName = asString(userData.displayName, asString(userData.name, "Student"));
 
-  const { questions, answerKeys } = selectQuestionSet(setup);
+  const { questions, answerKeys, source } = selectQuestionSet(setup);
   const roundKeysRef = matchRef.collection("server").doc("roundKeys");
   const batch = db.batch();
 
@@ -857,6 +1695,13 @@ const createBotMatchRecord = async (
       botDifficulty: selectedDifficulty,
       adaptiveBot: setup.adaptiveBot,
       seededQuestionSet: true,
+      questionSetSource: source,
+      questionSetId: `qb-scaffold-${matchRef.id}`,
+      questionFingerprints: [],
+      aiGenerationAttempted: false,
+      aiGenerationAttempts: 0,
+      aiGenerationLatencyMs: 0,
+      generationFailureReason: "",
       implementationStatus: "live_bot_v2",
     },
   });
@@ -1235,6 +2080,283 @@ const setupFromQueueData = (queueData: Record<string, unknown>): NormalizedBattl
     botDifficulty: "medium",
     adaptiveBot: false,
   };
+};
+
+const setupFromMatchData = (matchData: Record<string, unknown>): NormalizedBattleSetup => {
+  const mode = asString(matchData.mode, "online") === "bot" ? "bot" : "online";
+  const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+  const matchDifficulty = asString(matchData.difficulty, "medium");
+  const metadataBotDifficulty = asString(metadata.botDifficulty, matchDifficulty);
+
+  const normalizedDifficulty = (["easy", "medium", "hard"] as const).includes(matchDifficulty as "easy" | "medium" | "hard")
+    ? (matchDifficulty as "easy" | "medium" | "hard")
+    : "medium";
+
+  const botDifficulty = ALLOWED_DIFFICULTIES.has(metadataBotDifficulty)
+    ? (metadataBotDifficulty as "easy" | "medium" | "hard" | "adaptive")
+    : ALLOWED_DIFFICULTIES.has(matchDifficulty)
+      ? (matchDifficulty as "easy" | "medium" | "hard" | "adaptive")
+      : "medium";
+
+  const adaptiveBot = asBoolean(
+    metadata.adaptiveBot,
+    botDifficulty === "adaptive" || matchDifficulty === "adaptive",
+  );
+
+  return {
+    mode,
+    subjectId: ALLOWED_SUBJECT_IDS.has(asString(matchData.subjectId)) ? asString(matchData.subjectId) : "gen-math",
+    topicId: asString(matchData.topicId, "unknown-topic"),
+    difficulty: normalizedDifficulty,
+    rounds: clamp(Math.floor(asNumber(matchData.rounds, 5)), 3, 20),
+    timePerQuestionSec: clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180),
+    queueType: "public_matchmaking",
+    botDifficulty,
+    adaptiveBot,
+  };
+};
+
+interface AiGenerationLeaseResult {
+  status: "skip" | "generate" | "in_progress";
+  attemptId?: string;
+  attemptNumber?: number;
+  setup?: NormalizedBattleSetup;
+}
+
+const acquireAiGenerationLease = async (
+  db: FirebaseFirestore.Firestore,
+  matchRef: FirebaseFirestore.DocumentReference,
+): Promise<AiGenerationLeaseResult> => {
+  const nowMs = Date.now();
+
+  return db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Match not found.");
+    }
+
+    const matchData = matchSnap.data() as Record<string, unknown>;
+    const status = asString(matchData.status, "ready");
+    if (status !== "ready") {
+      return { status: "skip" };
+    }
+
+    const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+    const existingSource = asString(metadata.questionSetSource, "");
+    if (existingSource === "ai") {
+      return { status: "skip" };
+    }
+
+    const inFlightAttemptId = asString(metadata.aiGenerationInFlightAttemptId, "");
+    const inFlightAtMs = Math.floor(asNumber(metadata.aiGenerationInFlightAtMs, 0));
+    const lockAgeMs = nowMs - inFlightAtMs;
+    if (inFlightAttemptId && inFlightAtMs > 0 && lockAgeMs >= 0 && lockAgeMs < QUIZ_BATTLE_AI_GENERATION_LOCK_TTL_MS) {
+      tx.update(matchRef, {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        "metadata.aiGenerationAttempted": true,
+        "metadata.generationFailureReason": "ai_generation_in_progress",
+      });
+
+      return {
+        status: "in_progress",
+        attemptId: inFlightAttemptId,
+      };
+    }
+
+    const currentAttempts = Math.max(0, Math.floor(asNumber(metadata.aiGenerationAttempts, 0)));
+    const nextAttemptNumber = currentAttempts + 1;
+    const attemptId = `qb-gen-${matchRef.id}-${nowMs}-${randomInRange(1000, 9999)}`;
+
+    tx.update(matchRef, {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      "metadata.aiGenerationAttempted": true,
+      "metadata.aiGenerationAttempts": nextAttemptNumber,
+      "metadata.aiGenerationInFlightAttemptId": attemptId,
+      "metadata.aiGenerationInFlightAtMs": nowMs,
+      "metadata.generationFailureReason": "",
+    });
+
+    return {
+      status: "generate",
+      attemptId,
+      attemptNumber: nextAttemptNumber,
+      setup: setupFromMatchData(matchData),
+    };
+  });
+};
+
+const persistAiGenerationFailure = async (
+  db: FirebaseFirestore.Firestore,
+  matchRef: FirebaseFirestore.DocumentReference,
+  attemptId: string,
+  attemptNumber: number,
+  failureReason: QuizBattleGenerationFailureReason,
+  latencyMs: number,
+  modelName: string,
+): Promise<void> => {
+  await db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) {
+      return;
+    }
+
+    const matchData = matchSnap.data() as Record<string, unknown>;
+    const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+    const lockedAttemptId = asString(metadata.aiGenerationInFlightAttemptId, "");
+
+    if (lockedAttemptId && lockedAttemptId !== attemptId) {
+      return;
+    }
+
+    tx.update(matchRef, {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      "metadata.aiGenerationAttempted": true,
+      "metadata.aiGenerationAttempts": attemptNumber,
+      "metadata.aiGenerationLatencyMs": Math.max(0, Math.floor(latencyMs)),
+      "metadata.aiGenerationModel": modelName,
+      "metadata.generationFailureReason": failureReason,
+      "metadata.aiGenerationInFlightAttemptId": admin.firestore.FieldValue.delete(),
+      "metadata.aiGenerationInFlightAtMs": admin.firestore.FieldValue.delete(),
+    });
+  });
+};
+
+const persistAiGenerationSuccess = async (
+  db: FirebaseFirestore.Firestore,
+  matchRef: FirebaseFirestore.DocumentReference,
+  roundKeysRef: FirebaseFirestore.DocumentReference,
+  attemptId: string,
+  attemptNumber: number,
+  generatedSet: GeneratedAiQuestionSet,
+): Promise<boolean> => {
+  return db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) {
+      return false;
+    }
+
+    const matchData = matchSnap.data() as Record<string, unknown>;
+    const status = asString(matchData.status, "ready");
+    if (status !== "ready") {
+      return false;
+    }
+
+    const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+    const currentSource = asString(metadata.questionSetSource, "");
+    if (currentSource === "ai") {
+      return true;
+    }
+
+    const lockedAttemptId = asString(metadata.aiGenerationInFlightAttemptId, "");
+    if (lockedAttemptId && lockedAttemptId !== attemptId) {
+      return false;
+    }
+
+    tx.update(matchRef, {
+      questions: generatedSet.questions,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      "metadata.questionSetSource": "ai",
+      "metadata.seededQuestionSet": false,
+      "metadata.questionSetGeneratedAt": admin.firestore.FieldValue.serverTimestamp(),
+      "metadata.questionSetId": generatedSet.questionSetId,
+      "metadata.questionFingerprints": generatedSet.questionFingerprints,
+      "metadata.aiGenerationAttempted": true,
+      "metadata.aiGenerationAttempts": attemptNumber,
+      "metadata.aiGenerationLatencyMs": generatedSet.latencyMs,
+      "metadata.aiGenerationModel": generatedSet.model,
+      "metadata.generationFailureReason": "",
+      "metadata.aiGenerationInFlightAttemptId": admin.firestore.FieldValue.delete(),
+      "metadata.aiGenerationInFlightAtMs": admin.firestore.FieldValue.delete(),
+    });
+
+    tx.set(roundKeysRef, {
+      keys: generatedSet.answerKeys,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return true;
+  });
+};
+
+const ensureAiQuestionSetForLiveStart = async (
+  db: FirebaseFirestore.Firestore,
+  matchRef: FirebaseFirestore.DocumentReference,
+  roundKeysRef: FirebaseFirestore.DocumentReference,
+): Promise<void> => {
+  const lease = await acquireAiGenerationLease(db, matchRef);
+  if (lease.status === "skip") {
+    return;
+  }
+
+  if (lease.status === "in_progress") {
+    throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
+  }
+
+  const setup = lease.setup;
+  const attemptId = asString(lease.attemptId, "");
+  const attemptNumber = Math.max(1, Math.floor(asNumber(lease.attemptNumber, 1)));
+  const modelNameForFailure = (() => {
+    try {
+      return resolveQuizBattleAiModelName();
+    } catch {
+      return "unresolved";
+    }
+  })();
+
+  if (!setup || !attemptId) {
+    throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
+  }
+
+  const generationStartedAtMs = Date.now();
+
+  try {
+    const generatedSet = await generateAiQuestionSet(setup);
+    const persisted = await persistAiGenerationSuccess(
+      db,
+      matchRef,
+      roundKeysRef,
+      attemptId,
+      attemptNumber,
+      generatedSet,
+    );
+
+    if (!persisted) {
+      const latestSnap = await matchRef.get();
+      const latestData = latestSnap.exists ? (latestSnap.data() as Record<string, unknown>) : {};
+      const latestMetadata = isRecord(latestData.metadata) ? latestData.metadata : {};
+      if (asString(latestMetadata.questionSetSource, "") !== "ai") {
+        throw new QuizBattleGenerationError(
+          "ai_non_ai_source_blocked",
+          "AI question set was not persisted before match start.",
+          true,
+        );
+      }
+    }
+  } catch (error) {
+    const classified = classifyGenerationError(error);
+    await persistAiGenerationFailure(
+      db,
+      matchRef,
+      attemptId,
+      attemptNumber,
+      classified.reason,
+      Date.now() - generationStartedAtMs,
+      modelNameForFailure,
+    );
+
+    functions.logger.error("[QUIZ_BATTLE] AI generation failed for live start", {
+      matchId: matchRef.id,
+      attemptId,
+      attemptNumber,
+      reason: classified.reason,
+      retriable: classified.retriable,
+      model: modelNameForFailure,
+      latencyMs: Date.now() - generationStartedAtMs,
+      error: classified.message,
+    });
+
+    throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
+  }
 };
 
 const queueCompatibilityKey = (queueData: Record<string, unknown>): string => {
@@ -1955,95 +3077,155 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
 
   const db = admin.firestore();
   const matchRef = db.collection("quizBattleMatches").doc(matchId);
+  const roundKeysRef = matchRef.collection("server").doc("roundKeys");
 
-  await db.runTransaction(async (tx) => {
-    const matchSnap = await tx.get(matchRef);
-    if (!matchSnap.exists) {
-      throw new functions.https.HttpsError("not-found", "Match not found.");
+  const preStartSnap = await matchRef.get();
+  if (!preStartSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Match not found.");
+  }
+
+  const preStartData = preStartSnap.data() as Record<string, unknown>;
+  const preStartStatus = asString(preStartData.status, "ready");
+  if (preStartStatus === "ready") {
+    const metadata = isRecord(preStartData.metadata) ? preStartData.metadata : {};
+    const existingQuestionSource = asString(metadata.questionSetSource, "");
+    if (existingQuestionSource !== "ai") {
+      await ensureAiQuestionSetForLiveStart(db, matchRef, roundKeysRef);
     }
+  }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
-    const participantA = asString(matchData.playerAId);
-    const participantB = asString(matchData.playerBId);
-    const mode = asString(matchData.mode, "bot") === "online" ? "online" : "bot";
+  const postGenerationSnap = await matchRef.get();
+  if (!postGenerationSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Match not found.");
+  }
 
-    if (studentId !== participantA && studentId !== participantB) {
-      throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
+  const postGenerationData = postGenerationSnap.data() as Record<string, unknown>;
+  const postGenerationStatus = asString(postGenerationData.status, "ready");
+  if (postGenerationStatus === "ready") {
+    const postGenerationMetadata = isRecord(postGenerationData.metadata) ? postGenerationData.metadata : {};
+    if (asString(postGenerationMetadata.questionSetSource, "") !== "ai") {
+      await matchRef.update({
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        "metadata.aiGenerationAttempted": true,
+        "metadata.generationFailureReason": "ai_non_ai_source_blocked",
+      });
+      throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
     }
+  }
 
-    const status = asString(matchData.status, "ready");
-    if (status === "completed") {
-      return;
-    }
+  let nonAiSourceDetectedInTransaction = false;
 
-    if (status === "in_progress") {
-      return;
-    }
+  try {
+    await db.runTransaction(async (tx) => {
+      const matchSnap = await tx.get(matchRef);
+      if (!matchSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found.");
+      }
 
-    if (status !== "ready") {
-      throw new functions.https.HttpsError("failed-precondition", "Match is not in a startable state.");
-    }
+      const matchData = matchSnap.data() as Record<string, unknown>;
+      const participantA = asString(matchData.playerAId);
+      const participantB = asString(matchData.playerBId);
+      const mode = asString(matchData.mode, "bot") === "online" ? "online" : "bot";
 
-    if (mode === "bot") {
-      const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
-      const timing = createRoundTimingWindow(timePerQuestionSec);
+      if (studentId !== participantA && studentId !== participantB) {
+        throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
+      }
+
+      const status = asString(matchData.status, "ready");
+      if (status === "completed") {
+        return;
+      }
+
+      if (status === "in_progress") {
+        return;
+      }
+
+      if (status !== "ready") {
+        throw new functions.https.HttpsError("failed-precondition", "Match is not in a startable state.");
+      }
+
+      const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+      const questionSetSource = asString(metadata.questionSetSource, "");
+      if (questionSetSource !== "ai") {
+        nonAiSourceDetectedInTransaction = true;
+        throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
+      }
+
+      if (mode === "bot") {
+        const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
+        const timing = createRoundTimingWindow(timePerQuestionSec);
+        const updatePayload: Record<string, unknown> = {
+          status: "in_progress" as MatchStatus,
+          currentRound: 1,
+          playerAReady: true,
+          playerBReady: true,
+          startedAt: admin.firestore.FieldValue.serverTimestamp(),
+          roundStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+          roundStartedAtMs: timing.roundStartedAtMs,
+          roundDeadlineAtMs: timing.roundDeadlineAtMs,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        applyLifecycleEventsToUpdate(matchData, updatePayload, [
+          {
+            eventType: "round_started",
+            roundNumber: 1,
+            deadlineAtMs: timing.roundDeadlineAtMs,
+            scoreA: asNumber(matchData.scoreA, 0),
+            scoreB: asNumber(matchData.scoreB, 0),
+          },
+        ]);
+        tx.update(matchRef, updatePayload);
+        return;
+      }
+
+      const currentAReady = asBoolean(matchData.playerAReady, false);
+      const currentBReady = asBoolean(matchData.playerBReady, false);
+      const nextAReady = participantA === studentId ? true : currentAReady;
+      const nextBReady = participantB === studentId ? true : currentBReady;
+
       const updatePayload: Record<string, unknown> = {
-        status: "in_progress" as MatchStatus,
-        currentRound: 1,
-        playerAReady: true,
-        playerBReady: true,
-        startedAt: admin.firestore.FieldValue.serverTimestamp(),
-        roundStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-        roundStartedAtMs: timing.roundStartedAtMs,
-        roundDeadlineAtMs: timing.roundDeadlineAtMs,
+        playerAReady: nextAReady,
+        playerBReady: nextBReady,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
-      applyLifecycleEventsToUpdate(matchData, updatePayload, [
-        {
-          eventType: "round_started",
-          roundNumber: 1,
-          deadlineAtMs: timing.roundDeadlineAtMs,
-          scoreA: asNumber(matchData.scoreA, 0),
-          scoreB: asNumber(matchData.scoreB, 0),
-        },
-      ]);
+
+      if (nextAReady && nextBReady) {
+        const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
+        const timing = createRoundTimingWindow(timePerQuestionSec);
+        updatePayload.status = "in_progress";
+        updatePayload.currentRound = 1;
+        updatePayload.startedAt = admin.firestore.FieldValue.serverTimestamp();
+        updatePayload.roundStartedAt = admin.firestore.FieldValue.serverTimestamp();
+        updatePayload.roundStartedAtMs = timing.roundStartedAtMs;
+        updatePayload.roundDeadlineAtMs = timing.roundDeadlineAtMs;
+        applyLifecycleEventsToUpdate(matchData, updatePayload, [
+          {
+            eventType: "round_started",
+            roundNumber: 1,
+            deadlineAtMs: timing.roundDeadlineAtMs,
+            scoreA: asNumber(matchData.scoreA, 0),
+            scoreB: asNumber(matchData.scoreB, 0),
+          },
+        ]);
+      }
+
       tx.update(matchRef, updatePayload);
-      return;
+    });
+  } catch (error) {
+    if (
+      error instanceof functions.https.HttpsError &&
+      error.code === "unavailable" &&
+      nonAiSourceDetectedInTransaction
+    ) {
+      await matchRef.update({
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        "metadata.aiGenerationAttempted": true,
+        "metadata.generationFailureReason": "ai_non_ai_source_blocked",
+      });
     }
-
-    const currentAReady = asBoolean(matchData.playerAReady, false);
-    const currentBReady = asBoolean(matchData.playerBReady, false);
-    const nextAReady = participantA === studentId ? true : currentAReady;
-    const nextBReady = participantB === studentId ? true : currentBReady;
-
-    const updatePayload: Record<string, unknown> = {
-      playerAReady: nextAReady,
-      playerBReady: nextBReady,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    if (nextAReady && nextBReady) {
-      const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
-      const timing = createRoundTimingWindow(timePerQuestionSec);
-      updatePayload.status = "in_progress";
-      updatePayload.currentRound = 1;
-      updatePayload.startedAt = admin.firestore.FieldValue.serverTimestamp();
-      updatePayload.roundStartedAt = admin.firestore.FieldValue.serverTimestamp();
-      updatePayload.roundStartedAtMs = timing.roundStartedAtMs;
-      updatePayload.roundDeadlineAtMs = timing.roundDeadlineAtMs;
-      applyLifecycleEventsToUpdate(matchData, updatePayload, [
-        {
-          eventType: "round_started",
-          roundNumber: 1,
-          deadlineAtMs: timing.roundDeadlineAtMs,
-          scoreA: asNumber(matchData.scoreA, 0),
-          scoreB: asNumber(matchData.scoreB, 0),
-        },
-      ]);
-    }
-
-    tx.update(matchRef, updatePayload);
-  });
+    throw error;
+  }
 
   const matchSnap = await matchRef.get();
   if (!matchSnap.exists) {
@@ -2085,6 +3267,33 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
     success: true,
     match: mapMatchStateForStudent(matchRef.id, studentId, matchData),
   };
+});
+
+export const quizBattleGetGenerationAudit = functions.https.onCall(async (data, context): Promise<QuizBattleGenerationAuditResponse> => {
+  const studentId = await requireStudentUid(context);
+  const matchId = asString(data?.matchId);
+
+  if (!matchId) {
+    throw new functions.https.HttpsError("invalid-argument", "matchId is required.");
+  }
+
+  const db = admin.firestore();
+  const matchRef = db.collection("quizBattleMatches").doc(matchId);
+  const matchSnap = await matchRef.get();
+
+  if (!matchSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Match not found.");
+  }
+
+  const matchData = matchSnap.data() as Record<string, unknown>;
+  const participantA = asString(matchData.playerAId);
+  const participantB = asString(matchData.playerBId);
+
+  if (studentId !== participantA && studentId !== participantB) {
+    throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
+  }
+
+  return mapGenerationAuditForStudent(matchRef.id, matchData);
 });
 
 export const quizBattleSubmitAnswer = functions.https.onCall(async (data, context) => {
@@ -2769,3 +3978,14 @@ export const quizBattleResolvePublicMatchmakingSweep = functions.pubsub
     functions.logger.info("[QUIZ_BATTLE] Matchmaking sweep complete", summary);
     return null;
   });
+
+export const __quizBattleTestUtils = {
+  resolveQuizBattleAiModel,
+  resolveQuizBattleAiModelName,
+  computeRetryDelayMs,
+  shuffleChoicesPreservingCorrect,
+  dedupeAiQuestionCandidates,
+  generateAiQuestionSet,
+  classifyGenerationError,
+  QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE,
+};
