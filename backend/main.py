@@ -24,6 +24,7 @@ import urllib.parse
 import random
 import secrets
 import string
+from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
 from threading import Lock
@@ -99,9 +100,7 @@ from automation_engine import (
 from analytics import (
     # Request/Response models
     CompetencyAnalysisRequest,
-    CompetencyAnalysis,
     CompetencyAnalysisResponse,
-    TopicRecommendation,
     TopicRecommendationRequest,
     TopicRecommendationResponse,
     EnhancedRiskPrediction,
@@ -130,11 +129,8 @@ from analytics import (
     refresh_all_caches,
     # Helpers
     fetch_student_quiz_history,
-    fetch_student_engagement_metrics,
     fetch_topic_dependencies,
     store_competency_analysis,
-    store_question_difficulty,
-    # Config
     RISK_MODEL_PATH,
     COMPETENCY_THRESHOLDS,
     MIN_QUIZ_ATTEMPTS_FOR_COMPETENCY,
@@ -324,20 +320,13 @@ if not HF_TOKEN:
 
 # ─── FastAPI App ───────────────────────────────────────────────
 
-app = FastAPI(
-    title="MathPulse AI API",
-    description="AI-powered math tutoring and student analytics backend",
-    version="1.0.0",
-)
 
-logger.info("🚀 FastAPI app created, startup sequence beginning...")
-
-@app.on_event("startup")
-async def startup_event():
-    """Called when the app starts up. Initialize Firebase and log readiness."""
+@asynccontextmanager
+async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Initialize and tear down backend services for app lifespan."""
     logger.info("⚙️  Initializing backend services...")
     _init_firebase_admin()
-    
+
     # Pre-initialize inference client at startup to avoid first-request latency spike
     logger.info("🔧 Pre-initializing InferenceClient...")
     try:
@@ -345,7 +334,7 @@ async def startup_event():
         logger.info("✅ InferenceClient pre-initialized at startup")
     except Exception as e:
         logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
-    
+
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
@@ -364,10 +353,20 @@ async def startup_event():
     )
     logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
 
+    try:
+        yield
+    finally:
+        await _close_hf_async_http_client()
 
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    await _close_hf_async_http_client()
+
+app = FastAPI(
+    title="MathPulse AI API",
+    description="AI-powered math tutoring and student analytics backend",
+    version="1.0.0",
+    lifespan=app_lifespan,
+)
+
+logger.info("🚀 FastAPI app created, startup sequence beginning...")
 
 
 class AuthenticatedUser(BaseModel):
@@ -1086,8 +1085,6 @@ def call_hf_chat_stream(
     """Stream chat deltas from HF router as text chunks."""
     client = get_inference_client()
     effective_task = (task_type or "chat").strip().lower()
-    request_tag = f"{effective_task}-stream-{int(time.time() * 1000)}"
-    chat_model_override = getattr(cast(Any, client), "chat_model_override", "")
 
     selection_req = InferenceRequest(
         messages=messages,
@@ -2024,7 +2021,7 @@ class ChatRequest(BaseModel):
 
     @field_validator("completionMode")
     @classmethod
-    def validate_completion_mode(cls, value: str) -> str:
+    def validate_completion_mode(_cls, value: str) -> str:
         normalized = (value or "").strip().lower()
         if normalized in {"auto", "marker", "none"}:
             return normalized
@@ -5496,7 +5493,6 @@ async def upload_class_records(
                 if ext == ".csv":
                     df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip")
                 elif ext in {".xlsx", ".xls"}:
-                    import openpyxl
                     df = pd.read_excel(io.BytesIO(contents))
                 elif ext == ".pdf":
                     import pdfplumber
@@ -6685,7 +6681,7 @@ class QuizGenerationRequest(BaseModel):
 
     @field_validator("questionTypes")
     @classmethod
-    def validate_question_types(cls, values: List[str]) -> List[str]:
+    def validate_question_types(_cls, values: List[str]) -> List[str]:
         for value in values:
             if value not in VALID_QUESTION_TYPES:
                 raise ValueError(f"Invalid question type '{value}'. Must be one of: {VALID_QUESTION_TYPES}")
@@ -6693,7 +6689,7 @@ class QuizGenerationRequest(BaseModel):
 
     @field_validator("bloomLevels")
     @classmethod
-    def validate_bloom_levels(cls, values: List[str]) -> List[str]:
+    def validate_bloom_levels(_cls, values: List[str]) -> List[str]:
         for value in values:
             if value not in VALID_BLOOM_LEVELS:
                 raise ValueError(f"Invalid Bloom level '{value}'. Must be one of: {VALID_BLOOM_LEVELS}")
@@ -6701,7 +6697,7 @@ class QuizGenerationRequest(BaseModel):
 
     @field_validator("difficultyDistribution")
     @classmethod
-    def validate_difficulty_distribution(cls, v: Dict[str, int]) -> Dict[str, int]:
+    def validate_difficulty_distribution(_cls, v: Dict[str, int]) -> Dict[str, int]:
         for key in v:
             if key not in VALID_DIFFICULTY_LEVELS:
                 raise ValueError(f"Invalid difficulty key '{key}'. Must be one of: {VALID_DIFFICULTY_LEVELS}")
@@ -6873,7 +6869,7 @@ class ImportGroundedFeedbackRequest(BaseModel):
 
     @field_validator("flow")
     @classmethod
-    def validate_flow(cls, v: str) -> str:
+    def validate_flow(_cls, v: str) -> str:
         value = (v or "").strip().lower()
         if value not in {"quiz", "lesson"}:
             raise ValueError("flow must be one of: quiz, lesson")
@@ -6881,7 +6877,7 @@ class ImportGroundedFeedbackRequest(BaseModel):
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v: str) -> str:
+    def validate_status(_cls, v: str) -> str:
         value = (v or "").strip().lower()
         if value not in {"success", "failed", "skipped"}:
             raise ValueError("status must be one of: success, failed, skipped")

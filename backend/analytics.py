@@ -12,20 +12,16 @@ Provides:
 
 import os
 import math
-import json
 import time
 import random
 import logging
-import hashlib
 import traceback
 import re
 from typing import List, Optional, Dict, Any, Tuple, Literal
 from datetime import datetime, timedelta
-from functools import lru_cache
 from collections import defaultdict
 
 import numpy as np  # type: ignore[import-not-found]
-from scipy import stats as scipy_stats  # type: ignore[import-not-found]
 from scipy.optimize import minimize_scalar  # type: ignore[import-not-found]
 from sklearn.linear_model import LinearRegression  # type: ignore[import-not-found]
 from sklearn.ensemble import RandomForestClassifier  # type: ignore[import-not-found]
@@ -1813,7 +1809,6 @@ async def get_class_insights(request: ClassInsightsRequest) -> ClassInsightsResp
 
     # Aggregate per-student data
     risk_dist = {"High": 0, "Medium": 0, "Low": 0}
-    all_competencies: List[CompetencyAnalysis] = []
     all_velocities: List[float] = []
     interventions: List[Dict[str, Any]] = []
     topic_weakness_counts: Dict[str, int] = defaultdict(int)
