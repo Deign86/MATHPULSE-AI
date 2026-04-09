@@ -61,13 +61,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
 
   useEffect(() => {
     if (!isOpen || editedData.role !== 'student' || !editedData.uid) return;
+    const uid = editedData.uid;
 
     const loadLeaderboardData = async () => {
       setLeaderboardLoading(true);
       try {
         const [topEntries, rank] = await Promise.all([
           getLeaderboard(undefined, false, 'all', 5),
-          getUserRank(editedData.uid),
+          getUserRank(uid),
         ]);
         setLeaderboardEntries(topEntries);
         setStudentRank(rank);

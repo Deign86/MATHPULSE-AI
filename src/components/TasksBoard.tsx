@@ -13,7 +13,7 @@ import {
 } from '../services/taskService';
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   date: string;
   completed: boolean;
@@ -38,15 +38,14 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
       if (!currentUser) return;
       try {
         const firebaseTasks = await getUserTasks(currentUser.uid);
-        const mapped: Task[] = firebaseTasks.map(t => {
+        const mapped: Task[] = firebaseTasks.map((t) => {
           const dueDate = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
           const isToday = new Date().toDateString() === dueDate.toDateString();
           const isTomorrow = new Date(Date.now() + 86400000).toDateString() === dueDate.toDateString();
           const dateStr = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
           return {
-            id: t.id as unknown as number, // Keep Firebase string ID in the id field
-            firebaseId: t.id, // Store actual Firebase ID
+            id: t.id, // Use Firestore document ID directly as the primary key
             title: t.title,
             date: dateStr,
             completed: t.status === 'completed',
@@ -69,15 +68,16 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDate, setNewTaskDate] = useState('');
-  const [editingTask, setEditingTask] = useState<number | null>(null);
+  const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDate, setEditDate] = useState('');
 
   const addTask = async () => {
     if (newTaskTitle.trim() === '') return;
     
+    const tempId = `_tmp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newTask: Task = {
-      id: Math.max(...tasks.map(t => typeof t.id === 'number' ? t.id : 0), 0) + 1,
+      id: tempId,
       title: newTaskTitle,
       date: newTaskDate || 'No date',
       completed: false,
@@ -91,7 +91,7 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
     setNewTaskDate('');
     setShowAddTask(false);
 
-    // Persist to Firebase
+    // Persist to Firebase and replace temporary ID with Firestore document ID
     if (currentUser) {
       try {
         const dueDate = newTaskDate ? new Date(newTaskDate) : new Date();
@@ -104,38 +104,38 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
           'custom'
         );
         // Update local task with Firebase ID
-        setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, id: created.id as unknown as number, firebaseId: created.id } : t));
+        setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: created.id } : t));
       } catch (err) {
         console.error('Error creating task:', err);
       }
     }
   };
 
-  const toggleTask = async (id: number) => {
+  const toggleTask = async (id: string) => {
     const task = tasks.find(t => t.id === id);
     setTasks(tasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
     
-    // Persist to Firebase
-    const firebaseId = (task as any)?.firebaseId || String(id);
-    try {
-      await updateTaskStatus(firebaseId, task?.completed ? 'todo' : 'completed');
-    } catch (err) {
-      console.error('Error toggling task:', err);
+    // Persist to Firebase (skip tasks with temporary IDs not yet synced)
+    if (!id.startsWith('_tmp_')) {
+      try {
+        await updateTaskStatus(id, task?.completed ? 'todo' : 'completed');
+      } catch (err) {
+        console.error('Error toggling task:', err);
+      }
     }
   };
 
-  const deleteTask = async (id: number) => {
+  const deleteTask = async (id: string) => {
     const task = tasks.find(t => t.id === id);
     // Only allow deleting custom tasks
     setTasks(tasks.filter(task => !(task.id === id && task.type === 'custom')));
     
-    // Persist to Firebase
-    const firebaseId = (task as any)?.firebaseId || String(id);
-    if (task?.type === 'custom') {
+    // Persist to Firebase (skip tasks with temporary IDs not yet synced)
+    if (task?.type === 'custom' && !id.startsWith('_tmp_')) {
       try {
-        await deleteFirebaseTask(firebaseId);
+        await deleteFirebaseTask(id);
       } catch (err) {
         console.error('Error deleting task:', err);
       }
@@ -150,8 +150,7 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
     }
   };
 
-  const saveEdit = async (id: number) => {
-    const task = tasks.find(t => t.id === id);
+  const saveEdit = async (id: string) => {
     setTasks(tasks.map(task =>
       task.id === id ? { ...task, title: editTitle, date: editDate } : task
     ));
@@ -159,12 +158,21 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
     setEditTitle('');
     setEditDate('');
 
-    // Persist to Firebase
-    const firebaseId = (task as any)?.firebaseId || String(id);
-    try {
-      await updateFirebaseTask(firebaseId, { title: editTitle });
-    } catch (err) {
-      console.error('Error saving task edit:', err);
+    // Persist to Firebase (skip tasks with temporary IDs not yet synced)
+    if (!id.startsWith('_tmp_')) {
+      try {
+        const updates: Parameters<typeof updateFirebaseTask>[1] = { title: editTitle };
+        // Persist dueDate if the entered date string is parseable
+        if (editDate && editDate !== 'No date') {
+          const parsed = new Date(editDate);
+          if (!isNaN(parsed.getTime())) {
+            updates.dueDate = parsed;
+          }
+        }
+        await updateFirebaseTask(id, updates);
+      } catch (err) {
+        console.error('Error saving task edit:', err);
+      }
     }
   };
 

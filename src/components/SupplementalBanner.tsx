@@ -42,11 +42,22 @@ const SUPPLEMENTAL_RESOURCES: Record<string, { label: string; description: strin
 
 function getSubjectKey(subject: string): string | null {
   const lower = subject.toLowerCase();
+  if (lower === 'functions' || lower.includes('function')) return 'General Mathematics';
+  if (lower === 'businessmath' || lower.includes('business')) return 'General Mathematics';
+  if (lower === 'logic' || lower.includes('reason')) return 'General Mathematics';
   if (lower.includes('general') || lower.includes('gen-math') || lower.includes('gen math')) return 'General Mathematics';
   if (lower.includes('stat') || lower.includes('prob')) return 'Statistics and Probability';
   if (lower.includes('pre-calc') || lower.includes('pre calc') || lower.includes('precalc')) return 'Pre-Calculus';
   if (lower.includes('basic') || lower.includes('calc')) return 'Basic Calculus';
   return null;
+}
+
+function formatFocusLabel(subject: string): string {
+  const normalized = subject.trim().toLowerCase();
+  if (normalized === 'functions') return 'Functions and Graphs';
+  if (normalized === 'businessmath') return 'Business and Financial Mathematics';
+  if (normalized === 'logic') return 'Logic and Reasoning';
+  return subject;
 }
 
 // ─── Full Banner (Dashboard) ────────────────────────────────
@@ -101,7 +112,7 @@ const FullBanner: React.FC<SupplementalBannerProps> = ({ atRiskSubjects = [], on
                       className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold"
                     >
                       <AlertTriangle size={12} />
-                      {subject}
+                      {formatFocusLabel(subject)}
                     </span>
                   ))}
                 </div>
