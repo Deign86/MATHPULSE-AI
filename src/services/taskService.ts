@@ -5,6 +5,7 @@ import {
   doc,
   getDocs,
   query,
+  serverTimestamp,
   updateDoc,
   where,
 } from 'firebase/firestore';
@@ -83,22 +84,30 @@ export const createTask = async (
     priority,
     category,
     status: 'todo' as TaskStatus,
-    createdAt: now,
-    updatedAt: now,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
   const ref = await addDoc(collection(db, 'tasks'), payload);
 
   return {
     id: ref.id,
-    ...payload,
+    userId,
+    title: title.trim(),
+    description: description.trim(),
+    dueDate,
+    priority,
+    category,
+    status: 'todo' as TaskStatus,
+    createdAt: now,
+    updatedAt: now,
   };
 };
 
 export const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<void> => {
   await updateDoc(doc(db, 'tasks', taskId), {
     status,
-    updatedAt: new Date(),
+    updatedAt: serverTimestamp(),
   });
 };
 
@@ -111,7 +120,7 @@ export const updateTask = async (
   updates: Partial<Pick<TaskRecord, 'title' | 'description' | 'dueDate' | 'priority' | 'category' | 'status'>>,
 ): Promise<void> => {
   const payload: Record<string, unknown> = {
-    updatedAt: new Date(),
+    updatedAt: serverTimestamp(),
   };
 
   if (typeof updates.title === 'string') payload.title = updates.title.trim();
