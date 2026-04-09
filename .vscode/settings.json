@@ -1,0 +1,6 @@
+{
+  "terminal.integrated.env.windows": {
+    "PATH": "${workspaceFolder}\\scripts;${env:PATH}"
+  },
+  "css.lint.unknownAtRules": "ignore"
+}
