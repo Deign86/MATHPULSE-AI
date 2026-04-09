@@ -20,37 +20,16 @@ import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { subjects, getActiveSubjectIdsForGrade, type Module, type SubjectId } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
+import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
   atRiskSubjects?: string[];
-  priorityTopics?: Array<'Functions' | 'BusinessMath' | 'Logic'>;
+  priorityTopics?: DiagnosticTopicKey[];
   initialModuleId?: string | null;
 }
 
 type ModulesTab = 'modules' | 'recommended' | 'practice';
-
-type DiagnosticTopicKey = 'Functions' | 'BusinessMath' | 'Logic';
-
-const TOPIC_TO_MODULE_ID: Record<DiagnosticTopicKey, string> = {
-  Functions: 'gm-1',
-  BusinessMath: 'gm-2',
-  Logic: 'gm-3',
-};
-
-const DIAGNOSTIC_TOPIC_LABELS: Record<DiagnosticTopicKey, string> = {
-  Functions: 'Functions and Graphs',
-  BusinessMath: 'Business and Financial Mathematics',
-  Logic: 'Logic and Reasoning',
-};
-
-const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === 'functions' || normalized.includes('function')) return 'Functions';
-  if (normalized === 'businessmath' || normalized.includes('business')) return 'BusinessMath';
-  if (normalized === 'logic' || normalized.includes('reason')) return 'Logic';
-  return null;
-};
 
 const ModulesPage: React.FC<ModulesPageProps> = ({
   onEarnXP,

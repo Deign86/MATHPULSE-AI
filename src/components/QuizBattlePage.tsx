@@ -680,18 +680,19 @@ const QuizBattlePage: React.FC = () => {
   ]);
 
   useEffect(() => {
-    const eventType = activeMatch?.lifecycle?.eventType;
-    if (!eventType) return;
+    const lifecycle = activeMatch?.lifecycle;
+    if (!lifecycle?.eventType) return;
 
-    if (lifecycleEventRef.current === eventType) return;
-    lifecycleEventRef.current = eventType;
+    const dedupeKey = `${lifecycle.eventType}:${lifecycle.sequence}`;
+    if (lifecycleEventRef.current === dedupeKey) return;
+    lifecycleEventRef.current = dedupeKey;
 
-    if (eventType === 'answer_locked') {
+    if (lifecycle.eventType === 'answer_locked') {
       playBattleTone('lock');
-    } else if (eventType === 'round_result') {
+    } else if (lifecycle.eventType === 'round_result') {
       playBattleTone('result');
     }
-  }, [activeMatch?.lifecycle?.eventType, playBattleTone]);
+  }, [activeMatch?.lifecycle?.eventType, activeMatch?.lifecycle?.sequence, playBattleTone]);
 
   useEffect(() => {
     if (!activeMatch || activeMatch.status !== 'completed') return;
