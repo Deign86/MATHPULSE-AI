@@ -173,7 +173,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                 {/* Floating Central Icon */}
                 <div style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} className="w-48 h-48 rounded-[2.5rem] flex items-center justify-center backdrop-blur-md border border-white/30 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-50" />
-                  <Icon size={80} className="text-white drop-shadow-xl transform group-hover:scale-110 transition-transform duration-500" strokeWidth={1.5} />
+                  <Icon size={80} className="text-white drop-shadow-xl transform group-hover:scale-110 transition-transform duration-500" />
                   
                   {/* Glowing core behind icon */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-white/20 blur-2xl rounded-full" />
