@@ -14,6 +14,7 @@ import {
 
 export interface Task {
   id: number;
+  firebaseId?: string;
   title: string;
   date: string;
   completed: boolean;
@@ -38,14 +39,15 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
       if (!currentUser) return;
       try {
         const firebaseTasks = await getUserTasks(currentUser.uid);
-        const mapped: Task[] = firebaseTasks.map(t => {
+        const mapped: Task[] = firebaseTasks.map((t, index) => {
           const dueDate = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
           const isToday = new Date().toDateString() === dueDate.toDateString();
           const isTomorrow = new Date(Date.now() + 86400000).toDateString() === dueDate.toDateString();
           const dateStr = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const parsedId = Number.parseInt(t.id, 10);
 
           return {
-            id: t.id as unknown as number, // Keep Firebase string ID in the id field
+            id: Number.isFinite(parsedId) ? parsedId : index + 1,
             firebaseId: t.id, // Store actual Firebase ID
             title: t.title,
             date: dateStr,
@@ -104,7 +106,7 @@ const TasksBoard: React.FC<TasksBoardProps> = ({ initialTasks = [], systemTasks 
           'custom'
         );
         // Update local task with Firebase ID
-        setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, id: created.id as unknown as number, firebaseId: created.id } : t));
+        setTasks(prev => prev.map(t => t.id === newTask.id ? { ...t, firebaseId: created.id } : t));
       } catch (err) {
         console.error('Error creating task:', err);
       }

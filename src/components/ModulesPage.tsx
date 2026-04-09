@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
+  ArrowRight,
   BookOpen,
   Clock,
   Search,
@@ -23,12 +24,40 @@ import { type StudentProfile } from '../types/models';
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
   atRiskSubjects?: string[];
+  priorityTopics?: Array<'Functions' | 'BusinessMath' | 'Logic'>;
   initialModuleId?: string | null;
 }
 
 type ModulesTab = 'modules' | 'recommended' | 'practice';
 
-const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = [], initialModuleId = null }) => {
+type DiagnosticTopicKey = 'Functions' | 'BusinessMath' | 'Logic';
+
+const TOPIC_TO_MODULE_ID: Record<DiagnosticTopicKey, string> = {
+  Functions: 'gm-1',
+  BusinessMath: 'gm-2',
+  Logic: 'gm-3',
+};
+
+const DIAGNOSTIC_TOPIC_LABELS: Record<DiagnosticTopicKey, string> = {
+  Functions: 'Functions and Graphs',
+  BusinessMath: 'Business and Financial Mathematics',
+  Logic: 'Logic and Reasoning',
+};
+
+const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'functions' || normalized.includes('function')) return 'Functions';
+  if (normalized === 'businessmath' || normalized.includes('business')) return 'BusinessMath';
+  if (normalized === 'logic' || normalized.includes('reason')) return 'Logic';
+  return null;
+};
+
+const ModulesPage: React.FC<ModulesPageProps> = ({
+  onEarnXP,
+  atRiskSubjects = [],
+  priorityTopics = [],
+  initialModuleId = null,
+}) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
   
@@ -54,7 +83,37 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
 
   // Module-first UX: we always anchor to General Mathematics when present.
   const generalMathSubject = gradeScopedSubjects.find((subject) => subject.id === 'gen-math') ?? gradeScopedSubjects[0] ?? null;
-  const modulePool = generalMathSubject?.modules ?? [];
+
+  const normalizedRiskTopics = useMemo<DiagnosticTopicKey[]>(() => {
+    const primary =
+      priorityTopics.length > 0
+        ? priorityTopics
+        : atRiskSubjects
+            .map((entry) => normalizeDiagnosticTopic(entry))
+            .filter((entry): entry is DiagnosticTopicKey => entry !== null);
+
+    const seen = new Set<DiagnosticTopicKey>();
+    return primary.filter((entry) => {
+      if (seen.has(entry)) return false;
+      seen.add(entry);
+      return true;
+    });
+  }, [priorityTopics, atRiskSubjects]);
+
+  const modulePool = useMemo(() => {
+    const base = generalMathSubject?.modules ?? [];
+    if (normalizedRiskTopics.length === 0) return base;
+
+    const ranking = new Map<string, number>(
+      normalizedRiskTopics.map((topic, index) => [TOPIC_TO_MODULE_ID[topic], index]),
+    );
+
+    return [...base].sort((left, right) => {
+      const leftRank = ranking.get(left.id) ?? Number.POSITIVE_INFINITY;
+      const rightRank = ranking.get(right.id) ?? Number.POSITIVE_INFINITY;
+      return leftRank - rightRank;
+    });
+  }, [generalMathSubject?.modules, normalizedRiskTopics]);
 
   const filteredModules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -206,6 +265,41 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
             );
           })}
         </div>
+
+        {normalizedRiskTopics.length > 0 && (
+          <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="inline-flex items-center gap-2 text-sm font-black text-amber-900">
+                  <AlertTriangle size={15} />
+                  Assessment Focus Areas
+                </p>
+                <p className="mt-1 text-sm text-amber-900/80">
+                  Modules are currently prioritized by your latest diagnostic needs.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('recommended')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700"
+              >
+                View Recommended
+                <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {normalizedRiskTopics.map((topic, index) => (
+                <span
+                  key={topic}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-900 shadow-sm"
+                >
+                  {index + 1}. {DIAGNOSTIC_TOPIC_LABELS[topic]}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -220,9 +314,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({ onEarnXP, atRiskSubjects = []
           {activeTab === 'practice' ? (
             <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} allowedSubjectIds={allowedSubjectIds} />
           ) : activeTab === 'modules' ? (
-            <ModulesLibraryView modules={filteredModules} onSelectModule={setSelectedModule} isAtRisk={atRiskSubjects.includes('gen-math')} />
+            <ModulesLibraryView modules={filteredModules} onSelectModule={setSelectedModule} isAtRisk={normalizedRiskTopics.length > 0} />
           ) : (
-            <RecommendedModulesView modules={filteredModules} fullPool={modulePool} onSelectModule={setSelectedModule} isAtRisk={atRiskSubjects.includes('gen-math')} />
+            <RecommendedModulesView modules={filteredModules} fullPool={modulePool} onSelectModule={setSelectedModule} isAtRisk={normalizedRiskTopics.length > 0} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -246,8 +340,11 @@ const ModulesLibraryView: React.FC<{
         </div>
 
         {modules.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#dde3eb] p-8 text-center text-slate-500 font-medium">
-            No matching modules found.
+          <div className="bg-white rounded-2xl border border-[#dde3eb] p-8 text-center">
+            <p className="text-slate-700 font-semibold">No matching modules found.</p>
+            <p className="mt-2 text-sm text-slate-500">
+              If modules are not yet available for your selected view, this area will unlock after assessment sync and content rollout.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">

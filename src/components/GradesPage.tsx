@@ -55,7 +55,7 @@ const GradesPage = () => {
     return acc;
   }, {} as Record<string, { label: string; color: string }>);
 
-  const allowedSubjectLabels = SHS_MATH_SUBJECTS
+  const allowedSubjectLabels: string[] = SHS_MATH_SUBJECTS
     .filter((subject) => allowedSubjectSet.has(subject.id as SubjectId))
     .map((subject) => subject.name);
 

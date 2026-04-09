@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
@@ -69,6 +69,21 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const cloudFunctions = getFunctions(app);
+
+const useFunctionsEmulator =
+  String(import.meta.env.VITE_USE_FUNCTIONS_EMULATOR || '').toLowerCase() === 'true';
+
+if (useFunctionsEmulator) {
+  const emulatorHost = String(import.meta.env.VITE_FUNCTIONS_EMULATOR_HOST || '127.0.0.1').trim() || '127.0.0.1';
+  const emulatorPortRaw = Number(import.meta.env.VITE_FUNCTIONS_EMULATOR_PORT || 5001);
+  const emulatorPort = Number.isFinite(emulatorPortRaw) && emulatorPortRaw > 0
+    ? Math.floor(emulatorPortRaw)
+    : 5001;
+
+  connectFunctionsEmulator(cloudFunctions, emulatorHost, emulatorPort);
+  console.log(`[FIREBASE] Functions emulator enabled at ${emulatorHost}:${emulatorPort}`);
+}
+
 export const realtimeDb = databaseUrl ? getDatabase(app, databaseUrl) : null;
 export const isRealtimeDbEnabled = Boolean(databaseUrl);
 

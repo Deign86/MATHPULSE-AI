@@ -58,6 +58,7 @@ export {
   quizBattleCreateBotMatch,
   quizBattleStartMatch,
   quizBattleGetMatchState,
+  quizBattleGetGenerationAudit,
   quizBattleSubmitAnswer,
   quizBattleRequestRematch,
   quizBattleHeartbeat,
