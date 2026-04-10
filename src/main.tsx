@@ -5,18 +5,6 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import { registerBoneyardRegistry } from './bones/registry';
 
 let fullStylesLoadStarted = false;
-let resolveFullStylesReady: (() => void) | null = null;
-
-const fullStylesReady = new Promise<void>((resolve) => {
-  resolveFullStylesReady = resolve;
-});
-
-const finishFullStylesReady = () => {
-  if (!resolveFullStylesReady) return;
-  const resolve = resolveFullStylesReady;
-  resolveFullStylesReady = null;
-  resolve();
-};
 
 const loadFullStyles = () => {
   if (fullStylesLoadStarted) return;
@@ -25,9 +13,6 @@ const loadFullStyles = () => {
   import('./index.css')
     .catch((error) => {
       console.error('[styles] Deferred full stylesheet failed to load:', error);
-    })
-    .finally(() => {
-      finishFullStylesReady();
     });
 };
 
@@ -68,65 +53,3 @@ createRoot(rootElement).render(
 );
 
 registerBoneyardRegistry();
-
-let safetyTimeoutId: number | undefined;
-
-const fadeOutAndRemoveBootShell = () => {
-  const bootShell = document.getElementById('boot-shell');
-  if (!bootShell) return;
-
-  if (safetyTimeoutId !== undefined) {
-    window.clearTimeout(safetyTimeoutId);
-    safetyTimeoutId = undefined;
-  }
-
-  bootShell.style.pointerEvents = 'none';
-  bootShell.style.transition = 'opacity 160ms ease';
-
-  requestAnimationFrame(() => {
-    bootShell.style.opacity = '0';
-  });
-
-  window.setTimeout(() => {
-    bootShell.remove();
-  }, 200);
-};
-
-const rootHasRenderedContent = () => {
-  if (rootElement.childElementCount > 0) return true;
-  const text = rootElement.textContent?.trim() ?? '';
-  return text.length > 0;
-};
-
-const waitForStylesThenFade = () => {
-  Promise.race([
-    fullStylesReady,
-    new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 2200);
-    }),
-  ]).then(() => {
-    requestAnimationFrame(fadeOutAndRemoveBootShell);
-  });
-};
-
-if (rootHasRenderedContent()) {
-  waitForStylesThenFade();
-} else {
-  const observer = new MutationObserver(() => {
-    if (!rootHasRenderedContent()) return;
-    observer.disconnect();
-    waitForStylesThenFade();
-  });
-
-  observer.observe(rootElement, { childList: true, subtree: true, characterData: true });
-
-  // Safety valve: never leave the shell mounted forever if rendering stalls.
-  safetyTimeoutId = window.setTimeout(() => {
-    safetyTimeoutId = undefined;
-    observer.disconnect();
-    loadFullStyles();
-    if (document.getElementById('boot-shell')) {
-      waitForStylesThenFade();
-    }
-  }, 6000);
-}
