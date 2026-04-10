@@ -83,7 +83,14 @@ const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading 
   };
 
   return (
-    <div className="app-loader-screen" style={screenStyle}>
+    <div
+      className="app-loader-screen"
+      style={screenStyle}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={message}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
