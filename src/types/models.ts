@@ -454,6 +454,18 @@ export interface Notification {
   createdAt: Date;
 }
 
+// Calendar Types
+export interface CalendarEvent {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime?: Date;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
 // Leadership Goal Types
 export interface LeadershipGoal {
   id: string;
