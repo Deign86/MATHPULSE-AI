@@ -4,12 +4,12 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   Play, FileText, Target, Zap, Award, Upload, FileSpreadsheet, 
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database,
-  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Settings
+  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Loader2, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import ConfirmModal from './ConfirmModal';
 import LogoutActionButton from './LogoutActionButton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -22,29 +22,17 @@ import {
   updateStudentRisk,
   assignStudentToClassSection,
   updateManagedStudentSectionAssignment,
-  assignClassSectionManager,
-  getClassSectionOwnershipByTeacher,
-  getTeacherDirectoryOptions,
   addManagedStudentsBatch,
   deleteManagedStudent,
-  buildClassSectionId,
-  normalizeGradeLevel,
-  inferClassification,
-  inferStrand,
-  parseClassName,
-  resolveClassMetadata,
   type Classroom,
   type ManagedStudent,
   type ClassActivity,
-  type TeacherDirectoryOption,
 } from '../services/studentService';
 import {
   apiService,
   ApiError,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
-  type StudentAccountImportCommitResponse,
-  type StudentAccountImportPreviewResponse,
   type UploadResponse,
 } from '../services/apiService';
 import { publishLessonPlan, saveGeneratedLessonPlan } from '../services/lessonPlanService';
@@ -53,8 +41,8 @@ import QuizMaker from './QuizMaker';
 import TopicMasteryView from './TopicMasteryView';
 import StudentCompetencyTable from './StudentCompetencyTable';
 import ChatMarkdown from './ChatMarkdown';
-import { Skeleton } from './ui/skeleton';
-import type { ClassSectionMetadata } from '../types/models';
+import TeacherNotificationsView from './TeacherNotificationsView';
+import TeacherCalendarView from './TeacherCalendarView';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -79,12 +67,6 @@ interface ClassView {
   id: string;
   name: string;
   classSectionId?: string;
-  classMetadata?: ClassSectionMetadata;
-  gradeLevel?: string;
-  classification?: string;
-  strand?: string;
-  managerId?: string;
-  managerName?: string;
   schedule: string;
   studentCount: number;
   avgScore: number;
@@ -103,14 +85,8 @@ interface StudentView {
   classroomId: string;
   className: string;
   grade: string;
-  gradeLevel?: string;
-  classification?: string;
-  strand?: string;
   section: string;
   classSectionId?: string;
-  classMetadata?: ClassSectionMetadata;
-  managerId?: string;
-  managerName?: string;
   lastActive: string;
   struggles: string[];
   engagementScore: number;
@@ -120,34 +96,10 @@ interface StudentView {
 
 function toClassView(c: Classroom): ClassView {
   const riskLevel = c.atRiskCount >= 5 ? 'high' : c.atRiskCount >= 2 ? 'medium' : 'low';
-  const classMetadata = resolveClassMetadata({
-    metadata: c.classMetadata,
-    classSectionId: c.classSectionId,
-    className: c.name,
-    grade: c.grade,
-    gradeLevel: c.gradeLevel,
-    classification: c.classification,
-    strand: c.strand,
-    section: c.section,
-    schoolYear: c.schoolYear,
-    ownerTeacherId: c.ownerTeacherId || c.teacherId,
-    ownerTeacherName: c.ownerTeacherName,
-    adviserTeacherId: c.adviserTeacherId || c.teacherId,
-    adviserTeacherName: c.adviserTeacherName || c.ownerTeacherName,
-    managerId: c.managerId,
-    managerName: c.managerName,
-  });
-
   return {
     id: c.id,
-    name: classMetadata.className || c.name,
-    classSectionId: classMetadata.classSectionId || c.classSectionId,
-    classMetadata,
-    gradeLevel: classMetadata.gradeLevel || undefined,
-    classification: classMetadata.classification || undefined,
-    strand: classMetadata.strand || undefined,
-    managerId: classMetadata.managerId || undefined,
-    managerName: classMetadata.managerName || undefined,
+    name: c.name,
+    classSectionId: c.classSectionId,
     schedule: c.schedule,
     studentCount: c.studentCount,
     avgScore: c.avgScore,
@@ -161,25 +113,9 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
   const lastActiveStr = s.lastActive
     ? formatRelativeTime(s.lastActive.toDate())
     : 'Unknown';
-  const baseClassName = s.className || className || 'Imported Class';
-  const parsed = parseClassName(baseClassName);
-  const grade = s.grade || parsed.grade;
-  const section = s.section || parsed.section;
-  const classMetadata = resolveClassMetadata({
-    metadata: s.classMetadata,
-    classSectionId: s.classSectionId || s.classroomId,
-    className: [grade, section].filter(Boolean).join(' - ') || baseClassName,
-    grade,
-    gradeLevel: s.gradeLevel,
-    classification: s.classification,
-    strand: s.strand,
-    section,
-    adviserTeacherId: s.teacherId,
-    ownerTeacherId: s.teacherId,
-    managerId: s.classMetadata?.managerId || s.managerId,
-    managerName: s.classMetadata?.managerName || s.managerName,
-  });
-
+  const [derivedGrade = '', derivedSection = ''] = className.split(' - ');
+  const grade = s.grade || derivedGrade || 'Grade 11';
+  const section = s.section || derivedSection || 'Section A';
   return {
     id: s.id,
     lrn: s.lrn,
@@ -188,17 +124,11 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'N/A',
-    classroomId: s.classroomId || classMetadata.classSectionId || baseClassName,
-    className: classMetadata.className || [grade, section].filter(Boolean).join(' - ') || baseClassName,
+    classroomId: s.classroomId,
+    className: [grade, section].filter(Boolean).join(' - ') || className,
     grade,
-    gradeLevel: classMetadata.gradeLevel || normalizeGradeLevel(grade) || undefined,
-    classification: classMetadata.classification || inferClassification(classMetadata.gradeLevel || grade) || undefined,
-    strand: classMetadata.strand || inferStrand(classMetadata.className, section) || undefined,
     section,
-    classSectionId: classMetadata.classSectionId || s.classSectionId,
-    classMetadata,
-    managerId: classMetadata.managerId || undefined,
-    managerName: classMetadata.managerName || undefined,
+    classSectionId: s.classSectionId,
     lastActive: lastActiveStr,
     struggles: s.struggles || [],
     engagementScore: s.engagementScore,
@@ -209,29 +139,10 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
 
 function toImportedClassView(c: ImportedClassOverviewResponse['classrooms'][number]): ClassView {
   const riskLevel = c.atRiskCount >= 5 ? 'high' : c.atRiskCount >= 2 ? 'medium' : 'low';
-  const classMetadata = resolveClassMetadata({
-    metadata: c.classMetadata,
-    classSectionId: c.classSectionId,
-    className: c.name,
-    grade: c.grade,
-    gradeLevel: c.gradeLevel || c.classMetadata?.gradeLevel,
-    classification: c.classification || c.classMetadata?.classification,
-    strand: c.strand || c.classMetadata?.strand,
-    section: c.section,
-    managerId: c.managerId || c.classMetadata?.managerId,
-    managerName: c.managerName || c.classMetadata?.managerName,
-  });
-
   return {
     id: c.id,
-    name: classMetadata.className || c.name,
-    classSectionId: classMetadata.classSectionId || c.classSectionId || undefined,
-    classMetadata,
-    gradeLevel: classMetadata.gradeLevel || undefined,
-    classification: classMetadata.classification || undefined,
-    strand: classMetadata.strand || undefined,
-    managerId: classMetadata.managerId || undefined,
-    managerName: classMetadata.managerName || undefined,
+    name: c.name,
+    classSectionId: c.classSectionId || undefined,
     schedule: c.schedule || 'Mon-Fri',
     studentCount: c.studentCount,
     avgScore: c.avgScore,
@@ -242,20 +153,7 @@ function toImportedClassView(c: ImportedClassOverviewResponse['classrooms'][numb
 
 function toImportedStudentView(s: ImportedClassOverviewResponse['students'][number]): StudentView {
   const riskLevel = (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
-  const classMetadata = resolveClassMetadata({
-    metadata: s.classMetadata,
-    classSectionId: s.classSectionId,
-    className: s.className || [s.grade, s.section].filter(Boolean).join(' - ') || 'Imported Class',
-    grade: s.grade,
-    gradeLevel: s.gradeLevel || s.classMetadata?.gradeLevel,
-    classification: s.classification || s.classMetadata?.classification,
-    strand: s.strand || s.classMetadata?.strand,
-    section: s.section,
-    managerId: s.managerId || s.classMetadata?.managerId,
-    managerName: s.managerName || s.classMetadata?.managerName,
-  });
-  const className = classMetadata.className || 'Imported Class';
-
+  const className = s.className || [s.grade, s.section].filter(Boolean).join(' - ') || 'Imported Class';
   return {
     id: s.id,
     lrn: s.lrn || undefined,
@@ -264,17 +162,11 @@ function toImportedStudentView(s: ImportedClassOverviewResponse['students'][numb
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'Foundational Skills',
-    classroomId: classMetadata.classSectionId || s.classSectionId || className,
+    classroomId: s.classSectionId || className,
     className,
-    grade: classMetadata.grade || parseClassName(className).grade,
-    gradeLevel: classMetadata.gradeLevel || normalizeGradeLevel(classMetadata.grade || parseClassName(className).grade) || undefined,
-    classification: classMetadata.classification || inferClassification(classMetadata.gradeLevel || classMetadata.grade) || undefined,
-    strand: classMetadata.strand || inferStrand(className, classMetadata.section || s.section) || undefined,
-    section: classMetadata.section || parseClassName(className).section,
-    classSectionId: classMetadata.classSectionId || s.classSectionId || undefined,
-    classMetadata,
-    managerId: classMetadata.managerId || undefined,
-    managerName: classMetadata.managerName || undefined,
+    grade: s.grade || className.split(' - ')[0] || 'Grade 11',
+    section: s.section || className.split(' - ')[1] || 'Section A',
+    classSectionId: s.classSectionId || undefined,
     lastActive: 'Recently imported',
     struggles: [s.weakestTopic || 'Foundational Skills'],
     engagementScore: s.engagementScore,
@@ -293,15 +185,10 @@ function toUploadedStudentView(
   student: UploadResponse['students'][number],
   classSectionId?: string,
   className?: string,
-  classMetadata?: ClassSectionMetadata | null,
 ): StudentView {
-  const resolvedMetadata = resolveClassMetadata({
-    metadata: classMetadata,
-    classSectionId,
-    className,
-  });
-  const resolvedClassName = resolvedMetadata.className || 'Imported Class';
-  const resolvedClassSectionId = resolvedMetadata.classSectionId || 'imported_class';
+  const resolvedClassName = className || 'Imported Class';
+  const [derivedGrade = '', derivedSection = ''] = resolvedClassName.split(' - ');
+  const resolvedClassSectionId = classSectionId || buildClassSectionId(derivedGrade, derivedSection) || 'imported_class';
   const avgScore = Number(student.avgQuizScore || 0);
   const attendance = Number(student.attendance || 0);
   const engagementScore = Number(student.engagementScore || 0);
@@ -320,15 +207,9 @@ function toUploadedStudentView(
     weakestTopic,
     classroomId: resolvedClassSectionId,
     className: resolvedClassName,
-    grade: resolvedMetadata.grade || parseClassName(resolvedClassName).grade,
-    gradeLevel: resolvedMetadata.gradeLevel || normalizeGradeLevel(resolvedMetadata.grade || parseClassName(resolvedClassName).grade) || undefined,
-    classification: resolvedMetadata.classification || inferClassification(resolvedMetadata.gradeLevel || resolvedMetadata.grade) || undefined,
-    strand: resolvedMetadata.strand || inferStrand(resolvedClassName, resolvedMetadata.section) || undefined,
-    section: resolvedMetadata.section || parseClassName(resolvedClassName).section,
+    grade: derivedGrade || 'Grade 11',
+    section: derivedSection || 'Section A',
     classSectionId: resolvedClassSectionId,
-    classMetadata: resolvedMetadata,
-    managerId: resolvedMetadata.managerId || undefined,
-    managerName: resolvedMetadata.managerName || undefined,
     lastActive: 'Recently imported',
     struggles: [weakestTopic],
     engagementScore,
@@ -341,25 +222,22 @@ function resolveUploadedClassContext(
   result: UploadResponse,
   fallbackClassSectionId?: string,
   fallbackClassName?: string,
-  fallbackClassMetadata?: ClassSectionMetadata | null,
-): { classSectionId: string; className: string; classMetadata: ClassSectionMetadata } {
-  const responseMetadata = resolveClassMetadata({
-    metadata: result.dashboardSync?.classMetadata || result.classMetadata || fallbackClassMetadata,
-    classSectionId: result.dashboardSync?.classSectionId || fallbackClassSectionId,
-    className: result.dashboardSync?.className || fallbackClassName,
-  });
+): { classSectionId: string; className: string } {
+  const responseClassSectionId = result.dashboardSync?.classSectionId || fallbackClassSectionId || '';
+  const responseClassName = fallbackClassName || 'Imported Class';
 
-  const classSectionId = responseMetadata.classSectionId || 'imported_class';
-  const className = responseMetadata.className || 'Imported Class';
+  if (responseClassSectionId) {
+    return {
+      classSectionId: responseClassSectionId,
+      className: responseClassName,
+    };
+  }
 
+  const [grade = 'Grade 11', section = 'Section A'] = responseClassName.split(' - ');
+  const computedSectionId = buildClassSectionId(grade, section) || 'imported_class';
   return {
-    classSectionId,
-    className,
-    classMetadata: {
-      ...responseMetadata,
-      classSectionId,
-      className,
-    },
+    classSectionId: computedSectionId,
+    className: responseClassName,
   };
 }
 
@@ -374,6 +252,13 @@ function formatRelativeTime(date: Date): string {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
+function buildClassSectionId(grade: string, section: string): string {
+  return [grade, section]
+    .filter(Boolean)
+    .join('_')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+}
 
 function normalizeClassSectionId(value?: string): string {
   return (value || '').trim().toLowerCase();
@@ -406,34 +291,11 @@ function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView
     const studentCount = Math.max(existing.studentCount || 0, item.studentCount || 0);
     const avgScore = item.avgScore > 0 ? item.avgScore : existing.avgScore;
     const riskLevel = atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low';
-    const classMetadata = resolveClassMetadata({
-      metadata: existing.classMetadata,
-      classSectionId: existing.classSectionId || item.classSectionId,
-      className: existing.name || item.name,
-      grade: existing.classMetadata?.grade || item.classMetadata?.grade,
-      gradeLevel: existing.classMetadata?.gradeLevel || item.classMetadata?.gradeLevel,
-      classification: existing.classMetadata?.classification || item.classMetadata?.classification,
-      strand: existing.classMetadata?.strand || item.classMetadata?.strand,
-      section: existing.classMetadata?.section || item.classMetadata?.section,
-      schoolYear: existing.classMetadata?.schoolYear || item.classMetadata?.schoolYear,
-      ownerTeacherId: existing.classMetadata?.ownerTeacherId || item.classMetadata?.ownerTeacherId,
-      ownerTeacherName: existing.classMetadata?.ownerTeacherName || item.classMetadata?.ownerTeacherName,
-      adviserTeacherId: existing.classMetadata?.adviserTeacherId || item.classMetadata?.adviserTeacherId,
-      adviserTeacherName: existing.classMetadata?.adviserTeacherName || item.classMetadata?.adviserTeacherName,
-      managerId: existing.classMetadata?.managerId || item.classMetadata?.managerId,
-      managerName: existing.classMetadata?.managerName || item.classMetadata?.managerName,
-    });
 
     merged.set(key, {
       ...existing,
-      classSectionId: classMetadata.classSectionId || existing.classSectionId || item.classSectionId,
-      name: classMetadata.className || existing.name || item.name,
-      classMetadata,
-      gradeLevel: classMetadata.gradeLevel || undefined,
-      classification: classMetadata.classification || undefined,
-      strand: classMetadata.strand || undefined,
-      managerId: classMetadata.managerId || undefined,
-      managerName: classMetadata.managerName || undefined,
+      classSectionId: existing.classSectionId || item.classSectionId,
+      name: existing.name || item.name,
       schedule: existing.schedule || item.schedule,
       studentCount,
       atRiskCount,
@@ -456,21 +318,6 @@ function buildStudentMergeKey(student: StudentView): string {
   return `${classSectionKey}|anonymous`;
 }
 
-function buildStudentViewKey(student: StudentView): string {
-  const classSectionKey = normalizeClassSectionId(student.classSectionId) || normalizeClassSectionId(student.classroomId);
-  const lrnKey = (student.lrn || '').trim().toLowerCase();
-  const idKey = (student.id || '').trim().toLowerCase();
-  const nameKey = student.name.trim().toLowerCase().replace(/\s+/g, '_');
-
-  if (classSectionKey && lrnKey) return `${classSectionKey}|lrn:${lrnKey}`;
-  if (classSectionKey && idKey) return `${classSectionKey}|id:${idKey}`;
-  if (lrnKey) return `lrn:${lrnKey}`;
-  if (idKey && nameKey) return `id:${idKey}|name:${nameKey}`;
-  if (idKey) return `id:${idKey}`;
-  if (classSectionKey && nameKey) return `${classSectionKey}|name:${nameKey}`;
-  return `name:${nameKey || 'unknown'}`;
-}
-
 function mergeStudentViews(primary: StudentView[], imported: StudentView[]): StudentView[] {
   const merged = new Map<string, StudentView>();
 
@@ -491,33 +338,15 @@ function mergeStudentViews(primary: StudentView[], imported: StudentView[]): Stu
       : [existing.riskLevel, item.riskLevel].includes('medium')
         ? 'medium'
         : 'low';
-    const classMetadata = resolveClassMetadata({
-      metadata: existing.classMetadata,
-      classSectionId: existing.classSectionId || item.classSectionId,
-      className: existing.className || item.className,
-      grade: existing.grade || item.grade,
-      gradeLevel: existing.gradeLevel || item.gradeLevel,
-      classification: existing.classification || item.classification,
-      strand: existing.strand || item.strand,
-      section: existing.section || item.section,
-      managerId: existing.managerId || item.managerId,
-      managerName: existing.managerName || item.managerName,
-    });
 
     merged.set(key, {
       ...existing,
       lrn: existing.lrn || item.lrn,
-      classSectionId: classMetadata.classSectionId || existing.classSectionId || item.classSectionId,
+      classSectionId: existing.classSectionId || item.classSectionId,
       classroomId: existing.classroomId || item.classroomId,
-      className: classMetadata.className || existing.className || item.className,
-      grade: classMetadata.grade || existing.grade || item.grade,
-      gradeLevel: classMetadata.gradeLevel || existing.gradeLevel || item.gradeLevel,
-      classification: classMetadata.classification || existing.classification || item.classification,
-      strand: classMetadata.strand || existing.strand || item.strand,
-      section: classMetadata.section || existing.section || item.section,
-      managerId: classMetadata.managerId || existing.managerId || item.managerId,
-      managerName: classMetadata.managerName || existing.managerName || item.managerName,
-      classMetadata,
+      className: existing.className || item.className,
+      grade: existing.grade || item.grade,
+      section: existing.section || item.section,
       avgScore: item.avgScore > 0 ? item.avgScore : existing.avgScore,
       attendance: item.attendance > 0 ? item.attendance : existing.attendance,
       engagementScore: item.engagementScore > 0 ? item.engagementScore : existing.engagementScore,
@@ -550,8 +379,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [dataLoading, setDataLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
-  const [teacherDirectory, setTeacherDirectory] = useState<TeacherDirectoryOption[]>([]);
-  const [managerUpdating, setManagerUpdating] = useState(false);
 
   // Fetch classrooms and students from Firebase
   useEffect(() => {
@@ -566,136 +393,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       try {
         const classrooms = await getClassroomsByTeacher(teacherId);
         let classViews = classrooms.map(toClassView);
-        const ownershipRecords = await getClassSectionOwnershipByTeacher(teacherId).catch(() => []);
 
-        const ownershipMap = new Map<string, (typeof ownershipRecords)[number]>();
-        ownershipRecords.forEach((record) => {
-          const key = normalizeClassSectionId(record.classSectionId);
-          if (key) {
-            ownershipMap.set(key, record);
-          }
-        });
-
-        classViews = classViews.map((item) => {
-          const ownership = ownershipMap.get(normalizeClassSectionId(item.classSectionId));
-          if (!ownership) return item;
-
-          const classMetadata = resolveClassMetadata({
-            metadata: item.classMetadata,
-            classSectionId: ownership.classSectionId || item.classSectionId,
-            className: ownership.className || item.name,
-            grade: ownership.grade || item.classMetadata?.grade,
-            gradeLevel: ownership.gradeLevel || item.classMetadata?.gradeLevel,
-            classification: ownership.classification || item.classMetadata?.classification,
-            strand: ownership.strand || item.classMetadata?.strand,
-            section: ownership.section || item.classMetadata?.section,
-            schoolYear: ownership.schoolYear || item.classMetadata?.schoolYear,
-            ownerTeacherId: ownership.ownerTeacherId || item.classMetadata?.ownerTeacherId,
-            ownerTeacherName: ownership.ownerTeacherName || item.classMetadata?.ownerTeacherName,
-            managerId: ownership.managerId || item.classMetadata?.managerId,
-            managerName: ownership.managerName || item.classMetadata?.managerName,
-          });
-
-          return {
-            ...item,
-            name: classMetadata.className || item.name,
-            classSectionId: classMetadata.classSectionId || item.classSectionId,
-            classMetadata,
-            gradeLevel: classMetadata.gradeLevel || item.gradeLevel,
-            classification: classMetadata.classification || item.classification,
-            strand: classMetadata.strand || item.strand,
-            managerId: classMetadata.managerId || item.managerId,
-            managerName: classMetadata.managerName || item.managerName,
-          };
-        });
-
-        // Build a lookup by both classroom doc id and classSectionId.
-        const classNameLookup = new Map<string, string>();
-        const classMetadataLookup = new Map<string, ClassSectionMetadata>();
-        classrooms.forEach((c) => {
-          const normalizedMetadata = resolveClassMetadata({
-            metadata: c.classMetadata,
-            classSectionId: c.classSectionId,
-            className: c.name,
-            grade: c.grade,
-            gradeLevel: c.gradeLevel,
-            classification: c.classification,
-            strand: c.strand,
-            section: c.section,
-            schoolYear: c.schoolYear,
-            ownerTeacherId: c.ownerTeacherId || c.teacherId,
-            ownerTeacherName: c.ownerTeacherName,
-            adviserTeacherId: c.adviserTeacherId || c.teacherId,
-            adviserTeacherName: c.adviserTeacherName,
-            managerId: c.managerId,
-            managerName: c.managerName,
-          });
-
-          classNameLookup.set(c.id, normalizedMetadata.className || c.name);
-          classMetadataLookup.set(c.id, normalizedMetadata);
-          const normalizedClassSectionId = normalizeClassSectionId(c.classSectionId);
-          if (normalizedClassSectionId) {
-            const ownership = ownershipMap.get(normalizedClassSectionId);
-            const mergedMetadata = resolveClassMetadata({
-              metadata: normalizedMetadata,
-              classSectionId: ownership?.classSectionId || normalizedClassSectionId,
-              className: ownership?.className || normalizedMetadata.className,
-              grade: ownership?.grade || normalizedMetadata.grade,
-              gradeLevel: ownership?.gradeLevel || normalizedMetadata.gradeLevel,
-              classification: ownership?.classification || normalizedMetadata.classification,
-              strand: ownership?.strand || normalizedMetadata.strand,
-              section: ownership?.section || normalizedMetadata.section,
-              schoolYear: ownership?.schoolYear || normalizedMetadata.schoolYear,
-              ownerTeacherId: ownership?.ownerTeacherId || normalizedMetadata.ownerTeacherId,
-              ownerTeacherName: ownership?.ownerTeacherName || normalizedMetadata.ownerTeacherName,
-              managerId: ownership?.managerId || normalizedMetadata.managerId,
-              managerName: ownership?.managerName || normalizedMetadata.managerName,
-            });
-            classNameLookup.set(normalizedClassSectionId, mergedMetadata.className || c.name);
-            classMetadataLookup.set(normalizedClassSectionId, mergedMetadata);
-          }
-        });
+        // Build a map of classroomId -> name
+        const classNameMap: Record<string, string> = {};
+        classrooms.forEach((c) => { classNameMap[c.id] = c.name; });
 
         const allStudents = await getStudentsByTeacher(teacherId);
-        let studentViews = allStudents.map((s) => {
-          const sectionLookupKey = normalizeClassSectionId(s.classSectionId || s.classroomId);
-          const resolvedClassName =
-            classNameLookup.get(s.classroomId)
-            || (sectionLookupKey ? classNameLookup.get(sectionLookupKey) : undefined)
-            || s.className
-            || 'Unknown';
-          const mapped = toStudentView(s, resolvedClassName);
-          if (!sectionLookupKey) return mapped;
-          const matchedMetadata = classMetadataLookup.get(sectionLookupKey);
-          if (!matchedMetadata) return mapped;
-
-          const classMetadata = resolveClassMetadata({
-            metadata: matchedMetadata,
-            classSectionId: mapped.classSectionId || matchedMetadata.classSectionId,
-            className: mapped.className || matchedMetadata.className,
-            grade: mapped.grade || matchedMetadata.grade,
-            gradeLevel: mapped.gradeLevel || matchedMetadata.gradeLevel,
-            classification: mapped.classification || matchedMetadata.classification,
-            strand: mapped.strand || matchedMetadata.strand,
-            section: mapped.section || matchedMetadata.section,
-            managerId: mapped.managerId || matchedMetadata.managerId,
-            managerName: mapped.managerName || matchedMetadata.managerName,
-          });
-
-          return {
-            ...mapped,
-            className: classMetadata.className || mapped.className,
-            grade: classMetadata.grade || mapped.grade,
-            gradeLevel: classMetadata.gradeLevel || mapped.gradeLevel,
-            classification: classMetadata.classification || mapped.classification,
-            strand: classMetadata.strand || mapped.strand,
-            section: classMetadata.section || mapped.section,
-            classSectionId: classMetadata.classSectionId || mapped.classSectionId,
-            classMetadata,
-            managerId: classMetadata.managerId || mapped.managerId,
-            managerName: classMetadata.managerName || mapped.managerName,
-          };
-        });
+        let studentViews = allStudents.map((s) => toStudentView(s, classNameMap[s.classroomId] || 'Unknown'));
 
         if (!isActive) return;
         setClasses((prev) => {
@@ -762,24 +466,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     };
   }, [currentUser, dataRefreshNonce]);
 
-  useEffect(() => {
-    if (!currentUser) return;
-    let active = true;
-
-    void getTeacherDirectoryOptions('', 80)
-      .then((teachers) => {
-        if (!active) return;
-        setTeacherDirectory(teachers);
-      })
-      .catch((err) => {
-        console.warn('Failed to load teacher directory options:', err);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [currentUser]);
-
   // Fetch AI daily insight when students data is available
   useEffect(() => {
     if (students.length === 0) return;
@@ -811,26 +497,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const totalAtRisk = classes.reduce((sum, c) => sum + c.atRiskCount, 0);
   const avgPerformance = classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.avgScore, 0) / classes.length) : 0;
 
-  const riskDistribution = [
-    { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#ef4444' },
-    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#f43f5e' },
-    { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#10b981' },
-  ];
-
-  // Gather weakest topics as topic performance data
-  const topicCounts: Record<string, { total: number; sum: number }> = {};
-  students.forEach((s) => {
-    if (s.weakestTopic && s.weakestTopic !== 'N/A') {
-      if (!topicCounts[s.weakestTopic]) topicCounts[s.weakestTopic] = { total: 0, sum: 0 };
-      topicCounts[s.weakestTopic].total += 1;
-      topicCounts[s.weakestTopic].sum += s.avgScore;
-    }
-  });
-  const topicPerformance = Object.entries(topicCounts)
-    .map(([topic, data]) => ({ topic, score: Math.round(data.sum / data.total) }))
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 6);
-
   const handleViewClass = (classItem: ClassView) => {
     setSelectedClass(classItem);
     setActiveView('analytics');
@@ -850,133 +516,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setSelectedClass(null);
     setSelectedStudent(null);
     setActiveView('dashboard');
-  };
-
-  const handleAssignClassManager = async (classItem: ClassView, manager: TeacherDirectoryOption) => {
-    if (!currentUser) {
-      toast.error('Unable to assign manager: teacher context is missing.');
-      return;
-    }
-
-    const parsed = parseClassName(classItem.classMetadata?.className || classItem.name);
-    const classMetadata = resolveClassMetadata({
-      metadata: classItem.classMetadata,
-      classSectionId: classItem.classSectionId,
-      className: classItem.name,
-      grade: classItem.classMetadata?.grade || parsed.grade,
-      gradeLevel: classItem.classMetadata?.gradeLevel,
-      classification: classItem.classMetadata?.classification,
-      strand: classItem.classMetadata?.strand,
-      section: classItem.classMetadata?.section || parsed.section,
-      schoolYear: classItem.classMetadata?.schoolYear || String(new Date().getFullYear()),
-      ownerTeacherId: classItem.classMetadata?.ownerTeacherId || currentUser.uid,
-      ownerTeacherName: classItem.classMetadata?.ownerTeacherName || teacherName,
-      adviserTeacherId: classItem.classMetadata?.adviserTeacherId || currentUser.uid,
-      adviserTeacherName: classItem.classMetadata?.adviserTeacherName || teacherName,
-      managerId: manager.uid,
-      managerName: manager.name,
-    });
-
-    const classSectionId = classMetadata.classSectionId || buildClassSectionId(classMetadata.grade || parsed.grade, classMetadata.section || parsed.section);
-    if (!classSectionId) {
-      toast.error('Unable to assign manager: missing class section ID.');
-      return;
-    }
-
-    setManagerUpdating(true);
-    try {
-      await assignClassSectionManager({
-        classSectionId,
-        className: classMetadata.className || classItem.name,
-        grade: classMetadata.grade || parsed.grade,
-        gradeLevel: classMetadata.gradeLevel || normalizeGradeLevel(classMetadata.grade || parsed.grade) || classMetadata.grade || parsed.grade,
-        classification: classMetadata.classification || inferClassification(classMetadata.gradeLevel || classMetadata.grade) || undefined,
-        strand: classMetadata.strand || inferStrand(classMetadata.className, classMetadata.section) || undefined,
-        section: classMetadata.section || parsed.section,
-        schoolYear: classMetadata.schoolYear || String(new Date().getFullYear()),
-        ownerTeacherId: classMetadata.ownerTeacherId || currentUser.uid,
-        ownerTeacherName: classMetadata.ownerTeacherName || teacherName,
-        managerId: manager.uid,
-        managerName: manager.name,
-      });
-
-      const updatedMetadata = resolveClassMetadata({
-        metadata: classMetadata,
-        classSectionId,
-        managerId: manager.uid,
-        managerName: manager.name,
-      });
-      const normalizedTargetSection = normalizeClassSectionId(classSectionId);
-
-      setClasses((prev) =>
-        prev.map((entry) => {
-          const entrySectionId = normalizeClassSectionId(entry.classSectionId);
-          if (entrySectionId !== normalizedTargetSection) return entry;
-          return {
-            ...entry,
-            name: updatedMetadata.className || entry.name,
-            classSectionId: updatedMetadata.classSectionId || entry.classSectionId,
-            classMetadata: updatedMetadata,
-            gradeLevel: updatedMetadata.gradeLevel || entry.gradeLevel,
-            classification: updatedMetadata.classification || entry.classification,
-            strand: updatedMetadata.strand || entry.strand,
-            managerId: manager.uid,
-            managerName: manager.name,
-          };
-        })
-      );
-
-      setStudents((prev) =>
-        prev.map((entry) => {
-          const studentSection = normalizeClassSectionId(entry.classSectionId || entry.classroomId);
-          if (studentSection !== normalizedTargetSection) return entry;
-          const mergedMetadata = resolveClassMetadata({
-            metadata: entry.classMetadata,
-            classSectionId: updatedMetadata.classSectionId || entry.classSectionId,
-            className: entry.className || updatedMetadata.className,
-            grade: entry.grade || updatedMetadata.grade,
-            gradeLevel: entry.gradeLevel || updatedMetadata.gradeLevel,
-            classification: entry.classification || updatedMetadata.classification,
-            strand: entry.strand || updatedMetadata.strand,
-            section: entry.section || updatedMetadata.section,
-            managerId: manager.uid,
-            managerName: manager.name,
-          });
-
-          return {
-            ...entry,
-            classMetadata: mergedMetadata,
-            gradeLevel: mergedMetadata.gradeLevel || entry.gradeLevel,
-            classification: mergedMetadata.classification || entry.classification,
-            strand: mergedMetadata.strand || entry.strand,
-            managerId: manager.uid,
-            managerName: manager.name,
-          };
-        })
-      );
-
-      setSelectedClass((prev) => {
-        if (!prev) return prev;
-        const prevSection = normalizeClassSectionId(prev.classSectionId);
-        if (prevSection !== normalizedTargetSection) return prev;
-        return {
-          ...prev,
-          classMetadata: updatedMetadata,
-          managerId: manager.uid,
-          managerName: manager.name,
-          gradeLevel: updatedMetadata.gradeLevel || prev.gradeLevel,
-          classification: updatedMetadata.classification || prev.classification,
-          strand: updatedMetadata.strand || prev.strand,
-        };
-      });
-
-      toast.success(`Assigned ${manager.name} as section manager.`);
-    } catch (error) {
-      console.error('Failed to assign class manager:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to assign class manager');
-    } finally {
-      setManagerUpdating(false);
-    }
   };
 
   useEffect(() => {
@@ -1003,10 +542,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const teacherName = userProfile?.name || 'Teacher';
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
-    if (selectedClass.classMetadata?.classSectionId) return selectedClass.classMetadata.classSectionId || undefined;
     if (selectedClass.classSectionId) return selectedClass.classSectionId;
-    const parsed = parseClassName(selectedClass.classMetadata?.className || selectedClass.name);
-    const computed = buildClassSectionId(parsed.grade, parsed.section);
+    const [grade = '', section = ''] = selectedClass.name.split(' - ');
+    const computed = buildClassSectionId(grade, section);
     return computed || undefined;
   }, [selectedClass]);
 
@@ -1034,30 +572,29 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     });
   }, [effectiveAnalyticsClass, students]);
 
-  if (dataLoading) {
-    return (
-      <div className="flex h-screen w-full bg-background p-6">
-        <div className="hidden lg:flex w-[280px] shrink-0 rounded-3xl border border-border bg-card p-5">
-          <div className="w-full space-y-4">
-            <Skeleton className="h-12 w-40" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-        <div className="flex-1 space-y-4 lg:pl-6">
-          <Skeleton className="h-20 w-full rounded-2xl" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-28 w-full rounded-2xl" />
-          </div>
-          <Skeleton className="h-[420px] w-full rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
+  const riskDistribution = useMemo(() => {
+    const analyticsStudents = filteredStudentsForAnalytics;
+    return [
+      { name: 'High Risk', value: analyticsStudents.filter((s) => s.riskLevel === 'high').length, color: 'var(--chart-2)' },
+      { name: 'Medium Risk', value: analyticsStudents.filter((s) => s.riskLevel === 'medium').length, color: 'var(--chart-4)' },
+      { name: 'Low Risk', value: analyticsStudents.filter((s) => s.riskLevel === 'low').length, color: 'var(--chart-3)' },
+    ];
+  }, [filteredStudentsForAnalytics]);
+
+  const topicPerformance = useMemo(() => {
+    const topicCounts: Record<string, { total: number; sum: number }> = {};
+    filteredStudentsForAnalytics.forEach((s) => {
+      if (s.weakestTopic && s.weakestTopic !== 'N/A') {
+        if (!topicCounts[s.weakestTopic]) topicCounts[s.weakestTopic] = { total: 0, sum: 0 };
+        topicCounts[s.weakestTopic].total += 1;
+        topicCounts[s.weakestTopic].sum += s.avgScore;
+      }
+    });
+    return Object.entries(topicCounts)
+      .map(([topic, data]) => ({ topic, score: Math.round(data.sum / data.total) }))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 6);
+  }, [filteredStudentsForAnalytics]);
 
   return (
     <div className="relative flex h-screen w-full bg-background overflow-hidden">
@@ -1079,14 +616,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         transition={{ type: 'spring', stiffness: 360, damping: 34 }}
         onMouseEnter={() => !isMobileViewport && sidebarCollapsed && setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
-        className="fixed inset-y-0 left-0 z-40 bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex flex-col shadow-sm lg:static lg:z-auto p-5"
+        className="fixed inset-y-0 left-0 z-40 bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex flex-col shadow-sm lg:static lg:z-auto p-4 sm:p-5"
       >
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
-              <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
-            </div>
+            <img src="/mathpulse_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
             {(!sidebarCollapsed || sidebarHovered) && (
               <div>
                 <h1 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
@@ -1116,7 +651,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-5">
+        <nav className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-1">
           {/* Overview Section */}
           <div>
             {sidebarCollapsed && !sidebarHovered ? (
@@ -1243,10 +778,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-3 sticky top-0 z-30">
-          <div className="flex items-start justify-between gap-3">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-3 sticky top-0 z-30">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               {isMobileViewport && (
                 <button
@@ -1284,22 +819,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               {/* Quick teacher stats */}
               {activeView === 'dashboard' && (
                 <div className="hidden xl:flex items-center gap-2 ml-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 border border-sky-200/60 rounded-lg">
-                    <Users size={13} className="text-sky-600" />
-                    <span className="text-xs font-display font-bold text-sky-700">{totalStudents} students</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--primary)_30%,transparent)] rounded-lg">
+                    <Users size={13} className="text-[var(--primary)]" />
+                    <span className="text-xs font-display font-bold text-foreground">{totalStudents} students</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 border border-rose-200/60 rounded-lg">
-                    <AlertTriangle size={13} className="text-rose-600" />
-                    <span className="text-xs font-display font-bold text-rose-700">{totalAtRisk} at risk</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] border border-[color-mix(in_srgb,var(--chart-2)_30%,transparent)] rounded-lg">
+                    <AlertTriangle size={13} className="text-[var(--chart-2)]" />
+                    <span className="text-xs font-display font-bold text-foreground">{totalAtRisk} at risk</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200/60 rounded-lg">
-                    <TrendingUp size={13} className="text-emerald-600" />
-                    <span className="text-xs font-display font-bold text-emerald-700">{avgPerformance}% avg</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[color-mix(in_srgb,var(--chart-3)_10%,transparent)] border border-[color-mix(in_srgb,var(--chart-3)_30%,transparent)] rounded-lg">
+                    <TrendingUp size={13} className="text-[var(--chart-3)]" />
+                    <span className="text-xs font-display font-bold text-foreground">{avgPerformance}% avg</span>
                   </div>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
                 onClick={onOpenProfile}
                 className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
@@ -1322,9 +857,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
         {/* View Content */}
         <main className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && (
-              <DashboardView
+          {dataLoading ? (
+            <div className="h-full flex items-center justify-center bg-[#f7f9fc]">
+              <div className="flex flex-col items-center gap-4 text-center pb-20">
+                <Loader2 size={40} className="animate-spin text-sky-600" />
+                <p className="text-muted-foreground font-medium animate-pulse text-[#0a1628]">Loading dashboard...</p>
+              </div>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              {activeView === 'dashboard' && (
+                <DashboardView
                 classes={classes}
                 liveActivity={liveActivity}
                 onViewClass={handleViewClass}
@@ -1339,14 +882,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'analytics' && effectiveAnalyticsClass && (
               <AnalyticsView
                 selectedClass={effectiveAnalyticsClass}
+                classes={classes}
                 students={filteredStudentsForAnalytics}
                 riskDistribution={riskDistribution}
                 topicPerformance={topicPerformance}
                 onViewStudent={handleViewStudent}
+                onSelectClass={(classItem) => setSelectedClass(classItem)}
                 onBack={handleBackToDashboard}
-                teacherOptions={teacherDirectory}
-                managerUpdating={managerUpdating}
-                onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
               />
             )}
             {activeView === 'analytics' && !effectiveAnalyticsClass && (
@@ -1362,18 +904,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 teacherId={currentUser?.uid || ''}
                 teacherName={teacherName}
                 onStudentUpdated={(updatedStudent) => {
-                  const previousStudentKey = selectedStudent ? buildStudentViewKey(selectedStudent) : null;
                   setSelectedStudent(updatedStudent);
-                  setStudents((prev) =>
-                    prev.map((item) => {
-                      const itemKey = buildStudentViewKey(item);
-                      const matchesPreviousKey = previousStudentKey ? itemKey === previousStudentKey : false;
-                      const matchesExactIdentity =
-                        item.id === updatedStudent.id
-                        && normalizeClassSectionId(item.classSectionId) === normalizeClassSectionId(updatedStudent.classSectionId);
-                      return matchesPreviousKey || matchesExactIdentity ? updatedStudent : item;
-                    })
-                  );
+                  setStudents((prev) => prev.map((item) => (item.id === updatedStudent.id ? updatedStudent : item)));
                 }}
                 onBack={handleBackToAnalytics}
               />
@@ -1391,19 +923,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onEditRecords={() => setActiveView('edit_records')}
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
-                classMetadata={selectedClass?.classMetadata}
                 onImportedClassRecords={(payload) => {
                   const uploadedStudents = payload.students.map((item) =>
-                    toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
+                    toUploadedStudentView(item, payload.classSectionId, payload.className),
                   );
 
-                  const resolvedClassMetadata = resolveClassMetadata({
-                    metadata: payload.classMetadata,
-                    classSectionId: payload.classSectionId,
-                    className: payload.className,
-                  });
-                  const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
-                  const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
+                  const classSection = payload.classSectionId
+                    || (payload.className
+                      ? buildClassSectionId(payload.className.split(' - ')[0] || '', payload.className.split(' - ')[1] || '')
+                      : 'imported_class');
+                  const resolvedClassName = payload.className || 'Imported Class';
                   const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
                   const avgScore = uploadedStudents.length > 0
                     ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
@@ -1413,11 +942,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     id: classSection,
                     name: resolvedClassName,
                     classSectionId: classSection,
-                    classMetadata: {
-                      ...resolvedClassMetadata,
-                      classSectionId: classSection,
-                      className: resolvedClassName,
-                    },
                     schedule: 'Mon-Fri',
                     studentCount: uploadedStudents.length,
                     avgScore,
@@ -1432,18 +956,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               />
             )}
             {activeView === 'notifications' && (
-              <ToolsPlaceholderView
-                icon={Bell}
-                title="Notifications"
-                description="Teacher alerts and classroom updates will appear here."
-              />
+              <TeacherNotificationsView userId={currentUser?.uid || ''} />
             )}
             {activeView === 'calendar' && (
-              <ToolsPlaceholderView
-                icon={Calendar}
-                title="Calendar"
-                description="Your class schedule and upcoming events will appear here."
-              />
+              <TeacherCalendarView />
             )}
             {activeView === 'edit_records' && (
               <EditRecordsView
@@ -1456,7 +972,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'quiz_maker' && (
               <QuizMaker onBack={() => setActiveView('dashboard')} />
             )}
-          </AnimatePresence>
+            </AnimatePresence>
+          )}
         </main>
       </div>
 
@@ -1516,7 +1033,7 @@ const ToolsPlaceholderView: React.FC<{
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -20 }}
-    className="p-6"
+    className="p-4 sm:p-6"
   >
     <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
       <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
@@ -1548,40 +1065,36 @@ const DashboardView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 space-y-6"
+      className="p-4 sm:p-6 space-y-6"
     >
       {/* Daily AI Insight Banner -€” compact, not dominating */}
-      <div className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl p-5 text-white shadow-md">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-card/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <AlertTriangle size={20} />
+      <div className="bg-gradient-to-r from-[var(--primary)] to-[color-mix(in_srgb,var(--primary)_85%,transparent)] rounded-2xl p-6 text-white shadow-md">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm border border-white/10">
+            <AlertTriangle size={24} className="text-white" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-display font-bold mb-1">AI Insight</h2>
-            <BoneSkeleton
-              name="teacher-dashboard-ai-insight"
-              loading={insightLoading}
-              fixture={
-                <div className="space-y-2 pt-1">
-                  <Skeleton className="h-3.5 w-11/12 bg-white/25" />
-                  <Skeleton className="h-3.5 w-10/12 bg-white/20" />
-                  <Skeleton className="h-3.5 w-8/12 bg-white/15" />
-                </div>
-              }
-              fallback={
-                <div className="space-y-2 pt-1">
-                  <Skeleton className="h-3.5 w-11/12 bg-white/25" />
-                  <Skeleton className="h-3.5 w-10/12 bg-white/20" />
-                  <Skeleton className="h-3.5 w-8/12 bg-white/15" />
-                </div>
-              }
-            >
-              <div className="text-sky-100 text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
+          <div className="flex-1 min-w-0 pt-0.5">
+            <h2 className="text-lg font-display font-bold mb-2 tracking-tight text-white drop-shadow-sm">AI Insight</h2>
+            {insightLoading ? (
+              <p className="text-white/80 text-sm leading-relaxed">
+                <span className="flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  Generating AI insight...
+                </span>
+              </p>
+            ) : (
+              <div 
+                className="text-white text-sm leading-relaxed prose prose-invert prose-p:my-1.5 prose-p:inline prose-headings:my-2 prose-headings:text-white prose-ol:my-2 prose-ol:pl-5 prose-li:my-2 prose-strong:text-white marker:text-white/80 max-w-none"
+                style={{ 
+                  '--foreground': 'white', 
+                  '--muted-foreground': 'rgba(255, 255, 255, 0.9)' 
+                } as React.CSSProperties}
+              >
                 <ChatMarkdown>
                   {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
                 </ChatMarkdown>
               </div>
-            </BoneSkeleton>
+            )}
           </div>
         </div>
       </div>
@@ -1594,15 +1107,15 @@ const DashboardView: React.FC<{
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <p className="text-xs text-muted-foreground font-body mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-sky-600">{avgPerformance}%</p>
+          <p className="text-2xl font-display font-bold text-[var(--chart-3)]">{avgPerformance}%</p>
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <p className="text-xs text-muted-foreground font-body mb-1">Engagement Rate</p>
-          <p className="text-2xl font-display font-bold text-emerald-600">{engagementRate}%</p>
+          <p className="text-2xl font-display font-bold text-[var(--chart-3)]">{engagementRate}%</p>
         </div>
-        <div className="bg-card rounded-xl p-4 border border-red-200/60 shadow-sm">
+        <div className="bg-card rounded-xl p-4 border border-[var(--chart-2)]/20 shadow-sm">
           <p className="text-xs text-muted-foreground font-body mb-1">At Risk</p>
-          <p className="text-2xl font-display font-bold text-red-600">{totalAtRisk}</p>
+          <p className="text-2xl font-display font-bold text-[var(--chart-2)]">{totalAtRisk}</p>
         </div>
       </div>
 
@@ -1641,18 +1154,6 @@ const DashboardView: React.FC<{
                       <Clock size={14} />
                       <span>{classItem.schedule}</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[classItem.gradeLevel, classItem.classification, classItem.strand]
-                        .filter(Boolean)
-                        .map((badge) => (
-                          <span key={`${classItem.id}-${badge}`} className="px-2 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-700 text-[11px] font-semibold">
-                            {badge}
-                          </span>
-                        ))}
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Manager: {classItem.managerName || classItem.classMetadata?.managerName || 'Not assigned'}
-                    </p>
                   </div>
                   <Button className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-6 py-2 rounded-xl">
                     View Class
@@ -1666,7 +1167,7 @@ const DashboardView: React.FC<{
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">At Risk</p>
-                    <p className="text-xl font-bold text-red-600">{classItem.atRiskCount}</p>
+                    <p className="text-xl font-bold text-[var(--chart-2)]">{classItem.atRiskCount}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
@@ -1681,8 +1182,8 @@ const DashboardView: React.FC<{
         {/* Live Classroom Pulse - 1 column */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-rose-600" />
+            <div className="w-10 h-10 bg-[var(--chart-2)]/10 rounded-xl flex items-center justify-center">
+              <Zap size={20} className="text-[var(--chart-2)]" />
             </div>
             <h2 className="text-xl font-display font-bold text-foreground">Live Classroom Pulse</h2>
           </div>
@@ -1694,10 +1195,10 @@ const DashboardView: React.FC<{
             {liveActivity.map((activity) => (
               <div
                 key={activity.id}
-                className={`p-4 rounded-xl border-l-4 ${
-                  activity.type === 'success' ? 'bg-green-50 border-green-500' :
-                  activity.type === 'warning' ? 'bg-rose-50 border-rose-500' :
-                  'bg-sky-50 border-sky-500'
+                className={`p-4 rounded-xl border-l-4 \${
+                  activity.type === 'success' ? 'bg-[color-mix(in_srgb,var(--chart-3)_10%,transparent)] border-[var(--chart-3)]' :
+                  activity.type === 'warning' ? 'bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] border-[var(--chart-2)]' :
+                  'bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] border-[var(--primary)]'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -1719,31 +1220,15 @@ const DashboardView: React.FC<{
 // Analytics View
 const AnalyticsView: React.FC<{
   selectedClass: ClassView;
+  classes: ClassView[];
   students: StudentView[];
   riskDistribution: { name: string; value: number; color: string }[];
   topicPerformance: { topic: string; score: number }[];
   onViewStudent: (student: StudentView) => void;
+  onSelectClass: (classItem: ClassView) => void;
   onBack: () => void;
-  teacherOptions: TeacherDirectoryOption[];
-  managerUpdating: boolean;
-  onAssignManager: (manager: TeacherDirectoryOption) => void | Promise<void>;
-}> = ({
-  selectedClass,
-  students,
-  riskDistribution,
-  topicPerformance,
-  onViewStudent,
-  onBack,
-  teacherOptions,
-  managerUpdating,
-  onAssignManager,
-}) => {
+}> = ({ selectedClass, classes, students, riskDistribution, topicPerformance, onViewStudent, onSelectClass, onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedManagerId, setSelectedManagerId] = useState('');
-
-  useEffect(() => {
-    setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
-  }, [selectedClass]);
 
   const visibleStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -1757,138 +1242,45 @@ const AnalyticsView: React.FC<{
     });
   }, [searchTerm, students]);
 
-  const averageCompletion = useMemo(() => {
-    if (students.length === 0) return 0;
-    const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
-    return Math.round(total / students.length);
-  }, [students]);
-
-  const participationRate = useMemo(() => {
-    if (students.length === 0) return 0;
-    const attendanceAverage = students.reduce((sum, student) => sum + (student.attendance || 0), 0) / students.length;
-    const engagementAverage = students.reduce((sum, student) => sum + (student.engagementScore || 0), 0) / students.length;
-    return Math.round((attendanceAverage * 0.6) + (engagementAverage * 0.4));
-  }, [students]);
-
-  const topPerformers = useMemo(() => {
-    return [...students]
-      .sort((a, b) => b.avgScore - a.avgScore)
-      .slice(0, 5);
-  }, [students]);
-
-  const attentionStudents = useMemo(() => {
-    return [...students]
-      .filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65)
-      .sort((a, b) => {
-        if (a.riskLevel !== b.riskLevel) {
-          const rank = { high: 3, medium: 2, low: 1 };
-          return rank[b.riskLevel] - rank[a.riskLevel];
-        }
-        return a.avgScore - b.avgScore;
-      })
-      .slice(0, 6);
-  }, [students]);
-
-  const selectedManager = useMemo(
-    () => teacherOptions.find((teacher) => teacher.uid === selectedManagerId),
-    [teacherOptions, selectedManagerId],
-  );
-
-  const handleAssignManager = () => {
-    if (!selectedManager) {
-      toast.error('Select a teacher manager first.');
-      return;
-    }
-    void onAssignManager(selectedManager);
-  };
-
-  const classBadges = [
-    selectedClass.classMetadata?.gradeLevel || selectedClass.gradeLevel,
-    selectedClass.classMetadata?.classification || selectedClass.classification,
-    selectedClass.classMetadata?.strand || selectedClass.strand,
-  ].filter(Boolean) as string[];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-4 sm:p-6"
     >
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-sky-600 font-bold mb-6 transition-colors group"
-      >
-        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Dashboard
-      </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        {/* Back Button */}
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-muted-foreground hover:text-sky-600 font-bold transition-colors group"
+        >
+          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Dashboard
+        </button>
 
-      <div className="bg-card rounded-2xl border border-border p-5 shadow-sm mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-display font-bold text-foreground">{selectedClass.name}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(selectedClass.riskLevel)}`}>
-                {selectedClass.riskLevel === 'high' ? 'High Risk Cohort' : selectedClass.riskLevel === 'medium' ? 'Medium Risk Cohort' : 'Low Risk Cohort'}
-              </span>
-              {classBadges.map((badge) => (
-                <span key={badge} className="px-3 py-1 rounded-lg text-xs font-semibold border bg-sky-50 border-sky-200 text-sky-700">
-                  {badge}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}
-            </p>
-          </div>
-
-          <div className="min-w-[260px] bg-muted rounded-xl p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Section Manager</p>
-            <div className="flex gap-2">
-              <select
-                id="analytics-section-manager-select"
-                name="analytics-section-manager-select"
-                aria-label="Select section manager"
-                value={selectedManagerId || ''}
-                onChange={(event) => setSelectedManagerId(event.target.value)}
-                className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
-              >
-                <option value="">Select teacher</option>
-                {teacherOptions.map((teacher) => (
-                  <option key={teacher.uid} value={teacher.uid}>
-                    {teacher.name} ({teacher.email})
-                  </option>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-body font-bold text-muted-foreground">Class</span>
+          <div className="min-w-[220px]">
+            <Select
+              value={selectedClass.id}
+              onValueChange={(value) => {
+                const next = classes.find((c) => c.id === value);
+                if (next) onSelectClass(next);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a class" />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
                 ))}
-              </select>
-              <Button
-                onClick={handleAssignManager}
-                disabled={!selectedManagerId || managerUpdating}
-                className="bg-sky-600 hover:bg-sky-700 text-white"
-              >
-                {managerUpdating ? <Skeleton className="h-4 w-12 bg-white/35" /> : 'Assign'}
-              </Button>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-sky-600">{selectedClass.avgScore}%</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Completion Rate</p>
-          <p className="text-2xl font-display font-bold text-emerald-600">{averageCompletion}%</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Participation</p>
-          <p className="text-2xl font-display font-bold text-violet-600">{participationRate}%</p>
-        </div>
-        <div className="bg-card border border-red-200 rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Needs Attention</p>
-          <p className="text-2xl font-display font-bold text-red-600">{attentionStudents.length}</p>
         </div>
       </div>
 
@@ -1901,9 +1293,6 @@ const AnalyticsView: React.FC<{
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <Input
-                id="analytics-student-search"
-                name="analytics-student-search"
-                aria-label="Search students"
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
@@ -1916,16 +1305,20 @@ const AnalyticsView: React.FC<{
           <div className="space-y-3 max-h-[700px] overflow-y-auto">
             {visibleStudents.map((student) => (
               <motion.div
-                key={buildStudentViewKey(student)}
+                key={student.id}
                 whileHover={{ scale: 1.02 }}
                 onClick={() => onViewStudent(student)}
-                className={`p-4 rounded-2xl border-2 cursor-pointer hover:shadow-md transition-all ${getRiskColor(student.riskLevel)}`}
+                className={`p-4 rounded-2xl border cursor-pointer hover:shadow-md transition-all ${
+                  student.riskLevel === 'high' ? 'border-chart-2/40 bg-chart-2/5' :
+                  student.riskLevel === 'medium' ? 'border-chart-4/40 bg-chart-4/5' :
+                  'border-chart-3/40 bg-chart-3/5'
+                }`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <img
                     src={student.avatar}
                     alt={student.name}
-                    className="w-12 h-12 rounded-xl object-cover border-2 border-current"
+                    className="w-12 h-12 rounded-xl object-cover border-2 border-background"
                   />
                   <div className="flex-1">
                     <h4 className="font-bold text-foreground">{student.name}</h4>
@@ -1938,12 +1331,12 @@ const AnalyticsView: React.FC<{
                     <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
                     <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
                   </div>
-                  <div className="h-2 bg-card rounded-full overflow-hidden">
+                  <div className="h-2 bg-card rounded-full overflow-hidden border border-border/50">
                     <div
                       className={`h-full rounded-full ${
-                        student.riskLevel === 'high' ? 'bg-red-500' :
-                        student.riskLevel === 'medium' ? 'bg-rose-500' :
-                        'bg-green-500'
+                        student.riskLevel === 'high' ? 'bg-chart-2' :
+                        student.riskLevel === 'medium' ? 'bg-chart-4' :
+                        'bg-chart-3'
                       }`}
                       style={{ width: `${student.avgScore}%` }}
                     ></div>
@@ -1988,49 +1381,30 @@ const AnalyticsView: React.FC<{
                 <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip />
-                <Bar dataKey="score" fill="#0284c7" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="score" fill="var(--chart-1)" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-bold text-foreground mb-3">Top Performers</h3>
-              <div className="space-y-2">
-                {topPerformers.slice(0, 4).map((student) => (
-                  <button
-                    key={`top-${buildStudentViewKey(student)}`}
-                    onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-border px-3 py-2 hover:bg-sky-50 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-emerald-600">{student.avgScore}%</span>
-                  </button>
-                ))}
-                {topPerformers.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No students available yet.</p>
-                )}
+          {/* Action Items */}
+          <div className="bg-gradient-to-br from-sky-50 to-cyan-50 border-2 border-sky-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-sky-600 rounded-xl flex items-center justify-center">
+                  <Target size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-foreground">Validate AI Links</h3>
+                  <p className="text-sm text-muted-foreground">Review AI-generated interventions</p>
+                </div>
               </div>
+              <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold">
+                Pending
+              </span>
             </div>
-
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-bold text-foreground mb-3">Students Needing Attention</h3>
-              <div className="space-y-2">
-                {attentionStudents.slice(0, 4).map((student) => (
-                  <button
-                    key={`attention-${buildStudentViewKey(student)}`}
-                    onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-red-200 bg-red-50/40 px-3 py-2 hover:bg-red-50 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-red-600">{student.riskLevel.toUpperCase()}</span>
-                  </button>
-                ))}
-                {attentionStudents.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No urgent students in this class right now.</p>
-                )}
-              </div>
-            </div>
+            <Button className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl">
+              Review Now
+            </Button>
           </div>
         </div>
       </div>
@@ -2349,7 +1723,7 @@ const InterventionView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-4 sm:p-6"
     >
       {/* Back Button */}
       <button
@@ -2412,7 +1786,7 @@ const InterventionView: React.FC<{
                     disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
                     className="bg-sky-600 hover:bg-sky-700 text-white h-10"
                   >
-                    {savingSection ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Save Section'}
+                    {savingSection ? <Loader2 size={16} className="animate-spin" /> : 'Save Section'}
                   </Button>
                 </div>
               </div>
@@ -2430,24 +1804,12 @@ const InterventionView: React.FC<{
               <h2 className="text-xl font-display font-bold text-foreground mb-2">
                 {isUrgentBarrier ? 'AI Analysis - Learning Barriers' : 'AI Analysis - Learning Strengths & Next Steps'}
               </h2>
-              <BoneSkeleton
-                name="teacher-intervention-analysis"
-                loading={pathLoading}
-                fixture={
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-3.5 w-64" />
-                    <Skeleton className="h-3.5 w-56" />
-                    <Skeleton className="h-3.5 w-44" />
-                  </div>
-                }
-                fallback={
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-3.5 w-64" />
-                    <Skeleton className="h-3.5 w-56" />
-                    <Skeleton className="h-3.5 w-44" />
-                  </div>
-                }
-              >
+              {pathLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Generating AI analysis...</span>
+                </div>
+              ) : (
                 <ul className="space-y-2 text-foreground">
                   {student.struggles.length > 0 ? (
                     student.struggles.map((s, i) => (
@@ -2469,7 +1831,7 @@ const InterventionView: React.FC<{
                     </li>
                   )}
                 </ul>
-              </BoneSkeleton>
+              )}
             </div>
           </div>
         </div>
@@ -2477,77 +1839,61 @@ const InterventionView: React.FC<{
         {/* AI-Generated Learning Path */}
         <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
           <h2 className="text-xl font-display font-bold text-foreground mb-6">AI-Generated Learning Path</h2>
-
-          <BoneSkeleton
-            name="teacher-intervention-learning-path"
-            loading={pathLoading}
-            fixture={
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            }
-            fallback={
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            }
-          >
-            {learningPath ? (
-              <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 text-sm text-foreground">
-                <ChatMarkdown>{learningPath}</ChatMarkdown>
-              </div>
-            ) : null}
-
-            <div className="space-y-4 relative">
-              {/* Vertical Timeline Line */}
-              <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-border"></div>
-
-              {remedialSteps.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <motion.div
-                    key={step.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="relative pl-16"
-                  >
-                    {/* Step Number Circle */}
-                    <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl flex items-center justify-center shadow-md">
-                      <Icon size={24} className="text-white" />
-                    </div>
-
-                    {/* Step Content */}
-                    <div className="bg-gradient-to-br from-sky-50 to-cyan-50 border border-sky-200 rounded-2xl p-5 hover:shadow-md transition-all">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-display font-bold text-foreground mb-1">{step.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
-                            {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
-                            {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
-                          </p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                          step.type === 'video' ? 'bg-rose-100 text-rose-700' :
-                          step.type === 'quiz' ? 'bg-sky-100 text-sky-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                          {step.type === 'video' ? 'Video' : step.type === 'quiz' ? 'Quiz' : 'Assessment'}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+          
+          {pathLoading ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+              <Loader2 size={20} className="animate-spin" />
+              <span>Generating personalized learning path...</span>
             </div>
-          </BoneSkeleton>
+          ) : learningPath ? (
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 text-sm text-foreground">
+              <ChatMarkdown>{learningPath}</ChatMarkdown>
+            </div>
+          ) : null}
+          
+          <div className="space-y-4 relative">
+            {/* Vertical Timeline Line */}
+            <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-border"></div>
+
+            {remedialSteps.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <motion.div
+                  key={step.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="relative pl-16"
+                >
+                  {/* Step Number Circle */}
+                  <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl flex items-center justify-center shadow-md">
+                    <Icon size={24} className="text-white" />
+                  </div>
+
+                  {/* Step Content */}
+                  <div className="bg-gradient-to-br from-sky-50 to-cyan-50 border border-sky-200 rounded-2xl p-5 hover:shadow-md transition-all">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-display font-bold text-foreground mb-1">{step.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
+                          {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
+                          {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
+                        </p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                        step.type === 'video' ? 'bg-rose-100 text-rose-700' :
+                        step.type === 'quiz' ? 'bg-sky-100 text-sky-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {step.type === 'video' ? 'Video' : step.type === 'quiz' ? 'Quiz' : 'Assessment'}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Import-grounded Lesson Plan */}
@@ -2555,20 +1901,16 @@ const InterventionView: React.FC<{
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-xl font-display font-bold text-foreground">Targeted Lesson Plan</h2>
-              <p className="text-sm text-muted-foreground">Class records drive risk signals. Import-grounded lesson generation needs uploaded course materials for topic context.</p>
+              <p className="text-sm text-muted-foreground">Grounded on imported class topics and student risk signals</p>
             </div>
             <Button
               onClick={() => void generateTargetedLessonPlan()}
               disabled={lessonLoading}
               className="bg-sky-600 hover:bg-sky-700 text-white"
             >
-              {lessonLoading ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Regenerate'}
+              {lessonLoading ? <Loader2 size={16} className="animate-spin" /> : 'Regenerate'}
             </Button>
           </div>
-
-          <p className="mb-4 text-xs text-muted-foreground bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
-            Class records alone are not enough for import-grounded lesson plans. Upload course materials in Data Import to provide lesson topic grounding.
-          </p>
 
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
             <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
@@ -2589,180 +1931,161 @@ const InterventionView: React.FC<{
             </label>
           </div>
 
-          <BoneSkeleton
-            name="teacher-intervention-lesson-plan"
-            loading={lessonLoading}
-            fixture={
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-                <Skeleton className="h-28 w-full rounded-xl" />
-                <Skeleton className="h-28 w-full rounded-xl" />
-              </div>
-            }
-            fallback={
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-                <Skeleton className="h-28 w-full rounded-xl" />
-                <Skeleton className="h-28 w-full rounded-xl" />
-              </div>
-            }
-          >
-            {lessonError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
-                {lessonError}
-              </div>
-            )}
+          {lessonLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <Loader2 size={18} className="animate-spin" />
+              <span>Generating class-scoped lesson plan...</span>
+            </div>
+          )}
 
-            {lessonPlan && (
-              <div className="space-y-4">
-                <div className="bg-secondary border border-border rounded-xl p-4">
-                  <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
-                    {' | '}Imported topic count: {lessonPlan.importedTopicCount}
+          {!lessonLoading && lessonError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+              {lessonError}
+            </div>
+          )}
+
+          {!lessonLoading && lessonPlan && (
+            <div className="space-y-4">
+              <div className="bg-secondary border border-border rounded-xl p-4">
+                <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
+                  {' -€¢ '}Imported topic count: {lessonPlan.importedTopicCount}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
+                </p>
+                {lessonPlan.warnings.length > 0 && (
+                  <p className="text-xs text-amber-700 mt-1">{lessonPlan.warnings.join(' ')}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Source Legitimacy</p>
+                  <p className="text-sm font-bold text-foreground mt-1">
+                    {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
+                    Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} -€¢ Review: {lessonPlan.sourceLegitimacy.reviewMaterials} -€¢ Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
                   </p>
-                  {lessonPlan.warnings.length > 0 && (
-                    <p className="text-xs text-amber-700 mt-1">{lessonPlan.warnings.join(' ')}</p>
+                  {lessonPlan.sourceLegitimacy.issues.length > 0 && (
+                    <p className="text-xs text-amber-700 mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
                   )}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">Source Legitimacy</p>
-                    <p className="text-sm font-bold text-foreground mt-1">
-                      {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} | Review: {lessonPlan.sourceLegitimacy.reviewMaterials} | Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
-                    </p>
-                    {lessonPlan.sourceLegitimacy.issues.length > 0 && (
-                      <p className="text-xs text-amber-700 mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
-                    )}
-                  </div>
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">Self Validation</p>
-                    <p className="text-sm font-bold text-foreground mt-1">
-                      {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
-                    </p>
-                    {lessonPlan.selfValidation.issues.length > 0 && (
-                      <p className="text-xs text-amber-700 mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
-                    )}
-                  </div>
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Self Validation</p>
+                  <p className="text-sm font-bold text-foreground mt-1">
+                    {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
+                  </p>
+                  {lessonPlan.selfValidation.issues.length > 0 && (
+                    <p className="text-xs text-amber-700 mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
+                  )}
                 </div>
+              </div>
 
-                {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Provenance Filters</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        <span className="font-semibold">Source File</span>
-                        <select
-                          value={lessonSourceFilter}
-                          onChange={(event) => setLessonSourceFilter(event.target.value)}
-                          className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
-                        >
-                          <option value="all">All sources</option>
-                          {lessonProvenanceSources.map((source) => (
-                            <option key={source} value={source}>{source}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        <span className="font-semibold">Material ID</span>
-                        <select
-                          value={lessonMaterialFilter}
-                          onChange={(event) => setLessonMaterialFilter(event.target.value)}
-                          className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
-                        >
-                          <option value="all">All materials</option>
-                          {lessonProvenanceMaterials.map((material) => (
-                            <option key={material} value={material}>{material}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-2">
-                      Showing {filteredLessonBlocks.length} of {lessonPlan.blocks.length} lesson blocks after provenance filters.
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {filteredLessonBlocks.map((block) => (
-                    <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
-                      <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins | {block.strategy}</p>
-                      <p className="text-sm text-foreground mt-2">{block.objective}</p>
-                      <div className="mt-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
-                        {block.activities.slice(0, 2).map((activity, idx) => (
-                          <p key={idx} className="text-xs text-muted-foreground">- {activity}</p>
+              {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Provenance Filters</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                      <span className="font-semibold">Source File</span>
+                      <select
+                        value={lessonSourceFilter}
+                        onChange={(event) => setLessonSourceFilter(event.target.value)}
+                        className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
+                      >
+                        <option value="all">All sources</option>
+                        {lessonProvenanceSources.map((source) => (
+                          <option key={source} value={source}>{source}</option>
                         ))}
-                      </div>
-                      {block.provenance && (
-                        <div className="mt-3 bg-sky-50 border border-sky-200 rounded-lg p-2">
-                          <p className="text-[11px] font-semibold text-sky-700">Provenance</p>
-                          {block.provenance.sourceFile && <p className="text-[11px] text-sky-900">Source: {block.provenance.sourceFile}</p>}
-                          {block.provenance.materialId && <p className="text-[11px] text-sky-900">Material: {block.provenance.materialId}</p>}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {filteredLessonBlocks.length === 0 && (
-                  <div className="border border-border rounded-xl p-4 bg-card text-sm text-muted-foreground">
-                    No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
+                      </select>
+                    </label>
+                    <label className="text-xs text-muted-foreground flex flex-col gap-1">
+                      <span className="font-semibold">Material ID</span>
+                      <select
+                        value={lessonMaterialFilter}
+                        onChange={(event) => setLessonMaterialFilter(event.target.value)}
+                        className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
+                      >
+                        <option value="all">All materials</option>
+                        {lessonProvenanceMaterials.map((material) => (
+                          <option key={material} value={material}>{material}</option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => void saveLessonDraft()}
-                    disabled={savingLessonDraft || !lessonPlan}
-                    className="border-sky-300 text-sky-700"
-                  >
-                    {savingLessonDraft ? <Skeleton className="h-4 w-16" /> : 'Save Draft'}
-                  </Button>
-                  <Button
-                    onClick={() => void publishCurrentLessonPlan()}
-                    disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    {publishingLesson ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Publish Lesson Plan'}
-                  </Button>
-                  {savedLessonPlanId && (
-                    <p className="text-xs text-muted-foreground self-center">Draft ID: {savedLessonPlanId}</p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Showing {filteredLessonBlocks.length} of {lessonPlan.blocks.length} lesson blocks after provenance filters.
+                  </p>
                 </div>
-              </div>
-            )}
-          </BoneSkeleton>
+              )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <Button className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
-              <Send size={20} />
-              Schedule One-on-One Session
-            </Button>
-            <Button
-              variant="outline"
-              className="border-2 border-sky-600 text-sky-600 hover:bg-sky-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
-            >
-              <Download size={20} />
-              Export Printed Materials
-            </Button>
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredLessonBlocks.map((block) => (
+                  <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
+                    <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins -€¢ {block.strategy}</p>
+                    <p className="text-sm text-foreground mt-2">{block.objective}</p>
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
+                      {block.activities.slice(0, 2).map((activity, idx) => (
+                        <p key={idx} className="text-xs text-muted-foreground">-€¢ {activity}</p>
+                      ))}
+                    </div>
+                    {block.provenance && (
+                      <div className="mt-3 bg-sky-50 border border-sky-200 rounded-lg p-2">
+                        <p className="text-[11px] font-semibold text-sky-700">Provenance</p>
+                        {block.provenance.sourceFile && <p className="text-[11px] text-sky-900">Source: {block.provenance.sourceFile}</p>}
+                        {block.provenance.materialId && <p className="text-[11px] text-sky-900">Material: {block.provenance.materialId}</p>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {filteredLessonBlocks.length === 0 && (
+                <div className="border border-border rounded-xl p-4 bg-card text-sm text-muted-foreground">
+                  No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void saveLessonDraft()}
+                  disabled={savingLessonDraft || !lessonPlan}
+                  className="border-sky-300 text-sky-700"
+                >
+                  {savingLessonDraft ? <Loader2 size={14} className="animate-spin" /> : 'Save Draft'}
+                </Button>
+                <Button
+                  onClick={() => void publishCurrentLessonPlan()}
+                  disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {publishingLesson ? <Loader2 size={14} className="animate-spin" /> : 'Publish Lesson Plan'}
+                </Button>
+                {savedLessonPlanId && (
+                  <p className="text-xs text-muted-foreground self-center">Draft ID: {savedLessonPlanId}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-4">
+          <Button className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
+            <Send size={20} />
+            Schedule One-on-One Session
+          </Button>
+          <Button
+            variant="outline"
+            className="border-2 border-sky-600 text-sky-600 hover:bg-sky-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+          >
+            <Download size={20} />
+            Export Printed Materials
+          </Button>
         </div>
       </div>
     </motion.div>
@@ -2774,26 +2097,18 @@ const ImportView: React.FC<{
   onEditRecords: () => void;
   classSectionId?: string;
   className?: string;
-  classMetadata?: ClassSectionMetadata;
   onImportedClassRecords?: (payload: {
     students: UploadResponse['students'];
     classSectionId: string;
     className: string;
-    classMetadata?: ClassSectionMetadata;
   }) => void;
   onDataChanged?: () => void;
-}> = ({ onEditRecords, classSectionId, className, classMetadata, onImportedClassRecords, onDataChanged }) => {
+}> = ({ onEditRecords, classSectionId, className, onImportedClassRecords, onDataChanged }) => {
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
-  const [dragOver3, setDragOver3] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
-  const [previewingAccounts, setPreviewingAccounts] = useState(false);
-  const [committingAccounts, setCommittingAccounts] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
-  const [accountPreview, setAccountPreview] = useState<StudentAccountImportPreviewResponse | null>(null);
-  const [accountCommitResult, setAccountCommitResult] = useState<StudentAccountImportCommitResponse | null>(null);
-  const [provisionDefaultPassword, setProvisionDefaultPassword] = useState('');
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
     summary?: {
@@ -2813,7 +2128,6 @@ const ImportView: React.FC<{
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
-  const accountInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (file: File) => {
     setUploadingClassRecords(true);
@@ -2833,19 +2147,18 @@ const ImportView: React.FC<{
         ? ` Dashboard sync: ${result.dashboardSync.synced ? 'ok' : 'pending'} (created ${result.dashboardSync.createdStudents}, updated ${result.dashboardSync.updatedStudents}).`
         : '';
 
-      const resolvedImportContext = resolveUploadedClassContext(result, classSectionId, className, classMetadata);
+      const resolvedImportContext = resolveUploadedClassContext(result, classSectionId, className);
 
       if (uploadedStudentsCount > 0) {
         onImportedClassRecords?.({
           students: result.students,
           classSectionId: resolvedImportContext.classSectionId,
           className: resolvedImportContext.className,
-          classMetadata: resolvedImportContext.classMetadata,
         });
       }
 
       if (result.success) {
-        toast.success(`Successfully imported ${uploadedStudentsCount} student records. Next step: upload course materials for AI lesson-plan grounding.`);
+        toast.success(`Successfully imported ${uploadedStudentsCount} student records`);
         const riskRefreshText = result.riskRefresh?.queued
           ? ` Risk refresh queued for ${result.riskRefresh.studentsQueued} students (job ${result.riskRefresh.refreshId || 'n/a'}).`
           : ` Risk refresh not queued${result.riskRefresh?.reason ? `: ${result.riskRefresh.reason}` : ''}.`;
@@ -2857,7 +2170,7 @@ const ImportView: React.FC<{
           ? ` Warnings: ${uploadWarnings}`
           : '';
         setUploadResult(
-          `Imported ${uploadedStudentsCount} students. Next step: upload course materials to give AI lesson generation topic context.${riskRefreshText}${dashboardSyncText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
+          `Imported ${uploadedStudentsCount} students.${riskRefreshText}${dashboardSyncText}${interpretationText}${warningText} Column mapping: ${JSON.stringify(result.columnMapping)}`,
         );
         setUploadInterpretation({
           datasetIntent: result.datasetIntent,
@@ -2910,9 +2223,9 @@ const ImportView: React.FC<{
 
       if (result.success) {
         const topicCount = result.topics?.length ?? 0;
-        toast.success(`Course material imported (${topicCount} topics extracted). Lesson generation now has material context.`);
+        toast.success(`Course material imported (${topicCount} topics extracted)`);
         setUploadResult(
-          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s). Lesson generation is now ready with material context.`,
+          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s).`,
         );
         onDataChanged?.();
       }
@@ -2952,145 +2265,24 @@ const ImportView: React.FC<{
     }
   };
 
-  const downloadProvisioningCsv = (result: StudentAccountImportCommitResponse) => {
-    const rows = result.rows || [];
-    if (rows.length === 0) {
-      toast.error('No provisioning rows to export.');
-      return;
-    }
-
-    const escapeCsv = (value: unknown) => {
-      const text = String(value ?? '');
-      if (/[,"\n]/.test(text)) {
-        return `"${text.replace(/"/g, '""')}"`;
-      }
-      return text;
-    };
-
-    const header = ['rowNumber', 'studentId', 'fullName', 'email', 'uid', 'classSectionId', 'status', 'message', 'temporaryPassword'];
-    const csvLines = [
-      header.join(','),
-      ...rows.map((row) => [
-        row.rowNumber,
-        row.studentId,
-        row.fullName,
-        row.email,
-        row.uid || '',
-        row.classSectionId,
-        row.status,
-        row.message,
-        row.temporaryPassword || '',
-      ].map(escapeCsv).join(',')),
-    ];
-
-    const csvBlob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(csvBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `student-account-provisioning-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleAccountPreviewUpload = async (file: File) => {
-    setPreviewingAccounts(true);
-    setAccountCommitResult(null);
-    setUploadResult('');
-
-    try {
-      const fallbackClass = parseClassName(className || classMetadata?.className || 'Grade 11 - Section A');
-      const preview = await apiService.previewStudentAccountImport(file, {
-        classSectionId,
-        className,
-        defaultGrade: classMetadata?.grade || fallbackClass.grade,
-        defaultSection: classMetadata?.section || fallbackClass.section,
-      });
-
-      setAccountPreview(preview);
-      const summary = preview.summary;
-      toast.success(`Preview ready: ${summary.validRows} valid, ${summary.invalidRows} invalid, ${summary.duplicateRows} duplicate rows.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to preview student-account import.';
-      toast.error(message);
-      setAccountPreview(null);
-    } finally {
-      setPreviewingAccounts(false);
-    }
-  };
-
-  const handleAccountDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver3(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      void handleAccountPreviewUpload(file);
-    }
-  };
-
-  const handleAccountSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      void handleAccountPreviewUpload(file);
-    }
-  };
-
-  const handleCommitAccountProvisioning = async () => {
-    if (!accountPreview?.previewToken) {
-      toast.error('Run preview before committing student account provisioning.');
-      return;
-    }
-
-    setCommittingAccounts(true);
-    try {
-      const result = await apiService.commitStudentAccountImport({
-        previewToken: accountPreview.previewToken,
-        defaultPassword: provisionDefaultPassword.trim() || undefined,
-        forcePasswordChange: true,
-        createAuthUsers: true,
-      });
-
-      setAccountCommitResult(result);
-      const { createdRows, updatedRows, blockedRows, failedRows } = result.summary;
-      if (failedRows > 0) {
-        toast.error(`Provisioning completed with ${failedRows} failed row(s).`);
-      } else {
-        toast.success(`Provisioned accounts: ${createdRows} created, ${updatedRows} updated, ${blockedRows} blocked.`);
-      }
-      onDataChanged?.();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to commit student account provisioning.');
-    } finally {
-      setCommittingAccounts(false);
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-4 sm:p-6"
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
           <h2 className="text-xl font-display font-bold text-foreground">Import Data</h2>
-          <p className="text-muted-foreground">Class records drive analytics and at-risk signals. Course materials provide topic grounding for AI lesson plans.</p>
-          <div className="mt-2 flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
-            <span className="px-2 py-1 rounded-md bg-muted border border-border">Class scope: {className || classSectionId || 'All classes'}</span>
-            {[classMetadata?.gradeLevel, classMetadata?.classification, classMetadata?.strand]
-              .filter(Boolean)
-              .map((badge) => (
-                <span key={`import-meta-${badge}`} className="px-2 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-700 font-medium">
-                  {badge}
-                </span>
-              ))}
-          </div>
+          <p className="text-muted-foreground">Upload class records and course materials to enhance AI predictions</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Class scope: {className || classSectionId || 'All classes'}
+          </p>
         </div>
 
         {/* Upload Zones */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Class Records */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
@@ -3110,19 +2302,14 @@ const ImportView: React.FC<{
             />
             <div className="w-20 h-20 bg-sky-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
               {uploadingClassRecords ? (
-                <Skeleton className="h-10 w-10 rounded-2xl bg-sky-200" />
+                <Loader2 size={40} className="text-sky-600 animate-spin" />
               ) : (
                 <FileSpreadsheet size={40} className="text-sky-600" />
               )}
             </div>
             <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
             <p className="text-muted-foreground mb-4">
-              {uploadingClassRecords ? (
-                <span className="inline-flex flex-col items-center gap-2">
-                  <Skeleton className="h-4 w-44 bg-sky-200" />
-                  <Skeleton className="h-4 w-36 bg-sky-100" />
-                </span>
-              ) : 'Upload student grades, attendance, and quiz scores'}
+              {uploadingClassRecords ? 'Uploading and analyzing...' : 'Upload student grades, attendance, and quiz scores'}
             </p>
             <p className="text-xs text-muted-foreground mb-4 flex items-center justify-center gap-2">
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
@@ -3151,71 +2338,23 @@ const ImportView: React.FC<{
               onChange={handleCourseMaterialSelect}
               className="hidden"
             />
-            <div className="w-20 h-20 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-[var(--primary)]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
               {uploadingCourseMaterials ? (
-                <Skeleton className="h-10 w-10 rounded-2xl bg-rose-200" />
+                <Loader2 size={40} className="text-[var(--primary)] animate-spin" />
               ) : (
-                <FileText size={40} className="text-rose-600" />
+                <FileText size={40} className="text-[var(--primary)]" />
               )}
             </div>
             <h3 className="text-xl font-display font-bold text-foreground mb-2">Course Materials</h3>
             <p className="text-muted-foreground mb-4">
-              {uploadingCourseMaterials ? (
-                <span className="inline-flex flex-col items-center gap-2">
-                  <Skeleton className="h-4 w-48 bg-rose-200" />
-                  <Skeleton className="h-4 w-40 bg-rose-100" />
-                </span>
-              ) : 'Upload syllabus, lesson plans, and curriculum documents'}
+              {uploadingCourseMaterials ? 'Uploading and extracting topics...' : 'Upload syllabus, lesson plans, and curriculum documents'}
             </p>
             <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
             </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-rose-500 hover:text-rose-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
-              Click or drag & drop
-            </Button>
-          </div>
-
-          {/* Student Accounts Provisioning */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver3(true); }}
-            onDragLeave={() => setDragOver3(false)}
-            onDrop={handleAccountDrop}
-            onClick={() => accountInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 ${
-              dragOver3 ? 'border-emerald-600 bg-emerald-50 scale-105' : 'border-border'
-            }`}
-          >
-            <input
-              ref={accountInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleAccountSelect}
-              className="hidden"
-            />
-            <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              {previewingAccounts ? (
-                <Skeleton className="h-10 w-10 rounded-2xl bg-emerald-200" />
-              ) : (
-                <Users size={40} className="text-emerald-600" />
-              )}
-            </div>
-            <h3 className="text-xl font-display font-bold text-foreground mb-2">Student Accounts</h3>
-            <p className="text-muted-foreground mb-4">
-              {previewingAccounts ? (
-                <span className="inline-flex flex-col items-center gap-2">
-                  <Skeleton className="h-4 w-52 bg-emerald-200" />
-                  <Skeleton className="h-4 w-44 bg-emerald-100" />
-                </span>
-              ) : 'Preview and securely provision student Auth + profile accounts'}
-            </p>
-            <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
-              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
-              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
-              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
-            </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-emerald-500 hover:text-emerald-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[var(--primary)] hover:text-[var(--primary)] font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -3226,23 +2365,23 @@ const ImportView: React.FC<{
           <h3 className="text-lg font-display font-bold text-sky-800 mb-3">How AI Uses Your Data</h3>
           <div className="space-y-2 text-sky-900/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span><strong className="text-sky-800">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-</span>
+              <span className="text-sky-600 font-bold">-€¢</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -3274,13 +2413,13 @@ const ImportView: React.FC<{
                   <p className="text-xs text-muted-foreground">Display</p>
                   <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <p className="text-xs text-amber-700">Storage-only</p>
-                  <p className="text-lg font-bold text-amber-800">{uploadInterpretation.summary.storageOnlyColumns}</p>
+                <div className="bg-[color-mix(in_srgb,var(--chart-4)_10%,transparent)] border border-[color-mix(in_srgb,var(--chart-4)_30%,transparent)] rounded-xl p-3">
+                  <p className="text-xs text-[var(--chart-4)]">Storage-only</p>
+                  <p className="text-lg font-bold text-[var(--chart-4)]">{uploadInterpretation.summary.storageOnlyColumns}</p>
                 </div>
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                  <p className="text-xs text-rose-700">Low confidence</p>
-                  <p className="text-lg font-bold text-rose-800">{uploadInterpretation.summary.lowConfidenceColumns}</p>
+                <div className="bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] border border-[color-mix(in_srgb,var(--chart-2)_30%,transparent)] rounded-xl p-3">
+                  <p className="text-xs text-[var(--chart-2)]">Low confidence</p>
+                  <p className="text-lg font-bold text-[var(--chart-2)]">{uploadInterpretation.summary.lowConfidenceColumns}</p>
                 </div>
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Domain warnings</p>
@@ -3296,8 +2435,8 @@ const ImportView: React.FC<{
                     <p className="text-sm font-semibold text-foreground">{column.columnName}</p>
                     <p className="text-xs text-muted-foreground">
                       mapped: {column.mappedField || 'none'}
-                      {' | '}usage: {column.usagePolicy}
-                      {' | '}confidence: {column.confidenceBand}
+                      {' -€¢ '}usage: {column.usagePolicy}
+                      {' -€¢ '}confidence: {column.confidenceBand}
                     </p>
                     {column.domainSignals && column.domainSignals.length > 0 && (
                       <p className="text-xs text-amber-700 mt-1">domain signals: {column.domainSignals.join(', ')}</p>
@@ -3308,170 +2447,6 @@ const ImportView: React.FC<{
             ) : (
               <p className="text-sm text-muted-foreground">No per-column interpretation data was returned for this upload.</p>
             )}
-          </div>
-        )}
-
-        {accountPreview && (
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border space-y-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-lg font-display font-bold text-foreground">Student Account Provisioning Preview</h3>
-                <p className="text-sm text-muted-foreground">
-                  Validate duplicates and section mappings before creating Auth and Firestore student accounts.
-                </p>
-              </div>
-              <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground font-medium">
-                Token: {accountPreview.previewToken ? `${accountPreview.previewToken.slice(0, 10)}...` : 'n/a'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
-                <p className="text-xs text-muted-foreground">Total Rows</p>
-                <p className="text-xl font-bold text-foreground">{accountPreview.summary.totalRows}</p>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <p className="text-xs text-emerald-700">Valid</p>
-                <p className="text-xl font-bold text-emerald-700">{accountPreview.summary.validRows}</p>
-              </div>
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                <p className="text-xs text-rose-700">Invalid</p>
-                <p className="text-xl font-bold text-rose-700">{accountPreview.summary.invalidRows}</p>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <p className="text-xs text-amber-700">Duplicates</p>
-                <p className="text-xl font-bold text-amber-700">{accountPreview.summary.duplicateRows}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">Default Temporary Password (optional)</label>
-                <Input
-                  value={provisionDefaultPassword}
-                  onChange={(event) => setProvisionDefaultPassword(event.target.value)}
-                  placeholder="Leave blank to auto-generate per account"
-                  className="h-10"
-                />
-              </div>
-              <Button
-                onClick={() => void handleCommitAccountProvisioning()}
-                disabled={committingAccounts || accountPreview.summary.validRows === 0}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white h-10"
-              >
-                {committingAccounts ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Commit Provisioning'}
-              </Button>
-            </div>
-
-            <div className="max-h-72 overflow-auto border border-border rounded-xl">
-              <table className="w-full text-sm">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Row</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Name</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Student ID</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Email</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Class Section</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accountPreview.rows.slice(0, 60).map((row) => (
-                    <tr key={`preview-row-${row.rowNumber}-${row.studentId}`} className="border-t border-border">
-                      <td className="px-3 py-2">{row.rowNumber}</td>
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-foreground">{row.fullName}</p>
-                        {row.issues.length > 0 && (
-                          <p className="text-[11px] text-rose-700">{row.issues.slice(0, 2).join('; ')}</p>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-xs">{row.studentId || '-'}</td>
-                      <td className="px-3 py-2 text-xs">{row.email || '-'}</td>
-                      <td className="px-3 py-2 text-xs">{row.classSectionId || '-'}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          row.status === 'valid'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : row.status === 'duplicate'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-rose-100 text-rose-700'
-                        }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {accountPreview.warnings.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-                {accountPreview.warnings.slice(0, 5).join(' ')}
-              </div>
-            )}
-          </div>
-        )}
-
-        {accountCommitResult && (
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border space-y-3">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-lg font-display font-bold text-foreground">Provisioning Result</h3>
-                <p className="text-sm text-muted-foreground">
-                  Created: {accountCommitResult.summary.createdRows} | Updated: {accountCommitResult.summary.updatedRows} |
-                  Blocked: {accountCommitResult.summary.blockedRows} | Failed: {accountCommitResult.summary.failedRows}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => downloadProvisioningCsv(accountCommitResult)}
-                className="border-emerald-300 text-emerald-700"
-              >
-                <Download size={14} className="mr-2" />
-                Download Credential CSV
-              </Button>
-            </div>
-
-            <div className="max-h-64 overflow-auto border border-border rounded-xl">
-              <table className="w-full text-sm">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Row</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Student</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accountCommitResult.rows.map((row) => (
-                    <tr key={`commit-row-${row.rowNumber}-${row.studentId}`} className="border-t border-border">
-                      <td className="px-3 py-2">{row.rowNumber}</td>
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-foreground">{row.fullName}</p>
-                        <p className="text-[11px] text-muted-foreground">{row.email}</p>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          row.status === 'created'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : row.status === 'updated'
-                              ? 'bg-sky-100 text-sky-700'
-                              : row.status === 'blocked'
-                                ? 'bg-amber-100 text-amber-700'
-                                : row.status === 'failed'
-                                  ? 'bg-rose-100 text-rose-700'
-                                  : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{row.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         )}
 
@@ -3508,12 +2483,9 @@ const EditRecordsView: React.FC<{
 }> = ({ students: initialStudents, teacherId, teacherName, onBack }) => {
   const [students, setStudents] = useState(initialStudents);
   const [saving, setSaving] = useState(false);
-
-  const getSectionDraftKey = useCallback((student: StudentView) => buildStudentViewKey(student), []);
-
   const [sectionDrafts, setSectionDrafts] = useState<Record<string, { grade: string; section: string }>>(() =>
     Object.fromEntries(
-      initialStudents.map((student) => [getSectionDraftKey(student), { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
+      initialStudents.map((student) => [student.id, { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
     )
   );
 
@@ -3521,17 +2493,17 @@ const EditRecordsView: React.FC<{
     setStudents(initialStudents);
     setSectionDrafts(
       Object.fromEntries(
-        initialStudents.map((student) => [getSectionDraftKey(student), { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
+        initialStudents.map((student) => [student.id, { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
       )
     );
-  }, [getSectionDraftKey, initialStudents]);
+  }, [initialStudents]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       // Update risk levels for all students via AI
       for (const student of students) {
-        const draft = sectionDrafts[getSectionDraftKey(student)];
+        const draft = sectionDrafts[student.id];
         const updatedGrade = draft?.grade || student.grade;
         const updatedSection = draft?.section || student.section;
 
@@ -3562,22 +2534,13 @@ const EditRecordsView: React.FC<{
 
       setStudents((prev) =>
         prev.map((student) => {
-          const draft = sectionDrafts[getSectionDraftKey(student)];
+          const draft = sectionDrafts[student.id];
           if (!draft) return student;
-          const classMetadata = resolveClassMetadata({
-            metadata: student.classMetadata,
-            classSectionId: student.classSectionId,
-            className: [draft.grade, draft.section].filter(Boolean).join(' - '),
-            grade: draft.grade,
-            section: draft.section,
-          });
           return {
             ...student,
             grade: draft.grade,
             section: draft.section,
-            className: classMetadata.className || [draft.grade, draft.section].filter(Boolean).join(' - '),
-            classSectionId: classMetadata.classSectionId || student.classSectionId,
-            classMetadata,
+            className: [draft.grade, draft.section].filter(Boolean).join(' - '),
           };
         })
       );
@@ -3596,7 +2559,7 @@ const EditRecordsView: React.FC<{
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="p-6 h-full flex flex-col"
+      className="p-4 sm:p-6 h-full flex flex-col"
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
@@ -3616,7 +2579,7 @@ const EditRecordsView: React.FC<{
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
-            {saving ? <Skeleton className="h-5 w-5 rounded-full bg-white/35" /> : <Save size={18} />}
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
@@ -3648,68 +2611,58 @@ const EditRecordsView: React.FC<{
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => {
-                const rowDraftKey = getSectionDraftKey(student);
-
-                return (
-                  <tr key={rowDraftKey} className="border-b border-border hover:bg-sky-50/30 group transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <img src={student.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                        <span className="font-medium text-foreground">{student.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-muted-foreground font-mono text-sm">{student.lrn || 'Not set'}</td>
-                    <td className="p-4 min-w-[140px]">
-                      <Input
-                        id={`edit-record-grade-${rowDraftKey}`}
-                        name={`edit-record-grade-${rowDraftKey}`}
-                        aria-label={`Edit grade for ${student.name}`}
-                        value={sectionDrafts[rowDraftKey]?.grade || student.grade}
-                        onChange={(e) =>
-                          setSectionDrafts((prev) => ({
-                            ...prev,
-                            [rowDraftKey]: { ...prev[rowDraftKey], grade: e.target.value },
-                          }))
-                        }
-                        className="h-9 text-sm"
-                      />
-                    </td>
-                    <td className="p-4 min-w-[140px]">
-                      <Input
-                        id={`edit-record-section-${rowDraftKey}`}
-                        name={`edit-record-section-${rowDraftKey}`}
-                        aria-label={`Edit section for ${student.name}`}
-                        value={sectionDrafts[rowDraftKey]?.section || student.section}
-                        onChange={(e) =>
-                          setSectionDrafts((prev) => ({
-                            ...prev,
-                            [rowDraftKey]: { ...prev[rowDraftKey], section: e.target.value },
-                          }))
-                        }
-                        className="h-9 text-sm"
-                      />
-                    </td>
-                    <td className="p-4">
-                      <span className={`font-bold ${
-                        student.avgScore < 60 ? 'text-red-600' :
-                        student.avgScore < 80 ? 'text-rose-600' : 'text-green-600'
-                      }`}>{student.avgScore}%</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${getRiskBadge(student.riskLevel)}`}>
-                        {student.riskLevel.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
-                    <td className="p-4">
-                      <button className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-sky-600 transition-colors">
-                        <Edit3 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {students.map((student) => (
+                <tr key={student.id} className="border-b border-border hover:bg-sky-50/30 group transition-colors">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <img src={student.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      <span className="font-medium text-foreground">{student.name}</span>
+                    </div>
+                  </td>
+                  <td className="p-4 text-muted-foreground font-mono text-sm">{student.lrn || 'Not set'}</td>
+                  <td className="p-4 min-w-[140px]">
+                    <Input
+                      value={sectionDrafts[student.id]?.grade || student.grade}
+                      onChange={(e) =>
+                        setSectionDrafts((prev) => ({
+                          ...prev,
+                          [student.id]: { ...prev[student.id], grade: e.target.value },
+                        }))
+                      }
+                      className="h-9 text-sm"
+                    />
+                  </td>
+                  <td className="p-4 min-w-[140px]">
+                    <Input
+                      value={sectionDrafts[student.id]?.section || student.section}
+                      onChange={(e) =>
+                        setSectionDrafts((prev) => ({
+                          ...prev,
+                          [student.id]: { ...prev[student.id], section: e.target.value },
+                        }))
+                      }
+                      className="h-9 text-sm"
+                    />
+                  </td>
+                  <td className="p-4">
+                    <span className={`font-bold \${
+                      student.avgScore < 60 ? 'text-[var(--chart-2)]' : 
+                      student.avgScore < 80 ? 'text-[var(--chart-4)]' : 'text-[var(--chart-3)]'
+                    }`}>{student.avgScore}%</span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${getRiskBadge(student.riskLevel)}`}>
+                      {student.riskLevel.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
+                  <td className="p-4">
+                    <button className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-[var(--primary)] transition-colors">
+                      <Edit3 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -3721,17 +2674,17 @@ const EditRecordsView: React.FC<{
 // Helper function (moved outside component to avoid hook issues)
 function getRiskBadge(level: 'high' | 'medium' | 'low') {
   switch (level) {
-    case 'high': return 'bg-red-100 text-red-700 border-red-200';
-    case 'medium': return 'bg-rose-100 text-rose-700 border-rose-200';
-    case 'low': return 'bg-green-100 text-green-700 border-green-200';
+    case 'high': return 'border-[var(--chart-2)] bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] text-[var(--chart-2)]';
+    case 'medium': return 'border-[var(--chart-4)] bg-[color-mix(in_srgb,var(--chart-4)_10%,transparent)] text-[var(--chart-4)]';
+    case 'low': return 'border-[var(--chart-3)] bg-[color-mix(in_srgb,var(--chart-3)_10%,transparent)] text-[var(--chart-3)]';
   }
 }
 
 function getRiskColor(level: 'high' | 'medium' | 'low') {
   switch (level) {
-    case 'high': return 'border-red-500 bg-red-50';
-    case 'medium': return 'border-rose-500 bg-rose-50';
-    case 'low': return 'border-green-500 bg-green-50';
+    case 'high': return 'border-[var(--chart-2)] bg-[color-mix(in_srgb,var(--chart-2)_5%,transparent)]';
+    case 'medium': return 'border-[var(--chart-4)] bg-[color-mix(in_srgb,var(--chart-4)_5%,transparent)]';
+    case 'low': return 'border-[var(--chart-3)] bg-[color-mix(in_srgb,var(--chart-3)_5%,transparent)]';
   }
 }
 
