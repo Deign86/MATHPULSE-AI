@@ -1008,7 +1008,7 @@ const QuizBattlePage: React.FC = () => {
           return current;
         }
 
-        return current.status === 'ready' ? null : current;
+        return current.status === 'ready' || current.status === 'cancelled' ? null : current;
       });
       setPrivateRoomCodeInput('');
       setQueueWaitSeconds(0);
@@ -1148,7 +1148,7 @@ const QuizBattlePage: React.FC = () => {
     queueActive ||
     (activeRoom &&
       (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
-      (!activeMatch || activeMatch.status === 'ready')),
+      (!activeMatch || activeMatch.status === 'ready' || activeMatch.status === 'cancelled')),
   );
 
   return (
