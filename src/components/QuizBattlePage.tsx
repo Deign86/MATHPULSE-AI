@@ -42,6 +42,7 @@ import {
   getStudentBattleStats,
   joinQuizBattlePrivateRoom,
   joinQuizBattleQueue,
+  leaveQuizBattlePrivateRoom,
   leaveQuizBattleQueue,
   QuizBattleHeartbeatScope,
   QuizBattleLiveMatchState,
@@ -990,20 +991,37 @@ const QuizBattlePage: React.FC = () => {
     }));
   };
 
-  const handleLeaveQueue = async () => {
+  const handleCancelOnlineSession = async () => {
     setLaunchState({ status: 'validating' });
 
     try {
-      await leaveQuizBattleQueue();
+      if (activeRoom?.roomId) {
+        await leaveQuizBattlePrivateRoom({ roomId: activeRoom.roomId });
+      } else {
+        await leaveQuizBattleQueue();
+      }
+
       setQueueActive(false);
       setActiveRoom(null);
+      setActiveMatch((current) => {
+        if (!current || current.mode !== 'online') {
+          return current;
+        }
+
+        return current.status === 'ready' || current.status === 'cancelled' ? null : current;
+      });
+      setPrivateRoomCodeInput('');
       setQueueWaitSeconds(0);
-      setLaunchState({ status: 'queued', message: 'Left matchmaking queue.' });
+
+      setLaunchState({
+        status: 'queued',
+        message: activeRoom?.roomId ? 'Private room cancelled.' : 'Left matchmaking queue.',
+      });
     } catch (error) {
       const known = error as { message?: string };
       setLaunchState({
         status: 'error',
-        message: known?.message || 'Unable to leave the queue right now. Please try again.',
+        message: known?.message || 'Unable to cancel this online session right now. Please try again.',
       });
     }
   };
@@ -1052,8 +1070,8 @@ const QuizBattlePage: React.FC = () => {
           setLaunchState({
             status: 'queued',
             message: joinCode
-              ? `Joined room ${roomResult.room.roomCode}. Waiting for opponent...`
-              : `Private room created. Share code: ${roomResult.room.roomCode}`,
+              ? 'Joined private room. Waiting for opponent...'
+              : 'Private room created. Share code:',
           });
           return;
         }
@@ -1125,6 +1143,12 @@ const QuizBattlePage: React.FC = () => {
     activeRoom &&
       (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
       (!activeMatch || activeMatch.status !== 'completed'),
+  );
+  const canCancelOnlineSession = Boolean(
+    queueActive ||
+    (activeRoom &&
+      (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
+      (!activeMatch || activeMatch.status === 'ready' || activeMatch.status === 'cancelled')),
   );
 
   return (
@@ -1454,22 +1478,6 @@ const QuizBattlePage: React.FC = () => {
                                 <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[13px] font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                                   Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
                                 </div>
-                                {activeRoom?.roomCode && (
-                                  <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 dark:border-[#2f3547] dark:bg-[#11151d]">
-                                    <p className="text-xs font-semibold text-foreground dark:text-[#e9eefb]">
-                                      Active room: <span className="ml-1 rounded-md bg-black/10 px-2 py-0.5 font-black tracking-[0.14em]">{activeRoom.roomCode}</span>
-                                    </p>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className="h-8 rounded-lg px-2"
-                                      onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
-                                    >
-                                      {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} 
-                                      {copiedRoomCode === activeRoom.roomCode ? 'Copied' : 'Copy'}
-                                    </Button>
-                                  </div>
-                                )}
                               </div>
                             )}
                           </div>
@@ -1522,14 +1530,31 @@ const QuizBattlePage: React.FC = () => {
                     <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
                       <div aria-live="polite" className="min-h-[24px] text-sm text-muted-foreground dark:text-[#b6bfd5]">
                         {launchState.status === 'queued' && (
-                          <span>
+                          <div className="flex flex-wrap items-center gap-2">
                             {launchState.message}
+                            {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className={cn(
+                                  'h-7 rounded-full border-amber-300/70 bg-amber-100/80 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-amber-900 hover:bg-amber-200 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25',
+                                  copiedRoomCode === activeRoom.roomCode
+                                    ? 'border-emerald-400/80 bg-emerald-100 text-emerald-900 dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-200'
+                                    : null,
+                                )}
+                                onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                                aria-label={`Copy room code ${activeRoom.roomCode}`}
+                              >
+                                {copiedRoomCode === activeRoom.roomCode ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                                {activeRoom.roomCode}
+                              </Button>
+                            )}
                             {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
-                              <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-[#8c7dff]/20 dark:text-[#c7c0ff]">
+                              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-[#8c7dff]/20 dark:text-[#c7c0ff]">
                                 Waiting {formatWaitClock(queueWaitSeconds)}
                               </span>
                             )}
-                          </span>
+                          </div>
                         )}
                         {launchState.status === 'error' && (
                           <span className="text-destructive dark:text-rose-300">{launchState.message}</span>
@@ -1539,15 +1564,15 @@ const QuizBattlePage: React.FC = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {queueActive && (
+                        {canCancelOnlineSession && (
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={handleLeaveQueue}
+                            onClick={handleCancelOnlineSession}
                             disabled={launchState.status === 'validating'}
                             className="rounded-xl"
                           >
-                            Leave queue
+                            {activeRoom ? 'Cancel room' : 'Leave queue'}
                           </Button>
                         )}
                         <Button
@@ -1598,14 +1623,25 @@ const QuizBattlePage: React.FC = () => {
                           <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
                             Share room code {activeRoom.roomCode} with your classmate.
                           </p>
-                          <div className="mt-3 flex justify-end">
+                          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                            {(activeRoom.status === 'waiting' || activeRoom.status === 'ready') && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 rounded-lg"
+                                onClick={handleCancelOnlineSession}
+                                disabled={launchState.status === 'validating'}
+                              >
+                                Cancel room
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="outline"
                               className="h-8 rounded-lg"
                               onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
                             >
-                              {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} 
+                              {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                               {copiedRoomCode === activeRoom.roomCode ? 'Copied' : 'Copy code'}
                             </Button>
                           </div>
