@@ -11,7 +11,9 @@ const HEARTBEAT_SCOPES = new Set(["queue", "room", "match"]);
 
 const QUEUE_HEARTBEAT_STALE_MS = 90000;
 const QUEUE_MATCHED_TTL_MS = 5 * 60 * 1000;
-const ROOM_EXPIRY_MS = 30 * 60 * 1000;
+const ROOM_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const ROOM_EMPTY_GRACE_MS = 60 * 1000;
+const ROOM_TIMEOUT_SWEEP_CONCURRENCY = 12;
 const MAX_MATCHMAKING_PAIRS_PER_PASS = 20;
 
 type QueueStatus = "searching" | "matched" | "cancelled";
@@ -2509,6 +2511,142 @@ const resolvePublicMatchmakingPass = async (
   return { paired, staleRemoved };
 };
 
+const resolvePrivateRoomTimeoutPass = async (
+  db: FirebaseFirestore.Firestore,
+  maxRooms = 300,
+): Promise<{ roomsExpired: number; emptyRoomsExpired: number; readyMatchesCancelled: number }> => {
+  const [waitingSnap, readySnap] = await Promise.all([
+    db.collection("quizBattleRooms").where("status", "==", "waiting").limit(maxRooms).get(),
+    db.collection("quizBattleRooms").where("status", "==", "ready").limit(maxRooms).get(),
+  ]);
+
+  const now = Date.now();
+  const roomRefs = new Map<string, FirebaseFirestore.DocumentReference>();
+  [...waitingSnap.docs, ...readySnap.docs].forEach((entry) => {
+    const roomData = entry.data() as Record<string, unknown>;
+    const participantIds = getParticipantIds(roomData.participantIds);
+    const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
+    const updatedAtMs = asTimestampMillis(roomData.updatedAt, 0);
+    const createdAtMs = asTimestampMillis(roomData.createdAt, 0);
+    const lastRoomActivityMs = Math.max(updatedAtMs, createdAtMs, 0);
+    const maybeEmptyGraceExpired =
+      participantIds.length === 0 &&
+      lastRoomActivityMs > 0 &&
+      now - lastRoomActivityMs > ROOM_EMPTY_GRACE_MS;
+    const maybeIdleExpired = expiresAtMs > 0 && now > expiresAtMs;
+
+    if (maybeIdleExpired || maybeEmptyGraceExpired) {
+      roomRefs.set(entry.ref.path, entry.ref);
+    }
+  });
+
+  const refs = [...roomRefs.values()];
+  if (refs.length === 0) {
+    return { roomsExpired: 0, emptyRoomsExpired: 0, readyMatchesCancelled: 0 };
+  }
+
+  let roomsExpired = 0;
+  let emptyRoomsExpired = 0;
+  let readyMatchesCancelled = 0;
+  let refIndex = 0;
+  const workerCount = Math.max(1, Math.min(ROOM_TIMEOUT_SWEEP_CONCURRENCY, refs.length));
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const currentIndex = refIndex;
+      refIndex += 1;
+      if (currentIndex >= refs.length) break;
+
+      const roomRef = refs[currentIndex];
+      const outcome = await db.runTransaction(async (tx): Promise<{
+        expired: boolean;
+        expiredEmpty: boolean;
+        cancelledReadyMatch: boolean;
+      }> => {
+        const roomSnap = await tx.get(roomRef);
+        if (!roomSnap.exists) {
+          return { expired: false, expiredEmpty: false, cancelledReadyMatch: false };
+        }
+
+        const roomData = roomSnap.data() as Record<string, unknown>;
+        const roomStatus = normalizeRoomStatus(roomData.status);
+        if (roomStatus !== "waiting" && roomStatus !== "ready") {
+          return { expired: false, expiredEmpty: false, cancelledReadyMatch: false };
+        }
+
+        const participantIds = getParticipantIds(roomData.participantIds);
+        const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
+        const updatedAtMs = asTimestampMillis(roomData.updatedAt, 0);
+        const createdAtMs = asTimestampMillis(roomData.createdAt, 0);
+        const lastRoomActivityMs = Math.max(updatedAtMs, createdAtMs, 0);
+        const emptyRoomGraceExceeded =
+          participantIds.length === 0 &&
+          lastRoomActivityMs > 0 &&
+          now - lastRoomActivityMs > ROOM_EMPTY_GRACE_MS;
+        const roomTimedOut = (expiresAtMs > 0 && now > expiresAtMs) || emptyRoomGraceExceeded;
+
+        if (!roomTimedOut) {
+          return { expired: false, expiredEmpty: false, cancelledReadyMatch: false };
+        }
+
+        let cancelledReadyMatch = false;
+        const matchId = asString(roomData.matchId, "");
+        if (matchId) {
+          const matchRef = db.collection("quizBattleMatches").doc(matchId);
+          const matchSnap = await tx.get(matchRef);
+          if (matchSnap.exists) {
+            const matchData = matchSnap.data() as Record<string, unknown>;
+            const matchStatus = asString(matchData.status, "ready");
+
+            if (matchStatus === "ready") {
+              tx.update(matchRef, {
+                status: "cancelled" as MatchStatus,
+                endedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                cancellationReason: "room_timeout",
+              });
+              cancelledReadyMatch = true;
+            }
+          }
+        }
+
+        tx.update(roomRef, {
+          status: "expired" as RoomStatus,
+          participantIds: [],
+          participantHeartbeat: {},
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          expiredAt: admin.firestore.FieldValue.serverTimestamp(),
+          timeoutReason: emptyRoomGraceExceeded ? "empty_room_idle" : "idle_timeout",
+          matchId: admin.firestore.FieldValue.delete(),
+          readyAt: admin.firestore.FieldValue.delete(),
+        });
+
+        return {
+          expired: true,
+          expiredEmpty: participantIds.length === 0,
+          cancelledReadyMatch,
+        };
+      });
+
+      if (outcome.expired) {
+        roomsExpired += 1;
+        if (outcome.expiredEmpty) {
+          emptyRoomsExpired += 1;
+        }
+        if (outcome.cancelledReadyMatch) {
+          readyMatchesCancelled += 1;
+        }
+      }
+    }
+  }));
+
+  return {
+    roomsExpired,
+    emptyRoomsExpired,
+    readyMatchesCancelled,
+  };
+};
+
 const getParticipantIds = (raw: unknown): string[] => {
   if (!Array.isArray(raw)) return [];
   return raw.map((entry) => asString(entry)).filter((entry) => entry.length > 0);
@@ -2853,6 +2991,117 @@ export const quizBattleLeaveQueue = functions.https.onCall(async (_data, context
   return { success: true, status: "idle" };
 });
 
+export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, context) => {
+  const studentId = await requireStudentUid(context);
+  const roomId = asString(data?.roomId);
+  const roomCode = asString(data?.roomCode).toUpperCase();
+
+  const db = admin.firestore();
+  let roomRef: FirebaseFirestore.DocumentReference | null = null;
+
+  if (roomId) {
+    roomRef = db.collection("quizBattleRooms").doc(roomId);
+  } else if (roomCode) {
+    const roomDoc = await findPrivateRoomByCode(db, roomCode);
+    roomRef = roomDoc ? roomDoc.ref : null;
+  } else {
+    const roomSnap = await db.collection("quizBattleRooms").where("participantIds", "array-contains", studentId).limit(6).get();
+    const candidateRooms = roomSnap.docs
+      .map((doc) => ({
+        doc,
+        data: doc.data() as Record<string, unknown>,
+        updatedMs: asTimestampMillis((doc.data() as Record<string, unknown>).updatedAt, 0),
+      }))
+      .filter((entry) => {
+        const status = normalizeRoomStatus(entry.data.status);
+        return status === "waiting" || status === "ready";
+      })
+      .sort((a, b) => b.updatedMs - a.updatedMs);
+
+    roomRef = candidateRooms[0]?.doc.ref || null;
+  }
+
+  if (!roomRef) {
+    return { success: true, status: "idle" };
+  }
+
+  const resolvedRoomRef = roomRef;
+
+  await db.runTransaction(async (tx) => {
+    const roomSnap = await tx.get(resolvedRoomRef);
+    if (!roomSnap.exists) {
+      return;
+    }
+
+    const roomData = roomSnap.data() as Record<string, unknown>;
+    const roomStatus = normalizeRoomStatus(roomData.status);
+    if (roomStatus === "cancelled" || roomStatus === "expired") {
+      return;
+    }
+
+    const participantIds = getParticipantIds(roomData.participantIds);
+    if (!participantIds.includes(studentId)) {
+      if (roomId || roomCode) {
+        throw new functions.https.HttpsError("permission-denied", "You are not a participant in this room.");
+      }
+      return;
+    }
+
+    const matchId = asString(roomData.matchId, "");
+    if (matchId) {
+      const matchRef = db.collection("quizBattleMatches").doc(matchId);
+      const matchSnap = await tx.get(matchRef);
+
+      if (matchSnap.exists) {
+        const matchData = matchSnap.data() as Record<string, unknown>;
+        const matchStatus = asString(matchData.status, "ready");
+
+        if (matchStatus === "in_progress" || matchStatus === "completed") {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "Private room cannot be cancelled after the match has started.",
+          );
+        }
+
+        tx.update(matchRef, {
+          status: "cancelled" as MatchStatus,
+          endedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          cancelledBy: studentId,
+          cancellationReason: "room_left",
+        });
+      }
+    }
+
+    const nextParticipantIds = participantIds.filter((entry) => entry !== studentId);
+    const currentOwnerStudentId = asString(roomData.ownerStudentId);
+    const nextOwnerStudentId =
+      nextParticipantIds.length === 0
+        ? currentOwnerStudentId
+        : (nextParticipantIds.includes(currentOwnerStudentId) ? currentOwnerStudentId : nextParticipantIds[0]);
+
+    const roomUpdates: Record<string, unknown> = {
+      participantIds: nextParticipantIds,
+      status: nextParticipantIds.length === 0 ? ("cancelled" as RoomStatus) : ("waiting" as RoomStatus),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_IDLE_TIMEOUT_MS),
+      matchId: admin.firestore.FieldValue.delete(),
+      readyAt: admin.firestore.FieldValue.delete(),
+      [`participantHeartbeat.${studentId}`]: admin.firestore.FieldValue.delete(),
+    };
+
+    if (nextParticipantIds.length > 0) {
+      roomUpdates.ownerStudentId = nextOwnerStudentId;
+    }
+
+    tx.update(resolvedRoomRef, roomUpdates);
+  });
+
+  await db.collection("quizBattleQueue").doc(studentId).delete().catch(() => undefined);
+
+  return { success: true, status: "idle" };
+});
+
 export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, context) => {
   const studentId = await requireStudentUid(context);
   const setup = normalizeSetup(data?.setup);
@@ -2885,7 +3134,7 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
     status: "waiting" as RoomStatus,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_EXPIRY_MS),
+    expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_IDLE_TIMEOUT_MS),
   });
 
   const roomSnap = await roomRef.get();
@@ -2948,7 +3197,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
       participantIds: nextParticipants,
       [`participantHeartbeat.${studentId}`]: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_EXPIRY_MS),
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_IDLE_TIMEOUT_MS),
     };
 
     const existingMatchId = asString(roomData.matchId, "");
@@ -3025,6 +3274,55 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
   }
 
   const roomData = roomSnap.data() as Record<string, unknown>;
+  const roomStatus = normalizeRoomStatus(roomData.status);
+  const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
+
+  if ((roomStatus === "waiting" || roomStatus === "ready") && expiresAtMs > 0 && Date.now() > expiresAtMs) {
+    await db.runTransaction(async (tx) => {
+      const latestRoomSnap = await tx.get(roomRef);
+      if (!latestRoomSnap.exists) {
+        return;
+      }
+
+      const latestRoomData = latestRoomSnap.data() as Record<string, unknown>;
+      const latestRoomStatus = normalizeRoomStatus(latestRoomData.status);
+      const latestExpiresAtMs = asTimestampMillis(latestRoomData.expiresAt, 0);
+      if ((latestRoomStatus !== "waiting" && latestRoomStatus !== "ready") || latestExpiresAtMs <= 0 || Date.now() <= latestExpiresAtMs) {
+        return;
+      }
+
+      const matchId = asString(latestRoomData.matchId, "");
+      if (matchId) {
+        const matchRef = db.collection("quizBattleMatches").doc(matchId);
+        const matchSnap = await tx.get(matchRef);
+        if (matchSnap.exists) {
+          const matchData = matchSnap.data() as Record<string, unknown>;
+          if (asString(matchData.status, "ready") === "ready") {
+            tx.update(matchRef, {
+              status: "cancelled" as MatchStatus,
+              endedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              cancellationReason: "room_timeout",
+            });
+          }
+        }
+      }
+
+      tx.update(roomRef, {
+        status: "expired" as RoomStatus,
+        participantIds: [],
+        participantHeartbeat: {},
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiredAt: admin.firestore.FieldValue.serverTimestamp(),
+        timeoutReason: "idle_timeout",
+        matchId: admin.firestore.FieldValue.delete(),
+        readyAt: admin.firestore.FieldValue.delete(),
+      });
+    });
+
+    throw new functions.https.HttpsError("deadline-exceeded", "Private room has expired.");
+  }
+
   assertRoomParticipant(studentId, roomData);
 
   const roomState = mapRoomStateForStudent(roomRef.id, studentId, roomData);
@@ -3827,6 +4125,7 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
     await roomRef.update({
       [`participantHeartbeat.${studentId}`]: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_IDLE_TIMEOUT_MS),
     });
   }
 
@@ -3852,6 +4151,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
   const db = admin.firestore();
 
   const queueRef = db.collection("quizBattleQueue").doc(studentId);
+  const now = Date.now();
   const [queueSnap, playerAMatchesSnap, playerBMatchesSnap, roomSnap] = await Promise.all([
     queueRef.get(),
     db.collection("quizBattleMatches").where("playerAId", "==", studentId).limit(10).get(),
@@ -3922,7 +4222,16 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     }))
     .filter((entry) => {
       const status = normalizeRoomStatus(entry.data.status);
-      return status === "waiting" || status === "ready";
+      if (status !== "waiting" && status !== "ready") {
+        return false;
+      }
+
+      const expiresAtMs = asTimestampMillis(entry.data.expiresAt, 0);
+      if (expiresAtMs > 0 && now > expiresAtMs) {
+        return false;
+      }
+
+      return true;
     })
     .sort((a, b) => b.updatedMs - a.updatedMs);
 
@@ -3974,8 +4283,14 @@ export const quizBattleResolvePublicMatchmakingSweep = functions.pubsub
   .schedule("every 1 minutes")
   .onRun(async () => {
     const db = admin.firestore();
-    const summary = await resolvePublicMatchmakingPass(db, MAX_MATCHMAKING_PAIRS_PER_PASS);
-    functions.logger.info("[QUIZ_BATTLE] Matchmaking sweep complete", summary);
+    const [queueSummary, roomSummary] = await Promise.all([
+      resolvePublicMatchmakingPass(db, MAX_MATCHMAKING_PAIRS_PER_PASS),
+      resolvePrivateRoomTimeoutPass(db),
+    ]);
+    functions.logger.info("[QUIZ_BATTLE] Matchmaking + room timeout sweep complete", {
+      queueSummary,
+      roomSummary,
+    });
     return null;
   });
 

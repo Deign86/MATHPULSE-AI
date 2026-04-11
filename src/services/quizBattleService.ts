@@ -51,6 +51,11 @@ export interface QuizBattleQueueJoinResponse {
   matchId?: string;
 }
 
+export interface QuizBattleLeaveSessionResponse {
+  success: boolean;
+  status: 'idle';
+}
+
 export interface QuizBattlePrivateRoomState {
   roomId: string;
   roomCode: string;
@@ -968,6 +973,34 @@ export const getQuizBattlePrivateRoomState = async (payload: {
     }
 
     throw new Error(mapCallableErrorMessage('loading Quiz Battle private room state', error));
+  }
+};
+
+export const leaveQuizBattlePrivateRoom = async (payload: {
+  roomId?: string;
+  roomCode?: string;
+} = {}): Promise<QuizBattleLeaveSessionResponse> => {
+  const callable = httpsCallable<
+    { roomId?: string; roomCode?: string },
+    QuizBattleLeaveSessionResponse
+  >(cloudFunctions, 'quizBattleLeavePrivateRoom');
+
+  try {
+    const result = await invokeWithTimeout(
+      'leaving Quiz Battle private room',
+      callable(payload),
+      20000,
+    );
+    return result.data;
+  } catch (error) {
+    if (shouldUseLocalFallbackForError(error)) {
+      return {
+        success: true,
+        status: 'idle',
+      };
+    }
+
+    throw new Error(mapCallableErrorMessage('leaving Quiz Battle private room', error));
   }
 };
 
