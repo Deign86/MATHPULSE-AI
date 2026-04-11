@@ -54,6 +54,7 @@ export {
   quizBattleLeaveQueue,
   quizBattleCreatePrivateRoom,
   quizBattleJoinPrivateRoom,
+  quizBattleLeavePrivateRoom,
   quizBattleGetPrivateRoomState,
   quizBattleCreateBotMatch,
   quizBattleStartMatch,
