@@ -425,7 +425,7 @@ const normalizeQuizBattleMode = (value: unknown): "online" | "bot" => {
   return asString(value, "bot") === "online" ? "online" : "bot";
 };
 
-const shouldRequireAiSourceForMatchStart = (params: {
+const shouldBlockStartDueToNonAiSource = (params: {
   status: unknown;
   mode: unknown;
   questionSetSource: unknown;
@@ -1036,7 +1036,7 @@ const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCo
     "Correct answers must not follow a fixed index pattern.",
     `Return at least ${setup.rounds} valid questions in the questions array.`,
     "Return ONLY valid JSON in this exact shape:",
-    '{"questions":[{"prompt":"...","choices":["...","...","...","..."],"correctOptionIndex":0}]}',
+    "{\"questions\":[{\"prompt\":\"...\",\"choices\":[\"...\",\"...\",\"...\",\"...\"],\"correctOptionIndex\":0}]}",
     "No markdown fences. No explanations. JSON only.",
     "Do not include <think> tags, reasoning traces, or text outside the JSON object.",
   ].join("\n");
@@ -1086,6 +1086,7 @@ const generateAiQuestionSet = async (
 
   for (let attempt = 1; attempt <= QUIZ_BATTLE_AI_MAX_RETRIES; attempt += 1) {
     const attemptStartedAtMs = now();
+    const structuredJsonModeUsedForAttempt = structuredJsonModeEnabled;
     functions.logger.info("[QUIZ_BATTLE] AI generation attempt started", {
       attempt,
       maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
@@ -1105,7 +1106,7 @@ const generateAiQuestionSet = async (
         top_p: 0.9,
       };
 
-      if (structuredJsonModeEnabled) {
+      if (structuredJsonModeUsedForAttempt) {
         requestPayload.response_format = {
           type: "json_object",
         };
@@ -1190,7 +1191,8 @@ const generateAiQuestionSet = async (
     } catch (error) {
       const classified = classifyGenerationError(error);
       lastError = classified;
-      const shouldRetryWithJsonModeRelaxed = shouldRetryWithoutStructuredJsonMode(error, structuredJsonModeEnabled);
+      const shouldRetryWithJsonModeRelaxed =
+        shouldRetryWithoutStructuredJsonMode(error, structuredJsonModeUsedForAttempt);
 
       if (shouldRetryWithJsonModeRelaxed) {
         structuredJsonModeEnabled = false;
@@ -1203,7 +1205,8 @@ const generateAiQuestionSet = async (
         subjectId: setup.subjectId,
         topicId: setup.topicId,
         rounds: setup.rounds,
-        structuredJsonModeEnabled,
+        structuredJsonModeUsedForAttempt,
+        structuredJsonModeEnabledForNextAttempt: structuredJsonModeEnabled,
         shouldRetryWithJsonModeRelaxed,
         maxTokens,
         latencyMs: now() - attemptStartedAtMs,
@@ -3468,7 +3471,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
   if (preStartStatus === "ready") {
     const metadata = isRecord(preStartData.metadata) ? preStartData.metadata : {};
     const existingQuestionSource = asString(metadata.questionSetSource, "");
-    if (shouldRequireAiSourceForMatchStart({
+    if (shouldBlockStartDueToNonAiSource({
       status: preStartStatus,
       mode: preStartData.mode,
       questionSetSource: existingQuestionSource,
@@ -3486,7 +3489,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
   const postGenerationStatus = asString(postGenerationData.status, "ready");
   if (postGenerationStatus === "ready") {
     const postGenerationMetadata = isRecord(postGenerationData.metadata) ? postGenerationData.metadata : {};
-    if (shouldRequireAiSourceForMatchStart({
+    if (shouldBlockStartDueToNonAiSource({
       status: postGenerationStatus,
       mode: postGenerationData.mode,
       questionSetSource: asString(postGenerationMetadata.questionSetSource, ""),
@@ -3533,7 +3536,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
 
       const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
       const questionSetSource = asString(metadata.questionSetSource, "");
-      if (shouldRequireAiSourceForMatchStart({ status, mode, questionSetSource })) {
+      if (shouldBlockStartDueToNonAiSource({ status, mode, questionSetSource })) {
         nonAiSourceDetectedInTransaction = true;
         throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
       }
@@ -4386,7 +4389,7 @@ export const quizBattleResolvePublicMatchmakingSweep = functions.pubsub
 export const __quizBattleTestUtils = {
   resolveQuizBattleAiModel,
   resolveQuizBattleAiModelName,
-  shouldRequireAiSourceForMatchStart,
+  shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
   dedupeAiQuestionCandidates,
