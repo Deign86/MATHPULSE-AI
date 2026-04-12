@@ -1036,7 +1036,7 @@ const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCo
     "Correct answers must not follow a fixed index pattern.",
     `Return at least ${setup.rounds} valid questions in the questions array.`,
     "Return ONLY valid JSON in this exact shape:",
-    "{\"questions\":[{\"prompt\":\"...\",\"choices\":[\"...\",\"...\",\"...\",\"...\"],\"correctOptionIndex\":0}]}",
+    '{"questions":[{"prompt":"...","choices":["...","...","...","..."],"correctOptionIndex":0}]}',
     "No markdown fences. No explanations. JSON only.",
     "Do not include <think> tags, reasoning traces, or text outside the JSON object.",
   ].join("\n");
@@ -1086,7 +1086,7 @@ const generateAiQuestionSet = async (
 
   for (let attempt = 1; attempt <= QUIZ_BATTLE_AI_MAX_RETRIES; attempt += 1) {
     const attemptStartedAtMs = now();
-    const structuredJsonModeUsedForAttempt = structuredJsonModeEnabled;
+    const structuredJsonModeEnabledAtStart = structuredJsonModeEnabled;
     functions.logger.info("[QUIZ_BATTLE] AI generation attempt started", {
       attempt,
       maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
@@ -1106,7 +1106,7 @@ const generateAiQuestionSet = async (
         top_p: 0.9,
       };
 
-      if (structuredJsonModeUsedForAttempt) {
+      if (structuredJsonModeEnabledAtStart) {
         requestPayload.response_format = {
           type: "json_object",
         };
@@ -1192,7 +1192,7 @@ const generateAiQuestionSet = async (
       const classified = classifyGenerationError(error);
       lastError = classified;
       const shouldRetryWithJsonModeRelaxed =
-        shouldRetryWithoutStructuredJsonMode(error, structuredJsonModeUsedForAttempt);
+        shouldRetryWithoutStructuredJsonMode(error, structuredJsonModeEnabledAtStart);
 
       if (shouldRetryWithJsonModeRelaxed) {
         structuredJsonModeEnabled = false;
@@ -1205,7 +1205,7 @@ const generateAiQuestionSet = async (
         subjectId: setup.subjectId,
         topicId: setup.topicId,
         rounds: setup.rounds,
-        structuredJsonModeUsedForAttempt,
+        structuredJsonModeEnabledAtStart,
         structuredJsonModeEnabledForNextAttempt: structuredJsonModeEnabled,
         shouldRetryWithJsonModeRelaxed,
         maxTokens,
