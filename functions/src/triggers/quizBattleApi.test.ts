@@ -6,7 +6,7 @@ import { __quizBattleTestUtils } from "./quizBattleApi";
 const {
   resolveQuizBattleAiModel,
   resolveQuizBattleAiModelName,
-  shouldRequireAiSourceForMatchStart,
+  shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
   generateAiQuestionSet,
@@ -85,7 +85,7 @@ test("enforces Qwen-only model overrides", () => {
 
 test("requires AI-source gating only for ready online starts", () => {
   assert.equal(
-    shouldRequireAiSourceForMatchStart({
+    shouldBlockStartDueToNonAiSource({
       status: "ready",
       mode: "online",
       questionSetSource: "bank",
@@ -94,7 +94,7 @@ test("requires AI-source gating only for ready online starts", () => {
   );
 
   assert.equal(
-    shouldRequireAiSourceForMatchStart({
+    shouldBlockStartDueToNonAiSource({
       status: "ready",
       mode: "online",
       questionSetSource: "ai",
@@ -103,7 +103,7 @@ test("requires AI-source gating only for ready online starts", () => {
   );
 
   assert.equal(
-    shouldRequireAiSourceForMatchStart({
+    shouldBlockStartDueToNonAiSource({
       status: "ready",
       mode: "bot",
       questionSetSource: "bank",
@@ -112,7 +112,7 @@ test("requires AI-source gating only for ready online starts", () => {
   );
 
   assert.equal(
-    shouldRequireAiSourceForMatchStart({
+    shouldBlockStartDueToNonAiSource({
       status: "in_progress",
       mode: "online",
       questionSetSource: "bank",

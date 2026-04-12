@@ -401,7 +401,9 @@ const QuizBattlePage: React.FC = () => {
             setActiveRoom(null);
             setActiveMatch(null);
             setActiveTab('setup');
-            setConnectionState('reconnecting');
+            setConnectionState(
+              typeof window !== 'undefined' && window.navigator.onLine ? 'connected' : 'disconnected',
+            );
             setLaunchState({
               status: 'error',
               message: known?.message || 'Unable to resume bot battle. Please start a new match.',
