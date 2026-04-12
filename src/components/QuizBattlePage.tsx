@@ -21,6 +21,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { WarpBackground } from './ui/warp-background';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
 import {
@@ -1155,8 +1156,9 @@ const QuizBattlePage: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-      <motion.div
+    <WarpBackground className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-24 sm:-mb-28 px-3 sm:px-4 lg:px-6 pt-8 sm:pt-10 lg:pt-12 pb-24 sm:pb-28 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
+      <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
+        <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
@@ -1167,7 +1169,7 @@ const QuizBattlePage: React.FC = () => {
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
           
 
-            <TabsContent value="hub" className="mt-5">
+            <TabsContent value="hub" className="mt-0 outline-none">
               <motion.div
                 key="hub"
                 initial={{ opacity: 0, y: 12 }}
@@ -1176,70 +1178,192 @@ const QuizBattlePage: React.FC = () => {
                 className="space-y-5"
               >
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8 lg:gap-10">
                   {/* Left Column: Hero & Battle Modes */}
                   <div className="space-y-6">
                     {/* Hero Banner */}
-                    <Card className={cn(cardFrameClass, 'relative overflow-hidden rounded-[24px]')}>
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/20 to-transparent" />
-                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-8">
-                        <div className="flex-1 space-y-4">
+                    <div className="relative rounded-[24px] shadow-sm select-none isolate">
+                      {/* Gradient Background tied to its own container to allow mascot overflow */}
+                      <div className="absolute inset-0 rounded-[24px] border-none bg-gradient-to-br from-[#1b1b36] via-[#100d23] to-[#0a0815] overflow-hidden -z-10" />
+                      
+                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-8 lg:p-10 h-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px]">
+                        <div className="flex-1 space-y-5 w-full pr-0 md:pr-[320px]">
                           <div>
-                            <h1 className="flex items-center gap-2 text-3xl sm:text-4xl font-black tracking-tight text-foreground dark:text-[#f5f7fb]">
-                              <Swords className="h-8 w-8 text-primary dark:text-[#9e8fff]" />   
+                            <h1 className="flex items-center gap-3 text-3xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-white">
+                              <Swords className="h-8 w-8 sm:h-10 sm:w-10 text-[#d1abff]" strokeWidth={2.5} />   
                               Quiz Battle
                             </h1>
-                            <p className="text-muted-foreground dark:text-[#c4cce0] mt-2 max-w-md">
+                            <p className="text-lg text-[#a8a1c9] mt-2 sm:mt-4 max-w-2xl leading-relaxed">
                               Timed student duels with synchronized rounds, instant feedback, and progression rewards.
                             </p>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#9ea8c2] mt-1">
-                              Connection: {connectionState}
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6d61a0] mt-2">
+                              Connection: <span className={connectionState === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>{connectionState}</span>
                             </p>
+                          </div>
+                          
+                          {/* Quick Stats Integrated in Banner */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 max-w-2xl pt-2">
+                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
+                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Win Rate</p>
+                                <p className="text-base lg:text-lg font-black text-white">{historyWinRate.toFixed(1)}%</p>
+                              </div>
+                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
+                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Matches</p>
+                                <p className="text-base lg:text-lg font-black text-white">{statsData?.matchesPlayed || 0}</p>
+                              </div>
+                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
+                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Best Streak</p>
+                                <p className="text-base lg:text-lg font-black text-white">{statsData?.bestStreak || 0}</p>
+                              </div>
+                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
+                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Avg Response</p>
+                                <p className="text-base lg:text-lg font-black text-white">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
+                              </div>
                           </div>
                         </div>
                         
-                        <div className="hidden md:block w-48 shrink-0 relative mt-4 md:mt-0">
-                          <img src={quizBattleAvatar} alt="Mascot" className="w-full object-contain scale-[1.25] translate-y-2 origin-bottom drop-shadow-xl" />
+                        {/* Enlarged Avatar floating without overflow clipping */}
+                        <div className="hidden md:block absolute right-[-10px] lg:right-[-30px] top-[-5px] lg:top-[5px] w-[280px] lg:w-[380px] shrink-0 pointer-events-none z-20">
+                          <motion.img 
+                             src={quizBattleAvatar} 
+                             alt="Mascot" 
+                             className="w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]" 
+                             animate={{ y: [0, -24, 0], rotate: [-3, 3, -3] }}
+                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                          />
                         </div>
                       </div>
-                    </Card>
+                    </div>
 
                     {/* Battle Modes */}
-                    <div className="pt-2">
-                      <h2 className="flex items-center gap-2 pb-4 text-xl font-black tracking-wide uppercase text-foreground dark:text-[#f5f7fb]">
-                        <Swords className="h-6 w-6 text-primary dark:text-[#9e8fff]" /> BATTLE MODES
+                    <div className="pt-8">
+                      <h2 className="flex items-center gap-3 pb-4 text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+                        <Swords className="h-8 w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
                       </h2>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10 w-full mb-4">
+                        <motion.button
                           type="button"
                           onClick={() => setMode('online')}
-                          className="relative overflow-hidden rounded-[24px] border border-border transition-transform hover:scale-[1.02] text-left min-h-[220px] flex flex-col justify-end bg-gradient-to-br from-indigo-500/20 to-purple-900/40 dark:border-[#4c3a93]"
+                          whileHover={{ scale: 1.025 }}
+                          whileTap={{ scale: 0.98 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                          className="w-full bg-[#1FA7E1] rounded-[22px] border-[3px] border-[#1083B1] relative text-left shadow-[0_8px_30px_rgba(16,131,177,0.2)] hover:shadow-[0_12px_45px_rgba(16,131,177,0.4)] block object-cover group"
                         >
-                          <div className="absolute top-0 left-0 bg-red-600 text-white font-bold px-4 py-1.5 rounded-br-2xl rounded-tl-[24px] z-20 text-sm shadow-md">
-                            VS Player
+                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px]">
+                            <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
+                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#aa0b07"/>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                              VS Player
+                            </div>
                           </div>
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8 opacity-80 mix-blend-screen mix-blend-plus-lighter">
-                             <img src="/avatar/avatar_icon.png" alt="VS Player" className="h-28 object-contain drop-shadow-xl" />
+
+                          <div className="rounded-[19px] overflow-hidden relative border-none isolate h-full flex flex-col justify-end">
+                            {/* Shine Effect */}
+                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+                            
+                            <div className="w-full h-[210px] flex items-end justify-center relative bg-gradient-to-t from-[#1083B1]/40 to-transparent pt-6 pointer-events-none">
+                              {/* Expanded Full-Width Stage */}
+                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#1083B1] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                              
+                              {/* Animated Avatar Clones */}
+                              <div className="relative z-10 flex items-end justify-center mb-2 h-32 sm:h-40">
+                                {/* Back Clone */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="absolute opacity-20 scale-[0.8] blur-[2px] h-full object-contain origin-bottom"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+                                />
+                                {/* Middle Clone */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="absolute opacity-40 scale-[0.9] blur-[1px] h-full object-contain origin-bottom"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.15 }}
+                                />
+                                {/* Main Avatar */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="VS Player" 
+                                  className="relative opacity-100 scale-100 h-full object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.4)] z-20 origin-bottom"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="relative z-10 w-full px-5 py-4 text-center bg-[#1083B1]">
+                              <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                                Queue or room-code match against a real student online.
+                              </p>
+                            </div>
                           </div>
-                          <div className="relative z-10 w-full p-4 bg-black/20 backdrop-blur-md border-t border-white/10 mt-auto">
-                            <p className="text-sm font-medium text-white text-center">Queue or room-code match</p>
-                          </div>
-                        </button>
-                        <button
+                        </motion.button>
+
+                        <motion.button
                           type="button"
                           onClick={() => setMode('bot')}
-                          className="relative overflow-hidden rounded-[24px] border border-border transition-transform hover:scale-[1.02] text-left min-h-[220px] flex flex-col justify-end bg-gradient-to-br from-cyan-500/20 to-blue-900/40 dark:border-[#2a6894]"
+                          whileHover={{ scale: 1.025 }}
+                          whileTap={{ scale: 0.98 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                          className="w-full bg-[#1FA7E1] rounded-[22px] border-[3px] border-[#1083B1] relative text-left shadow-[0_8px_30px_rgba(16,131,177,0.2)] hover:shadow-[0_12px_45px_rgba(16,131,177,0.4)] block object-cover group"
                         >
-                          <div className="absolute top-0 left-0 bg-red-600 text-white font-bold px-4 py-1.5 rounded-br-2xl rounded-tl-[24px] z-20 text-sm shadow-md">
-                            VS Bot
+                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px]">
+                            <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
+                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#aa0b07"/>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                              VS Bot
+                            </div>
                           </div>
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8 opacity-80 mix-blend-screen mix-blend-plus-lighter">
-                             <img src="/avatar/avatar_icon.png" alt="VS Bot" className="h-28 object-contain drop-shadow-xl" />
+
+                          <div className="rounded-[19px] overflow-hidden relative border-none isolate h-full flex flex-col justify-end">
+                            {/* Shine Effect */}
+                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+                            
+                            <div className="w-full h-[210px] flex items-end justify-center relative bg-gradient-to-t from-[#1083B1]/40 to-transparent pt-6 pointer-events-none">
+                              {/* Expanded Full-Width Stage */}
+                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#1083B1] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                              
+                              {/* Animated Avatar Clones */}
+                              <div className="relative z-10 flex items-end justify-center mb-2 h-32 sm:h-40">
+                                {/* Back Clone */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="absolute opacity-20 scale-[0.8] blur-[2px] h-full object-contain origin-bottom"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+                                />
+                                {/* Middle Clone */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="absolute opacity-40 scale-[0.9] blur-[1px] h-full object-contain origin-bottom"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.65 }}
+                                />
+                                {/* Main Avatar */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="VS Bot" 
+                                  className="relative opacity-100 scale-100 h-full object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.4)] z-20 origin-bottom"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="relative z-10 w-full px-5 py-4 text-center bg-[#1083B1]">
+                              <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                                Instant solo practice duel with selectable bot difficulty.
+                              </p>
+                            </div>
                           </div>
-                          <div className="relative z-10 w-full p-4 bg-black/20 backdrop-blur-md border-t border-white/10 mt-auto">
-                            <p className="text-sm font-medium text-white text-center">Instant solo practice duel</p>
-                          </div>
-                        </button>
+                        </motion.button>
                       </div>
                     </div>
                   </div>
@@ -1249,11 +1373,14 @@ const QuizBattlePage: React.FC = () => {
 
                     {/* Hall of Fame Widget */}
                     <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2 m-0"><Crown className="h-4 w-4 text-amber-500" /> Hall of Fame</CardTitle>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" onClick={() => setActiveTab('leaderboard')}>View All</Button>
+                      <CardHeader className="pb-1 pt-5 px-5 flex flex-row items-center justify-between">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground dark:text-[#f5f7fb]"><Crown className="h-[18px] w-[18px] text-amber-500 shrink-0" /> Hall of Fame</CardTitle>
+                        <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('leaderboard')}>View All</Button>
                       </CardHeader>
-                      <CardContent className="space-y-2">
+                      <CardContent className="space-y-3 px-5 pb-5 pt-3">
+                        <div className="text-[13px] text-muted-foreground dark:text-[#8b95ad] mb-2 leading-relaxed">
+                          Top competitive students globally.
+                        </div>
                         {leaderboardLoading ? (
                           <div className="space-y-2">
                             <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
@@ -1278,40 +1405,27 @@ const QuizBattlePage: React.FC = () => {
 
                     {/* My Stats Widget */}
                     <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2 m-0"><Target className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> My Stats</CardTitle>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" onClick={() => setActiveTab('stats')}>Full Stats</Button>
+                      <CardHeader className="pb-1 pt-5 px-5 flex flex-row items-center justify-between">
+                         <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground dark:text-[#f5f7fb]"><Target className="h-[18px] w-[18px] text-primary dark:text-[#9e8fff]" /> My Stats</CardTitle>
+                         <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('stats')}>Full Stats</Button>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Win Rate</p>
-                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{historyWinRate.toFixed(1)}%</p>
-                            </div>
-                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Matches</p>
-                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.matchesPlayed || 0}</p>
-                            </div>
-                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Best Streak</p>
-                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.bestStreak || 0}</p>
-                            </div>
-                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Avg Time</p>
-                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
-                            </div>
+                      <CardContent className="px-5 pt-3 pb-6">
+                        <div className="text-[13px] text-muted-foreground dark:text-[#8b95ad] leading-relaxed">
+                          Dive deep into your performance analytics, win-rates by subject, and progression history.
                         </div>
                       </CardContent>
                     </Card>
 
                     {/* History Widget */}
                     <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2 m-0"><History className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Match History</CardTitle>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" onClick={() => setActiveTab('history')}>View All</Button>
+                      <CardHeader className="pb-1 pt-5 px-5 flex flex-row items-center justify-between">
+                         <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground dark:text-[#f5f7fb]"><History className="h-[18px] w-[18px] text-primary dark:text-[#9e8fff]" /> Match History</CardTitle>
+                         <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
                       </CardHeader>
-                      <CardContent className="space-y-2 pt-0">
-                         <CardDescription className="pb-2 text-xs">Your recent student battles only.</CardDescription>
+                      <CardContent className="space-y-3 px-5 pt-3 pb-5">
+                         <div className="text-[13px] text-muted-foreground dark:text-[#8b95ad] mb-2 leading-relaxed">
+                           Your recent student battles only.
+                         </div>
                         {statsLoading ? (
                           <div className="space-y-2">
                             <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
@@ -1353,7 +1467,10 @@ const QuizBattlePage: React.FC = () => {
 </motion.div>
             </TabsContent>
 
-            <TabsContent value="setup" className="mt-5">
+            <TabsContent value="setup" className="mt-0 outline-none">
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back
+              </Button>
               <motion.div
                 key="setup"
                 initial={{ opacity: 0, y: 12 }}
@@ -1663,7 +1780,7 @@ const QuizBattlePage: React.FC = () => {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="battle" className="mt-5">
+            <TabsContent value="battle" className="mt-0 outline-none">
               <motion.div
                 key="battle"
                 initial={{ opacity: 0, y: 12 }}
@@ -1885,13 +2002,7 @@ const QuizBattlePage: React.FC = () => {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="history" className="mt-5">
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
-              </Button>
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
-              </Button>
+            <TabsContent value="history" className="mt-0 outline-none">
               <motion.div
                 key="history"
                 initial={{ opacity: 0, y: 12 }}
@@ -1899,7 +2010,49 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
                 className="space-y-4"
               >
-                
+                {/* History Banner */}
+                <motion.div 
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)]")}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:via-teal-500/10 dark:to-teal-900/10" />
+                  
+                  {/* Animated Background Elements */}
+                  <motion.div 
+                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-400/20 blur-2xl"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                  />
+
+                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)] shrink-0">
+                        <ChevronRight className="h-6 w-6 rotate-180 text-emerald-800 dark:text-emerald-300" />
+                      </Button>
+                      <div>
+                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-emerald-600 to-teal-500 dark:from-emerald-300 dark:to-teal-200 drop-shadow-sm">
+                          <motion.div
+                            animate={{ rotate: [-5, 5, -5] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-2xl shadow-inner border border-emerald-200 dark:border-emerald-700/50"
+                          >
+                            <History className="h-8 w-8 text-emerald-600 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                          </motion.div>
+                          Matches History
+                        </h2>
+                        <p className="text-sm font-bold text-emerald-800/80 dark:text-emerald-100/70 mt-2 tracking-wide uppercase">
+                          Review your past duels and track your progress.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
 
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
@@ -1950,28 +2103,65 @@ const QuizBattlePage: React.FC = () => {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="stats" className="mt-5">
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
-              </Button>
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
-              </Button>
+            <TabsContent value="stats" className="mt-0 outline-none">
               <motion.div
                 key="stats"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"
+                className="space-y-4"
               >
-                
+                {/* Stats Banner */}
+                <motion.div 
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-indigo-500/20 shadow-[0_0_40px_-10px_rgba(99,102,241,0.2)]")}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-indigo-600/5 dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-purple-900/10" />
+                  
+                  {/* Animated Background Elements */}
+                  <motion.div 
+                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-400/20 blur-2xl"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                  />
 
-                {[
-                  {
-                    label: 'Wins',
-                    value: statsData?.wins ?? 0,
-                    icon: Trophy,
-                  },
+                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] shrink-0">
+                        <ChevronRight className="h-6 w-6 rotate-180 text-indigo-800 dark:text-indigo-300" />
+                      </Button>
+                      <div>
+                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-500 dark:from-indigo-300 dark:to-purple-200 drop-shadow-sm">
+                          <motion.div
+                            animate={{ y: [-3, 3, -3] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-2xl shadow-inner border border-indigo-200 dark:border-indigo-700/50"
+                          >
+                            <Target className="h-8 w-8 text-indigo-600 dark:text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                          </motion.div>
+                          My Statistics
+                        </h2>
+                        <p className="text-sm font-bold text-indigo-800/80 dark:text-indigo-100/70 mt-2 tracking-wide uppercase">
+                          Analyzing your battlefield performance.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {[
+                    {
+                      label: 'Wins',
+                      value: statsData?.wins ?? 0,
+                      icon: Trophy,
+                    },
                   {
                     label: 'Current streak',
                     value: statsData?.currentStreak ?? 0,
@@ -1996,22 +2186,62 @@ const QuizBattlePage: React.FC = () => {
                     </CardContent>
                   </Card>
                 ))}
+                </div>
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="leaderboard" className="mt-5">
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
-              </Button>
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
-              </Button>
+            <TabsContent value="leaderboard" className="mt-0 outline-none">
               <motion.div
                 key="leaderboard"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
+                className="space-y-4"
               >
+                {/* Leaderboard Banner */}
+                <motion.div 
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-amber-500/20 shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]")}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-600/5 dark:from-amber-600/20 dark:via-orange-500/10 dark:to-orange-900/10" />
+                  
+                  {/* Animated Background Elements */}
+                  <motion.div 
+                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-400/20 blur-2xl"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  />
+
+                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)] shrink-0">
+                        <ChevronRight className="h-6 w-6 rotate-180 text-amber-800 dark:text-amber-300" />
+                      </Button>
+                      <div>
+                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-amber-600 to-orange-500 dark:from-amber-300 dark:to-orange-200 drop-shadow-sm">
+                          <motion.div
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-2xl shadow-inner border border-amber-200 dark:border-amber-700/50"
+                          >
+                            <Trophy className="h-8 w-8 text-amber-600 dark:text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]" />
+                          </motion.div>
+                          Hall of Fame
+                        </h2>
+                        <p className="text-sm font-bold text-amber-800/80 dark:text-amber-100/70 mt-2 tracking-wide uppercase">
+                          The top-ranked minds across the globe.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                 
 
@@ -2087,7 +2317,8 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
         </Tabs>
       </motion.div>
-    </div>
+      </div>
+    </WarpBackground>
   );
 };
 
