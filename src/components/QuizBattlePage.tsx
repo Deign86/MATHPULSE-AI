@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import quizBattleAvatar from '../assets/quiz_battle_avatar.png';
+// { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Check,
@@ -360,7 +363,7 @@ const QuizBattlePage: React.FC = () => {
   }, [leaderboardData, leaderboardNameMode, showExactLeaderboardScores, studentProfile?.uid]);
 
   useEffect(() => {
-    if (activeTab !== 'leaderboard') return;
+    if (activeTab !== 'leaderboard' && activeTab !== 'hub') return;
 
     let isMounted = true;
     setLeaderboardLoading(true);
@@ -1216,49 +1219,10 @@ const QuizBattlePage: React.FC = () => {
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         className="space-y-6"
       >
-        <Card className={cn(cardFrameClass, 'relative overflow-hidden rounded-[20px]')}>
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent dark:bg-[radial-gradient(circle_at_15%_15%,rgba(140,125,255,0.28),transparent_45%),radial-gradient(circle_at_85%_20%,rgba(121,79,255,0.17),transparent_40%)]" />
-          <CardHeader className="relative z-10 pb-4">
-            <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight text-foreground dark:text-[#f5f7fb]">
-              <Swords className="h-5 w-5 text-primary dark:text-[#9e8fff]" />
-              Quiz Battle
-            </CardTitle>
-            <CardDescription className="text-muted-foreground dark:text-[#c4cce0]">
-              Timed student duels with synchronized rounds, instant feedback, and progression rewards.
-            </CardDescription>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#9ea8c2]">
-              Connection: {connectionState}
-            </p>
-          </CardHeader>
-          <CardContent className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 pb-6">
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Win Rate</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{historyWinRate.toFixed(1)}%</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Matches</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.matchesPlayed || 0}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Best Streak</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.bestStreak || 0}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Avg Response</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
-            </div>
-          </CardContent>
-        </Card>
+        
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
-          <TabsList className="w-full md:w-auto rounded-2xl p-1.5">
-            <TabsTrigger value="hub" className="rounded-xl">Hub</TabsTrigger>
-            <TabsTrigger value="setup" className="rounded-xl">Setup</TabsTrigger>
-            <TabsTrigger value="battle" className="rounded-xl">Battle</TabsTrigger>
-            <TabsTrigger value="history" className="rounded-xl">History</TabsTrigger>
-            <TabsTrigger value="stats" className="rounded-xl">My Stats</TabsTrigger>
-            <TabsTrigger value="leaderboard" className="rounded-xl">Leaderboard</TabsTrigger>
-          </TabsList>
+          
 
             <TabsContent value="hub" className="mt-5">
               <motion.div
@@ -1268,79 +1232,182 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
                 className="space-y-5"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setMode('online')}
-                    className="text-left rounded-[18px] border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-accent/40 dark:border-[#333a4e] dark:bg-[#171d2a] dark:hover:border-[#8c7dff] dark:hover:bg-[#202736]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-foreground dark:text-[#f5f7fb] font-semibold">
-                        <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
-                        1v1 Online
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-[#a2abc2]" />
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground dark:text-[#b3bdd5]">Queue or room-code match with another student.</p>
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setMode('bot')}
-                    className="text-left rounded-[18px] border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-accent/40 dark:border-[#333a4e] dark:bg-[#171d2a] dark:hover:border-[#8c7dff] dark:hover:bg-[#202736]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-foreground dark:text-[#f5f7fb] font-semibold">
-                        <Bot className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
-                        1v1 vs Bot
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-[#a2abc2]" />
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground dark:text-[#b3bdd5]">Instant solo duel with selectable bot difficulty.</p>
-                  </button>
-                </div>
-
-                <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><History className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Recent Matches</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {statsLoading ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                      </div>
-                    ) : filteredHistory.length === 0 ? (
-                      <p className="text-sm text-muted-foreground dark:text-[#a8b2c9]">No battle history yet. Start your first duel.</p>
-                    ) : (
-                      filteredHistory.slice(0, 5).map((entry) => (
-                        <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between dark:border-[#2f3547] dark:bg-[#11151d]">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
+                  {/* Left Column: Hero & Battle Modes */}
+                  <div className="space-y-6">
+                    {/* Hero Banner */}
+                    <Card className={cn(cardFrameClass, 'relative overflow-hidden rounded-[24px]')}>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/20 to-transparent" />
+                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-8">
+                        <div className="flex-1 space-y-4">
                           <div>
-                            <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">vs {entry.opponentName}</p>
-                            <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">{entry.subjectId} · {entry.difficulty}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreFor} - {entry.scoreAgainst}</p>
-                            <p
-                              className={cn(
-                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                entry.outcome === 'win'
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                                  : entry.outcome === 'loss'
-                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300'
-                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-                              )}
-                            >
-                              {formatOutcomeChip(entry.outcome)}
+                            <h1 className="flex items-center gap-2 text-3xl sm:text-4xl font-black tracking-tight text-foreground dark:text-[#f5f7fb]">
+                              <Swords className="h-8 w-8 text-primary dark:text-[#9e8fff]" />   
+                              Quiz Battle
+                            </h1>
+                            <p className="text-muted-foreground dark:text-[#c4cce0] mt-2 max-w-md">
+                              Timed student duels with synchronized rounds, instant feedback, and progression rewards.
+                            </p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#9ea8c2] mt-1">
+                              Connection: {connectionState}
                             </p>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
+                        
+                        <div className="hidden md:block w-48 shrink-0 relative mt-4 md:mt-0">
+                          <img src={quizBattleAvatar} alt="Mascot" className="w-full object-contain scale-[1.25] translate-y-2 origin-bottom drop-shadow-xl" />
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Battle Modes */}
+                    <div className="pt-2">
+                      <h2 className="flex items-center gap-2 pb-4 text-xl font-black tracking-wide uppercase text-foreground dark:text-[#f5f7fb]">
+                        <Swords className="h-6 w-6 text-primary dark:text-[#9e8fff]" /> BATTLE MODES
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setMode('online')}
+                          className="relative overflow-hidden rounded-[24px] border border-border transition-transform hover:scale-[1.02] text-left min-h-[220px] flex flex-col justify-end bg-gradient-to-br from-indigo-500/20 to-purple-900/40 dark:border-[#4c3a93]"
+                        >
+                          <div className="absolute top-0 left-0 bg-red-600 text-white font-bold px-4 py-1.5 rounded-br-2xl rounded-tl-[24px] z-20 text-sm shadow-md">
+                            VS Player
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8 opacity-80 mix-blend-screen mix-blend-plus-lighter">
+                             <img src="/avatar/avatar_icon.png" alt="VS Player" className="h-28 object-contain drop-shadow-xl" />
+                          </div>
+                          <div className="relative z-10 w-full p-4 bg-black/20 backdrop-blur-md border-t border-white/10 mt-auto">
+                            <p className="text-sm font-medium text-white text-center">Queue or room-code match</p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMode('bot')}
+                          className="relative overflow-hidden rounded-[24px] border border-border transition-transform hover:scale-[1.02] text-left min-h-[220px] flex flex-col justify-end bg-gradient-to-br from-cyan-500/20 to-blue-900/40 dark:border-[#2a6894]"
+                        >
+                          <div className="absolute top-0 left-0 bg-red-600 text-white font-bold px-4 py-1.5 rounded-br-2xl rounded-tl-[24px] z-20 text-sm shadow-md">
+                            VS Bot
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8 opacity-80 mix-blend-screen mix-blend-plus-lighter">
+                             <img src="/avatar/avatar_icon.png" alt="VS Bot" className="h-28 object-contain drop-shadow-xl" />
+                          </div>
+                          <div className="relative z-10 w-full p-4 bg-black/20 backdrop-blur-md border-t border-white/10 mt-auto">
+                            <p className="text-sm font-medium text-white text-center">Instant solo practice duel</p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Mini Widgets */}
+                  <div className="space-y-4">
+
+                    {/* Hall of Fame Widget */}
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2 m-0"><Crown className="h-4 w-4 text-amber-500" /> Hall of Fame</CardTitle>
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" onClick={() => setActiveTab('leaderboard')}>View All</Button>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {leaderboardLoading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                          </div>
+                        ) : leaderboardData.length === 0 ? (
+                           <p className="text-sm text-center text-muted-foreground py-2">No top players yet.</p>
+                        ) : (
+                          leaderboardData.slice(0, 3).map((entry, idx) => (
+                            <div key={entry.userId} className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border dark:border-[#2f3547] dark:bg-[#11151d]">
+                               <div className="flex items-center gap-2">
+                                 <span className="text-xs font-bold w-4 text-center text-muted-foreground">{idx + 1}</span>
+                                 <span className="text-sm font-semibold truncate max-w-[120px]">{entry.displayName}</span>
+                               </div>
+                               <div className="text-xs font-bold tabular-nums">{entry.leaderboardScore} <span className="font-normal text-muted-foreground">RP</span></div>
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* My Stats Widget */}
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2 m-0"><Target className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> My Stats</CardTitle>
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" onClick={() => setActiveTab('stats')}>Full Stats</Button>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Win Rate</p>
+                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{historyWinRate.toFixed(1)}%</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Matches</p>
+                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.matchesPlayed || 0}</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Best Streak</p>
+                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.bestStreak || 0}</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-muted/50 p-2 text-center dark:border-[#30374a] dark:bg-[#11151d]">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-[#9da7bf]">Avg Time</p>
+                              <p className="tabular-nums text-base font-bold text-foreground dark:text-[#f5f7fb]">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
+                            </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* History Widget */}
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2 m-0"><History className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Match History</CardTitle>
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary" onClick={() => setActiveTab('history')}>View All</Button>
+                      </CardHeader>
+                      <CardContent className="space-y-2 pt-0">
+                         <CardDescription className="pb-2 text-xs">Your recent student battles only.</CardDescription>
+                        {statsLoading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                          </div>
+                        ) : filteredHistory.length === 0 ? (
+                          <p className="text-sm text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
+                        ) : (
+                          filteredHistory.slice(0, 3).map((entry) => (
+                            <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between dark:border-[#2f3547] dark:bg-[#11151d]">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb] truncate max-w-[100px]">vs {entry.opponentName}</p>
+                                <p className="text-[10px] text-muted-foreground dark:text-[#95a0bb]">{entry.subjectId}</p>
+                              </div>
+                              <div className="text-right flex items-center gap-2">
+                                <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreFor}-{entry.scoreAgainst}</p>   
+                                <p
+                                  className={cn(
+                                    'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase min-w-[36px]',
+                                    entry.outcome === 'win'
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                      : entry.outcome === 'loss'
+                                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300'
+                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+                                  )}
+                                >
+                                  {formatOutcomeChip(entry.outcome)}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+
+                  </div>
+                </div>
+</motion.div>
             </TabsContent>
 
             <TabsContent value="setup" className="mt-5">
@@ -1878,6 +1945,12 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="history" className="mt-5">
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
+              </Button>
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
+              </Button>
               <motion.div
                 key="history"
                 initial={{ opacity: 0, y: 12 }}
@@ -1885,6 +1958,8 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
                 className="space-y-4"
               >
+                
+
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
                     <CardTitle className="text-base">Match History</CardTitle>
@@ -1935,6 +2010,12 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="stats" className="mt-5">
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
+              </Button>
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
+              </Button>
               <motion.div
                 key="stats"
                 initial={{ opacity: 0, y: 12 }}
@@ -1942,6 +2023,8 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
                 className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"
               >
+                
+
                 {[
                   {
                     label: 'Wins',
@@ -1976,6 +2059,12 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="leaderboard" className="mt-5">
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
+              </Button>
+              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
+                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back to Hub
+              </Button>
               <motion.div
                 key="leaderboard"
                 initial={{ opacity: 0, y: 12 }}
@@ -1983,8 +2072,10 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
               >
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                
+
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Student Leaderboard</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Hall of Fame</CardTitle>
                     <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
                       Student-only ranking using trusted backend aggregates.
                     </CardDescription>
