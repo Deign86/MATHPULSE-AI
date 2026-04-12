@@ -20,6 +20,7 @@ import {
   Users,
   Volume2,
   VolumeX,
+  Star,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
 import { useAuth } from '../contexts/AuthContext';
@@ -1178,7 +1179,7 @@ const QuizBattlePage: React.FC = () => {
                 className="space-y-5"
               >
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8 lg:gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8 lg:gap-14 xl:gap-16">
                   {/* Left Column: Hero & Battle Modes */}
                   <div className="space-y-6">
                     {/* Hero Banner */}
@@ -1240,126 +1241,136 @@ const QuizBattlePage: React.FC = () => {
                       <h2 className="flex items-center gap-3 pb-4 text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
                         <Swords className="h-8 w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
                       </h2>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10 w-full mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10 w-full mb-6">
+                        {/* VS Player Card */}
                         <motion.button
                           type="button"
                           onClick={() => setMode('online')}
                           whileHover={{ scale: 1.025 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                          className="w-full bg-[#1FA7E1] rounded-[22px] border-[3px] border-[#1083B1] relative text-left shadow-[0_8px_30px_rgba(16,131,177,0.2)] hover:shadow-[0_12px_45px_rgba(16,131,177,0.4)] block object-cover group"
+                          className="w-full bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block object-cover group"
                         >
-                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px]">
+                          {/* Top Highlight border / Inner Shadow effect */}
+                          <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+
+                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
                             <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
-                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#aa0b07"/>
+                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
                             </svg>
-                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100" style={{ fontFamily: "'Nunito', sans-serif" }}>
                               VS Player
                             </div>
                           </div>
 
-                          <div className="rounded-[19px] overflow-hidden relative border-none isolate h-full flex flex-col justify-end">
+                          <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
                             {/* Shine Effect */}
-                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
                             
-                            <div className="w-full h-[210px] flex items-end justify-center relative bg-gradient-to-t from-[#1083B1]/40 to-transparent pt-6 pointer-events-none">
-                              {/* Expanded Full-Width Stage */}
-                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#1083B1] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                            <div className="w-full h-[200px] sm:h-[240px] flex items-end justify-center relative pt-6 pointer-events-none">
+                              {/* Expanded Full-Width Stage (Dark Purple) */}
+                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
                               
-                              {/* Animated Avatar Clones */}
-                              <div className="relative z-10 flex items-end justify-center mb-2 h-32 sm:h-40">
-                                {/* Back Clone */}
+                              {/* Animated Avatar Clones (VS Match) */}
+                              <div className="relative z-10 flex items-center justify-center mb-[2px] h-[135px] sm:h-[175px] w-full">
+                                {/* Left Avatar */}
                                 <motion.img 
                                   src="/avatar/avatar_icon.png" 
                                   alt="" 
-                                  className="absolute opacity-20 scale-[0.8] blur-[2px] h-full object-contain origin-bottom"
-                                  animate={{ y: [0, -6, 0] }}
-                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                                />
-                                {/* Middle Clone */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="" 
-                                  className="absolute opacity-40 scale-[0.9] blur-[1px] h-full object-contain origin-bottom"
-                                  animate={{ y: [0, -6, 0] }}
-                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.15 }}
-                                />
-                                {/* Main Avatar */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="VS Player" 
-                                  className="relative opacity-100 scale-100 h-full object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.4)] z-20 origin-bottom"
-                                  animate={{ y: [0, -6, 0] }}
+                                  className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)]"
+                                  animate={{ y: [0, -5, 0] }}
                                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                                {/* Center VS */}
+                                <motion.div 
+                                  className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1]"
+                                  animate={{ scale: [1.1, 1.15, 1.1] }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                >
+                                  <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: "1.5px #666" }}>
+                                    <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
+                                  </span>
+                                </motion.div>
+                                {/* Right Avatar (Flipped) */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="h-[120%] sm:h-[125%] object-contain relative z-10 scale-x-[-1] origin-bottom left-[-20px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)]"
+                                  animate={{ y: [0, -4, 0] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
                                 />
                               </div>
                             </div>
                             
-                            <div className="relative z-10 w-full px-5 py-4 text-center bg-[#1083B1]">
+                            <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
                               <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                                Queue or room-code match against a real student online.
+                                Queue or room-code match with another student.
                               </p>
                             </div>
                           </div>
                         </motion.button>
 
+                        {/* VS Bot Card */}
                         <motion.button
                           type="button"
                           onClick={() => setMode('bot')}
                           whileHover={{ scale: 1.025 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                          className="w-full bg-[#1FA7E1] rounded-[22px] border-[3px] border-[#1083B1] relative text-left shadow-[0_8px_30px_rgba(16,131,177,0.2)] hover:shadow-[0_12px_45px_rgba(16,131,177,0.4)] block object-cover group"
+                          className="w-full bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block object-cover group"
                         >
-                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px]">
+                          {/* Top Highlight border / Inner Shadow effect */}
+                          <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+
+                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
                             <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
-                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#aa0b07"/>
+                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
                             </svg>
-                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100" style={{ fontFamily: "'Nunito', sans-serif" }}>
                               VS Bot
                             </div>
                           </div>
 
-                          <div className="rounded-[19px] overflow-hidden relative border-none isolate h-full flex flex-col justify-end">
+                          <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
                             {/* Shine Effect */}
-                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/50 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
                             
-                            <div className="w-full h-[210px] flex items-end justify-center relative bg-gradient-to-t from-[#1083B1]/40 to-transparent pt-6 pointer-events-none">
-                              {/* Expanded Full-Width Stage */}
-                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#1083B1] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                            <div className="w-full h-[200px] sm:h-[240px] flex items-end justify-center relative pt-6 pointer-events-none">
+                              {/* Expanded Full-Width Stage (Dark Blue) */}
+                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
                               
-                              {/* Animated Avatar Clones */}
-                              <div className="relative z-10 flex items-end justify-center mb-2 h-32 sm:h-40">
-                                {/* Back Clone */}
+                              {/* Ghosting Avatars */}
+                              <div className="relative z-10 flex items-end justify-center mb-[2px] h-36 sm:h-48 w-full">
+                                {/* Left Ghost */}
                                 <motion.img 
                                   src="/avatar/avatar_icon.png" 
                                   alt="" 
-                                  className="absolute opacity-20 scale-[0.8] blur-[2px] h-full object-contain origin-bottom"
-                                  animate={{ y: [0, -6, 0] }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+                                  className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85]"
+                                  animate={{ y: [0, -3, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
                                 />
-                                {/* Middle Clone */}
+                                {/* Right Ghost */}
                                 <motion.img 
                                   src="/avatar/avatar_icon.png" 
                                   alt="" 
-                                  className="absolute opacity-40 scale-[0.9] blur-[1px] h-full object-contain origin-bottom"
-                                  animate={{ y: [0, -6, 0] }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.65 }}
+                                  className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85]"
+                                  animate={{ y: [0, -3, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
                                 />
                                 {/* Main Avatar */}
                                 <motion.img 
                                   src="/avatar/avatar_icon.png" 
                                   alt="VS Bot" 
-                                  className="relative opacity-100 scale-100 h-full object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.4)] z-20 origin-bottom"
-                                  animate={{ y: [0, -6, 0] }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                                  className="relative opacity-100 scale-100 h-[105%] sm:h-[115%] object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] z-20 origin-bottom"
+                                  animate={{ y: [0, -5, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
                                 />
                               </div>
                             </div>
                             
-                            <div className="relative z-10 w-full px-5 py-4 text-center bg-[#1083B1]">
+                            <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
                               <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                                Instant solo practice duel with selectable bot difficulty.
+                                Instant solo duel with selectable bot difficulty.
                               </p>
                             </div>
                           </div>
@@ -1371,59 +1382,159 @@ const QuizBattlePage: React.FC = () => {
                   {/* Right Column: Mini Widgets */}
                   <div className="space-y-4">
 
-                    {/* Hall of Fame Widget */}
-                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-1 pt-5 px-5 flex flex-row items-center justify-between">
-                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground dark:text-[#f5f7fb]"><Crown className="h-[18px] w-[18px] text-amber-500 shrink-0" /> Hall of Fame</CardTitle>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('leaderboard')}>View All</Button>
-                      </CardHeader>
-                      <CardContent className="space-y-3 px-5 pb-5 pt-3">
-                        <div className="text-[13px] text-muted-foreground dark:text-[#8b95ad] mb-2 leading-relaxed">
-                          Top competitive students globally.
-                        </div>
-                        {leaderboardLoading ? (
-                          <div className="space-y-2">
-                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                          </div>
-                        ) : leaderboardData.length === 0 ? (
-                           <p className="text-sm text-center text-muted-foreground py-2">No top players yet.</p>
-                        ) : (
-                          leaderboardData.slice(0, 3).map((entry, idx) => (
-                            <div key={entry.userId} className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border dark:border-[#2f3547] dark:bg-[#11151d]">
-                               <div className="flex items-center gap-2">
-                                 <span className="text-xs font-bold w-4 text-center text-muted-foreground">{idx + 1}</span>
-                                 <span className="text-sm font-semibold truncate max-w-[120px]">{entry.displayName}</span>
-                               </div>
-                               <div className="text-xs font-bold tabular-nums">{entry.leaderboardScore} <span className="font-normal text-muted-foreground">RP</span></div>
-                            </div>
-                          ))
-                        )}
-                      </CardContent>
-                    </Card>
+                    {/* Hall of Fame Widget Custom Graphic */}
+                    <div onClick={() => setActiveTab('leaderboard')} className="relative w-full h-[220px] sm:h-[240px] cursor-pointer group flex items-end justify-center overflow-visible mt-2 mb-6">
+                       <motion.div 
+                          className="relative w-full h-full flex flex-col items-center justify-end"
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                       >
+                           {/* Stars (Moved outside the white-filter to preserve colored glowing effect) */}
+                           <div className="absolute top-[-10px] sm:top-[-20px] w-full flex justify-center items-end px-2 z-0">
+                              <Star strokeWidth={0} fill="currentColor" className="w-[50px] h-[50px] text-[#fde047] -rotate-[15deg] -mr-4 mb-2 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                              
+                              <motion.div animate={{ y: [-4, 4, -4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="z-10 relative">
+                                <Star strokeWidth={0} fill="currentColor" className="w-[85px] h-[85px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
+                              </motion.div>
 
-                    {/* My Stats Widget */}
-                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-1 pt-5 px-5 flex flex-row items-center justify-between">
-                         <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground dark:text-[#f5f7fb]"><Target className="h-[18px] w-[18px] text-primary dark:text-[#9e8fff]" /> My Stats</CardTitle>
-                         <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('stats')}>Full Stats</Button>
-                      </CardHeader>
-                      <CardContent className="px-5 pt-3 pb-6">
-                        <div className="text-[13px] text-muted-foreground dark:text-[#8b95ad] leading-relaxed">
-                          Dive deep into your performance analytics, win-rates by subject, and progression history.
-                        </div>
-                      </CardContent>
-                    </Card>
+                              <Star strokeWidth={0} fill="currentColor" className="w-[50px] h-[50px] text-[#fde047] rotate-[15deg] -ml-4 mb-2 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                           </div>
+
+                           {/* Add white stroke filter via combined drop-shadows */}
+                           <div className="absolute inset-x-0 bottom-[40px] top-0 z-10 flex flex-col items-center justify-end
+                                           filter drop-shadow-[0px_3px_0px_white] drop-shadow-[0px_-3px_0px_white] drop-shadow-[3px_0px_0px_white] drop-shadow-[-3px_0px_0px_white] drop-shadow-[2px_2px_0px_white] drop-shadow-[-2px_-2px_0px_white] drop-shadow-[2px_-2px_0px_white] drop-shadow-[-2px_2px_0px_white]">
+                               
+                               {/* Podium structure (Flat vector layout) */}
+                               <div className="flex items-end justify-center z-20 relative px-4">
+                                  {/* Left Pillar */}
+                                  <div className="flex flex-col items-center w-[85px] relative">
+                                     <div className="w-full h-[18px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[65px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-2 pb-2">
+                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
+                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
+                                     </div>
+                                  </div>
+                                  
+                                  {/* Center Pillar */}
+                                  <div className="flex flex-col items-center w-[95px] -mx-[4px] z-20 relative">
+                                     <div className="w-full h-[22px] bg-[#f2812d] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[95px] bg-[#fa9746] rounded-b-[2px] flex flex-col justify-start items-center pt-5 gap-2">
+                                        <div className="w-12 h-2 bg-white rounded-full opacity-95" />
+                                        <div className="w-12 h-2 bg-white rounded-full opacity-95" />
+                                     </div>
+                                  </div>
+                                  
+                                  {/* Right Pillar */}
+                                  <div className="flex flex-col items-center w-[85px] relative">
+                                     <div className="w-full h-[18px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[65px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-2 pb-2">
+                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
+                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
+                                     </div>
+                                  </div>
+                               </div>
+                           </div>
+
+                           {/* 3D Ribbon / Banner overlapping the bottom of the podium */}
+                           <div className="absolute bottom-2 w-[110%] max-w-[340px] z-30 drop-shadow-2xl">
+                               <div className="relative w-full h-[64px] flex justify-center items-center">
+                                   {/* Left Cutout Flap */}
+                                   <div className="absolute -left-1 top-2.5 w-[65px] h-[52px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%, 25% 50%, 0 0)'}}></div>
+                                   {/* Right Cutout Flap */}
+                                   <div className="absolute -right-1 top-2.5 w-[65px] h-[52px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%, 75% 50%, 100% 0)'}}></div>
+                                   
+                                   {/* Front Ribbon Face */}
+                                   <div className="absolute inset-x-8 top-0 bottom-0 bg-[#b61515] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),_inset_0_-4px_4px_rgba(0,0,0,0.2)] z-10 flex flex-col items-center justify-center">
+                                       <h3 className="text-xl sm:text-2xl font-black text-white tracking-widest leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>Hall of Fame</h3>
+                                       <span className="text-[10px] sm:text-[11px] font-bold text-white/90 tracking-widest mt-1">View Page &gt;</span>
+                                   </div>
+                               </div>
+                           </div>
+                       </motion.div>
+                    </div>
+
+                    {/* My Stats Widget (Horizontal Swipe Carousel) */}
+                    <div className="relative w-full bg-[#3b3a82] dark:bg-[#2b2b5f] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_30px_rgba(59,58,130,0.3)]">
+                      {/* Header */}
+                      <div className="flex flex-row items-end justify-between px-5 pt-4 pb-2 relative z-10">
+                        <h3 className="text-[18px] font-black text-white tracking-wide leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>My Stats</h3>
+                        <Button 
+                          variant="link" 
+                          className="text-white/80 hover:text-white p-0 h-auto font-semibold text-[13px] tracking-wide" 
+                          onClick={() => setActiveTab('stats')}
+                        >
+                          View Stats &gt;
+                        </Button>
+                      </div>
+
+                      {/* Content: Continuous Auto-scroll Marquee */}
+                      <div className="relative z-10 w-full overflow-hidden pb-4">
+                        {/* Edge Gradients for smooth fade in/out */}
+                        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
+                        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
+                        
+                        <motion.div 
+                          className="flex w-max pl-3"
+                          animate={{ x: ["0%", "-50%"] }}
+                          transition={{ ease: "linear", duration: 15, repeat: Infinity }}
+                        >
+                          {[0, 1].map((i) => (
+                            <div key={i} className="flex gap-2.5 pr-2.5">
+                              {/* Card 1: Win Rate */}
+                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#f0eaff] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#d6ccf5]">
+                                <Trophy className="absolute -bottom-2 -right-3 w-14 h-14 text-[#a06aec]/10 -rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[18px] drop-shadow-sm">🏆</span>
+                                <div className="relative z-10">
+                                  <h4 className="text-[22px] font-black text-[#8f5ae2] leading-none mb-[2px] tracking-tight">{Math.round((statsData?.winRate || 0))} %</h4>
+                                  <p className="text-[9px] font-extrabold text-[#baa4df] uppercase tracking-wider">Win Rate</p>
+                                </div>
+                              </div>
+
+                              {/* Card 2: Matches */}
+                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#e1f5f7] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#b0e6eb]">
+                                <Target className="absolute -bottom-2 -right-3 w-12 h-12 text-[#35a8bc]/10 rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[18px] drop-shadow-sm">🎯</span>
+                                <div className="relative z-10">
+                                  <h4 className="text-[22px] font-black text-[#319ab4] leading-none mb-[2px] tracking-tight">{statsData?.matchesPlayed || 0}</h4>
+                                  <p className="text-[9px] font-extrabold text-[#7eafbe] uppercase tracking-wider">Matches</p>
+                                </div>
+                              </div>
+
+                              {/* Card 3: Avg. Response */}
+                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#fef5e7] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#f6ebd2]">
+                                <Clock3 className="absolute -bottom-2 -right-3 w-12 h-12 text-[#e87a42]/10 -rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[18px] drop-shadow-sm">⏱️</span>
+                                <div className="relative z-10">
+                                  <h4 className="text-[22px] font-black text-[#db734b] leading-none mb-[2px] tracking-tight">{statsData?.averageResponseMs ? (statsData.averageResponseMs / 1000).toFixed(1) : 0}s</h4>
+                                  <p className="text-[9px] font-extrabold text-[#d2a893] uppercase tracking-wider">Avg. Response</p>
+                                </div>
+                              </div>
+
+                              {/* Card 4: Total XP */}
+                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#fdeceb] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#fbd3d3]">
+                                <Sparkles className="absolute -bottom-2 -right-3 w-12 h-12 text-[#df655a]/10 rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[18px] drop-shadow-sm">✨</span>
+                                <div className="relative z-10">
+                                  <h4 className="text-[22px] font-black text-[#d05c54] leading-none mb-[2px] tracking-tight">{studentProfile?.currentXP || 0}</h4>
+                                  <p className="text-[9px] font-extrabold text-[#dd9a9a] uppercase tracking-wider whitespace-nowrap">Total XP</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </motion.div>
+                      </div>
+                    </div>
 
                     {/* History Widget */}
                     <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-1 pt-5 px-5 flex flex-row items-center justify-between">
-                         <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground dark:text-[#f5f7fb]"><History className="h-[18px] w-[18px] text-primary dark:text-[#9e8fff]" /> Match History</CardTitle>
+                      <CardHeader className="pb-0 pt-4 px-5 flex flex-row items-center justify-between">
+                         <CardTitle className="text-[16px] font-black flex items-center gap-2 text-[#2e2b5e] dark:text-[#f5f7fb]">
+                           <History className="h-[18px] w-[18px] text-[#2e2b5e] dark:text-[#9e8fff]" /> Match History
+                         </CardTitle>
                          <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
                       </CardHeader>
-                      <CardContent className="space-y-3 px-5 pt-3 pb-5">
-                         <div className="text-[13px] text-muted-foreground dark:text-[#8b95ad] mb-2 leading-relaxed">
+                      <CardContent className="space-y-2 px-5 pt-1 pb-4">
+                         <div className="text-[12px] text-muted-foreground dark:text-[#8b95ad] mb-1 leading-relaxed">
                            Your recent student battles only.
                          </div>
                         {statsLoading ? (
@@ -1435,29 +1546,60 @@ const QuizBattlePage: React.FC = () => {
                         ) : filteredHistory.length === 0 ? (
                           <p className="text-sm text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
                         ) : (
-                          filteredHistory.slice(0, 3).map((entry) => (
-                            <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between dark:border-[#2f3547] dark:bg-[#11151d]">
-                              <div>
-                                <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb] truncate max-w-[100px]">vs {entry.opponentName}</p>
-                                <p className="text-[10px] text-muted-foreground dark:text-[#95a0bb]">{entry.subjectId}</p>
+                          filteredHistory.slice(0, 3).map((entry) => {
+                            const isWin = entry.outcome === 'win';
+                            const isLoss = entry.outcome === 'loss';
+                            
+                            // Generate initials from opponent name (e.g. Practice Bot -> PB)
+                            const initials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
+                            
+                            return (
+                              <div key={entry.matchId} className="group relative overflow-hidden rounded-[16px] border border-muted-foreground/15 bg-white dark:bg-[#11151d] dark:border-[#2f3547] p-2.5 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md">
+                                {/* Option 2: The Dynamic Background Gradient Fade */}
+                                <div className={cn(
+                                  "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.2] dark:opacity-[0.25] mix-blend-multiply dark:mix-blend-screen transition-all",
+                                  isWin ? "bg-gradient-to-l from-emerald-500 via-emerald-500/40 to-transparent" : 
+                                  isLoss ? "bg-gradient-to-l from-rose-500 via-rose-500/40 to-transparent" : 
+                                  "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
+                                )} />
+                                
+                                <div className="flex items-center gap-3.5 relative z-10 w-full">
+                                  {/* Left Avatar Bubble */}
+                                  <div className={cn(
+                                    "w-11 h-11 rounded-full flex items-center justify-center font-black text-[14px] tracking-wide text-white flex-shrink-0 shadow-inner",
+                                    isWin ? "bg-[#34d399] dark:bg-[#15803d]" : isLoss ? "bg-[#fb7185] dark:bg-[#be123c]" : "bg-[#fbbf24] dark:bg-[#b45309]" 
+                                  )}>
+                                    {initials}
+                                  </div>
+                                  
+                                  {/* Center Match Details */}
+                                  <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                    <p className="text-[14px] sm:text-[15px] font-extrabold text-[#36326e] dark:text-[#e4e7f1] truncate">
+                                      vs {entry.opponentName}
+                                    </p>
+                                    <p className="text-[11px] sm:text-[12px] font-bold text-muted-foreground/60 dark:text-[#7f88a3] truncate flex items-center gap-1.5 mt-0.5">
+                                      {entry.subjectId} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.rounds || '5'} rounds
+                                    </p>
+                                  </div>
+
+                                  {/* Right Score & Outcome Text */}
+                                  <div className="text-right flex flex-col items-end justify-center pl-2 pr-1 flex-shrink-0">
+                                    <p className="tabular-nums text-[20px] leading-none font-black text-[#2e2b5e] dark:text-[#f5f7fb] tracking-tighter">
+                                      {entry.scoreFor}<span className="text-muted-foreground/40 mx-[1px]">-</span>{entry.scoreAgainst}
+                                    </p>   
+                                    <p
+                                      className={cn(
+                                        'text-[10px] font-black uppercase tracking-[0.15em] mt-1',
+                                        isWin ? 'text-emerald-500 dark:text-emerald-400' : isLoss ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'
+                                      )}
+                                    >
+                                      {entry.outcome}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-right flex items-center gap-2">
-                                <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreFor}-{entry.scoreAgainst}</p>   
-                                <p
-                                  className={cn(
-                                    'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase min-w-[36px]',
-                                    entry.outcome === 'win'
-                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                                      : entry.outcome === 'loss'
-                                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300'
-                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
-                                  )}
-                                >
-                                  {formatOutcomeChip(entry.outcome)}
-                                </p>
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </CardContent>
                     </Card>
@@ -1468,8 +1610,12 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="setup" className="mt-0 outline-none">
-              <Button variant="ghost" onClick={() => setActiveTab("hub")} className="mb-4 text-muted-foreground hover:text-foreground -ml-2">
-                <ChevronRight className="mr-2 h-4 w-4 rotate-180" /> Back
+              <Button 
+                variant="ghost" 
+                onClick={() => setActiveTab("hub")} 
+                className="mb-5 h-11 w-11 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-primary/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] shrink-0 flex items-center justify-center group"
+              >
+                <ChevronRight className="h-5 w-5 rotate-180 text-primary dark:text-[#9e8fff] transition-transform group-hover:-translate-x-0.5" />
               </Button>
               <motion.div
                 key="setup"
@@ -1878,13 +2024,28 @@ const QuizBattlePage: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {activeMatch.status === 'ready' && (
-                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                            {activeMatch.mode === 'online'
-                              ? 'Waiting for both players to lock in start...'
-                              : 'Preparing match session...'}
-                          </p>
-                        </div>
+                          <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
+                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              {activeMatch.mode === 'online'
+                                ? 'Waiting for both players to lock in start...'
+                                : 'Preparing match session...'}
+                            </p>
+                            {/* Fallback Cancel Button to prevent getting permanently stuck during backend disruption */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
+                              onClick={() => {
+                                setActiveMatch(null);
+                                setActiveRoom(null);
+                                setQueueActive(false);
+                                setLaunchState({ status: 'idle' });
+                                setActiveTab('setup');
+                              }}
+                            >
+                              Force Cancel
+                            </Button>
+                          </div>
                       )}
 
                       {activeMatch.status === 'in_progress' && activeMatch.currentQuestion && (
@@ -1893,20 +2054,30 @@ const QuizBattlePage: React.FC = () => {
                             <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
                               Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>
                             </p>
-                            <p className="mt-2 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                              {activeMatch.currentQuestion.prompt}
-                            </p>
                           </div>
+
+                          <p className="text-lg font-bold text-foreground dark:text-[#f5f7fb]">
+                            {activeMatch.currentQuestion.prompt}
+                          </p>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {activeMatch.currentQuestion.choices.map((choice, index) => (
                               <Button
-                                key={`${activeMatch.currentQuestion?.questionId}-${index}`}
+                                key={index}
                                 type="button"
-                                variant={selectedOptionIndex === index ? 'default' : 'outline'}
+                                variant={
+                                  selectedOptionIndex === index
+                                    ? 'default'
+                                    : 'outline'
+                                }
                                 onClick={() => setSelectedOptionIndex(index)}
                                 disabled={answerSubmitting || roundLocked}
-                                className="h-auto min-h-11 rounded-xl justify-start text-left whitespace-normal"
+                                className={cn(
+                                  'h-auto min-h-[48px] justify-start text-left font-medium px-4 py-3 rounded-xl whitespace-normal',
+                                  selectedOptionIndex === index
+                                    ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#0B0F19]'
+                                    : '',
+                                )}
                               >
                                 <span className="mr-2 font-semibold">{String.fromCharCode(65 + index)}.</span>
                                 {choice}
