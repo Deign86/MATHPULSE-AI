@@ -6,6 +6,7 @@ import { __quizBattleTestUtils } from "./quizBattleApi";
 const {
   resolveQuizBattleAiModel,
   resolveQuizBattleAiModelName,
+  shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
   generateAiQuestionSet,
@@ -26,6 +27,7 @@ const BASE_SETUP = {
 const snapshotEnv = (): Record<string, string | undefined> => ({
   QUIZ_BATTLE_AI_MODEL: process.env.QUIZ_BATTLE_AI_MODEL,
   QUIZ_BATTLE_AI_TOKEN: process.env.QUIZ_BATTLE_AI_TOKEN,
+  QUIZ_BATTLE_AI_MAX_TOKENS: process.env.QUIZ_BATTLE_AI_MAX_TOKENS,
   HF_TOKEN: process.env.HF_TOKEN,
   HUGGING_FACE_API_TOKEN: process.env.HUGGING_FACE_API_TOKEN,
   HUGGINGFACE_API_TOKEN: process.env.HUGGINGFACE_API_TOKEN,
@@ -79,6 +81,44 @@ test("enforces Qwen-only model overrides", () => {
   } finally {
     restoreEnv(envSnapshot);
   }
+});
+
+test("requires AI-source gating only for ready online starts", () => {
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "bank",
+    }),
+    true,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "ai",
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "bot",
+      questionSetSource: "bank",
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "in_progress",
+      mode: "online",
+      questionSetSource: "bank",
+    }),
+    false,
+  );
 });
 
 test("does not fall back to bank when AI generation fails", async () => {
@@ -141,6 +181,66 @@ test("executes bounded retries with exponential backoff path", async () => {
 
     assert.equal(invokeCount, 2);
     assert.deepEqual(recordedSleeps, [300]);
+    assert.equal(generated.attempts, 2);
+    assert.equal(generated.questions.length, BASE_SETUP.rounds);
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("retries with relaxed JSON mode after 400 rejection", async () => {
+  const envSnapshot = snapshotEnv();
+
+  try {
+    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
+    process.env.QUIZ_BATTLE_AI_TOKEN = "test-token";
+
+    let invokeCount = 0;
+    const recordedSleeps: number[] = [];
+    const payloads: Array<Record<string, unknown>> = [];
+
+    const generated = await generateAiQuestionSet(BASE_SETUP, {
+      invokeRequest: async (requestPayload) => {
+        invokeCount += 1;
+        payloads.push(requestPayload);
+
+        if (invokeCount === 1) {
+          const axiosStyleError = Object.assign(new Error("Request failed with status code 400"), {
+            isAxiosError: true,
+            response: {
+              status: 400,
+              data: {
+                error: {
+                  message: "response_format is not supported for this model",
+                },
+              },
+            },
+          });
+          throw axiosStyleError;
+        }
+
+        return buildValidPayload(4);
+      },
+      sleepMs: async (durationMs) => {
+        recordedSleeps.push(durationMs);
+      },
+      randomInt: () => 0,
+      now: (() => {
+        let cursor = 2000;
+        return () => {
+          cursor += 10;
+          return cursor;
+        };
+      })(),
+    });
+
+    assert.equal(invokeCount, 2);
+    assert.equal(recordedSleeps.length, 1);
+    assert.equal(recordedSleeps[0], 300);
+    assert.ok(payloads[0]?.response_format);
+    assert.equal(payloads[1]?.response_format, undefined);
+    assert.ok(typeof payloads[0]?.max_tokens === "number");
+    assert.ok((payloads[0]?.max_tokens as number) < 1000);
     assert.equal(generated.attempts, 2);
     assert.equal(generated.questions.length, BASE_SETUP.rounds);
   } finally {
