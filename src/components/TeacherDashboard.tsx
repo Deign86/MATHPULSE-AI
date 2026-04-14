@@ -814,9 +814,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const avgPerformance = classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.avgScore, 0) / classes.length) : 0;
 
   const riskDistribution = [
-    { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#ef4444' },
-    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#f43f5e' },
-    { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#10b981' },
+    { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
+    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
+    { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
   ];
 
   // Gather weakest topics as topic performance data
@@ -1086,7 +1086,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
+            <div className="w-12 h-12 bg-gradient-to-r from-[#7274ED] to-[#9956DE] rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
               <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
             </div>
             {(!sidebarCollapsed || sidebarHovered) && (
@@ -1253,7 +1253,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               {isMobileViewport && (
                 <button
                   onClick={() => setMobileNavOpen(true)}
-                  className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-sky-700 hover:border-sky-200 hover:bg-sky-50 transition-colors"
+                  className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
                   aria-label="Open navigation"
                 >
                   <Menu size={18} />
@@ -1286,17 +1286,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               {/* Quick teacher stats */}
               {activeView === 'dashboard' && (
                 <div className="hidden xl:flex items-center gap-2 ml-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 border border-sky-200/60 rounded-lg">
-                    <Users size={13} className="text-sky-600" />
-                    <span className="text-xs font-display font-bold text-sky-700">{totalStudents} students</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
+                    <Users size={13} className="text-[#9956DE]" />
+                    <span className="text-xs font-display font-bold text-[#9956DE]">{totalStudents} students</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 border border-rose-200/60 rounded-lg">
-                    <AlertTriangle size={13} className="text-rose-600" />
-                    <span className="text-xs font-display font-bold text-rose-700">{totalAtRisk} at risk</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
+                    <AlertTriangle size={13} className="text-[#F08386]" />
+                    <span className="text-xs font-display font-bold text-[#C65E63]">{totalAtRisk} at risk</span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200/60 rounded-lg">
-                    <TrendingUp size={13} className="text-emerald-600" />
-                    <span className="text-xs font-display font-bold text-emerald-700">{avgPerformance}% avg</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
+                    <TrendingUp size={13} className="text-[#75D06A]" />
+                    <span className="text-xs font-display font-bold text-[#4D9F46]">{avgPerformance}% avg</span>
                   </div>
                 </div>
               )}
@@ -1306,7 +1306,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onClick={onOpenProfile}
                 className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
               >
-                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-sky-200/70 bg-card flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-[#9956DE]/45 bg-card flex items-center justify-center">
                   <img
                     src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
                     alt={teacherName}
@@ -1314,7 +1314,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   />
                 </div>
                 <div className="hidden md:block min-w-0 text-left">
-                  <p className="text-sm font-semibold text-foreground leading-none group-hover:text-sky-600 transition-colors truncate">{teacherName}</p>
+                  <p className="text-sm font-semibold text-foreground leading-none group-hover:text-[#9956DE] transition-colors truncate">{teacherName}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-none">Teacher</p>
                 </div>
               </button>
@@ -1485,7 +1485,7 @@ const NavItem: React.FC<{
       collapsed && !forceExpanded ? 'justify-center' : ''
     } ${
       active
-        ? 'bg-sky-50 border-sky-200 shadow-sm text-sky-700'
+        ? 'bg-[#9956DE]/12 border-[#9956DE]/30 shadow-sm text-[#9956DE]'
         : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
     }`}
   >
@@ -1494,7 +1494,7 @@ const NavItem: React.FC<{
     {active && !collapsed && (
       <motion.div
         layoutId="sidebar-active-indicator"
-        className="ml-auto w-2 h-2 rounded-full bg-sky-500"
+        className="ml-auto w-2 h-2 rounded-full bg-[#9956DE]"
         transition={{ type: 'spring', duration: 0.4 }}
       />
     )}
@@ -1513,7 +1513,7 @@ const ToolsPlaceholderView: React.FC<{
     className="p-6"
   >
     <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
-      <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-xl bg-[#9956DE]/20 text-[#9956DE] flex items-center justify-center mb-4">
         <Icon size={24} />
       </div>
       <h2 className="text-2xl font-display font-bold text-foreground mb-2">{title}</h2>
@@ -1545,7 +1545,7 @@ const DashboardView: React.FC<{
       className="p-6 space-y-6"
     >
       {/* Daily AI Insight Banner -€” compact, not dominating */}
-      <div className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl p-5 text-white shadow-md">
+      <div className="bg-gradient-to-r from-[#7274ED] to-[#9956DE] rounded-2xl p-5 text-white shadow-md">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-card/20 rounded-lg flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={20} />
@@ -1570,7 +1570,7 @@ const DashboardView: React.FC<{
                 </div>
               }
             >
-              <div className="text-sky-100 text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
+              <div className="text-[#F1E4FF] text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
                 <ChatMarkdown>
                   {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
                 </ChatMarkdown>
@@ -1588,15 +1588,15 @@ const DashboardView: React.FC<{
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <p className="text-xs text-muted-foreground font-body mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-sky-600">{avgPerformance}%</p>
+          <p className="text-2xl font-display font-bold text-[#9956DE]">{avgPerformance}%</p>
         </div>
         <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
           <p className="text-xs text-muted-foreground font-body mb-1">Engagement Rate</p>
-          <p className="text-2xl font-display font-bold text-emerald-600">{engagementRate}%</p>
+          <p className="text-2xl font-display font-bold text-[#75D06A]">{engagementRate}%</p>
         </div>
-        <div className="bg-card rounded-xl p-4 border border-red-200/60 shadow-sm">
+        <div className="bg-card rounded-xl p-4 border border-[#FF8B8B]/35 shadow-sm">
           <p className="text-xs text-muted-foreground font-body mb-1">At Risk</p>
-          <p className="text-2xl font-display font-bold text-red-600">{totalAtRisk}</p>
+          <p className="text-2xl font-display font-bold text-[#FF8B8B]">{totalAtRisk}</p>
         </div>
       </div>
 
@@ -1608,7 +1608,7 @@ const DashboardView: React.FC<{
             <h2 className="text-xl font-display font-bold text-foreground">My Classes</h2>
             <button
               onClick={onViewAllClasses}
-              className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 group"
+              className="text-sm font-bold text-[#9956DE] hover:text-[#9956DE] flex items-center gap-1 group"
             >
               View All
               <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -1639,7 +1639,7 @@ const DashboardView: React.FC<{
                       {[classItem.gradeLevel, classItem.classification, classItem.strand]
                         .filter(Boolean)
                         .map((badge) => (
-                          <span key={`${classItem.id}-${badge}`} className="px-2 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-700 text-[11px] font-semibold">
+                          <span key={`${classItem.id}-${badge}`} className="px-2 py-0.5 rounded-md bg-[#9956DE]/12 border border-[#9956DE]/30 text-[#9956DE] text-[11px] font-semibold">
                             {badge}
                           </span>
                         ))}
@@ -1648,7 +1648,7 @@ const DashboardView: React.FC<{
                       Manager: {classItem.managerName || classItem.classMetadata?.managerName || 'Not assigned'}
                     </p>
                   </div>
-                  <Button className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-6 py-2 rounded-xl">
+                  <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold px-6 py-2 rounded-xl">
                     View Class
                   </Button>
                 </div>
@@ -1660,11 +1660,11 @@ const DashboardView: React.FC<{
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">At Risk</p>
-                    <p className="text-xl font-bold text-red-600">{classItem.atRiskCount}</p>
+                    <p className="text-xl font-bold text-[#FF8B8B]">{classItem.atRiskCount}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                    <p className="text-xl font-bold text-sky-600">{classItem.avgScore}%</p>
+                    <p className="text-xl font-bold text-[#9956DE]">{classItem.avgScore}%</p>
                   </div>
                 </div>
               </motion.div>
@@ -1675,8 +1675,8 @@ const DashboardView: React.FC<{
         {/* Live Classroom Pulse - 1 column */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-rose-600" />
+            <div className="w-10 h-10 bg-[#F08386]/20 rounded-xl flex items-center justify-center">
+              <Zap size={20} className="text-[#F08386]" />
             </div>
             <h2 className="text-xl font-display font-bold text-foreground">Live Classroom Pulse</h2>
           </div>
@@ -1689,9 +1689,9 @@ const DashboardView: React.FC<{
               <div
                 key={activity.id}
                 className={`p-4 rounded-xl border-l-4 ${
-                  activity.type === 'success' ? 'bg-green-50 border-green-500' :
-                  activity.type === 'warning' ? 'bg-rose-50 border-rose-500' :
-                  'bg-sky-50 border-sky-500'
+                  activity.type === 'success' ? 'bg-[#75D06A]/14 border-[#75D06A]' :
+                  activity.type === 'warning' ? 'bg-[#F08386]/12 border-[#F08386]' :
+                  'bg-[#9956DE]/12 border-[#9956DE]'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -1812,7 +1812,7 @@ const AnalyticsView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-sky-600 font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-bold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Dashboard
@@ -1827,7 +1827,7 @@ const AnalyticsView: React.FC<{
                 {selectedClass.riskLevel === 'high' ? 'High Risk Cohort' : selectedClass.riskLevel === 'medium' ? 'Medium Risk Cohort' : 'Low Risk Cohort'}
               </span>
               {classBadges.map((badge) => (
-                <span key={badge} className="px-3 py-1 rounded-lg text-xs font-semibold border bg-sky-50 border-sky-200 text-sky-700">
+                <span key={badge} className="px-3 py-1 rounded-lg text-xs font-semibold border bg-[#9956DE]/12 border-[#9956DE]/30 text-[#9956DE]">
                   {badge}
                 </span>
               ))}
@@ -1858,7 +1858,7 @@ const AnalyticsView: React.FC<{
               <Button
                 onClick={handleAssignManager}
                 disabled={!selectedManagerId || managerUpdating}
-                className="bg-sky-600 hover:bg-sky-700 text-white"
+                className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
               >
                 {managerUpdating ? <Skeleton className="h-4 w-12 bg-white/35" /> : 'Assign'}
               </Button>
@@ -1870,19 +1870,19 @@ const AnalyticsView: React.FC<{
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-sky-600">{selectedClass.avgScore}%</p>
+          <p className="text-2xl font-display font-bold text-[#9956DE]">{selectedClass.avgScore}%</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Completion Rate</p>
-          <p className="text-2xl font-display font-bold text-emerald-600">{averageCompletion}%</p>
+          <p className="text-2xl font-display font-bold text-[#75D06A]">{averageCompletion}%</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Participation</p>
-          <p className="text-2xl font-display font-bold text-violet-600">{participationRate}%</p>
+          <p className="text-2xl font-display font-bold text-[#9956DE]">{participationRate}%</p>
         </div>
-        <div className="bg-card border border-red-200 rounded-xl p-4 shadow-sm">
+        <div className="bg-card border border-[#FF8B8B]/35 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Needs Attention</p>
-          <p className="text-2xl font-display font-bold text-red-600">{attentionStudents.length}</p>
+          <p className="text-2xl font-display font-bold text-[#FF8B8B]">{attentionStudents.length}</p>
         </div>
       </div>
 
@@ -1935,9 +1935,9 @@ const AnalyticsView: React.FC<{
                   <div className="h-2 bg-card rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${
-                        student.riskLevel === 'high' ? 'bg-red-500' :
-                        student.riskLevel === 'medium' ? 'bg-rose-500' :
-                        'bg-green-500'
+                        student.riskLevel === 'high' ? 'bg-[#FF8B8B]' :
+                        student.riskLevel === 'medium' ? 'bg-[#F08386]' :
+                        'bg-[#75D06A]'
                       }`}
                       style={{ width: `${student.avgScore}%` }}
                     ></div>
@@ -1982,7 +1982,7 @@ const AnalyticsView: React.FC<{
                 <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip />
-                <Bar dataKey="score" fill="#0284c7" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="score" fill="#9956DE" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1995,10 +1995,10 @@ const AnalyticsView: React.FC<{
                   <button
                     key={`top-${buildStudentViewKey(student)}`}
                     onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-border px-3 py-2 hover:bg-sky-50 transition-colors"
+                    className="w-full flex items-center justify-between rounded-lg border border-border px-3 py-2 hover:bg-[#9956DE]/12 transition-colors"
                   >
                     <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-emerald-600">{student.avgScore}%</span>
+                    <span className="text-xs font-bold text-[#75D06A]">{student.avgScore}%</span>
                   </button>
                 ))}
                 {topPerformers.length === 0 && (
@@ -2014,10 +2014,10 @@ const AnalyticsView: React.FC<{
                   <button
                     key={`attention-${buildStudentViewKey(student)}`}
                     onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-red-200 bg-red-50/40 px-3 py-2 hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center justify-between rounded-lg border border-[#FF8B8B]/35 bg-[#FF8B8B]/14 px-3 py-2 hover:bg-[#FF8B8B]/20 transition-colors"
                   >
                     <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-red-600">{student.riskLevel.toUpperCase()}</span>
+                    <span className="text-xs font-bold text-[#FF8B8B]">{student.riskLevel.toUpperCase()}</span>
                   </button>
                 ))}
                 {attentionStudents.length === 0 && (
@@ -2044,14 +2044,14 @@ const InterventionView: React.FC<{
   const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
   const analysisTone = isUrgentBarrier
     ? {
-        card: 'bg-red-50 border-red-200',
+        card: 'bg-[#FF8B8B]/14 border-[#FF8B8B]/35',
         icon: 'bg-red-600',
-        bullet: 'text-red-600',
+        bullet: 'text-[#FF8B8B]',
       }
     : {
-        card: 'bg-sky-50 border-sky-200',
-        icon: 'bg-sky-600',
-        bullet: 'text-sky-600',
+        card: 'bg-[#9956DE]/12 border-[#9956DE]/30',
+        icon: 'bg-[#9956DE]',
+        bullet: 'text-[#9956DE]',
       };
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
   const [learningPath, setLearningPath] = useState<string>('');
@@ -2348,7 +2348,7 @@ const InterventionView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-sky-600 font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-bold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Analytics
@@ -2382,12 +2382,12 @@ const InterventionView: React.FC<{
                 </div>
                 <div className="bg-muted rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Weakest Topic</p>
-                  <p className="text-sm font-bold text-red-600">{student.weakestTopic}</p>
+                  <p className="text-sm font-bold text-[#FF8B8B]">{student.weakestTopic}</p>
                 </div>
               </div>
 
-              <div className="mt-5 p-4 bg-sky-50 border border-sky-200 rounded-xl">
-                <p className="text-xs font-semibold text-sky-700 mb-3 uppercase tracking-wider">Section Assignment</p>
+              <div className="mt-5 p-4 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-xl">
+                <p className="text-xs font-semibold text-[#9956DE] mb-3 uppercase tracking-wider">Section Assignment</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Input
                     value={gradeDraft}
@@ -2404,7 +2404,7 @@ const InterventionView: React.FC<{
                   <Button
                     onClick={handleSaveSectionAssignment}
                     disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
-                    className="bg-sky-600 hover:bg-sky-700 text-white h-10"
+                    className="bg-[#9956DE] hover:bg-[#7A44B3] text-white h-10"
                   >
                     {savingSection ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Save Section'}
                   </Button>
@@ -2493,7 +2493,7 @@ const InterventionView: React.FC<{
             }
           >
             {learningPath ? (
-              <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 mb-6 text-sm text-foreground">
+              <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-xl p-5 mb-6 text-sm text-foreground">
                 <ChatMarkdown>{learningPath}</ChatMarkdown>
               </div>
             ) : null}
@@ -2513,12 +2513,12 @@ const InterventionView: React.FC<{
                     className="relative pl-16"
                   >
                     {/* Step Number Circle */}
-                    <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl flex items-center justify-center shadow-md">
+                    <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-[#7274ED] to-[#9956DE] rounded-xl flex items-center justify-center shadow-md">
                       <Icon size={24} className="text-white" />
                     </div>
 
                     {/* Step Content */}
-                    <div className="bg-gradient-to-br from-sky-50 to-cyan-50 border border-sky-200 rounded-2xl p-5 hover:shadow-md transition-all">
+                    <div className="bg-gradient-to-br from-[#9956DE]/12 to-[#6ED1CF]/18 border border-[#9956DE]/30 rounded-2xl p-5 hover:shadow-md transition-all">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className="font-display font-bold text-foreground mb-1">{step.title}</h3>
@@ -2529,9 +2529,9 @@ const InterventionView: React.FC<{
                           </p>
                         </div>
                         <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                          step.type === 'video' ? 'bg-rose-100 text-rose-700' :
-                          step.type === 'quiz' ? 'bg-sky-100 text-sky-700' :
-                          'bg-green-100 text-green-700'
+                          step.type === 'video' ? 'bg-[#F08386]/20 text-[#C65E63]' :
+                          step.type === 'quiz' ? 'bg-[#9956DE]/20 text-[#9956DE]' :
+                          'bg-[#75D06A]/22 text-[#4D9F46]'
                         }`}>
                           {step.type === 'video' ? 'Video' : step.type === 'quiz' ? 'Quiz' : 'Assessment'}
                         </span>
@@ -2554,13 +2554,13 @@ const InterventionView: React.FC<{
             <Button
               onClick={() => void generateTargetedLessonPlan()}
               disabled={lessonLoading}
-              className="bg-sky-600 hover:bg-sky-700 text-white"
+              className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
             >
               {lessonLoading ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Regenerate'}
             </Button>
           </div>
 
-          <p className="mb-4 text-xs text-muted-foreground bg-sky-50 border border-sky-200 rounded-lg px-3 py-2">
+          <p className="mb-4 text-xs text-muted-foreground bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg px-3 py-2">
             Class records alone are not enough for import-grounded lesson plans. Upload course materials in Data Import to provide lesson topic grounding.
           </p>
 
@@ -2610,7 +2610,7 @@ const InterventionView: React.FC<{
             }
           >
             {lessonError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+              <div className="bg-[#FF8B8B]/14 border border-[#FF8B8B]/35 rounded-xl p-3 text-sm text-[#D66A6A]">
                 {lessonError}
               </div>
             )}
@@ -2621,13 +2621,13 @@ const InterventionView: React.FC<{
                   <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
-                    {' -€¢ '}Imported topic count: {lessonPlan.importedTopicCount}
+                    {' \u2022 '}Imported topic count: {lessonPlan.importedTopicCount}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
                   </p>
                   {lessonPlan.warnings.length > 0 && (
-                    <p className="text-xs text-amber-700 mt-1">{lessonPlan.warnings.join(' ')}</p>
+                    <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.warnings.join(' ')}</p>
                   )}
                 </div>
 
@@ -2638,10 +2638,10 @@ const InterventionView: React.FC<{
                       {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} -€¢ Review: {lessonPlan.sourceLegitimacy.reviewMaterials} -€¢ Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
+                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} {' \u2022 '}Review: {lessonPlan.sourceLegitimacy.reviewMaterials} {' \u2022 '}Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
                     </p>
                     {lessonPlan.sourceLegitimacy.issues.length > 0 && (
-                      <p className="text-xs text-amber-700 mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
+                      <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
                     )}
                   </div>
                   <div className="bg-card border border-border rounded-xl p-3">
@@ -2650,7 +2650,7 @@ const InterventionView: React.FC<{
                       {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
                     </p>
                     {lessonPlan.selfValidation.issues.length > 0 && (
-                      <p className="text-xs text-amber-700 mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
+                      <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
                     )}
                   </div>
                 </div>
@@ -2696,19 +2696,19 @@ const InterventionView: React.FC<{
                   {filteredLessonBlocks.map((block) => (
                     <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
                       <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins -€¢ {block.strategy}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins {' \u2022 '} {block.strategy}</p>
                       <p className="text-sm text-foreground mt-2">{block.objective}</p>
                       <div className="mt-3">
                         <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
                         {block.activities.slice(0, 2).map((activity, idx) => (
-                          <p key={idx} className="text-xs text-muted-foreground">-€¢ {activity}</p>
+                          <p key={idx} className="text-xs text-muted-foreground">{'\u2022'} {activity}</p>
                         ))}
                       </div>
                       {block.provenance && (
-                        <div className="mt-3 bg-sky-50 border border-sky-200 rounded-lg p-2">
-                          <p className="text-[11px] font-semibold text-sky-700">Provenance</p>
-                          {block.provenance.sourceFile && <p className="text-[11px] text-sky-900">Source: {block.provenance.sourceFile}</p>}
-                          {block.provenance.materialId && <p className="text-[11px] text-sky-900">Material: {block.provenance.materialId}</p>}
+                        <div className="mt-3 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg p-2">
+                          <p className="text-[11px] font-semibold text-[#9956DE]">Provenance</p>
+                          {block.provenance.sourceFile && <p className="text-[11px] text-[#5E3388]">Source: {block.provenance.sourceFile}</p>}
+                          {block.provenance.materialId && <p className="text-[11px] text-[#5E3388]">Material: {block.provenance.materialId}</p>}
                         </div>
                       )}
                     </div>
@@ -2725,14 +2725,14 @@ const InterventionView: React.FC<{
                     variant="outline"
                     onClick={() => void saveLessonDraft()}
                     disabled={savingLessonDraft || !lessonPlan}
-                    className="border-sky-300 text-sky-700"
+                    className="border-[#9956DE]/45 text-[#9956DE]"
                   >
                     {savingLessonDraft ? <Skeleton className="h-4 w-16" /> : 'Save Draft'}
                   </Button>
                   <Button
                     onClick={() => void publishCurrentLessonPlan()}
                     disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="bg-[#75D06A] hover:bg-[#5AB84E] text-white"
                   >
                     {publishingLesson ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Publish Lesson Plan'}
                   </Button>
@@ -2745,13 +2745,13 @@ const InterventionView: React.FC<{
           </BoneSkeleton>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
+            <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
               <Send size={20} />
               Schedule One-on-One Session
             </Button>
             <Button
               variant="outline"
-              className="border-2 border-sky-600 text-sky-600 hover:bg-sky-50 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+              className="border-2 border-[#9956DE] text-[#9956DE] hover:bg-[#9956DE]/12 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
             >
               <Download size={20} />
               Export Printed Materials
@@ -3076,7 +3076,7 @@ const ImportView: React.FC<{
             {[classMetadata?.gradeLevel, classMetadata?.classification, classMetadata?.strand]
               .filter(Boolean)
               .map((badge) => (
-                <span key={`import-meta-${badge}`} className="px-2 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-700 font-medium">
+                <span key={`import-meta-${badge}`} className="px-2 py-1 rounded-md bg-[#9956DE]/12 border border-[#9956DE]/30 text-[#9956DE] font-medium">
                   {badge}
                 </span>
               ))}
@@ -3091,8 +3091,8 @@ const ImportView: React.FC<{
             onDragLeave={() => setDragOver1(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-sky-400 hover:bg-sky-50 ${
-              dragOver1 ? 'border-sky-600 bg-sky-50 scale-105' : 'border-border'
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#9956DE]/60 hover:bg-[#9956DE]/12 ${
+              dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12 scale-105' : 'border-border'
             }`}
           >
             <input
@@ -3102,19 +3102,19 @@ const ImportView: React.FC<{
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div className="w-20 h-20 bg-sky-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-[#9956DE]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               {uploadingClassRecords ? (
-                <Skeleton className="h-10 w-10 rounded-2xl bg-sky-200" />
+                <Skeleton className="h-10 w-10 rounded-2xl bg-[#9956DE]/32" />
               ) : (
-                <FileSpreadsheet size={40} className="text-sky-600" />
+                <FileSpreadsheet size={40} className="text-[#9956DE]" />
               )}
             </div>
             <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
             <p className="text-muted-foreground mb-4">
               {uploadingClassRecords ? (
                 <span className="inline-flex flex-col items-center gap-2">
-                  <Skeleton className="h-4 w-44 bg-sky-200" />
-                  <Skeleton className="h-4 w-36 bg-sky-100" />
+                  <Skeleton className="h-4 w-44 bg-[#9956DE]/32" />
+                  <Skeleton className="h-4 w-36 bg-[#9956DE]/20" />
                 </span>
               ) : 'Upload student grades, attendance, and quiz scores'}
             </p>
@@ -3123,7 +3123,7 @@ const ImportView: React.FC<{
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
             </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-sky-500 hover:text-sky-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -3134,8 +3134,8 @@ const ImportView: React.FC<{
             onDragLeave={() => setDragOver2(false)}
             onDrop={handleCourseMaterialDrop}
             onClick={() => materialInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-rose-400 hover:bg-rose-50 ${
-              dragOver2 ? 'border-rose-600 bg-rose-50 scale-105' : 'border-border'
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 ${
+              dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
             }`}
           >
             <input
@@ -3145,11 +3145,11 @@ const ImportView: React.FC<{
               onChange={handleCourseMaterialSelect}
               className="hidden"
             />
-            <div className="w-20 h-20 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-[#F08386]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               {uploadingCourseMaterials ? (
                 <Skeleton className="h-10 w-10 rounded-2xl bg-rose-200" />
               ) : (
-                <FileText size={40} className="text-rose-600" />
+                <FileText size={40} className="text-[#F08386]" />
               )}
             </div>
             <h3 className="text-xl font-display font-bold text-foreground mb-2">Course Materials</h3>
@@ -3157,7 +3157,7 @@ const ImportView: React.FC<{
               {uploadingCourseMaterials ? (
                 <span className="inline-flex flex-col items-center gap-2">
                   <Skeleton className="h-4 w-48 bg-rose-200" />
-                  <Skeleton className="h-4 w-40 bg-rose-100" />
+                  <Skeleton className="h-4 w-40 bg-[#F08386]/20" />
                 </span>
               ) : 'Upload syllabus, lesson plans, and curriculum documents'}
             </p>
@@ -3166,7 +3166,7 @@ const ImportView: React.FC<{
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
             </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-rose-500 hover:text-rose-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -3177,8 +3177,8 @@ const ImportView: React.FC<{
             onDragLeave={() => setDragOver3(false)}
             onDrop={handleAccountDrop}
             onClick={() => accountInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 ${
-              dragOver3 ? 'border-emerald-600 bg-emerald-50 scale-105' : 'border-border'
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#75D06A]/60 hover:bg-[#75D06A]/14 ${
+              dragOver3 ? 'border-[#75D06A] bg-[#75D06A]/14 scale-105' : 'border-border'
             }`}
           >
             <input
@@ -3188,11 +3188,11 @@ const ImportView: React.FC<{
               onChange={handleAccountSelect}
               className="hidden"
             />
-            <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-[#75D06A]/22 rounded-2xl flex items-center justify-center mx-auto mb-6">
               {previewingAccounts ? (
                 <Skeleton className="h-10 w-10 rounded-2xl bg-emerald-200" />
               ) : (
-                <Users size={40} className="text-emerald-600" />
+                <Users size={40} className="text-[#75D06A]" />
               )}
             </div>
             <h3 className="text-xl font-display font-bold text-foreground mb-2">Student Accounts</h3>
@@ -3200,7 +3200,7 @@ const ImportView: React.FC<{
               {previewingAccounts ? (
                 <span className="inline-flex flex-col items-center gap-2">
                   <Skeleton className="h-4 w-52 bg-emerald-200" />
-                  <Skeleton className="h-4 w-44 bg-emerald-100" />
+                  <Skeleton className="h-4 w-44 bg-[#75D06A]/22" />
                 </span>
               ) : 'Preview and securely provision student Auth + profile accounts'}
             </p>
@@ -3209,34 +3209,34 @@ const ImportView: React.FC<{
               <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
               <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
             </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-emerald-500 hover:text-emerald-600 font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#75D06A] hover:text-[#75D06A] font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
         </div>
 
         {/* Info Box */}
-        <div className="bg-sky-50 border border-sky-200 rounded-2xl p-6">
-          <h3 className="text-lg font-display font-bold text-sky-800 mb-3">How AI Uses Your Data</h3>
-          <div className="space-y-2 text-sky-900/80 text-sm">
+        <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-2xl p-6">
+          <h3 className="text-lg font-display font-bold text-[#7A44B3] mb-3">How AI Uses Your Data</h3>
+          <div className="space-y-2 text-[#5E3388]/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
-              <span><strong className="text-sky-800">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
+              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span><strong className="text-[#7A44B3]">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-[#9956DE] font-bold">&bull;</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-[#9956DE] font-bold">&bull;</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-[#9956DE] font-bold">&bull;</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-sky-600 font-bold">-€¢</span>
+              <span className="text-[#9956DE] font-bold">&bull;</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -3244,7 +3244,7 @@ const ImportView: React.FC<{
 
         {/* Upload Results */}
         {uploadResult && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-sm text-green-800">
+          <div className="bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-2xl p-4 text-sm text-[#3E8538]">
             {uploadResult}
           </div>
         )}
@@ -3268,13 +3268,13 @@ const ImportView: React.FC<{
                   <p className="text-xs text-muted-foreground">Display</p>
                   <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <p className="text-xs text-amber-700">Storage-only</p>
-                  <p className="text-lg font-bold text-amber-800">{uploadInterpretation.summary.storageOnlyColumns}</p>
+                <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3">
+                  <p className="text-xs text-[#CC8A37]">Storage-only</p>
+                  <p className="text-lg font-bold text-[#A56D29]">{uploadInterpretation.summary.storageOnlyColumns}</p>
                 </div>
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                  <p className="text-xs text-rose-700">Low confidence</p>
-                  <p className="text-lg font-bold text-rose-800">{uploadInterpretation.summary.lowConfidenceColumns}</p>
+                <div className="bg-[#F08386]/12 border border-[#F08386]/30 rounded-xl p-3">
+                  <p className="text-xs text-[#C65E63]">Low confidence</p>
+                  <p className="text-lg font-bold text-[#A74B50]">{uploadInterpretation.summary.lowConfidenceColumns}</p>
                 </div>
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Domain warnings</p>
@@ -3290,11 +3290,11 @@ const ImportView: React.FC<{
                     <p className="text-sm font-semibold text-foreground">{column.columnName}</p>
                     <p className="text-xs text-muted-foreground">
                       mapped: {column.mappedField || 'none'}
-                      {' -€¢ '}usage: {column.usagePolicy}
-                      {' -€¢ '}confidence: {column.confidenceBand}
+                      {' \u2022 '}usage: {column.usagePolicy}
+                      {' \u2022 '}confidence: {column.confidenceBand}
                     </p>
                     {column.domainSignals && column.domainSignals.length > 0 && (
-                      <p className="text-xs text-amber-700 mt-1">domain signals: {column.domainSignals.join(', ')}</p>
+                      <p className="text-xs text-[#CC8A37] mt-1">domain signals: {column.domainSignals.join(', ')}</p>
                     )}
                   </div>
                 ))}
@@ -3324,17 +3324,17 @@ const ImportView: React.FC<{
                 <p className="text-xs text-muted-foreground">Total Rows</p>
                 <p className="text-xl font-bold text-foreground">{accountPreview.summary.totalRows}</p>
               </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <p className="text-xs text-emerald-700">Valid</p>
-                <p className="text-xl font-bold text-emerald-700">{accountPreview.summary.validRows}</p>
+              <div className="bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-xl p-3">
+                <p className="text-xs text-[#4D9F46]">Valid</p>
+                <p className="text-xl font-bold text-[#4D9F46]">{accountPreview.summary.validRows}</p>
               </div>
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
-                <p className="text-xs text-rose-700">Invalid</p>
-                <p className="text-xl font-bold text-rose-700">{accountPreview.summary.invalidRows}</p>
+              <div className="bg-[#F08386]/12 border border-[#F08386]/30 rounded-xl p-3">
+                <p className="text-xs text-[#C65E63]">Invalid</p>
+                <p className="text-xl font-bold text-[#C65E63]">{accountPreview.summary.invalidRows}</p>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <p className="text-xs text-amber-700">Duplicates</p>
-                <p className="text-xl font-bold text-amber-700">{accountPreview.summary.duplicateRows}</p>
+              <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3">
+                <p className="text-xs text-[#CC8A37]">Duplicates</p>
+                <p className="text-xl font-bold text-[#CC8A37]">{accountPreview.summary.duplicateRows}</p>
               </div>
             </div>
 
@@ -3351,7 +3351,7 @@ const ImportView: React.FC<{
               <Button
                 onClick={() => void handleCommitAccountProvisioning()}
                 disabled={committingAccounts || accountPreview.summary.validRows === 0}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white h-10"
+                className="bg-[#75D06A] hover:bg-[#5AB84E] text-white h-10"
               >
                 {committingAccounts ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Commit Provisioning'}
               </Button>
@@ -3376,7 +3376,7 @@ const ImportView: React.FC<{
                       <td className="px-3 py-2">
                         <p className="font-medium text-foreground">{row.fullName}</p>
                         {row.issues.length > 0 && (
-                          <p className="text-[11px] text-rose-700">{row.issues.slice(0, 2).join('; ')}</p>
+                          <p className="text-[11px] text-[#C65E63]">{row.issues.slice(0, 2).join('; ')}</p>
                         )}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{row.studentId || '-'}</td>
@@ -3385,10 +3385,10 @@ const ImportView: React.FC<{
                       <td className="px-3 py-2">
                         <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
                           row.status === 'valid'
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-[#75D06A]/22 text-[#4D9F46]'
                             : row.status === 'duplicate'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-rose-100 text-rose-700'
+                              ? 'bg-[#FFB356]/24 text-[#CC8A37]'
+                              : 'bg-[#F08386]/20 text-[#C65E63]'
                         }`}>
                           {row.status}
                         </span>
@@ -3400,7 +3400,7 @@ const ImportView: React.FC<{
             </div>
 
             {accountPreview.warnings.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+              <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3 text-xs text-[#A56D29]">
                 {accountPreview.warnings.slice(0, 5).join(' ')}
               </div>
             )}
@@ -3420,7 +3420,7 @@ const ImportView: React.FC<{
               <Button
                 variant="outline"
                 onClick={() => downloadProvisioningCsv(accountCommitResult)}
-                className="border-emerald-300 text-emerald-700"
+                className="border-emerald-300 text-[#4D9F46]"
               >
                 <Download size={14} className="mr-2" />
                 Download Credential CSV
@@ -3448,13 +3448,13 @@ const ImportView: React.FC<{
                       <td className="px-3 py-2">
                         <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
                           row.status === 'created'
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-[#75D06A]/22 text-[#4D9F46]'
                             : row.status === 'updated'
-                              ? 'bg-sky-100 text-sky-700'
+                              ? 'bg-[#9956DE]/20 text-[#9956DE]'
                               : row.status === 'blocked'
-                                ? 'bg-amber-100 text-amber-700'
+                                ? 'bg-[#FFB356]/24 text-[#CC8A37]'
                                 : row.status === 'failed'
-                                  ? 'bg-rose-100 text-rose-700'
+                                  ? 'bg-[#F08386]/20 text-[#C65E63]'
                                   : 'bg-muted text-muted-foreground'
                         }`}>
                           {row.status}
@@ -3485,7 +3485,7 @@ const ImportView: React.FC<{
                 <p className="text-white/90 text-sm">Review and correct AI-analyzed student data</p>
               </div>
             </div>
-            <ChevronRight size={24} className="text-white/80 group-hover:text-sky-700 group-hover:translate-x-1 transition-all" />
+            <ChevronRight size={24} className="text-white/80 group-hover:text-[#9956DE] group-hover:translate-x-1 transition-all" />
           </button>
         </div>
       </div>
@@ -3609,7 +3609,7 @@ const EditRecordsView: React.FC<{
           <Button variant="outline" onClick={onBack} className="border-border">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+          <Button onClick={handleSave} disabled={saving} className="bg-[#75D06A] hover:bg-[#5AB84E] text-white gap-2">
             {saving ? <Skeleton className="h-5 w-5 rounded-full bg-white/35" /> : <Save size={18} />}
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
@@ -3646,7 +3646,7 @@ const EditRecordsView: React.FC<{
                 const rowDraftKey = getSectionDraftKey(student);
 
                 return (
-                  <tr key={rowDraftKey} className="border-b border-border hover:bg-sky-50/30 group transition-colors">
+                  <tr key={rowDraftKey} className="border-b border-border hover:bg-[#9956DE]/12 group transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <img src={student.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
@@ -3686,8 +3686,8 @@ const EditRecordsView: React.FC<{
                     </td>
                     <td className="p-4">
                       <span className={`font-bold ${
-                        student.avgScore < 60 ? 'text-red-600' :
-                        student.avgScore < 80 ? 'text-rose-600' : 'text-green-600'
+                        student.avgScore < 60 ? 'text-[#FF8B8B]' :
+                        student.avgScore < 80 ? 'text-[#F08386]' : 'text-green-600'
                       }`}>{student.avgScore}%</span>
                     </td>
                     <td className="p-4">
@@ -3697,7 +3697,7 @@ const EditRecordsView: React.FC<{
                     </td>
                     <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
                     <td className="p-4">
-                      <button className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-sky-600 transition-colors">
+                      <button className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-[#9956DE] transition-colors">
                         <Edit3 size={16} />
                       </button>
                     </td>
@@ -3715,17 +3715,17 @@ const EditRecordsView: React.FC<{
 // Helper function (moved outside component to avoid hook issues)
 function getRiskBadge(level: 'high' | 'medium' | 'low') {
   switch (level) {
-    case 'high': return 'bg-red-100 text-red-700 border-red-200';
-    case 'medium': return 'bg-rose-100 text-rose-700 border-rose-200';
-    case 'low': return 'bg-green-100 text-green-700 border-green-200';
+    case 'high': return 'bg-[#FF8B8B]/22 text-[#D66A6A] border-[#FF8B8B]/35';
+    case 'medium': return 'bg-[#F08386]/20 text-[#C65E63] border-[#F08386]/30';
+    case 'low': return 'bg-[#75D06A]/22 text-[#4D9F46] border-[#75D06A]/35';
   }
 }
 
 function getRiskColor(level: 'high' | 'medium' | 'low') {
   switch (level) {
-    case 'high': return 'border-red-500 bg-red-50';
-    case 'medium': return 'border-rose-500 bg-rose-50';
-    case 'low': return 'border-green-500 bg-green-50';
+    case 'high': return 'border-red-500 bg-[#FF8B8B]/14';
+    case 'medium': return 'border-[#F08386] bg-[#F08386]/12';
+    case 'low': return 'border-[#75D06A] bg-[#75D06A]/14';
   }
 }
 
