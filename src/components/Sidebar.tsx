@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
 import { cn } from './ui/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 interface SidebarProps {
   activeTab: string;
@@ -14,6 +15,7 @@ interface SidebarProps {
   setSidebarCollapsed?: (collapsed: boolean) => void;
   mode?: 'desktop' | 'mobile';
   onRequestClose?: () => void;
+  forceCollapsed?: boolean;
 }
 
 interface NavSection {
@@ -31,13 +33,31 @@ const Sidebar: React.FC<SidebarProps> = ({
   setSidebarCollapsed,
   mode = 'desktop',
   onRequestClose,
+  forceCollapsed = false,
 }) => {
   const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const isMobile = mode === 'mobile';
+  const isHoverExpanded = !forceCollapsed && sidebarHovered;
   
   // Helper to determine if sidebar should show collapsed state
-  const isCollapsed = !isMobile && sidebarCollapsed && !sidebarHovered;
-  const canCollapse = !isMobile;
+  const isCollapsed = !isMobile && (forceCollapsed || (sidebarCollapsed && !isHoverExpanded));
+  const shouldShowIconOnlyTooltips = isCollapsed;
+  const canCollapse = !isMobile && !forceCollapsed;
+
+  useEffect(() => {
+    if (forceCollapsed) {
+      setSidebarHovered(false);
+      setHoveredTooltip(null);
+    }
+  }, [forceCollapsed]);
+
+  useEffect(() => {
+    if (!shouldShowIconOnlyTooltips) {
+      setHoveredTooltip(null);
+    }
+  }, [shouldShowIconOnlyTooltips]);
+
   // Grouped nav items for each role
   const getNavSections = (): NavSection[] => {
     if (userRole === 'admin') {
@@ -89,7 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         {
           label: 'Progress',
           items: [
-            { icon: GraduationCap, label: 'Grades', displayLabel: 'Performance' },
+            { icon: GraduationCap, label: 'Grades', displayLabel: 'Assessment' },
+            { icon: Swords, label: 'Quiz Battle', displayLabel: 'Quiz Battle' },
             { icon: Trophy, label: 'Leaderboard', displayLabel: 'Leadership Board' },
           ],
         },
@@ -108,10 +129,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <motion.aside
       initial={false}
-      animate={isMobile ? { width: 280 } : { width: sidebarCollapsed && !sidebarHovered ? 80 : 280 }}
+      animate={isMobile ? { width: 280 } : { width: isCollapsed ? 80 : 280 }}
       transition={{ type: 'spring', stiffness: 360, damping: 34 }}
       onMouseEnter={() => canCollapse && sidebarCollapsed && setSidebarHovered(true)}
-      onMouseLeave={() => setSidebarHovered(false)}
+      onMouseLeave={() => {
+        setSidebarHovered(false);
+        setHoveredTooltip(null);
+      }}
       className={cn(
         'h-full bg-[#f7f9fc] border border-[#dde3eb] shadow-sm flex flex-col',
         isMobile ? 'rounded-2xl p-4' : 'rounded-3xl p-5'
@@ -122,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className={`mb-8 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
             <img src="/mathpulse_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
-            {(!isCollapsed || sidebarHovered) && (
+            {(!isCollapsed || isHoverExpanded) && (
               <div>
                 <h2 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h2>
               </div>
@@ -137,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <X size={20} />
             </button>
           )}
-          {!isMobile && setSidebarCollapsed && (!sidebarCollapsed || sidebarHovered) && (
+          {!isMobile && !forceCollapsed && setSidebarCollapsed && (!sidebarCollapsed || isHoverExpanded) && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -168,31 +192,51 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
               <div className="space-y-1">
                 {section.items.map((item) => (
-                  <motion.button
+                  <Tooltip
                     key={item.label}
-                    whileHover={{ x: 2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTab(item.label)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${
-                      isCollapsed ? 'justify-center' : ''
-                    } ${
-                      activeTab === item.label
-                        ? 'bg-sky-50 border-sky-200 shadow-sm text-sky-700'
-                        : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
-                    }`}
+                    open={shouldShowIconOnlyTooltips && hoveredTooltip === item.label}
                   >
-                    <item.icon size={18} strokeWidth={activeTab === item.label ? 2.5 : 2} className="flex-shrink-0" />
-                    {(!isCollapsed || sidebarHovered) && (
-                      <span className="font-body font-bold text-xs">{item.displayLabel || item.label}</span>
+                    <TooltipTrigger asChild>
+                      <motion.button
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onMouseEnter={() => {
+                          if (shouldShowIconOnlyTooltips) {
+                            setHoveredTooltip(item.label);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredTooltip((previous) => (previous === item.label ? null : previous));
+                        }}
+                        onFocus={() => setHoveredTooltip(null)}
+                        onClick={() => setActiveTab(item.label)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${
+                          isCollapsed ? 'justify-center' : ''
+                        } ${
+                          activeTab === item.label
+                            ? 'bg-sky-50 border-sky-200 shadow-sm text-sky-700'
+                            : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
+                        }`}
+                      >
+                        <item.icon size={18} strokeWidth={activeTab === item.label ? 2.5 : 2} className="flex-shrink-0" />
+                        {(!isCollapsed || isHoverExpanded) && (
+                          <span className="font-body font-bold text-xs">{item.displayLabel || item.label}</span>
+                        )}
+                        {activeTab === item.label && (!isCollapsed || isHoverExpanded) && (
+                          <motion.div
+                            layoutId="sidebar-active-indicator"
+                            className="ml-auto w-2 h-2 rounded-full bg-sky-500"
+                            transition={{ type: 'spring', duration: 0.4 }}
+                          />
+                        )}
+                      </motion.button>
+                    </TooltipTrigger>
+                    {shouldShowIconOnlyTooltips && (
+                      <TooltipContent side="right" sideOffset={16} className="font-bold text-xs">
+                        {item.displayLabel || item.label}
+                      </TooltipContent>
                     )}
-                    {activeTab === item.label && (!isCollapsed || sidebarHovered) && (
-                      <motion.div
-                        layoutId="sidebar-active-indicator"
-                        className="ml-auto w-2 h-2 rounded-full bg-sky-500"
-                        transition={{ type: 'spring', duration: 0.4 }}
-                      />
-                    )}
-                  </motion.button>
+                  </Tooltip>
                 ))}
               </div>
             </div>
@@ -201,18 +245,35 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className="mt-4 space-y-2 border-t border-[#dde3eb] pt-4">
-        <motion.button
-          whileHover={{ x: 2 }}
-          whileTap={{ scale: 0.98 }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
-            isCollapsed ? 'justify-center' : ''
-          }`}
-          onClick={onOpenSettings}
-          title={isCollapsed ? 'Settings' : ''}
-        >
-          <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
-          {(!isCollapsed || sidebarHovered) && <span className="font-body text-xs">Settings</span>}
-        </motion.button>
+        <Tooltip open={shouldShowIconOnlyTooltips && hoveredTooltip === 'Settings'}>
+          <TooltipTrigger asChild>
+            <motion.button
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.98 }}
+              onMouseEnter={() => {
+                if (shouldShowIconOnlyTooltips) {
+                  setHoveredTooltip('Settings');
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredTooltip((previous) => (previous === 'Settings' ? null : previous));
+              }}
+              onFocus={() => setHoveredTooltip(null)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
+                isCollapsed ? 'justify-center' : ''
+              }`}
+              onClick={onOpenSettings}
+            >
+              <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
+              {(!isCollapsed || isHoverExpanded) && <span className="font-body text-xs">Settings</span>}
+            </motion.button>
+          </TooltipTrigger>
+          {shouldShowIconOnlyTooltips && (
+            <TooltipContent side="right" sideOffset={16} className="font-bold text-xs">
+              Settings
+            </TooltipContent>
+          )}
+        </Tooltip>
 
         {onLogout && (
           <div className="text-[#5a6578]">
