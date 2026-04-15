@@ -313,32 +313,37 @@ const StudentCompetencyTable: React.FC<{
   }), []);
 
   const loadCompetencyMatrices = useCallback(async (students: CompetencyStudent[], loadId: number) => {
-    const results = await Promise.allSettled(
-      students.map(async (student) => {
-        try {
-          const progress = await getUserProgress(student.id);
-          return { studentId: student.id, summary: computeCompetencyMatrixSummary(progress) };
-        } catch {
-          return { studentId: student.id, summary: null };
-        }
-      }),
-    );
-
-    if (competencyMatrixLoadIdRef.current !== loadId) return;
-
     const summaryByStudentId = new Map<string, CompetencyMatrixSummary | null>();
     students.forEach((student) => summaryByStudentId.set(student.id, null));
+    const COMPETENCY_MATRIX_BATCH_SIZE = 25;
 
-    results.forEach((result, index) => {
-      const studentId = students[index]?.id;
-      if (!studentId) return;
+    for (let index = 0; index < students.length; index += COMPETENCY_MATRIX_BATCH_SIZE) {
+      if (competencyMatrixLoadIdRef.current !== loadId) return;
 
-      if (result.status === 'fulfilled') {
-        summaryByStudentId.set(studentId, result.value.summary);
-      } else {
-        summaryByStudentId.set(studentId, null);
-      }
-    });
+      const batch = students.slice(index, index + COMPETENCY_MATRIX_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (student) => {
+          try {
+            const progress = await getUserProgress(student.id);
+            return { studentId: student.id, summary: computeCompetencyMatrixSummary(progress) };
+          } catch {
+            return { studentId: student.id, summary: null };
+          }
+        }),
+      );
+
+      results.forEach((result, batchIndex) => {
+        const studentId = batch[batchIndex]?.id;
+        if (!studentId) return;
+        if (result.status === 'fulfilled') {
+          summaryByStudentId.set(studentId, result.value.summary);
+        } else {
+          summaryByStudentId.set(studentId, null);
+        }
+      });
+    }
+
+    if (competencyMatrixLoadIdRef.current !== loadId) return;
 
     setRows((prev) => prev.map((row) => {
       if (!summaryByStudentId.has(row.student.id)) return row;
@@ -469,23 +474,29 @@ const StudentCompetencyTable: React.FC<{
 
       const newExpanded = !r.expanded;
 
-      // If expanding and no competency data yet, fetch it
-      if (newExpanded && !r.competency && !r.loading) {
-        // Start loading
-        void fetchCompetency(rowKey);
-        return { ...r, expanded: true, loading: true };
-      }
+        const studentId = r.student.id;
+        const fallbackStudent = {
+          weakestTopic: r.student.weakestTopic,
+          avgQuizScore: r.student.avgQuizScore,
+        };
 
-      return { ...r, expanded: newExpanded };
-    }));
-  };
+        // If expanding and no competency data yet, fetch it
+        if (newExpanded && !r.competency && !r.loading) {
+          // Start loading
+          void fetchCompetency(rowKey, studentId, fallbackStudent);
+          return { ...r, expanded: true, loading: true };
+        }
 
-  const fetchCompetency = async (rowKey: string) => {
+        return { ...r, expanded: newExpanded };
+      }));
+    };
+
+  const fetchCompetency = async (
+    rowKey: string,
+    studentId: string,
+    fallbackStudent: { weakestTopic: string; avgQuizScore: number },
+  ) => {
     try {
-      const row = rows.find(r => r.rowKey === rowKey);
-      if (!row) return;
-      const studentId = row.student.id;
-
       // Fetch real quiz history from Firestore progress data
       const progress = await getUserProgress(studentId);
       const quizHistory = (progress?.quizAttempts ?? []).map(attempt => ({
@@ -504,18 +515,16 @@ const StudentCompetencyTable: React.FC<{
       ));
     } catch (err) {
       // Fallback competency data
-      const row = rows.find(r => r.rowKey === rowKey);
-      const avg = row?.student.avgQuizScore || 50;
-      const studentId = row?.student.id || '';
+      const avg = fallbackStudent.avgQuizScore || 50;
 
       const fallback: StudentCompetencyResponse = {
         studentId,
         competencies: [
-          { topic: row?.student.weakestTopic || 'Unknown', efficiencyScore: Math.max(15, avg - 20), competencyLevel: avg < 50 ? 'beginner' : 'developing', perspective: `Student needs focused practice in ${row?.student.weakestTopic}.` },
+          { topic: fallbackStudent.weakestTopic || 'Unknown', efficiencyScore: Math.max(15, avg - 20), competencyLevel: avg < 50 ? 'beginner' : 'developing', perspective: `Student needs focused practice in ${fallbackStudent.weakestTopic}.` },
           { topic: 'Functions and Relations', efficiencyScore: Math.min(95, avg + 10), competencyLevel: avg > 70 ? 'proficient' : 'developing', perspective: 'Shows solid understanding of function concepts.' },
           { topic: 'Problem Solving', efficiencyScore: avg, competencyLevel: avg > 80 ? 'advanced' : avg > 60 ? 'proficient' : 'developing', perspective: 'Applies mathematical reasoning consistently.' },
         ],
-        recommendedTopics: [row?.student.weakestTopic || 'Review fundamentals'],
+        recommendedTopics: [fallbackStudent.weakestTopic || 'Review fundamentals'],
         excludeTopics: [],
       };
 
@@ -624,8 +633,10 @@ const StudentCompetencyTable: React.FC<{
       {/* Filter Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 w-full sm:max-w-xs">
+          <label htmlFor="student-search" className="sr-only">Search students</label>
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            id="student-search"
             type="text"
             placeholder="Search students..."
             value={searchQuery}
@@ -971,4 +982,3 @@ const CompetencyCard: React.FC<{ competency: TopicCompetency }> = ({ competency 
 };
 
 export default StudentCompetencyTable;
-
