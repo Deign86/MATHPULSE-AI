@@ -82,14 +82,16 @@ import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
 
-const RainStorm = () => (
+const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
+
+const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
   <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/40 backdrop-blur-sm">
     {[...Array(40)].map((_, i) => (
       <motion.div
         key={i}
         className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full"
         style={{ left: `${Math.random() * 100}%`, top: '-10%' }}
-        animate={{ y: [0, window.innerHeight * 1.2] }}
+        animate={{ y: [0, viewportHeight * 1.2] }}
         transition={{
           duration: 0.6 + Math.random() * 0.4,
           repeat: Infinity,
@@ -101,7 +103,7 @@ const RainStorm = () => (
   </div>
 );
 
-const ConfettiBurst = () => {
+const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
   const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
   return (
     <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden">
@@ -111,8 +113,8 @@ const ConfettiBurst = () => {
           className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md"
           style={{ left: `${20 + Math.random() * 60}%`, backgroundColor: colors[i % colors.length] }}
           animate={{
-            y: [0, -window.innerHeight * (0.6 + Math.random() * 0.4), window.innerHeight * 0.5],
-            x: [0, (Math.random() - 0.5) * window.innerWidth * 0.8],
+            y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
+            x: [0, (Math.random() - 0.5) * viewportWidth * 0.8],
             rotate: [0, Math.random() * 720],
           }}
           transition={{
@@ -230,6 +232,8 @@ const QuizBattlePage: React.FC = () => {
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
   const [roundLocked, setRoundLocked] = useState(false);
   const [designPauseActive, setDesignPauseActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
   const lifecycleEventRef = useRef<string>('');
   const countdownSoundRef = useRef<number | null>(null);
@@ -528,6 +532,37 @@ const QuizBattlePage: React.FC = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('quiz_battle_sound_enabled', battleSoundEnabled ? '1' : '0');
   }, [battleSoundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      setViewportSize({
+        width: Math.max(window.innerWidth, 1),
+        height: Math.max(window.innerHeight, 1),
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const syncFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    syncFullscreen();
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+    };
+  }, []);
 
   useEffect(() => {
     if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')))) {
@@ -1278,8 +1313,12 @@ const QuizBattlePage: React.FC = () => {
   if (activeMatch && (activeMatch.status === 'in_progress' || activeMatch.status === 'completed')) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'win' && <ConfettiBurst />}
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && <RainStorm />}
+        {activeMatch.status === 'completed' && activeMatch.outcome === 'win' && (
+          <ConfettiBurst viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
+        )}
+        {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
+          <RainStorm viewportHeight={viewportSize.height} />
+        )}
         {/* Animated BG */}
         <div className="absolute inset-0 z-0 opacity-40">
           <WarpBackground>
@@ -1347,20 +1386,31 @@ const QuizBattlePage: React.FC = () => {
                 size="icon"
                 className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
                 onClick={() => {
+                  if (typeof document === 'undefined') return;
                   if (document.fullscreenElement) {
                      document.exitFullscreen().catch(()=>{});
                   } else {
                      document.documentElement.requestFullscreen().catch(()=>{});
                   }
                 }}
+                aria-label={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
+                title={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
               >
-                 <Maximize className="h-5 w-5" />
+                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
+                className={cn(
+                  "h-12 w-12 rounded-full border-white/20 text-white",
+                  isDesignPauseAvailable
+                    ? "bg-black/20 hover:bg-white/10"
+                    : "bg-black/10 opacity-50 cursor-not-allowed",
+                )}
                 onClick={handleToggleDesignPause}
+                disabled={!isDesignPauseAvailable}
+                aria-label={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
+                title={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
               >
                  <Menu className="h-5 w-5" />
               </Button>

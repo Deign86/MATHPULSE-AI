@@ -124,6 +124,38 @@ test("does not gate ready online starts by AI source when default policy is disa
   );
 });
 
+test("allows bank source when AI source policy is enabled", () => {
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "bank",
+      requireAiSourceForStart: true,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "ai",
+      requireAiSourceForStart: true,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "static",
+      requireAiSourceForStart: true,
+    }),
+    true,
+  );
+});
+
 test("static fallback prefers a pool that can satisfy requested rounds", () => {
   const selector = {
     sharedPoolMode: "grade_strict",
