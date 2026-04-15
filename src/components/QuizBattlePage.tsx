@@ -1157,13 +1157,13 @@ const QuizBattlePage: React.FC = () => {
   );
 
   return (
-    <WarpBackground className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-24 sm:-mb-28 px-3 sm:px-4 lg:px-6 pt-8 sm:pt-10 lg:pt-12 pb-24 sm:pb-28 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
+    <WarpBackground className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
       <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
         <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-6"
+        className="space-y-3 lg:space-y-4"
       >
         
 
@@ -1179,56 +1179,42 @@ const QuizBattlePage: React.FC = () => {
                 className="space-y-5"
               >
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8 lg:gap-14 xl:gap-16">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-6 sm:gap-8 lg:gap-10">
                   {/* Left Column: Hero & Battle Modes */}
-                  <div className="space-y-6">
+                  <div className="space-y-3 lg:space-y-4">
                     {/* Hero Banner */}
-                    <div className="relative rounded-[24px] shadow-sm select-none isolate">
-                      {/* Gradient Background tied to its own container to allow mascot overflow */}
-                      <div className="absolute inset-0 rounded-[24px] border-none bg-gradient-to-br from-[#1b1b36] via-[#100d23] to-[#0a0815] overflow-hidden -z-10" />
+                    <div className="relative select-none isolate bg-indigo-600 rounded-[2rem] shadow-[0_20px_45px_-15px_rgba(0,0,0,0.3)] shrink-0">
+                      {/* Simple black overlay to darken the specific module color */}
+                      <div className="absolute inset-0 bg-black/60 pointer-events-none z-0 rounded-[2rem]" />
+                      {/* Decorative Textbook Background */}
+                      <div 
+                        className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden" 
+                        style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px)' }}
+                      />
+                      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
                       
-                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-8 lg:p-10 h-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px]">
-                        <div className="flex-1 space-y-5 w-full pr-0 md:pr-[320px]">
+                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 lg:p-8 h-full min-h-[140px] lg:min-h-[160px]">
+                        <div className="flex-1 space-y-3 w-full pr-0 md:pr-[240px] lg:pr-[280px]">
                           <div>
-                            <h1 className="flex items-center gap-3 text-3xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-white">
-                              <Swords className="h-8 w-8 sm:h-10 sm:w-10 text-[#d1abff]" strokeWidth={2.5} />   
+                            <h1 className="flex items-center gap-3 text-3xl sm:text-4xl lg:text-[46px] font-black tracking-tight text-white mb-2 sm:mb-4">
+                              <Swords className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-[#d1abff]" strokeWidth={2.5} />   
                               Quiz Battle
                             </h1>
-                            <p className="text-lg text-[#a8a1c9] mt-2 sm:mt-4 max-w-2xl leading-relaxed">
+                            <p className="text-base sm:text-lg lg:text-xl text-white mt-1.5 sm:mt-2 max-w-2xl leading-relaxed">
                               Timed student duels with synchronized rounds, instant feedback, and progression rewards.
                             </p>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#6d61a0] mt-2">
+                            <p className="text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] text-[#8a7fbc] mt-3">
                               Connection: <span className={connectionState === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>{connectionState}</span>
                             </p>
-                          </div>
-                          
-                          {/* Quick Stats Integrated in Banner */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 max-w-2xl pt-2">
-                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
-                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Win Rate</p>
-                                <p className="text-base lg:text-lg font-black text-white">{historyWinRate.toFixed(1)}%</p>
-                              </div>
-                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
-                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Matches</p>
-                                <p className="text-base lg:text-lg font-black text-white">{statsData?.matchesPlayed || 0}</p>
-                              </div>
-                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
-                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Best Streak</p>
-                                <p className="text-base lg:text-lg font-black text-white">{statsData?.bestStreak || 0}</p>
-                              </div>
-                              <div className="bg-[#121021]/80 backdrop-blur-md border border-[#ffffff08] rounded-xl p-2.5 lg:p-3 shadow-xl">
-                                <p className="text-[10px] lg:text-[11px] font-bold text-[#8d82ba] uppercase tracking-wider mb-0.5">Avg Response</p>
-                                <p className="text-base lg:text-lg font-black text-white">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
-                              </div>
                           </div>
                         </div>
                         
                         {/* Enlarged Avatar floating without overflow clipping */}
-                        <div className="hidden md:block absolute right-[-10px] lg:right-[-30px] top-[-5px] lg:top-[5px] w-[280px] lg:w-[380px] shrink-0 pointer-events-none z-20">
+                        <div className="hidden md:block absolute right-[-5px] lg:right-[-15px] top-0 lg:top-[5px] w-[200px] lg:w-[260px] shrink-0 pointer-events-none z-20">
                           <motion.img 
                              src={quizBattleAvatar} 
                              alt="Mascot" 
-                             className="w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]" 
+                             className="w-full h-full object-contain" 
                              animate={{ y: [0, -24, 0], rotate: [-3, 3, -3] }}
                              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                           />
@@ -1237,11 +1223,11 @@ const QuizBattlePage: React.FC = () => {
                     </div>
 
                     {/* Battle Modes */}
-                    <div className="pt-8">
-                      <h2 className="flex items-center gap-3 pb-4 text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
-                        <Swords className="h-8 w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
+                    <div className="pt-4 lg:pt-6">
+                      <h2 className="flex items-center gap-2 pb-4 text-xl lg:text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+                        <Swords className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
                       </h2>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10 w-full mb-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 relative z-10 w-full mb-2">
                         {/* VS Player Card */}
                         <motion.button
                           type="button"
@@ -1249,7 +1235,7 @@ const QuizBattlePage: React.FC = () => {
                           whileHover={{ scale: 1.025 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                          className="w-full bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block object-cover group"
+                          className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block flex-col group"
                         >
                           {/* Top Highlight border / Inner Shadow effect */}
                           <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
@@ -1267,12 +1253,12 @@ const QuizBattlePage: React.FC = () => {
                             {/* Shine Effect */}
                             <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
                             
-                            <div className="w-full h-[200px] sm:h-[240px] flex items-end justify-center relative pt-6 pointer-events-none">
+                            <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
                               {/* Expanded Full-Width Stage (Dark Purple) */}
-                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                              <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
                               
                               {/* Animated Avatar Clones (VS Match) */}
-                              <div className="relative z-10 flex items-center justify-center mb-[2px] h-[135px] sm:h-[175px] w-full">
+                              <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
                                 {/* Left Avatar */}
                                 <motion.img 
                                   src="/avatar/avatar_icon.png" 
@@ -1317,7 +1303,7 @@ const QuizBattlePage: React.FC = () => {
                           whileHover={{ scale: 1.025 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                          className="w-full bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block object-cover group"
+                          className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block flex-col group"
                         >
                           {/* Top Highlight border / Inner Shadow effect */}
                           <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
@@ -1335,12 +1321,12 @@ const QuizBattlePage: React.FC = () => {
                             {/* Shine Effect */}
                             <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
                             
-                            <div className="w-full h-[200px] sm:h-[240px] flex items-end justify-center relative pt-6 pointer-events-none">
+                            <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
                               {/* Expanded Full-Width Stage (Dark Blue) */}
-                              <div className="absolute bottom-0 left-0 w-full h-[100px] sm:h-[130px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                              <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
                               
                               {/* Ghosting Avatars */}
-                              <div className="relative z-10 flex items-end justify-center mb-[2px] h-36 sm:h-48 w-full">
+                              <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
                                 {/* Left Ghost */}
                                 <motion.img 
                                   src="/avatar/avatar_icon.png" 
@@ -1380,24 +1366,24 @@ const QuizBattlePage: React.FC = () => {
                   </div>
 
                   {/* Right Column: Mini Widgets */}
-                  <div className="space-y-4">
+                  <div className="space-y-3 lg:space-y-4 flex flex-col h-full justify-between">
 
                     {/* Hall of Fame Widget Custom Graphic */}
-                    <div onClick={() => setActiveTab('leaderboard')} className="relative w-full h-[220px] sm:h-[240px] cursor-pointer group flex items-end justify-center overflow-visible mt-2 mb-6">
+                    <div onClick={() => setActiveTab('leaderboard')} className="relative w-full h-[155px] sm:h-[165px] cursor-pointer group flex items-end justify-center overflow-visible mt-1 mb-2 scale-[0.75] origin-bottom sm:scale-[0.80] lg:scale-[0.85] lg:origin-center">
                        <motion.div 
                           className="relative w-full h-full flex flex-col items-center justify-end"
                           whileHover={{ scale: 1.03 }}
                           whileTap={{ scale: 0.98 }}
                        >
                            {/* Stars (Moved outside the white-filter to preserve colored glowing effect) */}
-                           <div className="absolute top-[-10px] sm:top-[-20px] w-full flex justify-center items-end px-2 z-0">
-                              <Star strokeWidth={0} fill="currentColor" className="w-[50px] h-[50px] text-[#fde047] -rotate-[15deg] -mr-4 mb-2 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                           <div className="absolute top-[1px] sm:-top-[30px] w-full flex justify-center items-end px-2 z-0">
+                              <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] -rotate-[15deg] -mr-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
                               
                               <motion.div animate={{ y: [-4, 4, -4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="z-10 relative">
-                                <Star strokeWidth={0} fill="currentColor" className="w-[85px] h-[85px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
+                                <Star strokeWidth={0} fill="currentColor" className="w-[60px] h-[60px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
                               </motion.div>
 
-                              <Star strokeWidth={0} fill="currentColor" className="w-[50px] h-[50px] text-[#fde047] rotate-[15deg] -ml-4 mb-2 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                              <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] rotate-[15deg] -ml-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
                            </div>
 
                            {/* Add white stroke filter via combined drop-shadows */}
@@ -1407,46 +1393,46 @@ const QuizBattlePage: React.FC = () => {
                                {/* Podium structure (Flat vector layout) */}
                                <div className="flex items-end justify-center z-20 relative px-4">
                                   {/* Left Pillar */}
-                                  <div className="flex flex-col items-center w-[85px] relative">
-                                     <div className="w-full h-[18px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
-                                     <div className="w-[85%] h-[65px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-2 pb-2">
-                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
-                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
+                                  <div className="flex flex-col items-center w-[65px] relative">
+                                     <div className="w-full h-[14px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[50px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-1.5 pb-1.5">
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
                                      </div>
                                   </div>
                                   
                                   {/* Center Pillar */}
-                                  <div className="flex flex-col items-center w-[95px] -mx-[4px] z-20 relative">
-                                     <div className="w-full h-[22px] bg-[#f2812d] rounded-[2px] relative z-10 -mb-[1px]"></div>
-                                     <div className="w-[85%] h-[95px] bg-[#fa9746] rounded-b-[2px] flex flex-col justify-start items-center pt-5 gap-2">
-                                        <div className="w-12 h-2 bg-white rounded-full opacity-95" />
-                                        <div className="w-12 h-2 bg-white rounded-full opacity-95" />
+                                  <div className="flex flex-col items-center w-[75px] -mx-[4px] z-20 relative">
+                                     <div className="w-full h-[18px] bg-[#f2812d] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[75px] bg-[#fa9746] rounded-b-[2px] flex flex-col justify-start items-center pt-4 gap-1.5">
+                                        <div className="w-9 h-1.5 bg-white rounded-full opacity-95" />
+                                        <div className="w-9 h-1.5 bg-white rounded-full opacity-95" />
                                      </div>
                                   </div>
                                   
                                   {/* Right Pillar */}
-                                  <div className="flex flex-col items-center w-[85px] relative">
-                                     <div className="w-full h-[18px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
-                                     <div className="w-[85%] h-[65px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-2 pb-2">
-                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
-                                        <div className="w-9 h-2 bg-white rounded-full opacity-95" />
+                                  <div className="flex flex-col items-center w-[65px] relative">
+                                     <div className="w-full h-[14px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[50px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-1.5 pb-1.5">
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
                                      </div>
                                   </div>
                                </div>
                            </div>
 
                            {/* 3D Ribbon / Banner overlapping the bottom of the podium */}
-                           <div className="absolute bottom-2 w-[110%] max-w-[340px] z-30 drop-shadow-2xl">
-                               <div className="relative w-full h-[64px] flex justify-center items-center">
+                           <div className="absolute bottom-2 w-[110%] max-w-[280px] z-30 drop-shadow-2xl">
+                               <div className="relative w-full h-[52px] flex justify-center items-center">
                                    {/* Left Cutout Flap */}
-                                   <div className="absolute -left-1 top-2.5 w-[65px] h-[52px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%, 25% 50%, 0 0)'}}></div>
+                                   <div className="absolute -left-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%, 25% 50%, 0 0)'}}></div>
                                    {/* Right Cutout Flap */}
-                                   <div className="absolute -right-1 top-2.5 w-[65px] h-[52px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%, 75% 50%, 100% 0)'}}></div>
+                                   <div className="absolute -right-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%, 75% 50%, 100% 0)'}}></div>
                                    
                                    {/* Front Ribbon Face */}
-                                   <div className="absolute inset-x-8 top-0 bottom-0 bg-[#b61515] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),_inset_0_-4px_4px_rgba(0,0,0,0.2)] z-10 flex flex-col items-center justify-center">
-                                       <h3 className="text-xl sm:text-2xl font-black text-white tracking-widest leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>Hall of Fame</h3>
-                                       <span className="text-[10px] sm:text-[11px] font-bold text-white/90 tracking-widest mt-1">View Page &gt;</span>
+                                   <div className="absolute inset-x-6 top-0 bottom-0 bg-[#b61515] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),_inset_0_-4px_4px_rgba(0,0,0,0.2)] z-10 flex flex-col items-center justify-center">
+                                       <h3 className="text-lg sm:text-xl font-black text-white tracking-widest leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>Hall of Fame</h3>
+                                       <span className="text-[9px] sm:text-[10px] font-bold text-white/90 tracking-widest mt-0.5">View Page &gt;</span>
                                    </div>
                                </div>
                            </div>
@@ -1481,42 +1467,42 @@ const QuizBattlePage: React.FC = () => {
                           {[0, 1].map((i) => (
                             <div key={i} className="flex gap-2.5 pr-2.5">
                               {/* Card 1: Win Rate */}
-                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#f0eaff] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#d6ccf5]">
-                                <Trophy className="absolute -bottom-2 -right-3 w-14 h-14 text-[#a06aec]/10 -rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[18px] drop-shadow-sm">🏆</span>
-                                <div className="relative z-10">
-                                  <h4 className="text-[22px] font-black text-[#8f5ae2] leading-none mb-[2px] tracking-tight">{Math.round((statsData?.winRate || 0))} %</h4>
-                                  <p className="text-[9px] font-extrabold text-[#baa4df] uppercase tracking-wider">Win Rate</p>
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#f0eaff] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#d6ccf5]">
+                                <Trophy className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#a06aec]/10 -rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">🏆</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#8f5ae2] leading-none tracking-tight">{Math.round((statsData?.winRate || 0))} %</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#baa4df] uppercase tracking-wider leading-none">Win Rate</p>
                                 </div>
                               </div>
 
                               {/* Card 2: Matches */}
-                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#e1f5f7] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#b0e6eb]">
-                                <Target className="absolute -bottom-2 -right-3 w-12 h-12 text-[#35a8bc]/10 rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[18px] drop-shadow-sm">🎯</span>
-                                <div className="relative z-10">
-                                  <h4 className="text-[22px] font-black text-[#319ab4] leading-none mb-[2px] tracking-tight">{statsData?.matchesPlayed || 0}</h4>
-                                  <p className="text-[9px] font-extrabold text-[#7eafbe] uppercase tracking-wider">Matches</p>
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#e1f5f7] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#b0e6eb]">
+                                <Target className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#35a8bc]/10 rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">🎯</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#319ab4] leading-none tracking-tight">{statsData?.matchesPlayed || 0}</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#7eafbe] uppercase tracking-wider leading-none">Matches</p>
                                 </div>
                               </div>
 
                               {/* Card 3: Avg. Response */}
-                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#fef5e7] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#f6ebd2]">
-                                <Clock3 className="absolute -bottom-2 -right-3 w-12 h-12 text-[#e87a42]/10 -rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[18px] drop-shadow-sm">⏱️</span>
-                                <div className="relative z-10">
-                                  <h4 className="text-[22px] font-black text-[#db734b] leading-none mb-[2px] tracking-tight">{statsData?.averageResponseMs ? (statsData.averageResponseMs / 1000).toFixed(1) : 0}s</h4>
-                                  <p className="text-[9px] font-extrabold text-[#d2a893] uppercase tracking-wider">Avg. Response</p>
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#fef5e7] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#f6ebd2]">
+                                <Clock3 className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#e87a42]/10 -rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">⏱️</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#db734b] leading-none tracking-tight">{statsData?.averageResponseMs ? (statsData.averageResponseMs / 1000).toFixed(1) : 0}s</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#d2a893] uppercase tracking-wider leading-none whitespace-nowrap">Response</p>
                                 </div>
                               </div>
 
                               {/* Card 4: Total XP */}
-                              <div className="flex-none w-[90px] sm:w-[100px] aspect-square rounded-[16px] bg-[#fdeceb] p-3 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#fbd3d3]">
-                                <Sparkles className="absolute -bottom-2 -right-3 w-12 h-12 text-[#df655a]/10 rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[18px] drop-shadow-sm">✨</span>
-                                <div className="relative z-10">
-                                  <h4 className="text-[22px] font-black text-[#d05c54] leading-none mb-[2px] tracking-tight">{studentProfile?.currentXP || 0}</h4>
-                                  <p className="text-[9px] font-extrabold text-[#dd9a9a] uppercase tracking-wider whitespace-nowrap">Total XP</p>
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#fdeceb] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#fbd3d3]">
+                                <Sparkles className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#df655a]/10 rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">✨</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#d05c54] leading-none tracking-tight">{studentProfile?.currentXP || 0}</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#dd9a9a] uppercase tracking-wider leading-none whitespace-nowrap">Total XP</p>
                                 </div>
                               </div>
                             </div>
@@ -1525,26 +1511,24 @@ const QuizBattlePage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* History Widget */}
-                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader className="pb-0 pt-4 px-5 flex flex-row items-center justify-between">
-                         <CardTitle className="text-[16px] font-black flex items-center gap-2 text-[#2e2b5e] dark:text-[#f5f7fb]">
-                           <History className="h-[18px] w-[18px] text-[#2e2b5e] dark:text-[#9e8fff]" /> Match History
+                    <Card className={cn(cardFrameClass, 'rounded-[18px] flex flex-col min-h-[200px]')}>
+                      <CardHeader className="pb-0 pt-3 px-4 flex flex-row items-center justify-between">
+                         <CardTitle className="text-[14px] font-black flex items-center gap-2 text-[#2e2b5e] dark:text-[#f5f7fb]">
+                           <History className="h-[16px] w-[16px] text-[#2e2b5e] dark:text-[#9e8fff]" /> Match History
                          </CardTitle>
-                         <Button variant="link" size="sm" className="h-auto p-0 text-[13px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
+                         <Button variant="link" size="sm" className="h-auto p-0 text-[12px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
                       </CardHeader>
-                      <CardContent className="space-y-2 px-5 pt-1 pb-4">
-                         <div className="text-[12px] text-muted-foreground dark:text-[#8b95ad] mb-1 leading-relaxed">
+                      <CardContent className="space-y-1.5 px-4 pt-1 pb-3 overflow-y-auto">
+                         <div className="text-[11px] text-muted-foreground dark:text-[#8b95ad] mb-1.5 leading-relaxed">
                            Your recent student battles only.
                          </div>
                         {statsLoading ? (
                           <div className="space-y-2">
-                            <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                            <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                            <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
                           </div>
                         ) : filteredHistory.length === 0 ? (
-                          <p className="text-sm text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
+                          <p className="text-xs text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
                         ) : (
                           filteredHistory.slice(0, 3).map((entry) => {
                             const isWin = entry.outcome === 'win';
@@ -1554,7 +1538,7 @@ const QuizBattlePage: React.FC = () => {
                             const initials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
                             
                             return (
-                              <div key={entry.matchId} className="group relative overflow-hidden rounded-[16px] border border-muted-foreground/15 bg-white dark:bg-[#11151d] dark:border-[#2f3547] p-2.5 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md">
+                              <div key={entry.matchId} className="group relative overflow-hidden rounded-[14px] border border-muted-foreground/15 bg-white dark:bg-[#11151d] dark:border-[#2f3547] p-2 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md">
                                 {/* Option 2: The Dynamic Background Gradient Fade */}
                                 <div className={cn(
                                   "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.2] dark:opacity-[0.25] mix-blend-multiply dark:mix-blend-screen transition-all",
@@ -1563,10 +1547,10 @@ const QuizBattlePage: React.FC = () => {
                                   "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
                                 )} />
                                 
-                                <div className="flex items-center gap-3.5 relative z-10 w-full">
+                                <div className="flex items-center gap-2.5 relative z-10 w-full">
                                   {/* Left Avatar Bubble */}
                                   <div className={cn(
-                                    "w-11 h-11 rounded-full flex items-center justify-center font-black text-[14px] tracking-wide text-white flex-shrink-0 shadow-inner",
+                                    "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] tracking-wide text-white flex-shrink-0 shadow-inner",
                                     isWin ? "bg-[#34d399] dark:bg-[#15803d]" : isLoss ? "bg-[#fb7185] dark:bg-[#be123c]" : "bg-[#fbbf24] dark:bg-[#b45309]" 
                                   )}>
                                     {initials}
@@ -1574,22 +1558,22 @@ const QuizBattlePage: React.FC = () => {
                                   
                                   {/* Center Match Details */}
                                   <div className="flex-grow min-w-0 flex flex-col justify-center">
-                                    <p className="text-[14px] sm:text-[15px] font-extrabold text-[#36326e] dark:text-[#e4e7f1] truncate">
+                                    <p className="text-[13px] font-extrabold text-[#36326e] dark:text-[#e4e7f1] truncate leading-tight">
                                       vs {entry.opponentName}
                                     </p>
-                                    <p className="text-[11px] sm:text-[12px] font-bold text-muted-foreground/60 dark:text-[#7f88a3] truncate flex items-center gap-1.5 mt-0.5">
-                                      {entry.subjectId} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.rounds || '5'} rounds
+                                    <p className="text-[10px] font-bold text-muted-foreground/60 dark:text-[#7f88a3] truncate flex items-center gap-1 mt-0.5">
+                                      {entry.subjectId} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.rounds || '5'} rnds
                                     </p>
                                   </div>
 
                                   {/* Right Score & Outcome Text */}
-                                  <div className="text-right flex flex-col items-end justify-center pl-2 pr-1 flex-shrink-0">
-                                    <p className="tabular-nums text-[20px] leading-none font-black text-[#2e2b5e] dark:text-[#f5f7fb] tracking-tighter">
+                                  <div className="text-right flex flex-col items-end justify-center pl-2 flex-shrink-0">
+                                    <p className="tabular-nums text-[16px] leading-[1.1] font-black text-[#2e2b5e] dark:text-[#f5f7fb] tracking-tighter">
                                       {entry.scoreFor}<span className="text-muted-foreground/40 mx-[1px]">-</span>{entry.scoreAgainst}
                                     </p>   
                                     <p
                                       className={cn(
-                                        'text-[10px] font-black uppercase tracking-[0.15em] mt-1',
+                                        'text-[9px] font-black uppercase tracking-[0.1em]',
                                         isWin ? 'text-emerald-500 dark:text-emerald-400' : isLoss ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'
                                       )}
                                     >
