@@ -23,6 +23,14 @@
  * - manualRequestReassessment — force reassessment eligibility
  */
 
+/*
+MIGRATION SUMMARY:
+- Upgraded firebase-functions 4.9.0 -> 5.1.0
+- Runtime: nodejs20 -> nodejs22 (firebase.json)
+- functions.config() not used in current codebase -> not a direct blocker for firebase-functions 7.x
+- Deploy: firebase deploy --only functions
+*/
+
 import * as admin from "firebase-admin";
 
 // Initialise Firebase Admin SDK (must happen before any trigger imports)
