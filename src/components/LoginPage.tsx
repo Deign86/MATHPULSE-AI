@@ -1,37 +1,98 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Eye, EyeOff, ArrowRight, Sparkles, Brain, TrendingUp, Users, Lock, Mail, Award, GraduationCap, ShieldCheck, BookOpen, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { motion, AnimatePresence } from 'motion/react';
-import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole } from '../services/authService';
+import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole, type AuthServiceError } from '../services/authService';
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
 
+interface PasswordRule {
+  id: string;
+  label: string;
+  test: (value: string) => boolean;
+}
+
+const SIGNUP_PASSWORD_RULES: PasswordRule[] = [
+  {
+    id: 'length',
+    label: 'At least 8 characters',
+    test: (value) => value.length >= 8,
+  },
+  {
+    id: 'upper-lower',
+    label: 'Contains uppercase and lowercase letters',
+    test: (value) => /[A-Z]/.test(value) && /[a-z]/.test(value),
+  },
+  {
+    id: 'number',
+    label: 'Contains at least one number',
+    test: (value) => /\d/.test(value),
+  },
+  {
+    id: 'special',
+    label: 'Contains at least one special character',
+    test: (value) => /[^A-Za-z0-9]/.test(value),
+  },
+];
+
+const SIGNUP_PASSWORD_HELP_TEXT =
+  'Use at least 8 characters with uppercase, lowercase, number, and special character.';
+
+const extractAuthErrorDetails = (err: unknown): { code: string; message: string } => {
+  const authError = typeof err === 'object' && err !== null ? (err as Partial<AuthServiceError>) : null;
+  const message = err instanceof Error ? err.message : '';
+
+  if (authError?.code && typeof authError.code === 'string') {
+    return { code: authError.code.toLowerCase(), message };
+  }
+
+  const codeMatch = message.match(/auth\/[a-z-]+/i);
+  return {
+    code: codeMatch ? codeMatch[0].toLowerCase() : '',
+    message,
+  };
+};
+
+const cleanFirebaseMessage = (message: string): string => {
+  return message
+    .replace(/^Firebase:\s*/i, '')
+    .replace(/\s*\(auth\/[a-z-]+\)\.?/i, '')
+    .trim();
+};
+
 const getFriendlyErrorMessage = (err: unknown, defaultMessage: string): string => {
-  const errorMessage = err instanceof Error ? err.message : defaultMessage;
-  
-  if (errorMessage.includes('auth/invalid-credential') || errorMessage.includes('auth/wrong-password') || errorMessage.includes('auth/user-not-found')) {
+  const { code, message } = extractAuthErrorDetails(err);
+  const cleanedMessage = cleanFirebaseMessage(message);
+
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
     return 'Invalid email or password. Please check your credentials and try again.';
   }
-  if (errorMessage.includes('auth/email-already-in-use')) {
+  if (code === 'auth/email-already-in-use') {
     return 'This email is already registered. Please sign in instead.';
   }
-  if (errorMessage.includes('auth/weak-password')) {
-    return 'Password is too weak. It should be at least 6 characters.';
+  if (code === 'auth/weak-password' || code === 'auth/password-does-not-meet-requirements') {
+    if (cleanedMessage) {
+      return `Password does not meet signup requirements. ${cleanedMessage}`;
+    }
+    return `Password does not meet signup requirements. ${SIGNUP_PASSWORD_HELP_TEXT}`;
   }
-  if (errorMessage.includes('auth/too-many-requests')) {
+  if (code === 'auth/too-many-requests') {
     return 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
   }
-  if (errorMessage.includes('auth/network-request-failed')) {
+  if (code === 'auth/network-request-failed') {
     return 'Network error. Please check your internet connection and try again.';
   }
-  
-  // If it's a generic Firebase error, hide it behind the default message
-  if (errorMessage.includes('Firebase:') || errorMessage.includes('auth/')) {
+
+  if (code.startsWith('auth/')) {
+    return cleanedMessage || defaultMessage;
+  }
+
+  if (message.includes('Firebase:') || message.includes('auth/')) {
     return defaultMessage;
   }
-  
-  return errorMessage;
+
+  return message || defaultMessage;
 };
 
 const LoginPage: React.FC = () => {
@@ -57,6 +118,27 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const passwordRuleStates = useMemo(
+    () =>
+      SIGNUP_PASSWORD_RULES.map((rule) => ({
+        ...rule,
+        met: rule.test(password),
+      })),
+    [password]
+  );
+  const passwordMeetsSignupRequirements = useMemo(
+    () => passwordRuleStates.every((rule) => rule.met),
+    [passwordRuleStates]
+  );
+  const isPasswordRequirementError = useMemo(() => {
+    if (!isSignUp || !error) {
+      return false;
+    }
+
+    const normalizedError = error.toLowerCase();
+    return normalizedError.includes('password requirements not met')
+      || normalizedError.includes('password does not meet');
+  }, [error, isSignUp]);
 
   useEffect(() => {
     // Ensure video plays on mount
@@ -96,7 +178,7 @@ const LoginPage: React.FC = () => {
       setPendingAuthRole(role);
       await signInWithEmail(demoEmail, demoPassword);
     } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err, 'Demo sign-in failed'));
+      setError(getFriendlyErrorMessage(err, 'Demo sign-in failed. Please try again.'));
       setLoading(false);
     }
   };
@@ -133,6 +215,12 @@ const LoginPage: React.FC = () => {
           return;
         }
 
+        if (!passwordMeetsSignupRequirements) {
+          setError(`Password does not meet signup requirements. ${SIGNUP_PASSWORD_HELP_TEXT}`);
+          setLoading(false);
+          return;
+        }
+
         setPendingAuthRole(selectedRole);
         await signUpWithEmail(
           email,
@@ -148,7 +236,10 @@ const LoginPage: React.FC = () => {
         await signInWithEmail(email, password);
       }
     } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err, 'Authentication failed'));
+      const fallbackMessage = isSignUp
+        ? `Sign-up failed. ${SIGNUP_PASSWORD_HELP_TEXT}`
+        : 'Sign-in failed. Please check your credentials and try again.';
+      setError(getFriendlyErrorMessage(err, fallbackMessage));
       setLoading(false);
     }
   };
@@ -168,7 +259,12 @@ const LoginPage: React.FC = () => {
       }
       await signInWithGoogle(isSignUp ? selectedRole : undefined);
     } catch (err: unknown) {
-      setError(getFriendlyErrorMessage(err, 'Google sign-in failed'));
+      setError(
+        getFriendlyErrorMessage(
+          err,
+          isSignUp ? 'Google sign-up failed. Please try again.' : 'Google sign-in failed. Please try again.'
+        )
+      );
       setLoading(false);
     }
   };
@@ -362,7 +458,7 @@ const LoginPage: React.FC = () => {
 
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4 mb-5 relative">
-                {error && (
+                {error && !isPasswordRequirementError && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -541,7 +637,7 @@ const LoginPage: React.FC = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-11 pr-11 py-3 rounded-lg bg-slate-100/70 border-slate-200/80 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                       required
-                      minLength={6}
+                      minLength={isSignUp ? 8 : 6}
                     />
                     <motion.button
                       type="button"
@@ -552,6 +648,32 @@ const LoginPage: React.FC = () => {
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </motion.button>
                   </div>
+                  {isSignUp && (
+                    <div className="mt-2 rounded-lg border border-sky-100/80 bg-sky-50/70 px-3 py-2">
+                      <p className="text-[11px] font-body font-semibold uppercase tracking-wider text-slate-600">
+                        Password requirements
+                      </p>
+                      <ul className="mt-2 space-y-1">
+                        {passwordRuleStates.map((rule) => (
+                          <li
+                            key={rule.id}
+                            className={`flex items-center gap-2 text-[11px] font-body ${rule.met ? 'text-emerald-700' : 'text-slate-500'}`}
+                          >
+                            <span
+                              className={`inline-block h-1.5 w-1.5 rounded-full ${rule.met ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                            />
+                            <span>{rule.label}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {isPasswordRequirementError && (
+                        <p className="mt-2 text-[11px] font-body font-semibold text-rose-600">
+                          Password does not meet signup requirements.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
 
                 {/* Submit Button */}
@@ -581,7 +703,10 @@ const LoginPage: React.FC = () => {
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setError(null);
+                    }}
                     className="text-sm text-slate-400 hover:text-sky-500 font-body font-medium transition-colors"
                   >
                     {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}

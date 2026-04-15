@@ -35,6 +35,10 @@ interface AdditionalProfileData {
   position?: string;
 }
 
+export interface AuthServiceError extends Error {
+  code?: string;
+}
+
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
@@ -44,6 +48,17 @@ const ensurePublicSignupRole = (role: UserRole): void => {
   if (role === 'admin') {
     throw new Error('Admin account creation is restricted. Please contact an existing administrator.');
   }
+};
+
+const toAuthServiceError = (error: unknown, fallbackMessage: string): AuthServiceError => {
+  const firebaseError = error as { code?: string; message?: string };
+  const serviceError = new Error(firebaseError.message || fallbackMessage) as AuthServiceError;
+
+  if (firebaseError.code) {
+    serviceError.code = firebaseError.code;
+  }
+
+  return serviceError;
 };
 
 export const setPendingAuthRole = (role: UserRole): void => {
@@ -109,7 +124,7 @@ export const signUpWithEmail = async (
       message: firebaseError.message,
       fullError: error
     });
-    throw new Error(firebaseError.message || 'Failed to create account');
+    throw toAuthServiceError(error, 'Failed to create account');
   }
 };
 
@@ -127,7 +142,7 @@ export const signInWithEmail = async (email: string, password: string): Promise<
       message: firebaseError.message,
       fullError: error
     });
-    throw new Error(firebaseError.message || 'Failed to sign in');
+    throw toAuthServiceError(error, 'Failed to sign in');
   }
 };
 
@@ -150,7 +165,7 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
     return userProfile;
   } catch (error: unknown) {
     console.error('Error signing in with Google:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+    throw toAuthServiceError(error, 'Failed to sign in with Google');
   }
 };
 
@@ -160,7 +175,7 @@ export const signOutUser = async (): Promise<void> => {
     await signOut(auth);
   } catch (error: unknown) {
     console.error('Error signing out:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to sign out');
+    throw toAuthServiceError(error, 'Failed to sign out');
   }
 };
 
@@ -170,7 +185,7 @@ export const resetPassword = async (email: string): Promise<void> => {
     await sendPasswordResetEmail(auth, email);
   } catch (error: unknown) {
     console.error('Error resetting password:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to send reset email');
+    throw toAuthServiceError(error, 'Failed to send reset email');
   }
 };
 
