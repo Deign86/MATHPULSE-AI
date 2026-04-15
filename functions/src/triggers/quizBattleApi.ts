@@ -2,6 +2,7 @@ import axios from "axios";
 import { createHash } from "crypto";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
+import { resolveCurriculumVersionSetId } from "../config/diagnosticPolicies";
 
 const ALLOWED_SUBJECT_IDS = new Set(["gen-math", "stats-prob", "pre-calc", "basic-calc"]);
 const ALLOWED_DIFFICULTIES = new Set(["easy", "medium", "hard", "adaptive"]);
@@ -15,6 +16,44 @@ const ROOM_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const ROOM_EMPTY_GRACE_MS = 60 * 1000;
 const ROOM_TIMEOUT_SWEEP_CONCURRENCY = 12;
 const MAX_MATCHMAKING_PAIRS_PER_PASS = 20;
+
+const isEnvFlagEnabled = (raw: string | undefined, fallback = false): boolean => {
+  if (typeof raw !== "string") return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+};
+
+const QUIZ_BATTLE_QUESTION_BANK_COLLECTION =
+  (process.env.QUIZ_BATTLE_QUESTION_BANK_COLLECTION || "quizBattleQuestionBank").trim();
+const QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT = clampNumberEnv(
+  process.env.QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT,
+  240,
+  30,
+  800,
+);
+const QUIZ_BATTLE_ALLOW_STATIC_BANK_FALLBACK = isEnvFlagEnabled(
+  process.env.QUIZ_BATTLE_ALLOW_STATIC_BANK_FALLBACK,
+  true,
+);
+const QUIZ_BATTLE_ENFORCE_GRADE_SEGREGATION = isEnvFlagEnabled(
+  process.env.QUIZ_BATTLE_ENFORCE_GRADE_SEGREGATION,
+  true,
+);
+const QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE = isEnvFlagEnabled(
+  process.env.QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE,
+  false,
+);
+const QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START = isEnvFlagEnabled(
+  process.env.QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START,
+  false,
+);
+
+function clampNumberEnv(raw: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(raw || String(fallback));
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, Math.floor(parsed)));
+}
 
 type QueueStatus = "searching" | "matched" | "cancelled";
 type MatchStatus = "ready" | "in_progress" | "completed" | "cancelled";
@@ -178,6 +217,64 @@ interface NormalizedBattleSetup {
   queueType: "public_matchmaking" | "private_room";
   botDifficulty: "easy" | "medium" | "hard" | "adaptive";
   adaptiveBot: boolean;
+  sharedPoolMode: "grade_strict" | "admin_shared";
+}
+
+type BattleGradeLevel = 11 | 12;
+type BattleGradeLabel = "Grade 11" | "Grade 12";
+type BattleCurriculumVersion = "strengthened" | "legacy" | "transition";
+type BattleQuestionSourceType = "premade" | "teacher-authored" | "reviewed-ai" | "imported";
+
+interface BattlePlayerEligibility {
+  uid: string;
+  displayName: string;
+  photo: string;
+  gradeLevel: BattleGradeLevel;
+  gradeLabel: BattleGradeLabel;
+  school: string;
+  curriculumVersionSetId: string;
+  curriculumVersion: BattleCurriculumVersion;
+}
+
+interface CanonicalBattleQuestion {
+  id: string;
+  subject: string;
+  gradeLevel: BattleGradeLevel;
+  curriculumVersion: BattleCurriculumVersion;
+  curriculumTrack: string;
+  schoolYearApplicability: string[];
+  topic: string;
+  subtopic: string;
+  competencyCode: string;
+  competencyText: string;
+  difficulty: "easy" | "medium" | "hard";
+  questionType: "multiple_choice";
+  stem: string;
+  choices: string[];
+  correctAnswer: string;
+  explanation: string;
+  hint: string;
+  tags: string[];
+  language: string;
+  isActive: boolean;
+  sourceType: BattleQuestionSourceType;
+  sourceReference: string;
+  variantGroupId: string;
+  reviewedBy: string;
+  reviewedAt: number | null;
+  createdBy: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface QuestionPoolSelector {
+  gradeLevel?: BattleGradeLevel;
+  curriculumVersion?: BattleCurriculumVersion;
+  curriculumVersionSetId?: string;
+  subjectId: string;
+  topicId: string;
+  difficulty: "easy" | "medium" | "hard";
+  sharedPoolMode: "grade_strict" | "admin_shared";
 }
 
 interface BattleQuestionCandidate {
@@ -191,6 +288,8 @@ interface QuestionSetBundle {
   questions: BattleQuestionPublic[];
   answerKeys: number[];
   source: "ai" | "bank";
+  servedQuestionIds: string[];
+  selector: QuestionPoolSelector;
 }
 
 type QuizBattleGenerationFailureReason =
@@ -565,6 +664,108 @@ const asTimestampMillis = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const parseGradeLevel = (raw: unknown): BattleGradeLevel | null => {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    if (Math.floor(raw) === 11) return 11;
+    if (Math.floor(raw) === 12) return 12;
+  }
+
+  if (typeof raw !== "string") {
+    return null;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "11" || normalized === "grade 11" || normalized.includes("11")) return 11;
+  if (normalized === "12" || normalized === "grade 12" || normalized.includes("12")) return 12;
+  return null;
+};
+
+const toGradeLabel = (gradeLevel: BattleGradeLevel): BattleGradeLabel => {
+  return gradeLevel === 11 ? "Grade 11" : "Grade 12";
+};
+
+const normalizeCurriculumVersion = (
+  rawVersion: unknown,
+  fallbackVersionSetId = "",
+): BattleCurriculumVersion => {
+  const direct = asString(rawVersion, "").toLowerCase();
+  const fallback = asString(fallbackVersionSetId, "").toLowerCase();
+  const merged = `${direct} ${fallback}`;
+
+  if (direct === "legacy" || direct === "strengthened" || direct === "transition") {
+    return direct;
+  }
+
+  if (merged.includes("legacy")) {
+    return "legacy";
+  }
+
+  if (merged.includes("transition") || merged.includes("pilot")) {
+    return "transition";
+  }
+
+  return "strengthened";
+};
+
+const createDeterministicRandomIntFactory = (seedText: string): ((min: number, max: number) => number) => {
+  let cursor = 0;
+
+  return (min: number, max: number): number => {
+    if (max <= min) return min;
+
+    const digest = createHash("sha256").update(`${seedText}:${cursor}`).digest();
+    cursor += 1;
+    const bucket = digest.readUInt32BE(0);
+    const span = max - min + 1;
+    return min + (bucket % span);
+  };
+};
+
+const STATIC_BANK_GRADE_BY_SUBJECT: Record<string, BattleGradeLevel> = {
+  "gen-math": 11,
+  "stats-prob": 11,
+  "pre-calc": 12,
+  "basic-calc": 12,
+};
+
+const buildProfileError = (reason: string, message: string): functions.https.HttpsError => {
+  return new functions.https.HttpsError(
+    "failed-precondition",
+    message,
+    { reason },
+  );
+};
+
+const mapUserDataToEligibility = (
+  uid: string,
+  userData: Record<string, unknown>,
+): BattlePlayerEligibility => {
+  const gradeLevel = parseGradeLevel(userData.grade ?? userData.gradeLevel);
+  if (!gradeLevel) {
+    throw buildProfileError(
+      "profile_missing_grade_level",
+      "Quiz Battle requires a valid learner grade level (Grade 11 or Grade 12).",
+    );
+  }
+
+  const gradeLabel = toGradeLabel(gradeLevel);
+  const curriculumVersionSetId =
+    asString(userData.currentCurriculumVersionSetId, "") ||
+    resolveCurriculumVersionSetId(gradeLabel);
+
+  return {
+    uid,
+    displayName: asString(userData.displayName, asString(userData.name, "Student")),
+    photo: asString(userData.photo),
+    gradeLevel,
+    gradeLabel,
+    school: asString(userData.school, ""),
+    curriculumVersionSetId,
+    curriculumVersion: normalizeCurriculumVersion(userData.curriculumVersion, curriculumVersionSetId),
+  };
+};
+
 const normalizeQuizBattleMode = (value: unknown): "online" | "bot" => {
   return asString(value, "bot") === "online" ? "online" : "bot";
 };
@@ -574,6 +775,10 @@ const shouldBlockStartDueToNonAiSource = (params: {
   mode: unknown;
   questionSetSource: unknown;
 }): boolean => {
+  if (!QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START) {
+    return false;
+  }
+
   if (asString(params.status, "ready") !== "ready") {
     return false;
   }
@@ -1185,7 +1390,7 @@ const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCo
     "Correct answers must not follow a fixed index pattern.",
     `Return at least ${setup.rounds} valid questions in the questions array.`,
     "Return ONLY valid JSON in this exact shape:",
-    '{"questions":[{"prompt":"...","choices":["...","...","...","..."],"correctOptionIndex":0}]}',
+    "{\"questions\":[{\"prompt\":\"...\",\"choices\":[\"...\",\"...\",\"...\",\"...\"],\"correctOptionIndex\":0}]}",
     "No markdown fences. No explanations. JSON only.",
     "Do not include <think> tags, reasoning traces, or text outside the JSON object.",
   ].join("\n");
@@ -1527,49 +1732,479 @@ const xpForOutcome = (outcome: MatchOutcome): number => {
   return 35;
 };
 
-const selectQuestionSet = (
-  setup: NormalizedBattleSetup,
-): QuestionSetBundle => {
-  const targetDifficulty = setup.mode === "bot" ? setup.botDifficulty : setup.difficulty;
-  const normalizedDifficulty = targetDifficulty === "adaptive" ? "medium" : targetDifficulty;
+const normalizeSourceType = (raw: unknown): BattleQuestionSourceType => {
+  const value = asString(raw, "").toLowerCase();
+  if (value === "premade" || value === "teacher-authored" || value === "reviewed-ai" || value === "imported") {
+    return value;
+  }
+  return "premade";
+};
 
-  const subjectPool = QUESTION_BANK.filter((question) => question.subjectId === setup.subjectId);
-  const difficultyPool = subjectPool.filter((question) => question.difficulty === normalizedDifficulty);
-  const pool = difficultyPool.length > 0 ? difficultyPool : subjectPool;
-
-  const fallbackPool = pool.length > 0 ? pool : QUESTION_BANK;
-  const selected: BattleQuestionTemplate[] = [];
-
-  // Shuffle-and-cycle strategy: maximize variety first, then repeat only when pool is smaller than rounds.
-  while (selected.length < setup.rounds) {
-    const cycle = [...fallbackPool];
-    for (let i = cycle.length - 1; i > 0; i -= 1) {
-      const j = randomInRange(0, i);
-      const temp = cycle[i];
-      cycle[i] = cycle[j];
-      cycle[j] = temp;
-    }
-
-    for (const entry of cycle) {
-      selected.push(entry);
-      if (selected.length >= setup.rounds) {
-        break;
-      }
-    }
+const resolveQuestionChoices = (rawQuestion: Record<string, unknown>): string[] => {
+  if (Array.isArray(rawQuestion.choices)) {
+    return rawQuestion.choices.map((entry) => asString(entry)).filter((entry) => entry.length > 0);
   }
 
-  const candidates: BattleQuestionCandidate[] = selected.map((entry) => ({
+  if (Array.isArray(rawQuestion.options)) {
+    return rawQuestion.options.map((entry) => asString(entry)).filter((entry) => entry.length > 0);
+  }
+
+  if (isRecord(rawQuestion.options)) {
+    return Object.values(rawQuestion.options).map((entry) => asString(entry)).filter((entry) => entry.length > 0);
+  }
+
+  return [];
+};
+
+const resolveCorrectAnswerText = (rawQuestion: Record<string, unknown>, choices: string[]): string => {
+  const direct = asString(rawQuestion.correctAnswer, "") || asString(rawQuestion.answer, "");
+  if (direct) {
+    if (/^[A-D]$/i.test(direct.trim())) {
+      const index = direct.trim().toUpperCase().charCodeAt(0) - "A".charCodeAt(0);
+      return choices[index] || "";
+    }
+    return direct;
+  }
+
+  const explicitIndex = Math.floor(asNumber(rawQuestion.correctOptionIndex, -1));
+  if (explicitIndex >= 0 && explicitIndex < choices.length) {
+    return choices[explicitIndex];
+  }
+
+  return "";
+};
+
+const normalizeCanonicalBattleQuestion = (
+  docId: string,
+  rawQuestion: Record<string, unknown>,
+): CanonicalBattleQuestion | null => {
+  const subject = asString(rawQuestion.subject, asString(rawQuestion.subjectId, ""));
+  if (!subject) return null;
+
+  const gradeLevel = parseGradeLevel(rawQuestion.gradeLevel ?? rawQuestion.grade);
+  if (!gradeLevel) return null;
+
+  const curriculumVersionSetId = asString(rawQuestion.curriculumVersionSetId, "");
+  const curriculumVersion = normalizeCurriculumVersion(rawQuestion.curriculumVersion, curriculumVersionSetId);
+
+  const stem = asString(rawQuestion.stem, asString(rawQuestion.prompt, asString(rawQuestion.question, "")));
+  if (stem.length < 8) return null;
+
+  const choices = resolveQuestionChoices(rawQuestion);
+  if (choices.length < 4) return null;
+
+  const trimmedChoices = choices.slice(0, 4).map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+  if (trimmedChoices.length !== 4) return null;
+
+  const correctAnswer = resolveCorrectAnswerText(rawQuestion, trimmedChoices);
+  if (!correctAnswer) return null;
+  const canonicalCorrect = trimmedChoices.find((entry) => entry.toLowerCase() === correctAnswer.toLowerCase());
+  if (!canonicalCorrect) return null;
+
+  const difficultyRaw = asString(rawQuestion.difficulty, "medium");
+  const difficulty = (difficultyRaw === "easy" || difficultyRaw === "medium" || difficultyRaw === "hard")
+    ? difficultyRaw
+    : "medium";
+
+  const questionType = asString(rawQuestion.questionType, "multiple_choice").toLowerCase();
+  if (questionType !== "multiple_choice") return null;
+
+  const topic = asString(rawQuestion.topic, asString(rawQuestion.topicId, ""));
+  if (!topic) return null;
+
+  const competencyCode = asString(rawQuestion.competencyCode, "");
+  const competencyText = asString(rawQuestion.competencyText, asString(rawQuestion.competency, ""));
+  if (!competencyCode || !competencyText) return null;
+
+  const schoolYearApplicability = Array.isArray(rawQuestion.schoolYearApplicability)
+    ? rawQuestion.schoolYearApplicability.map((entry) => asString(entry)).filter((entry) => entry.length > 0)
+    : [];
+
+  const tags = Array.isArray(rawQuestion.tags)
+    ? rawQuestion.tags.map((entry) => asString(entry).toLowerCase()).filter((entry) => entry.length > 0)
+    : [];
+
+  const reviewedAtMs = asTimestampMillis(rawQuestion.reviewedAt, 0);
+
+  return {
+    id: asString(rawQuestion.id, docId),
+    subject,
+    gradeLevel,
+    curriculumVersion,
+    curriculumTrack: asString(rawQuestion.curriculumTrack, "core"),
+    schoolYearApplicability,
+    topic,
+    subtopic: asString(rawQuestion.subtopic, topic),
+    competencyCode,
+    competencyText,
+    difficulty,
+    questionType: "multiple_choice",
+    stem,
+    choices: trimmedChoices,
+    correctAnswer: canonicalCorrect,
+    explanation: asString(rawQuestion.explanation, ""),
+    hint: asString(rawQuestion.hint, ""),
+    tags,
+    language: asString(rawQuestion.language, "en"),
+    isActive: asBoolean(rawQuestion.isActive, true),
+    sourceType: normalizeSourceType(rawQuestion.sourceType),
+    sourceReference: asString(rawQuestion.sourceReference, ""),
+    variantGroupId: asString(rawQuestion.variantGroupId, ""),
+    reviewedBy: asString(rawQuestion.reviewedBy, ""),
+    reviewedAt: reviewedAtMs > 0 ? reviewedAtMs : null,
+    createdBy: asString(rawQuestion.createdBy, ""),
+    createdAt: asTimestampMillis(rawQuestion.createdAt, 0),
+    updatedAt: asTimestampMillis(rawQuestion.updatedAt, 0),
+  };
+};
+
+const toBattleCandidateFromCanonical = (question: CanonicalBattleQuestion): BattleQuestionCandidate => {
+  const correctOptionIndex = question.choices.findIndex(
+    (choice) => choice.toLowerCase() === question.correctAnswer.toLowerCase(),
+  );
+
+  return {
+    questionId: question.id,
+    prompt: question.stem,
+    choices: question.choices,
+    correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
+  };
+};
+
+const normalizeDifficultyForSelection = (
+  setup: NormalizedBattleSetup,
+): "easy" | "medium" | "hard" => {
+  const targetDifficulty = setup.mode === "bot" ? setup.botDifficulty : setup.difficulty;
+  return targetDifficulty === "adaptive" ? "medium" : targetDifficulty;
+};
+
+const resolveEffectiveSharedPoolMode = (setup: NormalizedBattleSetup): "grade_strict" | "admin_shared" => {
+  if (setup.sharedPoolMode === "admin_shared" && QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE) {
+    return "admin_shared";
+  }
+  return "grade_strict";
+};
+
+const buildSelectorForSinglePlayer = (
+  player: BattlePlayerEligibility,
+  setup: NormalizedBattleSetup,
+): QuestionPoolSelector => {
+  return {
+    gradeLevel: player.gradeLevel,
+    curriculumVersion: player.curriculumVersion,
+    curriculumVersionSetId: player.curriculumVersionSetId,
+    subjectId: setup.subjectId,
+    topicId: setup.topicId,
+    difficulty: normalizeDifficultyForSelection(setup),
+    sharedPoolMode: resolveEffectiveSharedPoolMode(setup),
+  };
+};
+
+const buildSelectorForOnlinePlayers = (
+  playerA: BattlePlayerEligibility,
+  playerB: BattlePlayerEligibility,
+  setup: NormalizedBattleSetup,
+): QuestionPoolSelector => {
+  const sharedPoolMode = resolveEffectiveSharedPoolMode(setup);
+
+  if (sharedPoolMode !== "admin_shared") {
+    if (QUIZ_BATTLE_ENFORCE_GRADE_SEGREGATION && playerA.gradeLevel !== playerB.gradeLevel) {
+      throw buildProfileError(
+        "mixed_grade_blocked",
+        "Mixed-grade Quiz Battle matches are blocked by default. Use admin-approved shared mode to continue.",
+      );
+    }
+
+    if (playerA.curriculumVersionSetId !== playerB.curriculumVersionSetId) {
+      throw buildProfileError(
+        "curriculum_mismatch",
+        "Players must share the same curriculum cohort for a standard Quiz Battle pool.",
+      );
+    }
+
+    if (playerA.curriculumVersion !== playerB.curriculumVersion) {
+      throw buildProfileError(
+        "curriculum_version_mismatch",
+        "Players must share the same curriculum version for a standard Quiz Battle pool.",
+      );
+    }
+
+    return {
+      gradeLevel: playerA.gradeLevel,
+      curriculumVersion: playerA.curriculumVersion,
+      curriculumVersionSetId: playerA.curriculumVersionSetId,
+      subjectId: setup.subjectId,
+      topicId: setup.topicId,
+      difficulty: normalizeDifficultyForSelection(setup),
+      sharedPoolMode,
+    };
+  }
+
+  return {
+    subjectId: setup.subjectId,
+    topicId: setup.topicId,
+    difficulty: normalizeDifficultyForSelection(setup),
+    sharedPoolMode,
+  };
+};
+
+const filterCanonicalPoolBySelector = (
+  pool: CanonicalBattleQuestion[],
+  selector: QuestionPoolSelector,
+): CanonicalBattleQuestion[] => {
+  return pool.filter((entry) => {
+    if (!entry.isActive) return false;
+    if (entry.subject !== selector.subjectId) return false;
+
+    if (selector.sharedPoolMode === "admin_shared") {
+      const sharedTagged =
+        entry.tags.includes("shared_pool") ||
+        entry.tags.includes("shared") ||
+        entry.curriculumTrack.toLowerCase().includes("shared");
+      if (!sharedTagged) return false;
+    } else {
+      if (typeof selector.gradeLevel === "number" && entry.gradeLevel !== selector.gradeLevel) return false;
+      if (selector.curriculumVersion && entry.curriculumVersion !== selector.curriculumVersion) return false;
+    }
+
+    return true;
+  });
+};
+
+const chooseQuestionCandidates = (
+  canonicalPool: CanonicalBattleQuestion[],
+  selector: QuestionPoolSelector,
+  rounds: number,
+  randomInt: (min: number, max: number) => number,
+): BattleQuestionCandidate[] => {
+  const basePool = filterCanonicalPoolBySelector(canonicalPool, selector);
+  const normalizedTopic = selector.topicId.trim().toLowerCase();
+
+  const stagedPools = [
+    basePool.filter((entry) => entry.topic.toLowerCase() === normalizedTopic && entry.difficulty === selector.difficulty),
+    basePool.filter((entry) => entry.difficulty === selector.difficulty),
+    basePool.filter((entry) => entry.topic.toLowerCase() === normalizedTopic),
+    basePool,
+  ];
+
+  const selectedPool = stagedPools.find((entry) => entry.length >= rounds) || basePool;
+  if (selectedPool.length < rounds) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      `Insufficient vetted question pool for ${selector.subjectId} (${selectedPool.length}/${rounds}).`,
+      {
+        reason: "insufficient_question_pool",
+      },
+    );
+  }
+
+  const remaining = [...selectedPool];
+  const picked: CanonicalBattleQuestion[] = [];
+
+  while (picked.length < rounds && remaining.length > 0) {
+    const idx = randomInt(0, remaining.length - 1);
+    picked.push(remaining[idx]);
+    remaining.splice(idx, 1);
+  }
+
+  const questionIds = new Set<string>();
+  picked.forEach((entry) => questionIds.add(entry.id));
+  if (questionIds.size < rounds) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Question selection must produce unique question IDs per match.",
+      {
+        reason: "duplicate_question_ids",
+      },
+    );
+  }
+
+  return picked.map((entry) => toBattleCandidateFromCanonical(entry));
+};
+
+const buildStaticFallbackPool = (
+  selector: QuestionPoolSelector,
+  rounds: number,
+): BattleQuestionCandidate[] => {
+  const topic = selector.topicId.trim().toLowerCase();
+  const difficulty = selector.difficulty;
+
+  const basePool = QUESTION_BANK.filter((entry) => {
+    if (entry.subjectId !== selector.subjectId) return false;
+
+    if (selector.sharedPoolMode !== "admin_shared") {
+      const gradeFromSubject = STATIC_BANK_GRADE_BY_SUBJECT[entry.subjectId];
+      if (typeof selector.gradeLevel === "number" && gradeFromSubject !== selector.gradeLevel) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const stagedPools = [
+    basePool.filter((entry) => entry.topicId.toLowerCase() === topic && entry.difficulty === difficulty),
+    basePool.filter((entry) => entry.difficulty === difficulty),
+    basePool,
+  ];
+
+  const selected =
+    stagedPools.find((entry) => entry.length >= rounds) ||
+    [...stagedPools].sort((left, right) => right.length - left.length)[0] ||
+    [];
+  return selected.map((entry) => ({
     questionId: entry.questionId,
     prompt: entry.prompt,
     choices: entry.choices,
     correctOptionIndex: entry.correctOptionIndex,
   }));
+};
 
-  const materialized = materializeQuestionSet(candidates);
+const expandStaticFallbackCandidates = (
+  baseCandidates: BattleQuestionCandidate[],
+  rounds: number,
+): BattleQuestionCandidate[] => {
+  if (baseCandidates.length === 0 || baseCandidates.length >= rounds) {
+    return baseCandidates;
+  }
+
+  const expanded = [...baseCandidates];
+  let cursor = 0;
+
+  while (expanded.length < rounds) {
+    const source = baseCandidates[cursor % baseCandidates.length];
+    const variantNumber = Math.floor(cursor / baseCandidates.length) + 2;
+
+    expanded.push({
+      questionId: `${source.questionId}-v${variantNumber}`,
+      prompt: `${source.prompt} (Variant ${variantNumber})`,
+      choices: [...source.choices],
+      correctOptionIndex: source.correctOptionIndex,
+    });
+
+    cursor += 1;
+  }
+
+  return expanded;
+};
+
+const fetchQuestionBankPool = async (
+  db: FirebaseFirestore.Firestore,
+  tx: FirebaseFirestore.Transaction | undefined,
+  selector: QuestionPoolSelector,
+): Promise<CanonicalBattleQuestion[]> => {
+  const baseQuery = db
+    .collection(QUIZ_BATTLE_QUESTION_BANK_COLLECTION)
+    .where("isActive", "==", true)
+    .where("subject", "==", selector.subjectId)
+    .limit(QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT);
+
+  const querySnap = tx ? await tx.get(baseQuery) : await baseQuery.get();
+  return querySnap.docs
+    .map((entry) => normalizeCanonicalBattleQuestion(entry.id, entry.data() as Record<string, unknown>))
+    .filter((entry): entry is CanonicalBattleQuestion => entry !== null);
+};
+
+const selectQuestionSet = async (params: {
+  db: FirebaseFirestore.Firestore;
+  tx?: FirebaseFirestore.Transaction;
+  setup: NormalizedBattleSetup;
+  selectionSeed: string;
+  playerA?: BattlePlayerEligibility;
+  playerB?: BattlePlayerEligibility;
+  singlePlayer?: BattlePlayerEligibility;
+}): Promise<QuestionSetBundle> => {
+  const { db, tx, setup, selectionSeed, playerA, playerB, singlePlayer } = params;
+
+  const selector = setup.mode === "online"
+    ? (() => {
+      if (!playerA || !playerB) {
+        throw new functions.https.HttpsError("failed-precondition", "Missing match participant profiles.", {
+          reason: "missing_participant_profiles",
+        });
+      }
+      return buildSelectorForOnlinePlayers(playerA, playerB, setup);
+    })()
+    : (() => {
+      if (!singlePlayer) {
+        throw new functions.https.HttpsError("failed-precondition", "Missing player profile for bot match.", {
+          reason: "missing_player_profile",
+        });
+      }
+      return buildSelectorForSinglePlayer(singlePlayer, setup);
+    })();
+
+  const randomInt = createDeterministicRandomIntFactory(selectionSeed);
+
+  let candidates: BattleQuestionCandidate[] = [];
+
+  try {
+    const canonicalPool = await fetchQuestionBankPool(db, tx, selector);
+    if (canonicalPool.length > 0) {
+      candidates = chooseQuestionCandidates(canonicalPool, selector, setup.rounds, randomInt);
+    }
+  } catch (error) {
+    functions.logger.warn("[QUIZ_BATTLE] Question bank query failed; evaluating static fallback", {
+      collection: QUIZ_BATTLE_QUESTION_BANK_COLLECTION,
+      subjectId: selector.subjectId,
+      topicId: selector.topicId,
+      difficulty: selector.difficulty,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  if (candidates.length < setup.rounds) {
+    if (!QUIZ_BATTLE_ALLOW_STATIC_BANK_FALLBACK) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Question bank fallback is disabled and no eligible question set was found.",
+        {
+          reason: "question_bank_empty",
+        },
+      );
+    }
+
+    const fallbackPool = buildStaticFallbackPool(selector, setup.rounds);
+    const expandedFallbackPool = expandStaticFallbackCandidates(fallbackPool, setup.rounds);
+
+    if (expandedFallbackPool.length > fallbackPool.length) {
+      functions.logger.warn("[QUIZ_BATTLE] Static fallback pool expanded with deterministic variants", {
+        subjectId: selector.subjectId,
+        topicId: selector.topicId,
+        difficulty: selector.difficulty,
+        requestedRounds: setup.rounds,
+        basePoolCount: fallbackPool.length,
+        expandedPoolCount: expandedFallbackPool.length,
+      });
+    }
+
+    if (expandedFallbackPool.length < setup.rounds) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        `Insufficient eligible question pool for ${selector.subjectId} (${expandedFallbackPool.length}/${setup.rounds}).`,
+        {
+          reason: "insufficient_question_pool",
+        },
+      );
+    }
+
+    const remaining = [...expandedFallbackPool];
+    candidates = [];
+    while (candidates.length < setup.rounds && remaining.length > 0) {
+      const idx = randomInt(0, remaining.length - 1);
+      candidates.push(remaining[idx]);
+      remaining.splice(idx, 1);
+    }
+  }
+
+  const materialized = materializeQuestionSet(candidates, randomInt);
+  const servedQuestionIds = candidates.map((entry) => entry.questionId);
 
   return {
     ...materialized,
     source: "bank",
+    servedQuestionIds,
+    selector,
   };
 };
 
@@ -1824,17 +2459,23 @@ const mapRoomStateForStudent = (
   };
 };
 
-const loadUserDisplayInfoFromTx = async (
+const loadUserBattleProfileFromTx = async (
   tx: FirebaseFirestore.Transaction,
   db: FirebaseFirestore.Firestore,
   uid: string,
-): Promise<{ displayName: string; photo: string }> => {
+): Promise<BattlePlayerEligibility> => {
   const userSnap = await tx.get(db.collection("users").doc(uid));
   const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
-  return {
-    displayName: asString(userData.displayName, asString(userData.name, "Student")),
-    photo: asString(userData.photo),
-  };
+  return mapUserDataToEligibility(uid, userData);
+};
+
+const loadUserBattleProfile = async (
+  db: FirebaseFirestore.Firestore,
+  uid: string,
+): Promise<BattlePlayerEligibility> => {
+  const userSnap = await db.collection("users").doc(uid).get();
+  const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
+  return mapUserDataToEligibility(uid, userData);
 };
 
 const createOnlineMatchInTransaction = async (
@@ -1847,10 +2488,23 @@ const createOnlineMatchInTransaction = async (
 ): Promise<string> => {
   const matchRef = db.collection("quizBattleMatches").doc();
   const [playerAProfile, playerBProfile] = await Promise.all([
-    loadUserDisplayInfoFromTx(tx, db, playerAId),
-    loadUserDisplayInfoFromTx(tx, db, playerBId),
+    loadUserBattleProfileFromTx(tx, db, playerAId),
+    loadUserBattleProfileFromTx(tx, db, playerBId),
   ]);
-  const { questions, answerKeys, source: questionSetSource } = selectQuestionSet(setup);
+  const {
+    questions,
+    answerKeys,
+    source: questionSetSource,
+    servedQuestionIds,
+    selector,
+  } = await selectQuestionSet({
+    db,
+    tx,
+    setup,
+    selectionSeed: `match:${matchRef.id}`,
+    playerA: playerAProfile,
+    playerB: playerBProfile,
+  });
 
   tx.set(matchRef, {
     matchId: matchRef.id,
@@ -1879,9 +2533,11 @@ const createOnlineMatchInTransaction = async (
     metadata: {
       source,
       seededQuestionSet: true,
+      sharedPoolMode: selector.sharedPoolMode,
       questionSetSource,
       questionSetId: `qb-scaffold-${matchRef.id}`,
       questionFingerprints: [],
+      servedQuestionIds,
       aiGenerationAttempted: false,
       aiGenerationAttempts: 0,
       aiGenerationLatencyMs: 0,
@@ -1889,6 +2545,13 @@ const createOnlineMatchInTransaction = async (
       implementationStatus: "live_online_v1",
       playerAPhoto: playerAProfile.photo,
       playerBPhoto: playerBProfile.photo,
+      playerAGradeLevel: playerAProfile.gradeLevel,
+      playerBGradeLevel: playerBProfile.gradeLevel,
+      playerACurriculumVersionSetId: playerAProfile.curriculumVersionSetId,
+      playerBCurriculumVersionSetId: playerBProfile.curriculumVersionSetId,
+      playerACurriculumVersion: playerAProfile.curriculumVersion,
+      playerBCurriculumVersion: playerBProfile.curriculumVersion,
+      questionPoolSelector: selector,
     },
   });
 
@@ -1907,11 +2570,21 @@ const createBotMatchRecord = async (
 ): Promise<{ matchId: string; botDifficulty: "easy" | "medium" | "hard" | "adaptive" }> => {
   const matchRef = db.collection("quizBattleMatches").doc();
   const selectedDifficulty = setup.adaptiveBot ? "adaptive" : setup.botDifficulty;
-  const userSnap = await db.collection("users").doc(studentId).get();
-  const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
-  const playerADisplayName = asString(userData.displayName, asString(userData.name, "Student"));
+  const playerProfile = await loadUserBattleProfile(db, studentId);
+  const playerADisplayName = playerProfile.displayName;
 
-  const { questions, answerKeys, source } = selectQuestionSet(setup);
+  const {
+    questions,
+    answerKeys,
+    source,
+    servedQuestionIds,
+    selector,
+  } = await selectQuestionSet({
+    db,
+    setup,
+    selectionSeed: `bot-match:${matchRef.id}`,
+    singlePlayer: playerProfile,
+  });
   const roundKeysRef = matchRef.collection("server").doc("roundKeys");
   const batch = db.batch();
 
@@ -1943,14 +2616,20 @@ const createBotMatchRecord = async (
       botDifficulty: selectedDifficulty,
       adaptiveBot: setup.adaptiveBot,
       seededQuestionSet: true,
+      sharedPoolMode: selector.sharedPoolMode,
       questionSetSource: source,
       questionSetId: `qb-scaffold-${matchRef.id}`,
       questionFingerprints: [],
+      servedQuestionIds,
       aiGenerationAttempted: false,
       aiGenerationAttempts: 0,
       aiGenerationLatencyMs: 0,
       generationFailureReason: "",
       implementationStatus: "live_bot_v2",
+      playerAGradeLevel: playerProfile.gradeLevel,
+      playerACurriculumVersionSetId: playerProfile.curriculumVersionSetId,
+      playerACurriculumVersion: playerProfile.curriculumVersion,
+      questionPoolSelector: selector,
     },
   });
 
@@ -2270,6 +2949,8 @@ const normalizeSetup = (rawInput: unknown): NormalizedBattleSetup => {
 
   const topicId = asString(input.topicId, "");
   const adaptiveBot = asBoolean(input.adaptiveBot, false);
+  const sharedPoolModeRaw = asString(input.sharedPoolMode, "grade_strict").toLowerCase();
+  const sharedPoolMode = sharedPoolModeRaw === "admin_shared" ? "admin_shared" : "grade_strict";
 
   if (!topicId) {
     throw new functions.https.HttpsError(
@@ -2285,6 +2966,14 @@ const normalizeSetup = (rawInput: unknown): NormalizedBattleSetup => {
     );
   }
 
+  if (sharedPoolMode === "admin_shared" && !QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Admin shared pool mode is currently disabled for Quiz Battle.",
+      { reason: "shared_pool_mode_disabled" },
+    );
+  }
+
   return {
     mode,
     subjectId,
@@ -2295,10 +2984,12 @@ const normalizeSetup = (rawInput: unknown): NormalizedBattleSetup => {
     queueType,
     botDifficulty,
     adaptiveBot,
+    sharedPoolMode,
   };
 };
 
 const setupFromRoomData = (roomData: Record<string, unknown>): NormalizedBattleSetup => {
+  const sharedPoolModeRaw = asString(roomData.sharedPoolMode, "grade_strict").toLowerCase();
   return {
     mode: "online",
     subjectId: ALLOWED_SUBJECT_IDS.has(asString(roomData.subjectId)) ? asString(roomData.subjectId) : "gen-math",
@@ -2311,10 +3002,12 @@ const setupFromRoomData = (roomData: Record<string, unknown>): NormalizedBattleS
     queueType: "private_room",
     botDifficulty: "medium",
     adaptiveBot: false,
+    sharedPoolMode: sharedPoolModeRaw === "admin_shared" ? "admin_shared" : "grade_strict",
   };
 };
 
 const setupFromQueueData = (queueData: Record<string, unknown>): NormalizedBattleSetup => {
+  const sharedPoolModeRaw = asString(queueData.sharedPoolMode, "grade_strict").toLowerCase();
   return {
     mode: "online",
     subjectId: ALLOWED_SUBJECT_IDS.has(asString(queueData.subjectId)) ? asString(queueData.subjectId) : "gen-math",
@@ -2327,6 +3020,7 @@ const setupFromQueueData = (queueData: Record<string, unknown>): NormalizedBattl
     queueType: "public_matchmaking",
     botDifficulty: "medium",
     adaptiveBot: false,
+    sharedPoolMode: sharedPoolModeRaw === "admin_shared" ? "admin_shared" : "grade_strict",
   };
 };
 
@@ -2350,6 +3044,7 @@ const setupFromMatchData = (matchData: Record<string, unknown>): NormalizedBattl
     metadata.adaptiveBot,
     botDifficulty === "adaptive" || matchDifficulty === "adaptive",
   );
+  const sharedPoolModeRaw = asString(metadata.sharedPoolMode, "grade_strict").toLowerCase();
 
   return {
     mode,
@@ -2361,6 +3056,7 @@ const setupFromMatchData = (matchData: Record<string, unknown>): NormalizedBattl
     queueType: "public_matchmaking",
     botDifficulty,
     adaptiveBot,
+    sharedPoolMode: sharedPoolModeRaw === "admin_shared" ? "admin_shared" : "grade_strict",
   };
 };
 
@@ -2611,6 +3307,10 @@ const queueCompatibilityKey = (queueData: Record<string, unknown>): string => {
   return [
     asString(queueData.mode, "online"),
     asString(queueData.queueType, "public_matchmaking"),
+    asString(queueData.sharedPoolMode, "grade_strict"),
+    asString(queueData.gradeLevel, ""),
+    asString(queueData.curriculumVersionSetId, ""),
+    asString(queueData.curriculumVersion, ""),
     asString(queueData.subjectId, "gen-math"),
     asString(queueData.topicId, "unknown-topic"),
     asString(queueData.difficulty, "medium"),
@@ -2649,6 +3349,10 @@ const resolvePublicMatchmakingPass = async (
     const status = asString(data.status, "searching");
     const mode = asString(data.mode, "online");
     const queueType = asString(data.queueType, "public_matchmaking");
+    const sharedPoolModeRaw = asString(data.sharedPoolMode, "grade_strict").toLowerCase();
+    const sharedPoolMode = sharedPoolModeRaw === "admin_shared" && QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE
+      ? "admin_shared"
+      : "grade_strict";
     const heartbeatMs = asTimestampMillis(data.heartbeatAt, 0);
     const updatedMs = asTimestampMillis(data.updatedAt, 0);
 
@@ -2660,6 +3364,17 @@ const resolvePublicMatchmakingPass = async (
 
       if (mode !== "online" || queueType !== "public_matchmaking") {
         return;
+      }
+
+      if (sharedPoolMode !== "admin_shared") {
+        const queueGradeLevel = parseGradeLevel(data.gradeLevel);
+        const queueCurriculumVersionSetId = asString(data.curriculumVersionSetId, "");
+        const queueCurriculumVersion = asString(data.curriculumVersion, "");
+
+        if (!queueGradeLevel || !queueCurriculumVersionSetId || !queueCurriculumVersion) {
+          staleRefs.push(entry.ref);
+          return;
+        }
       }
 
       const key = queueCompatibilityKey(data);
@@ -2798,10 +3513,14 @@ const resolvePrivateRoomTimeoutPass = async (
   const workerCount = Math.max(1, Math.min(ROOM_TIMEOUT_SWEEP_CONCURRENCY, refs.length));
 
   await Promise.all(Array.from({ length: workerCount }, async () => {
-    while (true) {
+    let hasPendingRef = true;
+    while (hasPendingRef) {
       const currentIndex = refIndex;
       refIndex += 1;
-      if (currentIndex >= refs.length) break;
+      if (currentIndex >= refs.length) {
+        hasPendingRef = false;
+        continue;
+      }
 
       const roomRef = refs[currentIndex];
       const outcome = await db.runTransaction(async (tx): Promise<{
@@ -2938,7 +3657,7 @@ const progressMatchTimerIfExpired = async (
       return;
     }
 
-    let roundDeadlineAtMs = getRoundDeadlineAtMs(matchData);
+    const roundDeadlineAtMs = getRoundDeadlineAtMs(matchData);
     if (roundDeadlineAtMs <= 0) {
       const timing = createRoundTimingWindow(timePerQuestionSec);
       const seedPayload: Record<string, unknown> = {
@@ -3190,6 +3909,7 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
   }
 
   const db = admin.firestore();
+  const playerProfile = await loadUserBattleProfile(db, studentId);
   const queueRef = db.collection("quizBattleQueue").doc(studentId);
 
   await queueRef.set(
@@ -3197,6 +3917,10 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
       studentId,
       mode: "online",
       queueType: "public_matchmaking",
+      sharedPoolMode: setup.sharedPoolMode,
+      gradeLevel: playerProfile.gradeLabel,
+      curriculumVersionSetId: playerProfile.curriculumVersionSetId,
+      curriculumVersion: playerProfile.curriculumVersion,
       subjectId: setup.subjectId,
       topicId: setup.topicId,
       difficulty: setup.difficulty,
@@ -3360,6 +4084,7 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
   }
 
   const db = admin.firestore();
+  const ownerProfile = await loadUserBattleProfile(db, studentId);
   const roomRef = db.collection("quizBattleRooms").doc();
   const roomCode = await generateRoomCode();
 
@@ -3372,6 +4097,10 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
       [studentId]: admin.firestore.FieldValue.serverTimestamp(),
     },
     mode: setup.mode,
+    sharedPoolMode: setup.sharedPoolMode,
+    gradeLevel: ownerProfile.gradeLabel,
+    curriculumVersionSetId: ownerProfile.curriculumVersionSetId,
+    curriculumVersion: ownerProfile.curriculumVersion,
     subjectId: setup.subjectId,
     topicId: setup.topicId,
     difficulty: setup.difficulty,
@@ -3401,6 +4130,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
   }
 
   const db = admin.firestore();
+  const joiningProfile = await loadUserBattleProfile(db, studentId);
   const roomDoc = await findPrivateRoomByCode(db, roomCode);
   if (!roomDoc) {
     throw new functions.https.HttpsError("not-found", "Private room code not found.");
@@ -3433,6 +4163,56 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
 
     const participantIds = getParticipantIds(roomData.participantIds);
     const alreadyJoined = participantIds.includes(studentId);
+
+    const sharedPoolModeRaw = asString(roomData.sharedPoolMode, "grade_strict").toLowerCase();
+    const sharedPoolMode = sharedPoolModeRaw === "admin_shared" && QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE
+      ? "admin_shared"
+      : "grade_strict";
+
+    if (!alreadyJoined && sharedPoolMode !== "admin_shared") {
+      let roomGradeLevel = parseGradeLevel(roomData.gradeLevel);
+      let roomCurriculumVersionSetId = asString(roomData.curriculumVersionSetId, "");
+      let roomCurriculumVersion = asString(roomData.curriculumVersion, "");
+
+      if (!roomGradeLevel || !roomCurriculumVersionSetId || !roomCurriculumVersion) {
+        const baselineStudentId = asString(roomData.ownerStudentId, participantIds[0] || "");
+        if (baselineStudentId) {
+          const baselineProfile = await loadUserBattleProfileFromTx(tx, db, baselineStudentId);
+          roomGradeLevel = baselineProfile.gradeLevel;
+          roomCurriculumVersionSetId = baselineProfile.curriculumVersionSetId;
+          roomCurriculumVersion = baselineProfile.curriculumVersion;
+        }
+      }
+
+      if (QUIZ_BATTLE_ENFORCE_GRADE_SEGREGATION && roomGradeLevel && joiningProfile.gradeLevel !== roomGradeLevel) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "This private room is restricted to a different grade cohort.",
+          { reason: "mixed_grade_blocked" },
+        );
+      }
+
+      if (roomCurriculumVersionSetId && joiningProfile.curriculumVersionSetId !== roomCurriculumVersionSetId) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "This private room is restricted to a different curriculum cohort.",
+          { reason: "curriculum_mismatch" },
+        );
+      }
+
+      const normalizedRoomCurriculumVersion = normalizeCurriculumVersion(
+        roomCurriculumVersion,
+        roomCurriculumVersionSetId,
+      );
+      if (joiningProfile.curriculumVersion !== normalizedRoomCurriculumVersion) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "This private room is restricted to a different curriculum version.",
+          { reason: "curriculum_version_mismatch" },
+        );
+      }
+    }
+
     const nextParticipants = alreadyJoined ? participantIds : [...participantIds, studentId];
 
     if (!alreadyJoined && participantIds.length >= 2) {
@@ -3441,6 +4221,12 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
 
     const roomUpdates: Record<string, unknown> = {
       participantIds: nextParticipants,
+      sharedPoolMode,
+      gradeLevel: asString(roomData.gradeLevel, joiningProfile.gradeLabel) || joiningProfile.gradeLabel,
+      curriculumVersionSetId:
+        asString(roomData.curriculumVersionSetId, joiningProfile.curriculumVersionSetId) || joiningProfile.curriculumVersionSetId,
+      curriculumVersion:
+        asString(roomData.curriculumVersion, joiningProfile.curriculumVersion) || joiningProfile.curriculumVersion,
       [`participantHeartbeat.${studentId}`]: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_IDLE_TIMEOUT_MS),
@@ -4283,6 +5069,7 @@ export const quizBattleRequestRematch = functions.https.onCall(async (data, cont
       ? (asString(matchData.difficulty) as "easy" | "medium" | "hard" | "adaptive")
       : "medium",
     adaptiveBot: asString(matchData.difficulty) === "adaptive",
+    sharedPoolMode: "grade_strict",
   };
 
   const created = await createBotMatchRecord(db, studentId, rematchSetup);
@@ -4554,6 +5341,8 @@ export const __quizBattleTestUtils = {
   shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
+  buildStaticFallbackPool,
+  expandStaticFallbackCandidates,
   dedupeAiQuestionCandidates,
   generateAiQuestionSet,
   classifyGenerationError,
