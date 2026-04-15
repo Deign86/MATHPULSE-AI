@@ -184,6 +184,7 @@ const QuizBattlePage: React.FC = () => {
   const autoSubmitRoundRef = useRef<number | null>(null);
   const autoSubmitRetryAtMsRef = useRef(0);
   const celebratedMatchIdRef = useRef<string>('');
+  const botReadyStartFailuresRef = useRef(0);
 
   const gradeScopedSubjects = useMemo(() => {
     const allowedSubjectIds = getActiveSubjectIdsForGrade(studentProfile?.grade);
@@ -391,9 +392,32 @@ const QuizBattlePage: React.FC = () => {
       const resumed = await resumeQuizBattleSession();
 
       if (resumed.sessionType === 'match' && resumed.match) {
+        let syncedMatch = resumed.match;
+
+        if (resumed.match.mode === 'bot' && resumed.match.status === 'ready') {
+          try {
+            syncedMatch = await startQuizBattleMatch(resumed.match.matchId);
+            botReadyStartFailuresRef.current = 0;
+          } catch (error) {
+            const known = error as { message?: string };
+            setQueueActive(false);
+            setActiveRoom(null);
+            setActiveMatch(null);
+            setActiveTab('setup');
+            setConnectionState(
+              typeof window !== 'undefined' && window.navigator.onLine ? 'connected' : 'disconnected',
+            );
+            setLaunchState({
+              status: 'error',
+              message: known?.message || 'Unable to resume bot battle. Please start a new match.',
+            });
+            return;
+          }
+        }
+
         setQueueActive(false);
         setActiveRoom(resumed.room || null);
-        setActiveMatch(resumed.match);
+        setActiveMatch(syncedMatch);
         setActiveTab('battle');
         setConnectionState('connected');
         return;
@@ -481,9 +505,14 @@ const QuizBattlePage: React.FC = () => {
     const isOnlineMatchActive =
       activeMatch?.mode === 'online' &&
       (activeMatch.status === 'ready' || activeMatch.status === 'in_progress');
+    const isBotMatchPreparing = activeMatch?.mode === 'bot' && activeMatch.status === 'ready';
     const isRoomWaiting = Boolean(activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready'));
 
-    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive) {
+    if (!isBotMatchPreparing) {
+      botReadyStartFailuresRef.current = 0;
+    }
+
+    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive && !isBotMatchPreparing) {
       return;
     }
 
@@ -491,6 +520,18 @@ const QuizBattlePage: React.FC = () => {
 
     const poll = async () => {
       try {
+        if (activeMatch?.mode === 'bot' && activeMatch.status === 'ready') {
+          const started = await startQuizBattleMatch(activeMatch.matchId);
+          if (cancelled) return;
+          setActiveMatch(started);
+          setConnectionState('connected');
+          botReadyStartFailuresRef.current = 0;
+          if (started.status === 'in_progress') {
+            setLaunchState({ status: 'queued', message: 'Practice bot match started.' });
+          }
+          return;
+        }
+
         if (activeMatch?.mode === 'online') {
           if (activeMatch.status === 'ready') {
             const started = await startQuizBattleMatch(activeMatch.matchId);
@@ -568,6 +609,22 @@ const QuizBattlePage: React.FC = () => {
       } catch (error) {
         if (!cancelled) {
           console.warn('Quiz Battle sync poll failed:', error);
+          if (activeMatch?.mode === 'bot' && activeMatch.status === 'ready') {
+            botReadyStartFailuresRef.current += 1;
+            if (botReadyStartFailuresRef.current >= 3) {
+              const known = error as { message?: string };
+              setQueueActive(false);
+              setActiveRoom(null);
+              setActiveMatch(null);
+              setActiveTab('setup');
+              setLaunchState({
+                status: 'error',
+                message: known?.message || 'Unable to start bot battle. Please try again.',
+              });
+              setConnectionState('disconnected');
+              return;
+            }
+          }
           setConnectionState('reconnecting');
         }
       }
@@ -2053,7 +2110,9 @@ const QuizBattlePage: React.FC = () => {
                         {activeMatch.status === 'completed'
                           ? `Completed in ${activeMatch.totalRounds} rounds.`
                           : activeMatch.status === 'ready'
-                            ? 'Waiting for both players to confirm and start together.'
+                            ? activeMatch.mode === 'online'
+                              ? 'Waiting for both players to confirm and start together.'
+                              : 'Finalizing practice bot session start.'
                             : `Round ${activeMatch.currentRound} of ${activeMatch.totalRounds}`}
                       </CardDescription>
                       {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid) && (
@@ -2064,28 +2123,28 @@ const QuizBattlePage: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {activeMatch.status === 'ready' && (
-                          <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
-                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                              {activeMatch.mode === 'online'
-                                ? 'Waiting for both players to lock in start...'
-                                : 'Preparing match session...'}
-                            </p>
-                            {/* Fallback Cancel Button to prevent getting permanently stuck during backend disruption */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
-                              onClick={() => {
-                                setActiveMatch(null);
-                                setActiveRoom(null);
-                                setQueueActive(false);
-                                setLaunchState({ status: 'idle' });
-                                setActiveTab('setup');
-                              }}
-                            >
-                              Force Cancel
-                            </Button>
-                          </div>
+                        <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
+                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                            {activeMatch.mode === 'online'
+                              ? 'Waiting for both players to lock in start...'
+                              : 'Starting practice bot round...'}
+                          </p>
+                          {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
+                            onClick={() => {
+                              setActiveMatch(null);
+                              setActiveRoom(null);
+                              setQueueActive(false);
+                              setLaunchState({ status: 'idle' });
+                              setActiveTab('setup');
+                            }}
+                          >
+                            Force Cancel
+                          </Button>
+                        </div>
                       )}
 
                       {activeMatch.status === 'in_progress' && activeMatch.currentQuestion && (

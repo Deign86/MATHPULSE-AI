@@ -1113,23 +1113,25 @@ export const startQuizBattleMatch = async (
     );
     const match = result.data.match;
 
-    try {
-      const audit = await getQuizBattleGenerationAudit(matchId);
-      console.info('[QUIZ_BATTLE_GENERATION_AUDIT]', audit);
+    if (match.mode === 'online') {
+      try {
+        const audit = await getQuizBattleGenerationAudit(matchId);
+        console.info('[QUIZ_BATTLE_GENERATION_AUDIT]', audit);
 
-      if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT && !audit.isAiSource) {
-        throw new Error(
-          `Quiz Battle generation audit failed: expected AI source, got "${audit.questionSetSource || 'unknown'}".`,
-        );
-      }
-    } catch (auditError) {
-      if (auditError instanceof Error && auditError.message.startsWith('Quiz Battle generation audit failed')) {
-        throw auditError;
-      }
+        if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT && !audit.isAiSource) {
+          throw new Error(
+            `Quiz Battle generation audit failed: expected AI source, got "${audit.questionSetSource || 'unknown'}".`,
+          );
+        }
+      } catch (auditError) {
+        if (auditError instanceof Error && auditError.message.startsWith('Quiz Battle generation audit failed')) {
+          throw auditError;
+        }
 
-      console.warn('Quiz Battle generation audit unavailable:', auditError);
-      if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT) {
-        throw new Error('Unable to verify Quiz Battle generation metadata. Please retry in a moment.');
+        console.warn('Quiz Battle generation audit unavailable:', auditError);
+        if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT) {
+          throw new Error('Unable to verify Quiz Battle generation metadata. Please retry in a moment.');
+        }
       }
     }
 

@@ -421,6 +421,26 @@ const asTimestampMillis = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const normalizeQuizBattleMode = (value: unknown): "online" | "bot" => {
+  return asString(value, "bot") === "online" ? "online" : "bot";
+};
+
+const shouldBlockStartDueToNonAiSource = (params: {
+  status: unknown;
+  mode: unknown;
+  questionSetSource: unknown;
+}): boolean => {
+  if (asString(params.status, "ready") !== "ready") {
+    return false;
+  }
+
+  if (normalizeQuizBattleMode(params.mode) !== "online") {
+    return false;
+  }
+
+  return asString(params.questionSetSource, "") !== "ai";
+};
+
 const SUBJECT_LABELS: Record<string, string> = {
   "gen-math": "General Mathematics",
   "stats-prob": "Statistics and Probability",
@@ -450,6 +470,48 @@ const quizBattleAiRetriesRaw = Number(process.env.QUIZ_BATTLE_AI_MAX_RETRIES || 
 const QUIZ_BATTLE_AI_MAX_RETRIES = Number.isFinite(quizBattleAiRetriesRaw)
   ? Math.max(1, Math.min(4, Math.floor(quizBattleAiRetriesRaw)))
   : 2;
+
+const quizBattleAiMaxTokensRaw = Number(process.env.QUIZ_BATTLE_AI_MAX_TOKENS || "640");
+const QUIZ_BATTLE_AI_MAX_TOKENS = Number.isFinite(quizBattleAiMaxTokensRaw)
+  ? Math.max(256, Math.min(4096, Math.floor(quizBattleAiMaxTokensRaw)))
+  : 640;
+
+const extractAiErrorDetail = (data: unknown): string => {
+  if (!data) {
+    return "";
+  }
+
+  if (typeof data === "string") {
+    return data.trim();
+  }
+
+  if (!isRecord(data)) {
+    return "";
+  }
+
+  const direct = asString(data.message, "") || asString(data.error_description, "") || asString(data.detail, "");
+  if (direct) {
+    return direct;
+  }
+
+  if (isRecord(data.error)) {
+    const nested = asString(data.error.message, "") || asString(data.error.detail, "");
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return "";
+};
+
+const shouldRetryWithoutStructuredJsonMode = (error: unknown, structuredJsonModeEnabled: boolean): boolean => {
+  if (!structuredJsonModeEnabled || !axios.isAxiosError(error)) {
+    return false;
+  }
+
+  const statusCode = error.response?.status ?? 0;
+  return statusCode === 400;
+};
 
 const resolveQuizBattleAiToken = (): string => {
   return asString(
@@ -901,7 +963,10 @@ const classifyGenerationError = (error: unknown): QuizBattleGenerationError => {
 
   if (axios.isAxiosError(error)) {
     const statusCode = error.response?.status ?? 0;
-    const errorMessage = error.message || "AI request failed.";
+    const errorDetail = extractAiErrorDetail(error.response?.data);
+    const errorMessage = [error.message || "AI request failed.", errorDetail]
+      .filter((entry) => entry && entry.trim().length > 0)
+      .join(" | ");
 
     if (error.code === "ECONNABORTED" || /timeout/i.test(errorMessage)) {
       return new QuizBattleGenerationError("ai_timeout", errorMessage, true);
@@ -996,7 +1061,10 @@ const generateAiQuestionSet = async (
   const randomInt = options.randomInt || randomInRange;
   const now = options.now || (() => Date.now());
 
-  const requestedQuestionCount = Math.max(setup.rounds + 3, setup.rounds * 2);
+  const requestedQuestionCount = Math.max(setup.rounds + 2, setup.rounds);
+  const requestedMaxTokens = Math.max(320, requestedQuestionCount * 90);
+  const maxTokens = Math.min(QUIZ_BATTLE_AI_MAX_TOKENS, requestedMaxTokens);
+  let structuredJsonModeEnabled = true;
 
   const messages = [
     {
@@ -1018,6 +1086,7 @@ const generateAiQuestionSet = async (
 
   for (let attempt = 1; attempt <= QUIZ_BATTLE_AI_MAX_RETRIES; attempt += 1) {
     const attemptStartedAtMs = now();
+    const structuredJsonModeEnabledAtStart = structuredJsonModeEnabled;
     functions.logger.info("[QUIZ_BATTLE] AI generation attempt started", {
       attempt,
       maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
@@ -1028,18 +1097,23 @@ const generateAiQuestionSet = async (
     });
 
     try {
+      const requestPayload: Record<string, unknown> = {
+        model: modelName,
+        messages,
+        stream: false,
+        max_tokens: maxTokens,
+        temperature: 0.2,
+        top_p: 0.9,
+      };
+
+      if (structuredJsonModeEnabledAtStart) {
+        requestPayload.response_format = {
+          type: "json_object",
+        };
+      }
+
       const responseData = await invokeRequest(
-        {
-          model: modelName,
-          messages,
-          stream: false,
-          max_tokens: Math.max(1000, requestedQuestionCount * 180),
-          temperature: 0.2,
-          top_p: 0.9,
-          response_format: {
-            type: "json_object",
-          },
-        },
+        requestPayload,
         QUIZ_BATTLE_AI_TIMEOUT_MS,
         {
           Authorization: `Bearer ${quizBattleToken}`,
@@ -1117,6 +1191,12 @@ const generateAiQuestionSet = async (
     } catch (error) {
       const classified = classifyGenerationError(error);
       lastError = classified;
+      const shouldRetryWithJsonModeRelaxed =
+        shouldRetryWithoutStructuredJsonMode(error, structuredJsonModeEnabledAtStart);
+
+      if (shouldRetryWithJsonModeRelaxed) {
+        structuredJsonModeEnabled = false;
+      }
 
       functions.logger.warn("[QUIZ_BATTLE] AI generation attempt failed", {
         attempt,
@@ -1125,13 +1205,17 @@ const generateAiQuestionSet = async (
         subjectId: setup.subjectId,
         topicId: setup.topicId,
         rounds: setup.rounds,
+        structuredJsonModeEnabledAtStart,
+        structuredJsonModeEnabledForNextAttempt: structuredJsonModeEnabled,
+        shouldRetryWithJsonModeRelaxed,
+        maxTokens,
         latencyMs: now() - attemptStartedAtMs,
         reason: classified.reason,
         retriable: classified.retriable,
         error: classified.message,
       });
 
-      if (attempt < QUIZ_BATTLE_AI_MAX_RETRIES && classified.retriable) {
+      if (attempt < QUIZ_BATTLE_AI_MAX_RETRIES && (classified.retriable || shouldRetryWithJsonModeRelaxed)) {
         const backoffMs = computeRetryDelayMs(attempt, randomInt);
         await sleepMs(backoffMs);
         continue;
@@ -3387,7 +3471,11 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
   if (preStartStatus === "ready") {
     const metadata = isRecord(preStartData.metadata) ? preStartData.metadata : {};
     const existingQuestionSource = asString(metadata.questionSetSource, "");
-    if (existingQuestionSource !== "ai") {
+    if (shouldBlockStartDueToNonAiSource({
+      status: preStartStatus,
+      mode: preStartData.mode,
+      questionSetSource: existingQuestionSource,
+    })) {
       await ensureAiQuestionSetForLiveStart(db, matchRef, roundKeysRef);
     }
   }
@@ -3401,7 +3489,11 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
   const postGenerationStatus = asString(postGenerationData.status, "ready");
   if (postGenerationStatus === "ready") {
     const postGenerationMetadata = isRecord(postGenerationData.metadata) ? postGenerationData.metadata : {};
-    if (asString(postGenerationMetadata.questionSetSource, "") !== "ai") {
+    if (shouldBlockStartDueToNonAiSource({
+      status: postGenerationStatus,
+      mode: postGenerationData.mode,
+      questionSetSource: asString(postGenerationMetadata.questionSetSource, ""),
+    })) {
       await matchRef.update({
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         "metadata.aiGenerationAttempted": true,
@@ -3423,7 +3515,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
       const matchData = matchSnap.data() as Record<string, unknown>;
       const participantA = asString(matchData.playerAId);
       const participantB = asString(matchData.playerBId);
-      const mode = asString(matchData.mode, "bot") === "online" ? "online" : "bot";
+      const mode = normalizeQuizBattleMode(matchData.mode);
 
       if (studentId !== participantA && studentId !== participantB) {
         throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
@@ -3444,7 +3536,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
 
       const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
       const questionSetSource = asString(metadata.questionSetSource, "");
-      if (questionSetSource !== "ai") {
+      if (shouldBlockStartDueToNonAiSource({ status, mode, questionSetSource })) {
         nonAiSourceDetectedInTransaction = true;
         throw new functions.https.HttpsError("unavailable", QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE);
       }
@@ -4297,6 +4389,7 @@ export const quizBattleResolvePublicMatchmakingSweep = functions.pubsub
 export const __quizBattleTestUtils = {
   resolveQuizBattleAiModel,
   resolveQuizBattleAiModelName,
+  shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
   dedupeAiQuestionCandidates,
