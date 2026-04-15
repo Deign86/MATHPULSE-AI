@@ -2,15 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3, CheckCircle, AlertTriangle, EyeOff, Search,
-  ChevronUp, ChevronDown, Info, XCircle,
+  ChevronUp, ChevronDown, Loader2, Info, XCircle,
 } from 'lucide-react';
-import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
 import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
-import { Skeleton } from './ui/skeleton';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -57,37 +55,6 @@ const STATUS_ORDER: Record<string, number> = {
   no_data: 2,
   mastered: 3,
 };
-
-const TopicMasteryLoadingState: React.FC = () => (
-  <div className="p-6 space-y-6">
-    <div className="space-y-2">
-      <Skeleton className="h-7 w-56 bg-[#dce4ee]" />
-      <Skeleton className="h-4 w-11/12 bg-[#e6edf5]" />
-    </div>
-
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={`summary-skeleton-${index}`} className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb] space-y-3">
-          <Skeleton className="h-10 w-10 rounded-xl bg-[#e3eaf4]" />
-          <Skeleton className="h-7 w-20 bg-[#dce4ee]" />
-          <Skeleton className="h-3 w-24 bg-[#e6edf5]" />
-        </div>
-      ))}
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <Skeleton className="h-10 w-full rounded-xl bg-[#e6edf5]" />
-      <Skeleton className="h-10 w-full rounded-xl bg-[#e6edf5]" />
-      <Skeleton className="h-10 w-full rounded-xl bg-[#e6edf5]" />
-    </div>
-
-    <div className="bg-white rounded-2xl shadow-sm border border-[#dde3eb] p-4 space-y-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <Skeleton key={`row-skeleton-${index}`} className="h-12 w-full rounded-xl bg-[#eef3f9]" />
-      ))}
-    </div>
-  </div>
-);
 
 // ─── Component ──────────────────────────────────────────────
 
@@ -301,29 +268,32 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
 
   // ─── Render ───────────────────────────────────────────────
 
-  return (
-    <BoneSkeleton
-      name="teacher-topic-mastery-view"
-      loading={loading}
-      fixture={<TopicMasteryLoadingState />}
-      fallback={<TopicMasteryLoadingState />}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="p-6 space-y-6"
-      >
-        {/* Header */}
-        <div>
-          <h2 className="text-xl font-bold text-[#0a1628]">Class Topic Mastery</h2>
-          <p className="text-sm text-[#5a6578] mt-1">
-            Topics where 75% or more of the class scored 85%+ are marked as mastered and can be excluded from future quiz generation.
-          </p>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-sky-500" />
+        <span className="ml-2 text-[#5a6578]">Loading topic mastery data...</span>
+      </div>
+    );
+  }
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-6 space-y-6"
+    >
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold text-[#0a1628]">Class Topic Mastery</h2>
+        <p className="text-sm text-[#5a6578] mt-1">
+          Topics where 75% or more of the class scored 85%+ are marked as mastered and can be excluded from future quiz generation.
+        </p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
@@ -360,10 +330,10 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
           <p className="text-2xl font-bold text-[#5a6578]">{summary.excludedCount}</p>
           <p className="text-xs text-[#5a6578]">Excluded Topics</p>
         </div>
-        </div>
+      </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-3">
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-[#dde3eb]">
           <Search size={14} className="text-slate-500" />
           <input
@@ -394,10 +364,10 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
             <option key={grade} value={grade}>{grade}</option>
           ))}
         </select>
-        </div>
+      </div>
 
-        {/* Bulk Actions Bar */}
-        <AnimatePresence>
+      {/* Bulk Actions Bar */}
+      <AnimatePresence>
         {selectedTopics.size > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -426,10 +396,10 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
             </button>
           </motion.div>
         )}
-        </AnimatePresence>
+      </AnimatePresence>
 
-        {/* Topic Mastery Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#dde3eb] overflow-hidden">
+      {/* Topic Mastery Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-[#dde3eb] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -564,9 +534,8 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
             </tbody>
           </table>
         </div>
-        </div>
-      </motion.div>
-    </BoneSkeleton>
+      </div>
+    </motion.div>
   );
 };
 

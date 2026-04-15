@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import quizBattleAvatar from '../assets/quiz_battle_avatar.png';
+// { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Check,
@@ -17,7 +20,9 @@ import {
   Users,
   Volume2,
   VolumeX,
+  Star,
 } from 'lucide-react';
+import { WarpBackground } from './ui/warp-background';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
 import {
@@ -66,7 +71,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
@@ -148,7 +152,6 @@ const QuizBattlePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [launchState, setLaunchState] = useState<LaunchState>({ status: 'idle' });
   const [queueActive, setQueueActive] = useState(false);
   const [activeRoom, setActiveRoom] = useState<QuizBattlePrivateRoomState | null>(null);
@@ -360,7 +363,7 @@ const QuizBattlePage: React.FC = () => {
   }, [leaderboardData, leaderboardNameMode, showExactLeaderboardScores, studentProfile?.uid]);
 
   useEffect(() => {
-    if (activeTab !== 'leaderboard') return;
+    if (activeTab !== 'leaderboard' && activeTab !== 'hub') return;
 
     let isMounted = true;
     setLeaderboardLoading(true);
@@ -1030,24 +1033,6 @@ const QuizBattlePage: React.FC = () => {
     setActiveTab('setup');
   };
 
-  const handleSetupModeChange = (mode: QuizBattleMode) => {
-    setSetupErrors([]);
-    setLaunchState({ status: 'idle' });
-    setQueueActive(false);
-    setActiveRoom(null);
-    setPrivateRoomCodeInput('');
-    setActiveMatch(null);
-    setLastRoundResult(null);
-    setSelectedOptionIndex(null);
-    setRoundLocked(false);
-    setQueueWaitSeconds(0);
-    setSetupConfig((previous) => ({
-      ...previous,
-      mode,
-      queueType: mode === 'online' ? previous.queueType : 'public_matchmaking',
-    }));
-  };
-
   const handleCancelOnlineSession = async () => {
     setLaunchState({ status: 'validating' });
 
@@ -1209,58 +1194,20 @@ const QuizBattlePage: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-      <motion.div
+    <WarpBackground className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
+      <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
+        <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-6"
+        className="space-y-3 lg:space-y-4"
       >
-        <Card className={cn(cardFrameClass, 'relative overflow-hidden rounded-[20px]')}>
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent dark:bg-[radial-gradient(circle_at_15%_15%,rgba(140,125,255,0.28),transparent_45%),radial-gradient(circle_at_85%_20%,rgba(121,79,255,0.17),transparent_40%)]" />
-          <CardHeader className="relative z-10 pb-4">
-            <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight text-foreground dark:text-[#f5f7fb]">
-              <Swords className="h-5 w-5 text-primary dark:text-[#9e8fff]" />
-              Quiz Battle
-            </CardTitle>
-            <CardDescription className="text-muted-foreground dark:text-[#c4cce0]">
-              Timed student duels with synchronized rounds, instant feedback, and progression rewards.
-            </CardDescription>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#9ea8c2]">
-              Connection: {connectionState}
-            </p>
-          </CardHeader>
-          <CardContent className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 pb-6">
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Win Rate</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{historyWinRate.toFixed(1)}%</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Matches</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.matchesPlayed || 0}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Best Streak</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{statsData?.bestStreak || 0}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/50 p-3 dark:border-[#30374a] dark:bg-[#11151d]">
-              <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">Avg Response</p>
-              <p className="tabular-nums text-lg font-bold text-foreground dark:text-[#f5f7fb]">{formatResponseTime(statsData?.averageResponseMs || 0)}</p>
-            </div>
-          </CardContent>
-        </Card>
+        
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
-          <TabsList className="w-full md:w-auto rounded-2xl p-1.5">
-            <TabsTrigger value="hub" className="rounded-xl">Hub</TabsTrigger>
-            <TabsTrigger value="setup" className="rounded-xl">Setup</TabsTrigger>
-            <TabsTrigger value="battle" className="rounded-xl">Battle</TabsTrigger>
-            <TabsTrigger value="history" className="rounded-xl">History</TabsTrigger>
-            <TabsTrigger value="stats" className="rounded-xl">My Stats</TabsTrigger>
-            <TabsTrigger value="leaderboard" className="rounded-xl">Leaderboard</TabsTrigger>
-          </TabsList>
+          
 
-            <TabsContent value="hub" className="mt-5">
+            <TabsContent value="hub" className="mt-0 outline-none">
               <motion.div
                 key="hub"
                 initial={{ opacity: 0, y: 12 }}
@@ -1268,259 +1215,690 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
                 className="space-y-5"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setMode('online')}
-                    className="text-left rounded-[18px] border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-accent/40 dark:border-[#333a4e] dark:bg-[#171d2a] dark:hover:border-[#8c7dff] dark:hover:bg-[#202736]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-foreground dark:text-[#f5f7fb] font-semibold">
-                        <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
-                        1v1 Online
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-[#a2abc2]" />
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground dark:text-[#b3bdd5]">Queue or room-code match with another student.</p>
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setMode('bot')}
-                    className="text-left rounded-[18px] border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-accent/40 dark:border-[#333a4e] dark:bg-[#171d2a] dark:hover:border-[#8c7dff] dark:hover:bg-[#202736]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-foreground dark:text-[#f5f7fb] font-semibold">
-                        <Bot className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
-                        1v1 vs Bot
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground dark:text-[#a2abc2]" />
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground dark:text-[#b3bdd5]">Instant solo duel with selectable bot difficulty.</p>
-                  </button>
-                </div>
-
-                <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><History className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Recent Matches</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {statsLoading ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                      </div>
-                    ) : filteredHistory.length === 0 ? (
-                      <p className="text-sm text-muted-foreground dark:text-[#a8b2c9]">No battle history yet. Start your first duel.</p>
-                    ) : (
-                      filteredHistory.slice(0, 5).map((entry) => (
-                        <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between dark:border-[#2f3547] dark:bg-[#11151d]">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-6 sm:gap-8 lg:gap-10">
+                  {/* Left Column: Hero & Battle Modes */}
+                  <div className="space-y-3 lg:space-y-4">
+                    {/* Hero Banner */}
+                    <div className="relative select-none isolate bg-indigo-600 rounded-[2rem] shadow-[0_20px_45px_-15px_rgba(0,0,0,0.3)] shrink-0">
+                      {/* Simple black overlay to darken the specific module color */}
+                      <div className="absolute inset-0 bg-black/60 pointer-events-none z-0 rounded-[2rem]" />
+                      {/* Decorative Textbook Background */}
+                      <div 
+                        className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden" 
+                        style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px)' }}
+                      />
+                      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
+                      
+                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 lg:p-8 h-full min-h-[140px] lg:min-h-[160px]">
+                        <div className="flex-1 space-y-3 w-full pr-0 md:pr-[240px] lg:pr-[280px]">
                           <div>
-                            <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">vs {entry.opponentName}</p>
-                            <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">{entry.subjectId} · {entry.difficulty}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreFor} - {entry.scoreAgainst}</p>
-                            <p
-                              className={cn(
-                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                entry.outcome === 'win'
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                                  : entry.outcome === 'loss'
-                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300'
-                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-                              )}
-                            >
-                              {formatOutcomeChip(entry.outcome)}
+                            <h1 className="flex items-center gap-3 text-3xl sm:text-4xl lg:text-[46px] font-black tracking-tight text-white mb-2 sm:mb-4">
+                              <Swords className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-[#d1abff]" strokeWidth={2.5} />   
+                              Quiz Battle
+                            </h1>
+                            <p className="text-base sm:text-lg lg:text-xl text-white mt-1.5 sm:mt-2 max-w-2xl leading-relaxed">
+                              Timed student duels with synchronized rounds, instant feedback, and progression rewards.
+                            </p>
+                            <p className="text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] text-[#8a7fbc] mt-3">
+                              Connection: <span className={connectionState === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>{connectionState}</span>
                             </p>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
+                        
+                        {/* Enlarged Avatar floating without overflow clipping */}
+                        <div className="hidden md:block absolute right-[-5px] lg:right-[-15px] top-0 lg:top-[5px] w-[200px] lg:w-[260px] shrink-0 pointer-events-none z-20">
+                          <motion.img 
+                             src={quizBattleAvatar} 
+                             alt="Mascot" 
+                             className="w-full h-full object-contain" 
+                             animate={{ y: [0, -24, 0], rotate: [-3, 3, -3] }}
+                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Battle Modes */}
+                    <div className="pt-4 lg:pt-6">
+                      <h2 className="flex items-center gap-2 pb-4 text-xl lg:text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+                        <Swords className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 relative z-10 w-full mb-2">
+                        {/* VS Player Card */}
+                        <motion.button
+                          type="button"
+                          onClick={() => setMode('online')}
+                          whileHover={{ scale: 1.025 }}
+                          whileTap={{ scale: 0.98 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                          className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block flex-col group"
+                        >
+                          {/* Top Highlight border / Inner Shadow effect */}
+                          <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+
+                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
+                            <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
+                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                              VS Player
+                            </div>
+                          </div>
+
+                          <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
+                            {/* Shine Effect */}
+                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+                            
+                            <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
+                              {/* Expanded Full-Width Stage (Dark Purple) */}
+                              <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                              
+                              {/* Animated Avatar Clones (VS Match) */}
+                              <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
+                                {/* Left Avatar */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)]"
+                                  animate={{ y: [0, -5, 0] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                                {/* Center VS */}
+                                <motion.div 
+                                  className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1]"
+                                  animate={{ scale: [1.1, 1.15, 1.1] }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                >
+                                  <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: "1.5px #666" }}>
+                                    <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
+                                  </span>
+                                </motion.div>
+                                {/* Right Avatar (Flipped) */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="h-[120%] sm:h-[125%] object-contain relative z-10 scale-x-[-1] origin-bottom left-[-20px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)]"
+                                  animate={{ y: [0, -4, 0] }}
+                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
+                              <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                                Queue or room-code match with another student.
+                              </p>
+                            </div>
+                          </div>
+                        </motion.button>
+
+                        {/* VS Bot Card */}
+                        <motion.button
+                          type="button"
+                          onClick={() => setMode('bot')}
+                          whileHover={{ scale: 1.025 }}
+                          whileTap={{ scale: 0.98 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                          className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block flex-col group"
+                        >
+                          {/* Top Highlight border / Inner Shadow effect */}
+                          <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+
+                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
+                            <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
+                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                              VS Bot
+                            </div>
+                          </div>
+
+                          <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
+                            {/* Shine Effect */}
+                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+                            
+                            <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
+                              {/* Expanded Full-Width Stage (Dark Blue) */}
+                              <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                              
+                              {/* Ghosting Avatars */}
+                              <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
+                                {/* Left Ghost */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85]"
+                                  animate={{ y: [0, -3, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+                                />
+                                {/* Right Ghost */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="" 
+                                  className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85]"
+                                  animate={{ y: [0, -3, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+                                />
+                                {/* Main Avatar */}
+                                <motion.img 
+                                  src="/avatar/avatar_icon.png" 
+                                  alt="VS Bot" 
+                                  className="relative opacity-100 scale-100 h-[105%] sm:h-[115%] object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] z-20 origin-bottom"
+                                  animate={{ y: [0, -5, 0] }}
+                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
+                              <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                                Instant solo duel with selectable bot difficulty.
+                              </p>
+                            </div>
+                          </div>
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Mini Widgets */}
+                  <div className="space-y-3 lg:space-y-4 flex flex-col h-full justify-between">
+
+                    {/* Hall of Fame Widget Custom Graphic */}
+                    <div onClick={() => setActiveTab('leaderboard')} className="relative w-full h-[155px] sm:h-[165px] cursor-pointer group flex items-end justify-center overflow-visible mt-1 mb-2 scale-[0.75] origin-bottom sm:scale-[0.80] lg:scale-[0.85] lg:origin-center">
+                       <motion.div 
+                          className="relative w-full h-full flex flex-col items-center justify-end"
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                       >
+                           {/* Stars (Moved outside the white-filter to preserve colored glowing effect) */}
+                           <div className="absolute top-[1px] sm:-top-[30px] w-full flex justify-center items-end px-2 z-0">
+                              <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] -rotate-[15deg] -mr-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                              
+                              <motion.div animate={{ y: [-4, 4, -4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="z-10 relative">
+                                <Star strokeWidth={0} fill="currentColor" className="w-[60px] h-[60px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
+                              </motion.div>
+
+                              <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] rotate-[15deg] -ml-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
+                           </div>
+
+                           {/* Add white stroke filter via combined drop-shadows */}
+                           <div className="absolute inset-x-0 bottom-[40px] top-0 z-10 flex flex-col items-center justify-end
+                                           filter drop-shadow-[0px_3px_0px_white] drop-shadow-[0px_-3px_0px_white] drop-shadow-[3px_0px_0px_white] drop-shadow-[-3px_0px_0px_white] drop-shadow-[2px_2px_0px_white] drop-shadow-[-2px_-2px_0px_white] drop-shadow-[2px_-2px_0px_white] drop-shadow-[-2px_2px_0px_white]">
+                               
+                               {/* Podium structure (Flat vector layout) */}
+                               <div className="flex items-end justify-center z-20 relative px-4">
+                                  {/* Left Pillar */}
+                                  <div className="flex flex-col items-center w-[65px] relative">
+                                     <div className="w-full h-[14px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[50px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-1.5 pb-1.5">
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
+                                     </div>
+                                  </div>
+                                  
+                                  {/* Center Pillar */}
+                                  <div className="flex flex-col items-center w-[75px] -mx-[4px] z-20 relative">
+                                     <div className="w-full h-[18px] bg-[#f2812d] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[75px] bg-[#fa9746] rounded-b-[2px] flex flex-col justify-start items-center pt-4 gap-1.5">
+                                        <div className="w-9 h-1.5 bg-white rounded-full opacity-95" />
+                                        <div className="w-9 h-1.5 bg-white rounded-full opacity-95" />
+                                     </div>
+                                  </div>
+                                  
+                                  {/* Right Pillar */}
+                                  <div className="flex flex-col items-center w-[65px] relative">
+                                     <div className="w-full h-[14px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
+                                     <div className="w-[85%] h-[50px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-1.5 pb-1.5">
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
+                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
+                                     </div>
+                                  </div>
+                               </div>
+                           </div>
+
+                           {/* 3D Ribbon / Banner overlapping the bottom of the podium */}
+                           <div className="absolute bottom-2 w-[110%] max-w-[280px] z-30 drop-shadow-2xl">
+                               <div className="relative w-full h-[52px] flex justify-center items-center">
+                                   {/* Left Cutout Flap */}
+                                   <div className="absolute -left-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%, 25% 50%, 0 0)'}}></div>
+                                   {/* Right Cutout Flap */}
+                                   <div className="absolute -right-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%, 75% 50%, 100% 0)'}}></div>
+                                   
+                                   {/* Front Ribbon Face */}
+                                   <div className="absolute inset-x-6 top-0 bottom-0 bg-[#b61515] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),_inset_0_-4px_4px_rgba(0,0,0,0.2)] z-10 flex flex-col items-center justify-center">
+                                       <h3 className="text-lg sm:text-xl font-black text-white tracking-widest leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>Hall of Fame</h3>
+                                       <span className="text-[9px] sm:text-[10px] font-bold text-white/90 tracking-widest mt-0.5">View Page &gt;</span>
+                                   </div>
+                               </div>
+                           </div>
+                       </motion.div>
+                    </div>
+
+                    {/* My Stats Widget (Horizontal Swipe Carousel) */}
+                    <div className="relative w-full bg-[#3b3a82] dark:bg-[#2b2b5f] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_30px_rgba(59,58,130,0.3)]">
+                      {/* Header */}
+                      <div className="flex flex-row items-end justify-between px-5 pt-4 pb-2 relative z-10">
+                        <h3 className="text-[18px] font-black text-white tracking-wide leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>My Stats</h3>
+                        <Button 
+                          variant="link" 
+                          className="text-white/80 hover:text-white p-0 h-auto font-semibold text-[13px] tracking-wide" 
+                          onClick={() => setActiveTab('stats')}
+                        >
+                          View Stats &gt;
+                        </Button>
+                      </div>
+
+                      {/* Content: Continuous Auto-scroll Marquee */}
+                      <div className="relative z-10 w-full overflow-hidden pb-4">
+                        {/* Edge Gradients for smooth fade in/out */}
+                        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
+                        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
+                        
+                        <motion.div 
+                          className="flex w-max pl-3"
+                          animate={{ x: ["0%", "-50%"] }}
+                          transition={{ ease: "linear", duration: 15, repeat: Infinity }}
+                        >
+                          {[0, 1].map((i) => (
+                            <div key={i} className="flex gap-2.5 pr-2.5">
+                              {/* Card 1: Win Rate */}
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#f0eaff] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#d6ccf5]">
+                                <Trophy className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#a06aec]/10 -rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">🏆</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#8f5ae2] leading-none tracking-tight">{Math.round((statsData?.winRate || 0))} %</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#baa4df] uppercase tracking-wider leading-none">Win Rate</p>
+                                </div>
+                              </div>
+
+                              {/* Card 2: Matches */}
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#e1f5f7] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#b0e6eb]">
+                                <Target className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#35a8bc]/10 rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">🎯</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#319ab4] leading-none tracking-tight">{statsData?.matchesPlayed || 0}</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#7eafbe] uppercase tracking-wider leading-none">Matches</p>
+                                </div>
+                              </div>
+
+                              {/* Card 3: Avg. Response */}
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#fef5e7] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#f6ebd2]">
+                                <Clock3 className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#e87a42]/10 -rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">⏱️</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#db734b] leading-none tracking-tight">{statsData?.averageResponseMs ? (statsData.averageResponseMs / 1000).toFixed(1) : 0}s</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#d2a893] uppercase tracking-wider leading-none whitespace-nowrap">Response</p>
+                                </div>
+                              </div>
+
+                              {/* Card 4: Total XP */}
+                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#fdeceb] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#fbd3d3]">
+                                <Sparkles className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#df655a]/10 rotate-12 transition-transform group-hover:scale-110" />
+                                <span className="text-[12px] drop-shadow-sm leading-none">✨</span>
+                                <div className="relative z-10 space-y-[1px]">
+                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#d05c54] leading-none tracking-tight">{studentProfile?.currentXP || 0}</h4>
+                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#dd9a9a] uppercase tracking-wider leading-none whitespace-nowrap">Total XP</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    <Card className={cn(cardFrameClass, 'rounded-[18px] flex flex-col min-h-[200px]')}>
+                      <CardHeader className="pb-0 pt-3 px-4 flex flex-row items-center justify-between">
+                         <CardTitle className="text-[14px] font-black flex items-center gap-2 text-[#2e2b5e] dark:text-[#f5f7fb]">
+                           <History className="h-[16px] w-[16px] text-[#2e2b5e] dark:text-[#9e8fff]" /> Match History
+                         </CardTitle>
+                         <Button variant="link" size="sm" className="h-auto p-0 text-[12px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
+                      </CardHeader>
+                      <CardContent className="space-y-1.5 px-4 pt-1 pb-3 overflow-y-auto">
+                         <div className="text-[11px] text-muted-foreground dark:text-[#8b95ad] mb-1.5 leading-relaxed">
+                           Your recent student battles only.
+                         </div>
+                        {statsLoading ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                          </div>
+                        ) : filteredHistory.length === 0 ? (
+                          <p className="text-xs text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
+                        ) : (
+                          filteredHistory.slice(0, 3).map((entry) => {
+                            const isWin = entry.outcome === 'win';
+                            const isLoss = entry.outcome === 'loss';
+                            
+                            // Generate initials from opponent name (e.g. Practice Bot -> PB)
+                            const initials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
+                            
+                            return (
+                              <div key={entry.matchId} className="group relative overflow-hidden rounded-[14px] border border-muted-foreground/15 bg-white dark:bg-[#11151d] dark:border-[#2f3547] p-2 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md">
+                                {/* Option 2: The Dynamic Background Gradient Fade */}
+                                <div className={cn(
+                                  "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.2] dark:opacity-[0.25] mix-blend-multiply dark:mix-blend-screen transition-all",
+                                  isWin ? "bg-gradient-to-l from-emerald-500 via-emerald-500/40 to-transparent" : 
+                                  isLoss ? "bg-gradient-to-l from-rose-500 via-rose-500/40 to-transparent" : 
+                                  "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
+                                )} />
+                                
+                                <div className="flex items-center gap-2.5 relative z-10 w-full">
+                                  {/* Left Avatar Bubble */}
+                                  <div className={cn(
+                                    "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] tracking-wide text-white flex-shrink-0 shadow-inner",
+                                    isWin ? "bg-[#34d399] dark:bg-[#15803d]" : isLoss ? "bg-[#fb7185] dark:bg-[#be123c]" : "bg-[#fbbf24] dark:bg-[#b45309]" 
+                                  )}>
+                                    {initials}
+                                  </div>
+                                  
+                                  {/* Center Match Details */}
+                                  <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                    <p className="text-[13px] font-extrabold text-[#36326e] dark:text-[#e4e7f1] truncate leading-tight">
+                                      vs {entry.opponentName}
+                                    </p>
+                                    <p className="text-[10px] font-bold text-muted-foreground/60 dark:text-[#7f88a3] truncate flex items-center gap-1 mt-0.5">
+                                      {entry.subjectId} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.rounds || '5'} rnds
+                                    </p>
+                                  </div>
+
+                                  {/* Right Score & Outcome Text */}
+                                  <div className="text-right flex flex-col items-end justify-center pl-2 flex-shrink-0">
+                                    <p className="tabular-nums text-[16px] leading-[1.1] font-black text-[#2e2b5e] dark:text-[#f5f7fb] tracking-tighter">
+                                      {entry.scoreFor}<span className="text-muted-foreground/40 mx-[1px]">-</span>{entry.scoreAgainst}
+                                    </p>   
+                                    <p
+                                      className={cn(
+                                        'text-[9px] font-black uppercase tracking-[0.1em]',
+                                        isWin ? 'text-emerald-500 dark:text-emerald-400' : isLoss ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'
+                                      )}
+                                    >
+                                      {entry.outcome}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </CardContent>
+                    </Card>
+
+                  </div>
+                </div>
+</motion.div>
             </TabsContent>
 
-            <TabsContent value="setup" className="mt-5">
+            <TabsContent value="setup" className="mt-0 outline-none">
               <motion.div
                 key="setup"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
+                className="w-full space-y-6"
               >
-                <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Battle Setup</CardTitle>
-                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                      Configure a student-safe match and start quickly.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Mode</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant={setupConfig.mode === 'online' ? 'default' : 'outline'}
-                            onClick={() => handleSetupModeChange('online')}
-                            className="h-10 rounded-xl"
-                          >
-                            1v1 Online
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={setupConfig.mode === 'bot' ? 'default' : 'outline'}
-                            onClick={() => handleSetupModeChange('bot')}
-                            className="h-10 rounded-xl"
-                          >
-                            1v1 vs Bot
-                          </Button>
-                        </div>
-                      </div>
+                {/* Gamified Header Banner */}
+                <motion.div
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 shadow-lg",
+                    setupConfig.mode === 'online' 
+                      ? "border-purple-500/20 shadow-[0_0_40px_-10px_rgba(138,63,211,0.2)]"
+                      : "border-sky-500/20 shadow-[0_0_40px_-10px_rgba(31,167,225,0.2)]"
+                  )}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  {/* Animated Background Elements */}
+                  <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-r",
+                    setupConfig.mode === 'online'
+                      ? "from-purple-500/20 via-fuchsia-500/10 to-purple-600/5 dark:from-purple-500/20 dark:via-fuchsia-500/10 dark:to-purple-900/10"
+                      : "from-sky-500/20 via-cyan-500/10 to-sky-600/5 dark:from-sky-500/20 dark:via-cyan-500/10 dark:to-sky-900/10"
+                  )} />
+                  
+                  <motion.div 
+                    className={cn("pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl",
+                      setupConfig.mode === 'online' ? "bg-purple-400/20" : "bg-sky-400/20"
+                    )}
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className={cn("pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full blur-2xl",
+                      setupConfig.mode === 'online' ? "bg-fuchsia-400/30" : "bg-cyan-400/30"
+                    )}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                  />
+                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMEgxdjFIMHoiIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPgo8L3N2Zz4=')] opacity-30 dark:opacity-10 mix-blend-overlay" />
+                  
+                  <div className="relative p-6 sm:p-8 md:px-10 flex items-center gap-5 sm:gap-8 z-10">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setActiveTab("hub")} 
+                      className={cn(
+                        "h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-full hover:scale-105 transition-all backdrop-blur-md shadow-lg shrink-0 flex items-center justify-center group",
+                        setupConfig.mode === 'online'
+                          ? "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-purple-500/30"
+                          : "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-sky-500/30"
+                      )}
+                    >
+                      <ChevronRight className={cn("h-6 w-6 sm:h-8 sm:w-8 rotate-180 transition-transform group-hover:-translate-x-0.5",
+                        setupConfig.mode === 'online' ? "text-purple-800 dark:text-purple-300" : "text-sky-800 dark:text-sky-300"
+                      )} />
+                    </Button>
+                    <div>
+                      <h2 className={cn("flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br drop-shadow-sm",
+                        setupConfig.mode === 'online' 
+                          ? "from-purple-600 to-fuchsia-500 dark:from-purple-300 dark:to-fuchsia-200"
+                          : "from-sky-600 to-cyan-500 dark:from-sky-300 dark:to-cyan-200"
+                      )}>
+                        <motion.div
+                          animate={{ y: [-3, 3, -3] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                          className={cn("p-2 rounded-2xl shadow-inner border",
+                            setupConfig.mode === 'online'
+                              ? "bg-purple-100 dark:bg-purple-900/50 border-purple-200 dark:border-purple-700/50"
+                              : "bg-sky-100 dark:bg-sky-900/50 border-sky-200 dark:border-sky-700/50"
+                          )}
+                        >
+                          {setupConfig.mode === 'online' 
+                            ? <Users className="h-8 w-8 text-purple-600 dark:text-purple-400 drop-shadow-[0_0_8px_rgba(138,63,211,0.5)]" /> 
+                            : <Bot className="h-8 w-8 text-sky-600 dark:text-sky-400 drop-shadow-[0_0_8px_rgba(31,167,225,0.5)]" />
+                          }
+                        </motion.div>
+                        {setupConfig.mode === 'online' ? "1v1 Online" : "1v1 vs Bot"}
+                      </h2>
+                      <p className={cn("text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm",
+                        setupConfig.mode === 'online' ? "text-purple-600/80 dark:text-purple-400/80" : "text-sky-600/80 dark:text-sky-400/80"
+                      )}>
+                        {setupConfig.mode === 'online' ? "CHALLENGE YOUR SCHOOLMATES AND PROVE YOUR SKILLS." : "CHALLENGE THE AI AND SHARPEN YOUR SKILLS."}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Category</label>
+                {/* Setup Form Glass Panel */}
+                <div className="rounded-[24px] border border-white/40 bg-white/85 dark:border-white/10 dark:bg-black/80 backdrop-blur-xl p-5 sm:p-7 shadow-xl">
+                  {/* Two Column Layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
+                    
+                    {/* Left Column: Core Settings */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5 group">
+                        <label className={cn(
+                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                        )}>Category</label>
                         <Select
                           value={setupConfig.subjectId}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('subjectId') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                            errorFor('subjectId') && 'border-rose-400')}>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
                             {gradeScopedSubjects.map((entry) => (
-                              <SelectItem key={entry.id} value={entry.id}>{entry.title}</SelectItem>
+                              <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('subjectId')}</p>}
+                        {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Strand / Topic Group</label>
+                      <div className="space-y-1.5 group">
+                        <label className={cn(
+                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                        )}>Strand / Topic Group</label>
                         <Select
                           value={setupConfig.topicId}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('topicId') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                            errorFor('topicId') && 'border-rose-400')}>
                             <SelectValue placeholder="Select topic group" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
                             {moduleOptions.map((entry) => (
-                              <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>
+                              <SelectItem key={entry.value} value={entry.value} className="rounded-lg">{entry.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('topicId')}</p>}
+                        {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('topicId')}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Difficulty</label>
+                      <div className="space-y-1.5 group">
+                        <label className={cn(
+                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                        )}>
+                          {setupConfig.mode === 'online' ? 'Difficulty' : 'Bot Difficulty'}
+                        </label>
                         <Select
-                          value={setupConfig.mode === 'bot' ? setupConfig.botDifficulty : setupConfig.difficulty}
+                          value={setupConfig.mode === 'bot'
+                            ? (setupConfig.adaptiveBot ? 'adaptive' : setupConfig.botDifficulty)
+                            : setupConfig.difficulty}
                           onValueChange={(value) =>
                             setSetupConfig((previous) =>
                               previous.mode === 'bot'
-                                ? { ...previous, botDifficulty: value as QuizBattleSetupConfig['botDifficulty'] }
+                                ? {
+                                  ...previous,
+                                  botDifficulty: value as QuizBattleSetupConfig['botDifficulty'],
+                                  adaptiveBot: value === 'adaptive',
+                                }
                                 : { ...previous, difficulty: value as QuizBattleSetupConfig['difficulty'] },
                             )
                           }
                         >
-                          <SelectTrigger className="rounded-xl">
+                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="easy">Easy</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="hard">Hard</SelectItem>
-                            {setupConfig.mode === 'bot' && <SelectItem value="adaptive">Adaptive</SelectItem>}
+                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                            <SelectItem value="easy" className="rounded-lg">Easy</SelectItem>
+                            <SelectItem value="medium" className="rounded-lg">Medium</SelectItem>
+                            <SelectItem value="hard" className="rounded-lg">Hard</SelectItem>
+                            {setupConfig.mode === 'bot' && <SelectItem value="adaptive" className="rounded-lg">Adaptive</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Number of Questions</label>
-                        <Select
-                          value={String(setupConfig.rounds)}
-                          onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
-                        >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('rounds') && 'border-rose-400')}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[3, 5, 7, 10, 12, 15].map((entry) => (
-                              <SelectItem key={entry} value={String(entry)}>{entry}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('rounds')}</p>}
-                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>Questions</label>
+                          <Select
+                            value={String(setupConfig.rounds)}
+                            onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                              errorFor('rounds') && 'border-rose-400')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              {[3, 5, 7, 10, 12, 15].map((entry) => (
+                                <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('rounds')}</p>}
+                        </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Time per Question</label>
-                        <Select
-                          value={String(setupConfig.timePerQuestionSec)}
-                          onValueChange={(value) =>
-                            setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
-                          }
-                        >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('timePerQuestionSec') && 'border-rose-400')}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[15, 20, 30, 45, 60, 90].map((entry) => (
-                              <SelectItem key={entry} value={String(entry)}>{entry} sec</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('timePerQuestionSec')}</p>}
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1 line-clamp-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>Time / Q</label>
+                          <Select
+                            value={String(setupConfig.timePerQuestionSec)}
+                            onValueChange={(value) =>
+                              setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
+                            }
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                              errorFor('timePerQuestionSec') && 'border-rose-400')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              {[15, 20, 30, 45, 60, 90].map((entry) => (
+                                <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry} sec</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('timePerQuestionSec')}</p>}
+                        </div>
                       </div>
                     </div>
 
-                    <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-between rounded-xl"
-                        >
-                          Advanced settings
-                          <ChevronRight className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-90')} />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3 rounded-xl border border-border bg-muted/40 p-3 space-y-3 dark:border-[#2e364a] dark:bg-[#11151d]">
-                        {setupConfig.mode === 'online' ? (
-                          <div className="space-y-3">
-                            <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Online Match Type</label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {[
-                                { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
-                                { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
-                              ].map((entry) => (
-                                <Button
-                                  key={entry.value}
-                                  type="button"
-                                  variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
-                                  className="rounded-xl h-9"
-                                  onClick={() =>
-                                    setSetupConfig((previous) => ({
-                                      ...previous,
-                                      queueType: entry.value,
-                                    }))
-                                  }
-                                >
-                                  {entry.label}
-                                </Button>
-                              ))}
+                    {/* Right Column: Modes, Extras, and Actions */}
+                    <div className="flex flex-col justify-between space-y-6">
+                      <div className="space-y-5">
+                        {setupConfig.mode === 'online' && (
+                          <div className="space-y-3 rounded-2xl border border-[#8A3FD3]/20 bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 p-4">
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">Online Match Type</label>
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
+                                  { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
+                                ].map((entry) => (
+                                  <Button
+                                    key={entry.value}
+                                    type="button"
+                                    variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
+                                    className={cn(
+                                      "rounded-xl h-11 transition-all border-none font-bold text-xs",
+                                      setupConfig.queueType === entry.value 
+                                        ? "bg-[#8A3FD3] hover:bg-[#7b35c0] text-white shadow-md shadow-[#8A3FD3]/30"
+                                        : "bg-white/50 hover:bg-white/80 dark:bg-black/30 dark:hover:bg-black/50 text-[#8A3FD3] dark:text-[#d3a8ff]"
+                                    )}
+                                    onClick={() =>
+                                      setSetupConfig((previous) => ({
+                                        ...previous,
+                                        queueType: entry.value,
+                                      }))
+                                    }
+                                  >
+                                    {entry.label}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
 
                             {setupConfig.queueType === 'private_room' && (
-                              <div className="space-y-2">
-                                <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="pt-2 space-y-2"
+                              >
+                                <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">
                                   Room Code (optional)
                                 </label>
                                 <Input
@@ -1529,131 +1907,123 @@ const QuizBattlePage: React.FC = () => {
                                     setPrivateRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
                                   }
                                   placeholder="Leave blank to create a room"
-                                  className="rounded-xl uppercase tracking-[0.15em]"
+                                  className="rounded-xl h-12 text-center text-lg uppercase font-bold tracking-[0.25em] border-[#8A3FD3]/30 bg-white/80 dark:bg-black/50 dark:border-[#8A3FD3]/20 focus-visible:ring-[#8A3FD3]/50 shadow-inner"
                                   maxLength={6}
                                 />
-                                <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[13px] font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                                <div className="rounded-xl border border-[#8A3FD3]/30 bg-[#8A3FD3]/10 px-3 py-3 text-[12px] font-semibold text-[#6620a2] leading-snug dark:border-[#8A3FD3]/30 dark:bg-[#8A3FD3]/10 dark:text-[#d3a8ff]">
                                   Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
                                 </div>
-                              </div>
+                              </motion.div>
                             )}
                           </div>
-                        ) : (
-                          <>
-                            <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                              <div>
-                                <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Adaptive Bot</p>
-                                <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Tune response timing and accuracy to your recent trend.</p>
-                              </div>
-                              <Switch
-                                checked={setupConfig.adaptiveBot}
-                                onCheckedChange={(checked) =>
-                                  setSetupConfig((previous) => ({
-                                    ...previous,
-                                    adaptiveBot: checked,
-                                    botDifficulty: checked ? 'adaptive' : previous.botDifficulty === 'adaptive' ? 'medium' : previous.botDifficulty,
-                                  }))
-                                }
-                              />
-                            </label>
-                            <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                              <div className="flex items-center gap-2">
-                                {battleSoundEnabled ? <Volume2 className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Battle Sounds</p>
-                                  <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Play audio cues for countdowns and results.</p>
-                                </div>
-                              </div>
-                              <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
-                            </label>
-                          </>
                         )}
 
-                        {setupConfig.mode === 'online' && (
-                          <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                            <div className="flex items-center gap-2">
-                              {battleSoundEnabled ? <Volume2 className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
-                              <div>
-                                <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Battle Sounds</p>
-                                <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Play audio cues for countdowns and results.</p>
-                              </div>
+                        <label className={cn("flex flex-col sm:flex-row sm:items-center justify-between rounded-[16px] border bg-white/50 p-4 transition-colors cursor-pointer shadow-sm dark:bg-black/50 group",
+                          setupConfig.mode === 'online' ? "border-[#8A3FD3]/20 hover:bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 dark:hover:bg-[#8A3FD3]/10" : "border-[#1FA7E1]/20 hover:bg-[#1FA7E1]/5 dark:border-[#1FA7E1]/20 dark:hover:bg-[#1FA7E1]/10"
+                        )}>
+                          <div className="flex items-center gap-3">
+                            <div className={cn("h-11 w-11 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
+                              setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3] dark:text-[#c48bfc]" : "bg-[#1FA7E1]/10 text-[#1FA7E1] dark:text-[#7ad8ff]"
+                            )}>
+                              {battleSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 opacity-60" />}
                             </div>
-                            <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
-                          </label>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-                      <div aria-live="polite" className="min-h-[24px] text-sm text-muted-foreground dark:text-[#b6bfd5]">
-                        {launchState.status === 'queued' && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            {launchState.message}
-                            {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className={cn(
-                                  'h-7 rounded-full border-amber-300/70 bg-amber-100/80 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-amber-900 hover:bg-amber-200 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25',
-                                  copiedRoomCode === activeRoom.roomCode
-                                    ? 'border-emerald-400/80 bg-emerald-100 text-emerald-900 dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-200'
-                                    : null,
-                                )}
-                                onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
-                                aria-label={`Copy room code ${activeRoom.roomCode}`}
-                              >
-                                {copiedRoomCode === activeRoom.roomCode ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                                {activeRoom.roomCode}
-                              </Button>
-                            )}
-                            {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-[#8c7dff]/20 dark:text-[#c7c0ff]">
-                                Waiting {formatWaitClock(queueWaitSeconds)}
-                              </span>
-                            )}
+                            <div className="mb-3 sm:mb-0">
+                              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Battle Sounds</p>
+                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cues for countdowns and results.</p>
+                            </div>
                           </div>
-                        )}
-                        {launchState.status === 'error' && (
-                          <span className="text-destructive dark:text-rose-300">{launchState.message}</span>
-                        )}
-                        {launchState.status === 'validating' && (
-                          <span className="inline-flex items-center gap-2 text-foreground dark:text-[#d5dcf0]"><Loader2 className="h-4 w-4 animate-spin" /> Validating setup...</span>
-                        )}
+                          <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
+                        </label>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {canCancelOnlineSession && (
+
+                      {/* Action Bar (Pinned to Bottom of Column) */}
+                      <div className="flex flex-col gap-3">
+                        <div aria-live="polite" className="min-h-[24px] text-sm font-medium">
+                          {launchState.status === 'queued' && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={cn("inline-flex items-center gap-1 text-[13px] font-bold px-3 py-1.5 rounded-lg",
+                                setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                              )}>
+                                {launchState.message}
+                              </span>
+                              {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className={cn(
+                                    'h-8 rounded-full border-emerald-500/50 bg-emerald-50 px-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-900 shadow-sm hover:bg-emerald-100 hover:scale-105 transition-all dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20',
+                                    copiedRoomCode === activeRoom.roomCode && 'scale-105 bg-emerald-200 dark:bg-emerald-500/30'
+                                  )}
+                                  onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                                  aria-label={`Copy room code ${activeRoom.roomCode}`}
+                                >
+                                  {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                  {activeRoom.roomCode}
+                                </Button>
+                              )}
+                              {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
+                                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold animate-pulse",
+                                  setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3]" : "bg-[#1FA7E1]/10 text-[#1FA7E1]"
+                                )}>
+                                  Waiting {formatWaitClock(queueWaitSeconds)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {launchState.status === 'error' && (
+                            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/20">
+                              {launchState.message}
+                            </span>
+                          )}
+                          {launchState.status === 'validating' && (
+                            <span className={cn("inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg",
+                              setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                            )}>
+                              <Loader2 className="h-4 w-4 animate-spin" /> Validating...
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          {canCancelOnlineSession && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleCancelOnlineSession}
+                              disabled={launchState.status === 'validating'}
+                              className="rounded-xl h-14 flex-1 sm:flex-none border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-bold px-6"
+                            >
+                              {activeRoom ? 'Cancel room' : 'Leave queue'}
+                            </Button>
+                          )}
                           <Button
                             type="button"
-                            variant="outline"
-                            onClick={handleCancelOnlineSession}
-                            disabled={launchState.status === 'validating'}
-                            className="rounded-xl"
+                            onClick={submitSetup}
+                            disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
+                            className={cn(
+                              "rounded-xl h-14 flex-1 px-8 font-black uppercase tracking-wide text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-white border-0",
+                              setupConfig.mode === 'online'
+                                ? "bg-[#8A3FD3] hover:bg-[#7b35c0] shadow-[#8A3FD3]/40"
+                                : "bg-[#1FA7E1] hover:bg-[#1a95c9] shadow-[#1FA7E1]/40"
+                            )}
                           >
-                            {activeRoom ? 'Cancel room' : 'Leave queue'}
+                            {launchState.status === 'validating' ? (
+                              <span className="inline-flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Starting...</span>
+                            ) : (
+                              setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
+                                ? (privateRoomCodeInput.trim() ? 'Join Room' : 'Create Room')
+                                : 'Start Battle'
+                            )}
                           </Button>
-                        )}
-                        <Button
-                          type="button"
-                          onClick={submitSetup}
-                          disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
-                          className="rounded-xl"
-                        >
-                          {launchState.status === 'validating' ? (
-                            <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Starting...</span>
-                          ) : (
-                            setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
-                              ? (privateRoomCodeInput.trim() ? 'Join room' : 'Create room')
-                              : 'Start battle'
-                          )}
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="battle" className="mt-5">
+            <TabsContent value="battle" className="mt-0 outline-none">
               <motion.div
                 key="battle"
                 initial={{ opacity: 0, y: 12 }}
@@ -1753,12 +2123,27 @@ const QuizBattlePage: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {activeMatch.status === 'ready' && (
-                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                        <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
                           <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
                             {activeMatch.mode === 'online'
                               ? 'Waiting for both players to lock in start...'
                               : 'Starting practice bot round...'}
                           </p>
+                          {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
+                            onClick={() => {
+                              setActiveMatch(null);
+                              setActiveRoom(null);
+                              setQueueActive(false);
+                              setLaunchState({ status: 'idle' });
+                              setActiveTab('setup');
+                            }}
+                          >
+                            Force Cancel
+                          </Button>
                         </div>
                       )}
 
@@ -1768,20 +2153,30 @@ const QuizBattlePage: React.FC = () => {
                             <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
                               Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>
                             </p>
-                            <p className="mt-2 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                              {activeMatch.currentQuestion.prompt}
-                            </p>
                           </div>
+
+                          <p className="text-lg font-bold text-foreground dark:text-[#f5f7fb]">
+                            {activeMatch.currentQuestion.prompt}
+                          </p>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {activeMatch.currentQuestion.choices.map((choice, index) => (
                               <Button
-                                key={`${activeMatch.currentQuestion?.questionId}-${index}`}
+                                key={index}
                                 type="button"
-                                variant={selectedOptionIndex === index ? 'default' : 'outline'}
+                                variant={
+                                  selectedOptionIndex === index
+                                    ? 'default'
+                                    : 'outline'
+                                }
                                 onClick={() => setSelectedOptionIndex(index)}
                                 disabled={answerSubmitting || roundLocked}
-                                className="h-auto min-h-11 rounded-xl justify-start text-left whitespace-normal"
+                                className={cn(
+                                  'h-auto min-h-[48px] justify-start text-left font-medium px-4 py-3 rounded-xl whitespace-normal',
+                                  selectedOptionIndex === index
+                                    ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#0B0F19]'
+                                    : '',
+                                )}
                               >
                                 <span className="mr-2 font-semibold">{String.fromCharCode(65 + index)}.</span>
                                 {choice}
@@ -1877,7 +2272,7 @@ const QuizBattlePage: React.FC = () => {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="history" className="mt-5">
+            <TabsContent value="history" className="mt-0 outline-none">
               <motion.div
                 key="history"
                 initial={{ opacity: 0, y: 12 }}
@@ -1885,6 +2280,50 @@ const QuizBattlePage: React.FC = () => {
                 exit={{ opacity: 0, y: -12 }}
                 className="space-y-4"
               >
+                {/* History Banner */}
+                <motion.div 
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)]")}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:via-teal-500/10 dark:to-teal-900/10" />
+                  
+                  {/* Animated Background Elements */}
+                  <motion.div 
+                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-400/20 blur-2xl"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                  />
+
+                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)] shrink-0">
+                        <ChevronRight className="h-6 w-6 rotate-180 text-emerald-800 dark:text-emerald-300" />
+                      </Button>
+                      <div>
+                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-emerald-600 to-teal-500 dark:from-emerald-300 dark:to-teal-200 drop-shadow-sm">
+                          <motion.div
+                            animate={{ rotate: [-5, 5, -5] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-2xl shadow-inner border border-emerald-200 dark:border-emerald-700/50"
+                          >
+                            <History className="h-8 w-8 text-emerald-600 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                          </motion.div>
+                          Matches History
+                        </h2>
+                        <p className="text-sm font-bold text-emerald-800/80 dark:text-emerald-100/70 mt-2 tracking-wide uppercase">
+                          Review your past duels and track your progress.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
                   <CardHeader>
                     <CardTitle className="text-base">Match History</CardTitle>
@@ -1934,20 +2373,65 @@ const QuizBattlePage: React.FC = () => {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="stats" className="mt-5">
+            <TabsContent value="stats" className="mt-0 outline-none">
               <motion.div
                 key="stats"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"
+                className="space-y-4"
               >
-                {[
-                  {
-                    label: 'Wins',
-                    value: statsData?.wins ?? 0,
-                    icon: Trophy,
-                  },
+                {/* Stats Banner */}
+                <motion.div 
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-indigo-500/20 shadow-[0_0_40px_-10px_rgba(99,102,241,0.2)]")}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-indigo-600/5 dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-purple-900/10" />
+                  
+                  {/* Animated Background Elements */}
+                  <motion.div 
+                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-400/20 blur-2xl"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                  />
+
+                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] shrink-0">
+                        <ChevronRight className="h-6 w-6 rotate-180 text-indigo-800 dark:text-indigo-300" />
+                      </Button>
+                      <div>
+                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-500 dark:from-indigo-300 dark:to-purple-200 drop-shadow-sm">
+                          <motion.div
+                            animate={{ y: [-3, 3, -3] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-2xl shadow-inner border border-indigo-200 dark:border-indigo-700/50"
+                          >
+                            <Target className="h-8 w-8 text-indigo-600 dark:text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                          </motion.div>
+                          My Statistics
+                        </h2>
+                        <p className="text-sm font-bold text-indigo-800/80 dark:text-indigo-100/70 mt-2 tracking-wide uppercase">
+                          Analyzing your battlefield performance.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {[
+                    {
+                      label: 'Wins',
+                      value: statsData?.wins ?? 0,
+                      icon: Trophy,
+                    },
                   {
                     label: 'Current streak',
                     value: statsData?.currentStreak ?? 0,
@@ -1972,19 +2456,67 @@ const QuizBattlePage: React.FC = () => {
                     </CardContent>
                   </Card>
                 ))}
+                </div>
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="leaderboard" className="mt-5">
+            <TabsContent value="leaderboard" className="mt-0 outline-none">
               <motion.div
                 key="leaderboard"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
+                className="space-y-4"
               >
+                {/* Leaderboard Banner */}
+                <motion.div 
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-amber-500/20 shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]")}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-600/5 dark:from-amber-600/20 dark:via-orange-500/10 dark:to-orange-900/10" />
+                  
+                  {/* Animated Background Elements */}
+                  <motion.div 
+                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-400/20 blur-2xl"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  />
+
+                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)] shrink-0">
+                        <ChevronRight className="h-6 w-6 rotate-180 text-amber-800 dark:text-amber-300" />
+                      </Button>
+                      <div>
+                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-amber-600 to-orange-500 dark:from-amber-300 dark:to-orange-200 drop-shadow-sm">
+                          <motion.div
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-2xl shadow-inner border border-amber-200 dark:border-amber-700/50"
+                          >
+                            <Trophy className="h-8 w-8 text-amber-600 dark:text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]" />
+                          </motion.div>
+                          Hall of Fame
+                        </h2>
+                        <p className="text-sm font-bold text-amber-800/80 dark:text-amber-100/70 mt-2 tracking-wide uppercase">
+                          The top-ranked minds across the globe.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
                 <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                
+
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Student Leaderboard</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Hall of Fame</CardTitle>
                     <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
                       Student-only ranking using trusted backend aggregates.
                     </CardDescription>
@@ -2055,7 +2587,8 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
         </Tabs>
       </motion.div>
-    </div>
+      </div>
+    </WarpBackground>
   );
 };
 
