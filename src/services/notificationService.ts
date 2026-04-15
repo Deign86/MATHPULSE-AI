@@ -52,15 +52,28 @@ export const createNotification = async (
       title,
       message,
       read: false,
-      actionUrl,
+      ...(actionUrl ? { actionUrl } : {}),
       createdAt: new Date(),
     };
 
-    await setDoc(notificationRef, {
-      ...notification,
+    const notificationData: Record<string, unknown> = {
+      id: notification.id,
+      userId: notification.userId,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      read: notification.read,
+      createdAt: serverTimestamp(),
       // Backwards compatibility with older cloud-function payloads
       link: actionUrl || null,
-      createdAt: serverTimestamp(),
+    };
+
+    if (actionUrl) {
+      notificationData.actionUrl = actionUrl;
+    }
+
+    await setDoc(notificationRef, {
+      ...notificationData,
     });
 
     return notification;
