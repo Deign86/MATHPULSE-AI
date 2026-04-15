@@ -34,14 +34,14 @@ interface AvatarState {
   accessories: string | null; // Accessories can still be equipped if future items are added
 }
 
-const toAvatarLayers = (equipped: AvatarState) => ({
+const toProfileAvatarLayers = (equipped: AvatarState) => ({
   top: equipped.tops ?? undefined,
   bottom: equipped.bottoms ?? undefined,
   shoes: equipped.shoes ?? undefined,
   accessory: equipped.accessories ?? undefined,
 });
 
-const fromAvatarLayers = (layers?: { top?: string; bottom?: string; shoes?: string; accessory?: string }): AvatarState => ({
+const fromProfileAvatarLayers = (layers?: { top?: string; bottom?: string; shoes?: string; accessory?: string }): AvatarState => ({
   tops: layers?.top ?? 'uniform_blue',
   bottoms: layers?.bottom ?? 'pants_black',
   shoes: layers?.shoes ?? 'shoes_black',
@@ -59,7 +59,7 @@ const AvatarShop: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setEquipped(fromAvatarLayers(userProfile?.avatarLayers));
+    setEquipped(fromProfileAvatarLayers(userProfile?.avatarLayers));
   }, [userProfile?.avatarLayers]);
 
   const handleEquip = (item: ShopItem) => {
@@ -78,7 +78,7 @@ const AvatarShop: React.FC = () => {
     setSaving(true);
     try {
       await updateUserProfile(currentUser.uid, {
-        avatarLayers: toAvatarLayers(equipped),
+        avatarLayers: toProfileAvatarLayers(equipped),
       });
       await refreshProfile();
       toast.success('Avatar saved to your profile.');
