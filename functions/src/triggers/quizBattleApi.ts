@@ -774,8 +774,9 @@ const shouldBlockStartDueToNonAiSource = (params: {
   status: unknown;
   mode: unknown;
   questionSetSource: unknown;
+  requireAiSourceForStart?: boolean;
 }): boolean => {
-  if (!QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START) {
+  if (!(params.requireAiSourceForStart ?? QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START)) {
     return false;
   }
 
