@@ -633,7 +633,7 @@ const StudentCompetencyTable: React.FC<{
       {/* Filter Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 w-full sm:max-w-xs">
-          <label htmlFor="student-search" className="sr-only">Search students</label>
+          <label htmlFor="student-search" className="sr-only">Search for students by name or email</label>
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             id="student-search"
