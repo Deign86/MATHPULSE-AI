@@ -9,6 +9,8 @@ const {
   shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
+  buildStaticFallbackPool,
+  expandStaticFallbackCandidates,
   generateAiQuestionSet,
 } = __quizBattleTestUtils;
 
@@ -22,6 +24,7 @@ const BASE_SETUP = {
   queueType: "public_matchmaking" as const,
   botDifficulty: "medium" as const,
   adaptiveBot: false,
+  sharedPoolMode: "grade_strict" as const,
 };
 
 const snapshotEnv = (): Record<string, string | undefined> => ({
@@ -83,14 +86,14 @@ test("enforces Qwen-only model overrides", () => {
   }
 });
 
-test("requires AI-source gating only for ready online starts", () => {
+test("does not gate ready online starts by AI source when default policy is disabled", () => {
   assert.equal(
     shouldBlockStartDueToNonAiSource({
       status: "ready",
       mode: "online",
       questionSetSource: "bank",
     }),
-    true,
+    false,
   );
 
   assert.equal(
@@ -119,6 +122,71 @@ test("requires AI-source gating only for ready online starts", () => {
     }),
     false,
   );
+});
+
+test("static fallback prefers a pool that can satisfy requested rounds", () => {
+  const selector = {
+    sharedPoolMode: "grade_strict",
+    gradeLevel: 11,
+    curriculumVersionSetId: "shs-core-v1",
+    curriculumVersion: "strengthened",
+    subjectId: "gen-math",
+    topicId: "functions",
+    difficulty: "medium",
+  } as const;
+
+  const strictPool = buildStaticFallbackPool(selector, 3);
+  const strictIds = strictPool.map((entry) => entry.questionId).sort();
+  assert.deepEqual(strictIds, ["qb-gm-01", "qb-gm-02", "qb-gm-03", "qb-gm-04"]);
+
+  const relaxedPool = buildStaticFallbackPool(selector, 2);
+  const relaxedIds = relaxedPool.map((entry) => entry.questionId).sort();
+  assert.deepEqual(relaxedIds, ["qb-gm-03", "qb-gm-04"]);
+});
+
+test("static fallback picks richest staged pool when rounds exceed strict filters", () => {
+  const selector = {
+    sharedPoolMode: "grade_strict",
+    gradeLevel: 11,
+    curriculumVersionSetId: "shs-core-v1",
+    curriculumVersion: "strengthened",
+    subjectId: "gen-math",
+    topicId: "functions",
+    difficulty: "medium",
+  } as const;
+
+  const fallbackPool = buildStaticFallbackPool(selector, 5);
+  const fallbackIds = fallbackPool.map((entry) => entry.questionId).sort();
+  assert.deepEqual(fallbackIds, ["qb-gm-01", "qb-gm-02", "qb-gm-03", "qb-gm-04"]);
+});
+
+test("static fallback expansion deterministically backfills missing rounds", () => {
+  const basePool = [
+    {
+      questionId: "qb-gm-03",
+      prompt: "A value grows from 200 to 260. What is the percent increase?",
+      choices: ["20%", "25%", "30%", "35%"],
+      correctOptionIndex: 2,
+    },
+    {
+      questionId: "qb-gm-04",
+      prompt: "If p -> q is true and p is true, then q is:",
+      choices: ["True", "False", "Unknown", "Contradiction"],
+      correctOptionIndex: 0,
+    },
+  ];
+
+  const expanded = expandStaticFallbackCandidates(basePool, 5);
+  assert.equal(expanded.length, 5);
+  assert.deepEqual(expanded.map((entry) => entry.questionId), [
+    "qb-gm-03",
+    "qb-gm-04",
+    "qb-gm-03-v2",
+    "qb-gm-04-v2",
+    "qb-gm-03-v3",
+  ]);
+  assert.equal(expanded[2]?.prompt.endsWith("(Variant 2)"), true);
+  assert.equal(expanded[4]?.prompt.endsWith("(Variant 3)"), true);
 });
 
 test("does not fall back to bank when AI generation fails", async () => {
