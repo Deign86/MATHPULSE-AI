@@ -93,6 +93,39 @@ const App = () => {
   }
   const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
   const [streak, setStreak] = useState(studentProfile?.streak || 0);
+
+  // App-level Navigation State
+  const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
+
+  const handleStudentNavigation = (tab: string, moduleId?: string) => {
+    if (tab === 'Modules' && isLearningPathLocked) {
+      toast.info(
+        `Complete your deep diagnostic (${pendingDeepDiagnosticCount} outstanding) to unlock modules and regular practice.`,
+      );
+      setDiagnosticAssessmentType('followup_diagnostic');
+      setShowDiagnosticModal(true);
+      setActiveTab('Dashboard');
+      return;
+    }
+
+    if (moduleId) {
+      setTargetModuleId(moduleId);
+    } else if (tab === 'Modules' && activeTab !== 'Modules') { // Only clear if not navigating within modules itself or passing an explicit id doesn't happen
+      setTargetModuleId(null);
+    }
+
+    // Force-collapse Sidebar on Quiz Battle page, restore state upon leaving
+    if (tab === 'Quiz Battle' && activeTab !== 'Quiz Battle') {
+      setSidebarRevertState({ collapsed: isSidebarCollapsed });
+      setIsSidebarCollapsed(true);
+    } else if (activeTab === 'Quiz Battle' && tab !== 'Quiz Battle') {
+      setIsSidebarCollapsed(sidebarRevertState.collapsed);
+    }
+
+    setActiveTab(tab);
+    setIsMobileSidebarOpen(false);
+  };
+
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [xpNotification, setXpNotification] = useState({ show: false, xp: 0, message: '' });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -273,27 +306,6 @@ const App = () => {
   const handleOpenInitialAssessment = () => {
     setDiagnosticAssessmentType('initial_assessment');
     setShowDiagnosticModal(true);
-  };
-
-  const handleStudentNavigation = (tab: string, moduleId?: string) => {
-    if (tab === 'Modules' && isLearningPathLocked) {
-      toast.info(
-        `Complete your deep diagnostic (${pendingDeepDiagnosticCount} outstanding) to unlock modules and regular practice.`,
-      );
-      setDiagnosticAssessmentType('followup_diagnostic');
-      setShowDiagnosticModal(true);
-      setActiveTab('Dashboard');
-      return;
-    }
-
-    if (moduleId) {
-      setTargetModuleId(moduleId);
-    } else if (tab === 'Modules' && activeTab !== 'Modules') { // Only clear if not navigating within modules itself or passing an explicit id doesn't happen
-      setTargetModuleId(null);
-    }
-
-    setActiveTab(tab);
-    setIsMobileSidebarOpen(false);
   };
 
   // Update streak when user logs in (students only)
@@ -872,6 +884,7 @@ const App = () => {
               onLogout={() => setShowLogoutConfirm(true)}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
+              forceCollapsed={activeTab === 'Quiz Battle'}
             />
           </Suspense>
         </div>
