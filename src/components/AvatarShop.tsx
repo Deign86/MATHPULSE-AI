@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Button } from './ui/button';
-import { Save, Shirt, Scissors, Footprints, Crown, Sparkles } from 'lucide-react';
+import { Shirt, Scissors, Footprints, Crown, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from './ui/utils';
+import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
+import { updateUserProfile } from '../services/authService';
 
 // --- Types & Mock Data ---
 type ItemCategory = 'Tops' | 'Bottoms' | 'Shoes' | 'Accessories';
@@ -31,13 +34,33 @@ interface AvatarState {
   accessories: string | null; // Accessories can still be equipped if future items are added
 }
 
+const toAvatarLayers = (equipped: AvatarState) => ({
+  top: equipped.tops ?? undefined,
+  bottom: equipped.bottoms ?? undefined,
+  shoes: equipped.shoes ?? undefined,
+  accessory: equipped.accessories ?? undefined,
+});
+
+const fromAvatarLayers = (layers?: { top?: string; bottom?: string; shoes?: string; accessory?: string }): AvatarState => ({
+  tops: layers?.top ?? 'uniform_blue',
+  bottoms: layers?.bottom ?? 'pants_black',
+  shoes: layers?.shoes ?? 'shoes_black',
+  accessories: layers?.accessory ?? null,
+});
+
 const AvatarShop: React.FC = () => {
+  const { currentUser, userProfile, refreshProfile } = useAuth();
   const [equipped, setEquipped] = useState<AvatarState>({
     tops: 'uniform_blue',
     bottoms: 'pants_black',
     shoes: 'shoes_black',
     accessories: null, 
   });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setEquipped(fromAvatarLayers(userProfile?.avatarLayers));
+  }, [userProfile?.avatarLayers]);
 
   const handleEquip = (item: ShopItem) => {
     setEquipped((prev) => ({
@@ -46,8 +69,25 @@ const AvatarShop: React.FC = () => {
     }));
   };
 
-  const handleSave = () => {
-    console.log("Saving Avatar Config:", JSON.stringify(equipped, null, 2));
+  const handleSave = async () => {
+    if (!currentUser?.uid) {
+      toast.error('Please sign in to save avatar changes.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateUserProfile(currentUser.uid, {
+        avatarLayers: toAvatarLayers(equipped),
+      });
+      await refreshProfile();
+      toast.success('Avatar saved to your profile.');
+    } catch (error) {
+      console.error('Failed to save avatar config:', error);
+      toast.error('Unable to save avatar right now.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const categories = ['Tops', 'Bottoms', 'Shoes', 'Accessories'];
@@ -253,10 +293,18 @@ const AvatarShop: React.FC = () => {
               size="lg"
                 className="relative w-full bg-blue-600 hover:bg-blue-500 text-white font-black h-[72px] rounded-2xl shadow-[0_10px_30px_-10px_rgba(37,99,235,0.6)] text-lg sm:text-xl transition-all hover:-translate-y-1 active:scale-95 group overflow-hidden border border-blue-500"
                 onClick={handleSave}
+                disabled={saving}
               >
                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  Save Profile Avatar
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Profile Avatar'
+                  )}
                 </span>
             </Button>
 
