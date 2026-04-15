@@ -71,7 +71,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
@@ -153,7 +152,6 @@ const QuizBattlePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [launchState, setLaunchState] = useState<LaunchState>({ status: 'idle' });
   const [queueActive, setQueueActive] = useState(false);
   const [activeRoom, setActiveRoom] = useState<QuizBattlePrivateRoomState | null>(null);
@@ -978,24 +976,6 @@ const QuizBattlePage: React.FC = () => {
     setActiveTab('setup');
   };
 
-  const handleSetupModeChange = (mode: QuizBattleMode) => {
-    setSetupErrors([]);
-    setLaunchState({ status: 'idle' });
-    setQueueActive(false);
-    setActiveRoom(null);
-    setPrivateRoomCodeInput('');
-    setActiveMatch(null);
-    setLastRoundResult(null);
-    setSelectedOptionIndex(null);
-    setRoundLocked(false);
-    setQueueWaitSeconds(0);
-    setSetupConfig((previous) => ({
-      ...previous,
-      mode,
-      queueType: mode === 'online' ? previous.queueType : 'public_matchmaking',
-    }));
-  };
-
   const handleCancelOnlineSession = async () => {
     setLaunchState({ status: 'validating' });
 
@@ -1594,190 +1574,274 @@ const QuizBattlePage: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="setup" className="mt-0 outline-none">
-              <Button 
-                variant="ghost" 
-                onClick={() => setActiveTab("hub")} 
-                className="mb-5 h-11 w-11 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-primary/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] shrink-0 flex items-center justify-center group"
-              >
-                <ChevronRight className="h-5 w-5 rotate-180 text-primary dark:text-[#9e8fff] transition-transform group-hover:-translate-x-0.5" />
-              </Button>
               <motion.div
                 key="setup"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
+                className="w-full space-y-6"
               >
-                <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Battle Setup</CardTitle>
-                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                      Configure a student-safe match and start quickly.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Mode</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant={setupConfig.mode === 'online' ? 'default' : 'outline'}
-                            onClick={() => handleSetupModeChange('online')}
-                            className="h-10 rounded-xl"
-                          >
-                            1v1 Online
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={setupConfig.mode === 'bot' ? 'default' : 'outline'}
-                            onClick={() => handleSetupModeChange('bot')}
-                            className="h-10 rounded-xl"
-                          >
-                            1v1 vs Bot
-                          </Button>
-                        </div>
-                      </div>
+                {/* Gamified Header Banner */}
+                <motion.div
+                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 shadow-lg",
+                    setupConfig.mode === 'online' 
+                      ? "border-purple-500/20 shadow-[0_0_40px_-10px_rgba(138,63,211,0.2)]"
+                      : "border-sky-500/20 shadow-[0_0_40px_-10px_rgba(31,167,225,0.2)]"
+                  )}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  {/* Animated Background Elements */}
+                  <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-r",
+                    setupConfig.mode === 'online'
+                      ? "from-purple-500/20 via-fuchsia-500/10 to-purple-600/5 dark:from-purple-500/20 dark:via-fuchsia-500/10 dark:to-purple-900/10"
+                      : "from-sky-500/20 via-cyan-500/10 to-sky-600/5 dark:from-sky-500/20 dark:via-cyan-500/10 dark:to-sky-900/10"
+                  )} />
+                  
+                  <motion.div 
+                    className={cn("pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl",
+                      setupConfig.mode === 'online' ? "bg-purple-400/20" : "bg-sky-400/20"
+                    )}
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className={cn("pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full blur-2xl",
+                      setupConfig.mode === 'online' ? "bg-fuchsia-400/30" : "bg-cyan-400/30"
+                    )}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                  />
+                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMEgxdjFIMHoiIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPgo8L3N2Zz4=')] opacity-30 dark:opacity-10 mix-blend-overlay" />
+                  
+                  <div className="relative p-6 sm:p-8 md:px-10 flex items-center gap-5 sm:gap-8 z-10">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setActiveTab("hub")} 
+                      className={cn(
+                        "h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-full hover:scale-105 transition-all backdrop-blur-md shadow-lg shrink-0 flex items-center justify-center group",
+                        setupConfig.mode === 'online'
+                          ? "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-purple-500/30"
+                          : "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-sky-500/30"
+                      )}
+                    >
+                      <ChevronRight className={cn("h-6 w-6 sm:h-8 sm:w-8 rotate-180 transition-transform group-hover:-translate-x-0.5",
+                        setupConfig.mode === 'online' ? "text-purple-800 dark:text-purple-300" : "text-sky-800 dark:text-sky-300"
+                      )} />
+                    </Button>
+                    <div>
+                      <h2 className={cn("flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br drop-shadow-sm",
+                        setupConfig.mode === 'online' 
+                          ? "from-purple-600 to-fuchsia-500 dark:from-purple-300 dark:to-fuchsia-200"
+                          : "from-sky-600 to-cyan-500 dark:from-sky-300 dark:to-cyan-200"
+                      )}>
+                        <motion.div
+                          animate={{ y: [-3, 3, -3] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                          className={cn("p-2 rounded-2xl shadow-inner border",
+                            setupConfig.mode === 'online'
+                              ? "bg-purple-100 dark:bg-purple-900/50 border-purple-200 dark:border-purple-700/50"
+                              : "bg-sky-100 dark:bg-sky-900/50 border-sky-200 dark:border-sky-700/50"
+                          )}
+                        >
+                          {setupConfig.mode === 'online' 
+                            ? <Users className="h-8 w-8 text-purple-600 dark:text-purple-400 drop-shadow-[0_0_8px_rgba(138,63,211,0.5)]" /> 
+                            : <Bot className="h-8 w-8 text-sky-600 dark:text-sky-400 drop-shadow-[0_0_8px_rgba(31,167,225,0.5)]" />
+                          }
+                        </motion.div>
+                        {setupConfig.mode === 'online' ? "1v1 Online" : "1v1 vs Bot"}
+                      </h2>
+                      <p className={cn("text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm",
+                        setupConfig.mode === 'online' ? "text-purple-600/80 dark:text-purple-400/80" : "text-sky-600/80 dark:text-sky-400/80"
+                      )}>
+                        {setupConfig.mode === 'online' ? "CHALLENGE YOUR SCHOOLMATES AND PROVE YOUR SKILLS." : "CHALLENGE THE AI AND SHARPEN YOUR SKILLS."}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Category</label>
+                {/* Setup Form Glass Panel */}
+                <div className="rounded-[24px] border border-white/40 bg-white/85 dark:border-white/10 dark:bg-black/80 backdrop-blur-xl p-5 sm:p-7 shadow-xl">
+                  {/* Two Column Layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
+                    
+                    {/* Left Column: Core Settings */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5 group">
+                        <label className={cn(
+                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                        )}>Category</label>
                         <Select
                           value={setupConfig.subjectId}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('subjectId') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                            errorFor('subjectId') && 'border-rose-400')}>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
                             {gradeScopedSubjects.map((entry) => (
-                              <SelectItem key={entry.id} value={entry.id}>{entry.title}</SelectItem>
+                              <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('subjectId')}</p>}
+                        {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Strand / Topic Group</label>
+                      <div className="space-y-1.5 group">
+                        <label className={cn(
+                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                        )}>Strand / Topic Group</label>
                         <Select
                           value={setupConfig.topicId}
                           onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
                         >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('topicId') && 'border-rose-400')}>
+                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                            errorFor('topicId') && 'border-rose-400')}>
                             <SelectValue placeholder="Select topic group" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
                             {moduleOptions.map((entry) => (
-                              <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>
+                              <SelectItem key={entry.value} value={entry.value} className="rounded-lg">{entry.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('topicId')}</p>}
+                        {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('topicId')}</p>}
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Difficulty</label>
+                      <div className="space-y-1.5 group">
+                        <label className={cn(
+                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                        )}>
+                          {setupConfig.mode === 'online' ? 'Difficulty' : 'Bot Difficulty'}
+                        </label>
                         <Select
-                          value={setupConfig.mode === 'bot' ? setupConfig.botDifficulty : setupConfig.difficulty}
+                          value={setupConfig.mode === 'bot'
+                            ? (setupConfig.adaptiveBot ? 'adaptive' : setupConfig.botDifficulty)
+                            : setupConfig.difficulty}
                           onValueChange={(value) =>
                             setSetupConfig((previous) =>
                               previous.mode === 'bot'
-                                ? { ...previous, botDifficulty: value as QuizBattleSetupConfig['botDifficulty'] }
+                                ? {
+                                  ...previous,
+                                  botDifficulty: value as QuizBattleSetupConfig['botDifficulty'],
+                                  adaptiveBot: value === 'adaptive',
+                                }
                                 : { ...previous, difficulty: value as QuizBattleSetupConfig['difficulty'] },
                             )
                           }
                         >
-                          <SelectTrigger className="rounded-xl">
+                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="easy">Easy</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="hard">Hard</SelectItem>
-                            {setupConfig.mode === 'bot' && <SelectItem value="adaptive">Adaptive</SelectItem>}
+                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                            <SelectItem value="easy" className="rounded-lg">Easy</SelectItem>
+                            <SelectItem value="medium" className="rounded-lg">Medium</SelectItem>
+                            <SelectItem value="hard" className="rounded-lg">Hard</SelectItem>
+                            {setupConfig.mode === 'bot' && <SelectItem value="adaptive" className="rounded-lg">Adaptive</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Number of Questions</label>
-                        <Select
-                          value={String(setupConfig.rounds)}
-                          onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
-                        >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('rounds') && 'border-rose-400')}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[3, 5, 7, 10, 12, 15].map((entry) => (
-                              <SelectItem key={entry} value={String(entry)}>{entry}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('rounds')}</p>}
-                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>Questions</label>
+                          <Select
+                            value={String(setupConfig.rounds)}
+                            onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                              errorFor('rounds') && 'border-rose-400')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              {[3, 5, 7, 10, 12, 15].map((entry) => (
+                                <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('rounds')}</p>}
+                        </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Time per Question</label>
-                        <Select
-                          value={String(setupConfig.timePerQuestionSec)}
-                          onValueChange={(value) =>
-                            setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
-                          }
-                        >
-                          <SelectTrigger className={cn('rounded-xl', errorFor('timePerQuestionSec') && 'border-rose-400')}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[15, 20, 30, 45, 60, 90].map((entry) => (
-                              <SelectItem key={entry} value={String(entry)}>{entry} sec</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300">{errorFor('timePerQuestionSec')}</p>}
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1 line-clamp-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>Time / Q</label>
+                          <Select
+                            value={String(setupConfig.timePerQuestionSec)}
+                            onValueChange={(value) =>
+                              setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
+                            }
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                              errorFor('timePerQuestionSec') && 'border-rose-400')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              {[15, 20, 30, 45, 60, 90].map((entry) => (
+                                <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry} sec</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('timePerQuestionSec')}</p>}
+                        </div>
                       </div>
                     </div>
 
-                    <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-between rounded-xl"
-                        >
-                          Advanced settings
-                          <ChevronRight className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-90')} />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3 rounded-xl border border-border bg-muted/40 p-3 space-y-3 dark:border-[#2e364a] dark:bg-[#11151d]">
-                        {setupConfig.mode === 'online' ? (
-                          <div className="space-y-3">
-                            <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">Online Match Type</label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {[
-                                { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
-                                { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
-                              ].map((entry) => (
-                                <Button
-                                  key={entry.value}
-                                  type="button"
-                                  variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
-                                  className="rounded-xl h-9"
-                                  onClick={() =>
-                                    setSetupConfig((previous) => ({
-                                      ...previous,
-                                      queueType: entry.value,
-                                    }))
-                                  }
-                                >
-                                  {entry.label}
-                                </Button>
-                              ))}
+                    {/* Right Column: Modes, Extras, and Actions */}
+                    <div className="flex flex-col justify-between space-y-6">
+                      <div className="space-y-5">
+                        {setupConfig.mode === 'online' && (
+                          <div className="space-y-3 rounded-2xl border border-[#8A3FD3]/20 bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 p-4">
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">Online Match Type</label>
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
+                                  { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
+                                ].map((entry) => (
+                                  <Button
+                                    key={entry.value}
+                                    type="button"
+                                    variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
+                                    className={cn(
+                                      "rounded-xl h-11 transition-all border-none font-bold text-xs",
+                                      setupConfig.queueType === entry.value 
+                                        ? "bg-[#8A3FD3] hover:bg-[#7b35c0] text-white shadow-md shadow-[#8A3FD3]/30"
+                                        : "bg-white/50 hover:bg-white/80 dark:bg-black/30 dark:hover:bg-black/50 text-[#8A3FD3] dark:text-[#d3a8ff]"
+                                    )}
+                                    onClick={() =>
+                                      setSetupConfig((previous) => ({
+                                        ...previous,
+                                        queueType: entry.value,
+                                      }))
+                                    }
+                                  >
+                                    {entry.label}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
 
                             {setupConfig.queueType === 'private_room' && (
-                              <div className="space-y-2">
-                                <label className="text-xs font-semibold text-foreground dark:text-[#c7cfe3]">
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="pt-2 space-y-2"
+                              >
+                                <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">
                                   Room Code (optional)
                                 </label>
                                 <Input
@@ -1786,127 +1850,119 @@ const QuizBattlePage: React.FC = () => {
                                     setPrivateRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
                                   }
                                   placeholder="Leave blank to create a room"
-                                  className="rounded-xl uppercase tracking-[0.15em]"
+                                  className="rounded-xl h-12 text-center text-lg uppercase font-bold tracking-[0.25em] border-[#8A3FD3]/30 bg-white/80 dark:bg-black/50 dark:border-[#8A3FD3]/20 focus-visible:ring-[#8A3FD3]/50 shadow-inner"
                                   maxLength={6}
                                 />
-                                <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[13px] font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                                <div className="rounded-xl border border-[#8A3FD3]/30 bg-[#8A3FD3]/10 px-3 py-3 text-[12px] font-semibold text-[#6620a2] leading-snug dark:border-[#8A3FD3]/30 dark:bg-[#8A3FD3]/10 dark:text-[#d3a8ff]">
                                   Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
                                 </div>
-                              </div>
+                              </motion.div>
                             )}
                           </div>
-                        ) : (
-                          <>
-                            <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                              <div>
-                                <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Adaptive Bot</p>
-                                <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Tune response timing and accuracy to your recent trend.</p>
-                              </div>
-                              <Switch
-                                checked={setupConfig.adaptiveBot}
-                                onCheckedChange={(checked) =>
-                                  setSetupConfig((previous) => ({
-                                    ...previous,
-                                    adaptiveBot: checked,
-                                    botDifficulty: checked ? 'adaptive' : previous.botDifficulty === 'adaptive' ? 'medium' : previous.botDifficulty,
-                                  }))
-                                }
-                              />
-                            </label>
-                            <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                              <div className="flex items-center gap-2">
-                                {battleSoundEnabled ? <Volume2 className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Battle Sounds</p>
-                                  <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Play audio cues for countdowns and results.</p>
-                                </div>
-                              </div>
-                              <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
-                            </label>
-                          </>
                         )}
 
-                        {setupConfig.mode === 'online' && (
-                          <label className="flex items-center justify-between rounded-xl border border-border bg-card p-3 dark:border-[#2f3547] dark:bg-[#171d2a]">
-                            <div className="flex items-center gap-2">
-                              {battleSoundEnabled ? <Volume2 className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
-                              <div>
-                                <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">Battle Sounds</p>
-                                <p className="text-xs text-muted-foreground dark:text-[#a9b3ca]">Play audio cues for countdowns and results.</p>
-                              </div>
+                        <label className={cn("flex flex-col sm:flex-row sm:items-center justify-between rounded-[16px] border bg-white/50 p-4 transition-colors cursor-pointer shadow-sm dark:bg-black/50 group",
+                          setupConfig.mode === 'online' ? "border-[#8A3FD3]/20 hover:bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 dark:hover:bg-[#8A3FD3]/10" : "border-[#1FA7E1]/20 hover:bg-[#1FA7E1]/5 dark:border-[#1FA7E1]/20 dark:hover:bg-[#1FA7E1]/10"
+                        )}>
+                          <div className="flex items-center gap-3">
+                            <div className={cn("h-11 w-11 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
+                              setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3] dark:text-[#c48bfc]" : "bg-[#1FA7E1]/10 text-[#1FA7E1] dark:text-[#7ad8ff]"
+                            )}>
+                              {battleSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 opacity-60" />}
                             </div>
-                            <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
-                          </label>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-                      <div aria-live="polite" className="min-h-[24px] text-sm text-muted-foreground dark:text-[#b6bfd5]">
-                        {launchState.status === 'queued' && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            {launchState.message}
-                            {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className={cn(
-                                  'h-7 rounded-full border-amber-300/70 bg-amber-100/80 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-amber-900 hover:bg-amber-200 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25',
-                                  copiedRoomCode === activeRoom.roomCode
-                                    ? 'border-emerald-400/80 bg-emerald-100 text-emerald-900 dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-200'
-                                    : null,
-                                )}
-                                onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
-                                aria-label={`Copy room code ${activeRoom.roomCode}`}
-                              >
-                                {copiedRoomCode === activeRoom.roomCode ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                                {activeRoom.roomCode}
-                              </Button>
-                            )}
-                            {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-[#8c7dff]/20 dark:text-[#c7c0ff]">
-                                Waiting {formatWaitClock(queueWaitSeconds)}
-                              </span>
-                            )}
+                            <div className="mb-3 sm:mb-0">
+                              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Battle Sounds</p>
+                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cues for countdowns and results.</p>
+                            </div>
                           </div>
-                        )}
-                        {launchState.status === 'error' && (
-                          <span className="text-destructive dark:text-rose-300">{launchState.message}</span>
-                        )}
-                        {launchState.status === 'validating' && (
-                          <span className="inline-flex items-center gap-2 text-foreground dark:text-[#d5dcf0]"><Loader2 className="h-4 w-4 animate-spin" /> Validating setup...</span>
-                        )}
+                          <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
+                        </label>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {canCancelOnlineSession && (
+
+                      {/* Action Bar (Pinned to Bottom of Column) */}
+                      <div className="flex flex-col gap-3">
+                        <div aria-live="polite" className="min-h-[24px] text-sm font-medium">
+                          {launchState.status === 'queued' && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={cn("inline-flex items-center gap-1 text-[13px] font-bold px-3 py-1.5 rounded-lg",
+                                setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                              )}>
+                                {launchState.message}
+                              </span>
+                              {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className={cn(
+                                    'h-8 rounded-full border-emerald-500/50 bg-emerald-50 px-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-900 shadow-sm hover:bg-emerald-100 hover:scale-105 transition-all dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20',
+                                    copiedRoomCode === activeRoom.roomCode && 'scale-105 bg-emerald-200 dark:bg-emerald-500/30'
+                                  )}
+                                  onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                                  aria-label={`Copy room code ${activeRoom.roomCode}`}
+                                >
+                                  {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                  {activeRoom.roomCode}
+                                </Button>
+                              )}
+                              {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
+                                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold animate-pulse",
+                                  setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3]" : "bg-[#1FA7E1]/10 text-[#1FA7E1]"
+                                )}>
+                                  Waiting {formatWaitClock(queueWaitSeconds)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {launchState.status === 'error' && (
+                            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/20">
+                              {launchState.message}
+                            </span>
+                          )}
+                          {launchState.status === 'validating' && (
+                            <span className={cn("inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg",
+                              setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                            )}>
+                              <Loader2 className="h-4 w-4 animate-spin" /> Validating...
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          {canCancelOnlineSession && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleCancelOnlineSession}
+                              disabled={launchState.status === 'validating'}
+                              className="rounded-xl h-14 flex-1 sm:flex-none border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-bold px-6"
+                            >
+                              {activeRoom ? 'Cancel room' : 'Leave queue'}
+                            </Button>
+                          )}
                           <Button
                             type="button"
-                            variant="outline"
-                            onClick={handleCancelOnlineSession}
-                            disabled={launchState.status === 'validating'}
-                            className="rounded-xl"
+                            onClick={submitSetup}
+                            disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
+                            className={cn(
+                              "rounded-xl h-14 flex-1 px-8 font-black uppercase tracking-wide text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-white border-0",
+                              setupConfig.mode === 'online'
+                                ? "bg-[#8A3FD3] hover:bg-[#7b35c0] shadow-[#8A3FD3]/40"
+                                : "bg-[#1FA7E1] hover:bg-[#1a95c9] shadow-[#1FA7E1]/40"
+                            )}
                           >
-                            {activeRoom ? 'Cancel room' : 'Leave queue'}
+                            {launchState.status === 'validating' ? (
+                              <span className="inline-flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Starting...</span>
+                            ) : (
+                              setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
+                                ? (privateRoomCodeInput.trim() ? 'Join Room' : 'Create Room')
+                                : 'Start Battle'
+                            )}
                           </Button>
-                        )}
-                        <Button
-                          type="button"
-                          onClick={submitSetup}
-                          disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
-                          className="rounded-xl"
-                        >
-                          {launchState.status === 'validating' ? (
-                            <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Starting...</span>
-                          ) : (
-                            setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
-                              ? (privateRoomCodeInput.trim() ? 'Join room' : 'Create room')
-                              : 'Start battle'
-                          )}
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
             </TabsContent>
 
