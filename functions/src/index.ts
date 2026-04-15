@@ -25,7 +25,7 @@
 
 /*
 MIGRATION SUMMARY:
-- Upgraded firebase-functions 4.9.0 -> 5.1.0
+ - Upgraded firebase-functions 4.9.0 -> ^5.1.0 (lockfile currently 5.1.1)
 - Runtime: nodejs20 -> nodejs22 (firebase.json)
 - functions.config() not used in current codebase -> not a direct blocker for firebase-functions 7.x
 - Deploy: firebase deploy --only functions
