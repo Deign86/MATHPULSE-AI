@@ -537,9 +537,11 @@ const QuizBattlePage: React.FC = () => {
     if (typeof window === 'undefined') return undefined;
 
     const syncViewport = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       setViewportSize({
-        width: Math.max(window.innerWidth, 1),
-        height: Math.max(window.innerHeight, 1),
+        width: Number.isFinite(width) && width > 0 ? width : DEFAULT_VIEWPORT_SIZE.width,
+        height: Number.isFinite(height) && height > 0 ? height : DEFAULT_VIEWPORT_SIZE.height,
       });
     };
 
@@ -1388,9 +1390,13 @@ const QuizBattlePage: React.FC = () => {
                 onClick={() => {
                   if (typeof document === 'undefined') return;
                   if (document.fullscreenElement) {
-                     document.exitFullscreen().catch(()=>{});
+                    document.exitFullscreen().catch((error) => {
+                      console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
+                    });
                   } else {
-                     document.documentElement.requestFullscreen().catch(()=>{});
+                    document.documentElement.requestFullscreen().catch((error) => {
+                      console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
+                    });
                   }
                 }}
                 aria-label={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
