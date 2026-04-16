@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { 
-  Search, Plus, Upload, CheckCircle, FileText, Trash2, 
-  Video, HelpCircle, Edit3, Copy,
-  BookOpen, Users, Loader2, RefreshCw, X
+  Search, Plus, CheckCircle, FileText, Trash2,
+  Video, HelpCircle, Edit3,
+  BookOpen, Users, Loader2, RefreshCw
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -34,6 +34,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
+type ModuleFormData = Omit<ContentModule, 'id' | 'created'>;
+
 const AdminContent: React.FC = () => {
   const { userProfile } = useAuth();
   const [modules, setModules] = useState<ContentModule[]>([]);
@@ -47,14 +49,13 @@ const AdminContent: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pendingDeleteModule, setPendingDeleteModule] = useState<ContentModule | null>(null);
   const [editingModule, setEditingModule] = useState<ContentModule | null>(null);
-  const [formData, setFormData] = useState<Omit<ContentModule, 'id'>>({
+  const [formData, setFormData] = useState<ModuleFormData>({
     title: '',
     subject: '',
     type: 'Video',
     difficulty: 'Beginner',
     status: 'Draft',
     assigned: 0,
-    created: new Date().toLocaleDateString(),
   });
 
   const loadModules = useCallback(async () => {
@@ -82,7 +83,6 @@ const AdminContent: React.FC = () => {
       difficulty: 'Beginner',
       status: 'Draft',
       assigned: 0,
-      created: new Date().toLocaleDateString(),
     });
     setIsModalOpen(true);
   };
@@ -96,7 +96,6 @@ const AdminContent: React.FC = () => {
       difficulty: mod.difficulty,
       status: mod.status,
       assigned: mod.assigned,
-      created: mod.created,
     });
     setIsModalOpen(true);
   };
@@ -296,38 +295,37 @@ const AdminContent: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3">
-          <select 
-            className="px-3 py-2 rounded-lg border border-[#dde3eb] bg-white text-sm font-medium text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-          >
-            <option>All Types</option>
-            <option>Video</option>
-            <option>Quiz</option>
-            <option>Document</option>
-          </select>
-          <select 
-            className="px-3 py-2 rounded-lg border border-[#dde3eb] bg-white text-sm font-medium text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option>All Status</option>
-            <option>Published</option>
-            <option>Draft</option>
-            <option>Archived</option>
-          </select>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All Types">All Types</SelectItem>
+              <SelectItem value="Video">Video</SelectItem>
+              <SelectItem value="Quiz">Quiz</SelectItem>
+              <SelectItem value="Document">Document</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All Status">All Status</SelectItem>
+              <SelectItem value="Published">Published</SelectItem>
+              <SelectItem value="Draft">Draft</SelectItem>
+              <SelectItem value="Archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Modules List */}
-      <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left border-collapse">
           <thead>
             <tr className="bg-[#edf1f7] border-b border-[#dde3eb]">
-              <th className="p-4 w-10">
-                <input type="checkbox" className="rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500" />
-              </th>
               <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Module</th>
               <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Type</th>
               <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Difficulty</th>
@@ -339,10 +337,7 @@ const AdminContent: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-[#dde3eb]">
             {filteredModules.map((module) => (
-              <tr key={module.id} className="hover:bg-[#edf1f7] transition-colors group">
-                <td className="p-4">
-                  <input type="checkbox" className="rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500" />
-                </td>
+              <tr key={module.id} className="hover:bg-[#edf1f7] transition-colors">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${module.type === 'Video' ? 'bg-sky-100 text-sky-600' : module.type === 'Quiz' ? 'bg-teal-100 text-teal-600' : 'bg-[#edf1f7] text-[#5a6578]'}`}>
@@ -376,18 +371,22 @@ const AdminContent: React.FC = () => {
                   </div>
                 </td>
                 <td className="p-4 text-sm text-[#5a6578]">
-                  {module.created}
+                  {module.created || 'Unknown'}
                 </td>
                 <td className="p-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-2">
                     <button
+                      type="button"
                       onClick={() => handleOpenEdit(module)}
+                      aria-label={`Edit module ${module.title}`}
                       className="p-2 hover:bg-[#dde3eb] rounded-lg text-[#5a6578] hover:text-sky-600 transition-colors"
                     >
                       <Edit3 size={16} />
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDelete(module)}
+                      aria-label={`Delete module ${module.title}`}
                       className="p-2 hover:bg-red-50 rounded-lg text-[#5a6578] hover:text-red-600 transition-colors"
                     >
                       <Trash2 size={16} />
@@ -418,27 +417,27 @@ const AdminContent: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label className="text-right text-sm font-medium text-[#0a1628]">Title</label>
+            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Title</label>
               <Input
                 value={formData.title}
                 onChange={e => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Module title"
-                className="col-span-3"
+                className="sm:col-span-3"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label className="text-right text-sm font-medium text-[#0a1628]">Subject</label>
+            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Subject</label>
               <Input
                 value={formData.subject}
                 onChange={e => setFormData({ ...formData, subject: e.target.value })}
                 placeholder="e.g. Algebra, Calculus"
-                className="col-span-3"
+                className="sm:col-span-3"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label className="text-right text-sm font-medium text-[#0a1628]">Type</label>
-              <div className="col-span-3">
+            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Type</label>
+              <div className="sm:col-span-3">
                 <Select value={formData.type} onValueChange={v => setFormData({ ...formData, type: v as ContentModule['type'] })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -449,9 +448,9 @@ const AdminContent: React.FC = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label className="text-right text-sm font-medium text-[#0a1628]">Difficulty</label>
-              <div className="col-span-3">
+            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Difficulty</label>
+              <div className="sm:col-span-3">
                 <Select value={formData.difficulty} onValueChange={v => setFormData({ ...formData, difficulty: v as ContentModule['difficulty'] })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -463,9 +462,9 @@ const AdminContent: React.FC = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label className="text-right text-sm font-medium text-[#0a1628]">Status</label>
-              <div className="col-span-3">
+            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Status</label>
+              <div className="sm:col-span-3">
                 <Select value={formData.status} onValueChange={v => setFormData({ ...formData, status: v as ContentModule['status'] })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
