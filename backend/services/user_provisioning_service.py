@@ -141,12 +141,13 @@ class UserProvisioningService:
             raise UserProvisioningError("firestore_lookup_failed", "Unable to verify duplicate email in Firestore.", 503)
 
     def _build_profile_payload(self, user_input: AdminCreateUserInput, role_lower: str, normalized_status: str) -> Dict[str, Any]:
+        display_name = (user_input.name or "").strip()
         grade = (user_input.grade or "").strip() or "Grade 11"
         section = (user_input.section or "").strip() or "Section A"
         class_section_id = self._slugify(f"{grade}_{section}") or "grade_11_section_a"
 
         payload: Dict[str, Any] = {
-            "name": (user_input.name or "").strip(),
+            "name": display_name,
             "email": (user_input.email or "").strip().lower(),
             "role": role_lower,
             "status": normalized_status,
@@ -154,7 +155,7 @@ class UserProvisioningService:
             "section": section,
             "classSectionId": class_section_id,
             "forcePasswordChange": True,
-            "photo": f"https://ui-avatars.com/api/?name={quote_plus((user_input.name or '').strip())}&background=0d9488&color=fff",
+            "photo": f"https://ui-avatars.com/api/?name={quote_plus(display_name or 'User')}&background=0d9488&color=fff",
             "updatedAt": self._firestore_server_timestamp,
         }
 
