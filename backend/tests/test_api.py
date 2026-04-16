@@ -1882,7 +1882,7 @@ class TestAdminCreateUserEndpoint:
             response = client.post(
                 "/api/admin/users",
                 json={
-                    "name": "Ana Cruz",
+                    "name": "Ana & José/Lee",
                     "email": "ana@student.com",
                     "password": "StrongPass1!",
                     "confirmPassword": "StrongPass1!",
@@ -1905,6 +1905,7 @@ class TestAdminCreateUserEndpoint:
         users_store = firestore.client().store.get("users", {})
         assert "new-user-uid" in users_store
         assert users_store["new-user-uid"].get("role") == "student"
+        assert "Ana+%26+Jos%C3%A9%2FLee" in users_store["new-user-uid"].get("photo", "")
 
     def test_create_admin_user_returns_partial_success_when_email_fails(self):
         firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
@@ -1965,6 +1966,35 @@ class TestAdminCreateUserEndpoint:
         assert response.status_code == 400
         payload = response.json()
         assert "special character" in payload["detail"].lower()
+
+    def test_create_admin_user_rolls_back_auth_user_when_firestore_write_fails(self):
+        firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
+        delete_user_mock = MagicMock()
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")), patch.object(main_module.firebase_auth, "create_user", return_value=type("AuthUser", (), {"uid": "new-user-uid-3"})()), patch.object(main_module.firebase_auth, "delete_user", delete_user_mock), patch.object(_ProvisionDocumentRef, "set", side_effect=Exception("firestore unavailable")):
+            response = client.post(
+                "/api/admin/users",
+                json={
+                    "name": "Dana Flores",
+                    "email": "dana@student.com",
+                    "password": "StrongPass1!",
+                    "confirmPassword": "StrongPass1!",
+                    "role": "Student",
+                    "status": "Active",
+                    "grade": "Grade 11",
+                    "section": "STEM A",
+                    "lrn": "123456789015",
+                },
+            )
+
+        assert response.status_code == 500
+        payload = response.json()
+        assert "firestore" in payload["detail"].lower()
+        delete_user_mock.assert_called_once_with("new-user-uid-3")
 
 
 class TestAdminDeleteUserEndpoint:

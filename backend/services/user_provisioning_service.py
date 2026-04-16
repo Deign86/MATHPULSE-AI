@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from urllib.parse import quote_plus
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -153,7 +154,7 @@ class UserProvisioningService:
             "section": section,
             "classSectionId": class_section_id,
             "forcePasswordChange": True,
-            "photo": f"https://ui-avatars.com/api/?name={user_input.name.strip().replace(' ', '+')}&background=0d9488&color=fff",
+            "photo": f"https://ui-avatars.com/api/?name={quote_plus((user_input.name or '').strip())}&background=0d9488&color=fff",
             "updatedAt": self._firestore_server_timestamp,
         }
 
@@ -243,6 +244,15 @@ class UserProvisioningService:
             firestore_client.collection("users").document(uid).set(profile_payload, merge=True)
         except Exception as firestore_write_error:
             logger.error("Firestore profile write failed for %s: %s", uid, firestore_write_error)
+            try:
+                self._firebase_auth_module.delete_user(uid)
+                logger.info("Rolled back Auth user creation for %s after Firestore write failure.", uid)
+            except Exception as rollback_error:
+                logger.warning(
+                    "Failed to roll back Auth user %s after Firestore write failure: %s",
+                    uid,
+                    rollback_error,
+                )
             raise UserProvisioningError("profile_write_failed", "Failed to create user profile in Firestore.", 500)
 
         return uid
