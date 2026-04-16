@@ -832,7 +832,6 @@ const App = () => {
           <AdminDashboard 
             onLogout={handleLogout}
             onOpenProfile={() => setShowProfileModal(true)}
-            onOpenSettings={() => setShowSettingsModal(true)}
           />
         </Suspense>
         {showProfileModal && (
@@ -1153,12 +1152,7 @@ const App = () => {
                   </Suspense>
                 ) : activeTab === 'Avatar Studio' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <AvatarShop
-                      onSaveProfile={(layers) => {
-                        setProfileOverrides((prev) => ({ ...prev, avatarLayers: layers }));
-                      }}
-                      onNavigateToModules={() => setActiveTab('Modules')}
-                    />
+                    <AvatarShop />
                   </Suspense>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
