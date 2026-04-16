@@ -199,7 +199,6 @@ export async function updateAdminUser(uid: string, updates: Partial<AdminUser>):
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const firestoreUpdates: Record<string, any> = { updatedAt: serverTimestamp() };
   if (updates.name !== undefined) firestoreUpdates.name = updates.name;
-  if (updates.email !== undefined) firestoreUpdates.email = updates.email;
   if (updates.status !== undefined) firestoreUpdates.status = updates.status;
   if (updates.role !== undefined) {
     firestoreUpdates.role = updates.role.toLowerCase();
@@ -339,8 +338,8 @@ export async function getModules(): Promise<ContentModule[]> {
         status: (data.status as ContentModule['status']) || 'Draft',
         assigned: (data.assigned as number) || 0,
         created:
-          (data.created as string) ||
-          (createdAt?.toDate?.()?.toLocaleDateString() ?? ''),
+          (createdAt?.toDate?.()?.toLocaleDateString() ??
+            ((data.created as string) || 'Unknown')),
       };
     });
   } catch (err) {
@@ -351,7 +350,7 @@ export async function getModules(): Promise<ContentModule[]> {
 
 /** Create a new module in Firestore. */
 export async function createModule(
-  moduleData: Omit<ContentModule, 'id'>
+  moduleData: Omit<ContentModule, 'id' | 'created'>
 ): Promise<string> {
   const docRef = await addDoc(collection(db, 'modules'), {
     ...moduleData,
@@ -449,6 +448,33 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 /** Get top N students ordered by level descending. */
 export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
+  const mapDocToPerformer = (d: { id: string; data: () => Record<string, unknown> }): TopPerformer => {
+    const data = d.data();
+    const level = (data.level as number) || 1;
+    const currentXP = (data.currentXP as number) || 0;
+    // Rough performance estimate: clamp level*8 to [0,100]
+    const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
+    return {
+      id: d.id,
+      name: (data.name as string) || 'Student',
+      avatar:
+        (data.photo as string) ||
+        (data.photoURL as string) ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
+      class: (data.grade as string) || 'Math',
+      performance,
+      level,
+    };
+  };
+
+  const sortAndTrim = (performers: TopPerformer[]): TopPerformer[] =>
+    performers
+      .sort((a, b) => {
+        if (b.level !== a.level) return b.level - a.level;
+        return b.performance - a.performance;
+      })
+      .slice(0, n);
+
   try {
     const q = query(
       collection(db, 'users'),
@@ -457,25 +483,25 @@ export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
       limit(n)
     );
     const snap = await getDocs(q);
-    return snap.docs.map(d => {
-      const data = d.data() as Record<string, unknown>;
-      const level = (data.level as number) || 1;
-      const currentXP = (data.currentXP as number) || 0;
-      // Rough performance estimate: clamp level*8 to [0,100]
-      const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
-      return {
-        id: d.id,
-        name: (data.name as string) || 'Student',
-        avatar:
-          (data.photo as string) ||
-          (data.photoURL as string) ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
-        class: (data.grade as string) || 'Math',
-        performance,
-        level,
-      };
-    });
+    return sortAndTrim(snap.docs.map(mapDocToPerformer));
   } catch (err) {
+    const errorCode = (err as { code?: string } | null)?.code;
+    if (errorCode === 'failed-precondition') {
+      try {
+        // Fallback avoids composite-index requirements by sorting in memory.
+        const fallbackQuery = query(
+          collection(db, 'users'),
+          where('role', '==', 'student'),
+          limit(Math.max(50, n))
+        );
+        const fallbackSnap = await getDocs(fallbackQuery);
+        return sortAndTrim(fallbackSnap.docs.map(mapDocToPerformer));
+      } catch (fallbackError) {
+        console.error('[adminService] getTopPerformers fallback error:', fallbackError);
+        return [];
+      }
+    }
+
     console.error('[adminService] getTopPerformers error:', err);
     return [];
   }
