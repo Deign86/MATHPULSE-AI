@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag } from 'lucide-react';
+import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../services/authService';
@@ -177,50 +177,58 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   return (
     <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
-      <div className="relative w-full max-w-[1000px] h-[75vh] min-h-[550px] max-h-[750px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12">
-        
+      <div className="relative w-full max-w-[1000px] h-[80vh] min-h-[500px] max-h-[700px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12 overflow-hidden">
+
         <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl" />
           <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-100/30 rounded-full blur-3xl" />
         </div>
 
-        <div className="flex flex-col h-full relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1">
-          <div className="mb-6 flex flex-col items-start justify-between gap-4 shrink-0">
-            <div className="pr-4">
-              <h1 className="text-3xl md:text-4xl font-display font-black text-[#0a1628] tracking-tight flex flex-wrap items-center gap-2.5">
-                <span className="whitespace-nowrap">Avatar Studio</span> <Sparkles className="text-blue-500 fill-blue-500" size={32} />
+        <div className="flex flex-col h-full min-h-0 relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1 min-h-0">
+          <div className="mb-6 flex flex-col gap-2 shrink-0">
+            <div className="flex flex-wrap items-center justify-between xl:justify-start gap-4">
+              <h1 className="text-3xl md:text-4xl font-display font-black text-[#0a1628] tracking-tight flex items-center gap-2.5">
+                <span className="whitespace-nowrap">Avatar Studio</span> <Sparkles className="text-blue-500 fill-blue-500" size={28} />
               </h1>
-              <p className="text-slate-500 font-medium text-lg mt-2">Design your perfect learning companion.</p>
-            </div>
-            <div className="flex items-center gap-3 sm:ml-auto">
-              {/* Test Reset Button */}
-              <button
-                onClick={handleResetForTesting}
-                disabled={purchasingItemId === 'resetting'}
-                className="hidden sm:flex self-stretch items-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-xl font-bold text-[11px] transition-colors border border-slate-200"
-              >
-                Reset (Test)
-              </button>
 
-              <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl px-3 py-2.5 shadow-md flex items-center gap-1.5 h-fit">
-                <ShoppingBag className="text-white" size={20} />
+              <div className="flex items-center gap-2">
+                {/* Test Reset Button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={onNavigateToModules}
-                      className="cursor-pointer hover:opacity-90 transition-opacity active:scale-95"
+                      onClick={handleResetForTesting}
+                      disabled={purchasingItemId === 'resetting'}
+                      className="flex shrink-0 items-center justify-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 p-2.5 rounded-xl transition-colors border border-slate-200"
                     >
-                      <p className="text-white text-xs font-bold uppercase tracking-wider">XP Balance</p>
-                      <p className="text-white text-2xl font-black">{currentXP}</p>
+                      <RotateCcw size={16} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
-                    Review more lessons to earn more XP!
+                    Reset Purchases (Test)
                   </TooltipContent>
                 </Tooltip>
+
+                <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl px-3 py-1.5 shadow-md flex items-center gap-2 h-fit">
+                  <ShoppingBag className="text-white shrink-0" size={16} />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={onNavigateToModules}
+                        className="cursor-pointer hover:opacity-90 transition-opacity active:scale-95 text-left"
+                      >
+                        <p className="text-white text-[9px] font-bold uppercase tracking-wider leading-none mb-0.5">XP Balance</p>
+                        <p className="text-white text-base font-black leading-none">{currentXP}</p>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
+                      Review more lessons to earn more XP!
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
             </div>
+            <p className="text-slate-500 font-medium text-sm md:text-base">Design your perfect learning companion.</p>
           </div>
 
           <Tabs.Root defaultValue="top" className="flex flex-col flex-1 min-h-0">
