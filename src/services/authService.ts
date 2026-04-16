@@ -301,9 +301,24 @@ export const updateUserProfile = async (
     const sanitizedUpdates: Record<string, unknown> = {};
 
     Object.entries(updates as Record<string, unknown>).forEach(([key, value]) => {
-      if (value !== undefined && allowedKeys.has(key)) {
-        sanitizedUpdates[key] = value;
+      if (value === undefined || !allowedKeys.has(key)) {
+        return;
       }
+
+      if (key === 'avatarLayers' && typeof value === 'object' && value !== null) {
+        const avatarLayers = value as Record<string, unknown>;
+
+        sanitizedUpdates[key] = {
+          top: typeof avatarLayers.top === 'string' ? avatarLayers.top : '',
+          bottom: typeof avatarLayers.bottom === 'string' ? avatarLayers.bottom : '',
+          shoes: typeof avatarLayers.shoes === 'string' ? avatarLayers.shoes : '',
+          accessory: typeof avatarLayers.accessory === 'string' ? avatarLayers.accessory : '',
+        };
+
+        return;
+      }
+
+      sanitizedUpdates[key] = value;
     });
 
     const docRef = doc(db, 'users', uid);
