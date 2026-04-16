@@ -12,6 +12,7 @@
     {
       "source": "functions",
       "codebase": "mathpulse-automation",
+      "runtime": "nodejs22",
       "ignore": [
         "node_modules",
         ".git",

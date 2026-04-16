@@ -290,22 +290,21 @@ const LoginPage: React.FC = () => {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at 30% 50%, rgba(240,249,255,0.4) 0%, rgba(248,250,252,0.65) 50%, rgba(255,241,242,0.5) 80%, rgba(248,250,252,0.85) 100%)',
-        }}
-      />
+            background: 'radial-gradient(ellipse at 30% 50%, rgba(240,249,255,0.2) 0%, rgba(248,250,252,0.5) 50%, rgba(255,241,242,0.4) 80%, rgba(248,250,252,0.85) 100%)',
+          }}
+        />
 
-      {/* Decorative gradient orbs for depth */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.12) 0%, transparent 70%)' }} />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, transparent 70%)' }} />
-
-      {/* Subtle dot grid texture */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.4) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
+        {/* Decorative gradient orbs for depth - enhanced with neon MathPulse colors */}
+        <div className="absolute top-[10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[140px] pointer-events-none mix-blend-multiply" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full blur-[160px] pointer-events-none mix-blend-multiply" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)' }} />
+        <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] rounded-full blur-[120px] pointer-events-none mix-blend-screen" style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%)' }} />
+        
+        <div className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.4) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
 
       {/* Floating math symbols — soft on light */}
       {mathSymbols.map((symbol, i) => (
@@ -356,7 +355,9 @@ const LoginPage: React.FC = () => {
                 />
               </motion.div>
               <div>
-                <h1 className="text-2xl font-display font-extrabold tracking-tight text-slate-900">MathPulse<span className="text-sky-500">AI</span></h1>
+                  <h1 className="text-3xl font-display font-black tracking-tight text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-600 to-sky-500">
+                    MathPulse
+                  </h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <Sparkles size={12} className="text-rose-500" />
                   <span className="text-xs text-slate-500 font-body font-medium tracking-wide">Powered by Machine Learning</span>
@@ -430,11 +431,11 @@ const LoginPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex justify-center lg:justify-end"
           >
-            <div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-2xl p-7 w-full max-w-md relative overflow-hidden shadow-2xl shadow-slate-900/[0.08]">
-              {/* Top accent glow line */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-sky-500/50 to-transparent" />
-              {/* Subtle inner glow */}
-              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-36 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
+<div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-3xl p-7 w-full max-w-md relative overflow-hidden shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)]">
+                {/* Top accent glow line */}
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-pink-500 to-sky-500" />
+                {/* Subtle inner glow */}
+                <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-[60px] pointer-events-none" />
 
               {/* Form Header */}
               <div className="text-center mb-6 relative">
@@ -685,7 +686,7 @@ const LoginPage: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-cyan-400 text-white font-body font-semibold py-3 rounded-xl shadow-lg shadow-sky-600/25 hover:shadow-sky-500/35 hover:scale-[1.01] transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-body font-semibold py-3 rounded-xl shadow-lg shadow-purple-600/25 hover:shadow-pink-500/35 hover:scale-[1.02] transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <motion.span
                       className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0"
