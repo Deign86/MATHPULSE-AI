@@ -34,6 +34,11 @@ import {
 } from '../services/adminService';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
+import {
+  getFirstValidationError,
+  validateAdminCreateUserForm,
+  type AdminCreateUserValidationErrors,
+} from '../utils/adminUserValidation';
 
 const AdminUserManagement: React.FC = () => {
   const { userProfile } = useAuth();
@@ -48,11 +53,14 @@ const AdminUserManagement: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pendingDeleteUser, setPendingDeleteUser] = useState<Pick<AdminUser, 'id' | 'name'> | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [formErrors, setFormErrors] = useState<AdminCreateUserValidationErrors>({});
 
   // Form State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     role: 'Student',
     status: 'Active',
     department: '',
@@ -79,15 +87,30 @@ const AdminUserManagement: React.FC = () => {
 
   const handleOpenAddModal = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', role: 'Student', status: 'Active', department: '', grade: 'Grade 11', section: 'Section A', lrn: '' });
+    setFormErrors({});
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      role: 'Student',
+      status: 'Active',
+      department: '',
+      grade: 'Grade 11',
+      section: 'Section A',
+      lrn: '',
+    });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (user: AdminUser) => {
     setEditingUser(user);
+    setFormErrors({});
     setFormData({
       name: user.name,
       email: user.email,
+      password: '',
+      confirmPassword: '',
       role: user.role,
       status: user.status,
       department: user.department,
@@ -103,6 +126,27 @@ const AdminUserManagement: React.FC = () => {
       toast.error('Name and email are required');
       return;
     }
+
+    if (!editingUser) {
+      const validationErrors = validateAdminCreateUserForm({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        role: formData.role,
+        status: formData.status,
+        grade: formData.grade,
+        section: formData.section,
+        lrn: formData.lrn,
+      });
+      const firstError = getFirstValidationError(validationErrors);
+      if (firstError) {
+        setFormErrors(validationErrors);
+        toast.error(firstError);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       if (editingUser) {
@@ -116,23 +160,34 @@ const AdminUserManagement: React.FC = () => {
         );
         toast.success('User updated successfully');
       } else {
-        await createAdminUser(
-          formData.email,
-          formData.name,
-          formData.role,
-          formData.role === 'Student' ? formData.grade : formData.department,
-          formData.role === 'Student'
-            ? { grade: formData.grade, section: formData.section, lrn: formData.lrn }
-            : undefined
-        );
+        const createResult = await createAdminUser({
+          email: formData.email,
+          name: formData.name,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          role: formData.role as 'Student' | 'Teacher' | 'Admin',
+          status: formData.status as 'Active' | 'Inactive',
+          grade: formData.grade,
+          section: formData.section,
+          lrn: formData.role === 'Student' ? formData.lrn : undefined,
+        });
+
         await addAuditLog(
           'Created New User',
           'User',
           'Info',
-          `Created new ${formData.role.toLowerCase()} account: ${formData.name} (${formData.email})`,
+          `Created new ${formData.role.toLowerCase()} account: ${formData.name} (${formData.email}), emailSent=${createResult.emailSent}`,
           { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
         );
-        toast.success('User created successfully');
+
+        if (createResult.emailSent) {
+          toast.success('User created and welcome email sent');
+        } else {
+          toast.warning('User created, but welcome email failed to send');
+          if (createResult.emailError?.message) {
+            toast.error(createResult.emailError.message);
+          }
+        }
       }
       await loadUsers();
       setIsModalOpen(false);
@@ -392,37 +447,57 @@ const AdminUserManagement: React.FC = () => {
             <DialogDescription>
               {editingUser 
                 ? 'Update user details and manage access permissions.' 
-                : 'Create a new user account and assign roles.'}
+                : 'Create a new account and send welcome credentials by email.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-4 items-start gap-4">
               <label htmlFor="name" className="text-right text-sm font-medium text-[#0a1628]">Name</label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="col-span-3"
-              />
+              <div className="col-span-3">
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (formErrors.name) {
+                      setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    }
+                  }}
+                  className={formErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {formErrors.name ? <p className="mt-1 text-xs text-red-600">{formErrors.name}</p> : null}
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-4 items-start gap-4">
               <label htmlFor="email" className="text-right text-sm font-medium text-[#0a1628]">Email</label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="col-span-3"
-              />
+              <div className="col-span-3">
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (formErrors.email) {
+                      setFormErrors((prev) => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  className={formErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                />
+                {formErrors.email ? <p className="mt-1 text-xs text-red-600">{formErrors.email}</p> : null}
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+
+            <div className="grid grid-cols-4 items-start gap-4">
               <label htmlFor="role" className="text-right text-sm font-medium text-[#0a1628]">Role</label>
               <div className="col-span-3">
                 <Select 
                   value={formData.role} 
-                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, role: value, lrn: value === 'Student' ? formData.lrn : '' });
+                    setFormErrors((prev) => ({ ...prev, role: undefined, lrn: undefined }));
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={formErrors.role ? 'border-red-500 focus:ring-red-500' : ''}>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -431,16 +506,23 @@ const AdminUserManagement: React.FC = () => {
                     <SelectItem value="Admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.role ? <p className="mt-1 text-xs text-red-600">{formErrors.role}</p> : null}
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+
+            <div className="grid grid-cols-4 items-start gap-4">
               <label htmlFor="status" className="text-right text-sm font-medium text-[#0a1628]">Status</label>
               <div className="col-span-3">
                 <Select 
                   value={formData.status} 
-                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, status: value });
+                    if (formErrors.status) {
+                      setFormErrors((prev) => ({ ...prev, status: undefined }));
+                    }
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={formErrors.status ? 'border-red-500 focus:ring-red-500' : ''}>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -448,59 +530,164 @@ const AdminUserManagement: React.FC = () => {
                     <SelectItem value="Inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.status ? <p className="mt-1 text-xs text-red-600">{formErrors.status}</p> : null}
               </div>
             </div>
-            {formData.role === 'Student' ? (
+
+            {editingUser ? (
+              formData.role === 'Student' ? (
+                <>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <label htmlFor="lrn" className="text-right text-sm font-medium text-[#0a1628]">LRN</label>
+                    <Input
+                      id="lrn"
+                      value={formData.lrn}
+                      onChange={(e) => setFormData({ ...formData, lrn: e.target.value })}
+                      placeholder="12-digit learner reference"
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <label htmlFor="grade" className="text-right text-sm font-medium text-[#0a1628]">Grade</label>
+                    <Input
+                      id="grade"
+                      value={formData.grade}
+                      onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                      placeholder="e.g. Grade 11"
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <label htmlFor="section" className="text-right text-sm font-medium text-[#0a1628]">Section</label>
+                    <Input
+                      id="section"
+                      value={formData.section}
+                      onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+                      placeholder="e.g. STEM A"
+                      className="col-span-3"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="department" className="text-right text-sm font-medium text-[#0a1628]">Department</label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    placeholder="e.g. Mathematics"
+                    className="col-span-3"
+                  />
+                </div>
+              )
+            ) : (
               <>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <label htmlFor="lrn" className="text-right text-sm font-medium text-[#0a1628]">LRN</label>
-                  <Input
-                    id="lrn"
-                    value={formData.lrn}
-                    onChange={(e) => setFormData({ ...formData, lrn: e.target.value })}
-                    placeholder="12-digit learner reference"
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+                <div className="grid grid-cols-4 items-start gap-4">
                   <label htmlFor="grade" className="text-right text-sm font-medium text-[#0a1628]">Grade</label>
-                  <Input
-                    id="grade"
-                    value={formData.grade}
-                    onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                    placeholder="e.g. Grade 11"
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="grade"
+                      value={formData.grade}
+                      onChange={(e) => {
+                        setFormData({ ...formData, grade: e.target.value });
+                        if (formErrors.grade) {
+                          setFormErrors((prev) => ({ ...prev, grade: undefined }));
+                        }
+                      }}
+                      placeholder="e.g. Grade 11"
+                      className={formErrors.grade ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    />
+                    {formErrors.grade ? <p className="mt-1 text-xs text-red-600">{formErrors.grade}</p> : null}
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
+
+                <div className="grid grid-cols-4 items-start gap-4">
                   <label htmlFor="section" className="text-right text-sm font-medium text-[#0a1628]">Section</label>
-                  <Input
-                    id="section"
-                    value={formData.section}
-                    onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                    placeholder="e.g. STEM A"
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="section"
+                      value={formData.section}
+                      onChange={(e) => {
+                        setFormData({ ...formData, section: e.target.value });
+                        if (formErrors.section) {
+                          setFormErrors((prev) => ({ ...prev, section: undefined }));
+                        }
+                      }}
+                      placeholder="e.g. STEM A"
+                      className={formErrors.section ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    />
+                    {formErrors.section ? <p className="mt-1 text-xs text-red-600">{formErrors.section}</p> : null}
+                  </div>
+                </div>
+
+                {formData.role === 'Student' ? (
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <label htmlFor="lrn" className="text-right text-sm font-medium text-[#0a1628]">LRN</label>
+                    <div className="col-span-3">
+                      <Input
+                        id="lrn"
+                        value={formData.lrn}
+                        onChange={(e) => {
+                          setFormData({ ...formData, lrn: e.target.value });
+                          if (formErrors.lrn) {
+                            setFormErrors((prev) => ({ ...prev, lrn: undefined }));
+                          }
+                        }}
+                        placeholder="Required for student accounts"
+                        className={formErrors.lrn ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                      />
+                      {formErrors.lrn ? <p className="mt-1 text-xs text-red-600">{formErrors.lrn}</p> : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label htmlFor="password" className="text-right text-sm font-medium text-[#0a1628]">Password</label>
+                  <div className="col-span-3">
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => {
+                        setFormData({ ...formData, password: e.target.value });
+                        if (formErrors.password) {
+                          setFormErrors((prev) => ({ ...prev, password: undefined }));
+                        }
+                      }}
+                      placeholder="Min 8 chars, upper/lowercase, number, and symbol"
+                      className={formErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    />
+                    {formErrors.password ? <p className="mt-1 text-xs text-red-600">{formErrors.password}</p> : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <label htmlFor="confirmPassword" className="text-right text-sm font-medium text-[#0a1628]">Confirm</label>
+                  <div className="col-span-3">
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => {
+                        setFormData({ ...formData, confirmPassword: e.target.value });
+                        if (formErrors.confirmPassword) {
+                          setFormErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                        }
+                      }}
+                      placeholder="Retype password"
+                      className={formErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    />
+                    {formErrors.confirmPassword ? <p className="mt-1 text-xs text-red-600">{formErrors.confirmPassword}</p> : null}
+                  </div>
                 </div>
               </>
-            ) : (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="department" className="text-right text-sm font-medium text-[#0a1628]">Department</label>
-                <Input
-                  id="department"
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  placeholder="e.g. Mathematics"
-                  className="col-span-3"
-                />
-              </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
             <Button onClick={handleSaveUser} className="bg-sky-600 hover:bg-sky-700 text-white" disabled={saving}>
               {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-              {editingUser ? 'Save Changes' : 'Create User'}
+              {editingUser ? 'Save Changes' : 'Create User & Send Email'}
             </Button>
           </DialogFooter>
         </DialogContent>

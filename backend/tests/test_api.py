@@ -34,6 +34,7 @@ mock_ae = MagicMock()
 
 # Define minimal Pydantic-like classes for payloads automation_engine exports
 from pydantic import BaseModel as _BM
+from services.email_service import EmailSendResult
 
 class _DiagnosticCompletionPayload(_BM):
     studentId: str
@@ -1681,6 +1682,10 @@ class _ProvisionDocumentRef:
         existing.update(payload)
         collection[self._doc_id] = existing
 
+    def delete(self):
+        collection = self._store.setdefault(self._collection_name, {})
+        collection.pop(self._doc_id, None)
+
 
 class _ProvisionQuery:
     def __init__(self, store: Dict[str, Dict[str, Dict[str, Any]]], collection_name: str):
@@ -1847,6 +1852,194 @@ class TestStudentAccountProvisioningImport:
         provisioned_profile = next(iter(users_store.values()))
         assert provisioned_profile.get("role") == "student"
         assert provisioned_profile.get("forcePasswordChange") is True
+
+
+class _FakeEmailServiceSuccess:
+    def send_transactional_email(self, _message):
+        return EmailSendResult(success=True, provider="test_email", message_id="msg-1")
+
+
+class _FakeEmailServiceFailure:
+    def send_transactional_email(self, _message):
+        return EmailSendResult(
+            success=False,
+            provider="test_email",
+            error_code="provider_down",
+            error_message="Provider unreachable",
+            retryable=True,
+        )
+
+
+class TestAdminCreateUserEndpoint:
+    def test_create_admin_user_returns_success_when_email_delivered(self):
+        firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")), patch.object(main_module.firebase_auth, "create_user", return_value=type("AuthUser", (), {"uid": "new-user-uid"})()), patch.object(main_module, "create_email_service_from_env", return_value=_FakeEmailServiceSuccess()):
+            response = client.post(
+                "/api/admin/users",
+                json={
+                    "name": "Ana Cruz",
+                    "email": "ana@student.com",
+                    "password": "StrongPass1!",
+                    "confirmPassword": "StrongPass1!",
+                    "role": "Student",
+                    "status": "Active",
+                    "grade": "Grade 11",
+                    "section": "STEM A",
+                    "lrn": "123456789012",
+                },
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["userCreated"] is True
+        assert payload["emailSent"] is True
+        assert payload["resultCode"] == "created_and_emailed"
+        assert payload["uid"] == "new-user-uid"
+
+        users_store = firestore.client().store.get("users", {})
+        assert "new-user-uid" in users_store
+        assert users_store["new-user-uid"].get("role") == "student"
+
+    def test_create_admin_user_returns_partial_success_when_email_fails(self):
+        firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")), patch.object(main_module.firebase_auth, "create_user", return_value=type("AuthUser", (), {"uid": "new-user-uid-2"})()), patch.object(main_module, "create_email_service_from_env", return_value=_FakeEmailServiceFailure()):
+            response = client.post(
+                "/api/admin/users",
+                json={
+                    "name": "Ben Dela",
+                    "email": "ben@student.com",
+                    "password": "StrongPass1!",
+                    "confirmPassword": "StrongPass1!",
+                    "role": "Student",
+                    "status": "Active",
+                    "grade": "Grade 11",
+                    "section": "STEM B",
+                    "lrn": "123456789013",
+                },
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["userCreated"] is True
+        assert payload["emailSent"] is False
+        assert payload["resultCode"] == "created_email_failed"
+        assert payload["uid"] == "new-user-uid-2"
+        assert isinstance(payload.get("warnings"), list)
+        assert payload.get("emailError", {}).get("code") == "provider_down"
+
+    def test_create_admin_user_rejects_password_without_special_character(self):
+        firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }):
+            response = client.post(
+                "/api/admin/users",
+                json={
+                    "name": "Cara Diaz",
+                    "email": "cara@student.com",
+                    "password": "StrongPass1",
+                    "confirmPassword": "StrongPass1",
+                    "role": "Student",
+                    "status": "Active",
+                    "grade": "Grade 11",
+                    "section": "STEM C",
+                    "lrn": "123456789014",
+                },
+            )
+
+        assert response.status_code == 400
+        payload = response.json()
+        assert "special character" in payload["detail"].lower()
+
+
+class TestAdminDeleteUserEndpoint:
+    def test_delete_admin_user_removes_auth_and_profile(self):
+        firestore = _ProvisionFirestoreModule(
+            {
+                "users": {
+                    "target-uid": {
+                        "email": "target@student.com",
+                        "role": "student",
+                    }
+                },
+                "accessAuditLogs": {},
+            }
+        )
+        delete_user_mock = MagicMock()
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "delete_user", delete_user_mock):
+            response = client.delete("/api/admin/users?uid=target-uid")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["uid"] == "target-uid"
+        assert payload["authDeleted"] is True
+        assert payload["profileDeleted"] is True
+
+        delete_user_mock.assert_called_once_with("target-uid")
+        assert "target-uid" not in firestore.client().store.get("users", {})
+
+    def test_delete_admin_user_handles_missing_auth_record(self):
+        firestore = _ProvisionFirestoreModule(
+            {
+                "users": {
+                    "target-uid-2": {
+                        "email": "missing-auth@student.com",
+                        "role": "student",
+                    }
+                },
+                "accessAuditLogs": {},
+            }
+        )
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "delete_user", side_effect=Exception("No user record found for the provided uid")):
+            response = client.delete("/api/admin/users?uid=target-uid-2")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["uid"] == "target-uid-2"
+        assert payload["authDeleted"] is False
+        assert payload["profileDeleted"] is True
+        assert any("already missing" in warning.lower() for warning in payload.get("warnings", []))
+        assert "target-uid-2" not in firestore.client().store.get("users", {})
+
+    def test_delete_admin_user_rejects_self_delete(self):
+        firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }):
+            response = client.delete("/api/admin/users?uid=admin-uid")
+
+        assert response.status_code == 400
+        assert "cannot delete their own account" in response.json()["detail"].lower()
 
 
 # ─── Run ───────────────────────────────────────────────────────
