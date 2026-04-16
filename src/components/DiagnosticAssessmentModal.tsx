@@ -411,20 +411,20 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] pointer-events-auto overflow-hidden relative z-[51]"
+        className="bg-white rounded-2xl shadow-2xl max-w-[36rem] w-full flex flex-col max-h-[80vh] pointer-events-auto overflow-hidden relative z-[51]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-          <div className="px-8 py-6 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0">
+          <div className="px-5 py-3 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-sky-600">
-                <Brain size={24} />
+              <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center text-sky-600">
+                <Brain size={18} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-[#0a1628]">
+                <h2 className="text-base font-bold text-[#0a1628] leading-tight">
                   {assessmentType === 'followup_diagnostic' ? 'Deep Diagnostic' : 'Initial Assessment'}
                 </h2>
-                <p className="text-sm text-[#5a6578]">Analyze your strengths & weaknesses</p>
+                <p className="text-[11px] text-[#5a6578]">Analyze your strengths & weaknesses</p>
               </div>
             </div>
             <div className="flex items-center gap-2 relative">
@@ -434,14 +434,14 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                     setShowCalculator(!showCalculator);
                     setShowCalcTooltip(false);
                   }}
-                  className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 border-2 ${
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 border-2 ${
                     showCalculator 
                       ? 'bg-sky-100 border-sky-300 text-sky-700 shadow-sm' 
                       : 'bg-white border-[#dde3eb] text-slate-500 hover:text-sky-600 hover:border-sky-200 hover:bg-sky-50'
                   }`}
                   title="Toggle Calculator"
                 >
-                  <Calculator size={20} />
+                  <Calculator size={16} />
                 </button>
 
                 {/* Calculator Tooltip overlay */}
@@ -474,16 +474,16 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 onClick={() => {
                   handleDismiss();
                 }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 border-2 border-transparent hover:text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] transition-all"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 border-2 border-transparent hover:text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] transition-all"
                 title="Close assessment"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
           </div>
 
           {/* Content */}
-        <div className="p-8 overflow-y-auto">
+        <div className="p-5 overflow-y-auto">
           <AnimatePresence mode="wait">
             {step === 'intro' && (
               <motion.div
@@ -491,42 +491,42 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="text-center space-y-6"
+                className="text-center space-y-3"
               >
-                <div className="w-32 h-32 bg-sky-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Calculator size={64} className="text-sky-600" />
+                <div className="w-20 h-20 bg-sky-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Calculator size={36} className="text-sky-600" />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-[#0a1628]">
+                <h3 className="text-lg font-bold text-[#0a1628]">
                   {assessmentType === 'followup_diagnostic' ? 'Let\'s close the gaps' : 'Welcome to MathPulse AI!'}
                 </h3>
-                <p className="text-[#5a6578] max-w-md mx-auto leading-relaxed">
+                <p className="text-[13px] text-[#5a6578] max-w-[19rem] mx-auto leading-relaxed">
                   {assessmentType === 'followup_diagnostic'
                     ? 'You have pending weak-area checks from your initial assessment. Complete this deep diagnostic to unlock regular modules and practice.'
                     : `To personalize your learning path, complete a DepEd competency-based SHS diagnostic (${QUESTIONS.length} items, around ${estimatedMinutes} minutes).`}
                 </p>
 
-                <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto text-left">
-                  <div className="bg-[#edf1f7] p-4 rounded-xl border border-[#dde3eb]">
-                    <div className="flex items-center gap-2 font-bold text-[#0a1628] mb-1">
-                      <CheckCircle size={16} className="text-teal-500" />
+                <div className="grid grid-cols-2 gap-2.5 max-w-[22rem] mx-auto text-left">
+                  <div className="bg-[#edf1f7] p-2.5 rounded-lg border border-[#dde3eb]">
+                    <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] mb-1">
+                      <CheckCircle size={14} className="text-teal-500" />
                       Personalized Path
                     </div>
-                    <p className="text-xs text-[#5a6578] pl-6">Get recommendations based on your level.</p>
+                    <p className="text-[10px] text-[#5a6578] pl-[18px]">Get recommendations based on your level.</p>
                   </div>
-                  <div className="bg-[#edf1f7] p-4 rounded-xl border border-[#dde3eb]">
-                    <div className="flex items-center gap-2 font-bold text-[#0a1628] mb-1">
-                      <AlertTriangle size={16} className="text-rose-500" />
+                  <div className="bg-[#edf1f7] p-2.5 rounded-lg border border-[#dde3eb]">
+                    <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] mb-1">
+                      <AlertTriangle size={14} className="text-rose-500" />
                       Identify Risks
                     </div>
-                    <p className="text-xs text-[#5a6578] pl-6">Spot areas that need more attention early.</p>
+                    <p className="text-[10px] text-[#5a6578] pl-[18px]">Spot areas that need more attention early.</p>
                   </div>
                 </div>
 
-                <div className="pt-4 space-y-3">
+                <div className="pt-3 space-y-2.5">
                   <Button 
                     onClick={handleStart}
-                    className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-8 py-6 rounded-xl text-lg font-bold shadow-lg shadow-sky-200 w-full max-w-xs mx-auto"
+                    className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-sky-200 w-full max-w-[190px] mx-auto"
                   >
                     {assessmentType === 'followup_diagnostic' ? 'Start Deep Diagnostic' : 'Start Assessment'}
                   </Button>
@@ -534,7 +534,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                     onClick={() => {
                       handleSkip();
                     }}
-                    className="block mx-auto text-sm text-slate-500 hover:text-[#5a6578] transition-colors font-medium"
+                    className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium"
                   >
                     Skip for now →
                   </button>
@@ -548,13 +548,13 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-8"
+                className="space-y-6"
               >
-                <div className="flex items-center justify-between text-sm font-bold text-[#5a6578] mb-2">
+                <div className="flex items-center justify-between text-xs font-bold text-[#5a6578] mb-2">
                   <span>Question {currentQuestionIndex + 1} of {QUESTIONS.length}</span>
                   <span>{completionPercent}% Completed</span>
                 </div>
-                <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden mb-8">
+                <div className="h-1.5 bg-[#edf1f7] rounded-full overflow-hidden mb-6">
                   <motion.div 
                     className="h-full bg-sky-600 rounded-full"
                     initial={{ width: 0 }}
@@ -562,25 +562,25 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   />
                 </div>
 
-                <div className="bg-[#edf1f7] p-6 rounded-2xl border border-[#dde3eb] mb-6">
+                <div className="bg-[#edf1f7] p-4 rounded-xl border border-[#dde3eb] mb-4">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
                     {TOPIC_LABELS[currentQuestion.topicArea]} • {currentQuestion.difficulty}
                   </p>
-                  <h3 className="text-xl font-bold text-[#0a1628] leading-relaxed">
+                  <h3 className="text-lg font-bold text-[#0a1628] leading-relaxed">
                     {currentQuestion.prompt}
                   </h3>
                 </div>
 
                 {(currentQuestion.answerType === 'MCQ' || currentQuestion.answerType === 'confidenceLikert') && (
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-2.5">
                     {(currentQuestion.options || []).map((option, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleAnswer(idx)}
-                        className="w-full text-left p-4 rounded-xl border-2 border-[#dde3eb] hover:border-indigo-600 hover:bg-sky-50 transition-all font-medium text-[#0a1628] group flex items-center justify-between"
+                        className="w-full text-left p-3 rounded-xl border-2 border-[#dde3eb] hover:border-indigo-600 hover:bg-sky-50 transition-all font-medium text-[#0a1628] group flex items-center justify-between text-sm"
                       >
                         <span className="flex items-center gap-3">
-                          <span className="w-8 h-8 rounded-lg bg-white border border-[#dde3eb] flex items-center justify-center text-sm font-bold text-[#5a6578] group-hover:border-sky-300 group-hover:text-sky-600">
+                          <span className="w-7 h-7 rounded-lg bg-white border border-[#dde3eb] flex items-center justify-center text-xs font-bold text-[#5a6578] group-hover:border-sky-300 group-hover:text-sky-600">
                             {String.fromCharCode(65 + idx)}
                           </span>
                           {option}
@@ -618,14 +618,14 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                             handleShortAnswerSubmit();
                           }
                         }}
-                        className="w-full p-4 rounded-xl border-2 border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500"
+                        className="w-full p-3 rounded-xl border-2 border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-500"
                         placeholder="Type short answer"
                       />
                     )}
                     <Button
                       onClick={handleShortAnswerSubmit}
                       disabled={!currentInput.trim()}
-                      className="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl font-bold"
+                      className="w-full bg-sky-600 hover:bg-sky-700 text-white py-2.5 rounded-xl font-bold text-sm"
                     >
                       Submit Answer
                     </Button>
@@ -639,31 +639,31 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 key="results"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-6"
+                className="text-center space-y-4"
               >
-                <div className="w-24 h-24 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                  <CheckCircle size={48} className="text-teal-600" />
+                <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
+                  <CheckCircle size={40} className="text-teal-600" />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-[#0a1628]">Assessment Completed!</h3>
-                <p className="text-[#5a6578]">
+                <h3 className="text-xl font-bold text-[#0a1628]">Assessment Completed!</h3>
+                <p className="text-sm text-[#5a6578]">
                   We computed topic-level placement from your IAR responses.
                 </p>
 
-                <div className="bg-[#edf1f7] rounded-2xl p-6 border border-[#dde3eb] text-left space-y-4">
+                <div className="bg-[#edf1f7] rounded-2xl p-4 border border-[#dde3eb] text-left space-y-3">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
-                      <BarChart3 size={18} strokeWidth={2.4} />
+                    <div className="w-9 h-9 rounded-[12px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+                      <BarChart3 size={16} strokeWidth={2.4} />
                     </div>
-                    <h4 className="font-display font-black text-[22px] text-slate-800 tracking-tight">Topic Analysis</h4>
+                    <h4 className="font-display font-black text-[18px] text-slate-800 tracking-tight">Topic Analysis</h4>
                   </div>
                   
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {topicSummaries && (Object.keys(topicSummaries) as IARTopicArea[]).map((topic) => (
-                      <div key={topic} className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#dde3eb]">
+                      <div key={topic} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#dde3eb]">
                         <div>
-                          <p className="font-medium text-[#0a1628]">{TOPIC_LABELS[topic]}</p>
-                          <p className="text-xs text-slate-500">
+                          <p className="font-medium text-sm text-[#0a1628]">{TOPIC_LABELS[topic]}</p>
+                          <p className="text-[11px] text-slate-500">
                             {topicSummaries[topic].correct}/{topicSummaries[topic].total} correct • {topicSummaries[topic].scorePercent}%
                           </p>
                         </div>
@@ -677,12 +677,12 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 </div>
 
                 {g12Readiness && (
-                  <div className="bg-sky-50 rounded-2xl p-6 border border-sky-100 text-left space-y-2">
+                  <div className="bg-sky-50 rounded-2xl p-4 border border-sky-100 text-left space-y-2">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
-                        <Brain size={18} strokeWidth={2.4} />
+                      <div className="w-9 h-9 rounded-[12px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+                        <Brain size={16} strokeWidth={2.4} />
                       </div>
-                      <h4 className="font-display font-black text-[22px] text-slate-800 tracking-tight">Grade 12 Readiness Signals</h4>
+                      <h4 className="font-display font-black text-[18px] text-slate-800 tracking-tight">Grade 12 Readiness Signals</h4>
                     </div>
                     <p className="text-xs text-slate-600">These indicators come from challenge and candidate items only.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
@@ -700,13 +700,13 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 )}
 
                 {atRiskSubjects.length > 0 && (
-                  <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-100 rounded-xl text-left">
-                    <div className="w-10 h-10 rounded-[14px] bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shadow-inner shrink-0">
-                      <AlertTriangle size={18} strokeWidth={2.3} />
+                  <div className="flex items-start gap-2.5 p-3 bg-rose-50 border border-rose-100 rounded-xl text-left">
+                    <div className="w-9 h-9 rounded-[12px] bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shadow-inner shrink-0">
+                      <AlertTriangle size={16} strokeWidth={2.3} />
                     </div>
                     <div>
-                      <h5 className="font-display font-black text-[20px] tracking-tight text-rose-800 leading-none mb-1">Attention Needed</h5>
-                      <p className="text-rose-700 text-xs mt-1">
+                      <h5 className="font-display font-black text-[17px] tracking-tight text-rose-800 leading-none mb-1">Attention Needed</h5>
+                      <p className="text-rose-700 text-[11px] mt-1">
                         We flagged {atRiskSubjects.length} topic area{atRiskSubjects.length > 1 ? 's' : ''} for review.
                         In IAR + Diagnostic mode, focused deep diagnostics may launch before full unlock.
                       </p>
@@ -717,7 +717,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 <div className="pt-4">
                   <Button 
                     onClick={handleComplete}
-                    className="bg-sky-600 hover:bg-sky-700 text-white px-8 py-4 rounded-xl text-lg font-bold w-full"
+                    className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-3 rounded-xl text-base font-bold w-full"
                   >
                     Go to Dashboard
                   </Button>
@@ -741,30 +741,30 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
             style={{ 
               position: 'absolute',
               top: '50%',
-              left: 'calc(50% + 390px)',
+              left: 'calc(50% + 290px)',
               y: '-50%' 
             }}
-            className="w-[420px] max-w-[calc(100vw-24px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col pointer-events-auto overflow-hidden z-[60]"
+            className="w-[320px] max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col pointer-events-auto overflow-hidden z-[60]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drag Handle Area */}
-            <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0 cursor-move">
+            <div className="px-2.5 py-2 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0 cursor-move">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600">
-                  <Calculator size={18} />
+                <div className="w-6 h-6 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600">
+                  <Calculator size={14} />
                 </div>
-                <h3 className="font-bold text-[#0a1628] select-none">Scientific Calc</h3>
+                <h3 className="font-bold text-xs text-[#0a1628] select-none">Scientific Calc</h3>
               </div>
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowCalculator(false); }} 
-                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-[#0a1628] hover:bg-[#dde3eb] rounded-lg transition-colors cursor-pointer"
+                className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-[#0a1628] hover:bg-[#dde3eb] rounded-lg transition-colors cursor-pointer"
                 title="Close Calculator"
               >
-                <X size={16} />
+                <X size={13} />
               </button>
             </div>
             {/* Content (Not scrollable) */}
-            <div className="p-4 bg-[#f7f9fc]">
+            <div className="p-2.5 bg-[#f7f9fc]">
                <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
             </div>
           </motion.div>

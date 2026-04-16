@@ -338,8 +338,8 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const calcW = 380;
-      const calcH = 600;
+      const calcW = 300;
+      const calcH = 480;
       setCalcPos({
         x: Math.round((window.innerWidth - calcW) / 2),
         y: Math.max(20, Math.round((window.innerHeight - calcH) / 2)),
@@ -610,8 +610,8 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   /* ── Button style helper ─────────────────────────────────── */
   const getButtonClasses = (variant: BtnVariant, label: string): string => {
     const base = 'flex items-center justify-center rounded-2xl font-bold transition-all duration-150 active:scale-95 select-none cursor-pointer touch-manipulation relative overflow-hidden';
-    const sizeNum = 'min-h-[56px] text-[16px]';
-    const sizeFunc = 'min-h-[56px] text-[14px]';
+    const sizeNum = 'min-h-[44px] text-[13px]';
+    const sizeFunc = 'min-h-[44px] text-[11px]';
 
     switch (variant) {
       case 'number':
@@ -623,9 +623,9 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       case 'del':
         return `${base} ${sizeNum} ${label === 'AC' ? 'bg-[#FF8B8B] hover:bg-[#FF7373]' : 'bg-[#FB96BB] hover:bg-[#FA7DA9]'} text-[#8A1A1A] shadow-md shadow-red-900/10 font-bold border-none`;
       case 'equals':
-        return `${base} ${sizeNum} bg-[#1FA7E1] hover:bg-[#1C96CB] text-white shadow-lg shadow-[#1FA7E1]/30 font-bold text-lg`;
+        return `${base} ${sizeNum} bg-[#1FA7E1] hover:bg-[#1C96CB] text-white shadow-lg shadow-[#1FA7E1]/30 font-bold text-[13px]`;
       case 'shift':
-        return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#9956DE] border border-[#dde3eb] shadow-sm font-bold uppercase tracking-wider text-[11px]`;
+        return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#9956DE] border border-[#dde3eb] shadow-sm font-bold uppercase tracking-wider text-[9px]`;
       case 'mode':
         return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#1FA7E1] border border-[#dde3eb] shadow-sm font-bold`;
       default:
@@ -666,7 +666,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   const calculator = (
     <div className="flex flex-col w-full select-none">
       {/* ── Display ────────────────────────────────────────── */}
-      <div className="bg-white rounded-t-2xl p-4 border border-slate-200 border-b-0">
+      <div className="bg-white rounded-t-2xl p-2.5 border border-slate-200 border-b-0">
         {/* Mode badges */}
         <div className="flex items-center gap-2 mb-2">
           <span className={`
@@ -697,14 +697,14 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         {/* Expression line (top) */}
         <div
           ref={expressionRef}
-          className="text-right text-slate-500 text-[14px] font-mono h-6 overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
+          className="text-right text-slate-500 text-[12px] font-mono h-[18px] overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
         >
           {prevExpression || '\u00A0'}
         </div>
 
         {/* Result line (bottom) */}
         <div className={`
-          text-right font-mono font-bold text-[32px] leading-tight h-10 overflow-hidden whitespace-nowrap
+          text-right font-mono font-bold text-[24px] leading-tight h-8 overflow-hidden whitespace-nowrap
           ${isError ? 'text-red-400' : 'text-[#0a1628]'}
         `}>
           {expression || result}
@@ -757,9 +757,9 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       </button>
 
       {/* ── Button grid ────────────────────────────────────── */}
-      <div className="bg-white rounded-b-2xl p-4 border border-slate-200 border-t-0 space-y-1.5">
+      <div className="bg-white rounded-b-2xl p-2.5 border border-slate-200 border-t-0 space-y-0.5">
         {rows.map((row, ri) => (
-          <div key={ri} className="grid grid-cols-5 gap-1.5">
+          <div key={ri} className="grid grid-cols-5 gap-0.5">
             {row.map((btn, bi) => {
               const showShift = shiftActive && btn.shiftAction;
               const displayLabel = showShift ? (btn.shiftLabel || btn.label) : btn.label;
@@ -788,7 +788,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                 >
                   {/* Shift label above */}
                   {btn.shiftLabel && !shiftActive && (
-                    <span className="absolute top-1 right-1 text-[10px] leading-none bg-white/95 text-[#9956DE] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                    <span className="absolute top-0.5 right-0.5 text-[8px] leading-none bg-white/95 text-[#9956DE] font-black px-1 py-0.5 rounded-md shadow-sm">
                       {btn.shiftLabel}
                     </span>
                   )}
@@ -840,38 +840,38 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
           <div
             ref={calcWrapperRef}
             className="fixed z-50"
-            style={{ top: calcPos.y, left: calcPos.x, width: 380 }}
+            style={{ top: calcPos.y, left: calcPos.x, width: 300 }}
             onClick={() => setIsFocused(true)}
           >
             {/* Header bar – draggable */}
             <div
-              className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-t-2xl px-4 py-2.5 flex items-center justify-between"
+              className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-t-2xl px-2.5 py-1.5 flex items-center justify-between"
               style={{ cursor: 'move' }}
               onMouseDown={handleDragStart}
             >
               <div className="flex items-center gap-2">
-                <GripHorizontal size={14} className="text-white/50" />
-                <h3 className="text-white font-bold text-sm">Scientific Calculator</h3>
+                <GripHorizontal size={12} className="text-white/50" />
+                <h3 className="text-white font-bold text-[12px]">Scientific Calculator</h3>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setShowShortcuts(s => !s)}
-                  className="p-1.5 rounded-lg hover:bg-slate-200/70 transition-colors"
+                  className="p-1 rounded-lg hover:bg-slate-200/70 transition-colors"
                   title="Keyboard shortcuts"
                 >
-                  <Keyboard size={14} className="text-white" />
+                  <Keyboard size={12} className="text-white" />
                 </button>
                 <button
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-1.5 rounded-lg hover:bg-slate-200/70 transition-colors"
+                  className="p-1 rounded-lg hover:bg-slate-200/70 transition-colors"
                 >
-                  {isMinimized ? <ChevronUp size={14} className="text-white" /> : <ChevronDown size={14} className="text-white" />}
+                  {isMinimized ? <ChevronUp size={12} className="text-white" /> : <ChevronDown size={12} className="text-white" />}
                 </button>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg hover:bg-slate-200/70 transition-colors"
+                  className="p-1 rounded-lg hover:bg-slate-200/70 transition-colors"
                 >
-                  <X size={14} className="text-white" />
+                  <X size={12} className="text-white" />
                 </button>
               </div>
             </div>
