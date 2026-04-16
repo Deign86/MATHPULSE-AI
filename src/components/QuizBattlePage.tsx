@@ -12,6 +12,11 @@ import {
   Crown,
   History,
   Loader2,
+  Maximize,
+  Menu,
+  Minimize,
+  Pause,
+  Play,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -23,6 +28,7 @@ import {
   Star,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
+import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
 import {
@@ -75,6 +81,53 @@ import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
+
+const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
+
+const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
+  <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/40 backdrop-blur-sm">
+    {[...Array(40)].map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full"
+        style={{ left: `${Math.random() * 100}%`, top: '-10%' }}
+        animate={{ y: [0, viewportHeight * 1.2] }}
+        transition={{
+          duration: 0.6 + Math.random() * 0.4,
+          repeat: Infinity,
+          ease: 'linear',
+          delay: Math.random() * 2,
+        }}
+      />
+    ))}
+  </div>
+);
+
+const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
+  const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden">
+      {[...Array(60)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md"
+          style={{ left: `${20 + Math.random() * 60}%`, backgroundColor: colors[i % colors.length] }}
+          animate={{
+            y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
+            x: [0, (Math.random() - 0.5) * viewportWidth * 0.8],
+            rotate: [0, Math.random() * 720],
+          }}
+          transition={{
+            duration: 3 + Math.random() * 2,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: Math.random() * 1.5,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 type BattlePageTab = 'hub' | 'setup' | 'battle' | 'history' | 'stats' | 'leaderboard';
 
@@ -178,12 +231,17 @@ const QuizBattlePage: React.FC = () => {
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
   const [roundLocked, setRoundLocked] = useState(false);
+  const [designPauseActive, setDesignPauseActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
   const lifecycleEventRef = useRef<string>('');
   const countdownSoundRef = useRef<number | null>(null);
   const autoSubmitRoundRef = useRef<number | null>(null);
   const autoSubmitRetryAtMsRef = useRef(0);
   const celebratedMatchIdRef = useRef<string>('');
+  const botReadyStartFailuresRef = useRef(0);
+  const isDesignPauseAvailable = import.meta.env.DEV;
 
   const gradeScopedSubjects = useMemo(() => {
     const allowedSubjectIds = getActiveSubjectIdsForGrade(studentProfile?.grade);
@@ -256,6 +314,21 @@ const QuizBattlePage: React.FC = () => {
       });
     }
   }, []);
+
+  const handleToggleDesignPause = useCallback(() => {
+    if (!isDesignPauseAvailable) return;
+
+    setDesignPauseActive((previous) => {
+      const next = !previous;
+      setLaunchState({
+        status: 'queued',
+        message: next
+          ? 'Design pause enabled. Round timer and match sync are frozen on this device.'
+          : 'Design pause disabled. Live match sync resumed.',
+      });
+      return next;
+    });
+  }, [isDesignPauseAvailable]);
 
   const refreshBattleInsights = useCallback(async (): Promise<{
     stats: StudentBattleStats | null;
@@ -391,9 +464,32 @@ const QuizBattlePage: React.FC = () => {
       const resumed = await resumeQuizBattleSession();
 
       if (resumed.sessionType === 'match' && resumed.match) {
+        let syncedMatch = resumed.match;
+
+        if (resumed.match.mode === 'bot' && resumed.match.status === 'ready') {
+          try {
+            syncedMatch = await startQuizBattleMatch(resumed.match.matchId);
+            botReadyStartFailuresRef.current = 0;
+          } catch (error) {
+            const known = error as { message?: string };
+            setQueueActive(false);
+            setActiveRoom(null);
+            setActiveMatch(null);
+            setActiveTab('setup');
+            setConnectionState(
+              typeof window !== 'undefined' && window.navigator.onLine ? 'connected' : 'disconnected',
+            );
+            setLaunchState({
+              status: 'error',
+              message: known?.message || 'Unable to resume bot battle. Please start a new match.',
+            });
+            return;
+          }
+        }
+
         setQueueActive(false);
         setActiveRoom(resumed.room || null);
-        setActiveMatch(resumed.match);
+        setActiveMatch(syncedMatch);
         setActiveTab('battle');
         setConnectionState('connected');
         return;
@@ -436,6 +532,39 @@ const QuizBattlePage: React.FC = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('quiz_battle_sound_enabled', battleSoundEnabled ? '1' : '0');
   }, [battleSoundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setViewportSize({
+        width: Number.isFinite(width) && width > 0 ? width : DEFAULT_VIEWPORT_SIZE.width,
+        height: Number.isFinite(height) && height > 0 ? height : DEFAULT_VIEWPORT_SIZE.height,
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const syncFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    syncFullscreen();
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+    };
+  }, []);
 
   useEffect(() => {
     if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')))) {
@@ -481,9 +610,18 @@ const QuizBattlePage: React.FC = () => {
     const isOnlineMatchActive =
       activeMatch?.mode === 'online' &&
       (activeMatch.status === 'ready' || activeMatch.status === 'in_progress');
+    const isBotMatchPreparing = activeMatch?.mode === 'bot' && activeMatch.status === 'ready';
     const isRoomWaiting = Boolean(activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready'));
 
-    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive) {
+    if (!isBotMatchPreparing) {
+      botReadyStartFailuresRef.current = 0;
+    }
+
+    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive && !isBotMatchPreparing) {
+      return;
+    }
+
+    if (designPauseActive) {
       return;
     }
 
@@ -491,6 +629,18 @@ const QuizBattlePage: React.FC = () => {
 
     const poll = async () => {
       try {
+        if (activeMatch?.mode === 'bot' && activeMatch.status === 'ready') {
+          const started = await startQuizBattleMatch(activeMatch.matchId);
+          if (cancelled) return;
+          setActiveMatch(started);
+          setConnectionState('connected');
+          botReadyStartFailuresRef.current = 0;
+          if (started.status === 'in_progress') {
+            setLaunchState({ status: 'queued', message: 'Practice bot match started.' });
+          }
+          return;
+        }
+
         if (activeMatch?.mode === 'online') {
           if (activeMatch.status === 'ready') {
             const started = await startQuizBattleMatch(activeMatch.matchId);
@@ -568,6 +718,22 @@ const QuizBattlePage: React.FC = () => {
       } catch (error) {
         if (!cancelled) {
           console.warn('Quiz Battle sync poll failed:', error);
+          if (activeMatch?.mode === 'bot' && activeMatch.status === 'ready') {
+            botReadyStartFailuresRef.current += 1;
+            if (botReadyStartFailuresRef.current >= 3) {
+              const known = error as { message?: string };
+              setQueueActive(false);
+              setActiveRoom(null);
+              setActiveMatch(null);
+              setActiveTab('setup');
+              setLaunchState({
+                status: 'error',
+                message: known?.message || 'Unable to start bot battle. Please try again.',
+              });
+              setConnectionState('disconnected');
+              return;
+            }
+          }
           setConnectionState('reconnecting');
         }
       }
@@ -588,6 +754,7 @@ const QuizBattlePage: React.FC = () => {
     activeMatch?.status,
     activeRoom?.roomId,
     activeRoom?.status,
+    designPauseActive,
     queueActive,
   ]);
 
@@ -684,6 +851,13 @@ const QuizBattlePage: React.FC = () => {
   ]);
 
   useEffect(() => {
+    if (!designPauseActive) return;
+    if (!activeMatch || activeMatch.status !== 'in_progress') {
+      setDesignPauseActive(false);
+    }
+  }, [activeMatch?.matchId, activeMatch?.status, designPauseActive]);
+
+  useEffect(() => {
     const lifecycle = activeMatch?.lifecycle;
     if (!lifecycle?.eventType) return;
 
@@ -722,7 +896,7 @@ const QuizBattlePage: React.FC = () => {
   }, [activeMatch?.matchId, activeMatch?.status, activeMatch?.outcome, playBattleTone]);
 
   useEffect(() => {
-    if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || answerSubmitting) {
+    if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || answerSubmitting || designPauseActive) {
       countdownSoundRef.current = null;
       return;
     }
@@ -731,11 +905,11 @@ const QuizBattlePage: React.FC = () => {
       countdownSoundRef.current = roundSecondsLeft;
       playBattleTone('tick');
     }
-  }, [activeMatch?.status, roundSecondsLeft, roundLocked, answerSubmitting, playBattleTone]);
+  }, [activeMatch?.status, roundSecondsLeft, roundLocked, answerSubmitting, designPauseActive, playBattleTone]);
 
   const submitRoundAnswer = useCallback(
     async (forcedSelection: number | null) => {
-      if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked) {
+      if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
         return;
       }
 
@@ -863,11 +1037,12 @@ const QuizBattlePage: React.FC = () => {
         setAnswerSubmitting(false);
       }
     },
-    [activeMatch, refreshBattleInsights, roundLocked, roundSecondsLeft],
+    [activeMatch, designPauseActive, refreshBattleInsights, roundLocked, roundSecondsLeft],
   );
 
   useEffect(() => {
     if (!activeMatch || activeMatch.status !== 'in_progress') return;
+    if (designPauseActive) return;
     if (answerSubmitting) return;
     if (roundLocked) return;
 
@@ -908,7 +1083,7 @@ const QuizBattlePage: React.FC = () => {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [activeMatch, answerSubmitting, roundLocked, roundSecondsLeft, selectedOptionIndex, submitRoundAnswer]);
+  }, [activeMatch, answerSubmitting, designPauseActive, roundLocked, roundSecondsLeft, selectedOptionIndex, submitRoundAnswer]);
 
   const handleRequestRematch = useCallback(async () => {
     if (!activeMatch || activeMatch.mode !== 'bot') return;
@@ -960,6 +1135,7 @@ const QuizBattlePage: React.FC = () => {
   const setMode = (mode: QuizBattleMode) => {
     setSetupErrors([]);
     setLaunchState({ status: 'idle' });
+    setDesignPauseActive(false);
     setQueueActive(false);
     setActiveRoom(null);
     setPrivateRoomCodeInput('');
@@ -1135,6 +1311,268 @@ const QuizBattlePage: React.FC = () => {
       (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
       (!activeMatch || activeMatch.status === 'ready' || activeMatch.status === 'cancelled')),
   );
+
+  if (activeMatch && (activeMatch.status === 'in_progress' || activeMatch.status === 'completed')) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
+        {activeMatch.status === 'completed' && activeMatch.outcome === 'win' && (
+          <ConfettiBurst viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
+        )}
+        {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
+          <RainStorm viewportHeight={viewportSize.height} />
+        )}
+        {/* Animated BG */}
+        <div className="absolute inset-0 z-0 opacity-40">
+          <WarpBackground>
+            <div className="h-full w-full" />
+          </WarpBackground>
+        </div>
+
+        {/* Pause Overlay */}
+        {designPauseActive && (
+          <div className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center">
+            <Card className="w-full max-w-sm border-border/50 bg-[#181d27] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+               <CardHeader className="text-center">
+                  <CardTitle className="text-3xl font-black text-white">PAUSED</CardTitle>
+                  <CardDescription className="text-base text-muted-foreground mt-2">
+                    {activeMatch.mode === 'online' 
+                      ? "Online match - timer continues in the background! Hurry!" 
+                      : "Bot match - round timer frozen."}
+                  </CardDescription>
+               </CardHeader>
+               <CardContent className="flex flex-col gap-3">
+                  <Button variant="default" size="lg" className="w-full text-lg h-12" onClick={handleToggleDesignPause}>
+                    Resume Match
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full text-lg h-12 border-rose-500/20 text-rose-500 hover:bg-rose-500/10" 
+                    onClick={() => {
+                      setDesignPauseActive(false);
+                      setActiveMatch(null);
+                      setActiveRoom(null);
+                      setQueueActive(false);
+                      setLaunchState({ status: 'idle' });
+                      setActiveTab('setup');
+                    }}
+                  >
+                    Leave Match
+                  </Button>
+               </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 py-4">
+          
+          {/* Header Row */}
+          <header className="flex items-center justify-between shrink-0 h-16">
+            {/* Left: Branding & Bonuses */}
+            <div className="flex items-center gap-3 md:gap-5">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 ring-1 ring-primary/40 shadow-[0_0_15px_rgba(158,143,255,0.4)]">
+                <Swords className="h-6 w-6 text-primary" />
+              </div>
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                🔥 3 Streak
+              </div>
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                ✨ 1.5x XP
+              </div>
+            </div>
+
+            {/* Right: Controls */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
+                onClick={() => {
+                  if (typeof document === 'undefined') return;
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch((error) => {
+                      console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
+                    });
+                  } else {
+                    document.documentElement.requestFullscreen().catch((error) => {
+                      console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
+                    });
+                  }
+                }}
+                aria-label={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
+                title={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
+              >
+                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "h-12 w-12 rounded-full border-white/20 text-white",
+                  isDesignPauseAvailable
+                    ? "bg-black/20 hover:bg-white/10"
+                    : "bg-black/10 opacity-50 cursor-not-allowed",
+                )}
+                onClick={handleToggleDesignPause}
+                disabled={!isDesignPauseAvailable}
+                aria-label={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
+                title={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
+              >
+                 <Menu className="h-5 w-5" />
+              </Button>
+            </div>
+          </header>
+
+          {/* Shrinking Timer Bar */}
+          {activeMatch.status === 'in_progress' ? (
+            <div className="shrink-0 w-full max-w-4xl mx-auto h-2 bg-white/10 rounded-full overflow-hidden mt-6 mb-4">
+              <motion.div 
+                className="h-full"
+                animate={{ 
+                  width: `${Math.max(0, (roundSecondsLeft / activeMatch.timePerQuestionSec) * 100)}%`,
+                  backgroundColor: roundSecondsLeft > Math.floor(activeMatch.timePerQuestionSec / 2) 
+                    ? '#10b981' 
+                    : roundSecondsLeft > 3 
+                      ? '#f59e0b' 
+                      : '#ef4444' 
+                }}
+                transition={{ duration: 1, ease: "linear" }}
+              />
+            </div>
+          ) : (
+            <div className="shrink-0 h-6 md:h-10 w-full" /* Spacer for completed mode */ />
+          )}
+
+          {/* Main Area: Question & Choices OR Match Complete Modal */}
+          <div className="flex-1 flex flex-col justify-center items-center gap-6 md:gap-10 w-full min-h-0 overflow-y-auto pb-48 z-20" style={{ scrollbarWidth: 'none' }}>
+            
+            {activeMatch.status === 'completed' ? (
+              <motion.div 
+                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                 className="w-full max-w-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[2.5rem] p-8 md:p-12 text-center"
+              >
+                  <h2 className={cn(
+                    "text-5xl font-black uppercase tracking-widest drop-shadow-lg mb-4",
+                    activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
+                  )}>
+                    {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
+                  </h2>
+                  <p className="text-white/80 font-bold text-xl mb-8 uppercase tracking-widest">
+                     Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
+                  </p>
+                  
+                  <div className="bg-white/10 rounded-2xl p-6 mb-10 border border-white/10 flex items-center justify-center gap-4">
+                     <Star className="text-amber-400 h-8 w-8" />
+                     <span className="text-white font-black text-2xl">+{activeMatch.xpEarned || 0} XP EARNED</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                     <Button
+                       size="lg"
+                       onClick={() => {
+                         setActiveRoom(null);
+                         setQueueActive(false);
+                         setActiveTab('setup');
+                       }}
+                       className="h-16 px-8 rounded-2xl text-lg font-black bg-white/10 hover:bg-white/20 text-white border-2 border-white/20"
+                     >
+                       START NEW MATCH
+                     </Button>
+                     {activeMatch.mode === 'bot' && (
+                       <Button
+                         size="lg"
+                         onClick={() => void handleRequestRematch()}
+                         disabled={answerSubmitting}
+                         className="h-16 px-8 rounded-2xl text-lg font-black bg-violet-600 hover:bg-violet-500 text-white border-b-4 border-violet-800 active:border-b-0 active:translate-y-[4px]"
+                       >
+                         REMATCH
+                       </Button>
+                     )}
+                  </div>
+              </motion.div>
+            ) : (
+              <>
+            {/* Question Card */}
+            <div className="relative bg-[#1e2536] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[2rem] p-8 md:p-12 w-full max-w-4xl text-center flex flex-col items-center">
+               <div className="absolute -top-4 bg-[#2f3547] border border-white/10 text-white/80 px-5 py-1.5 rounded-full text-base font-black shadow-lg uppercase tracking-wider">
+                  {activeMatch.currentRound} / {activeMatch.totalRounds}
+               </div>
+               
+               <p className="text-2xl sm:text-3xl md:text-5xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[80px] flex items-center justify-center">
+                 {activeMatch.currentQuestion?.prompt}
+               </p>
+            </div>
+
+            {/* Choices Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 w-full max-w-4xl px-4">
+               {activeMatch.currentQuestion?.choices.map((choice, idx) => {
+                  const isSelected = selectedOptionIndex === idx;
+                  const isSubmitting = answerSubmitting || roundLocked;
+                  const btnColors = [
+                    "bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-emerald-950 border-emerald-400 shadow-[0_8px_0_rgba(5,150,105,1)]", 
+                    "bg-violet-500 hover:bg-violet-400 active:bg-violet-600 text-white border-violet-400 shadow-[0_8px_0_rgba(109,40,217,1)]", 
+                    "bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white border-sky-400 shadow-[0_8px_0_rgba(2,132,199,1)]", 
+                    "bg-rose-500 hover:bg-rose-400 active:bg-rose-600 text-white border-rose-400 shadow-[0_8px_0_rgba(225,29,72,1)]"
+                  ];
+
+                  return (
+                    <motion.button
+                      whileTap={{ y: 8, scale: 0.98 }}
+                      whileHover={{ scale: 1.02 }}
+                      disabled={isSubmitting || designPauseActive}
+                      key={idx}
+                      onClick={() => void submitRoundAnswer(idx)}
+                      className={cn(
+                        "relative h-24 md:h-32 rounded-3xl font-black text-xl md:text-3xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                        btnColors[idx],
+                        isSelected ? "ring-[6px] ring-white ring-offset-[6px] ring-offset-[#0B0F19]" : ""
+                      )}
+                    >
+                      {choice}
+                    </motion.button>
+                  );
+               })}
+            </div>
+              </>
+            )}
+          </div>
+
+          {/* Footer Avatars row - Absolutely positioned to bottom so they never crop */}
+          <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-4 md:px-8 shrink-0 h-32 md:h-40 flex justify-between items-end pb-4 pointer-events-none z-30">
+             
+             {/* Left: Player Avatar fixed strictly to base, blinking/ears only */}
+             <div className="flex items-end gap-3 sm:gap-6 relative pointer-events-auto">
+                 <div className="relative w-28 h-28 md:w-36 md:h-36 overflow-hidden rounded-t-[40px]">
+                   <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-110 -mb-2" />
+                 </div>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 max-w-[200px] md:max-w-[250px]">
+                   <span className="text-white font-black text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
+                   <span className="text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
+                </div>
+             </div>
+
+             {/* Right: Opponent (Bot or Silhouette) */}
+             <div className="flex items-end gap-3 sm:gap-6 relative flex-row-reverse pointer-events-auto">
+                <div className="relative w-28 h-28 md:w-36 md:h-36 bg-[#1a2030] overflow-hidden rounded-t-[40px] flex items-end justify-center border-t-4 border-slate-700/50 shadow-inner">
+                   {activeMatch.mode === 'bot' ? (
+                     <Bot className="h-16 w-16 md:h-20 md:w-20 text-rose-400 mb-6 drop-shadow-xl" strokeWidth={1.5} />
+                   ) : (
+                     <Users className="h-16 w-16 md:h-20 md:w-20 text-slate-500 mb-6 drop-shadow-xl" strokeWidth={1.5} />
+                   )}
+                </div>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 text-right max-w-[200px] md:max-w-[250px]">
+                   <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
+                   <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
+                </div>
+             </div>
+
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <WarpBackground className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
@@ -2047,14 +2485,39 @@ const QuizBattlePage: React.FC = () => {
                             : <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />}
                           vs {activeMatch.opponentName}
                         </span>
-                        <span className="text-sm font-bold tabular-nums">{activeMatch.scoreFor} - {activeMatch.scoreAgainst}</span>
+                        <div className="inline-flex items-center gap-2">
+                          {isDesignPauseAvailable && activeMatch.status === 'in_progress' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleToggleDesignPause}
+                              className="h-8 rounded-lg"
+                            >
+                              {designPauseActive ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Play className="h-3.5 w-3.5" />
+                                  Resume
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Pause className="h-3.5 w-3.5" />
+                                  Pause
+                                </span>
+                              )}
+                            </Button>
+                          )}
+                          <span className="text-sm font-bold tabular-nums">{activeMatch.scoreFor} - {activeMatch.scoreAgainst}</span>
+                        </div>
                       </CardTitle>
                       <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
                         {activeMatch.status === 'completed'
                           ? `Completed in ${activeMatch.totalRounds} rounds.`
                           : activeMatch.status === 'ready'
-                            ? 'Waiting for both players to confirm and start together.'
-                            : `Round ${activeMatch.currentRound} of ${activeMatch.totalRounds}`}
+                            ? activeMatch.mode === 'online'
+                              ? 'Waiting for both players to confirm and start together.'
+                              : 'Finalizing practice bot session start.'
+                            : `Round ${activeMatch.currentRound} of ${activeMatch.totalRounds}${designPauseActive ? ' (paused for design)' : ''}`}
                       </CardDescription>
                       {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid) && (
                         <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
@@ -2064,36 +2527,41 @@ const QuizBattlePage: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {activeMatch.status === 'ready' && (
-                          <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
-                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                              {activeMatch.mode === 'online'
-                                ? 'Waiting for both players to lock in start...'
-                                : 'Preparing match session...'}
-                            </p>
-                            {/* Fallback Cancel Button to prevent getting permanently stuck during backend disruption */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
-                              onClick={() => {
-                                setActiveMatch(null);
-                                setActiveRoom(null);
-                                setQueueActive(false);
-                                setLaunchState({ status: 'idle' });
-                                setActiveTab('setup');
-                              }}
-                            >
-                              Force Cancel
-                            </Button>
-                          </div>
+                        <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
+                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                            {activeMatch.mode === 'online'
+                              ? 'Waiting for both players to lock in start...'
+                              : 'Starting practice bot round...'}
+                          </p>
+                          {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
+                            onClick={() => {
+                              setActiveMatch(null);
+                              setActiveRoom(null);
+                              setQueueActive(false);
+                              setLaunchState({ status: 'idle' });
+                              setActiveTab('setup');
+                            }}
+                          >
+                            Force Cancel
+                          </Button>
+                        </div>
                       )}
 
                       {activeMatch.status === 'in_progress' && activeMatch.currentQuestion && (
                         <>
                           <div className="rounded-xl border border-border bg-muted/40 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
                             <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
-                              Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>
+                              Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>{designPauseActive ? ' (paused)' : ''}
                             </p>
+                            {designPauseActive && (
+                              <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                Design pause keeps this battle screen static while you edit UI.
+                              </p>
+                            )}
                           </div>
 
                           <p className="text-lg font-bold text-foreground dark:text-[#f5f7fb]">
@@ -2111,7 +2579,7 @@ const QuizBattlePage: React.FC = () => {
                                     : 'outline'
                                 }
                                 onClick={() => setSelectedOptionIndex(index)}
-                                disabled={answerSubmitting || roundLocked}
+                                disabled={answerSubmitting || roundLocked || designPauseActive}
                                 className={cn(
                                   'h-auto min-h-[48px] justify-start text-left font-medium px-4 py-3 rounded-xl whitespace-normal',
                                   selectedOptionIndex === index
@@ -2129,10 +2597,12 @@ const QuizBattlePage: React.FC = () => {
                             <Button
                               type="button"
                               onClick={() => void submitRoundAnswer(selectedOptionIndex)}
-                              disabled={answerSubmitting || roundLocked}
+                              disabled={answerSubmitting || roundLocked || designPauseActive}
                               className="rounded-xl"
                             >
-                              {answerSubmitting ? (
+                              {designPauseActive ? (
+                                <span className="inline-flex items-center gap-2"><Pause className="h-4 w-4" /> Paused for design</span>
+                              ) : answerSubmitting ? (
                                 <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</span>
                               ) : roundLocked ? (
                                 'Waiting for opponent...'

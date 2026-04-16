@@ -124,6 +124,38 @@ test("does not gate ready online starts by AI source when default policy is disa
   );
 });
 
+test("allows bank source when AI source policy is enabled", () => {
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "bank",
+      requireAiSourceForStart: true,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "ai",
+      requireAiSourceForStart: true,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldBlockStartDueToNonAiSource({
+      status: "ready",
+      mode: "online",
+      questionSetSource: "static",
+      requireAiSourceForStart: true,
+    }),
+    true,
+  );
+});
+
 test("static fallback prefers a pool that can satisfy requested rounds", () => {
   const selector = {
     sharedPoolMode: "grade_strict",
@@ -137,11 +169,11 @@ test("static fallback prefers a pool that can satisfy requested rounds", () => {
 
   const strictPool = buildStaticFallbackPool(selector, 3);
   const strictIds = strictPool.map((entry) => entry.questionId).sort();
-  assert.deepEqual(strictIds, ["qb-gm-01", "qb-gm-02", "qb-gm-03", "qb-gm-04"]);
+  assert.deepEqual(strictIds, ["qb-gm-03", "qb-gm-04", "qb-gm-05", "qb-gm-06", "qb-gm-07", "qb-gm-08"]);
 
   const relaxedPool = buildStaticFallbackPool(selector, 2);
   const relaxedIds = relaxedPool.map((entry) => entry.questionId).sort();
-  assert.deepEqual(relaxedIds, ["qb-gm-03", "qb-gm-04"]);
+  assert.deepEqual(relaxedIds, ["qb-gm-03", "qb-gm-04", "qb-gm-05", "qb-gm-06", "qb-gm-07", "qb-gm-08"]);
 });
 
 test("static fallback picks richest staged pool when rounds exceed strict filters", () => {
@@ -157,7 +189,7 @@ test("static fallback picks richest staged pool when rounds exceed strict filter
 
   const fallbackPool = buildStaticFallbackPool(selector, 5);
   const fallbackIds = fallbackPool.map((entry) => entry.questionId).sort();
-  assert.deepEqual(fallbackIds, ["qb-gm-01", "qb-gm-02", "qb-gm-03", "qb-gm-04"]);
+  assert.deepEqual(fallbackIds, ["qb-gm-03", "qb-gm-04", "qb-gm-05", "qb-gm-06", "qb-gm-07", "qb-gm-08"]);
 });
 
 test("static fallback expansion deterministically backfills missing rounds", () => {
