@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb, Calculator, Play, Volume2, Pause, ChevronRight, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
-import { Lesson } from '../data/subjects';
+import { Lesson, Quiz } from '../data/subjects';
 
 interface LessonViewerProps {
   lesson: Lesson;
+  lessonCompletionXP?: number;
+  practiceQuiz?: Quiz | null;
+  practiceQuizCompleted?: boolean;
+  initialSection?: number;
+  onStartPractice?: () => void;
   onBack: () => void;
   onComplete: (score?: number, totalXP?: number, goToNext?: boolean) => void;
   onProgressUpdate?: (percent: number) => void;
@@ -78,21 +83,43 @@ const generateLessonContent = (lessonTitle: string): LessonContent => {
   };
 };
 
-const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete, onProgressUpdate }) => {
+const LessonViewer: React.FC<LessonViewerProps> = ({
+  lesson,
+  lessonCompletionXP = 10,
+  practiceQuiz,
+  practiceQuizCompleted = false,
+  initialSection = 0,
+  onStartPractice,
+  onBack,
+  onComplete,
+  onProgressUpdate,
+}) => {
   const [currentSection, setCurrentSection] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
 
+  const content = generateLessonContent(lesson.title);
+  const totalSections = content.sections.length;
+
+  const getInitialSectionIndex = () => {
+    if (initialSection === -1) {
+      const practiceIndex = content.sections.findIndex((section) => section.type === 'practice');
+      return practiceIndex >= 0 ? practiceIndex : 0;
+    }
+    if (initialSection < 0) return 0;
+    if (initialSection >= totalSections) return Math.max(0, totalSections - 1);
+    return initialSection;
+  };
+
+  const isPracticeRequired = Boolean(practiceQuiz && !practiceQuizCompleted);
+
   useEffect(() => {
-    setCurrentSection(0);
+    setCurrentSection(getInitialSectionIndex());
     setShowCompletion(false);
     setIsPlaying(false);
     setProgress(0);
-  }, [lesson.id, lesson.title]);
-
-  const content = generateLessonContent(lesson.title);
-  const totalSections = content.sections.length;
+  }, [lesson.id, lesson.title, initialSection]);
 
   useEffect(() => {
     const newProgress = ((currentSection + 1) / totalSections) * 100;
@@ -104,6 +131,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
     if (currentSection < totalSections - 1) {
       setCurrentSection(prev => prev + 1);
     } else {
+      if (isPracticeRequired) return;
       setShowCompletion(true);
     }
   };
@@ -284,6 +312,26 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
                         <strong>Tip:</strong> Complete the practice quizzes after this lesson to reinforce your learning!
                       </p>
                     </div>
+
+                    {practiceQuiz && (
+                      <div className="mt-6 bg-white/80 rounded-2xl p-5 border border-sky-100 text-left">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-wider text-sky-600 mb-1">Practice Quiz</p>
+                            <p className="text-base font-bold text-slate-800">{practiceQuiz.title}</p>
+                            <p className="text-xs text-slate-600 mt-1">{practiceQuiz.questions} questions • {practiceQuiz.duration}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onStartPractice}
+                            className={`px-4 py-2 rounded-lg text-xs font-black tracking-wide transition ${practiceQuiz.locked ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : practiceQuizCompleted ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-sky-500 text-white hover:bg-sky-600'}`}
+                            disabled={practiceQuiz.locked || !onStartPractice}
+                          >
+                            {practiceQuizCompleted ? 'REVIEW PRACTICE' : 'START PRACTICE'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 </div>
@@ -331,6 +379,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
 
           <Button
             onClick={handleNext}
+            disabled={currentSection === totalSections - 1 && isPracticeRequired}
             className="px-6 py-6 rounded-xl font-bold bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:opacity-90 shadow-lg"
           >
             {currentSection === totalSections - 1 ? 'Complete Lesson' : 'Next'}
@@ -341,6 +390,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
             )}
           </Button>
         </div>
+        {currentSection === totalSections - 1 && isPracticeRequired && (
+          <p className="text-center text-xs font-semibold text-amber-700 mt-3">
+            Complete the practice quiz first to unlock lesson completion.
+          </p>
+        )}
       </footer>
 
       {/* COMPLETION MODAL LAYER */}
@@ -375,13 +429,18 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, onBack, onComplete,
                 </div>
               </div>
               <p className="text-xs text-teal-700 font-bold uppercase tracking-wider mb-1">XP Earned</p>
-              <p className="text-3xl font-black text-teal-600 drop-shadow-sm">+50</p>
+              <p className="text-3xl font-black text-teal-600 drop-shadow-sm">+{lessonCompletionXP}</p>
             </div>
 
             <div className="flex flex-col gap-3 relative z-10">
               <button
                 onClick={() => handleComplete(true)}
-                className="w-full py-3.5 rounded-xl font-bold text-[15px] bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:shadow-lg hover:shadow-teal-500/25 hover:-translate-y-0.5 transition-all outline-none"
+                disabled={isPracticeRequired}
+                className={`w-full py-3.5 rounded-xl font-bold text-[15px] transition-all outline-none ${
+                  isPracticeRequired
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:shadow-lg hover:shadow-teal-500/25 hover:-translate-y-0.5'
+                }`}
               >
                 Continue to Next Lesson
               </button>

@@ -132,7 +132,7 @@ const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Quest
 };
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
-  const STANDARD_LESSON_XP = 15;
+  const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
@@ -256,6 +256,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
+          lessonCompletionXP={STANDARD_LESSON_XP}
           practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
