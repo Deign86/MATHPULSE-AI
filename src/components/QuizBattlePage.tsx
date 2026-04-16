@@ -85,7 +85,7 @@ import { cn } from './ui/utils';
 const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
-  <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/40 backdrop-blur-sm">
+  <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/10">
     {[...Array(40)].map((_, i) => (
       <motion.div
         key={i}
@@ -1444,7 +1444,7 @@ const QuizBattlePage: React.FC = () => {
           )}
 
           {/* Main Area: Question & Choices OR Match Complete Modal */}
-          <div className="flex-1 flex flex-col justify-center items-center gap-6 md:gap-10 w-full min-h-0 overflow-y-auto pb-48 z-20" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pb-48 z-20" style={{ scrollbarWidth: 'none' }}>
             
             {activeMatch.status === 'completed' ? (
               <motion.div 
@@ -1471,6 +1471,7 @@ const QuizBattlePage: React.FC = () => {
                      <Button
                        size="lg"
                        onClick={() => {
+                         setActiveMatch(null);
                          setActiveRoom(null);
                          setQueueActive(false);
                          setActiveTab('setup');
@@ -1494,18 +1495,18 @@ const QuizBattlePage: React.FC = () => {
             ) : (
               <>
             {/* Question Card */}
-            <div className="relative bg-[#1e2536] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[2rem] p-8 md:p-12 w-full max-w-4xl text-center flex flex-col items-center">
-               <div className="absolute -top-4 bg-[#2f3547] border border-white/10 text-white/80 px-5 py-1.5 rounded-full text-base font-black shadow-lg uppercase tracking-wider">
+            <div className="relative bg-[#1e2536] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[1.5rem] p-6 md:p-8 w-full max-w-4xl text-center flex flex-col items-center">
+               <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-sm font-black shadow-lg uppercase tracking-wider">
                   {activeMatch.currentRound} / {activeMatch.totalRounds}
                </div>
                
-               <p className="text-2xl sm:text-3xl md:text-5xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[80px] flex items-center justify-center">
+               <p className="text-lg sm:text-xl md:text-2xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[60px] flex items-center justify-center">
                  {activeMatch.currentQuestion?.prompt}
                </p>
             </div>
 
             {/* Choices Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 w-full max-w-4xl px-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl px-4">
                {activeMatch.currentQuestion?.choices.map((choice, idx) => {
                   const isSelected = selectedOptionIndex === idx;
                   const isSubmitting = answerSubmitting || roundLocked;
@@ -1524,7 +1525,7 @@ const QuizBattlePage: React.FC = () => {
                       key={idx}
                       onClick={() => void submitRoundAnswer(idx)}
                       className={cn(
-                        "relative h-24 md:h-32 rounded-3xl font-black text-xl md:text-3xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                        "relative h-16 md:h-24 rounded-2xl md:rounded-3xl font-black text-lg md:text-2xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
                         btnColors[idx],
                         isSelected ? "ring-[6px] ring-white ring-offset-[6px] ring-offset-[#0B0F19]" : ""
                       )}
@@ -2656,6 +2657,7 @@ const QuizBattlePage: React.FC = () => {
                               type="button"
                               variant="outline"
                               onClick={() => {
+                                setActiveMatch(null);
                                 setActiveRoom(null);
                                 setQueueActive(false);
                                 setActiveTab('setup');
