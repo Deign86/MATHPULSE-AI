@@ -64,6 +64,13 @@ import httpx
 import uvicorn
 from services.inference_client import InferenceRequest, create_default_client
 from services.logging_utils import log_model_call
+from services.email_service import create_email_service_from_env
+from services.user_provisioning_service import (
+    AdminCreateUserInput,
+    CreateUserAndNotifyResult,
+    UserProvisioningError,
+    UserProvisioningService,
+)
 
 try:
     import firebase_admin  # type: ignore[import-not-found]
@@ -277,6 +284,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/upload/class-records/risk-refresh/recent": TEACHER_OR_ADMIN,
     "/api/import/student-accounts/preview": TEACHER_OR_ADMIN,
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
+    "/api/admin/users": ADMIN_ONLY,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
@@ -406,6 +414,15 @@ def _is_adc_missing_error(err: Exception) -> bool:
     return (
         "default credentials were not found" in message
         or "application default credentials" in message
+    )
+
+
+def _is_auth_user_not_found_error(err: Exception) -> bool:
+    message = str(err).lower()
+    return (
+        "no user record" in message
+        or "user-not-found" in message
+        or "not found" in message
     )
 
 
@@ -4799,6 +4816,51 @@ class StudentAccountProvisionCommitRequest(BaseModel):
     createAuthUsers: bool = True
 
 
+class AdminCreateUserRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    confirmPassword: str
+    role: str
+    status: str
+    grade: str
+    section: str
+    lrn: Optional[str] = None
+
+    @field_validator("name", "email", "password", "confirmPassword", "role", "status", "grade", "section")
+    @classmethod
+    def _strip_required(cls, value: str) -> str:
+        return str(value or "").strip()
+
+    @field_validator("lrn")
+    @classmethod
+    def _strip_lrn(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class AdminCreateUserResponse(BaseModel):
+    success: bool
+    resultCode: str
+    message: str
+    userCreated: bool
+    emailSent: bool
+    uid: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
+    emailError: Optional[Dict[str, Any]] = None
+
+
+class AdminDeleteUserResponse(BaseModel):
+    success: bool
+    uid: str
+    authDeleted: bool
+    profileDeleted: bool
+    message: str
+    warnings: List[str] = Field(default_factory=list)
+
+
 @app.post("/api/import/student-accounts/preview")
 async def preview_student_account_import(
     request: Request,
@@ -5272,6 +5334,211 @@ async def commit_student_account_import(
     except Exception as exc:
         logger.error(f"Student account import commit error: {exc}")
         raise HTTPException(status_code=500, detail=f"Student account import commit error: {str(exc)}")
+
+
+@app.post("/api/admin/users", response_model=AdminCreateUserResponse)
+async def create_admin_user_and_notify(
+    request: Request,
+    payload: AdminCreateUserRequest,
+):
+    """Create a single user account (Auth + Firestore) and send welcome credentials email."""
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not _firebase_ready:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    try:
+        provisioning_service = UserProvisioningService(
+            firebase_auth_module=firebase_auth,
+            firestore_module=firebase_firestore,
+            firestore_server_timestamp=FIRESTORE_SERVER_TIMESTAMP,
+            email_service=create_email_service_from_env(),
+        )
+
+        result: CreateUserAndNotifyResult = provisioning_service.create_user_and_notify(
+            AdminCreateUserInput(
+                name=payload.name,
+                email=payload.email,
+                password=payload.password,
+                confirm_password=payload.confirmPassword,
+                role=payload.role,
+                status=payload.status,
+                grade=payload.grade,
+                section=payload.section,
+                lrn=payload.lrn,
+            )
+        )
+
+        email_error: Optional[Dict[str, Any]] = None
+        if result.email_result and not result.email_result.success:
+            email_error = {
+                "provider": result.email_result.provider,
+                "code": result.email_result.error_code,
+                "message": result.email_result.error_message,
+                "retryable": result.email_result.retryable,
+            }
+
+        _write_access_audit_log(
+            request,
+            action="admin_user_create",
+            status="success" if result.email_sent else "partial_success",
+            metadata={
+                "uid": result.uid,
+                "email": payload.email,
+                "role": payload.role,
+                "resultCode": result.result_code,
+                "emailSent": result.email_sent,
+            },
+        )
+
+        return AdminCreateUserResponse(
+            success=True,
+            resultCode=result.result_code,
+            message=result.message,
+            userCreated=result.user_created,
+            emailSent=result.email_sent,
+            uid=result.uid,
+            warnings=result.warnings,
+            emailError=email_error,
+        )
+    except UserProvisioningError as provisioning_error:
+        _write_access_audit_log(
+            request,
+            action="admin_user_create",
+            status="failed",
+            metadata={
+                "email": payload.email,
+                "role": payload.role,
+                "errorCode": provisioning_error.code,
+            },
+        )
+        raise HTTPException(status_code=provisioning_error.status_code, detail=provisioning_error.message)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Admin user creation failed unexpectedly: {exc}")
+        _write_access_audit_log(
+            request,
+            action="admin_user_create",
+            status="failed",
+            metadata={
+                "email": payload.email,
+                "role": payload.role,
+                "errorCode": "unexpected_error",
+            },
+        )
+        raise HTTPException(status_code=500, detail="Failed to create user account")
+
+
+@app.delete("/api/admin/users", response_model=AdminDeleteUserResponse)
+async def delete_admin_user_account(
+    request: Request,
+    uid: str = Query(..., min_length=1),
+):
+    """Delete a user account from Firebase Auth and Firestore profile records."""
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not _firebase_ready or firebase_auth is None or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    normalized_uid = str(uid or "").strip()
+    if not normalized_uid:
+        raise HTTPException(status_code=400, detail="User uid is required")
+
+    if normalized_uid == user.uid:
+        raise HTTPException(status_code=400, detail="Admin users cannot delete their own account")
+
+    auth_deleted = False
+    profile_deleted = False
+    warnings: List[str] = []
+
+    try:
+        try:
+            cast(Any, firebase_auth).delete_user(normalized_uid)
+            auth_deleted = True
+        except Exception as auth_delete_error:
+            if _is_auth_user_not_found_error(auth_delete_error):
+                warnings.append("Authentication account was already missing.")
+            else:
+                logger.error("Admin user delete failed in Auth for uid=%s: %s", normalized_uid, auth_delete_error)
+                raise HTTPException(status_code=500, detail="Failed to delete authentication account")
+
+        try:
+            firestore_client = cast(Any, firebase_firestore).client()
+            profile_ref = firestore_client.collection("users").document(normalized_uid)
+            profile_snapshot = cast(Any, profile_ref.get())
+            if _snapshot_exists(profile_snapshot):
+                profile_ref.delete()
+                profile_deleted = True
+            else:
+                warnings.append("User profile was already missing.")
+        except HTTPException:
+            raise
+        except Exception as profile_delete_error:
+            logger.error("Admin user delete failed in Firestore for uid=%s: %s", normalized_uid, profile_delete_error)
+            raise HTTPException(status_code=500, detail="Failed to delete user profile")
+
+        status_label = "success" if (auth_deleted or profile_deleted) else "noop"
+        _write_access_audit_log(
+            request,
+            action="admin_user_delete",
+            status=status_label,
+            metadata={
+                "uid": normalized_uid,
+                "authDeleted": auth_deleted,
+                "profileDeleted": profile_deleted,
+                "warnings": list(dict.fromkeys(warnings)),
+            },
+        )
+
+        if auth_deleted and profile_deleted:
+            message = "User account deleted from authentication and profile records."
+        elif auth_deleted:
+            message = "Authentication account deleted. Profile record was already missing."
+        elif profile_deleted:
+            message = "Profile record deleted. Authentication account was already missing."
+        else:
+            message = "No matching user records were found to delete."
+
+        return AdminDeleteUserResponse(
+            success=True,
+            uid=normalized_uid,
+            authDeleted=auth_deleted,
+            profileDeleted=profile_deleted,
+            message=message,
+            warnings=list(dict.fromkeys(warnings)),
+        )
+    except HTTPException as http_exc:
+        _write_access_audit_log(
+            request,
+            action="admin_user_delete",
+            status="failed",
+            metadata={
+                "uid": normalized_uid,
+                "authDeleted": auth_deleted,
+                "profileDeleted": profile_deleted,
+                "errorStatus": http_exc.status_code,
+            },
+        )
+        raise
+    except Exception as exc:
+        logger.error(f"Admin user deletion failed unexpectedly for {normalized_uid}: {exc}")
+        _write_access_audit_log(
+            request,
+            action="admin_user_delete",
+            status="failed",
+            metadata={
+                "uid": normalized_uid,
+                "authDeleted": auth_deleted,
+                "profileDeleted": profile_deleted,
+                "errorCode": "unexpected_error",
+            },
+        )
+        raise HTTPException(status_code=500, detail="Failed to delete user account")
 
 
 @app.get("/api/upload/class-records/risk-refresh/recent")

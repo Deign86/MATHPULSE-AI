@@ -1,11 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { 
-  Search, Shield, AlertTriangle, AlertCircle, Info, Download, 
+  Search, Shield, AlertTriangle, AlertCircle, Info,
   Calendar, Eye, Loader2, RefreshCw
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { getAuditLogs, type AuditLogEntry } from '../services/adminService';
 import { toast } from 'sonner';
 
@@ -16,6 +30,8 @@ const AdminAuditLog: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedSeverity, setSelectedSeverity] = useState('All Severity');
   const [selectedRole, setSelectedRole] = useState('All Roles');
+  const [visibleCount, setVisibleCount] = useState(25);
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -32,6 +48,10 @@ const AdminAuditLog: React.FC = () => {
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [searchTerm, selectedCategory, selectedSeverity, selectedRole, logs.length]);
 
   // Computed stats from real data
   const infoCount = logs.filter(l => l.severity === 'Info').length;
@@ -81,6 +101,8 @@ const AdminAuditLog: React.FC = () => {
     return matchesSearch && matchesCategory && matchesSeverity && matchesRole;
   });
 
+  const visibleLogs = filteredLogs.slice(0, visibleCount);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -94,7 +116,7 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* Action Bar */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="bg-white px-3 py-2 rounded-xl border border-[#dde3eb] flex items-center gap-2 text-[#5a6578] text-sm font-medium">
           <Calendar size={16} />
           <span>Last 100 events</span>
@@ -102,6 +124,14 @@ const AdminAuditLog: React.FC = () => {
         <Button variant="outline" className="gap-2 border-[#dde3eb] hover:bg-[#edf1f7]" onClick={loadLogs}>
           <RefreshCw size={16} />
           Refresh
+        </Button>
+        <Button
+          variant="outline"
+          disabled
+          title="Audit log export is not implemented yet"
+          className="gap-2 border-[#dde3eb] opacity-60 cursor-not-allowed"
+        >
+          Export (Unavailable)
         </Button>
       </div>
 
@@ -111,7 +141,7 @@ const AdminAuditLog: React.FC = () => {
           <Loader2 size={24} className="animate-spin text-sky-500" />
         </div>
       ) : null}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
           <p className="text-xs font-bold text-[#5a6578] mb-1">Total Events</p>
           <p className="text-2xl font-bold text-[#0a1628]">{logs.length}</p>
@@ -151,46 +181,75 @@ const AdminAuditLog: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3">
-          <select 
-            className="px-3 py-2 rounded-lg border border-[#dde3eb] bg-white text-sm font-medium text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option>All Categories</option>
-            <option>Auth</option>
-            <option>Data</option>
-            <option>User</option>
-            <option>System</option>
-            <option>Content</option>
-          </select>
-          <select 
-            className="px-3 py-2 rounded-lg border border-[#dde3eb] bg-white text-sm font-medium text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-            value={selectedSeverity}
-            onChange={(e) => setSelectedSeverity(e.target.value)}
-          >
-            <option>All Severity</option>
-            <option>Info</option>
-            <option>Warning</option>
-            <option>Error</option>
-            <option>Critical</option>
-          </select>
-          <select 
-            className="px-3 py-2 rounded-lg border border-[#dde3eb] bg-white text-sm font-medium text-[#5a6578] focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-          >
-            <option>All Roles</option>
-            <option>Admin</option>
-            <option>Teacher</option>
-            <option>Student</option>
-          </select>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All Categories">All Categories</SelectItem>
+              <SelectItem value="Auth">Auth</SelectItem>
+              <SelectItem value="Data">Data</SelectItem>
+              <SelectItem value="User">User</SelectItem>
+              <SelectItem value="System">System</SelectItem>
+              <SelectItem value="Content">Content</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="All Severity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All Severity">All Severity</SelectItem>
+              <SelectItem value="Info">Info</SelectItem>
+              <SelectItem value="Warning">Warning</SelectItem>
+              <SelectItem value="Error">Error</SelectItem>
+              <SelectItem value="Critical">Critical</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedRole} onValueChange={setSelectedRole}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All Roles">All Roles</SelectItem>
+              <SelectItem value="Admin">Admin</SelectItem>
+              <SelectItem value="Teacher">Teacher</SelectItem>
+              <SelectItem value="Student">Student</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Audit List */}
       <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="md:hidden divide-y divide-[#dde3eb]">
+          {visibleLogs.map((log) => (
+            <div key={`mobile-${log.id}`} className="p-4 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${getSeverityBadge(log.severity)}`}>
+                  {getSeverityIcon(log.severity)}
+                  {log.severity}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLog(log)}
+                  className="p-2 hover:bg-[#dde3eb] rounded-lg text-slate-500 hover:text-sky-600 transition-colors"
+                  aria-label={`View audit event ${log.action}`}
+                >
+                  <Eye size={16} />
+                </button>
+              </div>
+              <p className="text-sm font-semibold text-[#0a1628]">{log.action}</p>
+              <p className="text-xs text-[#5a6578]">{log.timestamp}</p>
+              <p className="text-xs text-[#5a6578]">{log.user.name} ({log.user.role})</p>
+              <p className="text-xs text-[#5a6578]">{log.details}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
+        <table className="w-full min-w-[980px] text-left border-collapse">
           <thead>
             <tr className="bg-[#edf1f7] border-b border-[#dde3eb]">
               <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Severity</th>
@@ -203,7 +262,7 @@ const AdminAuditLog: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#dde3eb]">
-            {filteredLogs.map((log) => (
+            {visibleLogs.map((log) => (
               <tr key={log.id} className="hover:bg-[#edf1f7] transition-colors">
                 <td className="p-4">
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${getSeverityBadge(log.severity)}`}>
@@ -246,7 +305,12 @@ const AdminAuditLog: React.FC = () => {
                   {log.details}
                 </td>
                 <td className="p-4 text-right">
-                  <button className="p-2 hover:bg-[#dde3eb] rounded-lg text-slate-500 hover:text-sky-600 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLog(log)}
+                    className="p-2 hover:bg-[#dde3eb] rounded-lg text-slate-500 hover:text-sky-600 transition-colors"
+                    aria-label={`View audit event ${log.action}`}
+                  >
                     <Eye size={16} />
                   </button>
                 </td>
@@ -254,6 +318,19 @@ const AdminAuditLog: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
+
+        {filteredLogs.length > visibleCount ? (
+          <div className="border-t border-[#dde3eb] p-4 flex justify-center">
+            <Button
+              variant="outline"
+              className="border-[#dde3eb]"
+              onClick={() => setVisibleCount((previous) => previous + 25)}
+            >
+              Load more events
+            </Button>
+          </div>
+        ) : null}
 
         {filteredLogs.length === 0 && !loading && (
           <div className="p-12 text-center text-[#5a6578]">
@@ -263,6 +340,26 @@ const AdminAuditLog: React.FC = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={Boolean(selectedLog)} onOpenChange={(open) => { if (!open) setSelectedLog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedLog?.action || 'Audit Event Details'}</DialogTitle>
+            <DialogDescription>
+              Detailed audit information for operational review.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLog ? (
+            <div className="space-y-2 text-sm">
+              <p><span className="font-semibold text-[#0a1628]">Severity:</span> {selectedLog.severity}</p>
+              <p><span className="font-semibold text-[#0a1628]">Category:</span> {selectedLog.category}</p>
+              <p><span className="font-semibold text-[#0a1628]">Timestamp:</span> {selectedLog.timestamp}</p>
+              <p><span className="font-semibold text-[#0a1628]">User:</span> {selectedLog.user.name} ({selectedLog.user.role})</p>
+              <p><span className="font-semibold text-[#0a1628]">Details:</span> {selectedLog.details}</p>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
