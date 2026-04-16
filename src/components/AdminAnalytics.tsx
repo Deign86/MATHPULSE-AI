@@ -30,6 +30,7 @@ const AdminAnalytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loadingKPIs, setLoadingKPIs] = useState(true);
+  const rangeSelectionSupported = false;
 
   useEffect(() => {
     getAnalyticsSummary()
@@ -55,13 +56,13 @@ const AdminAnalytics: React.FC = () => {
     },
     {
       label: 'Avg. Completion Rate',
-      value: null as string | null, // requires time-series data
+      value: 'N/A',
       icon: Target,
       color: 'from-teal-500 to-emerald-600',
     },
     {
       label: 'Avg. Session Duration',
-      value: null as string | null, // requires session tracking
+      value: 'N/A',
       icon: Clock,
       color: 'from-violet-500 to-purple-600',
     },
@@ -124,11 +125,13 @@ const AdminAnalytics: React.FC = () => {
             <button
               key={key}
               onClick={() => setTimeRange(key)}
+              disabled={!rangeSelectionSupported}
+              title={!rangeSelectionSupported ? 'Range selection is unavailable until backend range queries are supported.' : undefined}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 timeRange === key
                   ? 'bg-sky-600 text-white shadow-sm'
                   : 'text-[#5a6578] hover:bg-[#edf1f7]'
-              }`}
+              } ${!rangeSelectionSupported ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               {label}
             </button>
@@ -138,6 +141,7 @@ const AdminAnalytics: React.FC = () => {
           <Button
             variant="outline"
             disabled
+            title="Advanced analytics filters are not implemented yet"
             className="px-4 py-2 gap-2 rounded-xl border-[#dde3eb] font-semibold text-sm opacity-50 cursor-not-allowed"
           >
             <Filter size={16} />
@@ -146,6 +150,7 @@ const AdminAnalytics: React.FC = () => {
           <Button
             variant="outline"
             disabled
+            title="Export is unavailable until backend report generation is implemented"
             className="px-4 py-2 gap-2 rounded-xl border-[#dde3eb] font-semibold text-sm opacity-50 cursor-not-allowed"
           >
             <Download size={16} />
@@ -153,6 +158,12 @@ const AdminAnalytics: React.FC = () => {
           </Button>
         </div>
       </motion.div>
+
+      {!rangeSelectionSupported ? (
+        <p className="text-xs text-[#5a6578] -mt-3">
+          Time-range filtering is currently disabled because analytics range queries are not yet supported by the backend.
+        </p>
+      ) : null}
 
       {/* Loading / no full data banner */}
       {!loadingKPIs && !summary?.totalActiveUsers && (
@@ -187,23 +198,19 @@ const AdminAnalytics: React.FC = () => {
                 <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center shadow-sm`}>
                   <Icon size={20} className="text-white" />
                 </div>
-                {/* sparkline placeholder */}
-                <div className="w-[120px] h-8 rounded bg-[#f0f3f8]" />
               </div>
               {loadingKPIs ? (
                 <div className="flex items-center gap-2 mb-2">
                   <Loader2 size={16} className="animate-spin text-[#a0aec0]" />
                   <div className="w-14 h-6 bg-[#edf1f7] rounded-lg animate-pulse" />
                 </div>
-              ) : kpi.value !== null ? (
-                <p className="text-2xl font-bold text-[#0a1628] mb-2">{kpi.value}</p>
               ) : (
-                <div className="w-16 h-7 bg-[#edf1f7] rounded-lg mb-2" />
+                <p className="text-2xl font-bold text-[#0a1628] mb-2">{kpi.value}</p>
               )}
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[#5a6578] font-medium">{kpi.label}</p>
                 <span className="text-xs text-[#a0aec0] font-medium">
-                  {kpi.value === null ? '—' : timeRangeLabels[timeRange]}
+                  {timeRangeLabels[timeRange]}
                 </span>
               </div>
             </motion.div>
@@ -212,12 +219,12 @@ const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* Performance Trends + Grade Distribution */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.15 }}
-          className="col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="xl:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -246,7 +253,7 @@ const AdminAnalytics: React.FC = () => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="xl:col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
@@ -266,12 +273,12 @@ const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* Subject Engagement + Weekly Activity */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.25 }}
-          className="col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
@@ -314,7 +321,7 @@ const AdminAnalytics: React.FC = () => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
-          className="col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
@@ -334,12 +341,12 @@ const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* Gamification + Top Classes */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.35 }}
-          className="col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
@@ -359,15 +366,10 @@ const AdminAnalytics: React.FC = () => {
                   <Icon size={20} className={card.color} />
                   {loadingKPIs ? (
                     <div className="w-12 h-5 bg-white/60 rounded mt-2 mb-1 animate-pulse" />
-                  ) : card.value !== null ? (
-                    <p className="text-lg font-bold text-[#0a1628] mt-2 mb-1">{card.value}</p>
                   ) : (
-                    <div className="w-12 h-5 bg-white/60 rounded mt-2 mb-1" />
+                    <p className="text-lg font-bold text-[#0a1628] mt-2 mb-1">{card.value}</p>
                   )}
                   <p className="text-xs text-[#5a6578] font-medium">{card.label}</p>
-                  {!loadingKPIs && card.value === null && (
-                    <p className="text-[10px] text-[#a0aec0] mt-1">No data yet</p>
-                  )}
                 </div>
               );
             })}
@@ -378,7 +380,7 @@ const AdminAnalytics: React.FC = () => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
-          className="col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
