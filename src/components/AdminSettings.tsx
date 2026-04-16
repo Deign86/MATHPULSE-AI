@@ -1,32 +1,53 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Bell,
   BookOpen,
   Database,
-  Globe,
   Save,
   Server,
   Settings,
   Shield,
-  Type,
+  Loader2,
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import { Switch } from './ui/switch';
+import ConfirmModal from './ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 import { DEFAULT_USER_SETTINGS, UserSettings } from '../types/models';
 import { getUserSettings, upsertUserSettings } from '../services/settingsService';
 
 const cloneDefaultSettings = (): UserSettings => JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)) as UserSettings;
 
-const AdminSettings: React.FC = () => {
+interface AdminSettingsProps {
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onDirtyChange }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('General');
   const [settings, setSettings] = useState<UserSettings>(cloneDefaultSettings());
+  const [savedSettings, setSavedSettings] = useState<UserSettings>(cloneDefaultSettings());
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showUnsavedSectionConfirm, setShowUnsavedSectionConfirm] = useState(false);
+  const [pendingSection, setPendingSection] = useState<string | null>(null);
+
+  const isDirty = useMemo(
+    () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
+    [settings, savedSettings],
+  );
 
   const menuItems = [
     { id: 'General', label: 'General', icon: Settings },
@@ -44,6 +65,7 @@ const AdminSettings: React.FC = () => {
       try {
         const saved = await getUserSettings(userProfile.uid);
         setSettings(saved);
+        setSavedSettings(saved);
       } catch (error) {
         console.error('Failed loading admin settings:', error);
         toast.error('Failed to load admin settings');
@@ -54,6 +76,55 @@ const AdminSettings: React.FC = () => {
 
     void load();
   }, [userProfile?.uid]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (!isDirty) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handler);
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+    };
+  }, [isDirty]);
+
+  const handleSettingsTabChange = (nextTab: string) => {
+    if (nextTab === activeTab) {
+      return;
+    }
+
+    if (isDirty) {
+      setPendingSection(nextTab);
+      setShowUnsavedSectionConfirm(true);
+      return;
+    }
+
+    setActiveTab(nextTab);
+  };
+
+  const handleConfirmSectionSwitch = () => {
+    // Discard unsaved edits when user confirms section switch.
+    setSettings(savedSettings);
+    if (pendingSection) {
+      setActiveTab(pendingSection);
+    }
+    setPendingSection(null);
+    setShowUnsavedSectionConfirm(false);
+  };
+
+  const handleCancelSectionSwitch = () => {
+    setPendingSection(null);
+    setShowUnsavedSectionConfirm(false);
+  };
 
   const updateAdminPanel = (updates: Partial<UserSettings['adminPanel']>) => {
     setSettings((prev) => ({
@@ -72,6 +143,7 @@ const AdminSettings: React.FC = () => {
     try {
       const saved = await upsertUserSettings(userProfile.uid, settings);
       setSettings(saved);
+      setSavedSettings(saved);
       toast.success('Admin settings updated');
     } catch (error) {
       console.error('Failed saving admin settings:', error);
@@ -83,17 +155,17 @@ const AdminSettings: React.FC = () => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 md:col-span-3">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
+        <div className="md:col-span-3">
           <div className="bg-white rounded-xl shadow-sm border border-[#dde3eb] overflow-hidden">
-            <nav className="flex flex-col py-2">
+            <nav className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-col py-2">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleSettingsTabChange(item.id)}
                     className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all relative ${
                       isActive ? 'text-sky-600 bg-sky-50/50' : 'text-[#5a6578] hover:bg-[#edf1f7] hover:text-[#0a1628]'
                     }`}
@@ -108,7 +180,7 @@ const AdminSettings: React.FC = () => {
           </div>
         </div>
 
-        <div className="col-span-12 md:col-span-9">
+        <div className="md:col-span-9">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="space-y-6">
             <div className="bg-white rounded-xl shadow-sm border border-[#dde3eb] p-6">
               {isLoading ? (
@@ -128,8 +200,8 @@ const AdminSettings: React.FC = () => {
 
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-[#0a1628]">Site Description</label>
-                        <textarea
-                          className="w-full min-h-[80px] px-3 py-2 rounded-xl border border-[#dde3eb] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 placeholder:text-slate-500 resize-none"
+                        <Textarea
+                          className="min-h-[80px] bg-white border-[#dde3eb]"
                           value={settings.adminPanel.siteDescription}
                           onChange={(event) => updateAdminPanel({ siteDescription: event.target.value })}
                         />
@@ -137,22 +209,20 @@ const AdminSettings: React.FC = () => {
 
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-[#0a1628]">Default Language</label>
-                        <div className="relative">
-                          <select
-                            value={settings.adminPanel.defaultLanguage}
-                            onChange={(event) => updateAdminPanel({ defaultLanguage: event.target.value })}
-                            className="w-full px-3 py-2 rounded-xl border border-[#dde3eb] bg-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                          >
-                            <option>English</option>
-                            <option>Spanish</option>
-                            <option>French</option>
-                            <option>German</option>
-                          </select>
-                          <Globe
-                            size={16}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-                          />
-                        </div>
+                        <Select
+                          value={settings.adminPanel.defaultLanguage}
+                          onValueChange={(value) => updateAdminPanel({ defaultLanguage: value })}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="English">English</SelectItem>
+                            <SelectItem value="Spanish">Spanish</SelectItem>
+                            <SelectItem value="French">French</SelectItem>
+                            <SelectItem value="German">German</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center justify-between">
@@ -165,15 +235,11 @@ const AdminSettings: React.FC = () => {
                             <p className="text-xs text-red-700 mt-0.5">Temporarily disable access for non-admins</p>
                           </div>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={settings.adminPanel.maintenanceMode}
-                            onChange={() => updateAdminPanel({ maintenanceMode: !settings.adminPanel.maintenanceMode })}
-                          />
-                          <div className="w-11 h-6 bg-[#dde3eb] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#dde3eb] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                        </label>
+                        <Switch
+                          checked={settings.adminPanel.maintenanceMode}
+                          onCheckedChange={(checked) => updateAdminPanel({ maintenanceMode: checked })}
+                          className="data-[state=checked]:bg-red-600 data-[state=unchecked]:bg-[#dde3eb]"
+                        />
                       </div>
                     </div>
                   )}
@@ -185,12 +251,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Enforce Strong Passwords</h4>
                           <p className="text-xs text-slate-500">Require stronger passwords for all users</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.enforceStrongPasswords}
-                          onChange={() =>
-                            updateAdminPanel({ enforceStrongPasswords: !settings.adminPanel.enforceStrongPasswords })
-                          }
+                          onCheckedChange={(checked) => updateAdminPanel({ enforceStrongPasswords: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -214,10 +278,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">AI Tutor</h4>
                           <p className="text-xs text-slate-500">Enable AI tutoring experience</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.aiTutorEnabled}
-                          onChange={() => updateAdminPanel({ aiTutorEnabled: !settings.adminPanel.aiTutorEnabled })}
+                          onCheckedChange={(checked) => updateAdminPanel({ aiTutorEnabled: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -225,12 +289,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Auto Recommendations</h4>
                           <p className="text-xs text-slate-500">Enable AI-generated recommendations</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.aiAutoRecommendations}
-                          onChange={() =>
-                            updateAdminPanel({ aiAutoRecommendations: !settings.adminPanel.aiAutoRecommendations })
-                          }
+                          onCheckedChange={(checked) => updateAdminPanel({ aiAutoRecommendations: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -238,12 +300,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Risk Alerts</h4>
                           <p className="text-xs text-slate-500">Send proactive risk alerts for at-risk learners</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.aiRiskAlertsEnabled}
-                          onChange={() =>
-                            updateAdminPanel({ aiRiskAlertsEnabled: !settings.adminPanel.aiRiskAlertsEnabled })
-                          }
+                          onCheckedChange={(checked) => updateAdminPanel({ aiRiskAlertsEnabled: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                     </div>
@@ -253,19 +313,20 @@ const AdminSettings: React.FC = () => {
                     <div className="space-y-5">
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-[#0a1628]">Grading Scale</label>
-                        <div className="relative max-w-xs">
-                          <select
-                            value={settings.adminPanel.gradingScale}
-                            onChange={(event) =>
-                              updateAdminPanel({ gradingScale: event.target.value as 'percentage' | 'gpa' })
-                            }
-                            className="w-full px-3 py-2 rounded-xl border border-[#dde3eb] bg-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                          >
-                            <option value="percentage">Percentage</option>
-                            <option value="gpa">GPA</option>
-                          </select>
-                          <Type size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                        </div>
+                        <Select
+                          value={settings.adminPanel.gradingScale}
+                          onValueChange={(value) =>
+                            updateAdminPanel({ gradingScale: value as 'percentage' | 'gpa' })
+                          }
+                        >
+                          <SelectTrigger className="w-full max-w-xs">
+                            <SelectValue placeholder="Select grading scale" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Percentage</SelectItem>
+                            <SelectItem value="gpa">GPA</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-[#0a1628]">Passing Grade</label>
@@ -286,12 +347,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Parent Summary Emails</h4>
                           <p className="text-xs text-slate-500">Weekly summaries for guardians</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.parentSummaryEmails}
-                          onChange={() =>
-                            updateAdminPanel({ parentSummaryEmails: !settings.adminPanel.parentSummaryEmails })
-                          }
+                          onCheckedChange={(checked) => updateAdminPanel({ parentSummaryEmails: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -299,12 +358,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Teacher Digest Emails</h4>
                           <p className="text-xs text-slate-500">Daily teacher performance digest</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.teacherDigestEmails}
-                          onChange={() =>
-                            updateAdminPanel({ teacherDigestEmails: !settings.adminPanel.teacherDigestEmails })
-                          }
+                          onCheckedChange={(checked) => updateAdminPanel({ teacherDigestEmails: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -312,12 +369,10 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Weekly Platform Report</h4>
                           <p className="text-xs text-slate-500">System report for administrators</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.weeklyPlatformReport}
-                          onChange={() =>
-                            updateAdminPanel({ weeklyPlatformReport: !settings.adminPanel.weeklyPlatformReport })
-                          }
+                          onCheckedChange={(checked) => updateAdminPanel({ weeklyPlatformReport: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                     </div>
@@ -330,34 +385,49 @@ const AdminSettings: React.FC = () => {
                           <h4 className="text-sm font-bold text-[#0a1628]">Automatic Backups</h4>
                           <p className="text-xs text-slate-500">Create scheduled backups of platform data</p>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={settings.adminPanel.autoBackupEnabled}
-                          onChange={() => updateAdminPanel({ autoBackupEnabled: !settings.adminPanel.autoBackupEnabled })}
+                          onCheckedChange={(checked) => updateAdminPanel({ autoBackupEnabled: checked })}
+                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
                         />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-[#0a1628]">Backup Frequency</label>
-                        <select
+                        <Select
                           value={settings.adminPanel.backupFrequency}
-                          onChange={(event) =>
+                          onValueChange={(value) =>
                             updateAdminPanel({
-                              backupFrequency: event.target.value as 'daily' | 'weekly' | 'monthly',
+                              backupFrequency: value as 'daily' | 'weekly' | 'monthly',
                             })
                           }
-                          className="w-full max-w-xs px-3 py-2 rounded-xl border border-[#dde3eb] bg-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                         >
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                          <option value="monthly">Monthly</option>
-                        </select>
+                          <SelectTrigger className="w-full max-w-xs">
+                            <SelectValue placeholder="Select backup frequency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
 
-                  <div className="mt-8 pt-6 border-t border-[#dde3eb] flex justify-end">
-                    <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2" onClick={handleSave} disabled={isSaving}>
-                      <Save size={16} />
+                  <div className="mt-8 pt-6 border-t border-[#dde3eb] flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-end">
+                    {isDirty ? (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        You have unsaved changes.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-[#5a6578]">All changes are saved.</p>
+                    )}
+                    <Button
+                      className={`bg-sky-600 hover:bg-sky-700 text-white gap-2 ${isSaving || !isDirty ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      onClick={handleSave}
+                      disabled={isSaving || isLoading || !isDirty}
+                    >
+                      {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                       {isSaving ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </div>
@@ -367,6 +437,18 @@ const AdminSettings: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showUnsavedSectionConfirm}
+        onClose={handleCancelSectionSwitch}
+        onConfirm={handleConfirmSectionSwitch}
+        title="Discard Unsaved Changes?"
+        message="You have unsaved settings updates. Switching sections now will discard those edits."
+        confirmText="Discard Changes"
+        cancelText="Keep Editing"
+        type="warning"
+        icon="warning"
+      />
     </motion.div>
   );
 };

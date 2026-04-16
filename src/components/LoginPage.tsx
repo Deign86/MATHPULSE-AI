@@ -116,8 +116,24 @@ const LoginPage: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('Mathematics');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPrimaryVideoReady, setIsPrimaryVideoReady] = useState(false);
+  const [isSecondaryVideoReady, setIsSecondaryVideoReady] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(16);
+  const primaryVideoRef = useRef<HTMLVideoElement>(null);
+  const secondaryVideoRef = useRef<HTMLVideoElement>(null);
+  const videoLoaded = isPrimaryVideoReady && isSecondaryVideoReady;
+
+  const syncSecondaryOffset = (duration: number) => {
+    if (!Number.isFinite(duration) || duration <= 0 || !secondaryVideoRef.current) {
+      return;
+    }
+
+    try {
+      secondaryVideoRef.current.currentTime = duration / 2;
+    } catch {
+      // Ignore offset sync failures; native loop still works as fallback.
+    }
+  };
   const passwordRuleStates = useMemo(
     () =>
       SIGNUP_PASSWORD_RULES.map((rule) => ({
@@ -141,11 +157,22 @@ const LoginPage: React.FC = () => {
   }, [error, isSignUp]);
 
   useEffect(() => {
-    // Ensure video plays on mount
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
+    // Ensure both background videos try to play on mount.
+    primaryVideoRef.current?.play().catch(() => {});
+    secondaryVideoRef.current?.play().catch(() => {});
   }, []);
+
+  const handlePrimaryMetadata = () => {
+    const duration = primaryVideoRef.current?.duration;
+    if (duration && Number.isFinite(duration) && duration > 0) {
+      setVideoDuration(duration);
+      syncSecondaryOffset(duration);
+    }
+  };
+
+  const handleSecondaryMetadata = () => {
+    syncSecondaryOffset(videoDuration);
+  };
 
   useEffect(() => {
     if (selectedRole === 'teacher' && !DEPARTMENT_OPTIONS.teacher.includes(selectedDepartment)) {
@@ -269,20 +296,44 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // Mathematical symbols for floating background decoration
-  const mathSymbols = ['∫', 'π', '∑', 'Δ', '∞', 'φ', '√', 'λ', 'θ', '∂'];
-
   return (
     <div className="h-screen w-full flex items-center justify-center px-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #f8fafc 30%, #fff1f2 60%, #f0f9ff 100%)' }}>
       {/* ─── Video Background ─── */}
-      <video
-        ref={videoRef}
+      <motion.video
+        ref={primaryVideoRef}
         autoPlay
         loop
         muted
         playsInline
-        onCanPlay={() => setVideoLoaded(true)}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-40' : 'opacity-0'}`}
+        preload="auto"
+        onCanPlay={() => setIsPrimaryVideoReady(true)}
+        onLoadedMetadata={handlePrimaryMetadata}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-20' : 'opacity-0'}`}
+        animate={videoLoaded ? { opacity: [0.18, 0.42, 0.18] } : undefined}
+        transition={{
+          duration: videoDuration,
+          repeat: Infinity,
+          ease: 'linear',
+        }}
+        src={shaderBgVideo}
+      />
+
+      <motion.video
+        ref={secondaryVideoRef}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        onCanPlay={() => setIsSecondaryVideoReady(true)}
+        onLoadedMetadata={handleSecondaryMetadata}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-35' : 'opacity-0'}`}
+        animate={videoLoaded ? { opacity: [0.42, 0.18, 0.42] } : undefined}
+        transition={{
+          duration: videoDuration,
+          repeat: Infinity,
+          ease: 'linear',
+        }}
         src={shaderBgVideo}
       />
 
@@ -299,43 +350,6 @@ const LoginPage: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full blur-[160px] pointer-events-none mix-blend-multiply" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)' }} />
         <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] rounded-full blur-[120px] pointer-events-none mix-blend-screen" style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%)' }} />
         
-        <div className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.4) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
-
-      {/* Floating math symbols — soft on light */}
-      {mathSymbols.map((symbol, i) => (
-        <motion.span
-          key={i}
-          className="absolute text-sky-700/[0.08] font-display select-none pointer-events-none"
-          style={{
-            fontSize: `${20 + Math.random() * 40}px`,
-            left: `${5 + (i * 9.5)}%`,
-            top: `${10 + (i * 8)}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.04, 0.1, 0.04],
-            rotate: [0, 10, 0],
-          }}
-          transition={{
-            duration: 8 + i * 2,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: i * 0.5,
-          }}
-        >
-          {symbol}
-        </motion.span>
-      ))}
-
-      {/* Geometric accent lines */}
-      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-sky-400/15 to-transparent" />
-      <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-rose-300/10 to-transparent" />
-
       <div className="relative z-10 w-full max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left Side — Branding */}

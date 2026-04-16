@@ -714,6 +714,43 @@ export interface StudentAccountImportCommitResponse {
   warnings: string[];
 }
 
+export interface AdminCreateUserApiRequest {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: string;
+  status: string;
+  grade: string;
+  section: string;
+  lrn?: string;
+}
+
+export interface AdminCreateUserApiResponse {
+  success: boolean;
+  resultCode: 'created_and_emailed' | 'created_email_failed';
+  message: string;
+  userCreated: boolean;
+  emailSent: boolean;
+  uid?: string | null;
+  warnings: string[];
+  emailError?: {
+    provider?: string;
+    code?: string;
+    message?: string;
+    retryable?: boolean;
+  } | null;
+}
+
+export interface AdminDeleteUserApiResponse {
+  success: boolean;
+  uid: string;
+  authDeleted: boolean;
+  profileDeleted: boolean;
+  message: string;
+  warnings: string[];
+}
+
 // ─── Quiz Maker Types ────────────────────────────────────────
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
@@ -1595,6 +1632,45 @@ export const apiService = {
     return apiFetch<StudentAccountImportCommitResponse>(
       '/api/import/student-accounts/commit',
       { method: 'POST', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /** Create one user account via backend (Auth + Firestore) and send welcome credentials email. */
+  async createAdminUser(payload: AdminCreateUserApiRequest): Promise<AdminCreateUserApiResponse> {
+    validateRequired('/api/admin/users', {
+      name: payload.name,
+      email: payload.email,
+      password: payload.password,
+      confirmPassword: payload.confirmPassword,
+      role: payload.role,
+      status: payload.status,
+      grade: payload.grade,
+      section: payload.section,
+    });
+
+    if (payload.role.trim().toLowerCase() === 'student' && !payload.lrn?.trim()) {
+      throw new ApiValidationError('/api/admin/users', 'lrn is required for student accounts');
+    }
+
+    return apiFetch<AdminCreateUserApiResponse>(
+      '/api/admin/users',
+      { method: 'POST', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /** Delete one user account via backend (Auth + Firestore profile). */
+  async deleteAdminUser(uid: string): Promise<AdminDeleteUserApiResponse> {
+    const normalizedUid = uid.trim();
+    validateRequired('/api/admin/users', { uid: normalizedUid });
+
+    const params = new URLSearchParams();
+    params.set('uid', normalizedUid);
+
+    return apiFetch<AdminDeleteUserApiResponse>(
+      `/api/admin/users?${params.toString()}`,
+      { method: 'DELETE' },
       DEFAULT_RETRY_OPTS,
     );
   },
