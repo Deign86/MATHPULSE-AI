@@ -177,7 +177,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   return (
     <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
-      <div className="relative w-full max-w-[1200px] h-[85vh] min-h-[600px] max-h-[850px] rounded-[2rem] p-8 lg:p-12 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12">
+      <div className="relative w-full max-w-[1000px] h-[75vh] min-h-[550px] max-h-[750px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12">
         
         <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
@@ -185,25 +185,25 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-100/30 rounded-full blur-3xl" />
         </div>
 
-        <div className="flex flex-col h-full relative z-10 w-full xl:w-7/12 mx-auto xl:mx-0">
-          <div className="mb-8 flex flex-col sm:flex-row items-start justify-between gap-6 shrink-0">
+        <div className="flex flex-col h-full relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1">
+          <div className="mb-6 flex flex-col items-start justify-between gap-4 shrink-0">
             <div className="pr-4">
-              <h1 className="text-4xl md:text-5xl font-display font-black text-[#0a1628] tracking-tight flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl md:text-4xl font-display font-black text-[#0a1628] tracking-tight flex flex-wrap items-center gap-2.5">
                 <span className="whitespace-nowrap">Avatar Studio</span> <Sparkles className="text-blue-500 fill-blue-500" size={32} />
               </h1>
               <p className="text-slate-500 font-medium text-lg mt-2">Design your perfect learning companion.</p>
             </div>
-            <div className="flex items-center gap-4 sm:ml-auto">
+            <div className="flex items-center gap-3 sm:ml-auto">
               {/* Test Reset Button */}
               <button
                 onClick={handleResetForTesting}
                 disabled={purchasingItemId === 'resetting'}
-                className="hidden sm:flex self-stretch items-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-2 rounded-2xl font-bold text-xs transition-colors border border-slate-200"
+                className="hidden sm:flex self-stretch items-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-xl font-bold text-[11px] transition-colors border border-slate-200"
               >
                 Reset (Test)
               </button>
 
-              <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl px-4 py-3 shadow-lg flex items-center gap-2 h-fit">
+              <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl px-3 py-2.5 shadow-md flex items-center gap-1.5 h-fit">
                 <ShoppingBag className="text-white" size={20} />
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -224,12 +224,12 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           </div>
 
           <Tabs.Root defaultValue="top" className="flex flex-col flex-1 min-h-0">
-            <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-2 sm:space-x-4 mb-4 sm:mb-8 bg-white shadow-sm p-1.5 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
+            <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-1 sm:space-x-2 mb-4 bg-white shadow-sm p-1 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
               {categories.map((cat) => (
                 <Tabs.Trigger
                   key={cat.id}
                   value={cat.id}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm text-slate-500 hover:bg-slate-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-sky-500 data-[state=active]:text-white transition-all shadow-sm outline-none whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-[13px] text-slate-500 hover:bg-slate-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-sky-500 data-[state=active]:text-white transition-all shadow-sm outline-none whitespace-nowrap"
                 >
                   {cat.icon}
                   {cat.label}
@@ -250,18 +250,18 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                         <p className="text-slate-400 text-sm max-w-xs">We're crafting some awesome gear for your avatar! Check back later.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 lg:gap-6">
                         {categoryItems.map(item => {
                           const isEquipped = equipped[cat.id as keyof typeof equipped] === item.id;
                       const isOwned = ownedItems.includes(item.id);
                       const isLocked = Boolean(item.price && item.price > 0 && !isOwned);
 
                       return (
-                        <div key={item.id} className="flex flex-col gap-2">
+                        <div key={item.id} className="flex flex-col gap-1.5">
                           <button
                             onClick={() => !isLocked && handleEquip(cat.id, item.id)}
                             disabled={isLocked}
-                            className={`relative w-full aspect-square rounded-[1.5rem] border-[3px] transition-all flex flex-col items-center justify-center group ${
+                            className={`relative w-full aspect-square rounded-2xl border-2 transition-all flex flex-col items-center justify-center group ${
                               isEquipped && !isLocked
                                 ? 'bg-white border-blue-500 shadow-md scale-[1.02] z-10'
                                 : isLocked
@@ -270,13 +270,13 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                             }`}
                           >
                             {isEquipped && !isLocked && (
-                              <div className="absolute top-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gradient-to-r from-blue-500 to-sky-400 text-white text-[9px] font-black rounded-full flex items-center gap-1 z-10 whitespace-nowrap">
+                              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-gradient-to-r from-blue-500 to-sky-400 text-white text-[9px] font-black rounded-full flex items-center gap-1 z-10 whitespace-nowrap">
                                 Equipped <Sparkles size={9} className="fill-white" />
                               </div>
                             )}
                             
                             {isLocked && (
-                              <div className="absolute inset-0 bg-black/20 z-20 flex items-center justify-center rounded-[1.3rem]">
+                              <div className="absolute inset-0 bg-black/20 z-20 flex items-center justify-center rounded-[1rem]">
                                 <Lock className="text-white" size={24} />
                               </div>
                             )}
@@ -284,7 +284,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                             <img 
                               src={item.thumbnail} 
                               alt={item.name} 
-                              className={`w-4/5 h-4/5 object-contain transition-transform ${!isLocked && 'group-hover:scale-110'}`}
+                              className={`w-3/4 h-3/4 object-contain transition-transform ${!isLocked && 'group-hover:scale-110'}`}
                               style={{ filter: isLocked ? 'grayscale(70%)' : 'none' }}
                             />
                           </button>
@@ -297,7 +297,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                               animate={{ opacity: 1 }}
                               onClick={(e) => handlePurchaseItem(e, item.id, item.price || 0)}
                               disabled={purchasingItemId === item.id}
-                              className="w-full py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[10px] font-bold flex items-center justify-center gap-1.5 rounded-lg shadow-md transition-all disabled:opacity-70"
+                              className="w-full py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm transition-all disabled:opacity-70"
                             >
                               {purchasingItemId === item.id ? (
                                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
@@ -323,8 +323,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           </Tabs.Root>
         </div>
 
-        <div className="flex flex-col gap-6 relative z-10 w-full xl:w-[450px] shrink-0 xl:self-center">
-          <div className="bg-[#0f1422] rounded-[3rem] overflow-hidden relative shadow-[0_20px_50px_rgba(15,20,34,0.3)] h-[400px] xl:h-[480px] w-full flex items-center justify-center mx-auto border-8 border-slate-800">
+        <div className="flex flex-col gap-4 relative z-10 w-full xl:w-[350px] shrink-0 xl:self-center">
+          <div className="bg-[#0f1422] rounded-[2rem] overflow-hidden relative shadow-[0_20px_50px_rgba(15,20,34,0.2)] h-[400px] w-full flex items-center justify-center mx-auto border-4 border-slate-800">
             
             <div
               className="absolute top-[-10%] left-0 right-0 h-[110%] pointer-events-none mix-blend-screen opacity-70"
@@ -364,7 +364,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full max-w-[450px] mx-auto h-[64px] bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98]"
+            className="w-full max-w-[450px] mx-auto h-[54px] bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98]"
           >
             {isSaving ? (
               <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
