@@ -12,8 +12,7 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
-  onSnapshot,
-  deleteField
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
@@ -456,6 +455,10 @@ export const purchaseAvatarItem = async (
 };
 
 export const resetAvatarPurchasesForTesting = async (userId: string): Promise<{ success: boolean; newXP: number }> => {
+  if (!import.meta.env.DEV) {
+    return { success: false, newXP: 0 };
+  }
+
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
@@ -472,7 +475,12 @@ export const resetAvatarPurchasesForTesting = async (userId: string): Promise<{ 
 
     await updateDoc(userRef, {
       ownedAvatarItems: [],
-      avatarLayers: deleteField(),
+      avatarLayers: {
+        top: '',
+        bottom: '',
+        shoes: '',
+        accessory: '',
+      },
       currentXP: newXP,
       updatedAt: serverTimestamp(),
     });

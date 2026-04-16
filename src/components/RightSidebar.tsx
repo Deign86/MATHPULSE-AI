@@ -47,17 +47,17 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         <div className="relative z-10 p-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center border border-white/35 backdrop-blur-sm">
-              <Trophy size={16} className="text-white" />
+            <div className="shrink-0 w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center border border-white/35 backdrop-blur-sm">
+              <Trophy size={14} className="text-white" />
             </div>
-            <h3 className="font-display font-bold text-sm text-white tracking-wide">Rewards & Achievements</h3>
+            <h3 className="font-display font-bold text-[13px] leading-tight text-white tracking-wide">Rewards & <br className="hidden 2xl:block"/> Achievements</h3>
           </div>
-          <ChevronRight size={16} className="text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+          <ChevronRight size={14} className="shrink-0 text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
         </div>
 
         {/* Compact inline stats */}
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-body px-2 py-1 rounded-md bg-white/14 border border-white/25 text-white">
+        <div className="flex items-center justify-between gap-1 mb-3 bg-white/10 p-1.5 rounded-xl border border-white/20 backdrop-blur-sm">
+          <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
             <Crown size={12} className="text-[#FFB356]" />
             <span className="font-bold">Lv {userLevel}</span>
           </div>
@@ -65,11 +65,14 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={onNavigateToModules}
-                className="flex items-center gap-1.5 text-xs font-body px-2 py-1 rounded-md bg-white/14 border border-white/25 text-white cursor-pointer hover:bg-white/20 transition-colors active:scale-95"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onNavigateToModules?.();
+                }}
+                className="flex items-center gap-1.5 text-xs font-body px-1 text-white cursor-pointer transition-colors active:scale-95"
               >
                 <Star size={12} className="text-[#6ED1CF]" />
-                <span className="font-bold">{currentXP} XP</span>
+                <span className="font-bold whitespace-nowrap">{currentXP} XP</span>
               </button>
             </TooltipTrigger>
             <TooltipContent side="top" className="bg-slate-900 text-white border border-slate-700">
@@ -77,7 +80,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             </TooltipContent>
           </Tooltip>
           <div className="w-px h-3 bg-white/35" />
-          <div className="flex items-center gap-1.5 text-xs font-body px-2 py-1 rounded-md bg-white/14 border border-white/25 text-white">
+          <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
             <Flame size={12} className="text-[#FF8B8B]" />
             <span className="font-bold">{streak}d</span>
           </div>
