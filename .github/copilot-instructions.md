@@ -4,6 +4,7 @@
 
 - Use standard built-in tools for context gathering and shell operations.
 - Use external documentation tools only when they are relevant to the task.
+- When a user pastes images or PDFs in chat, always use the MarkItDown MCP (`mcp_markitdown_convert_to_markdown`) first to extract content for lower token usage and better understanding.
 
 ## Mandatory Prompt Context Contract (Non-Negotiable)
 
