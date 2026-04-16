@@ -159,15 +159,28 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     setSaving(true);
     try {
       if (editingUser) {
-        await updateAdminUser(editingUser.id, {
+        const updatePayload: {
+          name: string;
+          role: string;
+          status: string;
+          department?: string;
+          grade: string;
+          section: string;
+          lrn?: string;
+        } = {
           name: formData.name,
           role: formData.role,
           status: formData.status,
-          department: formData.department,
           grade: formData.grade,
           section: formData.section,
           lrn: formData.role === 'Student' ? formData.lrn : undefined,
-        });
+        };
+
+        if (formData.role !== 'Student') {
+          updatePayload.department = formData.department;
+        }
+
+        await updateAdminUser(editingUser.id, updatePayload);
         await addAuditLog(
           'User Updated',
           'User',
