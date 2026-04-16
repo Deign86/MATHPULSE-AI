@@ -298,13 +298,6 @@ const LoginPage: React.FC = () => {
         <div className="absolute top-[10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[140px] pointer-events-none mix-blend-multiply" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%)' }} />
         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full blur-[160px] pointer-events-none mix-blend-multiply" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)' }} />
         <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] rounded-full blur-[120px] pointer-events-none mix-blend-screen" style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%)' }} />
-        
-        <div className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.4) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
 
       {/* Floating math symbols — soft on light */}
       {mathSymbols.map((symbol, i) => (
