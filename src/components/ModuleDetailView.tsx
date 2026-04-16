@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star } from 'lucide-react';
+import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
@@ -48,40 +48,40 @@ const quizQuestionBanks: Record<string, Question[]> = {
   // General Mathematics - Module 4: Basic Algebra
   'gm-4': [
     { id: 1, type: 'multiple-choice', question: 'Solve for x: 2x + 4 = 10', options: ['x = 3', 'x = 2', 'x = 6', 'x = 4'], correctAnswer: 'x = 3', explanation: 'Subtract 4: 2x = 6. Divide by 2: x = 3.', optionExplanations: { 'x = 3': 'Correct! 2(3)+4 = 10.', 'x = 2': '2(2)+4 = 8, not 10.', 'x = 6': 'You may have forgotten to divide by 2.', 'x = 4': '2(4)+4 = 12, not 10.' } },
-    { id: 2, type: 'fill-in-blank', question: 'Simplify: 3(x + 2) = ___', correctAnswer: '3x + 6', explanation: 'Distribute: 3¬∑x + 3¬∑2 = 3x + 6.' },
-    { id: 3, type: 'true-false', question: 'The expression 5x ‚àí 3x simplifies to 2x.', correctAnswer: 'True', explanation: 'Combine like terms: 5x ‚àí 3x = 2x.', optionExplanations: { 'True': 'Correct! Subtracting coefficients: 5‚àí3 = 2.', 'False': '5x and 3x are like terms and can be combined.' } },
-    { id: 4, type: 'multiple-choice', question: 'What is the slope-intercept form of a linear equation?', options: ['ax + by = c', 'y = mx + b', 'x = my + b', 'y = mx ‚àí b'], correctAnswer: 'y = mx + b', explanation: 'Slope-intercept form is y = mx + b, where m is slope and b is y-intercept.', optionExplanations: { 'ax + by = c': 'This is standard form.', 'y = mx + b': 'Correct! m = slope, b = y-intercept.', 'x = my + b': 'x and y are reversed.', 'y = mx ‚àí b': 'The intercept should be + b.' } },
-    { id: 5, type: 'multiple-choice', question: 'If f(x) = 3x + 2, what is f(4)?', options: ['10', '12', '14', '16'], correctAnswer: '14', explanation: 'f(4) = 3(4) + 2 = 12 + 2 = 14.', optionExplanations: { '10': 'Check: 3(4)+2 = 14, not 10.', '12': 'You forgot to add 2. 3(4) = 12, then +2 = 14.', '14': 'Correct! 3(4)+2 = 14.', '16': 'Check your multiplication: 3√ó4 = 12, not 14.' } }
+    { id: 2, type: 'fill-in-blank', question: 'Simplify: 3(x + 2) = ___', correctAnswer: '3x + 6', explanation: 'Distribute: 3-+x + 3-+2 = 3x + 6.' },
+    { id: 3, type: 'true-false', question: 'The expression 5x GÍ∆ 3x simplifies to 2x.', correctAnswer: 'True', explanation: 'Combine like terms: 5x GÍ∆ 3x = 2x.', optionExplanations: { 'True': 'Correct! Subtracting coefficients: 5GÍ∆3 = 2.', 'False': '5x and 3x are like terms and can be combined.' } },
+    { id: 4, type: 'multiple-choice', question: 'What is the slope-intercept form of a linear equation?', options: ['ax + by = c', 'y = mx + b', 'x = my + b', 'y = mx GÍ∆ b'], correctAnswer: 'y = mx + b', explanation: 'Slope-intercept form is y = mx + b, where m is slope and b is y-intercept.', optionExplanations: { 'ax + by = c': 'This is standard form.', 'y = mx + b': 'Correct! m = slope, b = y-intercept.', 'x = my + b': 'x and y are reversed.', 'y = mx GÍ∆ b': 'The intercept should be + b.' } },
+    { id: 5, type: 'multiple-choice', question: 'If f(x) = 3x + 2, what is f(4)?', options: ['10', '12', '14', '16'], correctAnswer: '14', explanation: 'f(4) = 3(4) + 2 = 12 + 2 = 14.', optionExplanations: { '10': 'Check: 3(4)+2 = 14, not 10.', '12': 'You forgot to add 2. 3(4) = 12, then +2 = 14.', '14': 'Correct! 3(4)+2 = 14.', '16': 'Check your multiplication: 3+˘4 = 12, not 14.' } }
   ],
   // General Mathematics - Module 5: Geometry Fundamentals
   'gm-5': [
-    { id: 1, type: 'multiple-choice', question: 'What is the sum of interior angles in a triangle?', options: ['90¬∞', '180¬∞', '270¬∞', '360¬∞'], correctAnswer: '180¬∞', explanation: 'The sum of interior angles in any triangle is always 180¬∞.', optionExplanations: { '90¬∞': 'That is a right angle, not the sum of all angles.', '180¬∞': 'Correct! All triangle angles sum to 180¬∞.', '270¬∞': 'This is the sum for a different shape.', '360¬∞': 'This is the sum for a quadrilateral.' } },
-    { id: 2, type: 'fill-in-blank', question: 'The area of a rectangle with length 8 and width 5 is ___', correctAnswer: '40', explanation: 'Area = length √ó width = 8 √ó 5 = 40.' },
+    { id: 1, type: 'multiple-choice', question: 'What is the sum of interior angles in a triangle?', options: ['90-¶', '180-¶', '270-¶', '360-¶'], correctAnswer: '180-¶', explanation: 'The sum of interior angles in any triangle is always 180-¶.', optionExplanations: { '90-¶': 'That is a right angle, not the sum of all angles.', '180-¶': 'Correct! All triangle angles sum to 180-¶.', '270-¶': 'This is the sum for a different shape.', '360-¶': 'This is the sum for a quadrilateral.' } },
+    { id: 2, type: 'fill-in-blank', question: 'The area of a rectangle with length 8 and width 5 is ___', correctAnswer: '40', explanation: 'Area = length +˘ width = 8 +˘ 5 = 40.' },
     { id: 3, type: 'true-false', question: 'A square is a special type of rectangle.', correctAnswer: 'True', explanation: 'A square has four right angles and opposite sides equal, meeting all rectangle criteria.', optionExplanations: { 'True': 'Correct! A square is a rectangle with all sides equal.', 'False': 'A square satisfies all properties of a rectangle.' } },
-    { id: 4, type: 'multiple-choice', question: 'What is the circumference of a circle with radius 7? (Use œÄ ‚âà 22/7)', options: ['22', '44', '154', '14'], correctAnswer: '44', explanation: 'C = 2œÄr = 2 √ó 22/7 √ó 7 = 44.', optionExplanations: { '22': 'This is œÄr, not 2œÄr.', '44': 'Correct! 2 √ó 22/7 √ó 7 = 44.', '154': 'This is the area (œÄr¬≤), not circumference.', '14': 'This is the diameter (2r).' } },
+    { id: 4, type: 'multiple-choice', question: 'What is the circumference of a circle with radius 7? (Use -« GÎÍ 22/7)', options: ['22', '44', '154', '14'], correctAnswer: '44', explanation: 'C = 2-«r = 2 +˘ 22/7 +˘ 7 = 44.', optionExplanations: { '22': 'This is -«r, not 2-«r.', '44': 'Correct! 2 +˘ 22/7 +˘ 7 = 44.', '154': 'This is the area (-«r-¶), not circumference.', '14': 'This is the diameter (2r).' } },
     { id: 5, type: 'multiple-choice', question: 'How many sides does a hexagon have?', options: ['5', '6', '7', '8'], correctAnswer: '6', explanation: 'A hexagon has 6 sides. The prefix "hex" means 6.', optionExplanations: { '5': 'That is a pentagon.', '6': 'Correct! Hexagon = 6 sides.', '7': 'That is a heptagon.', '8': 'That is an octagon.' } }
   ],
   // General Mathematics - Module 6: Sets and Logic
   'gm-6': [
-    { id: 1, type: 'multiple-choice', question: 'If A = {1,2,3} and B = {2,3,4}, what is A ‚à© B?', options: ['{1,2,3,4}', '{2,3}', '{1,4}', '{1}'], correctAnswer: '{2,3}', explanation: 'A ‚à© B (intersection) contains elements common to both: {2,3}.', optionExplanations: { '{1,2,3,4}': 'That is A ‚à™ B (union).', '{2,3}': 'Correct! The intersection has shared elements.', '{1,4}': 'These elements are only in one set each.', '{1}': '1 is only in A, not in both.' } },
-    { id: 2, type: 'true-false', question: 'The empty set is a subset of every set.', correctAnswer: 'True', explanation: 'By definition, the empty set ‚àÖ is a subset of every set.', optionExplanations: { 'True': 'Correct! ‚àÖ ‚äÜ A for any set A.', 'False': 'The empty set is indeed a subset of every set by definition.' } },
-    { id: 3, type: 'fill-in-blank', question: 'If A = {a, b, c}, the number of elements |A| = ___', correctAnswer: '3', explanation: 'The cardinality |A| counts the elements: a, b, c ‚Üí 3.' },
-    { id: 4, type: 'multiple-choice', question: 'What does A ‚à™ B represent?', options: ['Elements in both A and B', 'Elements in A or B or both', 'Elements in A but not B', 'Elements not in A'], correctAnswer: 'Elements in A or B or both', explanation: 'Union (‚à™) combines all elements from both sets.', optionExplanations: { 'Elements in both A and B': 'That describes intersection (‚à©).', 'Elements in A or B or both': 'Correct! Union includes all elements.', 'Elements in A but not B': 'That describes set difference A‚àíB.', 'Elements not in A': 'That describes the complement of A.' } },
-    { id: 5, type: 'multiple-choice', question: 'Which logical connective represents "and"?', options: ['‚à®', '‚àß', '¬¨', '‚Üí'], correctAnswer: '‚àß', explanation: '‚àß is the logical AND connective.', optionExplanations: { '‚à®': '‚à® means OR.', '‚àß': 'Correct! ‚àß means AND.', '¬¨': '¬¨ means NOT.', '‚Üí': '‚Üí means IMPLIES.' } }
+    { id: 1, type: 'multiple-choice', question: 'If A = {1,2,3} and B = {2,3,4}, what is A GÍ¨ B?', options: ['{1,2,3,4}', '{2,3}', '{1,4}', '{1}'], correctAnswer: '{2,3}', explanation: 'A GÍ¨ B (intersection) contains elements common to both: {2,3}.', optionExplanations: { '{1,2,3,4}': 'That is A GÍ¨ B (union).', '{2,3}': 'Correct! The intersection has shared elements.', '{1,4}': 'These elements are only in one set each.', '{1}': '1 is only in A, not in both.' } },
+    { id: 2, type: 'true-false', question: 'The empty set is a subset of every set.', correctAnswer: 'True', explanation: 'By definition, the empty set GÍ‡ is a subset of every set.', optionExplanations: { 'True': 'Correct! GÍ‡ GËÂ A for any set A.', 'False': 'The empty set is indeed a subset of every set by definition.' } },
+    { id: 3, type: 'fill-in-blank', question: 'If A = {a, b, c}, the number of elements |A| = ___', correctAnswer: '3', explanation: 'The cardinality |A| counts the elements: a, b, c GÂ∆ 3.' },
+    { id: 4, type: 'multiple-choice', question: 'What does A GÍ¨ B represent?', options: ['Elements in both A and B', 'Elements in A or B or both', 'Elements in A but not B', 'Elements not in A'], correctAnswer: 'Elements in A or B or both', explanation: 'Union (GÍ¨) combines all elements from both sets.', optionExplanations: { 'Elements in both A and B': 'That describes intersection (GÍ¨).', 'Elements in A or B or both': 'Correct! Union includes all elements.', 'Elements in A but not B': 'That describes set difference AGÍ∆B.', 'Elements not in A': 'That describes the complement of A.' } },
+    { id: 5, type: 'multiple-choice', question: 'Which logical connective represents "and"?', options: ['GÍø', 'GÍ∫', '-º', 'GÂ∆'], correctAnswer: 'GÍ∫', explanation: 'GÍ∫ is the logical AND connective.', optionExplanations: { 'GÍø': 'GÍø means OR.', 'GÍ∫': 'Correct! GÍ∫ means AND.', '-º': '-º means NOT.', 'GÂ∆': 'GÂ∆ means IMPLIES.' } }
   ],
   // Pre-Calculus - Module 1: Functions
   'pc-1': [
-    { id: 1, type: 'multiple-choice', question: 'If f(x) = x¬≤ + 1, what is f(3)?', options: ['7', '9', '10', '12'], correctAnswer: '10', explanation: 'f(3) = 3¬≤ + 1 = 9 + 1 = 10.', optionExplanations: { '7': 'Check: 3¬≤+1 = 10.', '9': 'You forgot to add 1.', '10': 'Correct! 9+1 = 10.', '12': 'Check your calculation.' } },
+    { id: 1, type: 'multiple-choice', question: 'If f(x) = x-¶ + 1, what is f(3)?', options: ['7', '9', '10', '12'], correctAnswer: '10', explanation: 'f(3) = 3-¶ + 1 = 9 + 1 = 10.', optionExplanations: { '7': 'Check: 3-¶+1 = 10.', '9': 'You forgot to add 1.', '10': 'Correct! 9+1 = 10.', '12': 'Check your calculation.' } },
     { id: 2, type: 'true-false', question: 'Every function is a relation, but not every relation is a function.', correctAnswer: 'True', explanation: 'A function is a special relation where each input has exactly one output.', optionExplanations: { 'True': 'Correct! Functions are a subset of relations.', 'False': 'Functions require unique outputs for each input, making them a special type of relation.' } },
     { id: 3, type: 'fill-in-blank', question: 'The domain of f(x) = 1/x excludes x = ___', correctAnswer: '0', explanation: 'Division by zero is undefined, so x = 0 is excluded.' },
-    { id: 4, type: 'multiple-choice', question: 'What is the range of f(x) = x¬≤?', options: ['All real numbers', 'x ‚â• 0', 'y ‚â• 0', 'y > 0'], correctAnswer: 'y ‚â• 0', explanation: 'x¬≤ is always non-negative, so the range is y ‚â• 0.', optionExplanations: { 'All real numbers': 'x¬≤ can never be negative.', 'x ‚â• 0': 'This describes the domain restriction, not the range.', 'y ‚â• 0': 'Correct! Squares are always ‚â• 0.', 'y > 0': 'f(0) = 0, so y = 0 is included.' } },
-    { id: 5, type: 'multiple-choice', question: 'If f(x) = 2x and g(x) = x+3, what is (f‚àòg)(x)?', options: ['2x+3', '2x+6', '2(x+3)', 'Both B and C'], correctAnswer: 'Both B and C', explanation: 'f(g(x)) = f(x+3) = 2(x+3) = 2x+6. Both B and C are equivalent.', optionExplanations: { '2x+3': 'This adds 3 after multiplying. The correct order is f(g(x)) = 2(x+3).', '2x+6': 'Correct form! 2(x+3) = 2x+6.', '2(x+3)': 'Correct form! This equals 2x+6.', 'Both B and C': 'Correct! 2(x+3) and 2x+6 are equivalent.' } }
+    { id: 4, type: 'multiple-choice', question: 'What is the range of f(x) = x-¶?', options: ['All real numbers', 'x GÎ— 0', 'y GÎ— 0', 'y > 0'], correctAnswer: 'y GÎ— 0', explanation: 'x-¶ is always non-negative, so the range is y GÎ— 0.', optionExplanations: { 'All real numbers': 'x-¶ can never be negative.', 'x GÎ— 0': 'This describes the domain restriction, not the range.', 'y GÎ— 0': 'Correct! Squares are always GÎ— 0.', 'y > 0': 'f(0) = 0, so y = 0 is included.' } },
+    { id: 5, type: 'multiple-choice', question: 'If f(x) = 2x and g(x) = x+3, what is (fGÍˇg)(x)?', options: ['2x+3', '2x+6', '2(x+3)', 'Both B and C'], correctAnswer: 'Both B and C', explanation: 'f(g(x)) = f(x+3) = 2(x+3) = 2x+6. Both B and C are equivalent.', optionExplanations: { '2x+3': 'This adds 3 after multiplying. The correct order is f(g(x)) = 2(x+3).', '2x+6': 'Correct form! 2(x+3) = 2x+6.', '2(x+3)': 'Correct form! This equals 2x+6.', 'Both B and C': 'Correct! 2(x+3) and 2x+6 are equivalent.' } }
   ],
   // Basic Calculus
   'bc': [
-    { id: 1, type: 'multiple-choice', question: 'What is the derivative of x¬≤?', options: ['2x', 'x', '2', 'x¬≤'], correctAnswer: '2x', explanation: 'Using the power rule d/dx[x‚Åø] = nx‚Åø‚Åª¬π: derivative of x¬≤ is 2x.', optionExplanations: { '2x': 'Correct! Power rule: 2x¬≤‚Åª¬π = 2x.', 'x': 'This would be the derivative of x¬≤/2.', '2': 'The derivative of x¬≤ varies with x.', 'x¬≤': 'This is the original function.' } },
-    { id: 2, type: 'true-false', question: 'The limit of a function always exists at every point.', correctAnswer: 'False', explanation: 'Limits don\'t always exist, e.g. lim(x‚Üí0) 1/x does not exist.', optionExplanations: { 'True': 'Limits can fail at discontinuities or asymptotes.', 'False': 'Correct! Limits do not always exist.' } },
-    { id: 3, type: 'fill-in-blank', question: 'The integral of 2x is ___', correctAnswer: 'x¬≤', explanation: '‚à´2x dx = x¬≤ + C.' },
+    { id: 1, type: 'multiple-choice', question: 'What is the derivative of x-¶?', options: ['2x', 'x', '2', 'x-¶'], correctAnswer: '2x', explanation: 'Using the power rule d/dx[xG¸+] = nxG¸+G¸+-¶: derivative of x-¶ is 2x.', optionExplanations: { '2x': 'Correct! Power rule: 2x-¶G¸+-¶ = 2x.', 'x': 'This would be the derivative of x-¶/2.', '2': 'The derivative of x-¶ varies with x.', 'x-¶': 'This is the original function.' } },
+    { id: 2, type: 'true-false', question: 'The limit of a function always exists at every point.', correctAnswer: 'False', explanation: 'Limits don\'t always exist, e.g. lim(xGÂ∆0) 1/x does not exist.', optionExplanations: { 'True': 'Limits can fail at discontinuities or asymptotes.', 'False': 'Correct! Limits do not always exist.' } },
+    { id: 3, type: 'fill-in-blank', question: 'The integral of 2x is ___', correctAnswer: 'x-¶', explanation: 'GÍΩ2x dx = x-¶ + C.' },
     { id: 4, type: 'multiple-choice', question: 'What is the derivative of sin(x)?', options: ['cos(x)', '-cos(x)', 'sin(x)', '-sin(x)'], correctAnswer: 'cos(x)', explanation: 'd/dx[sin(x)] = cos(x).', optionExplanations: { 'cos(x)': 'Correct!', '-cos(x)': 'The derivative of sin is positive cos.', 'sin(x)': 'sin is the original, not the derivative.', '-sin(x)': 'This is the derivative of cos(x).' } },
     { id: 5, type: 'multiple-choice', question: 'What does the derivative represent geometrically?', options: ['Area under the curve', 'Slope of the tangent line', 'Y-intercept', 'Maximum value'], correctAnswer: 'Slope of the tangent line', explanation: 'The derivative at a point gives the slope of the tangent line at that point.', optionExplanations: { 'Area under the curve': 'That is the integral.', 'Slope of the tangent line': 'Correct!', 'Y-intercept': 'The y-intercept is f(0).', 'Maximum value': 'Derivatives help find max/min but don\'t directly give them.' } }
   ],
@@ -91,18 +91,18 @@ const quizQuestionBanks: Record<string, Question[]> = {
     { id: 2, type: 'fill-in-blank', question: 'The probability of getting heads on a fair coin flip is ___', correctAnswer: '0.5', explanation: 'A fair coin has equal probability: 1/2 = 0.5.' },
     { id: 3, type: 'true-false', question: 'The median of a dataset is always equal to the mean.', correctAnswer: 'False', explanation: 'Median and mean are equal only in symmetric distributions.', optionExplanations: { 'True': 'They are equal only in perfectly symmetric distributions.', 'False': 'Correct! Skewed data has different mean and median.' } },
     { id: 4, type: 'multiple-choice', question: 'What is the mode of {3, 5, 5, 7, 9}?', options: ['3', '5', '7', '9'], correctAnswer: '5', explanation: 'Mode is the most frequent value. 5 appears twice.', optionExplanations: { '3': '3 appears once.', '5': 'Correct! 5 appears most frequently (twice).', '7': '7 appears once.', '9': '9 appears once.' } },
-    { id: 5, type: 'multiple-choice', question: 'If P(A) = 0.3, what is P(not A)?', options: ['0.3', '0.5', '0.7', '1.0'], correctAnswer: '0.7', explanation: 'P(not A) = 1 ‚àí P(A) = 1 ‚àí 0.3 = 0.7.', optionExplanations: { '0.3': 'That is P(A), not its complement.', '0.5': 'Complements only equal 0.5 when P(A) = 0.5.', '0.7': 'Correct! 1 ‚àí 0.3 = 0.7.', '1.0': '1.0 means certain, but A doesn\'t always not happen.' } }
+    { id: 5, type: 'multiple-choice', question: 'If P(A) = 0.3, what is P(not A)?', options: ['0.3', '0.5', '0.7', '1.0'], correctAnswer: '0.7', explanation: 'P(not A) = 1 GÍ∆ P(A) = 1 GÍ∆ 0.3 = 0.7.', optionExplanations: { '0.3': 'That is P(A), not its complement.', '0.5': 'Complements only equal 0.5 when P(A) = 0.5.', '0.7': 'Correct! 1 GÍ∆ 0.3 = 0.7.', '1.0': '1.0 means certain, but A doesn\'t always not happen.' } }
   ]
 };
 
 // Get questions for a quiz based on its ID
 const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Question[] => {
-  // Extract module prefix from quiz ID (e.g., 'gm-2-q1' ‚Üí 'gm-2')
+  // Extract module prefix from quiz ID (e.g., 'gm-2-q1' GÂ∆ 'gm-2')
   const parts = quizId.split('-');
   let moduleKey = '';
   
   if (parts.length >= 3) {
-    // Format: 'gm-2-q1' ‚Üí module key 'gm-2'
+    // Format: 'gm-2-q1' GÂ∆ module key 'gm-2'
     moduleKey = `${parts[0]}-${parts[1]}`;
   } else if (parts.length === 2) {
     moduleKey = quizId;
@@ -132,7 +132,8 @@ const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Quest
 };
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
-  const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson' } | { quiz: Quiz; type: 'quiz' } | null>(null);
+  const STANDARD_LESSON_XP = 10;
+  const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
@@ -166,6 +167,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return userProgress?.subjects?.[subjectId]?.modulesProgress?.[module.id] ?? null;
   }, [module.id, subjectId, userProgress?.subjects]);
 
+  const [returningToLesson, setReturningToLesson] = useState<Lesson | null>(null);
+
   const completedLessonIds = useMemo(() => {
     const ids = dbModuleProgress?.lessonsCompleted ?? [];
     return new Set(ids);
@@ -188,7 +191,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   // Per-lesson progress (0-100) persisted in Firestore under progress.lessons[lessonId].
   const getLessonProgressPercent = (lessonId: string, isCompleted: boolean) => {
-    const pct = userProgress?.lessons?.[lessonId]?.progressPercent;
+    const pct = userProgress?.lessons?.[lessonId]?.score; // Assuming score stores the percentage here based on models
     if (typeof pct === 'number' && Number.isFinite(pct)) return Math.max(0, Math.min(100, pct));
     return isCompleted ? 100 : 0;
   };
@@ -206,14 +209,67 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   const moduleProgressPercent = moduleProgressPercentFromDb > 0 ? moduleProgressPercentFromDb : derivedModuleProgressPercent;
 
+  const standaloneQuiz = useMemo(() => {
+    return (
+      module.quizzes.find(
+        (quiz) => quiz.type === 'final' || /module\s+quiz|general\s+quiz/i.test(quiz.title),
+      ) ?? null
+    );
+  }, [module.quizzes]);
+
+  const lessonActivityMap = useMemo(() => {
+    const mapped = new Map<string, Quiz[]>();
+
+    module.lessons.forEach((lesson) => {
+      mapped.set(lesson.id, []);
+    });
+
+    const lessonCount = module.lessons.length;
+    if (lessonCount === 0) return mapped;
+
+    module.quizzes.forEach((quiz, index) => {
+      if (standaloneQuiz?.id === quiz.id) return;
+      const lessonIndex = Math.min(index, lessonCount - 1);
+      const lesson = module.lessons[lessonIndex];
+      if (!lesson) return;
+
+      const bucket = mapped.get(lesson.id) ?? [];
+      bucket.push(quiz);
+      mapped.set(lesson.id, bucket);
+    });
+
+    return mapped;
+  }, [module.lessons, module.quizzes, standaloneQuiz?.id]);
+
+  const standaloneInsertIndex = useMemo(() => {
+    return Math.max(1, Math.ceil(module.lessons.length / 2));
+  }, [module.lessons.length]);
+
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
     if (selectedLesson.type === 'lesson') {
+      const associatedQuiz = lessonActivityMap.get(selectedLesson.lesson.id)?.[0] ?? null;
+
       // Show the actual lesson content viewer
+      const practiceQuizCompleted = associatedQuiz ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed) : false;
+
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
-          onBack={() => setSelectedLesson(null)}
+          lessonCompletionXP={STANDARD_LESSON_XP}
+          practiceQuiz={associatedQuiz}
+          practiceQuizCompleted={practiceQuizCompleted}
+          initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
+          onBack={() => {
+            setSelectedLesson(null);
+            setReturningToLesson(null);
+          }}
+          onStartPractice={() => {
+            if (associatedQuiz) {
+              setReturningToLesson(selectedLesson.lesson);
+              setSelectedLesson({ type: 'quiz', quiz: associatedQuiz });
+            }
+          }}
           onProgressUpdate={(percent) => {
             // This is lesson-scoped progress; no subject/module IDs needed.
             if (userProfile?.uid) {
@@ -224,7 +280,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             setUserProgress((prev) => {
               if (!prev) return prev;
               const lessonId = selectedLesson.lesson.id;
-              const existingPct = prev.lessons?.[lessonId]?.progressPercent;
+              const existingPct = prev.lessons?.[lessonId]?.score;
               const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
               const nextPct = Math.max(safeExistingPct, Math.max(0, Math.min(100, percent)));
               return {
@@ -234,7 +290,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                   [lessonId]: {
                     ...(prev.lessons?.[lessonId] || {}),
                     lessonId,
-                    progressPercent: nextPct,
+                    score: nextPct,
                   },
                 },
                 updatedAt: new Date(),
@@ -242,8 +298,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             });
           }}
           onComplete={(score, totalXP, goToNext) => {
-            // Ensure we have a valid XP amount (minimum 50 for lesson completion)
-            const xpAmount = Math.max(totalXP || 50, 50);
+            // Standard lesson rewards are intentionally lower to keep pacing balanced.
+            const xpAmount = STANDARD_LESSON_XP;
             console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
             onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
 
@@ -305,7 +361,14 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             locked: selectedLesson.quiz.locked
           }}
           questions={questions}
-          onBack={() => setSelectedLesson(null)}
+          onBack={() => {
+            if (returningToLesson) {
+              setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
+              setReturningToLesson(null);
+            } else {
+              setSelectedLesson(null);
+            }
+          }}
           onComplete={(score, totalXP) => {
             console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
             // Ensure we have a meaningful XP reward - use totalXP if available and > 0, otherwise calculate from score
@@ -339,7 +402,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               })();
             }
 
-            setSelectedLesson(null);
+            if (returningToLesson) {
+              setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
+              setReturningToLesson(null);
+            } else {
+              setSelectedLesson(null);
+            }
           }}
         />
       );
@@ -436,242 +504,223 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         </div>
       </motion.div>
 
-      {/* 2-Column Notebook Grid Area */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 lg:min-h-0 pb-6 lg:pb-0">
-        
-        {/* LEFT COLUMN: Lessons */}
-        <div className="relative flex flex-col bg-[#FAFAFA] rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden lg:h-full">
-          {/* Notebook binding / margin line */}
-          <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/60 pointer-events-none z-0"></div>
-          <div className="absolute left-[54px] top-0 bottom-0 w-px bg-rose-100/40 pointer-events-none z-0"></div>
-          
-          <div className="px-4 sm:px-6 md:px-8 py-5 md:py-6 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm relative z-10 flex items-center justify-between sticky top-0 shrink-0">
+      {/* Single-column lesson flow with nested activities */}
+      <div className="flex-1 overflow-y-auto pr-2 pb-8 scrollbar-hide">
+        <div className="relative rounded-[2rem] border border-slate-200 bg-white/90 shadow-sm overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(153,86,222,0.08),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(31,167,225,0.08),transparent_45%)]" />
+
+          <div className="relative z-10 px-4 sm:px-6 md:px-8 py-5 md:py-6 border-b border-slate-200/70 bg-white/70 backdrop-blur-sm flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display font-black text-xl md:text-2xl text-slate-800 flex items-center gap-3">
               <BookOpen size={24} className="text-sky-500" />
-              Study Notes
+              Study Journey
             </h2>
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-xs md:text-sm font-bold bg-sky-100 text-sky-600 px-3 py-1 rounded-full shadow-sm border border-sky-200/50">
-                {completedLessons}/{module.lessons.length}
+            <div className="flex items-center gap-2.5">
+              <div className="text-xs md:text-sm font-bold bg-sky-100 text-sky-700 px-3 py-1 rounded-full shadow-sm border border-sky-200/50">
+                Lessons {completedLessons}/{module.lessons.length}
+              </div>
+              <div className="text-xs md:text-sm font-bold bg-rose-100 text-rose-700 px-3 py-1 rounded-full shadow-sm border border-rose-200/50">
+                Quizzes {completedQuizzes}/{module.quizzes.length}
               </div>
             </div>
           </div>
 
-          <div 
-            className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-8 py-5 md:py-6 space-y-4 scrollbar-hide relative z-10" 
-            style={{ 
-              backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #f1f5f9 31px, #f1f5f9 32px)', 
-              backgroundAttachment: 'local', 
-              lineHeight: '32px' 
-            }}
-          >
+          <div className="relative z-10 px-4 sm:px-6 md:px-8 py-5 md:py-6 space-y-5">
             {module.lessons.map((lesson, index) => {
               const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
               const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
-              return (
-              <motion.div
-                key={lesson.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
-                className={`relative bg-transparent rounded-[1.2rem] overflow-visible group transition-all duration-300 ${
-                  lesson.locked
-                    ? 'opacity-60 saturate-50 cursor-not-allowed'
-                    : lesson.completed
-                    ? 'cursor-pointer'
-                    : 'cursor-pointer'
-                }`}
-              >
-                <div className="absolute top-0 left-4 h-6 w-24 rounded-t-xl bg-[#d8e9ff] border border-[#b7d3ff] border-b-0 shadow-sm" />
+              const nestedActivities = lessonActivityMap.get(lesson.id) ?? [];
+              const lessonAccentHex = MODULE_PALETTE[index % MODULE_PALETTE.length];
 
-                <div className={`mt-5 rounded-[1.2rem] border p-3 md:p-4 relative overflow-hidden shadow-sm transition-all duration-300 ${
-                  lesson.locked
-                    ? 'border-slate-200 bg-slate-100'
-                    : isCompleted
-                    ? 'border-teal-200 bg-white hover:shadow-md'
-                    : 'border-sky-200 bg-white hover:shadow-md'
-                }`}>
-                  {/* Top rim progress bar (fills the visible top shadow/rim area) */}
-                  <div className="absolute top-0 left-0 right-0 h-2.5 bg-slate-100 rounded-t-[1.2rem]" />
+              return (
+                <React.Fragment key={lesson.id}>
                   <motion.div
-                    className="absolute top-0 left-0 h-2.5 rounded-t-[1.2rem]"
-                    initial={false}
-                    animate={{ width: `${lessonPct}%` }}
-                    transition={{ duration: 0.45, ease: 'easeOut' }}
-                    style={{
-                      background: `linear-gradient(90deg, ${moduleAccentHex}66, ${moduleAccentHex})`,
-                    }}
-                  />
-
-                  <div className="flex items-center justify-between relative z-10 pt-1">
-                    <div className="flex items-center gap-3 md:gap-4 flex-1">
-                      <div className={`w-9 h-9 md:w-10 md:h-10 rounded-[10px] flex items-center justify-center shrink-0 shadow-sm ${
-                      lesson.locked ? 'bg-slate-100 text-slate-400' :
-                       isCompleted ? 'bg-teal-50 text-teal-600' : 'bg-sky-50 text-sky-600'
-                    }`}>
-                        {lesson.locked ? <Lock size={16} /> :
-                         isCompleted ? <CheckCircle2 size={16} /> :
-                         <Play size={16} className="ml-1" />}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Lesson {index + 1}</div>
-                        <h3 className={`font-bold text-[14px] md:text-[15px] leading-tight transition-colors ${
-                          lesson.locked ? 'text-slate-600' : 'text-[#0a1628] group-hover:text-sky-600'
-                        }`}>
-                          {lesson.title}
-                        </h3>
-                      </div>
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`relative rounded-[1.5rem] border overflow-hidden group transition-all duration-500 mb-6 ${
+                      lesson.locked
+                        ? 'border-slate-200 opacity-65 saturate-50'
+                        : 'border-slate-200/80 hover:border-slate-300 hover:shadow-[0_16px_40px_-15px_rgba(0,0,0,0.12)] hover:-translate-y-0.5'
+                    }`}
+                  >
+                    {/* Top Progress Bar matching the screenshot's placement but dynamic */}
+                    <div className="absolute top-0 left-0 right-0 h-[6px] z-20 bg-slate-100 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(2, lessonPct)}%` }}
+                        transition={{ duration: 1.2, ease: 'easeOut', delay: 0.1 + index * 0.05 }}
+                        className="h-full relative" 
+                        style={{ backgroundColor: lessonAccentHex }}
+                      >
+                        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=')] opacity-30 mix-blend-overlay" />
+                      </motion.div>
                     </div>
+                    
+                    <div 
+                      className="absolute inset-0 bg-white transition-opacity duration-500 group-hover:opacity-90" 
+                      style={{
+                        backgroundImage: `linear-gradient(to right, ${lessonAccentHex}44 0%, ${lessonAccentHex}11 50%, white 100%)`
+                      }}
+                    />
+                    <div 
+                      className="absolute inset-0 opacity-[0.2] pointer-events-none" 
+                      style={{ 
+                        backgroundImage: `radial-gradient(circle at 2px 2px, ${lessonAccentHex} 1.5px, transparent 0)`, 
+                        backgroundSize: '24px 24px' 
+                      }} 
+                    />
+                    <div className="absolute -top-12 -left-10 h-40 w-40 rounded-full blur-[32px] pointer-events-none transition-transform duration-700 group-hover:scale-[1.3] group-hover:translate-x-4" style={{ backgroundColor: `${lessonAccentHex}22` }} />
+                    <div className="absolute -bottom-8 right-8 h-32 w-32 rounded-full blur-2xl pointer-events-none transition-transform duration-700 group-hover:scale-125 group-hover:-translate-y-4" style={{ backgroundColor: `${lessonAccentHex}11` }} />
+                    
+                    <div className="absolute right-4 top-4 opacity-10 pointer-events-none transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 drop-shadow-sm" style={{ color: lessonAccentHex }}><Hash size={56} strokeWidth={1} /></div>
+                    <div className="absolute right-16 bottom-5 opacity-10 pointer-events-none transition-all duration-500 group-hover:-rotate-6 group-hover:-translate-y-2 drop-shadow-sm" style={{ color: lessonAccentHex }}><BookOpen size={40} strokeWidth={1} /></div>
 
-                    <div className="flex items-center gap-3 shrink-0 ml-3 md:ml-4">
-                      {(lessonPct > 0 && lessonPct < 100) && (
-                        <div
-                          className="hidden sm:flex items-center justify-center px-2 py-1 rounded-md text-[11px] font-black"
-                          style={{
-                            backgroundColor: `${moduleAccentHex}1A`,
-                            color: moduleAccentHex,
-                            border: `1px solid ${moduleAccentHex}33`,
-                          }}
-                          title="Lesson progress"
-                        >
-                          {Math.round(lessonPct)}%
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[11px] md:text-xs font-bold bg-slate-50 px-2 py-1 rounded-md">
-                        <Clock size={12} />
-                        <span>{lesson.duration}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            );
-            })}
-            
-            {/* Spacer for bottom padding */}
-            <div className="h-4 pointer-events-none"></div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Assessments */}
-        <div className="relative flex flex-col bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden lg:h-full">
-          <div className="h-5 bg-slate-200/50 border-b border-slate-200 w-full flex items-center justify-center pointer-events-none sticky top-0 z-20">
-            <div className="w-16 h-1.5 bg-slate-300 rounded-full"></div>
-          </div>
-          
-          <div className="px-4 sm:px-6 md:px-8 py-4 md:py-5 border-b-2 border-dashed border-slate-200 bg-white relative z-10 flex items-center justify-between sticky top-5 shrink-0">
-            <h2 className="font-display font-black text-xl md:text-2xl text-slate-800 flex items-center gap-3">
-              <PenTool size={24} className="text-rose-500" />
-              Assessments
-            </h2>
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-xs md:text-sm font-bold bg-rose-100 text-rose-600 px-3 py-1 rounded-full shadow-sm border border-rose-200/50">
-                {completedQuizzes}/{module.quizzes.length}
-              </div>
-            </div>
-          </div>
-
-          <div 
-            className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-8 py-5 md:py-6 space-y-4 md:space-y-5 scrollbar-hide relative z-10"
-            style={{
-              backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-              backgroundPosition: '-12px -12px'
-            }}
-          >
-            {module.quizzes.map((quiz, index) => {
-              const isLocked = quiz.locked;
-              const isFinal = quiz.type === 'final';
-              const isModuleQuiz = quiz.type === 'module';
-              const alignedLesson = module.lessons[Math.min(index, Math.max(module.lessons.length - 1, 0))];
-              const isCompleted = completedQuizIds.has(quiz.id) || quiz.completed;
-
-              return (
-                <motion.div
-                  key={quiz.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (module.lessons.length + index) * 0.05 }}
-                  onClick={() => !isLocked && setSelectedLesson({ quiz, type: 'quiz' })}
-                  className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${
-                    isLocked
-                      ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
-                      : isCompleted
-                      ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
-                      : isFinal
-                      ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
-                      : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
-                  } group`}
-                >
-                  <div className="flex items-center justify-between gap-3 md:gap-4">
-                    <div className="flex items-center gap-3 md:gap-4 flex-1">
-                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${
-                        isLocked ? 'bg-slate-100 text-slate-400' :
-                        isCompleted ? 'bg-teal-500 text-white' :
-                        isFinal ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
-                      }`}>
-                        {isLocked ? <Lock size={18} /> :
-                         isCompleted ? <Trophy size={18} /> :
-                         <PenTool size={18} />}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${
-                            isFinal ? 'bg-indigo-100 text-indigo-700' :
-                            isModuleQuiz ? 'bg-orange-100 text-orange-700' :
-                            'bg-sky-100 text-sky-700'
-                          }`}>
-                            {isFinal ? 'Final Exam' : isModuleQuiz ? 'Module Task' : 'Quiz'}
-                          </span>
-                          {!!alignedLesson && (
-                            <span className="px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider bg-violet-100 text-violet-700">
-                              For: {alignedLesson.title}
-                            </span>
-                          )}
-                          {!isLocked && !quiz.completed && (
-                            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                          )}
-                        </div>
-                        <h3 className={`font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 transition-colors ${
-                          isLocked ? 'text-slate-600' : 'text-[#0a1628]'
-                        }`}>
-                          {quiz.title}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-bold text-slate-400">
-                          <span className="flex items-center gap-1"><BookOpen size={12}/> {quiz.questions} Qs</span>
-                          <span className="hidden sm:inline">‚Ä¢</span>
-                          <span className="flex items-center gap-1"><Clock size={12}/> {quiz.duration}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      {quiz.score !== undefined && isCompleted && (
-                        <div className="text-right">
-                          <div className="text-xl md:text-2xl font-black text-teal-600 leading-none">{quiz.score}%</div>
-                        </div>
-                      )}
+                    <div className="relative z-10 p-4 md:p-5 pt-6 space-y-4">
                       
-                      {!isLocked && (
-                        <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
-                          quiz.completed 
-                            ? 'bg-white border border-slate-200 text-slate-600 group-hover:bg-slate-50' 
-                            : 'bg-slate-900 text-white group-hover:bg-slate-600'
-                        }`}>
-                          {quiz.completed ? 'Review' : 'Start'}
+                      {/* Lesson Content Box */}
+                      <button
+                        type="button"
+                        onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
+                        className={`w-full text-left flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 transition shadow-sm ${
+                          lesson.locked
+                            ? 'cursor-not-allowed border border-slate-200 bg-white/70'
+                            : 'cursor-pointer bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div
+                            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm ${
+                              lesson.locked
+                                ? 'bg-slate-100 text-slate-400'
+                                : isCompleted
+                                ? 'text-white'
+                                : 'text-white'
+                            }`}
+                            style={!lesson.locked ? (isCompleted ? { backgroundColor: '#0ea5e9' /* completed green color representation */ } : { backgroundColor: lessonAccentHex }) : {}}
+                          >
+                            {lesson.locked ? <Lock size={18} /> : isCompleted ? <CheckCircle2 size={24} /> : <Play size={20} className="ml-0.5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] md:text-[12px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
+                              Lesson {index + 1}
+                            </p>
+                            <h3 className="font-bold text-[16px] md:text-[18px] text-[#0a1628] truncate">{lesson.title}</h3>
+                          </div>
                         </div>
-                      )}
+                        <div className="flex items-center justify-end">
+                          <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs md:text-sm font-semibold bg-slate-100/80 px-3 py-1.5 rounded-xl">
+                            <Clock size={14} />
+                            {lesson.duration}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Flashcards / Study Materials Pilled Buttons */}
+                      <div className="flex flex-wrap gap-3 px-1">
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                          <BookOpen size={14} /> Study Materials
+                        </button>
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                          <Bookmark size={14} /> Flashcards
+                        </button>
+                      </div>
+
+                      {/* Practice Activities removed from ModuleDetailView rendering */}
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+
+                  {standaloneQuiz && index === standaloneInsertIndex - 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 + index * 0.03 }}
+                      className="mt-8 mb-6"
+                    >
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest text-center">
+                          mid-module checkpoint
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200" />
+                      </div>
+
+                      <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
+                        <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
+                        
+                        <div className="relative z-10 flex flex-wrap items-center gap-4 md:gap-5">
+                          <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                            <Target size={28} className="text-rose-400" />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">
+                              Module Task G«Û General Quiz
+                            </p>
+                            <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">
+                              {standaloneQuiz.title}
+                            </h3>
+                            <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
+                              <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
+                              <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
+                              <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300"/> +50 XP</span>
+                            </p>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => !standaloneQuiz.locked && setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' })}
+                            className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
+                              standaloneQuiz.locked
+                                ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                                : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
+                                ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                                : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                            }`}
+                          >
+                            {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </React.Fragment>
               );
             })}
 
-            {/* Spacer for bottom padding */}
-            <div className="h-4 pointer-events-none"></div>
+            {module.lessons.length === 0 && standaloneQuiz && (
+              <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group">
+                <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
+                <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 md:gap-5">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                      <Target size={28} className="text-rose-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">Module Task G«Û General Quiz</p>
+                      <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">{standaloneQuiz.title}</h3>
+                      <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
+                        <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
+                        <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300"/> +50 XP</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => !standaloneQuiz.locked && setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' })}
+                    className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
+                      standaloneQuiz.locked
+                        ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                        : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
+                        ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                        : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                    }`}
+                  >
+                    {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
