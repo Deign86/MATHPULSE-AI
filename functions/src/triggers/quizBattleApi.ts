@@ -479,6 +479,150 @@ const QUESTION_BANK: BattleQuestionTemplate[] = [
     correctOptionIndex: 1,
     difficulty: "medium",
   },
+  {
+    questionId: "qb-gm-05",
+    subjectId: "gen-math",
+    topicId: "functions",
+    prompt: "If f(x)=2x+3 and g(x)=x-1, what is (f o g)(4)?",
+    choices: ["7", "8", "9", "10"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-gm-06",
+    subjectId: "gen-math",
+    topicId: "business-math",
+    prompt: "An item priced at 1200 gets a 15% discount. What is the final price?",
+    choices: ["960", "1020", "1080", "1140"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-gm-07",
+    subjectId: "gen-math",
+    topicId: "logic",
+    prompt: "Which expression is logically equivalent to p -> q?",
+    choices: ["p AND q", "p OR q", "NOT p OR q", "NOT p AND NOT q"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-gm-08",
+    subjectId: "gen-math",
+    topicId: "business-math",
+    prompt: "If simple interest I=450, principal P=3000, and rate r=5% per year, what is the time t?",
+    choices: ["2 years", "3 years", "4 years", "5 years"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-sp-05",
+    subjectId: "stats-prob",
+    topicId: "statistics",
+    prompt: "Find the mean of 2, 4, 4, 6, and 8.",
+    choices: ["4.4", "4.8", "5.0", "5.2"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-sp-06",
+    subjectId: "stats-prob",
+    topicId: "normal-distribution",
+    prompt: "For z=1.00 in the standard normal distribution, the area to the left is approximately:",
+    choices: ["0.5000", "0.6827", "0.8413", "0.9772"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-sp-07",
+    subjectId: "stats-prob",
+    topicId: "sampling",
+    prompt: "A sample statistic used to estimate a population parameter is called a:",
+    choices: ["Bias", "Estimator", "Variance", "Residual"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-sp-08",
+    subjectId: "stats-prob",
+    topicId: "probability",
+    prompt: "If events A and B are independent, then P(A intersection B) equals:",
+    choices: ["P(A)+P(B)", "P(A)-P(B)", "P(A)P(B)", "P(A|B)"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-pc-05",
+    subjectId: "pre-calc",
+    topicId: "sequences",
+    prompt: "In an arithmetic sequence with a1=5 and d=3, what is a10?",
+    choices: ["30", "32", "35", "38"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-pc-06",
+    subjectId: "pre-calc",
+    topicId: "trigonometry",
+    prompt: "cos(60 degrees) is equal to:",
+    choices: ["sqrt(3)/2", "1/2", "0", "1"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-pc-07",
+    subjectId: "pre-calc",
+    topicId: "conics",
+    prompt: "Which equation represents a circle with center at the origin and radius 4?",
+    choices: ["x^2+y^2=8", "x^2+y^2=16", "x^2-y^2=16", "(x-4)^2+y^2=16"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-pc-08",
+    subjectId: "pre-calc",
+    topicId: "functions",
+    prompt: "If h(x)=3x-2, what is h^(-1)(13)?",
+    choices: ["3", "4", "5", "6"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-bc-05",
+    subjectId: "basic-calc",
+    topicId: "derivatives",
+    prompt: "What is the derivative of sin(x)?",
+    choices: ["sin(x)", "-sin(x)", "cos(x)", "-cos(x)"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-bc-06",
+    subjectId: "basic-calc",
+    topicId: "integration",
+    prompt: "The integral of 1/x with respect to x is:",
+    choices: ["x^-1 + C", "ln|x| + C", "e^x + C", "x ln(x) + C"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-bc-07",
+    subjectId: "basic-calc",
+    topicId: "applications",
+    prompt: "If s(t)=t^2+2t, what is the velocity at t=3?",
+    choices: ["6", "7", "8", "9"],
+    correctOptionIndex: 2,
+    difficulty: "medium",
+  },
+  {
+    questionId: "qb-bc-08",
+    subjectId: "basic-calc",
+    topicId: "limits",
+    prompt: "Evaluate lim x->0 of sin(x)/x.",
+    choices: ["0", "1", "Undefined", "Infinity"],
+    correctOptionIndex: 1,
+    difficulty: "medium",
+  },
 ];
 
 const clamp = (value: number, min: number, max: number): number => {
@@ -630,8 +774,9 @@ const shouldBlockStartDueToNonAiSource = (params: {
   status: unknown;
   mode: unknown;
   questionSetSource: unknown;
+  requireAiSourceForStart?: boolean;
 }): boolean => {
-  if (!QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START) {
+  if (!(params.requireAiSourceForStart ?? QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START)) {
     return false;
   }
 
@@ -640,6 +785,11 @@ const shouldBlockStartDueToNonAiSource = (params: {
   }
 
   if (normalizeQuizBattleMode(params.mode) !== "online") {
+    return false;
+  }
+
+  // Temporary unblock: allow seeded bank questions when AI generation is unstable.
+  if (asString(params.questionSetSource, "") === "bank") {
     return false;
   }
 
