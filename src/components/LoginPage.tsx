@@ -118,18 +118,34 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoDuration, setVideoDuration] = useState(16);
+  const [activeVideoLayer, setActiveVideoLayer] = useState<'primary' | 'secondary'>('primary');
+  const [loopBlendProgress, setLoopBlendProgress] = useState(0);
   const primaryVideoRef = useRef<HTMLVideoElement>(null);
   const secondaryVideoRef = useRef<HTMLVideoElement>(null);
+  const activeVideoLayerRef = useRef<'primary' | 'secondary'>('primary');
+  const loopBlendProgressRef = useRef(0);
+  const blendStartedRef = useRef(false);
 
-  const syncSecondaryOffset = (duration: number) => {
-    if (!Number.isFinite(duration) || duration <= 0 || !secondaryVideoRef.current) {
+  const LOOP_BLEND_WINDOW_SECONDS = 1.1;
+  const TARGET_VIDEO_OPACITY = 0.34;
+
+  const setLoopBlendProgressSafely = (value: number) => {
+    const clamped = Math.max(0, Math.min(1, value));
+    if (Math.abs(loopBlendProgressRef.current - clamped) < 0.02) {
       return;
     }
 
-    try {
-      secondaryVideoRef.current.currentTime = duration / 2;
-    } catch {
-      // Ignore offset sync failures; native loop still works as fallback.
+    loopBlendProgressRef.current = clamped;
+    setLoopBlendProgress(clamped);
+  };
+
+  const syncDetectedDuration = (duration: number) => {
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return;
+    }
+
+    if (Math.abs(videoDuration - duration) > 0.05) {
+      setVideoDuration(duration);
     }
   };
   const passwordRuleStates = useMemo(
@@ -154,23 +170,102 @@ const LoginPage: React.FC = () => {
       || normalizedError.includes('password does not meet');
   }, [error, isSignUp]);
 
-  useEffect(() => {
-    // Ensure both background videos try to play on mount.
-    primaryVideoRef.current?.play().catch(() => {});
-    secondaryVideoRef.current?.play().catch(() => {});
-  }, []);
-
   const handlePrimaryMetadata = () => {
     const duration = primaryVideoRef.current?.duration;
     if (duration && Number.isFinite(duration) && duration > 0) {
-      setVideoDuration(duration);
-      syncSecondaryOffset(duration);
+      syncDetectedDuration(duration);
     }
   };
 
   const handleSecondaryMetadata = () => {
-    syncSecondaryOffset(videoDuration);
+    const duration = secondaryVideoRef.current?.duration;
+    if (duration && Number.isFinite(duration) && duration > 0) {
+      syncDetectedDuration(duration);
+    }
   };
+
+  useEffect(() => {
+    if (!videoLoaded) {
+      return;
+    }
+
+    const primaryVideo = primaryVideoRef.current;
+    const secondaryVideo = secondaryVideoRef.current;
+    if (!primaryVideo || !secondaryVideo) {
+      return;
+    }
+
+    let disposed = false;
+    let frameHandle = 0;
+
+    activeVideoLayerRef.current = 'primary';
+    setActiveVideoLayer('primary');
+    blendStartedRef.current = false;
+    loopBlendProgressRef.current = 0;
+    setLoopBlendProgress(0);
+
+    primaryVideo.loop = false;
+    secondaryVideo.loop = false;
+    primaryVideo.currentTime = 0;
+    secondaryVideo.currentTime = 0;
+    secondaryVideo.pause();
+    primaryVideo.play().catch(() => {});
+
+    const tick = () => {
+      if (disposed) {
+        return;
+      }
+
+      const leadVideo = activeVideoLayerRef.current === 'primary' ? primaryVideo : secondaryVideo;
+      const trailVideo = activeVideoLayerRef.current === 'primary' ? secondaryVideo : primaryVideo;
+      const effectiveDuration =
+        Number.isFinite(leadVideo.duration) && leadVideo.duration > 0 ? leadVideo.duration : videoDuration;
+      const remaining = Math.max(effectiveDuration - leadVideo.currentTime, 0);
+      const shouldBlend = remaining <= LOOP_BLEND_WINDOW_SECONDS;
+
+      if (shouldBlend) {
+        if (!blendStartedRef.current) {
+          blendStartedRef.current = true;
+          trailVideo.currentTime = 0;
+          trailVideo.play().catch(() => {});
+        }
+
+        const blendProgress = 1 - remaining / LOOP_BLEND_WINDOW_SECONDS;
+        setLoopBlendProgressSafely(blendProgress);
+
+        if (remaining <= 0.03 || leadVideo.ended) {
+          leadVideo.pause();
+          leadVideo.currentTime = 0;
+
+          const nextLead = activeVideoLayerRef.current === 'primary' ? 'secondary' : 'primary';
+          activeVideoLayerRef.current = nextLead;
+          setActiveVideoLayer(nextLead);
+
+          blendStartedRef.current = false;
+          loopBlendProgressRef.current = 0;
+          setLoopBlendProgress(0);
+        }
+      } else {
+        setLoopBlendProgressSafely(0);
+      }
+
+      frameHandle = window.requestAnimationFrame(tick);
+    };
+
+    frameHandle = window.requestAnimationFrame(tick);
+
+    return () => {
+      disposed = true;
+      if (frameHandle) {
+        window.cancelAnimationFrame(frameHandle);
+      }
+    };
+  }, [videoDuration, videoLoaded]);
+
+  const leadOpacity = videoLoaded ? TARGET_VIDEO_OPACITY * (1 - loopBlendProgress) : 0;
+  const trailOpacity = videoLoaded ? TARGET_VIDEO_OPACITY * loopBlendProgress : 0;
+  const primaryOpacity = activeVideoLayer === 'primary' ? leadOpacity : trailOpacity;
+  const secondaryOpacity = activeVideoLayer === 'secondary' ? leadOpacity : trailOpacity;
 
   useEffect(() => {
     if (selectedRole === 'teacher' && !DEPARTMENT_OPTIONS.teacher.includes(selectedDepartment)) {
@@ -297,41 +392,29 @@ const LoginPage: React.FC = () => {
   return (
     <div className="h-screen w-full flex items-center justify-center px-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #f8fafc 30%, #fff1f2 60%, #f0f9ff 100%)' }}>
       {/* ─── Video Background ─── */}
-      <motion.video
+      <video
         ref={primaryVideoRef}
         autoPlay
-        loop
         muted
         playsInline
         preload="auto"
         onCanPlay={() => setVideoLoaded(true)}
         onLoadedMetadata={handlePrimaryMetadata}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-20' : 'opacity-0'}`}
-        animate={videoLoaded ? { opacity: [0.18, 0.42, 0.18] } : undefined}
-        transition={{
-          duration: videoDuration,
-          repeat: Infinity,
-          ease: 'linear',
-        }}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150"
+        style={{ opacity: primaryOpacity }}
         src={shaderBgVideo}
       />
 
-      <motion.video
+      <video
         ref={secondaryVideoRef}
         autoPlay
-        loop
         muted
         playsInline
         preload="auto"
         onCanPlay={() => setVideoLoaded(true)}
         onLoadedMetadata={handleSecondaryMetadata}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-35' : 'opacity-0'}`}
-        animate={videoLoaded ? { opacity: [0.42, 0.18, 0.42] } : undefined}
-        transition={{
-          duration: videoDuration,
-          repeat: Infinity,
-          ease: 'linear',
-        }}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150"
+        style={{ opacity: secondaryOpacity }}
         src={shaderBgVideo}
       />
 
