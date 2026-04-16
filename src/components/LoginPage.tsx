@@ -116,12 +116,14 @@ const LoginPage: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('Mathematics');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [isPrimaryVideoReady, setIsPrimaryVideoReady] = useState(false);
+  const [isSecondaryVideoReady, setIsSecondaryVideoReady] = useState(false);
   const [videoDuration, setVideoDuration] = useState(16);
   const [activeVideoLayer, setActiveVideoLayer] = useState<'primary' | 'secondary'>('primary');
   const [loopBlendProgress, setLoopBlendProgress] = useState(0);
   const primaryVideoRef = useRef<HTMLVideoElement>(null);
   const secondaryVideoRef = useRef<HTMLVideoElement>(null);
+  const videoLoaded = isPrimaryVideoReady && isSecondaryVideoReady;
   const activeVideoLayerRef = useRef<'primary' | 'secondary'>('primary');
   const loopBlendProgressRef = useRef(0);
   const blendStartedRef = useRef(false);
@@ -398,7 +400,7 @@ const LoginPage: React.FC = () => {
         muted
         playsInline
         preload="auto"
-        onCanPlay={() => setVideoLoaded(true)}
+        onCanPlay={() => setIsPrimaryVideoReady(true)}
         onLoadedMetadata={handlePrimaryMetadata}
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150"
         style={{ opacity: primaryOpacity }}
@@ -411,7 +413,7 @@ const LoginPage: React.FC = () => {
         muted
         playsInline
         preload="auto"
-        onCanPlay={() => setVideoLoaded(true)}
+        onCanPlay={() => setIsSecondaryVideoReady(true)}
         onLoadedMetadata={handleSecondaryMetadata}
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150"
         style={{ opacity: secondaryOpacity }}

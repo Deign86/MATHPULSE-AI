@@ -261,6 +261,15 @@ class UserProvisioningService:
             firestore_client.collection("users").document(uid).set(profile_payload, merge=True)
         except Exception as firestore_write_error:
             logger.error("Firestore profile write failed for %s: %s", uid, firestore_write_error)
+            try:
+                self._firebase_auth_module.delete_user(uid)
+                logger.info("Rolled back Auth user creation for %s after Firestore write failure.", uid)
+            except Exception as rollback_error:
+                logger.warning(
+                    "Failed to roll back Auth user %s after Firestore write failure: %s",
+                    uid,
+                    rollback_error,
+                )
             raise UserProvisioningError("profile_write_failed", "Failed to create user profile in Firestore.", 500)
 
         return uid

@@ -1152,7 +1152,15 @@ const App = () => {
                   </Suspense>
                 ) : activeTab === 'Avatar Studio' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <AvatarShop />
+                    <AvatarShop
+                      onSaveProfile={(layers) => {
+                        setProfileOverrides((prev) => ({
+                          ...prev,
+                          avatarLayers: layers,
+                        }));
+                      }}
+                      onNavigateToModules={() => handleStudentNavigation('Modules')}
+                    />
                   </Suspense>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
