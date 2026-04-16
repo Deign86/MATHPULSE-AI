@@ -25,12 +25,14 @@ const ENCOURAGEMENT_PHRASES = [
   'Keep learning to unlock new looks!',
 ];
 
+const DEFAULT_TOP_ITEM_ID = 'top_blue';
+
 const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModules }) => {
   const { userProfile, refreshProfile } = useAuth();
   const isDevMode = import.meta.env.DEV;
 
   const [equipped, setEquipped] = useState<AvatarLayers>({
-    top: userProfile?.avatarLayers?.top || 'top_pink',
+    top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID,
     bottom: userProfile?.avatarLayers?.bottom || '',
     shoes: userProfile?.avatarLayers?.shoes || '',
     accessory: userProfile?.avatarLayers?.accessory || '',
@@ -51,7 +53,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   useEffect(() => {
     setEquipped({
-      top: userProfile?.avatarLayers?.top || 'top_pink',
+      top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID,
       bottom: userProfile?.avatarLayers?.bottom || '',
       shoes: userProfile?.avatarLayers?.shoes || '',
       accessory: userProfile?.avatarLayers?.accessory || '',
@@ -90,13 +92,18 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       return;
     }
 
-    setEquipped(prev => ({
-      ...prev,
-      [category]: prev[category] === id ? '' : id
-    }));
+    const nextEquipped: AvatarLayers = {
+      ...equipped,
+      [category]: equipped[category] === id ? '' : id,
+    };
+
+    setEquipped(nextEquipped);
 
     // Show positive expression on equip
     setAvatarSpeech(EQUIP_EXPRESSIONS[Math.floor(Math.random() * EQUIP_EXPRESSIONS.length)]);
+
+    // Persist equip changes immediately so dashboard and next session stay in sync.
+    void persistAvatarLayers(nextEquipped, { showSuccessToast: false, showSavingState: false });
   };
 
   const handlePurchaseItem = async (e: React.MouseEvent, itemId: string, price: number) => {
@@ -147,12 +154,15 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       if (result.success) {
         setOwnedItems([]);
         const resetEquipped = {
-          top: 'top_pink',
+          top: '',
           bottom: '',
           shoes: '',
           accessory: ''
         };
         setEquipped(resetEquipped);
+        if (onSaveProfile) {
+          onSaveProfile(resetEquipped);
+        }
         setCurrentXP(result.newXP);
         toast.success(`Purchases reset and XP updated to ${result.newXP}! (Test Mode)`);
         await refreshProfile();
@@ -168,28 +178,50 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   };
 
   const normalizeAvatarLayers = (layers: AvatarLayers): AvatarLayers => ({
-    top: layers.top === '' ? undefined : layers.top,
-    bottom: layers.bottom === '' ? undefined : layers.bottom,
-    shoes: layers.shoes === '' ? undefined : layers.shoes,
-    accessory: layers.accessory === '' ? undefined : layers.accessory,
+    top: typeof layers.top === 'string' ? layers.top : '',
+    bottom: typeof layers.bottom === 'string' ? layers.bottom : '',
+    shoes: typeof layers.shoes === 'string' ? layers.shoes : '',
+    accessory: typeof layers.accessory === 'string' ? layers.accessory : '',
   });
 
-  const handleSave = async () => {
+  const persistAvatarLayers = async (
+    layers: AvatarLayers,
+    options: { showSuccessToast?: boolean; showSavingState?: boolean } = {},
+  ) => {
     if (!userProfile?.uid) return;
-    setIsSaving(true);
+
+    const { showSuccessToast = true, showSavingState = true } = options;
+
+    if (showSavingState) {
+      setIsSaving(true);
+    }
+
     try {
-      const normalizedEquipped = normalizeAvatarLayers(equipped);
+      const normalizedEquipped = normalizeAvatarLayers(layers);
       await updateUserProfile(userProfile.uid, { avatarLayers: normalizedEquipped });
+
       if (onSaveProfile) {
         onSaveProfile(normalizedEquipped);
       }
-      toast.success('Avatar saved successfully');
-      await refreshProfile();
-      setIsSaving(false);
+
+      if (showSuccessToast) {
+        toast.success('Avatar saved successfully');
+      }
     } catch (err) {
       console.error(err);
-      setIsSaving(false);
+      if (showSuccessToast) {
+        toast.error('Failed to save avatar');
+      }
+    } finally {
+      if (showSavingState) {
+        await refreshProfile();
+        setIsSaving(false);
+      }
     }
+  };
+
+  const handleSave = async () => {
+    await persistAvatarLayers(equipped, { showSuccessToast: true, showSavingState: true });
   };
 
   const categories: { id: keyof AvatarLayers; label: string; icon: React.ReactNode }[] = [
