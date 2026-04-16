@@ -20,6 +20,15 @@ const GradesPage = () => {
   const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
   const allowedSubjectSet = new Set(allowedSubjectIds);
 
+  const formatDateOnly = (value: Date | string | number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+
+    const parsed = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'N/A';
+
+    return parsed.toISOString().split('T')[0];
+  };
+
   useEffect(() => {
     const loadProgress = async () => {
       if (!currentUser) return;
@@ -118,9 +127,7 @@ const GradesPage = () => {
         title: attempt.quizId?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || `Quiz ${i + 1}`,
         subject: subjectLabel,
         score: attempt.score,
-        date: attempt.completedAt instanceof Date 
-          ? attempt.completedAt.toISOString().split('T')[0] 
-          : new Date(attempt.completedAt).toISOString().split('T')[0],
+        date: formatDateOnly(attempt.completedAt),
         type: attempt.quizId?.includes('practice') ? 'practice' as const : 'module' as const,
         status: attempt.score >= 80 ? 'Excellent' : attempt.score >= 60 ? 'Passing' : 'Needs Review'
       };
@@ -155,7 +162,7 @@ const GradesPage = () => {
     };
 
     const reportRows: string[] = [];
-    const studentName = (userProfile as StudentProfile | null)?.displayName || currentUser?.displayName || currentUser?.email || 'Student';
+    const studentName = (userProfile as StudentProfile | null)?.name || currentUser?.displayName || currentUser?.email || 'Student';
     const exportDate = new Date().toISOString().split('T')[0];
 
     reportRows.push('Grade Report');
