@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, Award, Target, Calendar, Download, Filter } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -51,6 +51,13 @@ const GradesPage = () => {
     'pre-calc': 'fuchsia',
     'basic-calc': 'purple',
   };
+  const colorClassBySubject: Record<string, { dot: string; bar: string }> = {
+    indigo: { dot: 'bg-indigo-500', bar: 'bg-indigo-500' },
+    violet: { dot: 'bg-violet-500', bar: 'bg-violet-500' },
+    fuchsia: { dot: 'bg-fuchsia-500', bar: 'bg-fuchsia-500' },
+    purple: { dot: 'bg-purple-500', bar: 'bg-purple-500' },
+    slate: { dot: 'bg-slate-500', bar: 'bg-slate-500' },
+  };
 
   const subjectMap: Record<string, { label: string; color: string }> = SHS_MATH_SUBJECTS.reduce((acc, subject) => {
     acc[subject.id] = {
@@ -99,6 +106,7 @@ const GradesPage = () => {
 
   // Recent Quizzes mapping
   const recentQuizzes = quizAttempts
+    .slice()
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
     .slice(0, 10).map((attempt, i) => {
       // Find the subject from the ID
@@ -138,8 +146,65 @@ const GradesPage = () => {
   }, [allowedSubjectLabels, filterSubject]);
 
   const handleExportReport = () => {
-    // Feature stub
-    alert("Exporting grade report...");
+    const escapeCsvValue = (value: string | number) => {
+      const stringValue = String(value ?? '');
+      if (/[",\n]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
+    const reportRows: string[] = [];
+    const studentName = (userProfile as StudentProfile | null)?.displayName || currentUser?.displayName || currentUser?.email || 'Student';
+    const exportDate = new Date().toISOString().split('T')[0];
+
+    reportRows.push('Grade Report');
+    reportRows.push(`Student,${escapeCsvValue(studentName)}`);
+    reportRows.push(`Export Date,${escapeCsvValue(exportDate)}`);
+    reportRows.push(`Subject Filter,${escapeCsvValue(filterSubject)}`);
+    reportRows.push(`Type Filter,${escapeCsvValue(filterType)}`);
+    reportRows.push('');
+
+    reportRows.push('Subject Performance');
+    reportRows.push('Subject,Average Score');
+    displaySubjectPerformance.forEach((subject) => {
+      reportRows.push([
+        escapeCsvValue(subject.subject),
+        escapeCsvValue(subject.average)
+      ].join(','));
+    });
+
+    reportRows.push('');
+    reportRows.push('Recent Quizzes');
+    reportRows.push('Title,Subject,Score,Date,Type,Status');
+
+    if (filteredQuizzes.length === 0) {
+      reportRows.push('No quiz data available for the selected filters');
+    } else {
+      filteredQuizzes.forEach((quiz) => {
+        reportRows.push([
+          escapeCsvValue(quiz.title),
+          escapeCsvValue(quiz.subject),
+          escapeCsvValue(quiz.score),
+          escapeCsvValue(quiz.date),
+          escapeCsvValue(quiz.type),
+          escapeCsvValue(quiz.status)
+        ].join(','));
+      });
+    }
+
+    const csvContent = reportRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeStudentName = studentName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'student';
+
+    link.href = url;
+    link.setAttribute('download', `grade-report-${safeStudentName}-${exportDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -323,12 +388,14 @@ const GradesPage = () => {
             </div>
             
             <div className="space-y-7">
-              {displaySubjectPerformance.map((subject, idx) => (
-                <div key={idx} className="group">
+              {displaySubjectPerformance.map((subject, idx) => {
+                const colorClasses = colorClassBySubject[subject.color] || colorClassBySubject.slate;
+                return (
+                  <div key={idx} className="group">
                   <div className="flex justify-between items-end mb-3">
                     <div>
                       <p className="text-[14px] font-bold text-slate-800 flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full bg-${subject.color}-500 group-hover:scale-125 transition-transform`}></span>
+                        <span className={`w-2 h-2 rounded-full ${colorClasses.dot} group-hover:scale-125 transition-transform`}></span>
                         {subject.subject}
                       </p>
                       <p className="text-[11px] text-slate-400 font-bold ml-4 mt-0.5">{subject.quizzes} activities</p>
@@ -337,14 +404,15 @@ const GradesPage = () => {
                   </div>
                   <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                     <div 
-                      className={`h-full rounded-full bg-${subject.color}-500 shadow-sm relative overflow-hidden transition-all duration-1000`}
+                      className={`h-full rounded-full ${colorClasses.bar} shadow-sm relative overflow-hidden transition-all duration-1000`}
                       style={{ width: `${Math.max(subject.average, 5)}%` }}
                     >
                       <div className="absolute inset-0 bg-white/20 w-1/2 -skew-x-12 translate-x-[-100%] group-hover:animate-[shimmer_1.5s_ease-out]" />
                     </div>
                   </div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
