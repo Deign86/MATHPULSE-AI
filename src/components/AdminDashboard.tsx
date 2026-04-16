@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked, Menu } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Button } from './ui/button';
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
 import AdminContent from './AdminContent';
@@ -23,24 +22,63 @@ import {
 interface AdminDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
-  onOpenSettings?: () => void;
 }
 
-interface SystemStats {
-  totalStudents: number;
-  activeTeachers: number;
-  totalClassrooms: number;
-  loading: boolean;
-}
-
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLeaveSettingsConfirm, setShowLeaveSettingsConfirm] = useState(false);
+  const [pendingTabAfterSettings, setPendingTabAfterSettings] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  const [createIntentRole, setCreateIntentRole] = useState<'Teacher' | 'Student' | null>(null);
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
   const [loadingOverview, setLoadingOverview] = useState(true);
+
+  const handleTabChange = (nextTab: string): boolean => {
+    if (activeTab === nextTab) {
+      return true;
+    }
+
+    if (activeTab === 'Settings' && nextTab !== 'Settings' && settingsDirty) {
+      setPendingTabAfterSettings(nextTab);
+      setShowLeaveSettingsConfirm(true);
+      return false;
+    }
+
+    setActiveTab(nextTab);
+    return true;
+  };
+
+  const handleConfirmLeaveSettings = () => {
+    if (pendingTabAfterSettings) {
+      setActiveTab(pendingTabAfterSettings);
+    }
+    setSettingsDirty(false);
+    setPendingTabAfterSettings(null);
+    setShowLeaveSettingsConfirm(false);
+    setIsMobileSidebarOpen(false);
+  };
+
+  const handleCancelLeaveSettings = () => {
+    setPendingTabAfterSettings(null);
+    setShowLeaveSettingsConfirm(false);
+  };
+
+  const handleSidebarTabChange = (nextTab: string) => {
+    const didChange = handleTabChange(nextTab);
+    if (didChange) {
+      setIsMobileSidebarOpen(false);
+    }
+  };
+
+  const handleQuickAddUser = (role: 'Teacher' | 'Student') => {
+    setCreateIntentRole(role);
+    handleTabChange('User Management');
+  };
 
   useEffect(() => {
     if (activeTab !== 'Overview') return;
@@ -64,42 +102,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const systemStats = [
     {
       label: 'Total Students',
-      value: loadingOverview ? '...' : (dashStats?.totalStudents ?? 0).toLocaleString(),
+      value: (dashStats?.totalStudents ?? 0).toLocaleString(),
       icon: Users,
       color: 'bg-sky-100',
       iconColor: 'text-sky-600',
     },
     {
       label: 'Active Teachers',
-      value: loadingOverview ? '...' : (dashStats?.activeTeachers ?? 0).toString(),
+      value: (dashStats?.activeTeachers ?? 0).toString(),
       icon: GraduationCap,
       color: 'bg-teal-100',
       iconColor: 'text-teal-600',
     },
     {
       label: 'Total Classes',
-      value: loadingOverview ? '...' : (dashStats?.totalClasses ?? 0).toString(),
+      value: (dashStats?.totalClasses ?? 0).toString(),
       icon: BookOpen,
       color: 'bg-sky-100',
       iconColor: 'text-sky-600',
     },
     {
       label: 'At-Risk Students',
-      value: loadingOverview ? '...' : (dashStats?.atRiskStudents ?? 0).toString(),
+      value: (dashStats?.atRiskStudents ?? 0).toString(),
       icon: AlertCircle,
       color: 'bg-red-100',
       iconColor: 'text-red-600',
     },
     {
       label: 'Avg Performance',
-      value: loadingOverview ? '...' : `${dashStats?.avgPerformance ?? 0}%`,
+      value: `${dashStats?.avgPerformance ?? 0}%`,
       icon: BarChart3,
       color: 'bg-orange-100',
       iconColor: 'text-orange-600',
     },
     {
       label: 'AI Interactions',
-      value: loadingOverview ? '...' : (dashStats?.aiPredictions ?? 0).toLocaleString(),
+      value: (dashStats?.aiPredictions ?? 0).toLocaleString(),
       icon: Target,
       color: 'bg-sky-100',
       iconColor: 'text-sky-600',
@@ -115,22 +153,58 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
 
   return (
     <div className="flex h-screen w-full bg-[#edf1f7] overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        userRole="admin"
-        onOpenSettings={onOpenSettings}
-        onLogout={() => setShowLogoutConfirm(true)}
-        sidebarCollapsed={sidebarCollapsed}
-        setSidebarCollapsed={setSidebarCollapsed}
-      />
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={handleSidebarTabChange}
+          userRole="admin"
+          onOpenSettings={() => handleSidebarTabChange('Settings')}
+          onLogout={() => setShowLogoutConfirm(true)}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <>
+          <button
+            aria-label="Close navigation"
+            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden">
+            <Sidebar
+              mode="mobile"
+              onRequestClose={() => setIsMobileSidebarOpen(false)}
+              activeTab={activeTab}
+              setActiveTab={handleSidebarTabChange}
+              userRole="admin"
+              onOpenSettings={() => handleSidebarTabChange('Settings')}
+              onLogout={() => {
+                setShowLogoutConfirm(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              sidebarCollapsed={false}
+            />
+          </div>
+        </>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="inline-flex lg:hidden items-center justify-center w-10 h-10 rounded-xl border border-[#dde3eb] bg-white text-[#5a6578] hover:bg-[#edf1f7]"
+              aria-label="Open navigation"
+            >
+              <Menu size={18} />
+            </button>
             <div>
               <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
                 {activeTab === 'Overview' && 'Admin Dashboard'}
@@ -169,11 +243,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         {/* Main Grid */}
         <main className="flex-1 overflow-y-auto p-6">
           {activeTab === 'Overview' && (
-            <div className="grid grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
               {/* Left Column - Stats & Activity */}
-            <div className="col-span-8 space-y-6">
+            <div className="xl:col-span-8 space-y-6">
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {systemStats.map((stat, index) => {
                   const Icon = stat.icon;
                   return (
@@ -187,7 +261,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         </div>
                       </div>
                       <h3 className="text-2xl font-bold text-[#0a1628] mb-1">
-                        {loadingOverview ? <Loader2 size={20} className="animate-spin text-slate-400" /> : stat.value}
+                        {loadingOverview ? <div className="h-8 w-20 bg-[#edf1f7] rounded animate-pulse" /> : stat.value}
                       </h3>
                       <p className="text-sm text-[#5a6578] font-medium">{stat.label}</p>
                     </div>
@@ -195,18 +269,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 })}
               </div>
 
-              {/* Performance Chart - empty until data imported */}
+              {/* Performance Chart Placeholder */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#dde3eb]">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-lg font-bold text-[#0a1628] mb-1">System Performance Overview</h2>
-                    <p className="text-sm text-[#5a6578]">Last 30 days</p>
+                    <p className="text-sm text-[#5a6578]">Trend visualization</p>
                   </div>
                 </div>
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <BarChart3 size={32} className="text-[#dde3eb]" />
-                  <p className="text-sm font-medium text-[#5a6578]">No performance data yet</p>
-                  <p className="text-xs text-[#a0aec0]">Import class records to populate analytics.</p>
+                  <p className="text-sm font-medium text-[#5a6578]">Performance trend chart is currently unavailable</p>
+                  <p className="text-xs text-[#a0aec0]">Live KPI totals are shown above. Time-series backend support is required for chart rendering.</p>
                 </div>
               </div>
 
@@ -252,26 +326,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
 
             {/* Right Column - Top Performers & Quick Actions */}
-            <div className="col-span-4 space-y-6">
+            <div className="xl:col-span-4 space-y-6">
               {/* Quick Actions */}
               <div className="bg-gradient-to-br from-indigo-600 to-sky-600 rounded-3xl p-6 text-white shadow-lg">
                 <h2 className="text-lg font-bold mb-4">Quick Actions</h2>
                 <div className="space-y-2">
-                  <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddUser('Teacher')}
+                    className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all"
+                  >
                     <p className="text-sm font-bold">Add New Teacher</p>
                     <p className="text-xs text-sky-100">Create teacher account</p>
                   </button>
-                  <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddUser('Student')}
+                    className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all"
+                  >
                     <p className="text-sm font-bold">Add New Student</p>
                     <p className="text-xs text-sky-100">Register new student</p>
                   </button>
-                  <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all">
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange('Settings')}
+                    className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all"
+                  >
                     <p className="text-sm font-bold">System Settings</p>
                     <p className="text-xs text-sky-100">Configure platform</p>
                   </button>
-                  <button className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-slate-300 rounded-xl p-3 text-left transition-all">
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    title="Report export is not available yet"
+                    className="w-full bg-white/10 border border-slate-300/70 rounded-xl p-3 text-left opacity-60 cursor-not-allowed"
+                  >
                     <p className="text-sm font-bold">Generate Report</p>
-                    <p className="text-xs text-sky-100">Export analytics</p>
+                    <p className="text-xs text-sky-100">Export support is not available yet</p>
                   </button>
                 </div>
               </div>
@@ -336,22 +428,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 <h2 className="text-lg font-bold text-[#0a1628] mb-5">AI Model Status</h2>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-[#5a6578]">Prediction Accuracy</span>
-                    <span className="text-sm font-bold text-[#5a6578]">No data</span>
+                    <span className="text-sm text-[#5a6578]">AI Interactions Logged</span>
+                    <span className="text-sm font-bold text-[#0a1628]">{loadingOverview ? '...' : (dashStats?.aiPredictions ?? 0).toLocaleString()}</span>
                   </div>
-                  <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#dde3eb] rounded-full" style={{ width: '0%' }}></div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-sm text-[#5a6578]">Model Performance</span>
-                    <span className="text-sm font-bold text-[#5a6578]">Untrained</span>
-                  </div>
-                  <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#dde3eb] rounded-full" style={{ width: '0%' }}></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[#5a6578]">At-Risk Students Tracked</span>
+                    <span className="text-sm font-bold text-[#0a1628]">{loadingOverview ? '...' : (dashStats?.atRiskStudents ?? 0).toLocaleString()}</span>
                   </div>
                   <div className="mt-4 p-3 bg-sky-50 border border-sky-200 rounded-xl">
                     <p className="text-xs text-sky-800">
-                      <strong>Status:</strong> Import student data to enable AI predictions.
+                      <strong>Status:</strong> Model quality metrics (accuracy/drift) are unavailable in the current backend and are intentionally hidden.
                     </p>
                   </div>
                 </div>
@@ -361,9 +447,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           )}
           {activeTab === 'Content' && <AdminContent />}
           {activeTab === 'Audit Log' && <AdminAuditLog />}
-          {activeTab === 'User Management' && <AdminUserManagement />}
+          {activeTab === 'User Management' && (
+            <AdminUserManagement
+              createIntentRole={createIntentRole}
+              onCreateIntentConsumed={() => setCreateIntentRole(null)}
+            />
+          )}
           {activeTab === 'Analytics' && <AdminAnalytics />}
-          {activeTab === 'Settings' && <AdminSettings />}
+          {activeTab === 'Settings' && <AdminSettings onDirtyChange={setSettingsDirty} />}
         </main>
       </div>
 
@@ -376,6 +467,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         message="Are you sure you want to log out? This will end your current session."
         confirmText="Logout"
         cancelText="Cancel"
+      />
+
+      <ConfirmModal
+        isOpen={showLeaveSettingsConfirm}
+        onClose={handleCancelLeaveSettings}
+        onConfirm={handleConfirmLeaveSettings}
+        title="Discard Unsaved Changes?"
+        message="You have unsaved settings changes. If you continue, your edits will be discarded."
+        confirmText="Discard Changes"
+        cancelText="Keep Editing"
+        type="warning"
+        icon="warning"
       />
     </div>
   );
