@@ -65,7 +65,10 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={onNavigateToModules}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onNavigateToModules?.();
+                }}
                 className="flex items-center gap-1.5 text-xs font-body px-1 text-white cursor-pointer transition-colors active:scale-95"
               >
                 <Star size={12} className="text-[#6ED1CF]" />

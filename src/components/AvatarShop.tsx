@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag, RotateCcw } from 'lucide-react';
@@ -8,7 +8,7 @@ import { updateUserProfile } from '../services/authService';
 import { purchaseAvatarItem, resetAvatarPurchasesForTesting } from '../services/gamificationService';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
-import { MOCK_INVENTORY, AvatarCategory } from '../data/avatarData';
+import { MOCK_INVENTORY } from '../data/avatarData';
 import { StudentProfile } from '../types/models';
 
 interface AvatarShopProps {
@@ -16,8 +16,18 @@ interface AvatarShopProps {
   onNavigateToModules?: () => void;
 }
 
+const EQUIP_EXPRESSIONS = ['Wow!', 'Cute!', 'I love it!', 'Perfect!', 'So cool!', 'Awesome!'];
+const ENCOURAGEMENT_PHRASES = [
+  'Gain more XP to buy me more clothes!',
+  'Help me get stylish!',
+  'Let\'s earn some XP to unlock more!',
+  'I\'d love to try on more outfits!',
+  'Keep learning to unlock new looks!',
+];
+
 const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModules }) => {
   const { userProfile, refreshProfile } = useAuth();
+  const isDevMode = import.meta.env.DEV;
 
   const [equipped, setEquipped] = useState<AvatarLayers>({
     top: userProfile?.avatarLayers?.top || 'top_pink',
@@ -31,15 +41,6 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null);
   const [avatarSpeech, setAvatarSpeech] = useState<string | null>(null);
 
-  const equipExpressions = ['Wow!', 'Cute!', 'I love it!', 'Perfect!', 'So cool!', 'Awesome!'];
-  const encouragementPhrases = [
-    'Gain more XP to buy me more clothes!',
-    'Help me get stylish!',
-    'Let\'s earn some XP to unlock more!',
-    'I\'d love to try on more outfits!',
-    'Keep learning to unlock new looks!',
-  ];
-
   useEffect(() => {
     if (userProfile && userProfile.role === 'student') {
       const studentProfile = userProfile as StudentProfile;
@@ -49,15 +50,29 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   }, [userProfile]);
 
   useEffect(() => {
+    setEquipped({
+      top: userProfile?.avatarLayers?.top || 'top_pink',
+      bottom: userProfile?.avatarLayers?.bottom || '',
+      shoes: userProfile?.avatarLayers?.shoes || '',
+      accessory: userProfile?.avatarLayers?.accessory || '',
+    });
+  }, [
+    userProfile?.avatarLayers?.top,
+    userProfile?.avatarLayers?.bottom,
+    userProfile?.avatarLayers?.shoes,
+    userProfile?.avatarLayers?.accessory,
+  ]);
+
+  useEffect(() => {
     if (!avatarSpeech) {
       const timer = setInterval(() => {
         if (Math.random() > 0.6) {
-          setAvatarSpeech(encouragementPhrases[Math.floor(Math.random() * encouragementPhrases.length)]);
+          setAvatarSpeech(ENCOURAGEMENT_PHRASES[Math.floor(Math.random() * ENCOURAGEMENT_PHRASES.length)]);
         }
       }, 4000);
       return () => clearInterval(timer);
     }
-  }, [avatarSpeech, encouragementPhrases]);
+  }, [avatarSpeech]);
 
   useEffect(() => {
     if (avatarSpeech) {
@@ -81,7 +96,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     }));
 
     // Show positive expression on equip
-    setAvatarSpeech(equipExpressions[Math.floor(Math.random() * equipExpressions.length)]);
+    setAvatarSpeech(EQUIP_EXPRESSIONS[Math.floor(Math.random() * EQUIP_EXPRESSIONS.length)]);
   };
 
   const handlePurchaseItem = async (e: React.MouseEvent, itemId: string, price: number) => {
@@ -120,6 +135,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   };
 
   const handleResetForTesting = async () => {
+    if (!isDevMode) return;
     if (!userProfile?.uid) return;
     
     // Disable reset logic if we're currently processing one
@@ -151,13 +167,21 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     }
   };
 
+  const normalizeAvatarLayers = (layers: AvatarLayers): AvatarLayers => ({
+    top: layers.top === '' ? undefined : layers.top,
+    bottom: layers.bottom === '' ? undefined : layers.bottom,
+    shoes: layers.shoes === '' ? undefined : layers.shoes,
+    accessory: layers.accessory === '' ? undefined : layers.accessory,
+  });
+
   const handleSave = async () => {
     if (!userProfile?.uid) return;
     setIsSaving(true);
     try {
-      await updateUserProfile(userProfile.uid, { avatarLayers: equipped });
+      const normalizedEquipped = normalizeAvatarLayers(equipped);
+      await updateUserProfile(userProfile.uid, { avatarLayers: normalizedEquipped });
       if (onSaveProfile) {
-        onSaveProfile(equipped);
+        onSaveProfile(normalizedEquipped);
       }
       toast.success('Avatar saved successfully');
       await refreshProfile();
@@ -193,21 +217,22 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
               </h1>
 
               <div className="flex items-center gap-2">
-                {/* Test Reset Button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleResetForTesting}
-                      disabled={purchasingItemId === 'resetting'}
-                      className="flex shrink-0 items-center justify-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 p-2.5 rounded-xl transition-colors border border-slate-200"
-                    >
-                      <RotateCcw size={16} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
-                    Reset Purchases (Test)
-                  </TooltipContent>
-                </Tooltip>
+                {isDevMode && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleResetForTesting}
+                        disabled={purchasingItemId === 'resetting'}
+                        className="flex shrink-0 items-center justify-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 p-2.5 rounded-xl transition-colors border border-slate-200"
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
+                      Reset Purchases (Test)
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
                 <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl px-3 py-1.5 shadow-md flex items-center gap-2 h-fit">
                   <ShoppingBag className="text-white shrink-0" size={16} />

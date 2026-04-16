@@ -456,6 +456,10 @@ export const purchaseAvatarItem = async (
 };
 
 export const resetAvatarPurchasesForTesting = async (userId: string): Promise<{ success: boolean; newXP: number }> => {
+  if (!import.meta.env.DEV) {
+    return { success: false, newXP: 0 };
+  }
+
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
