@@ -116,8 +116,40 @@ const LoginPage: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('Mathematics');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPrimaryVideoReady, setIsPrimaryVideoReady] = useState(false);
+  const [isSecondaryVideoReady, setIsSecondaryVideoReady] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(16);
+  const [activeVideoLayer, setActiveVideoLayer] = useState<'primary' | 'secondary'>('primary');
+  const [loopBlendProgress, setLoopBlendProgress] = useState(0);
+  const primaryVideoRef = useRef<HTMLVideoElement>(null);
+  const secondaryVideoRef = useRef<HTMLVideoElement>(null);
+  const videoLoaded = isPrimaryVideoReady && isSecondaryVideoReady;
+  const activeVideoLayerRef = useRef<'primary' | 'secondary'>('primary');
+  const loopBlendProgressRef = useRef(0);
+  const blendStartedRef = useRef(false);
+
+  const LOOP_BLEND_WINDOW_SECONDS = 1.1;
+  const TARGET_VIDEO_OPACITY = 0.34;
+
+  const setLoopBlendProgressSafely = (value: number) => {
+    const clamped = Math.max(0, Math.min(1, value));
+    if (Math.abs(loopBlendProgressRef.current - clamped) < 0.02) {
+      return;
+    }
+
+    loopBlendProgressRef.current = clamped;
+    setLoopBlendProgress(clamped);
+  };
+
+  const syncDetectedDuration = (duration: number) => {
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return;
+    }
+
+    if (Math.abs(videoDuration - duration) > 0.05) {
+      setVideoDuration(duration);
+    }
+  };
   const passwordRuleStates = useMemo(
     () =>
       SIGNUP_PASSWORD_RULES.map((rule) => ({
@@ -140,12 +172,102 @@ const LoginPage: React.FC = () => {
       || normalizedError.includes('password does not meet');
   }, [error, isSignUp]);
 
-  useEffect(() => {
-    // Ensure video plays on mount
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
+  const handlePrimaryMetadata = () => {
+    const duration = primaryVideoRef.current?.duration;
+    if (duration && Number.isFinite(duration) && duration > 0) {
+      syncDetectedDuration(duration);
     }
-  }, []);
+  };
+
+  const handleSecondaryMetadata = () => {
+    const duration = secondaryVideoRef.current?.duration;
+    if (duration && Number.isFinite(duration) && duration > 0) {
+      syncDetectedDuration(duration);
+    }
+  };
+
+  useEffect(() => {
+    if (!videoLoaded) {
+      return;
+    }
+
+    const primaryVideo = primaryVideoRef.current;
+    const secondaryVideo = secondaryVideoRef.current;
+    if (!primaryVideo || !secondaryVideo) {
+      return;
+    }
+
+    let disposed = false;
+    let frameHandle = 0;
+
+    activeVideoLayerRef.current = 'primary';
+    setActiveVideoLayer('primary');
+    blendStartedRef.current = false;
+    loopBlendProgressRef.current = 0;
+    setLoopBlendProgress(0);
+
+    primaryVideo.loop = false;
+    secondaryVideo.loop = false;
+    primaryVideo.currentTime = 0;
+    secondaryVideo.currentTime = 0;
+    secondaryVideo.pause();
+    primaryVideo.play().catch(() => {});
+
+    const tick = () => {
+      if (disposed) {
+        return;
+      }
+
+      const leadVideo = activeVideoLayerRef.current === 'primary' ? primaryVideo : secondaryVideo;
+      const trailVideo = activeVideoLayerRef.current === 'primary' ? secondaryVideo : primaryVideo;
+      const effectiveDuration =
+        Number.isFinite(leadVideo.duration) && leadVideo.duration > 0 ? leadVideo.duration : videoDuration;
+      const remaining = Math.max(effectiveDuration - leadVideo.currentTime, 0);
+      const shouldBlend = remaining <= LOOP_BLEND_WINDOW_SECONDS;
+
+      if (shouldBlend) {
+        if (!blendStartedRef.current) {
+          blendStartedRef.current = true;
+          trailVideo.currentTime = 0;
+          trailVideo.play().catch(() => {});
+        }
+
+        const blendProgress = 1 - remaining / LOOP_BLEND_WINDOW_SECONDS;
+        setLoopBlendProgressSafely(blendProgress);
+
+        if (remaining <= 0.03 || leadVideo.ended) {
+          leadVideo.pause();
+          leadVideo.currentTime = 0;
+
+          const nextLead = activeVideoLayerRef.current === 'primary' ? 'secondary' : 'primary';
+          activeVideoLayerRef.current = nextLead;
+          setActiveVideoLayer(nextLead);
+
+          blendStartedRef.current = false;
+          loopBlendProgressRef.current = 0;
+          setLoopBlendProgress(0);
+        }
+      } else {
+        setLoopBlendProgressSafely(0);
+      }
+
+      frameHandle = window.requestAnimationFrame(tick);
+    };
+
+    frameHandle = window.requestAnimationFrame(tick);
+
+    return () => {
+      disposed = true;
+      if (frameHandle) {
+        window.cancelAnimationFrame(frameHandle);
+      }
+    };
+  }, [videoDuration, videoLoaded]);
+
+  const leadOpacity = videoLoaded ? TARGET_VIDEO_OPACITY * (1 - loopBlendProgress) : 0;
+  const trailOpacity = videoLoaded ? TARGET_VIDEO_OPACITY * loopBlendProgress : 0;
+  const primaryOpacity = activeVideoLayer === 'primary' ? leadOpacity : trailOpacity;
+  const secondaryOpacity = activeVideoLayer === 'secondary' ? leadOpacity : trailOpacity;
 
   useEffect(() => {
     if (selectedRole === 'teacher' && !DEPARTMENT_OPTIONS.teacher.includes(selectedDepartment)) {
@@ -269,20 +391,32 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // Mathematical symbols for floating background decoration
-  const mathSymbols = ['∫', 'π', '∑', 'Δ', '∞', 'φ', '√', 'λ', 'θ', '∂'];
-
   return (
     <div className="h-screen w-full flex items-center justify-center px-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #f8fafc 30%, #fff1f2 60%, #f0f9ff 100%)' }}>
       {/* ─── Video Background ─── */}
       <video
-        ref={videoRef}
+        ref={primaryVideoRef}
         autoPlay
-        loop
         muted
         playsInline
-        onCanPlay={() => setVideoLoaded(true)}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-40' : 'opacity-0'}`}
+        preload="auto"
+        onCanPlay={() => setIsPrimaryVideoReady(true)}
+        onLoadedMetadata={handlePrimaryMetadata}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150"
+        style={{ opacity: primaryOpacity }}
+        src={shaderBgVideo}
+      />
+
+      <video
+        ref={secondaryVideoRef}
+        autoPlay
+        muted
+        playsInline
+        preload="auto"
+        onCanPlay={() => setIsSecondaryVideoReady(true)}
+        onLoadedMetadata={handleSecondaryMetadata}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150"
+        style={{ opacity: secondaryOpacity }}
         src={shaderBgVideo}
       />
 
@@ -299,43 +433,6 @@ const LoginPage: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full blur-[160px] pointer-events-none mix-blend-multiply" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%)' }} />
         <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] rounded-full blur-[120px] pointer-events-none mix-blend-screen" style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%)' }} />
         
-        <div className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.4) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
-
-      {/* Floating math symbols — soft on light */}
-      {mathSymbols.map((symbol, i) => (
-        <motion.span
-          key={i}
-          className="absolute text-sky-700/[0.08] font-display select-none pointer-events-none"
-          style={{
-            fontSize: `${20 + Math.random() * 40}px`,
-            left: `${5 + (i * 9.5)}%`,
-            top: `${10 + (i * 8)}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.04, 0.1, 0.04],
-            rotate: [0, 10, 0],
-          }}
-          transition={{
-            duration: 8 + i * 2,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: i * 0.5,
-          }}
-        >
-          {symbol}
-        </motion.span>
-      ))}
-
-      {/* Geometric accent lines */}
-      <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-sky-400/15 to-transparent" />
-      <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-rose-300/10 to-transparent" />
-
       <div className="relative z-10 w-full max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left Side — Branding */}

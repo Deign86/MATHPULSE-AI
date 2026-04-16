@@ -16,6 +16,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { ApiError, apiService } from './apiService';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -33,6 +34,33 @@ export interface AdminUser {
   lrn?: string;
   photo?: string;
   lastLogin: string;
+}
+
+export interface CreateAdminUserInput {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: 'Student' | 'Teacher' | 'Admin';
+  status: 'Active' | 'Inactive';
+  grade: string;
+  section: string;
+  lrn?: string;
+}
+
+export interface CreateAdminUserResult {
+  uid: string;
+  userCreated: boolean;
+  emailSent: boolean;
+  resultCode: 'created_and_emailed' | 'created_email_failed';
+  message: string;
+  warnings: string[];
+  emailError?: {
+    provider?: string;
+    code?: string;
+    message?: string;
+    retryable?: boolean;
+  } | null;
 }
 
 export type AuditSeverity = 'Info' | 'Warning' | 'Error' | 'Critical';
@@ -120,6 +148,21 @@ function nowTimestamp(): string {
   return timestampToString({ toDate: () => new Date() });
 }
 
+function extractApiErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    try {
+      const parsed = JSON.parse(error.responseBody) as { detail?: string };
+      if (parsed?.detail && typeof parsed.detail === 'string') {
+        return parsed.detail;
+      }
+    } catch {
+      // Fall through to status-based message.
+    }
+    return `Request failed (${error.status}).`;
+  }
+  return error instanceof Error ? error.message : 'Request failed.';
+}
+
 // ─── User Management ─────────────────────────────────────────
 
 /** Get all users from the 'users' Firestore collection. */
@@ -156,7 +199,6 @@ export async function updateAdminUser(uid: string, updates: Partial<AdminUser>):
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const firestoreUpdates: Record<string, any> = { updatedAt: serverTimestamp() };
   if (updates.name !== undefined) firestoreUpdates.name = updates.name;
-  if (updates.email !== undefined) firestoreUpdates.email = updates.email;
   if (updates.status !== undefined) firestoreUpdates.status = updates.status;
   if (updates.role !== undefined) {
     firestoreUpdates.role = updates.role.toLowerCase();
@@ -185,67 +227,52 @@ export async function updateAdminUser(uid: string, updates: Partial<AdminUser>):
   await updateDoc(ref, firestoreUpdates);
 }
 
-/** Delete a user's Firestore profile document. */
+/** Delete a user account through backend (Auth + Firestore profile). */
 export async function deleteAdminUser(uid: string): Promise<void> {
-  await deleteDoc(doc(db, 'users', uid));
+  try {
+    const response = await apiService.deleteAdminUser(uid);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete user account.');
+    }
+  } catch (error) {
+    throw new Error(extractApiErrorMessage(error));
+  }
 }
 
 /**
- * Create a new user profile directly in Firestore.
- * Note: This creates only the Firestore profile (no Firebase Auth account).
- * A server-side Cloud Function would be required to also create the Auth account.
+ * Create a new user account through backend provisioning (Auth + Firestore)
+ * and trigger transactional welcome email delivery.
  */
-export async function createAdminUser(
-  email: string,
-  name: string,
-  role: string,
-  department: string,
-  studentMeta?: { grade?: string; section?: string; lrn?: string }
-): Promise<string> {
-  const roleLower = role.toLowerCase() as 'student' | 'teacher' | 'admin';
-  const baseProfile: Record<string, unknown> = {
-    email,
-    name,
-    role: roleLower,
-    status: 'Active',
-    department,
-    photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0d9488&color=fff`,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
+export async function createAdminUser(input: CreateAdminUserInput): Promise<CreateAdminUserResult> {
+  try {
+    const response = await apiService.createAdminUser({
+      name: input.name.trim(),
+      email: input.email.trim().toLowerCase(),
+      password: input.password,
+      confirmPassword: input.confirmPassword,
+      role: input.role,
+      status: input.status,
+      grade: input.grade.trim(),
+      section: input.section.trim(),
+      ...(input.lrn?.trim() ? { lrn: input.lrn.trim() } : {}),
+    });
 
-  if (roleLower === 'student') {
-    const grade = studentMeta?.grade || department || 'Grade 11';
-    const section = studentMeta?.section || 'Section A';
-    Object.assign(baseProfile, {
-      lrn: studentMeta?.lrn || `${Date.now()}`.slice(-12).padStart(12, '0'),
-      grade,
-      section,
-      classSectionId: [grade, section].join('_').replace(/\s+/g, '_').toLowerCase(),
-      level: 1,
-      currentXP: 0,
-      totalXP: 0,
-      streak: 0,
-      atRiskSubjects: [],
-      hasTakenDiagnostic: false,
-    });
-  } else if (roleLower === 'teacher') {
-    Object.assign(baseProfile, {
-      teacherId: `TCH-${Date.now()}`,
-      subject: 'Mathematics',
-      yearsOfExperience: '0',
-      qualification: '',
-      students: [],
-    });
-  } else if (roleLower === 'admin') {
-    Object.assign(baseProfile, {
-      adminId: `ADM-${Date.now()}`,
-      position: 'Administrator',
-    });
+    if (!response.success || !response.userCreated || !response.uid) {
+      throw new Error(response.message || 'Failed to create user account.');
+    }
+
+    return {
+      uid: response.uid,
+      userCreated: response.userCreated,
+      emailSent: response.emailSent,
+      resultCode: response.resultCode,
+      message: response.message,
+      warnings: response.warnings ?? [],
+      emailError: response.emailError,
+    };
+  } catch (error) {
+    throw new Error(extractApiErrorMessage(error));
   }
-
-  const docRef = await addDoc(collection(db, 'users'), baseProfile);
-  return docRef.id;
 }
 
 // ─── Audit Logs ──────────────────────────────────────────────
@@ -311,8 +338,8 @@ export async function getModules(): Promise<ContentModule[]> {
         status: (data.status as ContentModule['status']) || 'Draft',
         assigned: (data.assigned as number) || 0,
         created:
-          (data.created as string) ||
-          (createdAt?.toDate?.()?.toLocaleDateString() ?? ''),
+          (createdAt?.toDate?.()?.toLocaleDateString() ??
+            ((data.created as string) || 'Unknown')),
       };
     });
   } catch (err) {
@@ -323,7 +350,7 @@ export async function getModules(): Promise<ContentModule[]> {
 
 /** Create a new module in Firestore. */
 export async function createModule(
-  moduleData: Omit<ContentModule, 'id'>
+  moduleData: Omit<ContentModule, 'id' | 'created'>
 ): Promise<string> {
   const docRef = await addDoc(collection(db, 'modules'), {
     ...moduleData,
@@ -421,6 +448,33 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 /** Get top N students ordered by level descending. */
 export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
+  const mapDocToPerformer = (d: { id: string; data: () => Record<string, unknown> }): TopPerformer => {
+    const data = d.data();
+    const level = (data.level as number) || 1;
+    const currentXP = (data.currentXP as number) || 0;
+    // Rough performance estimate: clamp level*8 to [0,100]
+    const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
+    return {
+      id: d.id,
+      name: (data.name as string) || 'Student',
+      avatar:
+        (data.photo as string) ||
+        (data.photoURL as string) ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
+      class: (data.grade as string) || 'Math',
+      performance,
+      level,
+    };
+  };
+
+  const sortAndTrim = (performers: TopPerformer[]): TopPerformer[] =>
+    performers
+      .sort((a, b) => {
+        if (b.level !== a.level) return b.level - a.level;
+        return b.performance - a.performance;
+      })
+      .slice(0, n);
+
   try {
     const q = query(
       collection(db, 'users'),
@@ -429,25 +483,25 @@ export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
       limit(n)
     );
     const snap = await getDocs(q);
-    return snap.docs.map(d => {
-      const data = d.data() as Record<string, unknown>;
-      const level = (data.level as number) || 1;
-      const currentXP = (data.currentXP as number) || 0;
-      // Rough performance estimate: clamp level*8 to [0,100]
-      const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
-      return {
-        id: d.id,
-        name: (data.name as string) || 'Student',
-        avatar:
-          (data.photo as string) ||
-          (data.photoURL as string) ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
-        class: (data.grade as string) || 'Math',
-        performance,
-        level,
-      };
-    });
+    return sortAndTrim(snap.docs.map(mapDocToPerformer));
   } catch (err) {
+    const errorCode = (err as { code?: string } | null)?.code;
+    if (errorCode === 'failed-precondition') {
+      try {
+        // Fallback avoids composite-index requirements by sorting in memory.
+        const fallbackQuery = query(
+          collection(db, 'users'),
+          where('role', '==', 'student'),
+          limit(Math.max(50, n))
+        );
+        const fallbackSnap = await getDocs(fallbackQuery);
+        return sortAndTrim(fallbackSnap.docs.map(mapDocToPerformer));
+      } catch (fallbackError) {
+        console.error('[adminService] getTopPerformers fallback error:', fallbackError);
+        return [];
+      }
+    }
+
     console.error('[adminService] getTopPerformers error:', err);
     return [];
   }
