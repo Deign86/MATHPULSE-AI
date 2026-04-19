@@ -65,6 +65,7 @@ Configure these on backend runtime environments:
 - MAIL_FROM_NAME
 - MAIL_SEND_TIMEOUT_SEC (default: 15)
 - APP_LOGIN_URL (default: https://mathpulse.ai)
+- APP_BRAND_AVATAR_URL (optional absolute image URL for email header avatar; defaults to APP_LOGIN_URL + /avatar/avatar_icon.png)
 
 Supported aliases (for compatibility):
 

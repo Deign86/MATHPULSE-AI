@@ -16,7 +16,15 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ApiError, ApiNetworkError, ApiTimeoutError, apiService } from './apiService';
+import {
+  ApiError,
+  ApiNetworkError,
+  ApiTimeoutError,
+  apiService,
+  type AdminBulkActionApiResponse,
+  type AdminBulkActionRequestApi,
+  type AdminUserApiRecord,
+} from './apiService';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -30,10 +38,75 @@ export interface AdminUser {
   department: string;
   grade?: string;
   section?: string;
+  classSectionId?: string;
   classSection?: string;
   lrn?: string;
   photo?: string;
   lastLogin: string;
+  createdAt?: string;
+}
+
+export interface AdminUsersPageOptions {
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+  roleFilter?: string;
+  statusFilter?: string;
+  gradeFilter?: string;
+  sectionFilter?: string;
+  classSectionId?: string;
+}
+
+export interface AdminUsersPageResult {
+  users: AdminUser[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+}
+
+export type AdminBulkActionType = AdminBulkActionRequestApi['action'];
+
+export interface AdminBulkActionInput {
+  action: AdminBulkActionType;
+  userIds?: string[];
+  excludeUserIds?: string[];
+  filters?: {
+    search?: string;
+    role?: string;
+    status?: string;
+    grade?: string;
+    section?: string;
+    classSectionId?: string;
+  };
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  lrn?: string;
+  dryRun?: boolean;
+  exportFormat?: 'csv' | 'json';
+}
+
+export interface AdminBulkActionResult {
+  success: boolean;
+  action: string;
+  summary: {
+    targeted: number;
+    succeeded: number;
+    failed: number;
+    skipped: number;
+    exported: number;
+  };
+  results: Array<{
+    uid: string;
+    email?: string | null;
+    status: string;
+    message: string;
+  }>;
+  warnings: string[];
+  exportRows: Record<string, unknown>[];
 }
 
 export interface CreateAdminUserInput {
@@ -148,6 +221,50 @@ function nowTimestamp(): string {
   return timestampToString({ toDate: () => new Date() });
 }
 
+function formatLastLoginString(lastLogin?: string | null): string {
+  if (!lastLogin) return 'Never';
+
+  const parsed = new Date(lastLogin);
+  if (Number.isNaN(parsed.getTime())) {
+    return lastLogin;
+  }
+
+  const now = Date.now();
+  const diffMs = now - parsed.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+
+  return parsed.toLocaleDateString();
+}
+
+function mapAdminUserRecord(record: AdminUserApiRecord): AdminUser {
+  const grade = (record.grade || '').trim();
+  const section = (record.section || '').trim();
+  const computedClassSection = [grade, section].filter(Boolean).join(' - ');
+
+  return {
+    id: record.uid,
+    name: record.name || 'Unknown',
+    email: record.email || '',
+    role: capitalizeRole(record.role || ''),
+    status: record.status || 'Active',
+    department: record.department || (record.role?.toLowerCase() === 'student' ? (computedClassSection || 'Student') : ''),
+    grade,
+    section,
+    classSectionId: record.classSectionId || undefined,
+    classSection: computedClassSection,
+    lrn: (record.lrn || '').trim(),
+    photo: (record.photo || '').trim(),
+    lastLogin: formatLastLoginString(record.lastLogin),
+    createdAt: record.createdAt || undefined,
+  };
+}
+
 function extractApiErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     try {
@@ -165,41 +282,34 @@ function extractApiErrorMessage(error: unknown): string {
 
 // ─── User Management ─────────────────────────────────────────
 
-/** Get all users from the 'users' Firestore collection. */
-export async function getAllUsers(): Promise<AdminUser[]> {
+/** Retrieve one paginated page of users from backend admin APIs. */
+export async function getAdminUsersPage(options: AdminUsersPageOptions = {}): Promise<AdminUsersPageResult> {
   try {
     const response = await apiService.getAdminUsers({
-      page: 1,
-      pageSize: 25,
+      page: options.page ?? 1,
+      pageSize: options.pageSize ?? 25,
+      search: options.searchQuery,
+      role: options.roleFilter,
+      status: options.statusFilter,
+      grade: options.gradeFilter,
+      section: options.sectionFilter,
+      classSectionId: options.classSectionId,
     });
 
     if (!response.success) {
-      throw new Error('User list request did not succeed.');
+      throw new Error('Failed to load admin users');
     }
 
-    if (Array.isArray(response.warnings) && response.warnings.length > 0) {
-      console.warn('[adminService] getAllUsers warnings:', response.warnings);
-    }
-
-    return response.users.map((data) => {
-      return {
-        id: data.id,
-        name: data.name || 'Unknown',
-        email: data.email || '',
-        role: capitalizeRole(data.role),
-        status: data.status || 'Active',
-        department: data.department || getDepartmentFromProfile(data as unknown as Record<string, unknown>),
-        grade: data.grade || '',
-        section: data.section || '',
-        classSection: [data.grade || '', data.section || ''].filter(Boolean).join(' - '),
-        lrn: data.lrn || '',
-        photo: data.photo || '',
-        lastLogin: data.lastLogin || 'Never',
-      };
-    });
+    return {
+      users: (response.users || []).map(mapAdminUserRecord),
+      page: response.page,
+      pageSize: response.pageSize,
+      total: response.total,
+      totalPages: response.totalPages,
+      hasNextPage: response.hasNextPage,
+    };
   } catch (err) {
-    console.error('[adminService] getAllUsers error:', err);
-
+    console.error('[adminService] getAdminUsersPage error:', err);
     if (err instanceof ApiTimeoutError) {
       throw new Error('Loading users timed out. Please refresh and try again.');
     }
@@ -208,49 +318,35 @@ export async function getAllUsers(): Promise<AdminUser[]> {
       throw new Error('Unable to reach the server. Please check your connection and retry.');
     }
 
-    if (err instanceof ApiError) {
-      if (err.status === 504) {
-        throw new Error('Loading users took too long. Try narrowing your filters and retrying.');
-      }
-      throw new Error(extractApiErrorMessage(err));
+    if (err instanceof ApiError && err.status === 504) {
+      throw new Error('Loading users took too long. Try narrowing your filters and retrying.');
     }
 
-    throw err instanceof Error ? err : new Error('Failed to load users.');
+    throw new Error(extractApiErrorMessage(err));
   }
 }
 
-/** Update a user's Firestore profile. */
+/** Compatibility helper that returns the first page of users as a flat array. */
+export async function getAllUsers(): Promise<AdminUser[]> {
+  const page = await getAdminUsersPage({ page: 1, pageSize: 200 });
+  return page.users;
+}
+
+/** Update a user via backend admin API. */
 export async function updateAdminUser(uid: string, updates: Partial<AdminUser>): Promise<void> {
-  const ref = doc(db, 'users', uid);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const firestoreUpdates: Record<string, any> = { updatedAt: serverTimestamp() };
-  if (updates.name !== undefined) firestoreUpdates.name = updates.name;
-  if (updates.status !== undefined) firestoreUpdates.status = updates.status;
-  if (updates.role !== undefined) {
-    firestoreUpdates.role = updates.role.toLowerCase();
+  try {
+    await apiService.updateAdminUser(uid, {
+      ...(updates.name !== undefined ? { name: updates.name } : {}),
+      ...(updates.role !== undefined ? { role: updates.role } : {}),
+      ...(updates.status !== undefined ? { status: updates.status } : {}),
+      ...(updates.department !== undefined ? { department: updates.department } : {}),
+      ...(updates.grade !== undefined ? { grade: updates.grade } : {}),
+      ...(updates.section !== undefined ? { section: updates.section } : {}),
+      ...(updates.lrn !== undefined ? { lrn: updates.lrn } : {}),
+    });
+  } catch (error) {
+    throw new Error(extractApiErrorMessage(error));
   }
-  if (updates.department !== undefined) {
-    firestoreUpdates.department = updates.department;
-    // Also update 'grade' for students
-    if (updates.role?.toLowerCase() === 'student') {
-      firestoreUpdates.grade = updates.department;
-    }
-  }
-  if (updates.grade !== undefined) {
-    firestoreUpdates.grade = updates.grade;
-  }
-  if (updates.section !== undefined) {
-    firestoreUpdates.section = updates.section;
-  }
-  if (updates.lrn !== undefined) {
-    firestoreUpdates.lrn = updates.lrn;
-  }
-  if (firestoreUpdates.grade || firestoreUpdates.section) {
-    const grade = (firestoreUpdates.grade as string) || '';
-    const section = (firestoreUpdates.section as string) || '';
-    firestoreUpdates.classSectionId = [grade, section].filter(Boolean).join('_').replace(/\s+/g, '_').toLowerCase();
-  }
-  await updateDoc(ref, firestoreUpdates);
 }
 
 /** Delete a user account through backend (Auth + Firestore profile). */
@@ -295,6 +391,36 @@ export async function createAdminUser(input: CreateAdminUserInput): Promise<Crea
       message: response.message,
       warnings: response.warnings ?? [],
       emailError: response.emailError,
+    };
+  } catch (error) {
+    throw new Error(extractApiErrorMessage(error));
+  }
+}
+
+/** Apply backend bulk action against selected users or a filtered scope. */
+export async function applyAdminBulkAction(input: AdminBulkActionInput): Promise<AdminBulkActionResult> {
+  try {
+    const response: AdminBulkActionApiResponse = await apiService.bulkAdminUsers({
+      action: input.action,
+      userIds: input.userIds ?? [],
+      excludeUserIds: input.excludeUserIds ?? [],
+      filters: input.filters,
+      role: input.role,
+      status: input.status,
+      grade: input.grade,
+      section: input.section,
+      lrn: input.lrn,
+      dryRun: input.dryRun,
+      exportFormat: input.exportFormat ?? 'csv',
+    });
+
+    return {
+      success: response.success,
+      action: response.action,
+      summary: response.summary,
+      results: response.results,
+      warnings: response.warnings || [],
+      exportRows: response.export?.rows || [],
     };
   } catch (error) {
     throw new Error(extractApiErrorMessage(error));
