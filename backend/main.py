@@ -883,6 +883,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # ─── Middleware: Request ID + Logging + Timeout ────────────────
 
 REQUEST_TIMEOUT_SECONDS = 120  # 2 minutes for AI-heavy endpoints
+ADMIN_USERS_QUERY_TIMEOUT_SECONDS = max(5, int(os.getenv("ADMIN_USERS_QUERY_TIMEOUT_SECONDS", "12")))
+ADMIN_USERS_MAX_SCAN_DOCS = max(100, int(os.getenv("ADMIN_USERS_MAX_SCAN_DOCS", "1200")))
 
 
 class RequestMiddleware(BaseHTTPMiddleware):
@@ -4859,6 +4861,309 @@ class AdminDeleteUserResponse(BaseModel):
     profileDeleted: bool
     message: str
     warnings: List[str] = Field(default_factory=list)
+
+
+class AdminUsersListItem(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    status: str
+    department: str
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    classSectionId: Optional[str] = None
+    lrn: Optional[str] = None
+    photo: Optional[str] = None
+    lastLogin: str = "Never"
+    createdAtEpoch: Optional[float] = None
+
+
+class AdminUsersListResponse(BaseModel):
+    success: bool
+    users: List[AdminUsersListItem] = Field(default_factory=list)
+    page: int
+    pageSize: int
+    hasMore: bool
+    nextPage: Optional[int] = None
+    warnings: List[str] = Field(default_factory=list)
+
+
+def _normalize_admin_role_label(role: str) -> str:
+    cleaned = str(role or "").strip().lower()
+    if cleaned in {"student", "teacher", "admin"}:
+        return cleaned.capitalize()
+    return "Student"
+
+
+def _coerce_epoch_seconds(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, datetime):
+        normalized = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return normalized.timestamp()
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        try:
+            parsed = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+            normalized = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+            return normalized.timestamp()
+        except Exception:
+            return None
+    if hasattr(value, "to_datetime"):
+        try:
+            parsed = cast(Any, value).to_datetime()
+            if isinstance(parsed, datetime):
+                normalized = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+                return normalized.timestamp()
+        except Exception:
+            return None
+    return None
+
+
+def _format_admin_last_login(value: Any) -> str:
+    epoch = _coerce_epoch_seconds(value)
+    if epoch is None:
+        return "Never"
+
+    now_epoch = time.time()
+    delta_seconds = max(0, int(now_epoch - epoch))
+    if delta_seconds < 60:
+        return "Just now"
+    minutes = delta_seconds // 60
+    if minutes < 60:
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    days = hours // 24
+    if days < 7:
+        return f"{days} day{'s' if days != 1 else ''} ago"
+
+    as_date = datetime.fromtimestamp(epoch, tz=timezone.utc)
+    return as_date.strftime("%Y-%m-%d")
+
+
+def _normalize_admin_user_record(raw: Dict[str, Any], doc_id: str) -> Dict[str, Any]:
+    role_raw = str(raw.get("role") or "student").strip().lower()
+    grade = str(raw.get("grade") or "").strip()
+    section = str(raw.get("section") or "").strip()
+    department = str(raw.get("department") or "").strip()
+    status = str(raw.get("status") or "Active").strip() or "Active"
+
+    if role_raw == "student":
+        department_display = " - ".join([part for part in [grade, section] if part]) or "Student"
+    elif role_raw == "teacher":
+        department_display = department or "Mathematics"
+    elif role_raw == "admin":
+        department_display = department or "System"
+    else:
+        department_display = department
+
+    created_epoch = _coerce_epoch_seconds(raw.get("createdAt"))
+    updated_epoch = _coerce_epoch_seconds(raw.get("updatedAt"))
+    created_at_epoch = created_epoch if created_epoch is not None else updated_epoch
+
+    return {
+        "id": doc_id,
+        "name": str(raw.get("name") or "Unknown").strip() or "Unknown",
+        "email": str(raw.get("email") or "").strip(),
+        "role": _normalize_admin_role_label(role_raw),
+        "status": status,
+        "department": department_display,
+        "grade": grade or None,
+        "section": section or None,
+        "classSectionId": str(raw.get("classSectionId") or "").strip() or None,
+        "lrn": str(raw.get("lrn") or "").strip() or None,
+        "photo": str(raw.get("photo") or raw.get("photoURL") or "").strip() or None,
+        "lastLogin": _format_admin_last_login(raw.get("lastLogin")),
+        "createdAtEpoch": created_at_epoch,
+        "__roleNormalized": role_raw,
+        "__statusNormalized": status.lower(),
+        "__gradeNormalized": grade.lower(),
+        "__sectionNormalized": section.lower(),
+        "__classSectionIdNormalized": str(raw.get("classSectionId") or "").strip().lower(),
+        "__searchBlob": " ".join(
+            [
+                str(raw.get("name") or "").strip().lower(),
+                str(raw.get("email") or "").strip().lower(),
+                str(raw.get("lrn") or "").strip().lower(),
+            ]
+        ).strip(),
+    }
+
+
+def _matches_admin_user_filters(
+    user: Dict[str, Any],
+    *,
+    search: str,
+    role: str,
+    status: str,
+    grade: str,
+    section: str,
+    class_section_id: str,
+) -> bool:
+    if search and search not in str(user.get("__searchBlob") or ""):
+        return False
+    if role and role != str(user.get("__roleNormalized") or ""):
+        return False
+    if status and status != str(user.get("__statusNormalized") or ""):
+        return False
+    if grade and grade != str(user.get("__gradeNormalized") or ""):
+        return False
+    if section and section != str(user.get("__sectionNormalized") or ""):
+        return False
+    if class_section_id and class_section_id != str(user.get("__classSectionIdNormalized") or ""):
+        return False
+    return True
+
+
+async def _run_admin_user_query_with_timeout(query_ref: Any) -> List[Any]:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(lambda: list(cast(Any, query_ref).stream())),
+            timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                "User list query timed out. Please try again or narrow your filters."
+            ),
+        )
+
+
+@app.get("/api/admin/users", response_model=AdminUsersListResponse)
+async def list_admin_users(
+    request: Request,
+    page: int = Query(default=1, ge=1, le=10000),
+    pageSize: int = Query(default=25, ge=1, le=100),
+    search: Optional[str] = Query(default=None),
+    role: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    grade: Optional[str] = Query(default=None),
+    section: Optional[str] = Query(default=None),
+    classSectionId: Optional[str] = Query(default=None),
+):
+    """Return a bounded, paginated admin user list with optional filters."""
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not (_firebase_ready and firebase_firestore):
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    normalized_search = str(search or "").strip().lower()
+    normalized_role = str(role or "").strip().lower()
+    normalized_status = str(status or "").strip().lower()
+    normalized_grade = str(grade or "").strip().lower()
+    normalized_section = str(section or "").strip().lower()
+    normalized_class_section_id = str(classSectionId or "").strip().lower()
+
+    if normalized_role and normalized_role not in {"student", "teacher", "admin"}:
+        raise HTTPException(status_code=400, detail="role must be one of student, teacher, or admin")
+
+    start_index = (page - 1) * pageSize
+    if start_index >= ADMIN_USERS_MAX_SCAN_DOCS:
+        raise HTTPException(
+            status_code=400,
+            detail="Requested page is too deep. Narrow filters or use a smaller page number.",
+        )
+
+    required_window = page * pageSize
+    query_limit = min(max(required_window * 4, pageSize * 8), ADMIN_USERS_MAX_SCAN_DOCS)
+
+    warnings: List[str] = []
+    firestore_client = firebase_firestore.client()
+    users_collection = firestore_client.collection("users")
+
+    server_side_filter: Optional[Tuple[str, str]] = None
+    if normalized_class_section_id:
+        server_side_filter = ("classSectionId", normalized_class_section_id)
+    elif normalized_role:
+        server_side_filter = ("role", normalized_role)
+
+    try:
+        primary_query = users_collection
+        if server_side_filter:
+            primary_query = primary_query.where(server_side_filter[0], "==", server_side_filter[1])
+        primary_query = primary_query.limit(query_limit)
+        docs = await _run_admin_user_query_with_timeout(primary_query)
+    except HTTPException:
+        raise
+    except Exception as primary_error:
+        primary_error_text = str(primary_error).lower()
+        if "failed-precondition" in primary_error_text or "index" in primary_error_text:
+            warnings.append("Some filters required additional indexes; fallback scan was used.")
+            fallback_query = users_collection.limit(query_limit)
+            docs = await _run_admin_user_query_with_timeout(fallback_query)
+        else:
+            logger.error("Admin user list query error: %s", primary_error)
+            raise HTTPException(status_code=500, detail="Failed to load admin user list")
+
+    normalized_users: List[Dict[str, Any]] = []
+    for doc in docs:
+        payload = _snapshot_to_dict(doc)
+        normalized_users.append(_normalize_admin_user_record(payload, str(getattr(doc, "id", ""))))
+
+    filtered_users = [
+        record
+        for record in normalized_users
+        if _matches_admin_user_filters(
+            record,
+            search=normalized_search,
+            role=normalized_role,
+            status=normalized_status,
+            grade=normalized_grade,
+            section=normalized_section,
+            class_section_id=normalized_class_section_id,
+        )
+    ]
+
+    filtered_users.sort(key=lambda item: float(item.get("createdAtEpoch") or 0.0), reverse=True)
+
+    page_start = (page - 1) * pageSize
+    page_end = page_start + pageSize
+    page_records = filtered_users[page_start:page_end]
+    has_more = page_end < len(filtered_users)
+
+    if len(docs) >= query_limit and query_limit >= ADMIN_USERS_MAX_SCAN_DOCS:
+        warnings.append("Results are limited to a bounded scan window. Use filters for deeper pages.")
+
+    for record in page_records:
+        record.pop("__roleNormalized", None)
+        record.pop("__statusNormalized", None)
+        record.pop("__gradeNormalized", None)
+        record.pop("__sectionNormalized", None)
+        record.pop("__classSectionIdNormalized", None)
+        record.pop("__searchBlob", None)
+
+    _write_access_audit_log(
+        request,
+        action="admin_users_list",
+        status="success",
+        metadata={
+            "page": page,
+            "pageSize": pageSize,
+            "returnedUsers": len(page_records),
+            "warningsCount": len(warnings),
+            "serverSideFilter": server_side_filter[0] if server_side_filter else None,
+        },
+    )
+
+    return AdminUsersListResponse(
+        success=True,
+        users=[AdminUsersListItem(**record) for record in page_records],
+        page=page,
+        pageSize=pageSize,
+        hasMore=has_more,
+        nextPage=page + 1 if has_more else None,
+        warnings=list(dict.fromkeys(warnings))[:20],
+    )
 
 
 @app.post("/api/import/student-accounts/preview")

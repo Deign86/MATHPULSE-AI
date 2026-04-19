@@ -751,6 +751,43 @@ export interface AdminDeleteUserApiResponse {
   warnings: string[];
 }
 
+export interface AdminUsersListApiRequest {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+}
+
+export interface AdminUsersListApiItem {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  department: string;
+  grade?: string | null;
+  section?: string | null;
+  classSectionId?: string | null;
+  lrn?: string | null;
+  photo?: string | null;
+  lastLogin: string;
+  createdAtEpoch?: number | null;
+}
+
+export interface AdminUsersListApiResponse {
+  success: boolean;
+  users: AdminUsersListApiItem[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  nextPage?: number | null;
+  warnings: string[];
+}
+
 // ─── Quiz Maker Types ────────────────────────────────────────
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
@@ -889,6 +926,13 @@ const UPLOAD_RETRY_OPTS: RetryFetchOptions = {
 const IMPORTED_OVERVIEW_RETRY_OPTS: RetryFetchOptions = {
   maxRetries: 0,
   timeoutMs: 8_000,
+  baseBackoffMs: 500,
+};
+
+/** Admin users list should fail fast to avoid indefinite loading states in user-management UI. */
+const ADMIN_USERS_RETRY_OPTS: RetryFetchOptions = {
+  maxRetries: 0,
+  timeoutMs: 12_000,
   baseBackoffMs: 500,
 };
 
@@ -1633,6 +1677,43 @@ export const apiService = {
       '/api/import/student-accounts/commit',
       { method: 'POST', body: JSON.stringify(payload) },
       DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /** Create one user account via backend (Auth + Firestore) and send welcome credentials email. */
+  async getAdminUsers(options?: AdminUsersListApiRequest): Promise<AdminUsersListApiResponse> {
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 25;
+    validateRange('/api/admin/users', 'page', page, 1, 10000);
+    validateRange('/api/admin/users', 'pageSize', pageSize, 1, 100);
+
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('pageSize', String(pageSize));
+
+    if (options?.search?.trim()) {
+      params.set('search', options.search.trim());
+    }
+    if (options?.role?.trim()) {
+      params.set('role', options.role.trim());
+    }
+    if (options?.status?.trim()) {
+      params.set('status', options.status.trim());
+    }
+    if (options?.grade?.trim()) {
+      params.set('grade', options.grade.trim());
+    }
+    if (options?.section?.trim()) {
+      params.set('section', options.section.trim());
+    }
+    if (options?.classSectionId?.trim()) {
+      params.set('classSectionId', options.classSectionId.trim());
+    }
+
+    return apiFetch<AdminUsersListApiResponse>(
+      `/api/admin/users?${params.toString()}`,
+      { method: 'GET' },
+      ADMIN_USERS_RETRY_OPTS,
     );
   },
 

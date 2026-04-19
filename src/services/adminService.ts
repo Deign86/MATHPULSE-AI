@@ -16,7 +16,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ApiError, apiService } from './apiService';
+import { ApiError, ApiNetworkError, ApiTimeoutError, apiService } from './apiService';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -168,28 +168,54 @@ function extractApiErrorMessage(error: unknown): string {
 /** Get all users from the 'users' Firestore collection. */
 export async function getAllUsers(): Promise<AdminUser[]> {
   try {
-    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-      const data = d.data() as Record<string, unknown>;
+    const response = await apiService.getAdminUsers({
+      page: 1,
+      pageSize: 25,
+    });
+
+    if (!response.success) {
+      throw new Error('User list request did not succeed.');
+    }
+
+    if (Array.isArray(response.warnings) && response.warnings.length > 0) {
+      console.warn('[adminService] getAllUsers warnings:', response.warnings);
+    }
+
+    return response.users.map((data) => {
       return {
-        id: d.id,
-        name: (data.name as string) || 'Unknown',
-        email: (data.email as string) || '',
-        role: capitalizeRole(data.role as string),
-        status: (data.status as string) || 'Active',
-        department: getDepartmentFromProfile(data),
-        grade: (data.grade as string) || '',
-        section: (data.section as string) || '',
-        classSection: [(data.grade as string) || '', (data.section as string) || ''].filter(Boolean).join(' - '),
-        lrn: (data.lrn as string) || '',
-        photo: (data.photo as string) || (data.photoURL as string) || '',
-        lastLogin: formatLastLogin(data.lastLogin as { toDate?: () => Date } | null),
+        id: data.id,
+        name: data.name || 'Unknown',
+        email: data.email || '',
+        role: capitalizeRole(data.role),
+        status: data.status || 'Active',
+        department: data.department || getDepartmentFromProfile(data as unknown as Record<string, unknown>),
+        grade: data.grade || '',
+        section: data.section || '',
+        classSection: [data.grade || '', data.section || ''].filter(Boolean).join(' - '),
+        lrn: data.lrn || '',
+        photo: data.photo || '',
+        lastLogin: data.lastLogin || 'Never',
       };
     });
   } catch (err) {
     console.error('[adminService] getAllUsers error:', err);
-    return [];
+
+    if (err instanceof ApiTimeoutError) {
+      throw new Error('Loading users timed out. Please refresh and try again.');
+    }
+
+    if (err instanceof ApiNetworkError) {
+      throw new Error('Unable to reach the server. Please check your connection and retry.');
+    }
+
+    if (err instanceof ApiError) {
+      if (err.status === 504) {
+        throw new Error('Loading users took too long. Try narrowing your filters and retrying.');
+      }
+      throw new Error(extractApiErrorMessage(err));
+    }
+
+    throw err instanceof Error ? err : new Error('Failed to load users.');
   }
 }
 
