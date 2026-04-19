@@ -190,6 +190,8 @@ UPLOAD_MAX_COLS = int(os.getenv("UPLOAD_MAX_COLS", "60"))
 UPLOAD_MAX_PDF_PAGES = int(os.getenv("UPLOAD_MAX_PDF_PAGES", "20"))
 UPLOAD_RATE_LIMIT_PER_MIN = int(os.getenv("UPLOAD_RATE_LIMIT_PER_MIN", "12"))
 UPLOAD_MAX_FILES_PER_REQUEST = int(os.getenv("UPLOAD_MAX_FILES_PER_REQUEST", "8"))
+ADMIN_USERS_QUERY_TIMEOUT_SECONDS = float(os.getenv("ADMIN_USERS_QUERY_TIMEOUT_SECONDS", "18"))
+ADMIN_USERS_MAX_SCAN_DOCS = int(os.getenv("ADMIN_USERS_MAX_SCAN_DOCS", "5000"))
 IMPORT_RETENTION_DAYS = int(os.getenv("IMPORT_RETENTION_DAYS", "180"))
 ENABLE_IMPORT_GROUNDED_QUIZ = os.getenv("ENABLE_IMPORT_GROUNDED_QUIZ", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true").strip().lower() in {"1", "true", "yes", "on"}
@@ -5167,6 +5169,78 @@ def _load_all_admin_user_records(firestore_client: Any) -> List[Dict[str, Any]]:
     return records
 
 
+async def _load_admin_user_records_for_list(
+    firestore_client: Any,
+    *,
+    scan_limit: int,
+    role: Optional[str],
+    class_section_id: Optional[str],
+) -> List[Dict[str, Any]]:
+    normalized_role = (role or "").strip().lower()
+    normalized_class_section_id = (class_section_id or "").strip().lower()
+
+    base_query = firestore_client.collection("users")
+    query_ref: Any = base_query
+    applied_filter: Optional[Tuple[str, str]] = None
+
+    if normalized_class_section_id:
+        query_ref = query_ref.where("classSectionId", "==", normalized_class_section_id)
+        applied_filter = ("classSectionId", normalized_class_section_id)
+    elif normalized_role in VALID_ROLES:
+        query_ref = query_ref.where("role", "==", normalized_role)
+        applied_filter = ("role", normalized_role)
+
+    query_ref = query_ref.limit(scan_limit)
+
+    try:
+        docs = await asyncio.wait_for(
+            asyncio.to_thread(lambda: list(cast(Any, query_ref).stream())),
+            timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="User list query timed out. Please narrow your filters and try again.",
+        )
+    except Exception as query_error:
+        query_error_text = str(query_error).lower()
+        if applied_filter and ("failed-precondition" in query_error_text or "index" in query_error_text):
+            logger.warning(
+                "Admin user list fallback scan due to index issue (%s=%s): %s",
+                applied_filter[0],
+                applied_filter[1],
+                query_error,
+            )
+            fallback_query = base_query.limit(scan_limit)
+            try:
+                docs = await asyncio.wait_for(
+                    asyncio.to_thread(lambda: list(cast(Any, fallback_query).stream())),
+                    timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(
+                    status_code=504,
+                    detail="User list query timed out. Please narrow your filters and try again.",
+                )
+            except Exception as fallback_error:
+                logger.error("Admin user list fallback query error: %s", fallback_error)
+                raise HTTPException(status_code=500, detail="Failed to load admin users.")
+        else:
+            logger.error("Admin user list query error: %s", query_error)
+            raise HTTPException(status_code=500, detail="Failed to load admin users.")
+
+    records: List[Dict[str, Any]] = []
+    for doc in docs:
+        data = _snapshot_to_dict(doc)
+        records.append(_build_admin_user_record(str(doc.id), data))
+
+    records.sort(
+        key=lambda item: _iso_sort_key(item.get("createdAt") or item.get("lastLogin")),
+        reverse=True,
+    )
+    return records
+
+
 def _resolve_admin_bulk_target_records(
     firestore_client: Any,
     *,
@@ -5768,11 +5842,30 @@ async def list_admin_users(
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden for this role")
 
+    normalized_role_filter = str(role or "").strip().lower()
+    if normalized_role_filter and normalized_role_filter not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail="role must be one of student, teacher, or admin")
+
     if not _firebase_ready or firebase_firestore is None:
         raise HTTPException(status_code=503, detail="Authentication service unavailable")
 
+    start_index = (page - 1) * pageSize
+    if start_index >= ADMIN_USERS_MAX_SCAN_DOCS:
+        raise HTTPException(
+            status_code=400,
+            detail="Requested page is too deep. Narrow filters or use a smaller page number.",
+        )
+
+    required_window = page * pageSize
+    scan_limit = min(max(required_window * 4, pageSize * 8), ADMIN_USERS_MAX_SCAN_DOCS)
+
     firestore_client = cast(Any, firebase_firestore).client()
-    records = _load_all_admin_user_records(firestore_client)
+    records = await _load_admin_user_records_for_list(
+        firestore_client,
+        scan_limit=scan_limit,
+        role=role,
+        class_section_id=classSectionId,
+    )
     filtered = _filter_admin_user_records(
         records,
         search=search,

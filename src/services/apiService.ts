@@ -978,6 +978,14 @@ const CHAT_RETRY_OPTS: RetryFetchOptions = {
   baseBackoffMs: 750,
 };
 
+/** Keep admin user list requests responsive when backend scans are slow. */
+const ADMIN_USERS_RETRY_OPTS: RetryFetchOptions = {
+  ...DEFAULT_RETRY_OPTS,
+  maxRetries: 1,
+  timeoutMs: 20_000,
+  baseBackoffMs: 500,
+};
+
 /** Upload-specific: longer timeout, fewer retries */
 const UPLOAD_RETRY_OPTS: RetryFetchOptions = {
   maxRetries: 2,
@@ -1765,7 +1773,7 @@ export const apiService = {
     return apiFetch<AdminUserListApiResponse>(
       `/api/admin/users?${params.toString()}`,
       { method: 'GET' },
-      DEFAULT_RETRY_OPTS,
+      ADMIN_USERS_RETRY_OPTS,
     );
   },
 
