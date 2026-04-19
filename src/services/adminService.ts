@@ -18,6 +18,8 @@ import {
 import { db } from '../lib/firebase';
 import {
   ApiError,
+  ApiNetworkError,
+  ApiTimeoutError,
   apiService,
   type AdminBulkActionApiResponse,
   type AdminBulkActionRequestApi,
@@ -308,6 +310,18 @@ export async function getAdminUsersPage(options: AdminUsersPageOptions = {}): Pr
     };
   } catch (err) {
     console.error('[adminService] getAdminUsersPage error:', err);
+    if (err instanceof ApiTimeoutError) {
+      throw new Error('Loading users timed out. Please refresh and try again.');
+    }
+
+    if (err instanceof ApiNetworkError) {
+      throw new Error('Unable to reach the server. Please check your connection and retry.');
+    }
+
+    if (err instanceof ApiError && err.status === 504) {
+      throw new Error('Loading users took too long. Try narrowing your filters and retrying.');
+    }
+
     throw new Error(extractApiErrorMessage(err));
   }
 }
