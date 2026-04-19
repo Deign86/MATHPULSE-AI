@@ -1692,6 +1692,7 @@ class _ProvisionQuery:
         self._store = store
         self._collection_name = collection_name
         self._filters: List[tuple[str, str, Any]] = []
+        self._order_by: List[tuple[str, str | None]] = []
         self._limit: int | None = None
 
     def where(self, field: str, op: str, value: Any):
@@ -1700,6 +1701,10 @@ class _ProvisionQuery:
 
     def limit(self, value: int):
         self._limit = value
+        return self
+
+    def order_by(self, field: str, direction: str | None = None):
+        self._order_by.append((field, direction))
         return self
 
     def stream(self):
@@ -1716,6 +1721,20 @@ class _ProvisionQuery:
             if include:
                 docs.append(_ProvisionDocSnapshot(doc_id, data))
 
+        for field, direction in reversed(self._order_by):
+            reverse = str(direction or "").upper() == "DESCENDING"
+
+            def _sort_key(snapshot: _ProvisionDocSnapshot):
+                raw_value = snapshot.to_dict().get(field)
+                if hasattr(raw_value, "timestamp"):
+                    try:
+                        raw_value = raw_value.timestamp()
+                    except Exception:
+                        raw_value = None
+                return (raw_value is None, raw_value if raw_value is not None else 0)
+
+            docs.sort(key=_sort_key, reverse=reverse)
+
         if self._limit is not None:
             docs = docs[: self._limit]
         return docs
@@ -1728,6 +1747,9 @@ class _ProvisionCollectionRef:
 
     def where(self, field: str, op: str, value: Any):
         return _ProvisionQuery(self._store, self._collection_name).where(field, op, value)
+
+    def order_by(self, field: str, direction: str | None = None):
+        return _ProvisionQuery(self._store, self._collection_name).order_by(field, direction)
 
     def limit(self, value: int):
         return _ProvisionQuery(self._store, self._collection_name).limit(value)
@@ -2087,6 +2109,38 @@ class TestAdminListUsersEndpoint:
 
         assert response.status_code == 403
         assert "forbidden" in response.json()["detail"].lower()
+
+    def test_get_admin_users_returns_timeout_error_when_query_exceeds_deadline(self):
+        firestore = _ProvisionFirestoreModule(
+            {
+                "users": {
+                    "student-a": {
+                        "name": "Alice Student",
+                        "email": "alice@student.com",
+                        "role": "student",
+                        "status": "Active",
+                        "createdAt": 1710000000,
+                    }
+                },
+                "accessAuditLogs": {},
+            }
+        )
+
+        original_stream = _ProvisionQuery.stream
+
+        def _slow_stream(self):
+            time.sleep(0.05)
+            return original_stream(self)
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module, "ADMIN_USERS_QUERY_TIMEOUT_SECONDS", 0.001), patch.object(_ProvisionQuery, "stream", _slow_stream):
+            response = client.get("/api/admin/users?page=1&pageSize=25")
+
+        assert response.status_code == 504
+        assert "timed out" in response.json()["detail"].lower()
 
 
 class TestAdminDeleteUserEndpoint:
