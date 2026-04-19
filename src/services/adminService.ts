@@ -16,7 +16,13 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ApiError, ApiNetworkError, ApiTimeoutError, apiService } from './apiService';
+import {
+  ApiError,
+  ApiNetworkError,
+  ApiTimeoutError,
+  apiService,
+  type AdminUsersListApiRequest,
+} from './apiService';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -165,38 +171,58 @@ function extractApiErrorMessage(error: unknown): string {
 
 // ─── User Management ─────────────────────────────────────────
 
-/** Get all users from the 'users' Firestore collection. */
-export async function getAllUsers(): Promise<AdminUser[]> {
+/** Get all users from the admin users API by traversing paginated results. */
+export async function getAllUsers(options: Omit<AdminUsersListApiRequest, 'page'> = {}): Promise<AdminUser[]> {
   try {
-    const response = await apiService.getAdminUsers({
-      page: 1,
-      pageSize: 25,
-    });
+    const pageSize = options.pageSize ?? 100;
+    const mergedWarnings = new Set<string>();
+    const mergedUsers: AdminUser[] = [];
+    let page = 1;
+    let hasMore = true;
 
-    if (!response.success) {
-      throw new Error('User list request did not succeed.');
+    while (hasMore && page <= 10000) {
+      const response = await apiService.getAdminUsers({
+        ...options,
+        page,
+        pageSize,
+      });
+
+      if (!response.success) {
+        throw new Error('User list request did not succeed.');
+      }
+
+      if (Array.isArray(response.warnings) && response.warnings.length > 0) {
+        response.warnings.forEach((warning) => mergedWarnings.add(warning));
+      }
+
+      mergedUsers.push(
+        ...response.users.map((data) => {
+          return {
+            id: data.id,
+            name: data.name || 'Unknown',
+            email: data.email || '',
+            role: capitalizeRole(data.role),
+            status: data.status || 'Active',
+            department: data.department || getDepartmentFromProfile(data as unknown as Record<string, unknown>),
+            grade: data.grade || '',
+            section: data.section || '',
+            classSection: [data.grade || '', data.section || ''].filter(Boolean).join(' - '),
+            lrn: data.lrn || '',
+            photo: data.photo || '',
+            lastLogin: data.lastLogin || 'Never',
+          };
+        }),
+      );
+
+      hasMore = Boolean(response.hasMore);
+      page = response.nextPage ?? page + 1;
     }
 
-    if (Array.isArray(response.warnings) && response.warnings.length > 0) {
-      console.warn('[adminService] getAllUsers warnings:', response.warnings);
+    if (mergedWarnings.size > 0) {
+      console.warn('[adminService] getAllUsers warnings:', Array.from(mergedWarnings));
     }
 
-    return response.users.map((data) => {
-      return {
-        id: data.id,
-        name: data.name || 'Unknown',
-        email: data.email || '',
-        role: capitalizeRole(data.role),
-        status: data.status || 'Active',
-        department: data.department || getDepartmentFromProfile(data as unknown as Record<string, unknown>),
-        grade: data.grade || '',
-        section: data.section || '',
-        classSection: [data.grade || '', data.section || ''].filter(Boolean).join(' - '),
-        lrn: data.lrn || '',
-        photo: data.photo || '',
-        lastLogin: data.lastLogin || 'Never',
-      };
-    });
+    return mergedUsers;
   } catch (err) {
     console.error('[adminService] getAllUsers error:', err);
 

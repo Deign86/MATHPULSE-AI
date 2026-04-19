@@ -1680,7 +1680,7 @@ export const apiService = {
     );
   },
 
-  /** Create one user account via backend (Auth + Firestore) and send welcome credentials email. */
+  /** List admin users via backend with pagination and optional server-side filters. */
   async getAdminUsers(options?: AdminUsersListApiRequest): Promise<AdminUsersListApiResponse> {
     const page = options?.page ?? 1;
     const pageSize = options?.pageSize ?? 25;
