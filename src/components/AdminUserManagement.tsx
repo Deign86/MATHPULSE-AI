@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, Plus,
   Edit, Trash2, Shield, Ban, Users, UserCheck, 
-  GraduationCap, School, Loader2, RefreshCw
+  GraduationCap, School, Loader2, RefreshCw, AlertCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
@@ -65,6 +65,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const { userProfile } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [pendingStatusUserId, setPendingStatusUserId] = useState<string | null>(null);
@@ -82,11 +83,14 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await getAllUsers();
       setUsers(data);
     } catch (err) {
-      toast.error('Failed to load users');
+      const message = err instanceof Error ? err.message : 'Failed to load users';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -359,9 +363,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" className="gap-2 border-[#dde3eb] text-[#5a6578]" onClick={loadUsers}>
-              <RefreshCw size={16} />
-              Refresh
+            <Button variant="outline" className="gap-2 border-[#dde3eb] text-[#5a6578]" onClick={loadUsers} disabled={loading}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              {loading ? 'Refreshing...' : 'Refresh'}
             </Button>
             <Button 
               className="gap-2 bg-sky-500 hover:bg-sky-600 text-white"
@@ -374,10 +378,38 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       </div>
 
+      {loadError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2 min-w-0">
+            <AlertCircle size={18} className="text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-red-700">Unable to load users</p>
+              <p className="text-sm text-red-600 break-words">{loadError}</p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-red-200 text-red-700 hover:bg-red-100"
+            onClick={loadUsers}
+            disabled={loading}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
+
       {/* Users Table */}
       <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-hidden">
         <div className="md:hidden divide-y divide-[#dde3eb]">
-          {filteredUsers.length > 0 ? (
+          {loading ? (
+            <div className="px-6 py-12 text-center text-[#5a6578]">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 size={22} className="text-slate-500 animate-spin" />
+                <p>Loading users...</p>
+              </div>
+            </div>
+          ) : filteredUsers.length > 0 ? (
             filteredUsers.map((user) => {
               const isPendingToggle = pendingStatusUserId === user.id;
               return (
@@ -430,6 +462,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 </div>
               );
             })
+          ) : loadError ? (
+            <div className="px-6 py-12 text-center text-red-600">
+              <div className="flex flex-col items-center gap-3">
+                <AlertCircle size={24} className="text-red-500" />
+                <p>Users could not be loaded.</p>
+              </div>
+            </div>
           ) : (
             <div className="px-6 py-12 text-center text-[#5a6578]">
               <div className="flex flex-col items-center gap-3">
@@ -455,7 +494,16 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#dde3eb]">
-              {filteredUsers.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-[#5a6578]">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 size={24} className="text-slate-500 animate-spin" />
+                      <p>Loading users...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => {
                   const isPendingToggle = pendingStatusUserId === user.id;
                   return (
@@ -540,6 +588,15 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   </tr>
                   );
                 })
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-red-600">
+                    <div className="flex flex-col items-center gap-3">
+                      <AlertCircle size={24} className="text-red-500" />
+                      <p>Users could not be loaded.</p>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-[#5a6578]">
