@@ -5091,7 +5091,7 @@ async def list_admin_users(
         primary_query = users_collection
         if server_side_filter:
             primary_query = primary_query.where(server_side_filter[0], "==", server_side_filter[1])
-        primary_query = primary_query.limit(query_limit)
+        primary_query = primary_query.order_by("createdAt", direction=firebase_firestore.Query.DESCENDING).limit(query_limit)
         docs = await _run_admin_user_query_with_timeout(primary_query)
     except HTTPException:
         raise
@@ -5099,7 +5099,7 @@ async def list_admin_users(
         primary_error_text = str(primary_error).lower()
         if "failed-precondition" in primary_error_text or "index" in primary_error_text:
             warnings.append("Some filters required additional indexes; fallback scan was used.")
-            fallback_query = users_collection.limit(query_limit)
+            fallback_query = users_collection.order_by("createdAt", direction=firebase_firestore.Query.DESCENDING).limit(query_limit)
             docs = await _run_admin_user_query_with_timeout(fallback_query)
         else:
             logger.error("Admin user list query error: %s", primary_error)
