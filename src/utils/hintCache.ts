@@ -33,11 +33,34 @@ const readStorage = (): HintCacheStorageShape => {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return { entries: {} };
-    const parsed = JSON.parse(raw) as HintCacheStorageShape;
-    if (!parsed || typeof parsed !== 'object' || typeof parsed.entries !== 'object') {
+    const parsed = JSON.parse(raw) as { entries?: unknown };
+    if (!parsed || typeof parsed !== 'object') {
       return { entries: {} };
     }
-    return parsed;
+
+    const entries = parsed.entries;
+    if (!entries || typeof entries !== 'object' || Array.isArray(entries)) {
+      return { entries: {} };
+    }
+
+    const sanitizedEntries: Record<string, HintCacheEntry> = {};
+    for (const [key, value] of Object.entries(entries as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') {
+        continue;
+      }
+
+      const candidate = value as Partial<HintCacheEntry>;
+      if (typeof candidate.value !== 'string' || typeof candidate.expiresAt !== 'number' || !Number.isFinite(candidate.expiresAt)) {
+        continue;
+      }
+
+      sanitizedEntries[key] = {
+        value: candidate.value,
+        expiresAt: candidate.expiresAt,
+      };
+    }
+
+    return { entries: sanitizedEntries };
   } catch {
     return { entries: {} };
   }
