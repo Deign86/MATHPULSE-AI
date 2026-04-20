@@ -34,6 +34,13 @@ interface MasterySummary {
   excludedCount: number;
 }
 
+const DEFAULT_MASTERY_SUMMARY: MasterySummary = {
+  totalTopicsTracked: 0,
+  masteredCount: 0,
+  needsAttentionCount: 0,
+  excludedCount: 0,
+};
+
 type SortField = 'topicName' | 'classAverage' | 'studentsAttempted' | 'masteryStatus';
 type SortDir = 'asc' | 'desc';
 
@@ -58,13 +65,6 @@ const STATUS_ORDER: Record<string, number> = {
   mastered: 3,
 };
 
-const EMPTY_SUMMARY: MasterySummary = {
-  totalTopicsTracked: 0,
-  masteredCount: 0,
-  needsAttentionCount: 0,
-  excludedCount: 0,
-};
-
 // ─── Component ──────────────────────────────────────────────
 
 const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionId }) => {
@@ -72,7 +72,7 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
 
   // Data state
   const [topics, setTopics] = useState<TopicMasteryData[]>([]);
-  const [summary, setSummary] = useState<MasterySummary>(EMPTY_SUMMARY);
+  const [summary, setSummary] = useState<MasterySummary>(DEFAULT_MASTERY_SUMMARY);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -164,7 +164,8 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
     if (!masteryQuery.data) {
       setExcludedTopics([]);
       setTopics([]);
-      setSummary(EMPTY_SUMMARY);
+      setSummary(DEFAULT_MASTERY_SUMMARY);
+      setSelectedTopics(new Set());
       return;
     }
 
