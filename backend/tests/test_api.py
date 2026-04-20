@@ -730,6 +730,9 @@ class TestInferenceRouting:
 
 
 class TestRiskPrediction:
+    def setup_method(self):
+        asyncio.run(main_module.deterministic_response_cache.clear())
+
     @patch("main.get_client")
     def test_predict_risk_success(self, mock_get):
         mock_get.return_value = make_zsc_client()
