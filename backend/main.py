@@ -16,6 +16,7 @@ import os
 import io
 import re
 import json
+import ast
 import math
 import hashlib
 import logging
@@ -63,6 +64,7 @@ import requests as http_requests
 import httpx
 import uvicorn
 from services.inference_client import InferenceRequest, create_default_client
+from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
 from services.email_service import create_email_service_from_env
 from services.user_provisioning_service import (
@@ -239,6 +241,15 @@ CHAT_STREAM_COMPLETION_MODE_DEFAULT = os.getenv(
 if CHAT_STREAM_COMPLETION_MODE_DEFAULT not in {"auto", "marker", "none"}:
     CHAT_STREAM_COMPLETION_MODE_DEFAULT = "auto"
 
+DETERMINISTIC_CACHE_ENABLED = os.getenv("DETERMINISTIC_CACHE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+DETERMINISTIC_CACHE_MAX_ENTRIES = max(100, int(os.getenv("DETERMINISTIC_CACHE_MAX_ENTRIES", "1200")))
+DETERMINISTIC_CACHE_REDIS_URL = os.getenv("DETERMINISTIC_CACHE_REDIS_URL", "").strip() or None
+
+VERIFY_SOLUTION_CACHE_TTL_SECONDS = max(30, int(os.getenv("VERIFY_SOLUTION_CACHE_TTL_SECONDS", "900")))
+PREDICT_RISK_CACHE_TTL_SECONDS = max(30, int(os.getenv("PREDICT_RISK_CACHE_TTL_SECONDS", "600")))
+LEARNING_PATH_CACHE_TTL_SECONDS = max(30, int(os.getenv("LEARNING_PATH_CACHE_TTL_SECONDS", "300")))
+DAILY_INSIGHT_CACHE_TTL_SECONDS = max(30, int(os.getenv("DAILY_INSIGHT_CACHE_TTL_SECONDS", "180")))
+
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
     "text/csv",
@@ -325,6 +336,19 @@ if not HF_TOKEN:
         "HF_TOKEN is not set. AI features will fail. "
         "On HF Spaces this is injected automatically as a secret."
     )
+
+deterministic_response_cache = DeterministicResponseCache(
+    enabled=DETERMINISTIC_CACHE_ENABLED,
+    max_entries=DETERMINISTIC_CACHE_MAX_ENTRIES,
+    redis_url=DETERMINISTIC_CACHE_REDIS_URL,
+    logger=logger,
+)
+
+
+def _set_cache_response_header(response: Optional[Response], hit: bool) -> None:
+    if response is None:
+        return
+    response.headers["X-Cache"] = "HIT" if hit else "MISS"
 
 # ─── FastAPI App ───────────────────────────────────────────────
 
@@ -3011,7 +3035,7 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
 
 
 @app.post("/api/verify-solution", response_model=VerifySolutionResponse)
-async def verify_solution(request: VerifySolutionRequest):
+async def verify_solution(request: VerifySolutionRequest, response: Response):
     """
     Run all 3 verification methods on a problem+solution pair:
     1. Self-consistency (multiple samples)
@@ -3021,6 +3045,16 @@ async def verify_solution(request: VerifySolutionRequest):
     """
     try:
         logger.info(f"Running full verification for problem: {request.problem[:80]}...")
+        cache_key = deterministic_response_cache.build_cache_key(
+            "verify_solution",
+            request.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return VerifySolutionResponse(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
         warnings: List[str] = []
 
         # Build messages for self-consistency check
@@ -3101,7 +3135,7 @@ async def verify_solution(request: VerifySolutionRequest):
             f"aggregated_confidence={aggregated}"
         )
 
-        return VerifySolutionResponse(
+        result = VerifySolutionResponse(
             overall_verified=overall_verified,
             aggregated_confidence=aggregated,
             self_consistency=sc_model,
@@ -3109,6 +3143,12 @@ async def verify_solution(request: VerifySolutionRequest):
             llm_judge=lj_model,
             warnings=warnings,
         )
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            VERIFY_SOLUTION_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except Exception as e:
         logger.error(f"Verify solution error: {e}\n{traceback.format_exc()}")
@@ -3219,9 +3259,19 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
 
 
 @app.post("/api/predict-risk", response_model=RiskPrediction)
-async def predict_risk(student_data: StudentRiskData):
+async def predict_risk(student_data: StudentRiskData, response: Response):
     """Student risk prediction using facebook/bart-large-mnli zero-shot classification"""
     try:
+        cache_key = deterministic_response_cache.build_cache_key(
+            "predict_risk",
+            student_data.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return RiskPrediction(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
         hf = get_client()
 
         text = (
@@ -3268,7 +3318,7 @@ async def predict_risk(student_data: StudentRiskData):
         strict_risk_level = _to_strict_risk_level(risk_level)
         top_factors = _basic_risk_top_factors(student_data)
 
-        return RiskPrediction(
+        result = RiskPrediction(
             riskLevel=risk_level,
             confidence=round(float(top_score), 4),
             analysis={
@@ -3279,6 +3329,12 @@ async def predict_risk(student_data: StudentRiskData):
             risk_score=round(float(top_score), 4),
             top_factors=top_factors,
         )
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            PREDICT_RISK_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except HTTPException:
         raise
@@ -3293,7 +3349,7 @@ async def predict_risk_batch(request: BatchRiskRequest):
     results = []
     for student in request.students:
         try:
-            result = await predict_risk(student)
+            result = await predict_risk(student, Response())
             results.append(result)
         except Exception:
             results.append(
@@ -3313,9 +3369,19 @@ async def predict_risk_batch(request: BatchRiskRequest):
 
 
 @app.post("/api/learning-path", response_model=LearningPathResponse)
-async def generate_learning_path(request: LearningPathRequest):
+async def generate_learning_path(request: LearningPathRequest, response: Response):
     """Generate AI-powered personalized learning path"""
     try:
+        cache_key = deterministic_response_cache.build_cache_key(
+            "learning_path",
+            request.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return LearningPathResponse(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
         prompt = f"""Generate a personalized math learning path for a student with these details:
 - Weak Topics: {', '.join(request.weaknesses)}
 - Grade Level: {request.gradeLevel}
@@ -3351,7 +3417,13 @@ Format as a numbered list. Be specific to the math topics mentioned."""
                 detail="Learning path generation is temporarily unavailable.",
             )
 
-        return LearningPathResponse(learningPath=content)
+        result = LearningPathResponse(learningPath=content)
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            LEARNING_PATH_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except HTTPException:
         raise
@@ -3364,13 +3436,29 @@ Format as a numbered list. Be specific to the math topics mentioned."""
 
 
 @app.post("/api/analytics/daily-insight", response_model=DailyInsightResponse)
-async def daily_insight(request: DailyInsightRequest):
+async def daily_insight(request: DailyInsightRequest, response: Response):
     """Generate daily AI insights for teacher dashboard"""
     try:
+        cache_key = deterministic_response_cache.build_cache_key(
+            "daily_insight",
+            request.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return DailyInsightResponse(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
         students = request.students
         total = len(students)
         if total == 0:
-            return DailyInsightResponse(insight="No student data available for analysis.")
+            empty_result = DailyInsightResponse(insight="No student data available for analysis.")
+            await deterministic_response_cache.set(
+                cache_key,
+                empty_result.model_dump(),
+                DAILY_INSIGHT_CACHE_TTL_SECONDS,
+            )
+            return empty_result
 
         avg_engagement = sum(s.engagementScore for s in students) / total
         avg_quiz = sum(s.avgQuizScore for s in students) / total
@@ -3418,7 +3506,13 @@ Keep the response under 200 words. Be specific and practical."""
                 detail="AI insight generation is temporarily unavailable.",
             )
 
-        return DailyInsightResponse(insight=content)
+        result = DailyInsightResponse(insight=content)
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            DAILY_INSIGHT_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except HTTPException:
         raise
@@ -8530,15 +8624,17 @@ def _distribute_questions(
 
 def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     """Robustly extract a JSON array of quiz questions from LLM output."""
-    # Try direct parse
     cleaned = raw.strip()
     # Remove markdown fences
-    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
+    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\n?```\s*$", "", cleaned)
     cleaned = cleaned.strip()
 
+    # Remove known reasoning wrappers and preambles that can precede JSON.
+    cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE)
     # Remove common reasoning preambles before JSON output.
     cleaned = re.sub(r"^\s*thinking\s*process\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^\s*json\s*[:\-]?\s*", "", cleaned, flags=re.IGNORECASE)
 
     def _extract_json_blocks(text: str) -> List[str]:
         blocks: List[str] = []
@@ -8573,40 +8669,76 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
                         break
         return blocks
 
+    def _normalize_candidate(candidate: str) -> str:
+        normalized = candidate.strip().lstrip("\ufeff")
+        normalized = (
+            normalized
+            .replace("\u201c", '"')
+            .replace("\u201d", '"')
+            .replace("\u2018", "'")
+            .replace("\u2019", "'")
+        )
+        # Remove trailing commas before object/array closers.
+        normalized = re.sub(r",(\s*[}\]])", r"\1", normalized)
+        return normalized
+
+    def _jsonish_loads(candidate: str) -> Any:
+        normalized = _normalize_candidate(candidate)
+        try:
+            return json.loads(normalized)
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback for Python-literal style payloads using single quotes / True / None.
+        python_like = re.sub(r"\btrue\b", "True", normalized, flags=re.IGNORECASE)
+        python_like = re.sub(r"\bfalse\b", "False", python_like, flags=re.IGNORECASE)
+        python_like = re.sub(r"\bnull\b", "None", python_like, flags=re.IGNORECASE)
+        try:
+            return ast.literal_eval(python_like)
+        except (ValueError, SyntaxError):
+            return None
+
     def _coerce_question_list(value: Any) -> List[Dict[str, Any]]:
         if not isinstance(value, list):
             return []
         return [item for item in value if isinstance(item, dict)]
 
-    # Try every balanced JSON block and accept array payloads directly.
+    def _extract_question_list(payload: Any) -> List[Dict[str, Any]]:
+        if isinstance(payload, list):
+            return _coerce_question_list(payload)
+
+        if isinstance(payload, dict):
+            for key in ("questions", "quiz", "items", "data"):
+                nested = payload.get(key)
+                if isinstance(nested, list):
+                    return _coerce_question_list(nested)
+
+        return []
+
+    # Try every balanced JSON-ish block and accept known payload wrappers.
     for candidate in _extract_json_blocks(cleaned):
-        try:
-            parsed = json.loads(candidate)
-            if isinstance(parsed, list):
-                return _coerce_question_list(parsed)
-            if isinstance(parsed, dict) and isinstance(parsed.get("questions"), list):
-                return _coerce_question_list(parsed.get("questions") or [])
-        except json.JSONDecodeError:
-            continue
+        parsed = _jsonish_loads(candidate)
+        extracted = _extract_question_list(parsed)
+        if extracted:
+            return extracted
 
     # Try to find array brackets
     arr_start = cleaned.find("[")
     arr_end = cleaned.rfind("]") + 1
     if arr_start >= 0 and arr_end > arr_start:
-        try:
-            return _coerce_question_list(json.loads(cleaned[arr_start:arr_end]))
-        except json.JSONDecodeError:
-            pass
+        parsed = _jsonish_loads(cleaned[arr_start:arr_end])
+        extracted = _extract_question_list(parsed)
+        if extracted:
+            return extracted
 
-    # Fallback: try parsing individual objects
+    # Fallback: salvage individually parseable question-like objects.
     objects: List[Dict[str, Any]] = []
-    for match in re.finditer(r"\{[^{}]+\}", cleaned, re.DOTALL):
-        try:
-            obj = json.loads(match.group())
-            if "question" in obj:
-                objects.append(obj)
-        except json.JSONDecodeError:
+    for candidate in _extract_json_blocks(cleaned):
+        if not candidate.lstrip().startswith("{"):
             continue
+        parsed = _jsonish_loads(candidate)
+        if isinstance(parsed, dict) and str(parsed.get("question") or "").strip():
+            objects.append(parsed)
 
     return objects
 
@@ -9300,12 +9432,14 @@ async def get_inference_metrics(http_request: Request):
 
 
 @app.get("/api/quiz/topics")
-async def get_quiz_topics(gradeLevel: Optional[str] = None):
+async def get_quiz_topics(response: Response, gradeLevel: Optional[str] = None):
     """
     Return structured list of SHS math topics organised by grade level.
     Only Grade 11 and Grade 12 are supported.
     If gradeLevel is provided, return topics for that grade only.
     """
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
+
     if gradeLevel:
         key = _resolve_grade_level_key(gradeLevel)
         if key:
