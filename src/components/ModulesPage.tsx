@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BookOpen,
@@ -21,6 +22,7 @@ import { subjects, getActiveSubjectIdsForGrade, type Module, type SubjectId } fr
 import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
+import { cacheKeys } from '../utils/cacheKeys';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -79,20 +81,26 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     });
   }, [priorityTopics, atRiskSubjects]);
 
-  const modulePool = useMemo(() => {
-    const base = generalMathSubject?.modules ?? [];
-    if (normalizedRiskTopics.length === 0) return base;
+  const { data: modulePool = [] } = useQuery({
+    queryKey: cacheKeys.modules(studentGrade, normalizedRiskTopics),
+    enabled: Boolean(generalMathSubject),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const base = generalMathSubject?.modules ?? [];
+      if (normalizedRiskTopics.length === 0) return base;
 
-    const ranking = new Map<string, number>(
-      normalizedRiskTopics.map((topic, index) => [TOPIC_TO_MODULE_ID[topic], index]),
-    );
+      const ranking = new Map<string, number>(
+        normalizedRiskTopics.map((topic, index) => [TOPIC_TO_MODULE_ID[topic], index]),
+      );
 
-    return [...base].sort((left, right) => {
-      const leftRank = ranking.get(left.id) ?? Number.POSITIVE_INFINITY;
-      const rightRank = ranking.get(right.id) ?? Number.POSITIVE_INFINITY;
-      return leftRank - rightRank;
-    });
-  }, [generalMathSubject?.modules, normalizedRiskTopics]);
+      return [...base].sort((left, right) => {
+        const leftRank = ranking.get(left.id) ?? Number.POSITIVE_INFINITY;
+        const rightRank = ranking.get(right.id) ?? Number.POSITIVE_INFINITY;
+        return leftRank - rightRank;
+      });
+    },
+  });
 
   const filteredModules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

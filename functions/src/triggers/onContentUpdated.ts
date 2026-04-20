@@ -10,6 +10,9 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { NOTIFICATION_TYPES } from "../config/constants";
 import { createNotification } from "../automations/notificationSender";
+import { createRuntimeCacheKey, runtimeCache } from "../services/runtimeCache";
+
+const CONTENT_UPDATE_TEACHER_LIST_CACHE_TTL_MS = 30 * 1000;
 
 export const onContentUpdated = functions.firestore
   .document("curriculumContent/{contentId}")
@@ -57,18 +60,25 @@ export const onContentUpdated = functions.firestore
 
       // Notify teachers about curriculum changes that may affect their classes
       if (subjectId) {
-        // Find teachers who teach this subject (query teacher profiles)
-        const teachersSnap = await db
-          .collection("users")
-          .where("role", "==", "teacher")
-          .limit(50) // Safety limit
-          .get();
+        const teacherCacheKey = createRuntimeCacheKey("content-update", "teacher-list");
+        let teacherIds = runtimeCache.get<string[]>(teacherCacheKey);
+
+        if (!teacherIds) {
+          const teachersSnap = await db
+            .collection("users")
+            .where("role", "==", "teacher")
+            .limit(50) // Safety limit
+            .get();
+
+          teacherIds = teachersSnap.docs.map((teacherDoc) => teacherDoc.id);
+          runtimeCache.set(teacherCacheKey, teacherIds, CONTENT_UPDATE_TEACHER_LIST_CACHE_TTL_MS);
+        }
 
         const notifications: Promise<string>[] = [];
-        for (const teacherDoc of teachersSnap.docs) {
+        for (const teacherId of teacherIds) {
           notifications.push(
             createNotification({
-              userId: teacherDoc.id,
+              userId: teacherId,
               type: NOTIFICATION_TYPES.MESSAGE,
               title: "Curriculum Update",
               message: `${contentType} "${data?.title || contentId}" has been ${action}d. You may want to review affected quizzes.`,

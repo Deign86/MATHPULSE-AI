@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
@@ -69,6 +69,21 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const cloudFunctions = getFunctions(app);
+
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((error: { code?: string; message?: string }) => {
+    const code = error?.code || 'unknown';
+    if (code === 'failed-precondition') {
+      console.warn('[FIRESTORE] IndexedDB persistence is unavailable in this tab (another tab may have persistence lock).');
+      return;
+    }
+    if (code === 'unimplemented') {
+      console.warn('[FIRESTORE] IndexedDB persistence is not supported by this browser.');
+      return;
+    }
+    console.warn('[FIRESTORE] IndexedDB persistence failed. Continuing without persistence.', error?.message || error);
+  });
+}
 
 const useFunctionsEmulator =
   String(import.meta.env.VITE_USE_FUNCTIONS_EMULATOR || '').toLowerCase() === 'true';
