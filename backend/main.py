@@ -18,6 +18,7 @@ import re
 import json
 import ast
 import math
+import html
 import hashlib
 import logging
 import traceback
@@ -66,7 +67,7 @@ import uvicorn
 from services.inference_client import InferenceRequest, create_default_client
 from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
-from services.email_service import create_email_service_from_env
+from services.email_service import create_email_service_from_env, EmailMessagePayload
 from services.user_provisioning_service import (
     AdminCreateUserInput,
     CreateUserAndNotifyResult,
@@ -191,6 +192,8 @@ UPLOAD_MAX_COLS = int(os.getenv("UPLOAD_MAX_COLS", "60"))
 UPLOAD_MAX_PDF_PAGES = int(os.getenv("UPLOAD_MAX_PDF_PAGES", "20"))
 UPLOAD_RATE_LIMIT_PER_MIN = int(os.getenv("UPLOAD_RATE_LIMIT_PER_MIN", "12"))
 UPLOAD_MAX_FILES_PER_REQUEST = int(os.getenv("UPLOAD_MAX_FILES_PER_REQUEST", "8"))
+ADMIN_USERS_QUERY_TIMEOUT_SECONDS = float(os.getenv("ADMIN_USERS_QUERY_TIMEOUT_SECONDS", "18"))
+ADMIN_USERS_MAX_SCAN_DOCS = int(os.getenv("ADMIN_USERS_MAX_SCAN_DOCS", "5000"))
 IMPORT_RETENTION_DAYS = int(os.getenv("IMPORT_RETENTION_DAYS", "180"))
 ENABLE_IMPORT_GROUNDED_QUIZ = os.getenv("ENABLE_IMPORT_GROUNDED_QUIZ", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true").strip().lower() in {"1", "true", "yes", "on"}
@@ -296,6 +299,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import/student-accounts/preview": TEACHER_OR_ADMIN,
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
     "/api/admin/users": ADMIN_ONLY,
+    "/api/admin/users/bulk-action": ADMIN_ONLY,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
@@ -4955,6 +4959,492 @@ class AdminDeleteUserResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class AdminUserListItem(BaseModel):
+    uid: str
+    name: str
+    email: str
+    role: str
+    status: str
+    department: str
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    classSectionId: Optional[str] = None
+    lrn: Optional[str] = None
+    photo: Optional[str] = None
+    lastLogin: Optional[str] = None
+    createdAt: Optional[str] = None
+
+
+class AdminUserListResponse(BaseModel):
+    success: bool
+    page: int
+    pageSize: int
+    total: int
+    totalPages: int
+    hasNextPage: bool
+    users: List[AdminUserListItem]
+    filters: Dict[str, Optional[str]] = Field(default_factory=dict)
+
+
+class AdminUpdateUserRequest(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    department: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    lrn: Optional[str] = None
+
+    @field_validator("name", "role", "status", "department", "grade", "section", "lrn", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+
+class AdminUpdateUserResponse(BaseModel):
+    success: bool
+    uid: str
+    message: str
+    updatesApplied: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class AdminBulkActionFilters(BaseModel):
+    search: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    classSectionId: Optional[str] = None
+
+    @field_validator("search", "role", "status", "grade", "section", "classSectionId", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+
+class AdminBulkActionRequest(BaseModel):
+    action: str
+    userIds: List[str] = Field(default_factory=list)
+    excludeUserIds: List[str] = Field(default_factory=list)
+    filters: Optional[AdminBulkActionFilters] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    lrn: Optional[str] = None
+    dryRun: bool = False
+    exportFormat: str = "csv"
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def _strip_action(cls, value: Any) -> str:
+        cleaned = str(value or "").strip()
+        if not cleaned:
+            raise ValueError("action is required")
+        return cleaned
+
+    @field_validator("role", "status", "grade", "section", "lrn", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+
+class AdminBulkActionResultItem(BaseModel):
+    uid: str
+    email: Optional[str] = None
+    status: str
+    message: str
+
+
+class AdminBulkActionResponse(BaseModel):
+    success: bool
+    action: str
+    summary: Dict[str, int]
+    results: List[AdminBulkActionResultItem]
+    warnings: List[str] = Field(default_factory=list)
+    export: Optional[Dict[str, Any]] = None
+
+
+ADMIN_BULK_ACTIONS: Set[str] = {
+    "change_role",
+    "change_status",
+    "assign_class_section",
+    "activate",
+    "deactivate",
+    "reset_password_email",
+    "delete",
+    "export",
+}
+
+
+def _strip_optional_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def _normalize_admin_role_value(role: str) -> str:
+    normalized = str(role or "").strip().lower()
+    if normalized not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail="Role must be Student, Teacher, or Admin.")
+    return normalized
+
+
+def _normalize_admin_status_value(status: str) -> str:
+    normalized = str(status or "").strip().lower()
+    if normalized not in {"active", "inactive"}:
+        raise HTTPException(status_code=400, detail="Status must be Active or Inactive.")
+    return "Active" if normalized == "active" else "Inactive"
+
+
+def _coerce_iso_timestamp(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat()
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+
+    to_datetime = getattr(value, "to_datetime", None)
+    if callable(to_datetime):
+        try:
+            converted = to_datetime()
+            if isinstance(converted, datetime):
+                if converted.tzinfo is None:
+                    converted = converted.replace(tzinfo=timezone.utc)
+                return converted.astimezone(timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    to_date = getattr(value, "toDate", None)
+    if callable(to_date):
+        try:
+            converted = to_date()
+            if isinstance(converted, datetime):
+                if converted.tzinfo is None:
+                    converted = converted.replace(tzinfo=timezone.utc)
+                return converted.astimezone(timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    seconds = getattr(value, "seconds", None)
+    if isinstance(seconds, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(seconds), tz=timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    return str(value)
+
+
+def _iso_sort_key(value: Optional[str]) -> float:
+    if not value:
+        return 0.0
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
+
+
+def _build_admin_user_record(uid: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    role_lower = str(data.get("role") or "student").strip().lower()
+    if role_lower not in VALID_ROLES:
+        role_lower = "student"
+
+    status_value = str(data.get("status") or "Active").strip().lower()
+    status_display = "Active" if status_value == "active" else "Inactive"
+
+    grade = _strip_optional_string(data.get("grade"))
+    section = _strip_optional_string(data.get("section"))
+    class_section_id = _strip_optional_string(data.get("classSectionId"))
+    if not class_section_id and grade and section:
+        class_section_id = re.sub(r"\s+", "_", f"{grade}_{section}".strip()).lower()
+
+    department = _strip_optional_string(data.get("department")) or ""
+    if role_lower == "student" and not department:
+        department = " - ".join([part for part in [grade, section] if part])
+
+    return {
+        "uid": uid,
+        "name": _strip_optional_string(data.get("name")) or "Unknown",
+        "email": _strip_optional_string(data.get("email")) or "",
+        "role": role_lower.capitalize(),
+        "status": status_display,
+        "department": department,
+        "grade": grade,
+        "section": section,
+        "classSectionId": class_section_id,
+        "lrn": _strip_optional_string(data.get("lrn")),
+        "photo": _strip_optional_string(data.get("photo")) or _strip_optional_string(data.get("photoURL")),
+        "lastLogin": _coerce_iso_timestamp(data.get("lastLogin")),
+        "createdAt": _coerce_iso_timestamp(data.get("createdAt")),
+    }
+
+
+def _filter_admin_user_records(
+    records: Sequence[Dict[str, Any]],
+    *,
+    search: Optional[str] = None,
+    role: Optional[str] = None,
+    status: Optional[str] = None,
+    grade: Optional[str] = None,
+    section: Optional[str] = None,
+    class_section_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    search_term = (search or "").strip().lower()
+    role_filter = (role or "").strip().lower()
+    status_filter = (status or "").strip().lower()
+    grade_filter = (grade or "").strip().lower()
+    section_filter = (section or "").strip().lower()
+    class_section_filter = (class_section_id or "").strip().lower()
+
+    filtered: List[Dict[str, Any]] = []
+    for record in records:
+        if search_term:
+            searchable = " ".join(
+                [
+                    str(record.get("uid") or ""),
+                    str(record.get("name") or ""),
+                    str(record.get("email") or ""),
+                ]
+            ).lower()
+            if search_term not in searchable:
+                continue
+
+        if role_filter and role_filter not in {"all", "all roles"}:
+            if str(record.get("role") or "").strip().lower() != role_filter:
+                continue
+
+        if status_filter and status_filter not in {"all", "all status"}:
+            if str(record.get("status") or "").strip().lower() != status_filter:
+                continue
+
+        if grade_filter and str(record.get("grade") or "").strip().lower() != grade_filter:
+            continue
+
+        if section_filter and str(record.get("section") or "").strip().lower() != section_filter:
+            continue
+
+        if class_section_filter and str(record.get("classSectionId") or "").strip().lower() != class_section_filter:
+            continue
+
+        filtered.append(record)
+
+    return filtered
+
+
+def _load_all_admin_user_records(firestore_client: Any) -> List[Dict[str, Any]]:
+    docs = list(firestore_client.collection("users").stream())
+    records: List[Dict[str, Any]] = []
+    for doc in docs:
+        data = _snapshot_to_dict(doc)
+        records.append(_build_admin_user_record(str(doc.id), data))
+
+    records.sort(
+        key=lambda item: _iso_sort_key(item.get("createdAt") or item.get("lastLogin")),
+        reverse=True,
+    )
+    return records
+
+
+async def _load_admin_user_records_for_list(
+    firestore_client: Any,
+    *,
+    scan_limit: int,
+    role: Optional[str],
+    class_section_id: Optional[str],
+) -> List[Dict[str, Any]]:
+    normalized_role = (role or "").strip().lower()
+    normalized_class_section_id = (class_section_id or "").strip().lower()
+
+    base_query = firestore_client.collection("users")
+    query_ref: Any = base_query
+    applied_filter: Optional[Tuple[str, str]] = None
+
+    if normalized_class_section_id:
+        query_ref = query_ref.where("classSectionId", "==", normalized_class_section_id)
+        applied_filter = ("classSectionId", normalized_class_section_id)
+    elif normalized_role in VALID_ROLES:
+        query_ref = query_ref.where("role", "==", normalized_role)
+        applied_filter = ("role", normalized_role)
+
+    query_ref = query_ref.limit(scan_limit)
+
+    try:
+        docs = await asyncio.wait_for(
+            asyncio.to_thread(lambda: list(cast(Any, query_ref).stream())),
+            timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="User list query timed out. Please narrow your filters and try again.",
+        )
+    except Exception as query_error:
+        query_error_text = str(query_error).lower()
+        if applied_filter and ("failed-precondition" in query_error_text or "index" in query_error_text):
+            logger.warning(
+                "Admin user list fallback scan due to index issue (%s=%s): %s",
+                applied_filter[0],
+                applied_filter[1],
+                query_error,
+            )
+            fallback_query = base_query.limit(scan_limit)
+            try:
+                docs = await asyncio.wait_for(
+                    asyncio.to_thread(lambda: list(cast(Any, fallback_query).stream())),
+                    timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(
+                    status_code=504,
+                    detail="User list query timed out. Please narrow your filters and try again.",
+                )
+            except Exception as fallback_error:
+                logger.error("Admin user list fallback query error: %s", fallback_error)
+                raise HTTPException(status_code=500, detail="Failed to load admin users.")
+        else:
+            logger.error("Admin user list query error: %s", query_error)
+            raise HTTPException(status_code=500, detail="Failed to load admin users.")
+
+    records: List[Dict[str, Any]] = []
+    for doc in docs:
+        data = _snapshot_to_dict(doc)
+        records.append(_build_admin_user_record(str(doc.id), data))
+
+    records.sort(
+        key=lambda item: _iso_sort_key(item.get("createdAt") or item.get("lastLogin")),
+        reverse=True,
+    )
+    return records
+
+
+def _resolve_admin_bulk_target_records(
+    firestore_client: Any,
+    *,
+    user_ids: Sequence[str],
+    filters: Optional[AdminBulkActionFilters],
+    excluded_user_ids: Sequence[str],
+) -> List[Dict[str, Any]]:
+    excluded = {str(uid or "").strip() for uid in excluded_user_ids if str(uid or "").strip()}
+    normalized_user_ids = [str(uid or "").strip() for uid in user_ids if str(uid or "").strip()]
+
+    records: List[Dict[str, Any]] = []
+    if normalized_user_ids:
+        seen: Set[str] = set()
+        for uid in normalized_user_ids:
+            if uid in seen or uid in excluded:
+                continue
+            seen.add(uid)
+            doc = cast(Any, firestore_client.collection("users").document(uid).get())
+            if not _snapshot_exists(doc):
+                continue
+            records.append(_build_admin_user_record(uid, _snapshot_to_dict(doc)))
+        return records
+
+    all_records = _load_all_admin_user_records(firestore_client)
+    filtered = _filter_admin_user_records(
+        all_records,
+        search=filters.search if filters else None,
+        role=filters.role if filters else None,
+        status=filters.status if filters else None,
+        grade=filters.grade if filters else None,
+        section=filters.section if filters else None,
+        class_section_id=filters.classSectionId if filters else None,
+    )
+
+    return [record for record in filtered if str(record.get("uid") or "") not in excluded]
+
+
+def _build_password_reset_email_message(name: str, email: str, reset_link: str) -> EmailMessagePayload:
+    safe_name = html.escape(name or "Learner")
+    safe_link = html.escape(reset_link, quote=True)
+    html_body = (
+        "<div style=\"font-family:Segoe UI,Arial,sans-serif;background:#0f1220;color:#e5e7eb;padding:20px;\">"
+        "<div style=\"max-width:640px;margin:0 auto;background:#181d2f;border:1px solid #343e62;border-radius:14px;padding:24px;\">"
+        "<h2 style=\"margin:0 0 12px 0;color:#f3f4f6;\">Password Reset Requested</h2>"
+        f"<p style=\"margin:0 0 14px 0;line-height:1.6;color:#d6daeb;\">Hello {safe_name}, your administrator requested a password reset for your MathPulse AI account.</p>"
+        f"<p style=\"margin:0 0 18px 0;\"><a href=\"{safe_link}\" style=\"display:inline-block;background:#9956DE;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:600;\">Reset Password</a></p>"
+        "<p style=\"margin:0;font-size:12px;color:#a8b3d1;line-height:1.5;\">If you did not request this change, contact your administrator immediately.</p>"
+        "</div></div>"
+    )
+    text_body = (
+        "MathPulse AI Password Reset\n\n"
+        f"Hello {name or 'Learner'},\n\n"
+        "An administrator requested a password reset for your account.\n"
+        f"Reset your password here: {reset_link}\n\n"
+        "If you did not request this change, contact your administrator immediately.\n"
+    )
+    return EmailMessagePayload(
+        to_name=name or "Learner",
+        to_email=email,
+        subject="MathPulse AI Password Reset",
+        html_content=html_body,
+        text_content=text_body,
+    )
+
+
+def _prepare_admin_profile_updates(existing: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any]:
+    updates: Dict[str, Any] = {"updatedAt": FIRESTORE_SERVER_TIMESTAMP}
+
+    if payload.get("name") is not None:
+        updates["name"] = str(payload.get("name") or "").strip()
+
+    role_value = payload.get("role")
+    role_lower = str(existing.get("role") or "student").strip().lower()
+    if role_value is not None:
+        role_lower = _normalize_admin_role_value(str(role_value))
+        updates["role"] = role_lower
+
+    status_value = payload.get("status")
+    if status_value is not None:
+        updates["status"] = _normalize_admin_status_value(str(status_value))
+
+    if payload.get("department") is not None:
+        updates["department"] = str(payload.get("department") or "").strip()
+
+    if payload.get("grade") is not None:
+        updates["grade"] = str(payload.get("grade") or "").strip()
+
+    if payload.get("section") is not None:
+        updates["section"] = str(payload.get("section") or "").strip()
+
+    if payload.get("lrn") is not None:
+        updates["lrn"] = str(payload.get("lrn") or "").strip()
+
+    if role_lower == "student":
+        grade_value = str(updates.get("grade") or existing.get("grade") or "").strip()
+        section_value = str(updates.get("section") or existing.get("section") or "").strip()
+        lrn_value = str(updates.get("lrn") or existing.get("lrn") or "").strip()
+        if not lrn_value:
+            raise HTTPException(status_code=400, detail="LRN is required for student accounts.")
+        updates["lrn"] = lrn_value
+        if grade_value:
+            updates["grade"] = grade_value
+        if section_value:
+            updates["section"] = section_value
+        if grade_value and section_value:
+            updates["classSectionId"] = re.sub(r"\s+", "_", f"{grade_value}_{section_value}".strip()).lower()
+
+    return updates
+
+
 @app.post("/api/import/student-accounts/preview")
 async def preview_student_account_import(
     request: Request,
@@ -5428,6 +5918,529 @@ async def commit_student_account_import(
     except Exception as exc:
         logger.error(f"Student account import commit error: {exc}")
         raise HTTPException(status_code=500, detail=f"Student account import commit error: {str(exc)}")
+
+
+@app.get("/api/admin/users", response_model=AdminUserListResponse)
+async def list_admin_users(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=25, ge=1, le=200),
+    search: Optional[str] = Query(default=None),
+    role: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    grade: Optional[str] = Query(default=None),
+    section: Optional[str] = Query(default=None),
+    classSectionId: Optional[str] = Query(default=None),
+):
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    normalized_role_filter = str(role or "").strip().lower()
+    if normalized_role_filter and normalized_role_filter not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail="role must be one of student, teacher, or admin")
+
+    if not _firebase_ready or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    start_index = (page - 1) * pageSize
+    if start_index >= ADMIN_USERS_MAX_SCAN_DOCS:
+        raise HTTPException(
+            status_code=400,
+            detail="Requested page is too deep. Narrow filters or use a smaller page number.",
+        )
+
+    required_window = page * pageSize
+    scan_limit = min(max(required_window * 4, pageSize * 8), ADMIN_USERS_MAX_SCAN_DOCS)
+
+    firestore_client = cast(Any, firebase_firestore).client()
+    records = await _load_admin_user_records_for_list(
+        firestore_client,
+        scan_limit=scan_limit,
+        role=role,
+        class_section_id=classSectionId,
+    )
+    filtered = _filter_admin_user_records(
+        records,
+        search=search,
+        role=role,
+        status=status,
+        grade=grade,
+        section=section,
+        class_section_id=classSectionId,
+    )
+
+    total = len(filtered)
+    total_pages = int(math.ceil(total / pageSize)) if total > 0 else 0
+    page_index = page
+    if total_pages > 0:
+        page_index = min(page, total_pages)
+
+    start = (page_index - 1) * pageSize
+    end = start + pageSize
+    paged_records = filtered[start:end]
+
+    return AdminUserListResponse(
+        success=True,
+        page=page_index,
+        pageSize=pageSize,
+        total=total,
+        totalPages=total_pages,
+        hasNextPage=end < total,
+        users=[AdminUserListItem(**entry) for entry in paged_records],
+        filters={
+            "search": _strip_optional_string(search),
+            "role": _strip_optional_string(role),
+            "status": _strip_optional_string(status),
+            "grade": _strip_optional_string(grade),
+            "section": _strip_optional_string(section),
+            "classSectionId": _strip_optional_string(classSectionId),
+        },
+    )
+
+
+@app.patch("/api/admin/users", response_model=AdminUpdateUserResponse)
+async def update_admin_user_account(
+    request: Request,
+    payload: AdminUpdateUserRequest,
+    uid: str = Query(..., min_length=1),
+):
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not _firebase_ready or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    normalized_uid = str(uid or "").strip()
+    if not normalized_uid:
+        raise HTTPException(status_code=400, detail="User uid is required")
+
+    update_payload = {
+        "name": payload.name,
+        "role": payload.role,
+        "status": payload.status,
+        "department": payload.department,
+        "grade": payload.grade,
+        "section": payload.section,
+        "lrn": payload.lrn,
+    }
+    if not any(value is not None for value in update_payload.values()):
+        raise HTTPException(status_code=400, detail="At least one field is required for update")
+
+    if normalized_uid == user.uid:
+        if payload.role and _normalize_admin_role_value(payload.role) != "admin":
+            raise HTTPException(status_code=400, detail="Admin users cannot remove their own admin role")
+        if payload.status and _normalize_admin_status_value(payload.status) == "Inactive":
+            raise HTTPException(status_code=400, detail="Admin users cannot deactivate their own account")
+
+    firestore_client = cast(Any, firebase_firestore).client()
+    profile_ref = firestore_client.collection("users").document(normalized_uid)
+    profile_snapshot = cast(Any, profile_ref.get())
+    if not _snapshot_exists(profile_snapshot):
+        raise HTTPException(status_code=404, detail="User profile not found")
+
+    existing_profile = _snapshot_to_dict(profile_snapshot)
+    prepared_updates = _prepare_admin_profile_updates(existing_profile, update_payload)
+    profile_ref.set(prepared_updates, merge=True)
+
+    warnings: List[str] = []
+    if "status" in prepared_updates and firebase_auth is not None:
+        try:
+            cast(Any, firebase_auth).update_user(
+                normalized_uid,
+                disabled=(prepared_updates.get("status") == "Inactive"),
+            )
+        except Exception as auth_update_error:
+            if _is_auth_user_not_found_error(auth_update_error):
+                warnings.append("Authentication account was already missing while syncing status.")
+            else:
+                warnings.append("Failed to sync status with authentication account.")
+
+    _write_access_audit_log(
+        request,
+        action="admin_user_update",
+        status="success",
+        metadata={
+            "uid": normalized_uid,
+            "fields": sorted([key for key in prepared_updates.keys() if key != "updatedAt"]),
+            "warnings": list(dict.fromkeys(warnings)),
+        },
+    )
+
+    updates_applied = {
+        key: value
+        for key, value in prepared_updates.items()
+        if key != "updatedAt"
+    }
+
+    return AdminUpdateUserResponse(
+        success=True,
+        uid=normalized_uid,
+        message="User profile updated successfully.",
+        updatesApplied=updates_applied,
+        warnings=list(dict.fromkeys(warnings)),
+    )
+
+
+@app.post("/api/admin/users/bulk-action", response_model=AdminBulkActionResponse)
+async def apply_admin_user_bulk_action(
+    request: Request,
+    payload: AdminBulkActionRequest,
+):
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not _firebase_ready or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    action = payload.action.strip().lower()
+    if action not in ADMIN_BULK_ACTIONS:
+        raise HTTPException(status_code=400, detail="Unsupported bulk action")
+
+    if not payload.userIds and payload.filters is None:
+        raise HTTPException(status_code=400, detail="Provide userIds or filters to target users")
+
+    if action == "change_role" and not payload.role:
+        raise HTTPException(status_code=400, detail="role is required for change_role action")
+    if action == "change_status" and not payload.status:
+        raise HTTPException(status_code=400, detail="status is required for change_status action")
+    if action == "assign_class_section" and (not payload.grade or not payload.section):
+        raise HTTPException(status_code=400, detail="grade and section are required for assign_class_section action")
+
+    firestore_client = cast(Any, firebase_firestore).client()
+    target_records = _resolve_admin_bulk_target_records(
+        firestore_client,
+        user_ids=payload.userIds,
+        filters=payload.filters,
+        excluded_user_ids=payload.excludeUserIds,
+    )
+
+    if not target_records:
+        return AdminBulkActionResponse(
+            success=True,
+            action=action,
+            summary={"targeted": 0, "succeeded": 0, "failed": 0, "skipped": 0, "exported": 0},
+            results=[],
+            warnings=[],
+            export={"format": payload.exportFormat.lower(), "rows": []} if action == "export" else None,
+        )
+
+    warnings: List[str] = []
+    results: List[AdminBulkActionResultItem] = []
+    succeeded = 0
+    failed = 0
+    skipped = 0
+    exported_rows: List[Dict[str, Any]] = []
+
+    email_service = create_email_service_from_env() if action == "reset_password_email" else None
+
+    for record in target_records:
+        uid_value = str(record.get("uid") or "").strip()
+        email_value = _strip_optional_string(record.get("email"))
+
+        if not uid_value:
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid="",
+                    email=email_value,
+                    status="failed",
+                    message="Target user is missing uid.",
+                )
+            )
+            continue
+
+        if uid_value == user.uid and action in {"delete", "deactivate"}:
+            skipped += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="skipped",
+                    message="Skipped self-targeted destructive action.",
+                )
+            )
+            continue
+
+        if payload.dryRun:
+            succeeded += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="succeeded",
+                    message="Dry run validation succeeded.",
+                )
+            )
+            continue
+
+        profile_ref = firestore_client.collection("users").document(uid_value)
+        profile_snapshot = cast(Any, profile_ref.get())
+        if not _snapshot_exists(profile_snapshot):
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="failed",
+                    message="User profile not found.",
+                )
+            )
+            continue
+
+        existing_profile = _snapshot_to_dict(profile_snapshot)
+
+        try:
+            if action == "export":
+                exported_rows.append(
+                    {
+                        "uid": uid_value,
+                        "name": record.get("name") or "",
+                        "email": record.get("email") or "",
+                        "role": record.get("role") or "",
+                        "status": record.get("status") or "",
+                        "grade": record.get("grade") or "",
+                        "section": record.get("section") or "",
+                        "classSectionId": record.get("classSectionId") or "",
+                        "department": record.get("department") or "",
+                        "lrn": record.get("lrn") or "",
+                    }
+                )
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="User exported.",
+                    )
+                )
+                continue
+
+            if action in {"activate", "deactivate", "change_status"}:
+                target_status = payload.status if action == "change_status" else ("Active" if action == "activate" else "Inactive")
+                normalized_status = _normalize_admin_status_value(str(target_status or ""))
+                profile_ref.set({"status": normalized_status, "updatedAt": FIRESTORE_SERVER_TIMESTAMP}, merge=True)
+
+                if firebase_auth is not None:
+                    try:
+                        cast(Any, firebase_auth).update_user(uid_value, disabled=(normalized_status == "Inactive"))
+                    except Exception as auth_update_error:
+                        if _is_auth_user_not_found_error(auth_update_error):
+                            warnings.append(f"Auth account missing for {uid_value} while syncing status.")
+                        else:
+                            warnings.append(f"Failed to sync auth status for {uid_value}.")
+
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message=f"Status set to {normalized_status}.",
+                    )
+                )
+                continue
+
+            if action == "change_role":
+                update_payload = _prepare_admin_profile_updates(
+                    existing_profile,
+                    {
+                        "role": payload.role,
+                        "grade": payload.grade,
+                        "section": payload.section,
+                        "lrn": payload.lrn,
+                    },
+                )
+                if uid_value == user.uid and update_payload.get("role") != "admin":
+                    skipped += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="skipped",
+                            message="Skipped self-admin role removal.",
+                        )
+                    )
+                    continue
+
+                profile_ref.set(update_payload, merge=True)
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="Role updated.",
+                    )
+                )
+                continue
+
+            if action == "assign_class_section":
+                role_lower = str(existing_profile.get("role") or "").strip().lower()
+                if role_lower != "student":
+                    skipped += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="skipped",
+                            message="Only student profiles can be assigned to class sections.",
+                        )
+                    )
+                    continue
+
+                update_payload = _prepare_admin_profile_updates(
+                    existing_profile,
+                    {
+                        "grade": payload.grade,
+                        "section": payload.section,
+                        "lrn": payload.lrn,
+                    },
+                )
+                profile_ref.set(update_payload, merge=True)
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="Class and section updated.",
+                    )
+                )
+                continue
+
+            if action == "reset_password_email":
+                if firebase_auth is None:
+                    raise HTTPException(status_code=503, detail="Authentication service unavailable")
+                if not email_value:
+                    skipped += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="skipped",
+                            message="Skipped user without email address.",
+                        )
+                    )
+                    continue
+
+                reset_link = cast(Any, firebase_auth).generate_password_reset_link(email_value)
+                email_payload = _build_password_reset_email_message(
+                    name=str(existing_profile.get("name") or record.get("name") or "Learner"),
+                    email=email_value,
+                    reset_link=str(reset_link),
+                )
+
+                send_result = email_service.send_transactional_email(email_payload) if email_service else None
+                if send_result is None or not send_result.success:
+                    error_message = send_result.error_message if send_result else "Email service unavailable"
+                    failed += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="failed",
+                            message=f"Failed to send reset email: {error_message}",
+                        )
+                    )
+                    continue
+
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="Password reset email sent.",
+                    )
+                )
+                continue
+
+            if action == "delete":
+                if firebase_auth is None:
+                    raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+                try:
+                    cast(Any, firebase_auth).delete_user(uid_value)
+                except Exception as auth_delete_error:
+                    if _is_auth_user_not_found_error(auth_delete_error):
+                        warnings.append(f"Authentication account already missing for {uid_value}.")
+                    else:
+                        raise HTTPException(status_code=500, detail=f"Failed to delete auth account for {uid_value}")
+
+                profile_ref.delete()
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="User account deleted.",
+                    )
+                )
+                continue
+
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="failed",
+                    message="Unsupported action.",
+                )
+            )
+        except HTTPException:
+            raise
+        except Exception as action_error:
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="failed",
+                    message=f"Action failed: {action_error}",
+                )
+            )
+
+    summary = {
+        "targeted": len(target_records),
+        "succeeded": succeeded,
+        "failed": failed,
+        "skipped": skipped,
+        "exported": len(exported_rows),
+    }
+
+    _write_access_audit_log(
+        request,
+        action="admin_user_bulk_action",
+        status="success" if failed == 0 else "partial_success",
+        metadata={
+            "action": action,
+            "summary": summary,
+            "dryRun": payload.dryRun,
+            "filtersApplied": payload.filters.model_dump() if payload.filters else None,
+            "userIdsCount": len(payload.userIds),
+        },
+    )
+
+    export_payload: Optional[Dict[str, Any]] = None
+    if action == "export":
+        export_payload = {
+            "format": (payload.exportFormat or "csv").strip().lower(),
+            "rows": exported_rows,
+        }
+
+    return AdminBulkActionResponse(
+        success=failed == 0,
+        action=action,
+        summary=summary,
+        results=results,
+        warnings=list(dict.fromkeys(warnings)),
+        export=export_payload,
+    )
 
 
 @app.post("/api/admin/users", response_model=AdminCreateUserResponse)

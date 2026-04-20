@@ -751,6 +751,106 @@ export interface AdminDeleteUserApiResponse {
   warnings: string[];
 }
 
+export interface AdminUserApiRecord {
+  uid: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  department: string;
+  grade?: string | null;
+  section?: string | null;
+  classSectionId?: string | null;
+  lrn?: string | null;
+  photo?: string | null;
+  lastLogin?: string | null;
+  createdAt?: string | null;
+}
+
+export interface AdminUserListApiResponse {
+  success: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  users: AdminUserApiRecord[];
+  filters: {
+    search?: string | null;
+    role?: string | null;
+    status?: string | null;
+    grade?: string | null;
+    section?: string | null;
+    classSectionId?: string | null;
+  };
+}
+
+export interface AdminUpdateUserApiRequest {
+  name?: string;
+  role?: string;
+  status?: string;
+  department?: string;
+  grade?: string;
+  section?: string;
+  lrn?: string;
+}
+
+export interface AdminUpdateUserApiResponse {
+  success: boolean;
+  uid: string;
+  message: string;
+  updatesApplied: Record<string, unknown>;
+  warnings: string[];
+}
+
+export interface AdminBulkActionFiltersApi {
+  search?: string;
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+}
+
+export interface AdminBulkActionRequestApi {
+  action: 'change_role' | 'change_status' | 'assign_class_section' | 'activate' | 'deactivate' | 'reset_password_email' | 'delete' | 'export';
+  userIds?: string[];
+  excludeUserIds?: string[];
+  filters?: AdminBulkActionFiltersApi;
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  lrn?: string;
+  dryRun?: boolean;
+  exportFormat?: 'csv' | 'json';
+}
+
+export interface AdminBulkActionResultItemApi {
+  uid: string;
+  email?: string | null;
+  status: 'succeeded' | 'failed' | 'skipped' | string;
+  message: string;
+}
+
+export interface AdminBulkActionApiResponse {
+  success: boolean;
+  action: string;
+  summary: {
+    targeted: number;
+    succeeded: number;
+    failed: number;
+    skipped: number;
+    exported: number;
+  };
+  results: AdminBulkActionResultItemApi[];
+  warnings: string[];
+  export?: {
+    format: string;
+    rows: Record<string, unknown>[];
+  } | null;
+}
+
 // ─── Quiz Maker Types ────────────────────────────────────────
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
@@ -876,6 +976,14 @@ const CHAT_RETRY_OPTS: RetryFetchOptions = {
   maxRetries: 1,
   timeoutMs: 45_000,
   baseBackoffMs: 750,
+};
+
+/** Keep admin user list requests responsive when backend scans are slow. */
+const ADMIN_USERS_RETRY_OPTS: RetryFetchOptions = {
+  ...DEFAULT_RETRY_OPTS,
+  maxRetries: 1,
+  timeoutMs: 20_000,
+  baseBackoffMs: 500,
 };
 
 /** Upload-specific: longer timeout, fewer retries */
@@ -1631,6 +1739,67 @@ export const apiService = {
 
     return apiFetch<StudentAccountImportCommitResponse>(
       '/api/import/student-accounts/commit',
+      { method: 'POST', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /** Retrieve admin users with server-side pagination and filters. */
+  async getAdminUsers(options?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    role?: string;
+    status?: string;
+    grade?: string;
+    section?: string;
+    classSectionId?: string;
+  }): Promise<AdminUserListApiResponse> {
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 25;
+    validateRange('/api/admin/users', 'page', page, 1, 10_000);
+    validateRange('/api/admin/users', 'pageSize', pageSize, 1, 200);
+
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('pageSize', String(pageSize));
+    if (options?.search?.trim()) params.set('search', options.search.trim());
+    if (options?.role?.trim()) params.set('role', options.role.trim());
+    if (options?.status?.trim()) params.set('status', options.status.trim());
+    if (options?.grade?.trim()) params.set('grade', options.grade.trim());
+    if (options?.section?.trim()) params.set('section', options.section.trim());
+    if (options?.classSectionId?.trim()) params.set('classSectionId', options.classSectionId.trim());
+
+    return apiFetch<AdminUserListApiResponse>(
+      `/api/admin/users?${params.toString()}`,
+      { method: 'GET' },
+      ADMIN_USERS_RETRY_OPTS,
+    );
+  },
+
+  /** Update one user profile via backend (Auth + Firestore synchronization where needed). */
+  async updateAdminUser(uid: string, payload: AdminUpdateUserApiRequest): Promise<AdminUpdateUserApiResponse> {
+    const normalizedUid = uid.trim();
+    validateRequired('/api/admin/users', { uid: normalizedUid });
+
+    const params = new URLSearchParams();
+    params.set('uid', normalizedUid);
+
+    return apiFetch<AdminUpdateUserApiResponse>(
+      `/api/admin/users?${params.toString()}`,
+      { method: 'PATCH', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /** Execute admin bulk actions for targeted users or filtered scope. */
+  async bulkAdminUsers(payload: AdminBulkActionRequestApi): Promise<AdminBulkActionApiResponse> {
+    validateRequired('/api/admin/users/bulk-action', {
+      action: payload.action,
+    });
+
+    return apiFetch<AdminBulkActionApiResponse>(
+      '/api/admin/users/bulk-action',
       { method: 'POST', body: JSON.stringify(payload) },
       DEFAULT_RETRY_OPTS,
     );

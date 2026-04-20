@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -117,6 +117,22 @@ class UserProvisioningService:
         token = re.sub(r"[^a-z0-9]+", "_", (value or "").strip().lower())
         return re.sub(r"_+", "_", token).strip("_")
 
+    @staticmethod
+    def _build_default_avatar_url(display_name: str) -> str:
+        return f"https://ui-avatars.com/api/?name={quote_plus(display_name or 'User')}&background=0d9488&color=fff"
+
+    @staticmethod
+    def _derive_brand_avatar_url(login_url: str) -> str:
+        configured = (os.getenv("APP_BRAND_AVATAR_URL", "") or "").strip()
+        if configured:
+            return configured
+
+        parsed = urlparse(login_url or "")
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}/avatar/avatar_icon.png"
+
+        return "https://mathpulse.ai/avatar/avatar_icon.png"
+
     def _ensure_no_duplicate_email(self, email: str, firestore_client: Any) -> None:
         try:
             self._firebase_auth_module.get_user_by_email(email)
@@ -155,7 +171,7 @@ class UserProvisioningService:
             "section": section,
             "classSectionId": class_section_id,
             "forcePasswordChange": True,
-            "photo": f"https://ui-avatars.com/api/?name={quote_plus(display_name or 'User')}&background=0d9488&color=fff",
+            "photo": self._build_default_avatar_url(display_name),
             "updatedAt": self._firestore_server_timestamp,
         }
 
@@ -259,20 +275,25 @@ class UserProvisioningService:
         return uid
 
     def send_welcome_credentials_email(self, user_input: AdminCreateUserInput) -> EmailSendResult:
+        display_name = (user_input.name or "").strip()
         login_url = (os.getenv("APP_LOGIN_URL", "") or "").strip() or "https://mathpulse.ai"
+        brand_avatar_url = self._derive_brand_avatar_url(login_url)
+        recipient_avatar_url = self._build_default_avatar_url(display_name)
 
         template = build_welcome_credentials_email(
             WelcomeCredentialsEmailContext(
-                recipient_name=(user_input.name or "").strip(),
+                recipient_name=display_name,
                 login_email=(user_input.email or "").strip().lower(),
                 temporary_password=user_input.password,
                 role=(user_input.role or "").strip().title(),
                 login_url=login_url,
+                brand_avatar_url=brand_avatar_url,
+                recipient_avatar_url=recipient_avatar_url,
             )
         )
 
         message = EmailMessagePayload(
-            to_name=(user_input.name or "").strip(),
+            to_name=display_name,
             to_email=(user_input.email or "").strip().lower(),
             subject=template["subject"],
             html_content=template["html"],
