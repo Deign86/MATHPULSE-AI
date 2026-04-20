@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3, CheckCircle, AlertTriangle, EyeOff, Search,
@@ -9,6 +10,7 @@ import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
 import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { cacheKeys } from '../utils/cacheKeys';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -89,55 +91,77 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
 
   // ─── Load topic mastery data ──────────────────────────────
 
-  const loadMasteryData = useCallback(async () => {
-    if (!currentUser) return;
-    setLoading(true);
-    try {
-      // Load excluded topics from Firestore
-      const settingsRef = doc(db, 'teachers', currentUser.uid, 'settings', 'quizSettings');
-      const settingsSnap = await getDoc(settingsRef);
-      const excluded: string[] = settingsSnap.exists() ? settingsSnap.data()?.excludedTopics || [] : [];
-      setExcludedTopics(excluded);
+  const masteryQuery = useQuery({
+    queryKey: cacheKeys.topicMastery(currentUser?.uid || 'anonymous', classSectionId),
+    enabled: Boolean(currentUser),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      try {
+        if (!currentUser) {
+          return {
+            excluded: [] as string[],
+            topics: [] as TopicMasteryData[],
+            summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 },
+          };
+        }
 
-      // Fetch topic mastery from backend API
-      const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-      const params = new URLSearchParams({ teacherId: currentUser.uid });
-      if (classSectionId) {
-        params.set('classSectionId', classSectionId);
-      }
-      const token = await currentUser.getIdToken();
-      const res = await fetch(`${API_URL}/api/analytics/topic-mastery?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+        const settingsRef = doc(db, 'teachers', currentUser.uid, 'settings', 'quizSettings');
+        const settingsSnap = await getDoc(settingsRef);
+        const excluded: string[] = settingsSnap.exists() ? settingsSnap.data()?.excludedTopics || [] : [];
 
-      if (res.ok) {
+        const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+        const params = new URLSearchParams({ teacherId: currentUser.uid });
+        if (classSectionId) {
+          params.set('classSectionId', classSectionId);
+        }
+
+        const token = await currentUser.getIdToken();
+        const res = await fetch(`${API_URL}/api/analytics/topic-mastery?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          return {
+            excluded,
+            topics: [] as TopicMasteryData[],
+            summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length },
+          };
+        }
+
         const data = await res.json();
-        // Merge excluded status
-        const topicsWithExclude = (data.topics || []).map((t: TopicMasteryData) => ({
-          ...t,
-          isExcluded: excluded.includes(t.topicName),
+        const topicsWithExclude = (data.topics || []).map((topic: TopicMasteryData) => ({
+          ...topic,
+          isExcluded: excluded.includes(topic.topicName),
         }));
-        setTopics(topicsWithExclude);
-        setSummary(data.summary || { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length });
-      } else {
-        // API unavailable — show empty state, no mock data
-        setTopics([]);
-        setSummary({ totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length });
+
+        return {
+          excluded,
+          topics: topicsWithExclude,
+          summary: data.summary || { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length },
+        };
+      } catch {
+        return {
+          excluded: [] as string[],
+          topics: [] as TopicMasteryData[],
+          summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 },
+        };
       }
-    } catch {
-      // API unavailable — show empty state
-      setTopics([]);
-      setSummary({ totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excludedTopics.length });
-    } finally {
-      setLoading(false);
-    }
-  }, [classSectionId, currentUser]);
+    },
+  });
 
   useEffect(() => {
-    loadMasteryData();
-  }, [loadMasteryData]);
+    setLoading(masteryQuery.isLoading);
+    if (!masteryQuery.data) {
+      return;
+    }
+
+    setExcludedTopics(masteryQuery.data.excluded);
+    setTopics(masteryQuery.data.topics);
+    setSummary(masteryQuery.data.summary);
+  }, [masteryQuery.data, masteryQuery.isLoading]);
 
   // ─── Toggle exclude ───────────────────────────────────────
 

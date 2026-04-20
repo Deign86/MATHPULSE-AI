@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { resolveCurriculumVersionSetId } from "../config/diagnosticPolicies";
+import { createRuntimeCacheKey, runtimeCache } from "../services/runtimeCache";
 
 const ALLOWED_SUBJECT_IDS = new Set(["gen-math", "stats-prob", "pre-calc", "basic-calc"]);
 const ALLOWED_DIFFICULTIES = new Set(["easy", "medium", "hard", "adaptive"]);
@@ -47,6 +48,18 @@ const QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE = isEnvFlagEnabled(
 const QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START = isEnvFlagEnabled(
   process.env.QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START,
   false,
+);
+const QUIZ_BATTLE_QUESTION_BANK_CACHE_TTL_MS = clampNumberEnv(
+  process.env.QUIZ_BATTLE_QUESTION_BANK_CACHE_TTL_MS,
+  45_000,
+  5_000,
+  300_000,
+);
+const QUIZ_BATTLE_PROFILE_CACHE_TTL_MS = clampNumberEnv(
+  process.env.QUIZ_BATTLE_PROFILE_CACHE_TTL_MS,
+  30_000,
+  5_000,
+  180_000,
 );
 
 function clampNumberEnv(raw: string | undefined, fallback: number, min: number, max: number): number {
@@ -2094,6 +2107,25 @@ const fetchQuestionBankPool = async (
   tx: FirebaseFirestore.Transaction | undefined,
   selector: QuestionPoolSelector,
 ): Promise<CanonicalBattleQuestion[]> => {
+  const useRuntimeCache = !tx;
+  const cacheKey = createRuntimeCacheKey(
+    "quiz-battle-question-bank",
+    QUIZ_BATTLE_QUESTION_BANK_COLLECTION,
+    selector.subjectId,
+    selector.topicId,
+    selector.difficulty,
+  );
+
+  if (useRuntimeCache) {
+    const cached = runtimeCache.get<CanonicalBattleQuestion[]>(cacheKey);
+    if (cached) {
+      return cached.map((entry) => ({
+        ...entry,
+        choices: [...entry.choices],
+      }));
+    }
+  }
+
   const baseQuery = db
     .collection(QUIZ_BATTLE_QUESTION_BANK_COLLECTION)
     .where("isActive", "==", true)
@@ -2101,9 +2133,15 @@ const fetchQuestionBankPool = async (
     .limit(QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT);
 
   const querySnap = tx ? await tx.get(baseQuery) : await baseQuery.get();
-  return querySnap.docs
+  const normalized = querySnap.docs
     .map((entry) => normalizeCanonicalBattleQuestion(entry.id, entry.data() as Record<string, unknown>))
     .filter((entry): entry is CanonicalBattleQuestion => entry !== null);
+
+  if (useRuntimeCache) {
+    runtimeCache.set(cacheKey, normalized, QUIZ_BATTLE_QUESTION_BANK_CACHE_TTL_MS);
+  }
+
+  return normalized;
 };
 
 const selectQuestionSet = async (params: {
@@ -2474,9 +2512,17 @@ const loadUserBattleProfile = async (
   db: FirebaseFirestore.Firestore,
   uid: string,
 ): Promise<BattlePlayerEligibility> => {
+  const cacheKey = createRuntimeCacheKey("quiz-battle-profile", uid);
+  const cachedProfile = runtimeCache.get<BattlePlayerEligibility>(cacheKey);
+  if (cachedProfile) {
+    return { ...cachedProfile };
+  }
+
   const userSnap = await db.collection("users").doc(uid).get();
   const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
-  return mapUserDataToEligibility(uid, userData);
+  const profile = mapUserDataToEligibility(uid, userData);
+  runtimeCache.set(cacheKey, profile, QUIZ_BATTLE_PROFILE_CACHE_TTL_MS);
+  return profile;
 };
 
 const createOnlineMatchInTransaction = async (

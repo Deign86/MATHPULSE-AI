@@ -853,6 +853,101 @@ class TestDailyInsight:
         assert "No student data" in response.json()["insight"]
 
 
+class TestDeterministicEndpointCaching:
+    def setup_method(self):
+        asyncio.run(main_module.deterministic_response_cache.clear())
+
+    def teardown_method(self):
+        asyncio.run(main_module.deterministic_response_cache.clear())
+
+    @patch("main.get_client")
+    def test_predict_risk_cache_hit_header(self, mock_get):
+        hf_client = make_zsc_client()
+        mock_get.return_value = hf_client
+
+        payload = {
+            "engagementScore": 80,
+            "avgQuizScore": 75,
+            "attendance": 90,
+            "assignmentCompletion": 85,
+        }
+
+        first = client.post("/api/predict-risk", json=payload)
+        second = client.post("/api/predict-risk", json=payload)
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.headers.get("x-cache") == "MISS"
+        assert second.headers.get("x-cache") == "HIT"
+        assert hf_client.zero_shot_classification.call_count == 1
+
+    def test_learning_path_cache_hit_header(self):
+        payload = {
+            "weaknesses": ["fractions", "decimals"],
+            "gradeLevel": "Grade 11",
+        }
+
+        with patch("main.call_hf_chat_async", new=AsyncMock(return_value="1. Review fractions\n2. Practice decimals")) as mock_chat:
+            first = client.post("/api/learning-path", json=payload)
+            second = client.post("/api/learning-path", json=payload)
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.headers.get("x-cache") == "MISS"
+        assert second.headers.get("x-cache") == "HIT"
+        assert mock_chat.await_count == 1
+
+    def test_daily_insight_cache_hit_header(self):
+        payload = {
+            "students": [
+                {
+                    "name": "Alice",
+                    "engagementScore": 80,
+                    "avgQuizScore": 75,
+                    "attendance": 90,
+                    "riskLevel": "Low",
+                },
+            ],
+        }
+
+        with patch("main.call_hf_chat_async", new=AsyncMock(return_value="Class is doing well.")) as mock_chat:
+            first = client.post("/api/analytics/daily-insight", json=payload)
+            second = client.post("/api/analytics/daily-insight", json=payload)
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.headers.get("x-cache") == "MISS"
+        assert second.headers.get("x-cache") == "HIT"
+        assert mock_chat.await_count == 1
+
+    def test_verify_solution_cache_hit_header(self):
+        payload = {
+            "problem": "What is 2 + 2?",
+            "solution": "2 + 2 = 4",
+        }
+
+        with patch(
+            "main.verify_math_response",
+            new=AsyncMock(return_value={"verified": True, "confidence": "high", "response": "4", "warning": None}),
+        ) as mock_sc, patch(
+            "main.verify_with_code",
+            new=AsyncMock(return_value={"verified": True, "code": "print(4)", "output": "4", "error": None}),
+        ) as mock_code, patch(
+            "main.llm_judge_verification",
+            new=AsyncMock(return_value={"correct": True, "issues": [], "confidence": 0.95}),
+        ) as mock_judge:
+            first = client.post("/api/verify-solution", json=payload)
+            second = client.post("/api/verify-solution", json=payload)
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.headers.get("x-cache") == "MISS"
+        assert second.headers.get("x-cache") == "HIT"
+        assert mock_sc.await_count == 1
+        assert mock_code.await_count == 1
+        assert mock_judge.await_count == 1
+
+
 # ─── Quiz Topics ───────────────────────────────────────────────
 
 
@@ -861,6 +956,13 @@ class TestQuizTopics:
         response = client.get("/api/quiz/topics")
         assert response.status_code == 200
         assert "allTopics" in response.json()
+
+    def test_get_all_topics_cache_control_header(self):
+        response = client.get("/api/quiz/topics")
+        assert response.status_code == 200
+        cache_control = response.headers.get("cache-control", "")
+        assert "public" in cache_control
+        assert "max-age=300" in cache_control
 
     def test_get_topics_by_grade(self):
         response = client.get("/api/quiz/topics?gradeLevel=Grade%2011")
@@ -956,6 +1058,53 @@ class TestClassRecordImportMapping:
             "gradeLevel": "Grade 11",
         })
         assert response.status_code == 200
+
+    @patch("main.call_hf_chat")
+    def test_preview_quiz_recovers_python_literal_payload(self, mock_chat):
+        mock_chat.return_value = """[
+  {
+    'questionType': 'multiple_choice',
+    'question': 'What is 2 + 2?',
+    'correctAnswer': '4',
+    'options': ['A) 3', 'B) 4', 'C) 5', 'D) 6',],
+    'bloomLevel': 'remember',
+    'difficulty': 'easy',
+    'topic': 'Arithmetic',
+    'points': 1,
+    'explanation': '2 + 2 = 4',
+  },
+]"""
+
+        response = client.post("/api/quiz/preview", json={
+            "topics": ["Arithmetic"],
+            "gradeLevel": "Grade 11",
+        })
+
+        assert response.status_code == 200
+        assert len(response.json()["questions"]) >= 1
+
+    @patch("main.call_hf_chat")
+    def test_preview_quiz_recovers_nested_quiz_wrapper(self, mock_chat):
+        mock_chat.return_value = json.dumps({
+            "quiz": [{
+                "questionType": "identification",
+                "question": "Define slope.",
+                "correctAnswer": "Rise over run",
+                "bloomLevel": "remember",
+                "difficulty": "easy",
+                "topic": "Algebra",
+                "points": 1,
+                "explanation": "Slope = rise/run.",
+            }],
+        })
+
+        response = client.post("/api/quiz/preview", json={
+            "topics": ["Algebra"],
+            "gradeLevel": "Grade 11",
+        })
+
+        assert response.status_code == 200
+        assert len(response.json()["questions"]) >= 1
 
     @patch("main.call_hf_chat")
     def test_generate_quiz_accepts_new_max_limits(self, mock_chat):

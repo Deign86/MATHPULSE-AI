@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext.tsx';
 import { toChatPreviewText } from '../utils/chatPreview';
 import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming } from '../utils/chatMessageFormatting';
 import { getScopeBoundaryResponse } from '../utils/mathScope';
+import { buildChatHintCacheKey, getHintCacheResponse, isHintPrompt, setHintCacheResponse } from '../utils/hintCache';
 
 export interface Message {
   id: string;
@@ -904,6 +905,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         ? buildContinuationCarryForwardPrompt(continuationIntent)
         : trimmedUserText;
       const fallbackPrompt = continuationIntent ?? trimmedUserText;
+      const hintCacheKey = isHintPrompt(trimmedUserText)
+        ? buildChatHintCacheKey({
+            userId: currentUser?.uid || 'anonymous',
+            prompt: trimmedUserText,
+            history,
+          })
+        : null;
+
+      const maybeCacheHintResponse = (answer: string) => {
+        if (!hintCacheKey) return;
+
+        const normalized = formatAssistantResponseForStorage(answer).trim();
+        if (!normalized) return;
+
+        setHintCacheResponse(hintCacheKey, normalized);
+      };
 
       const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText, { history });
       if (scopeBoundaryResponse) {
@@ -915,6 +932,20 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         };
         addMessageToSession(sessionId, refusalMsg);
         return;
+      }
+
+      if (hintCacheKey) {
+        const cachedHint = getHintCacheResponse(hintCacheKey);
+        if (cachedHint) {
+          const cachedHintMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            text: cachedHint,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          addMessageToSession(sessionId, cachedHintMsg);
+          return;
+        }
       }
 
       try {
@@ -1068,6 +1099,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           finalResponse = generateFallbackResponse(fallbackPrompt, history);
         }
 
+        maybeCacheHintResponse(finalResponse);
+
         if (streamMessageId) {
           removeStreamingMessage();
         }
@@ -1157,6 +1190,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           aiResponseText = generateFallbackResponse(fallbackPrompt, history);
         }
 
+        maybeCacheHintResponse(aiResponseText);
+
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
@@ -1185,7 +1220,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       setIsLoading(false);
       setLoadingSessionId(null);
     }
-  }, [sessions, addMessageToSession]);
+  }, [sessions, addMessageToSession, currentUser]);
 
   const updateSessionTitle = useCallback((sessionId: string, title: string) => {
     setSessions(prev =>
