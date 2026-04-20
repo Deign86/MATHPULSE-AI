@@ -14,4 +14,5 @@ joblib==1.4.2
 scipy==1.15.1
 numpy==2.2.1
 firebase-admin>=6.2.0
+redis[hiredis]>=5.0.0
 PyYAML>=6.0.0

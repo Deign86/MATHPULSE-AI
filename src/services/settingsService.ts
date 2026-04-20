@@ -9,7 +9,9 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { clearQueryClientCache } from '../lib/queryClient';
 import { DEFAULT_USER_SETTINGS, UserSettings } from '../types/models';
+import { clearHintCache } from '../utils/hintCache';
 
 const SETTINGS_DOC_ID = 'preferences';
 
@@ -125,6 +127,9 @@ export const applyRuntimeSettings = (settings: UserSettings): void => {
 
 export const clearClientCache = async (): Promise<void> => {
   try {
+    await clearQueryClientCache();
+    clearHintCache();
+
     localStorage.clear();
     sessionStorage.clear();
 

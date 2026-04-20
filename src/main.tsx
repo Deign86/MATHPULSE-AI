@@ -1,8 +1,10 @@
 import { createRoot } from 'react-dom/client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import App from './App.tsx';
 import './critical.css';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { registerBoneyardRegistry } from './bones/registry';
+import { queryClient } from './lib/queryClient.ts';
 
 let fullStylesLoadStarted = false;
 
@@ -47,9 +49,11 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  <AuthProvider>
-    <App />
-  </AuthProvider>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </QueryClientProvider>
 );
 
 registerBoneyardRegistry();
