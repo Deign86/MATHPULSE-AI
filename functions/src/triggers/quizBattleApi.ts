@@ -2112,8 +2112,7 @@ const fetchQuestionBankPool = async (
     "quiz-battle-question-bank",
     QUIZ_BATTLE_QUESTION_BANK_COLLECTION,
     selector.subjectId,
-    selector.topicId,
-    selector.difficulty,
+    QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT,
   );
 
   if (useRuntimeCache) {

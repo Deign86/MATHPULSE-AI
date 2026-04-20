@@ -58,6 +58,13 @@ const STATUS_ORDER: Record<string, number> = {
   mastered: 3,
 };
 
+const EMPTY_SUMMARY: MasterySummary = {
+  totalTopicsTracked: 0,
+  masteredCount: 0,
+  needsAttentionCount: 0,
+  excludedCount: 0,
+};
+
 // ─── Component ──────────────────────────────────────────────
 
 const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionId }) => {
@@ -65,7 +72,7 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
 
   // Data state
   const [topics, setTopics] = useState<TopicMasteryData[]>([]);
-  const [summary, setSummary] = useState<MasterySummary>({ totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 });
+  const [summary, setSummary] = useState<MasterySummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -153,15 +160,18 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
   });
 
   useEffect(() => {
-    setLoading(masteryQuery.isLoading);
+    setLoading(masteryQuery.isLoading || masteryQuery.isFetching);
     if (!masteryQuery.data) {
+      setExcludedTopics([]);
+      setTopics([]);
+      setSummary(EMPTY_SUMMARY);
       return;
     }
 
     setExcludedTopics(masteryQuery.data.excluded);
     setTopics(masteryQuery.data.topics);
     setSummary(masteryQuery.data.summary);
-  }, [masteryQuery.data, masteryQuery.isLoading]);
+  }, [masteryQuery.data, masteryQuery.isFetching, masteryQuery.isLoading]);
 
   // ─── Toggle exclude ───────────────────────────────────────
 

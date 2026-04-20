@@ -25,6 +25,15 @@ const isBrowser = (): boolean => typeof window !== 'undefined';
 
 const nowMs = (): number => Date.now();
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isHintCacheEntry = (value: unknown): value is HintCacheEntry =>
+  isRecord(value)
+  && typeof value.value === 'string'
+  && typeof value.expiresAt === 'number'
+  && Number.isFinite(value.expiresAt);
+
 const readStorage = (): HintCacheStorageShape => {
   if (!isBrowser()) {
     return { entries: {} };
@@ -33,11 +42,29 @@ const readStorage = (): HintCacheStorageShape => {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return { entries: {} };
-    const parsed = JSON.parse(raw) as HintCacheStorageShape;
-    if (!parsed || typeof parsed !== 'object' || typeof parsed.entries !== 'object') {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed) || !isRecord(parsed.entries)) {
       return { entries: {} };
     }
-    return parsed;
+
+    const entries: Record<string, HintCacheEntry> = {};
+    for (const [key, entry] of Object.entries(parsed.entries)) {
+      if (!isHintCacheEntry(entry)) {
+        continue;
+      }
+
+      const trimmedValue = entry.value.trim();
+      if (!trimmedValue) {
+        continue;
+      }
+
+      entries[key] = {
+        value: trimmedValue,
+        expiresAt: entry.expiresAt,
+      };
+    }
+
+    return { entries };
   } catch {
     return { entries: {} };
   }
@@ -75,10 +102,15 @@ const updateMemoryFromStorage = (entries: Record<string, HintCacheEntry>): void 
 };
 
 const syncHintCache = (): void => {
-  const storage = readStorage();
-  const pruned = pruneExpiredEntries(storage.entries);
-  updateMemoryFromStorage(pruned);
-  writeStorage(pruned);
+  try {
+    const storage = readStorage();
+    const pruned = pruneExpiredEntries(storage.entries);
+    updateMemoryFromStorage(pruned);
+    writeStorage(pruned);
+  } catch {
+    hintCacheMemory.clear();
+    writeStorage({});
+  }
 };
 
 const normalizeHistoryContext = (history: Array<{ role: 'user' | 'assistant'; content: string }>): string => {
