@@ -60,7 +60,7 @@ export const onContentUpdated = functions.firestore
 
       // Notify teachers about curriculum changes that may affect their classes
       if (subjectId) {
-        const teacherCacheKey = createRuntimeCacheKey("content-update", "teacher-list", subjectId);
+        const teacherCacheKey = createRuntimeCacheKey("content-update", "teacher-list");
         let teacherIds = runtimeCache.get<string[]>(teacherCacheKey);
 
         if (!teacherIds) {
