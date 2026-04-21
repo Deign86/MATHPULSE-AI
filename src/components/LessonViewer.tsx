@@ -67,7 +67,7 @@ const generateLessonContent = (lessonTitle: string): LessonContent => {
       {
         type: 'text',
         heading: 'Important Notes',
-        content: 'Remember these key points as you practice:\nGÇó Always check your work\nGÇó Look for patterns\nGÇó Practice makes perfect\nGÇó Don\'t hesitate to review if needed'
+        content: 'Remember these key points as you practice:\nGï¿½ï¿½ Always check your work\nGï¿½ï¿½ Look for patterns\nGï¿½ï¿½ Practice makes perfect\nGï¿½ï¿½ Don\'t hesitate to review if needed'
       },
       {
         type: 'practice',
@@ -95,6 +95,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onProgressUpdate,
 }) => {
   const [currentSection, setCurrentSection] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -129,6 +130,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const handleNext = () => {
     if (currentSection < totalSections - 1) {
+      setDirection(1);
       setCurrentSection(prev => prev + 1);
     } else {
       if (isPracticeRequired) return;
@@ -138,6 +140,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const handlePrevious = () => {
     if (currentSection > 0) {
+      setDirection(-1);
       setCurrentSection(prev => prev - 1);
     }
   };
@@ -148,13 +151,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const currentSectionData = content.sections[currentSection];
   const sectionSymbolMap: Record<LessonContent['sections'][number]['type'], string> = {
-    text: '=ƒô¥',
-    example: '=ƒôÄ',
-    video: '=ƒÄ¼',
-    'key-point': '=ƒÆí',
-    practice: 'G£ìn+Å',
+    text: '=ï¿½ï¿½ï¿½',
+    example: '=ï¿½ï¿½ï¿½',
+    video: '=ï¿½Ä¼',
+    'key-point': '=ï¿½ï¿½ï¿½',
+    practice: 'Gï¿½ï¿½n+ï¿½',
   };
-  const sectionSymbol = currentSectionData ? sectionSymbolMap[currentSectionData.type] || '=ƒôÿ' : '=ƒôÿ';
+  const sectionSymbol = currentSectionData ? sectionSymbolMap[currentSectionData.type] || '=ï¿½ï¿½ï¿½' : '=ï¿½ï¿½ï¿½';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[radial-gradient(circle_at_top_left,#f8fbff_0%,#eef4ff_40%,#f8f4ff_100%)] overflow-hidden">
@@ -196,31 +199,41 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-16 py-10">
-        <div className="max-w-4xl mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentSection}
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.3 }}
-            >
+      <main className="flex-1 overflow-hidden px-6 sm:px-10 lg:px-16 py-10 flex items-center justify-center bg-[#f0f0f0]">
+        <div className="max-w-4xl w-full h-[600px] relative" style={{ perspective: '1500px' }}>
+          {content.sections.map((sectionData, idx) => {
+            const isFlipped = idx < currentSection;
+            const zIndex = totalSections - idx;
+            const sectionSymbol = sectionSymbolMap[sectionData.type] || 'ðŸ“';
+
+            return (
+              <div
+                key={idx}
+                className="absolute top-0 left-0 w-full h-full bg-white rounded-3xl p-8 shadow-[0_0_15px_rgba(0,0,0,0.15)] overflow-y-auto pb-50"
+                style={{
+                  zIndex,
+                  transformOrigin: 'left center',
+                  transform: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)',
+                  transition: 'transform 2s ease-in-out',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden'
+                }}
+              >
               {/* Section Header */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 text-sm text-[#5a6578] font-medium mb-2">
-                  <span>Section {currentSection + 1} of {totalSections}</span>
+                  <span>Section {idx + 1} of {totalSections}</span>
                 </div>
-                {currentSectionData.heading && (
+                {sectionData.heading && (
                   <h2 className="text-3xl font-black text-[#0a1628] mb-4 tracking-tight flex items-center gap-3">
                     <span className="text-2xl" aria-hidden="true">{sectionSymbol}</span>
-                    <span>{currentSectionData.heading}</span>
+                    <span>{sectionData.heading}</span>
                   </h2>
                 )}
               </div>
 
               {/* Content Based on Type */}
-              <div className="relative bg-white rounded-3xl p-8 shadow-lg border border-[#dde3eb] min-h-[500px] overflow-hidden">
+              <div className="relative bg-white rounded-3xl p-8 shadow-inner border border-[#dde3eb] min-h-[450px] overflow-hidden">
                 <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/70 pointer-events-none" />
                 <div className="absolute left-[56px] top-0 bottom-0 w-px bg-rose-100/60 pointer-events-none" />
                 <div
@@ -232,16 +245,16 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 <div className="relative z-10 pl-8 md:pl-12">
                 {/* Text Content */}
-                {currentSectionData.type === 'text' && (
+                {sectionData.type === 'text' && (
                   <div className="prose prose-slate max-w-none">
                     <p className="text-lg text-[#0a1628] leading-relaxed whitespace-pre-line">
-                      {currentSectionData.content}
+                      {sectionData.content}
                     </p>
                   </div>
                 )}
 
                 {/* Key Point */}
-                {currentSectionData.type === 'key-point' && (
+                {sectionData.type === 'key-point' && (
                   <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-6 border-2 border-rose-200">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-rose-500 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -249,14 +262,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       </div>
                       <div>
                         <h3 className="font-bold text-rose-900 mb-2 text-lg">Important!</h3>
-                        <p className="text-rose-800 leading-relaxed">{currentSectionData.content}</p>
+                        <p className="text-rose-800 leading-relaxed">{sectionData.content}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {/* Video */}
-                {currentSectionData.type === 'video' && (
+                {sectionData.type === 'video' && (
                   <div>
                     <div className="bg-slate-900 rounded-2xl overflow-hidden mb-4 aspect-video flex items-center justify-center">
                       <div className="text-center">
@@ -267,17 +280,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         <p className="text-white/50 text-xs mt-2">In production, this would show actual video lessons</p>
                       </div>
                     </div>
-                    <p className="text-[#5a6578]">{currentSectionData.content}</p>
+                    <p className="text-[#5a6578]">{sectionData.content}</p>
                   </div>
                 )}
 
                 {/* Examples */}
-                {currentSectionData.type === 'example' && (
+                {sectionData.type === 'example' && (
                   <div>
-                    <p className="text-[#0a1628] mb-6">{currentSectionData.content}</p>
+                    <p className="text-[#0a1628] mb-6">{sectionData.content}</p>
                     <div className="space-y-4">
-                      {currentSectionData.examples?.map((example, idx) => (
-                        <div key={idx} className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-6 border-2 border-sky-200">
+                      {sectionData.examples?.map((example, idxExample) => (
+                        <div key={idxExample} className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-6 border-2 border-sky-200">
                           <div className="flex items-start gap-3 mb-4">
                             <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center flex-shrink-0">
                               <Calculator size={18} className="text-white" />
@@ -319,7 +332,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                           <div>
                             <p className="text-xs font-black uppercase tracking-wider text-sky-600 mb-1">Practice Quiz</p>
                             <p className="text-base font-bold text-slate-800">{practiceQuiz.title}</p>
-                            <p className="text-xs text-slate-600 mt-1">{practiceQuiz.questions} questions GÇó {practiceQuiz.duration}</p>
+                            <p className="text-xs text-slate-600 mt-1">{practiceQuiz.questions} questions Gï¿½ï¿½ {practiceQuiz.duration}</p>
                           </div>
                           <button
                             type="button"
@@ -336,15 +349,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 )}
                 </div>
               </div>
-            </motion.div>
-          </AnimatePresence>
+              </div>
+            );
+          })}
 
           {/* Section Navigation Dots */}
           <div className="flex items-center justify-center gap-2 mt-8 mb-4">
             {content.sections.map((_, idx) => (
               <button
                 key={idx}
-                onClick={() => setCurrentSection(idx)}
+                onClick={() => {
+                  setDirection(idx > currentSection ? 1 : -1);
+                  setCurrentSection(idx);
+                }}
                 className={`h-2 rounded-full transition-all ${
                   idx === currentSection
                     ? 'w-8 bg-teal-500'
