@@ -67,7 +67,7 @@ const generateLessonContent = (lessonTitle: string): LessonContent => {
       {
         type: 'text',
         heading: 'Important Notes',
-        content: 'Remember these key points as you practice:\nG�� Always check your work\nG�� Look for patterns\nG�� Practice makes perfect\nG�� Don\'t hesitate to review if needed'
+        content: 'Remember these key points as you practice:\n• Always check your work\n• Look for patterns\n• Practice makes perfect\n• Don\'t hesitate to review if needed'
       },
       {
         type: 'practice',
@@ -188,7 +188,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </div>
             <div className="w-32 h-2 bg-[#dde3eb] rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
+                className="h-full bg-gradient-to-r from-[#75D06A] to-[#6ED1CF] rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.3 }}
@@ -290,17 +290,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     <p className="text-[#0a1628] mb-6">{sectionData.content}</p>
                     <div className="space-y-4">
                       {sectionData.examples?.map((example, idxExample) => (
-                        <div key={idxExample} className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-6 border-2 border-sky-200">
+                        <div key={idxExample} className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-6 border-2 border-[#1FA7E1]/30">
                           <div className="flex items-start gap-3 mb-4">
-                            <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <div className="w-8 h-8 bg-[#1FA7E1] rounded-lg flex items-center justify-center flex-shrink-0">
                               <Calculator size={18} className="text-white" />
                             </div>
                             <div className="flex-1">
-                              <h4 className="font-bold text-sky-900 mb-2">{example.problem}</h4>
+                              <h4 className="font-bold text-[#7274ED] mb-2">{example.problem}</h4>
                             </div>
                           </div>
-                          <div className="ml-11 bg-white/60 rounded-xl p-4 border border-sky-100">
-                            <p className="text-sm font-bold text-sky-700 mb-2">Solution:</p>
+                          <div className="ml-11 bg-white/60 rounded-xl p-4 border border-[#1FA7E1]/20">
+                            <p className="text-sm font-bold text-[#1FA7E1] mb-2">Solution:</p>
                             <p className="text-[#0a1628] whitespace-pre-line text-sm leading-relaxed">
                               {example.solution}
                             </p>
@@ -313,31 +313,31 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
                 {/* Practice Prompt */}
                 {currentSectionData.type === 'practice' && (
-                  <div className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-8 border-2 border-sky-200 text-center">
-                    <div className="w-16 h-16 bg-sky-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-8 border-2 border-[#1FA7E1]/30 text-center">
+                    <div className="w-16 h-16 bg-[#1FA7E1] rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle size={32} className="text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-sky-900 mb-3">{currentSectionData.heading}</h3>
-                    <p className="text-sky-800 text-lg mb-6">{currentSectionData.content}</p>
+                    <h3 className="text-2xl font-bold text-[#7274ED] mb-3">{currentSectionData.heading}</h3>
+                    <p className="text-[#7274ED] text-lg mb-6">{currentSectionData.content}</p>
                     <div className="bg-white/60 rounded-xl p-4 inline-block">
-                      <p className="text-sm text-sky-700">
+                      <p className="text-sm text-[#1FA7E1]">
                         <Lightbulb size={14} className="inline mr-1 -mt-0.5" />
                         <strong>Tip:</strong> Complete the practice quizzes after this lesson to reinforce your learning!
                       </p>
                     </div>
 
                     {practiceQuiz && (
-                      <div className="mt-6 bg-white/80 rounded-2xl p-5 border border-sky-100 text-left">
+                      <div className="mt-6 bg-white/80 rounded-2xl p-5 border border-[#1FA7E1]/20 text-left">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-xs font-black uppercase tracking-wider text-sky-600 mb-1">Practice Quiz</p>
+                            <p className="text-xs font-black uppercase tracking-wider text-[#1FA7E1] mb-1">Practice Quiz</p>
                             <p className="text-base font-bold text-slate-800">{practiceQuiz.title}</p>
-                            <p className="text-xs text-slate-600 mt-1">{practiceQuiz.questions} questions G�� {practiceQuiz.duration}</p>
+                            <p className="text-xs text-slate-600 mt-1">{practiceQuiz.questions} questions • {practiceQuiz.duration}</p>
                           </div>
                           <button
                             type="button"
                             onClick={onStartPractice}
-                            className={`px-4 py-2 rounded-lg text-xs font-black tracking-wide transition ${practiceQuiz.locked ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : practiceQuizCompleted ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-sky-500 text-white hover:bg-sky-600'}`}
+                            className={`px-4 py-2 rounded-lg text-xs font-black tracking-wide transition ${practiceQuiz.locked ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : practiceQuizCompleted ? 'bg-[#75D06A]/20 text-[#75D06A] hover:bg-[#75D06A]/30' : 'bg-[#1FA7E1] text-white hover:bg-[#1FA7E1]/90'}`}
                             disabled={practiceQuiz.locked || !onStartPractice}
                           >
                             {practiceQuizCompleted ? 'REVIEW PRACTICE' : 'START PRACTICE'}
@@ -364,7 +364,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 }}
                 className={`h-2 rounded-full transition-all ${
                   idx === currentSection
-                    ? 'w-8 bg-teal-500'
+                    ? 'w-8 bg-[#75D06A]'
                     : idx < currentSection
                     ? 'w-2 bg-teal-300'
                     : 'w-2 bg-[#dde3eb]'
@@ -397,7 +397,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           <Button
             onClick={handleNext}
             disabled={currentSection === totalSections - 1 && isPracticeRequired}
-            className="px-6 py-6 rounded-xl font-bold bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:opacity-90 shadow-lg"
+            className="px-6 py-6 rounded-xl font-bold bg-gradient-to-r from-[#75D06A] to-[#6ED1CF] text-white hover:opacity-90 shadow-lg"
           >
             {currentSection === totalSections - 1 ? 'Complete Lesson' : 'Next'}
             {currentSection === totalSections - 1 ? (
@@ -422,14 +422,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white rounded-[2rem] p-8 max-w-md w-full text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden relative"
           >
-            <div className="absolute -top-32 -left-32 w-64 h-64 bg-teal-100 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
-            <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-emerald-100 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
+            <div className="absolute -top-32 -left-32 w-64 h-64 bg-[#75D06A]/20 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
+            <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-[#75D06A]/20 rounded-full blur-3xl opacity-50 mix-blend-multiply" />
 
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="w-20 h-20 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-lg shadow-teal-500/30"
+              className="w-20 h-20 bg-[#75D06A] rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-lg shadow-[#75D06A]/30"
             >
               <CheckCircle size={40} className="text-white" />
             </motion.div>
@@ -439,14 +439,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               Great job! You've finished learning about <strong className="text-slate-800">{lesson.title}</strong>.
             </p>
 
-            <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl p-5 mb-8 border border-teal-100 shadow-inner relative z-10">
+            <div className="bg-gradient-to-br from-[#75D06A]/10 to-[#6ED1CF]/10 rounded-2xl p-5 mb-8 border border-[#75D06A]/20 shadow-inner relative z-10">
               <div className="flex items-center justify-center mb-2">
-                <div className="bg-teal-100 p-2 rounded-xl">
-                  <Award className="text-teal-600" size={24} />
+                <div className="bg-[#75D06A]/20 p-2 rounded-xl">
+                  <Award className="text-[#75D06A]" size={24} />
                 </div>
               </div>
-              <p className="text-xs text-teal-700 font-bold uppercase tracking-wider mb-1">XP Earned</p>
-              <p className="text-3xl font-black text-teal-600 drop-shadow-sm">+{lessonCompletionXP}</p>
+              <p className="text-xs text-[#75D06A] font-bold uppercase tracking-wider mb-1">XP Earned</p>
+              <p className="text-3xl font-black text-[#75D06A] drop-shadow-sm">+{lessonCompletionXP}</p>
             </div>
 
             <div className="flex flex-col gap-3 relative z-10">
@@ -456,7 +456,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 className={`w-full py-3.5 rounded-xl font-bold text-[15px] transition-all outline-none ${
                   isPracticeRequired
                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white hover:shadow-lg hover:shadow-teal-500/25 hover:-translate-y-0.5'
+                    : 'bg-gradient-to-r from-[#75D06A] to-[#6ED1CF] text-white hover:shadow-lg hover:shadow-teal-500/25 hover:-translate-y-0.5'
                 }`}
               >
                 Continue to Next Lesson

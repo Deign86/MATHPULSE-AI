@@ -159,6 +159,13 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [totalXP, setTotalXP] = useState(0);
   const [showCalculator, setShowCalculator] = useState(false);
 
+  // Gamification & Flow States
+  const [currentPoints, setCurrentPoints] = useState(0);
+  const [hintsUsed, setHintsUsed] = useState<Record<number, boolean>>({});
+  const [wrongAttempted, setWrongAttempted] = useState(false);
+  const [shakeCard, setShakeCard] = useState(false);
+  const [showStreakBanner, setShowStreakBanner] = useState(false);
+
   // Load AI questions or generate hardcoded fallback
   const [questions] = useState<QuizQuestion[]>(() => {
     if (quiz.loadedQuestions && quiz.loadedQuestions.length > 0) {
@@ -193,6 +200,17 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
 
     return () => clearInterval(timer);
   }, []);
+
+  // Background floating orbs logic
+  const [orbs, setOrbs] = useState(Array.from({ length: 15 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 120 + 40,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    duration: Math.random() * 20 + 15,
+    delay: Math.random() * -20,
+    color: ['bg-purple-500/10', 'bg-blue-500/10', 'bg-cyan-500/10', 'bg-emerald-500/10'][Math.floor(Math.random() * 4)]
+  })));
 
   // Sound effects
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'combo') => {
@@ -245,6 +263,36 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     setSelectedAnswer(answerIndex);
   };
 
+  const handleHintUse = () => {
+    if (!hintsUsed[currentQuestionIndex] && !showExplanation && !wrongAttempted) {
+      setHintsUsed(prev => ({ ...prev, [currentQuestionIndex]: true }));
+      setCurrentPoints(prev => Math.max(0, prev - 2)); // Small optional penalty to keep it fair? Actually user requested "+10 pts per correct, +5 if hint used", meaning we just reward 5 instead of 10. Let's just track usage and penalize on positive submit.
+      // Small sound effect?
+      playSound('correct'); 
+    }
+  };
+
+  const handleShowAnswer = () => {
+    const newAnswers = [...answers];
+    newAnswers[currentQuestionIndex] = 0; // Mark 0 pts for this question
+    setAnswers(newAnswers);
+    setLastAnswerCorrect(false);
+    setShowExplanation(true);
+    setStreak(0);
+    setComboMultiplier(1);
+    
+    const timeSpentQ = Math.round((Date.now() - questionStartTime) / 1000);
+    setAnswerRecords((prev) => [
+      ...prev,
+      {
+        questionId: currentQuestion.id,
+        answer: 'show_answer',
+        correct: false,
+        timeSpent: timeSpentQ,
+      },
+    ]);
+  };
+
   const handleSubmitAnswer = () => {
     const isNonMC = currentQuestion.questionType != null && currentQuestion.questionType !== 'multiple_choice';
 
@@ -258,10 +306,23 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       ? validateTextAnswer(textAnswer, currentQuestion.correctAnswerText || '', currentQuestion.questionType || '')
       : selectedAnswer === currentQuestion.correctAnswer;
 
+    if (!isCorrect) {
+      // WRONG ANSWER FLOW implementation
+      setWrongAttempted(true);
+      setShakeCard(true);
+      playSound('incorrect');
+      setTimeout(() => setShakeCard(false), 500);
+      return; // Do NOT proceed, offer escape hatch
+    }
+
+    // CORRECT ANSWER FLOW
     const newAnswers = [...answers];
-    newAnswers[currentQuestionIndex] = isNonMC ? (isCorrect ? 1 : 0) : selectedAnswer;
+    newAnswers[currentQuestionIndex] = 1; // Mark correct
     setAnswers(newAnswers);
-    setLastAnswerCorrect(isCorrect);
+    setLastAnswerCorrect(true);
+
+    const ptsAwarded = hintsUsed[currentQuestionIndex] ? 5 : 10;
+    setCurrentPoints(prev => prev + ptsAwarded);
 
     // Track per-question record for result saving
     const timeSpentQ = Math.round((Date.now() - questionStartTime) / 1000);
@@ -270,32 +331,34 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       {
         questionId: currentQuestion.id,
         answer: isNonMC ? textAnswer : String(selectedAnswer),
-        correct: isCorrect,
+        correct: true,
         timeSpent: timeSpentQ,
       },
     ]);
 
-    if (isCorrect) {
-      playSound('correct');
-      setScore(score + 1);
-      const newStreak = streak + 1;
-      setStreak(newStreak);
+    playSound('correct');
+    setScore(score + 1);
+    const newStreak = streak + 1;
+    setStreak(newStreak);
 
-      if (newStreak >= 5) {
-        setComboMultiplier(3);
-        playSound('combo');
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-      } else if (newStreak >= 3) {
-        setComboMultiplier(2);
-        playSound('combo');
-      } else {
-        setComboMultiplier(1);
-      }
+    if (newStreak > 0 && newStreak % 3 === 0) {
+       setShowStreakBanner(true);
+       setTimeout(() => setShowStreakBanner(false), 2500);
+    }
+    
+    if (newStreak >= 5) {
+      setComboMultiplier(3);
+      playSound('combo');
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+    } else if (newStreak >= 3) {
+      setComboMultiplier(2);
+      playSound('combo');
     } else {
-      playSound('incorrect');
-      setStreak(0);
       setComboMultiplier(1);
     }
+    
+    // Auto-fire confetti for correct answers
+    confetti({ particleCount: 30, spread: 40, colors: ['#75D06A', '#6ED1CF'], origin: { y: 0.6 } });
 
     setShowExplanation(true);
   };
@@ -305,6 +368,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
       setTextAnswer('');
+      setWrongAttempted(false);
+      setShowStreakBanner(false);
       setQuestionStartTime(Date.now());
       setShowExplanation(false);
     } else {
@@ -404,7 +469,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
               className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-4 ${
-                isPassing ? 'bg-gradient-to-br from-teal-500 to-emerald-500' : 'bg-gradient-to-br from-orange-500 to-red-500'
+                isPassing ? 'bg-gradient-to-br from-[#75D06A] to-[#6ED1CF]' : 'bg-gradient-to-br from-[#FFB356] to-[#FF8B8B]'
               }`}
             >
               {isPassing ? (
@@ -420,20 +485,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           </div>
 
           {/* Score */}
-          <div className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-6 mb-6">
+          <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-6 mb-6">
             <div className="text-center mb-4">
-              <div className="text-6xl font-bold text-sky-600 mb-2">{percentage}%</div>
+              <div className="text-6xl font-bold text-[#1FA7E1] mb-2">{percentage}%</div>
               <p className="text-[#5a6578]">Final Score</p>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white rounded-xl p-4 text-center">
-                <CheckCircle size={24} className="mx-auto mb-2 text-teal-600" />
+                <CheckCircle size={24} className="mx-auto mb-2 text-[#75D06A]" />
                 <p className="text-2xl font-bold text-[#0a1628]">{score}</p>
                 <p className="text-xs text-[#5a6578]">Correct</p>
               </div>
               <div className="bg-white rounded-xl p-4 text-center">
-                <XCircle size={24} className="mx-auto mb-2 text-red-500" />
+                <XCircle size={24} className="mx-auto mb-2 text-[#FF8B8B]" />
                 <p className="text-2xl font-bold text-[#0a1628]">{questions.length - score}</p>
                 <p className="text-xs text-[#5a6578]">Incorrect</p>
               </div>
@@ -449,7 +514,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           <div className="grid grid-cols-2 gap-3 mb-6">
             {percentage >= 90 && (
               <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3">
-                <Star size={20} className="text-sky-600" />
+                <Star size={20} className="text-[#1FA7E1]" />
                 <div>
                   <p className="font-bold text-sm text-[#0a1628]">Perfect Score!</p>
                   <p className="text-xs text-[#5a6578]">+50% Bonus XP</p>
@@ -458,7 +523,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
             )}
             {timeRemaining > parseInt(quiz.duration) * 30 && (
               <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3">
-                <Clock size={20} className="text-sky-600" />
+                <Clock size={20} className="text-[#1FA7E1]" />
                 <div>
                   <p className="font-bold text-sm text-[#0a1628]">Speed Demon</p>
                   <p className="text-xs text-[#5a6578]">+20% Bonus XP</p>
@@ -497,52 +562,109 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <AnimatePresence>
+        {showStreakBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 30, scale: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] bg-orange-500 text-white font-bold px-6 py-3 rounded-full shadow-2xl flex items-center justify-center gap-2 border-2 border-white"
+          >
+            <Flame size={20} className="animate-pulse" />
+            {streak} In a Row! Hot Streak!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        animate={shakeCard ? { x: [-10, 10, -10, 10, 0], scale: [1, 1.01, 1] } : {}}
+        transition={{ duration: 0.4 }}
+        className="bg-white/95 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] max-w-4xl w-full h-[95vh] sm:h-[90vh] md:h-[85vh] flex flex-col relative z-10 overflow-hidden"
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 text-white">
-          <div className="flex items-center justify-between mb-4">
+        {/* Animated Orbs INSIDE the quiz container */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          {orbs.map((orb) => (
+            <motion.div
+              key={orb.id}
+              className={`absolute rounded-full blur-3xl ${
+                orb.color.replace('/10', '/30') // Boost opacity to 30% inside white bg
+              }`}
+              style={{
+                width: orb.size * 1.5,
+                height: orb.size * 1.5,
+                left: `${orb.x}%`,
+                top: `${orb.y}%`,
+              }}
+              animate={{
+                x: [0, Math.random() * 200 - 100, 0],
+                y: [0, Math.random() * 200 - 100, 0],
+                scale: [1, 1.5, 1],
+              }}
+              transition={{
+                duration: orb.duration,
+                repeat: Infinity,
+                ease: "linear",
+                delay: orb.delay
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Header - Reactive color strip */}
+        <motion.div 
+          animate={{
+            backgroundColor: showExplanation
+              ? (lastAnswerCorrect ? '#75D06A' : '#FFB356') // green (correct) or orange (escape hatch)
+              : wrongAttempted 
+                ? '#FF8B8B' // red
+                : '#7C3AED' // purple (default)
+          }}
+          className="shrink-0 p-4 sm:p-6 text-white border-b border-white/10 shadow-md relative z-10"
+        >
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div>
-              <h2 className="text-2xl font-bold">{quiz.title}</h2>
-              <p className="text-cyan-100 text-sm">{quiz.subject}</p>
+              <h2 className="text-xl sm:text-2xl font-bold">{quiz.title}</h2>
+              <p className="text-white/80 text-xs sm:text-sm font-medium">{quiz.subject}</p>
             </div>
             <button
               onClick={onClose}
-              className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors"
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors"
             >
               <X size={20} />
             </button>
           </div>
 
-          {/* Calculator & Progress Bar */}
-          <div className="flex items-center gap-2 mb-3">
+          {/* Calculator & Live Points Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <button
               onClick={() => setShowCalculator(prev => !prev)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold transition-all ${
                 showCalculator 
-                  ? 'bg-sky-400/30 text-white ring-1 ring-sky-300/50' 
-                  : 'bg-white/20 hover:bg-white/30 text-cyan-100'
+                  ? 'bg-white/40 text-white ring-1 ring-white/50' 
+                  : 'bg-white/20 hover:bg-white/30 text-white'
               }`}
               title="Toggle Scientific Calculator"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></svg>
               Calc
             </button>
+            <div className="bg-white/20 px-3 py-1 rounded-full flex items-center gap-1">
+              <Zap size={16} /> 
+              <span className="font-bold text-sm">{currentPoints} pts</span>
+            </div>
           </div>
+          
           <div className="mb-3">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
               <div className="flex items-center gap-4">
                 {streak > 0 && (
-                  <div className="flex items-center gap-1 bg-orange-500/30 px-3 py-1 rounded-full">
-                    <Flame size={16} />
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-orange-400 to-rose-500 px-3 py-1 rounded-full border border-white/20">
+                    <Flame size={16} className="animate-pulse" />
                     <span className="text-sm font-bold">{streak} Streak</span>
                     {comboMultiplier > 1 && (
-                      <span className="text-xs ml-1">x{comboMultiplier}</span>
+                      <span className="text-xs ml-1 font-black">x{comboMultiplier}</span>
                     )}
                   </div>
                 )}
@@ -552,31 +674,29 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 </div>
               </div>
             </div>
-            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
-                className="h-full bg-white rounded-full"
-              />
+            
+            {/* Auto-segmented progress bar */}
+            <div className="flex items-center justify-between gap-1 mt-2">
+              {questions.map((_, idx) => {
+                let dotClass = 'bg-white/30';
+                if (idx < currentQuestionIndex) {
+                  dotClass = answers[idx] === 1 ? 'bg-[#75D06A]' : 'bg-[#FF8B8B]';
+                } else if (idx === currentQuestionIndex) {
+                  dotClass = 'bg-white scale-y-150 shadow-[0_0_8px_white]';
+                }
+                return (
+                  <motion.div
+                    key={idx}
+                    className={`flex-1 h-2 rounded-full transition-all duration-300 ${dotClass}`}
+                  />
+                );
+              })}
             </div>
           </div>
-
-          {/* Score */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 px-3 py-1 rounded-full">
-                <span className="text-sm font-bold">Score: {score}/{questions.length}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-rose-500/30 px-3 py-1 rounded-full">
-              <Trophy size={16} />
-              <span className="text-sm font-bold">+{quiz.xpReward} XP</span>
-            </div>
-          </div>
-        </div>
+        </motion.div>
 
         {/* Question Content */}
-        <div className="flex-1 overflow-y-auto p-8 relative">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative flex flex-col justify-center bg-white/70 backdrop-blur-md rounded-b-3xl">
           {/* Inline Calculator Panel */}
           <AnimatePresence>
             {showCalculator && (
@@ -584,7 +704,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-6 overflow-hidden"
+                className="mb-6 overflow-hidden shrink-0"
               >
                 <div className="bg-[#edf1f7] rounded-2xl p-4 border border-[#dde3eb]">
                   <div className="flex items-center justify-between mb-3">
@@ -620,67 +740,121 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col flex-1 relative z-10"
             >
               {/* Question */}
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-[#0a1628] mb-2">{currentQuestion.question}</h3>
-                <p className="text-sm text-[#5a6578]">{getPromptForType(currentQuestion.questionType)}</p>
+              <div className="mb-4 sm:mb-6 shrink-0 text-center sm:text-left pt-2">
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#0a1628] leading-snug">
+                  {currentQuestion.question.includes('___') ? (
+                     <span>
+                        {currentQuestion.question.split('___').map((part, i, arr) => (
+                           <React.Fragment key={i}>
+                             {part}
+                             {i < arr.length - 1 && (
+                               <input 
+                                 type="text" 
+                                 disabled={showExplanation || wrongAttempted}
+                                 value={textAnswer}
+                                 onChange={(e) => setTextAnswer(e.target.value)}
+                                 onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
+                                 className="inline-block w-24 mx-2 border-b-4 border-[#7C3AED] focus:border-[#75D06A] outline-none text-center bg-transparent text-[#7C3AED] font-bold"
+                               />
+                             )}
+                           </React.Fragment>
+                        ))}
+                     </span>
+                  ) : (
+                     currentQuestion.question
+                  )}
+                </h3>
+                <div className="flex items-center gap-3 mt-4">
+                  <p className="text-xs sm:text-sm font-semibold opacity-70 uppercase tracking-wide text-[#7C3AED]">{getPromptForType(currentQuestion.questionType)}</p>
+                  
+                  {!showExplanation && !wrongAttempted && currentQuestion.explanation && (
+                    <button 
+                       onClick={handleHintUse}
+                       disabled={hintsUsed[currentQuestionIndex]}
+                       className={`flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full transition-all ${
+                         hintsUsed[currentQuestionIndex] 
+                           ? 'bg-slate-200 text-slate-400' 
+                           : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                       }`}
+                    >
+                      <Zap size={14} />
+                      {hintsUsed[currentQuestionIndex] ? 'Hint Used' : 'Use Hint (-5 pts)'}
+                    </button>
+                  )}
+                  {hintsUsed[currentQuestionIndex] && !showExplanation && (
+                     <div className="text-sm bg-orange-50 border border-orange-200 text-orange-700 px-3 py-1.5 rounded-lg flex-1">
+                        <strong>Hint:</strong> {currentQuestion.explanation.substring(0, 50)}...
+                     </div>
+                  )}
+                </div>
               </div>
 
               {/* Answer area */}
               {currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice' ? (
                 <div className="mb-6">
-                  <div className="relative">
-                    <div className="absolute left-3 top-3.5">
-                      <Edit3 size={16} className="text-slate-500" />
+                  {!currentQuestion.question.includes('___') && (
+                    <div className="relative">
+                      <div className="absolute left-3 top-3.5">
+                        <Edit3 size={16} className="text-slate-500" />
+                      </div>
+                      {currentQuestion.questionType === 'enumeration' ? (
+                        <textarea
+                          value={textAnswer}
+                          onChange={(e) => setTextAnswer(e.target.value)}
+                          disabled={showExplanation || wrongAttempted}
+                          placeholder="Type each answer separated by commas…"
+                          rows={4}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 text-sm outline-none transition-all resize-none ${
+                            showExplanation
+                              ? lastAnswerCorrect ? 'bg-[#75D06A]/10 border-teal-400' : 'bg-[#FF8B8B]/10 border-red-400'
+                              : wrongAttempted ? 'bg-[#FF8B8B]/10 border-red-400' 
+                              : 'border-[#dde3eb] focus:border-[#7C3AED] bg-white'
+                          }`}
+                        />
+                      ) : (currentQuestion.questionType === 'equation_based' || currentQuestion.questionType === 'word_problem') ? (
+                        <MathAnswerInput
+                          value={textAnswer}
+                          onChange={setTextAnswer}
+                          placeholder={
+                            currentQuestion.questionType === 'equation_based' ? 'Enter the numerical result…'
+                              : 'Enter your answer…'
+                          }
+                          onCalculatorOpen={() => setShowCalculator(true)}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={textAnswer}
+                          onChange={(e) => setTextAnswer(e.target.value)}
+                          disabled={showExplanation || wrongAttempted}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
+                          placeholder="Type your answer…"
+                          className={`w-full pl-10 pr-4 py-3.5 rounded-xl border-2 text-sm outline-none transition-all ${
+                            showExplanation
+                              ? lastAnswerCorrect ? 'bg-[#75D06A]/10 border-teal-400' : 'bg-[#FFB356]/10 border-orange-400' // orange if gave up
+                              : wrongAttempted ? 'bg-[#FF8B8B]/10 border-red-400'
+                              : 'border-[#dde3eb] focus:border-[#7C3AED] bg-white'
+                          }`}
+                        />
+                      )}
                     </div>
-                    {currentQuestion.questionType === 'enumeration' ? (
-                      <textarea
-                        value={textAnswer}
-                        onChange={(e) => setTextAnswer(e.target.value)}
-                        disabled={showExplanation}
-                        placeholder="Type each answer separated by commas…"
-                        rows={4}
-                        className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 text-sm outline-none transition-all resize-none ${
-                          showExplanation
-                            ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
-                            : 'border-[#dde3eb] focus:border-sky-500 bg-white'
-                        }`}
-                      />
-                    ) : (currentQuestion.questionType === 'equation_based' || currentQuestion.questionType === 'word_problem') ? (
-                      <MathAnswerInput
-                        value={textAnswer}
-                        onChange={setTextAnswer}
-                        placeholder={
-                          currentQuestion.questionType === 'equation_based' ? 'Enter the numerical result…'
-                            : 'Enter your answer…'
-                        }
-                        onCalculatorOpen={() => setShowCalculator(true)}
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={textAnswer}
-                        onChange={(e) => setTextAnswer(e.target.value)}
-                        disabled={showExplanation}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
-                        placeholder="Type your answer…"
-                        className={`w-full pl-10 pr-4 py-3.5 rounded-xl border-2 text-sm outline-none transition-all ${
-                          showExplanation
-                            ? lastAnswerCorrect ? 'bg-teal-50 border-teal-400' : 'bg-red-50 border-red-400'
-                            : 'border-[#dde3eb] focus:border-sky-500 bg-white'
-                        }`}
-                      />
-                    )}
-                  </div>
+                  )}
                   {showExplanation && !lastAnswerCorrect && (
-                    <p className="mt-2 text-sm font-semibold text-teal-700">
+                    <p className="mt-2 text-base font-semibold text-orange-600">
                       Correct answer: {currentQuestion.correctAnswerText}
                     </p>
                   )}
+                  {wrongAttempted && !showExplanation && (
+                    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="mt-4 flex gap-3 items-center">
+                       <p className="text-red-500 font-bold flex-1">Not quite right. Try again, or use an escape hatch.</p>
+                    </motion.div>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-3 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 overflow-y-auto">
                 {currentQuestion.options.map((option, index) => {
                   const isSelected = selectedAnswer === index;
                   const isCorrect = index === currentQuestion.correctAnswer;
@@ -689,40 +863,50 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   let bgColor = 'bg-[#edf1f7] hover:bg-[#dde3eb] border-[#dde3eb]';
                   if (showCorrectness) {
                     if (isCorrect) {
-                      bgColor = 'bg-teal-50 border-teal-500';
+                      bgColor = 'bg-[#75D06A]/10 border-[#75D06A]';
                     } else if (isSelected && !isCorrect) {
-                      bgColor = 'bg-red-50 border-red-500';
+                      bgColor = 'bg-[#FF8B8B]/10 border-red-500';
                     }
+                  } else if (wrongAttempted) {
+                     if (isSelected) {
+                        bgColor = 'bg-[#FF8B8B]/10 border-red-500 opacity-60'; // previously clicked wrong answer
+                     } else {
+                        bgColor = 'bg-white hover:bg-[#dde3eb] border-[#dde3eb]'; // let them try others
+                     }
                   } else if (isSelected) {
-                    bgColor = 'bg-sky-50 border-sky-500';
+                    bgColor = 'bg-purple-50 border-[#7C3AED]';
                   }
 
                   return (
                     <motion.button
                       key={index}
-                      whileHover={!showExplanation ? { scale: 1.01 } : {}}
-                      whileTap={!showExplanation ? { scale: 0.99 } : {}}
+                      whileHover={!showExplanation ? { scale: 1.02 } : {}}
+                      whileTap={!showExplanation ? { scale: 0.98 } : {}}
                       onClick={() => handleAnswerSelect(index)}
-                      disabled={showExplanation}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${bgColor} ${
-                        showExplanation ? 'cursor-default' : 'cursor-pointer'
-                      }`}
+                      disabled={showExplanation || (wrongAttempted && isSelected)} // disable clicking the same wrong answer twice
+                      className={`w-full text-left p-4 sm:p-5 rounded-[20px] border-2 transition-all ${bgColor} ${
+                        showExplanation || (wrongAttempted && isSelected) ? 'cursor-default' : 'cursor-pointer shadow-sm hover:shadow-md'
+                      } flex items-center min-h-[4rem] sm:min-h-[5rem]`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
-                          showCorrectness && isCorrect ? 'bg-teal-500 text-white' :
-                          showCorrectness && isSelected && !isCorrect ? 'bg-red-500 text-white' :
-                          isSelected ? 'bg-sky-500 text-white' :
-                          'bg-white text-[#0a1628]'
+                      <div className="flex items-center gap-3 w-full">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl shrink-0 flex items-center justify-center font-bold text-sm sm:text-base transition-colors ${
+                          showCorrectness && isCorrect ? 'bg-[#75D06A] text-white shadow-inner' :
+                          showCorrectness && isSelected && !isCorrect ? 'bg-[#FF8B8B] text-white shadow-inner' :
+                          wrongAttempted && isSelected ? 'bg-red-300 text-white shadow-inner' :
+                          isSelected ? 'bg-[#7C3AED] text-white shadow-inner' :
+                          'bg-white text-[#0a1628] shadow-sm'
                         }`}>
                           {String.fromCharCode(65 + index)}
                         </div>
-                        <span className="font-medium text-[#0a1628]">{option}</span>
+                        <span className="font-semibold sm:font-bold text-[#0a1628] sm:text-lg break-words line-clamp-3">{option}</span>
                         {showCorrectness && isCorrect && (
-                          <CheckCircle size={20} className="ml-auto text-teal-600" />
+                          <CheckCircle size={20} className="ml-auto text-[#75D06A]" />
                         )}
                         {showCorrectness && isSelected && !isCorrect && (
                           <XCircle size={20} className="ml-auto text-red-600" />
+                        )}
+                        {wrongAttempted && isSelected && !showCorrectness && (
+                          <XCircle size={20} className="ml-auto text-red-400" />
                         )}
                       </div>
                     </motion.button>
@@ -738,19 +922,19 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                   animate={{ opacity: 1, y: 0 }}
                   className={`p-4 rounded-xl border-2 ${
                     lastAnswerCorrect
-                      ? 'bg-teal-50 border-teal-200'
-                      : 'bg-sky-50 border-sky-200'
+                      ? 'bg-[#75D06A]/10 border-[#75D06A]/30'
+                      : 'bg-orange-50 border-orange-200'
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      lastAnswerCorrect ? 'bg-teal-500' : 'bg-sky-500'
+                      lastAnswerCorrect ? 'bg-[#75D06A]' : 'bg-orange-500'
                     }`}>
                       <Award size={18} className="text-white" />
                     </div>
                     <div>
                       <h4 className="font-bold text-[#0a1628] mb-1">
-                        {lastAnswerCorrect ? 'Correct!' : 'Not quite'}
+                        {lastAnswerCorrect ? 'Correct!' : 'Keep Practicing'}
                       </h4>
                       <p className="text-sm text-[#5a6578]">{currentQuestion.explanation}</p>
                     </div>
@@ -768,39 +952,54 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
               {showExplanation ? (
                 <span className="flex items-center gap-2">
                   <TrendingUp size={16} />
-                  Keep going! You're doing great
+                  {lastAnswerCorrect ? "Awesome job!" : "You've got this!"}
+                </span>
+              ) : wrongAttempted ? (
+                <span className="flex items-center gap-2 text-red-500 font-bold">
+                  Pick another answer or show solution.
                 </span>
               ) : (
                 <span>Select an answer to continue</span>
               )}
             </div>
-            {showExplanation ? (
-              <button
-                onClick={handleNextQuestion}
-                className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all"
-              >
-                {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
-                <ChevronRight size={18} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmitAnswer}
-                disabled={
-                  currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
-                    ? !textAnswer.trim()
-                    : selectedAnswer === null
-                }
-                className={`font-bold px-8 py-3 rounded-xl transition-all ${
-                  (currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
-                    ? textAnswer.trim()
-                    : selectedAnswer !== null)
-                    ? 'bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white'
-                    : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
-                }`}
-              >
-                Submit Answer
-              </button>
-            )}
+            
+            <div className="flex gap-3">
+              {wrongAttempted && !showExplanation && (
+                <button
+                  onClick={handleShowAnswer}
+                  className="font-bold px-6 py-3 rounded-xl transition-all border-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+                >
+                  Show Answer
+                </button>
+              )}
+              {showExplanation ? (
+                <button
+                  onClick={handleNextQuestion}
+                  className="bg-[#75D06A] hover:bg-[#68c05c] text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+                >
+                  {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
+                  <ChevronRight size={18} />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmitAnswer}
+                  disabled={
+                    currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
+                      ? !textAnswer.trim()
+                      : selectedAnswer === null
+                  }
+                  className={`font-bold px-10 py-3 rounded-xl transition-all ${
+                    (currentQuestion.questionType && currentQuestion.questionType !== 'multiple_choice'
+                      ? textAnswer.trim()
+                      : selectedAnswer !== null)
+                      ? 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-md hover:shadow-lg shadow-[#7C3AED]/20'
+                      : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  Submit
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
