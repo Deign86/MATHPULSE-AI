@@ -3,7 +3,7 @@ import {
   X, Check, ArrowRight, Volume2, RotateCcw, Trophy, Zap, Flag, HelpCircle,
   Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler, 
   Binary, Atom, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame,
-  Sparkles, PartyPopper, ThumbsUp, Dumbbell, BookOpen
+  Sparkles, PartyPopper, ThumbsUp, Dumbbell, BookOpen,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -89,7 +89,7 @@ const StreakNotification: React.FC<{ streak: number }> = ({ streak }) => {
       exit={{ scale: 0, opacity: 0 }}
       className="fixed top-24 left-1/2 -translate-x-1/2 z-[70] pointer-events-none"
     >
-      <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
+      <div className="bg-gradient-to-r from-[#FFB356] to-[#FF8B8B] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
         <Flame size={24} className="animate-pulse" />
         <div>
           <p className="text-lg font-black">{streak}x STREAK!</p>
@@ -122,25 +122,69 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const [startTime] = useState(Date.now());
   const [streakBonusXP, setStreakBonusXP] = useState(0);
 
+  // Gamification & Flow States
+  const [currentPoints, setCurrentPoints] = useState(0);
+  const [hintsUsed, setHintsUsed] = useState<Record<number, boolean>>({});
+  const [shakeCard, setShakeCard] = useState(false);
+
+  // Background floating orbs logic
+  const [orbs] = useState(Array.from({ length: 15 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 120 + 60,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    duration: Math.random() * 25 + 15,
+    delay: Math.random() * -20,
+    color: ['bg-white/5', 'bg-indigo-300/10', 'bg-sky-300/10', 'bg-purple-300/10'][Math.floor(Math.random() * 4)]
+  })));
+
   const currentQuestion = questions[currentIndex];
   const title = lesson.title;
   const type = lesson.type;
 
-  // Sound effects with better error handling
+  // Sound effects using Web Audio API for synthetic sounds
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'streak') => {
-    const sounds = {
-      correct: 'data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YW4AAAAAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==',
-      incorrect: 'data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YW4AAAAAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==',
-      complete: 'data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YW4AAAAAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==',
-      streak: 'data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YW4AAAAAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=='
-    };
-    
     try {
-      const audio = new Audio(sounds[type]);
-      audio.volume = 0.3;
-      audio.play().catch(() => {});
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const t = ctx.currentTime;
+
+      const playNote = (freq: number, startTime: number, duration: number, vol = 0.1, waveType: OscillatorType = 'sine') => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = waveType;
+        osc.frequency.value = freq;
+        
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      if (type === 'correct') {
+        playNote(880, t, 0.1, 0.1, 'sine'); // A5
+        playNote(1108.73, t + 0.1, 0.2, 0.1, 'sine'); // C#6
+      } else if (type === 'incorrect') {
+        playNote(300, t, 0.2, 0.05, 'sawtooth');
+        playNote(250, t + 0.15, 0.3, 0.05, 'sawtooth');
+      } else if (type === 'streak') {
+        playNote(440, t, 0.1, 0.05, 'square');
+        playNote(554.37, t + 0.1, 0.1, 0.05, 'square');
+        playNote(659.25, t + 0.2, 0.1, 0.05, 'square');
+        playNote(880, t + 0.3, 0.4, 0.05, 'square');
+      } else if (type === 'complete') {
+        playNote(523.25, t, 0.1, 0.1); // C5
+        playNote(659.25, t + 0.15, 0.1, 0.1); // E5
+        playNote(783.99, t + 0.3, 0.1, 0.1); // G5
+        playNote(1046.50, t + 0.45, 0.5, 0.1); // C6
+      }
     } catch (e) {
-      // Silently fail
+      // Silently fail if Audio is blocked
     }
   };
 
@@ -173,6 +217,14 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
     return selectedOption !== null;
   };
 
+  const handleHintUse = () => {
+    if (!hintsUsed[currentIndex] && !isAnswered) {
+      setHintsUsed(prev => ({ ...prev, [currentIndex]: true }));
+      setCurrentPoints(prev => Math.max(0, prev - 5));
+      playSound('correct');
+    }
+  };
+
   const handleAnswer = () => {
     if (!canSubmit()) return;
 
@@ -191,40 +243,45 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
       correct = userAnswer === currentQuestion.correctAnswer;
     }
 
+    // IMMEDIATELY LOCK ANSWER (NO SECOND CHANCES)
     setIsCorrect(correct);
     setIsAnswered(true);
     setAnswerHistory([...answerHistory, correct]);
 
-    if (correct) {
-      setScore(s => s + 1);
-      const newStreak = streak + 1;
-      setStreak(newStreak);
-      setMaxStreak(Math.max(maxStreak, newStreak));
-      
-      // Streak bonus
-      if (newStreak >= 3) {
-        const bonus = newStreak * 5;
-        setStreakBonusXP(prev => prev + bonus);
-        setShowStreakNotification(true);
-        playSound('streak');
-        setTimeout(() => setShowStreakNotification(false), 2000);
-      } else {
-        playSound('correct');
-      }
-    } else {
-      setStreak(0);
+    if (!correct) {
+      setShakeCard(true);
       playSound('incorrect');
+      setTimeout(() => setShakeCard(false), 500);
+      setStreak(0);
+      return;
     }
+
+    // CORRECT ANSWER FLOW
+    const ptsAwarded = hintsUsed[currentIndex] ? 5 : 10;
+    setCurrentPoints(prev => prev + ptsAwarded);
+    setScore(s => s + 1);
+    const newStreak = streak + 1;
+    setStreak(newStreak);
+    setMaxStreak(Math.max(maxStreak, newStreak));
+    
+    // Streak bonus
+    if (newStreak > 0 && newStreak % 3 === 0) {
+      const bonus = newStreak * 5;
+      setStreakBonusXP(prev => prev + bonus);
+      setShowStreakNotification(true);
+      playSound('streak');
+      setTimeout(() => setShowStreakNotification(false), 2000);
+    } else {
+      playSound('correct');
+    }
+    
+    import('canvas-confetti').then((confetti) => {
+      confetti.default({ particleCount: 30, spread: 40, colors: ['#75D06A', '#6ED1CF'], origin: { y: 0.6 } });
+    });
   };
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
-      // Milestone celebration
-      if (currentIndex + 1 === Math.floor(questions.length / 2)) {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
-      }
-      
       setCurrentIndex(prev => prev + 1);
       setIsAnswered(false);
       setSelectedOption(null);
@@ -244,20 +301,20 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
 
   const theme = type === 'quiz' 
     ? {
-        gradient: 'bg-gradient-to-br from-indigo-600 via-sky-600 to-indigo-800',
-        text: 'text-sky-900',
-        bgLight: 'bg-sky-50',
-        border: 'border-sky-200',
-        accent: 'bg-sky-500',
-        iconColor: 'text-sky-200'
+        gradient: 'bg-gradient-to-br from-[#7274ED] via-[#9956DE] to-[#7274ED]',
+        text: 'text-[#7274ED]',
+        bgLight: 'bg-[#7274ED]/10',
+        border: 'border-[#7274ED]/30',
+        accent: 'bg-[#7274ED]/100',
+        iconColor: 'text-white/20'
       }
     : {
-        gradient: 'bg-gradient-to-br from-teal-500 via-emerald-500 to-teal-700',
-        text: 'text-teal-900',
-        bgLight: 'bg-teal-50',
-        border: 'border-teal-200',
-        accent: 'bg-teal-500',
-        iconColor: 'text-teal-200'
+        gradient: 'bg-gradient-to-br from-[#75D06A] via-[#6ED1CF] to-[#75D06A]',
+        text: 'text-[#75D06A]',
+        bgLight: 'bg-[#75D06A]/10',
+        border: 'border-[#75D06A]/30',
+        accent: 'bg-[#75D06A]/100',
+        iconColor: 'text-white/20'
       };
 
   const getTopicIcons = () => {
@@ -324,7 +381,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', delay: 0.2 }}
-                  className="w-20 h-20 bg-gradient-to-br from-rose-400 to-orange-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-rose-200"
+                  className="w-20 h-20 bg-gradient-to-br from-[#FB96BB] to-[#FFB356] rounded-full flex items-center justify-center text-white shadow-2xl shadow-rose-200"
                 >
                   <Trophy size={40} fill="currentColor" />
                 </motion.div>
@@ -374,7 +431,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 transition={{ delay: 0.5 }}
                 className="grid grid-cols-2 gap-3 mb-5"
              >
-                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 border-2 border-sky-200">
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 border-2 border-[#7274ED]/30">
                   <div className="flex items-center justify-center mb-1">
                     <Target className="text-sky-600" size={20} />
                   </div>
@@ -382,7 +439,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   <p className="text-3xl font-black text-sky-700">{percentage}%</p>
                 </div>
                 
-                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-4 border-2 border-orange-200">
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-4 border-2 border-[#FFB356]/30">
                   <div className="flex items-center justify-center mb-1">
                     <Zap className="text-orange-600" size={20} />
                   </div>
@@ -390,15 +447,15 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                   <p className="text-3xl font-black text-orange-600">+{totalXP}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-2xl p-4 border-2 border-teal-200">
+                <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-2xl p-4 border-2 border-[#75D06A]/30">
                   <div className="flex items-center justify-center mb-1">
-                    <Flame className="text-teal-600" size={20} />
+                    <Flame className="text-[#75D06A]" size={20} />
                   </div>
-                  <p className="text-[10px] text-teal-600 font-bold uppercase mb-1 tracking-wider">Best Streak</p>
+                  <p className="text-[10px] text-[#75D06A] font-bold uppercase mb-1 tracking-wider">Best Streak</p>
                   <p className="text-3xl font-black text-teal-700">{maxStreak}x</p>
                 </div>
                 
-                <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-2xl p-4 border-2 border-sky-200">
+                <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-2xl p-4 border-2 border-[#7274ED]/30">
                   <div className="flex items-center justify-center mb-1">
                     <Award className="text-sky-600" size={20} />
                   </div>
@@ -454,7 +511,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.7 + (idx * 0.05) }}
                     className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                      correct ? 'bg-teal-500' : 'bg-red-400'
+                      correct ? 'bg-[#75D06A]/100' : 'bg-red-400'
                     }`}
                   >
                     {correct ? (
@@ -523,7 +580,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
         </div>
 
         {/* Header - Fixed z-index */}
-        <header className="relative z-[60] h-20 flex items-center justify-between px-6 pt-2">
+        <header className="relative z-[60] h-20 flex items-center justify-between px-6 pt-2 shrink-0">
           <div className="flex items-center gap-4 flex-1">
             <button 
               onClick={onBack} 
@@ -541,43 +598,98 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <motion.div 
-              animate={streak >= 3 ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 0.5, repeat: streak >= 3 ? Infinity : 0 }}
-              className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-300"
-            >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shadow-sm ${
-                streak >= 3 ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-orange-500'
-              }`}>
-                <Flame size={14} fill="currentColor" />
-              </div>
-              <span className="text-sm font-bold text-white">{streak}</span>
-            </motion.div>
+          <div className="flex items-center justify-center flex-1">
+            {/* Center placement in header is empty now */}
+          </div>
+
+          <div className="flex items-center justify-end gap-4 flex-1">
+            {/* Right side placeholder to keep center aligned */}
           </div>
         </header>
+
+        {/* Floating Animated Orbs */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+          {orbs.map((orb) => (
+            <motion.div
+              key={orb.id}
+              className={`absolute rounded-full blur-3xl ${orb.color}`}
+              style={{
+                width: orb.size,
+                height: orb.size,
+                left: `${orb.x}%`,
+                top: `${orb.y}%`,
+              }}
+              animate={{
+                x: [0, Math.random() * 100 - 50, 0],
+                y: [0, Math.random() * 100 - 50, 0],
+                scale: [1, 1.2, 1],
+              }}
+              transition={{
+                duration: orb.duration,
+                repeat: Infinity,
+                ease: "linear",
+                delay: orb.delay
+              }}
+            />
+          ))}
+        </div>
 
         {/* Main Content */}
         <main className="relative z-10 flex-1 flex flex-col items-center justify-start px-4 sm:px-6 xl:px-10 pb-8 pt-4 md:pt-8 overflow-y-auto">
           
-          {/* Progress Bar */}
-          <div className="w-full max-w-md mb-8 px-2">
-            <div className="flex justify-between text-[10px] font-bold text-white/80 mb-2 uppercase tracking-wider">
-              <span>Progress</span>
-              <span>{Math.round(((currentIndex) / questions.length) * 100)}%</span>
+          {/* Progress Bar & Gamification Header */}
+          <div className="w-full max-w-lg mb-6 sm:mb-8 px-2 flex items-center justify-between gap-6 shrink-0 mt-2">
+            <div className="flex-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-white/80 mb-2 uppercase tracking-wider">
+                <span>Progress</span>
+                <span className="bg-white/20 px-2 py-0.5 rounded-full flex items-center gap-1"><Zap size={10} /> {currentPoints} pts</span>
+              </div>
+              <div className="flex items-center justify-between gap-1 w-full backdrop-blur-sm">
+                {questions.map((_, idx) => {
+                  let dotClass = 'bg-white/30';
+                  if (idx < currentIndex) {
+                    dotClass = answerHistory[idx] ? 'bg-[#75D06A]' : 'bg-[#FF8B8B]';
+                  } else if (idx === currentIndex) {
+                    dotClass = 'bg-white shadow-[0_0_8px_white] scale-y-125';
+                  }
+                  return (
+                    <motion.div
+                      key={idx}
+                      className={`flex-1 h-2 rounded-full transition-all duration-300 ${dotClass}`}
+                    />
+                  );
+                })}
+              </div>
             </div>
-            <div className="h-2 w-full bg-black/20 rounded-full overflow-hidden backdrop-blur-sm">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${((currentIndex) / questions.length) * 100}%` }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
-                className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-              />
-            </div>
+
+            {/* Breathing Streak Indicator Moved to Right */}
+
+            <motion.div 
+               animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }}
+               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+               className="flex items-center justify-center flex-shrink-0"
+               title={`${streak} Streak`}
+            >
+              <div className="relative flex items-center justify-center w-14 h-14 mt-3">
+                <Flame 
+                  size={54} 
+                  className={`absolute drop-shadow-lg ${
+                    streak >= 10 ? 'text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]' : 
+                    streak >= 5 ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.7)]' : 
+                    streak >= 3 ? 'text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]' : 
+                    streak >= 1 ? 'text-orange-400 drop-shadow-[0_0_6px_rgba(251,146,60,0.5)]' : 
+                    'text-yellow-400 opacity-60'
+                  }`} 
+                  fill="currentColor" 
+                  strokeWidth={1} 
+                />
+                <span className="absolute z-10 text-white font-black text-xl mt-3 drop-shadow-md">{streak}</span>
+              </div>
+            </motion.div>
           </div>
 
           {/* Milestone Notification */}
-          {currentIndex === Math.floor(questions.length / 2) && currentIndex > 0 && (
+          {currentIndex === Math.floor(questions.length / 2) && currentIndex > 0 && !isAnswered && (
             <motion.div
               initial={{ scale: 0, y: 20 }}
               animate={{ scale: 1, y: 0 }}
@@ -593,43 +705,94 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
             <motion.div 
               key={currentIndex}
               initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
+              animate={shakeCard ? { x: [-10, 10, -10, 10, 0], scale: [1, 1.01, 1], opacity: 1 } : { opacity: 1, x: 0 }}
+              transition={shakeCard ? { duration: 0.4 } : { type: 'spring', stiffness: 300, damping: 30 }}
               exit={{ opacity: 0, x: -100 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="w-full max-w-3xl"
+              className="w-full max-w-[50rem] mx-auto flex flex-col flex-1 pb-10"
             >
-              <div className="bg-white rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#dde3eb] min-h-[450px] flex flex-col relative">
+              <div className="bg-white rounded-[32px] sm:rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#dde3eb] flex flex-col relative flex-1 min-h-[450px]">
                 
+                {/* Visual state top bar */}
+                <motion.div 
+                  animate={{
+                    backgroundColor: isAnswered
+                      ? (isCorrect ? '#75D06A' : '#FF8B8B') // green (correct) or red (incorrect)
+                      : '#7C3AED' // purple (default)
+                  }}
+                  className="h-2 w-full absolute top-0 left-0 z-20"
+                />
+
                 {/* Question Area */}
-                <div className="p-8 md:p-12 flex-1 flex flex-col items-center justify-center text-center">
-                   <span className={`inline-block px-4 py-1.5 ${theme.bgLight} ${theme.text} rounded-full text-[11px] font-black mb-8 uppercase tracking-widest border ${theme.border}`}>
+                <div className="p-6 sm:p-8 md:p-10 shrink-0 flex flex-col items-center justify-center text-center mt-2">
+                   <span className={`inline-block px-4 py-1.5 ${theme.bgLight} ${theme.text} rounded-full text-[10px] sm:text-[11px] font-black mb-4 sm:mb-8 uppercase tracking-widest border ${theme.border}`}>
                      {currentQuestion.type === 'multiple-choice' ? 'Multiple Choice' : 
                       currentQuestion.type === 'true-false' ? 'True or False' : 'Fill in the Blank'}
                    </span>
-                   <h2 className="text-2xl md:text-3xl font-bold text-[#0a1628] leading-snug max-w-2xl">
-                     {currentQuestion.question}
+                   <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#0a1628] leading-snug w-full">
+                     {currentQuestion.question.includes('___') ? (
+                       <span>
+                          {currentQuestion.question.split('___').map((part, i, arr) => (
+                             <React.Fragment key={i}>
+                               {part}
+                               {i < arr.length - 1 && (
+                                 <input 
+                                   type="text" 
+                                   disabled={isAnswered}
+                                   value={textInput}
+                                   onChange={(e) => setTextInput(e.target.value)}
+                                   className={`inline-block w-24 mx-2 border-b-4 outline-none text-center bg-transparent font-bold ${isAnswered ? (isCorrect ? 'border-[#75D06A] text-[#75D06A]' : 'border-red-500 text-red-500') : 'border-[#7C3AED] text-[#7C3AED] focus:border-[#75D06A]'}`}
+                                 />
+                               )}
+                             </React.Fragment>
+                          ))}
+                       </span>
+                     ) : (
+                       currentQuestion.question
+                     )}
                    </h2>
+
+                   {!isAnswered && currentQuestion.explanation && (
+                      <button 
+                         onClick={handleHintUse}
+                         disabled={hintsUsed[currentIndex]}
+                         className={`mt-6 flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${
+                           hintsUsed[currentIndex] 
+                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                             : 'bg-orange-100 text-orange-600 hover:bg-orange-200 shadow-sm'
+                         }`}
+                      >
+                        <Zap size={14} />
+                        {hintsUsed[currentIndex] ? 'Hint Used' : 'Use Hint (-5 pts)'}
+                      </button>
+                   )}
+                   {hintsUsed[currentIndex] && !isAnswered && (
+                      <div className="mt-4 text-sm bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2 rounded-xl">
+                         <strong>Hint:</strong> {typeof currentQuestion.explanation === 'string' ? currentQuestion.explanation.substring(0, 80) : 'Check your concepts...'}
+                      </div>
+                   )}
                 </div>
 
                 {/* Answer Area */}
-                <div className="p-6 md:p-10 bg-[#edf1f7]/80 backdrop-blur-sm border-t border-[#dde3eb]">
+                <div className="p-4 sm:p-6 md:p-8 bg-[#edf1f7]/80 backdrop-blur-sm border-t border-[#dde3eb] flex-1 overflow-y-auto flex flex-col justify-center">
                   {/* Multiple Choice & True/False */}
                   {(currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'true-false') && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="w-full max-w-4xl mx-auto flex flex-col">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
                         {(currentQuestion.type === 'true-false' ? ['True', 'False'] : shuffledOptions).map((option, idx) => {
                            let stateClasses = "hover:border-[#dde3eb] hover:shadow-lg bg-white border-[#dde3eb] text-[#5a6578] shadow-sm";
                            
                            if (isAnswered) {
                              if (option === currentQuestion.correctAnswer) {
-                               stateClasses = "bg-teal-50 border-teal-500 text-teal-700 shadow-teal-100 ring-2 ring-teal-200";
+                               stateClasses = "bg-[#75D06A]/10 border-[#75D06A] text-teal-700 shadow-teal-100 ring-2 ring-teal-200";
                              } else if (option === selectedOption) {
-                               stateClasses = "bg-red-50 border-red-500 text-red-700 shadow-red-100 ring-2 ring-red-200";
+                               // This was their selected WRONG answer
+                               stateClasses = "bg-red-50 border-red-500 text-red-700 shadow-red-100 ring-2 ring-red-200 opacity-80";
                              } else {
+                               // Disabled other options
                                stateClasses = "bg-[#edf1f7] border-[#dde3eb] text-slate-500 opacity-60 scale-[0.98]";
                              }
                            } else if (selectedOption === option) {
-                             stateClasses = `${theme.bgLight} ${theme.border} ${theme.text} ring-2 ring-indigo-100 shadow-md scale-[1.02] z-10`;
+                             stateClasses = `bg-purple-50 border-[#7C3AED] text-[#7C3AED] ring-2 ring-indigo-100 shadow-md scale-[1.02] z-10`;
                            }
 
                            return (
@@ -640,18 +803,18 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                               whileHover={!isAnswered ? { scale: 1.02 } : {}}
                               whileTap={!isAnswered ? { scale: 0.98 } : {}}
                               className={`
-                                relative p-6 rounded-2xl border-2 font-bold text-lg transition-all duration-200 text-left flex items-center justify-between group
+                                relative p-4 sm:p-5 md:p-6 rounded-2xl md:rounded-[20px] border-2 font-bold text-base sm:text-lg transition-all duration-200 text-left flex items-center justify-between group min-h-[4rem] sm:min-h-[5rem] w-full
                                 ${stateClasses}
                               `}
                             >
-                              <span className="relative z-10">{option}</span>
+                              <span className="relative z-10 break-words line-clamp-3 pr-2 w-full">{option}</span>
                               {isAnswered && option === currentQuestion.correctAnswer && (
                                 <motion.div 
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}
-                                  className="bg-teal-100 p-1 rounded-full"
+                                  className="bg-[#75D06A] p-1 rounded-full"
                                 >
-                                  <Check size={18} className="text-teal-600" />
+                                  <Check size={18} className="text-white" />
                                 </motion.div>
                               )}
                               {isAnswered && option === selectedOption && option !== currentQuestion.correctAnswer && (
@@ -676,20 +839,19 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="space-y-3 mt-6"
+                          className="space-y-3 mt-6 w-full"
                         >
                           {/* Show explanation for wrong answer first (if wrong) */}
                           {!isCorrect && selectedOption && selectedOption !== currentQuestion.correctAnswer && (
                             <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
                               <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0 mt-0.5">
-                                  <X size={18} className="text-red-600" />
+                                  <X size={20} className="text-red-500" />
                                 </div>
                                 <div>
-                                  <p className="font-bold text-red-700 mb-1">Not quite</p>
+                                  <p className="font-bold text-red-700 mb-1">Incorrect</p>
                                   <p className="text-red-800 text-sm leading-relaxed">
-                                    {currentQuestion.optionExplanations?.[selectedOption] || 
-                                     `${selectedOption} is not the correct answer. Review the concept and try again.`}
+                                     {typeof currentQuestion.explanation === 'string' ? currentQuestion.explanation : (currentQuestion.explanation as any)?.incorrect}
                                   </p>
                                 </div>
                               </div>
@@ -697,19 +859,17 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                           )}
 
                           {/* Always show correct answer explanation */}
-                          <div className="bg-teal-50 border-2 border-teal-200 rounded-2xl p-4">
+                          <div className={`bg-[#75D06A]/10 border-2 border-[#75D06A]/30 rounded-2xl p-4 ${isCorrect ? 'block' : 'hidden'}`}>
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-0.5">
-                                <Check size={18} className="text-teal-600" />
+                                <Check size={20} className="text-[#75D06A]" />
                               </div>
                               <div>
                                 <p className="font-bold text-teal-700 mb-1">
-                                  {isCorrect ? "That's right!" : "Right answer"}
+                                  Correct!
                                 </p>
                                 <p className="text-teal-800 text-sm leading-relaxed">
-                                  {currentQuestion.explanation || 
-                                   currentQuestion.optionExplanations?.[currentQuestion.correctAnswer] ||
-                                   `${currentQuestion.correctAnswer} is the correct answer.`}
+                                   {typeof currentQuestion.explanation === 'string' ? currentQuestion.explanation : (currentQuestion.explanation as any)?.correct}
                                 </p>
                               </div>
                             </div>
@@ -719,82 +879,61 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                     </div>
                   )}
 
-                  {/* Fill in the Blank */}
-                  {currentQuestion.type === 'fill-in-blank' && (
-                    <div className="max-w-md mx-auto">
-                      <div className="relative group">
-                        <Input
-                          disabled={isAnswered}
-                          value={textInput}
-                          onChange={(e) => setTextInput(e.target.value)}
-                          placeholder="Type your answer here..."
-                          className={`
-                            py-8 px-6 text-xl rounded-2xl border-2 font-bold transition-all text-center placeholder:font-medium placeholder:text-slate-500
-                            ${isAnswered 
-                              ? isCorrect 
-                                ? 'bg-teal-50 border-teal-500 text-teal-800' 
-                                : 'bg-red-50 border-red-500 text-red-800'
-                              : 'bg-white border-[#dde3eb] focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 shadow-sm'
-                            }
-                          `}
-                        />
-                        {isAnswered && (
-                          <motion.div 
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2"
-                          >
-                            {isCorrect ? (
-                              <div className="bg-teal-100 p-1.5 rounded-full">
-                                <Check className="text-teal-600" size={20} />
-                              </div>
-                            ) : (
-                              <div className="bg-red-100 p-1.5 rounded-full">
-                                <X className="text-red-600" size={20} />
-                              </div>
-                            )}
-                          </motion.div>
-                        )}
-                      </div>
-                      {isAnswered && !isCorrect && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-4 text-center"
-                        >
-                          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Correct answer</p>
-                          <p className="text-teal-600 font-black text-xl">{currentQuestion.correctAnswer}</p>
-                        </motion.div>
+                  {/* Fill in the Blank Feedback (Input is in the title now) */}
+                  {currentQuestion.type === 'fill-in-blank' && isAnswered && !isCorrect && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-4 text-center w-full"
+                    >
+                      <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Correct answer</p>
+                      <p className="text-[#75D06A] font-black text-2xl bg-[#75D06A]/10 py-3 rounded-2xl border-2 border-[#75D06A]/30 inline-block px-10">{currentQuestion.correctAnswer}</p>
+                      {currentQuestion.explanation && (
+                         <div className="mt-6 mx-auto max-w-lg bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex gap-3 text-left">
+                            <X size={20} className="shrink-0 text-red-500" />
+                            <div className="text-sm font-medium">
+                               {typeof currentQuestion.explanation === 'string' ? currentQuestion.explanation : (currentQuestion.explanation as any)?.incorrect}
+                            </div>
+                         </div>
                       )}
-                    </div>
+                    </motion.div>
+                  )}
+                  {currentQuestion.type === 'fill-in-blank' && isAnswered && isCorrect && currentQuestion.explanation && (
+                     <motion.div 
+                       initial={{ opacity: 0, y: -10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       className="mt-4 bg-[#75D06A]/10 border border-[#75D06A]/30 text-teal-800 rounded-xl p-4 flex gap-3 text-left max-w-lg mx-auto w-full text-sm font-medium"
+                     >
+                         <Check size={20} className="shrink-0 text-[#75D06A]" />
+                         <div>
+                            <span className="font-bold block mb-1">Correct! </span>
+                            {typeof currentQuestion.explanation === 'string' ? currentQuestion.explanation : (currentQuestion.explanation as any)?.correct}
+                         </div>
+                     </motion.div>
                   )}
                 </div>
                 
                 {/* Footer / Controls */}
-                <div className="p-6 border-t border-[#dde3eb] bg-white flex items-center justify-between">
-                   <Button 
-                     variant="ghost" 
-                     size="sm"
-                     className="text-slate-500 hover:text-[#5a6578] hover:bg-[#edf1f7] rounded-xl"
-                   >
-                     <Flag size={16} className="mr-2" /> Report
-                   </Button>
-
+                <div className="p-4 sm:p-6 border-t border-[#dde3eb] bg-white flex items-center justify-between shrink-0 gap-4">
                    {!isAnswered ? (
-                     <Button 
-                       onClick={handleAnswer}
-                       disabled={!canSubmit()}
-                       className={`px-10 py-7 rounded-2xl font-bold text-base ${theme.gradient} text-white shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:shadow-none transition-all hover:-translate-y-1 hover:brightness-110 disabled:hover:translate-y-0`}
-                     >
-                       Check Answer
-                     </Button>
+                     <div className="w-full flex gap-3">
+                       <Button 
+                         onClick={handleAnswer}
+                         disabled={!canSubmit()}
+                         className={`flex-1 px-10 py-7 rounded-2xl font-bold text-base shadow-xl disabled:opacity-50 disabled:shadow-none transition-all hover:-translate-y-1 hover:brightness-110 disabled:hover:translate-y-0 ${
+                           canSubmit() ? 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white' : 'bg-slate-100 text-slate-400 border-2 border-slate-200'
+                         }`}
+                       >
+                         Check Answer
+                       </Button>
+                     </div>
                    ) : (
                      <Button 
                        onClick={handleNext}
-                       className={`px-10 py-7 rounded-2xl font-bold text-base shadow-xl transition-all flex items-center gap-2 hover:-translate-y-1 ${
+                       className={`w-full px-10 py-7 rounded-2xl font-bold text-base shadow-xl transition-all flex items-center justify-center gap-2 hover:-translate-y-1 ${
                          isCorrect 
-                           ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-teal-200' 
-                            : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm'
+                           ? 'bg-[#75D06A]/100 hover:bg-teal-600 text-white shadow-teal-200' 
+                            : 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
                        }`}
                      >
                        {currentIndex < questions.length - 1 ? 'Next Question' : 'Finish Lesson'}
