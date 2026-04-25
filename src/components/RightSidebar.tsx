@@ -8,7 +8,9 @@ interface RightSidebarProps {
   onOpenRewards: () => void;
   onOpenLeaderboard?: () => void;
   onNavigateToModules?: () => void;
+  onNavigateToQuizBattle?: () => void;
   userLevel: number;
+  userPhoto?: string;
   currentXP: number;
   overallXP?: number;
   xpToNextLevel: number;
@@ -24,7 +26,9 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   onOpenRewards, 
   onOpenLeaderboard,
   onNavigateToModules,
+  onNavigateToQuizBattle,
   userLevel, 
+  userPhoto,
   currentXP, 
   xpToNextLevel,
   streak,
@@ -110,7 +114,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <DailyChallengeWidget streakHistory={streakHistory} />
+        <DailyChallengeWidget streakHistory={streakHistory} onNavigateToQuizBattle={onNavigateToQuizBattle} userPhoto={userPhoto} />
       </motion.div>
 
       {/* Leaderboard Preview with Miniature Stage */}
