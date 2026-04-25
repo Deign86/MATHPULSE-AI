@@ -1111,7 +1111,9 @@ const App = () => {
                               onOpenRewards={() => setShowRewardsModal(true)}
                               onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                               onNavigateToModules={() => setActiveTab('Modules')}
+                              onNavigateToQuizBattle={() => handleStudentNavigation('Quiz Battle')}
                               userLevel={userLevel}
+                              userPhoto={profileData.photo}
                               currentXP={progressXPInLevel}
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}

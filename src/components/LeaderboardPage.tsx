@@ -104,20 +104,20 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
         filtered = filtered.filter(s => s.section === mySection);
       }
     }
-    
+
     // Sort Ascending Rank
     const sorted = filtered.sort((a, b) => {
       const rankKey = activeView === 'section' ? 'section' : 'global';
       return (a.rank[rankKey] || 999) - (b.rank[rankKey] || 999);
     });
-    
+
     // Fallback: Pad array to ensure we always have 3 for the podium layout
-    while(sorted.length > 0 && sorted.length < 3) {
+    while (sorted.length > 0 && sorted.length < 3) {
       const mockRank = sorted.length + 1;
       sorted.push({
         id: `mock-${mockRank}`, uid: `mock-${mockRank}`, name: `Student ${mockRank}`,
         avatar: '', level: 1, totalXP: 0, currentStreak: 0, section: myClassSection || '',
-        rank: { global: mockRank, section: mockRank, change: 0 }, stats: { quizzesCompleted:0, averageScore:0, modulesCompleted:0, studyHours:0},
+        rank: { global: mockRank, section: mockRank, change: 0 }, stats: { quizzesCompleted: 0, averageScore: 0, modulesCompleted: 0, studyHours: 0 },
         isOnline: false, isYou: false
       });
     }
@@ -126,7 +126,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
   };
 
   const filteredStudents = getFilteredStudents();
-  
+
   const yourRank = filteredStudents.find(s => s.isYou)?.rank.section || 4;
   const percentile = Math.max(10, Math.min(99, 100 - (yourRank / Math.max(1, filteredStudents.length)) * 100));
 
@@ -152,79 +152,80 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
   return (
     <div className="w-full min-h-screen relative flex flex-col items-center font-body text-white">
       {/* Background that fades dynamically without harsh container edges */}
-      <div className="absolute inset-x-[-20px] top-0 bottom-[-50px] z-[-1] pointer-events-none overflow-hidden">
-        {/* Radial base fading from purple at bottom center to transparent at edges */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,#9333ea_0%,#c084fc_40%,transparent_80%)]"></div>
-        
-        {/* Sunburst Rays fading nicely before hitting the top header */}
-        <div 
-           className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[250vw] md:w-[200vw] h-[150vh] opacity-75 pointer-events-none"
-           style={{
-             WebkitMaskImage: 'radial-gradient(circle at 50% 100%, black 10%, transparent 60%)'
-           }}>
-           <motion.div 
-             className="absolute bottom-0 left-1/2 w-[300vw] h-[300vw] md:w-[200vw] md:h-[200vw]"
-             style={{
-               x: "-50%",
-               originX: 0.5,
-               originY: 1,
-               background: `repeating-conic-gradient(from 0deg at 50% 100%, 
-                 rgba(255,255,255,0.7) 0deg, rgba(255,255,255,0.7) 6deg, 
-                 transparent 6deg, transparent 12deg)`
-             }}
-             animate={{ rotate: 360 }}
-             transition={{ duration: 160, repeat: Infinity, ease: "linear" }}
-           />
+      <div className="absolute inset-x-[-30px] top-[-30px] bottom-0 z-[-1] pointer-events-none overflow-hidden bg-[#f5ecff]">
+        {/* Radial base fading from purple at bottom center to the very top */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_100%,#9333ea_0%,#c084fc_50%,transparent_100%)]"></div>
+
+        {/* Sunburst Rays - Originating from precisely the bottom of the podiums */}
+        <div
+          className="absolute inset-x-[-30px] top-[-30px] bottom-0 opacity-50 pointer-events-none mix-blend-plus-lighter overflow-hidden"
+        >
+          <motion.div
+            className="absolute top-[540px] md:top-[600px] left-1/2"
+            style={{
+              width: "4000px",
+              height: "4000px",
+              marginLeft: "-2000px",
+              marginTop: "-2000px",
+              originX: 0.5,
+              originY: 0.5,
+              background: `repeating-conic-gradient(from 0deg at 50% 50%, 
+              rgba(255, 250, 193, 1) 0deg, rgba(255, 250, 193, 0.7) 4deg, 
+              transparent 4deg, transparent 8deg)`
+
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 240, repeat: Infinity, ease: "linear" }}
+          />
         </div>
-        
-        {/* Soft core light effect */}
+
+        {/* Soft core light effect at bottom */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150vw] h-[100vh] bg-[radial-gradient(ellipse_at_50%_100%,#7e22ce_10%,transparent_60%)] mix-blend-overlay"></div>
       </div>
       <div className="absolute inset-0 bg-math-pattern opacity-[0.03] mix-blend-overlay pointer-events-none z-[-1]" style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%)' }}></div>
 
       {/* Constraints Wrapper */}
       <div className="relative z-10 w-full px-4 sm:px-8 py-4 md:py-6 flex flex-col items-center">
-        
+
         {/* Top App Bar Area */}
         <div className="w-full flex justify-center items-center mb-4 mt-2">
           <h1 className="text-3xl md:text-4xl font-display font-bold tracking-wide text-slate-800 drop-shadow-sm">Leaderboard</h1>
         </div>
 
         {/* Time Filters - Segmented Pill based on Reference Image 1 */}
-          <div className="bg-slate-800/5 backdrop-blur-md rounded-full p-1 flex gap-1 mb-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-slate-800/10 w-full max-w-[340px]">
-            {(['daily', 'weekly', 'all'] as TimeFilter[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setTimeFilter(mode)}
-                className={`flex-1 py-1.5 rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${
-                  timeFilter === mode
-                    ? 'bg-white text-purple-700 shadow-md border border-white/50 backdrop-blur-lg'
-                    : 'text-slate-600 hover:text-purple-700 hover:bg-white/50'
+        <div className="bg-slate-800/5 backdrop-blur-md rounded-full p-1 flex gap-1 mb-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-slate-800/10 w-full max-w-[340px]">
+          {(['daily', 'weekly', 'all'] as TimeFilter[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setTimeFilter(mode)}
+              className={`flex-1 py-1.5 rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${timeFilter === mode
+                ? 'bg-white text-purple-700 shadow-md border border-white/50 backdrop-blur-lg'
+                : 'text-slate-600 hover:text-purple-700 hover:bg-white/50'
                 }`}
-              >
-                {mode === 'all' ? 'All Time' : mode}
-              </button>
-            ))}
+            >
+              {mode === 'all' ? 'All Time' : mode}
+            </button>
+          ))}
+        </div>
+
+        {/* Personalized Gamified Banner based on Reference Image 1 */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-[420px] mb-4 bg-[#FFB356] p-2.5 md:p-3 rounded-full shadow-lg flex items-center gap-3 relative overflow-hidden ring-1 ring-white/20"
+        >
+          {/* Subtle noise pattern inside orange banner */}
+          <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
+
+          <div className="bg-white/25 backdrop-blur-md px-4 py-2 min-w-[60px] rounded-full flex flex-col items-center justify-center shadow-sm z-10 border border-white/20">
+            <span className="text-xl md:text-2xl font-display font-bold text-white leading-none">#{yourRank}</span>
           </div>
-
-          {/* Personalized Gamified Banner based on Reference Image 1 */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-[420px] mb-4 bg-[#FFB356] p-2.5 md:p-3 rounded-full shadow-lg flex items-center gap-3 relative overflow-hidden ring-1 ring-white/20"
-          >
-            {/* Subtle noise pattern inside orange banner */}
-            <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
-
-            <div className="bg-white/25 backdrop-blur-md px-4 py-2 min-w-[60px] rounded-full flex flex-col items-center justify-center shadow-sm z-10 border border-white/20">
-              <span className="text-xl md:text-2xl font-display font-bold text-white leading-none">#{yourRank}</span>
-            </div>
-            <div className="z-10 flex-1 pr-2 md:pr-4">
-              <p className="font-medium text-white/90 text-sm md:text-[15px] leading-snug text-center">
-                You are doing better than <span className="font-black text-white drop-shadow-sm">{Math.round(percentile)}%</span> of other players!
-              </p>
-            </div>
-          </motion.div>
+          <div className="z-10 flex-1 pr-2 md:pr-4">
+            <p className="font-medium text-white/90 text-sm md:text-[15px] leading-snug text-center">
+              You are doing better than <span className="font-black text-white drop-shadow-sm">{Math.round(percentile)}%</span> of other players!
+            </p>
+          </div>
+        </motion.div>
 
         {/* Glowing Spotlight Rays have been replaced by the Sunburst integrated into the main background */}
 
@@ -250,18 +251,18 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
             <div className="w-[90%] relative mt-2">
               {/* Bottom Curve */}
               <div className="w-full h-10 md:h-14 absolute -bottom-5 md:-bottom-7 bg-[#D96C6A] rounded-[50%] shadow-[0_15px_25px_rgba(0,0,0,0.4)] z-0"></div>
-              
+
               {/* Main Body */}
               <div className="w-full h-[100px] md:h-[130px] bg-[#D96C6A] relative z-10 flex flex-col items-center justify-start overflow-hidden">
                 <span className="absolute inset-x-0 top-3 flex items-center justify-center text-[60px] md:text-[80px] font-black text-white/10 drop-shadow">2</span>
               </div>
-              
+
               {/* Top Platform */}
               <div className="w-full h-10 md:h-14 absolute -top-5 md:-top-7 bg-[#FF8B8B] rounded-[50%] z-20 shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
-                 {/* Shadow Text laying flat */}
-                 <div className="text-black/25 font-black text-[18px] md:text-[26px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
-                   {topThree[1]?.totalXP || 0} XP
-                 </div>
+                {/* Shadow Text laying flat */}
+                <div className="text-black/25 font-black text-[18px] md:text-[26px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                  {topThree[1]?.totalXP || 0} XP
+                </div>
               </div>
             </div>
           </motion.div>
@@ -289,18 +290,18 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
             <div className="w-[95%] relative mt-2">
               {/* Bottom Curve */}
               <div className="w-full h-12 md:h-16 absolute -bottom-6 md:-bottom-8 bg-[#6F2BAF] rounded-[50%] shadow-[0_20px_30px_rgba(0,0,0,0.5)] z-0"></div>
-              
+
               {/* Main Body */}
               <div className="w-full h-[140px] md:h-[180px] bg-[#6F2BAF] relative z-10 flex flex-col items-center justify-start overflow-hidden">
                 <span className="absolute inset-x-0 top-4 flex items-center justify-center text-[80px] md:text-[110px] font-black text-white/10 drop-shadow">1</span>
               </div>
-              
+
               {/* Top Platform */}
               <div className="w-full h-12 md:h-16 absolute -top-6 md:-top-8 bg-[#9956DE] rounded-[50%] z-20 shadow-[0_5px_12px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center">
-                 {/* Shadow Text laying flat */}
-                 <div className="text-black/25 font-black text-[22px] md:text-[32px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
-                   {topThree[0]?.totalXP || 0} XP
-                 </div>
+                {/* Shadow Text laying flat */}
+                <div className="text-black/25 font-black text-[22px] md:text-[32px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                  {topThree[0]?.totalXP || 0} XP
+                </div>
               </div>
             </div>
           </motion.div>
@@ -325,18 +326,18 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
             <div className="w-[90%] relative mt-2">
               {/* Bottom Curve */}
               <div className="w-full h-10 md:h-14 absolute -bottom-5 md:-bottom-7 bg-[#DE7949] rounded-[50%] shadow-[0_15px_25px_rgba(0,0,0,0.4)] z-0"></div>
-              
+
               {/* Main Body */}
               <div className="w-full h-[75px] md:h-[100px] bg-[#DE7949] relative z-10 flex flex-col items-center justify-start overflow-hidden">
                 <span className="absolute inset-x-0 top-1 flex items-center justify-center text-[50px] md:text-[70px] font-black text-white/10 drop-shadow">3</span>
               </div>
-              
+
               {/* Top Platform */}
               <div className="w-full h-10 md:h-14 absolute -top-5 md:-top-7 bg-[#FFB356] rounded-[50%] z-20 shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
-                 {/* Shadow Text laying flat */}
-                 <div className="text-black/25 font-black text-[16px] md:text-[22px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
-                   {topThree[2]?.totalXP || 0} XP
-                 </div>
+                {/* Shadow Text laying flat */}
+                <div className="text-black/25 font-black text-[16px] md:text-[22px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                  {topThree[2]?.totalXP || 0} XP
+                </div>
               </div>
             </div>
           </motion.div>
@@ -346,28 +347,25 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
       </div>{/* End Main Container Constraints */}
 
       {/* ----- Rest of Rankings List Container ----- */}
-      {/* Takes up the remaining space, beautifully floating over the fixed background with a solid peeking styling */}
-      <div className="w-full flex-grow relative z-20 pt-6 pb-32 px-4 sm:px-10 flex flex-col items-center mt-[-20px] md:mt-[-40px] bg-white transition-all duration-300 hover:-translate-y-2 rounded-t-[2.5rem] shadow-[0_-15px_50px_rgba(0,0,0,0.2)] hover:shadow-[0_-20px_60px_rgba(0,0,0,0.3)] border-t border-slate-100 min-h-[50vh]">
-        {/* Ensures the white background continues downwards to cover any safe areas or scrolling gaps */}
-        <div className="absolute top-[50%] bottom-[-500px] left-0 right-0 bg-white z-[-1]"></div>
-        
+      {/* Container wraps the items and flex-grows to cover the bottom, without generating false empty scroll space */}
+      <div className="w-full flex-grow relative z-20 pt-6 pb-8 px-4 sm:px-10 flex flex-col items-center mt-[-15px] md:mt-[-30px] bg-white rounded-t-[2.5rem] shadow-[0_-10px_30px_rgba(0,0,0,0.1)] border-t border-slate-100 min-h-[50vh]">
+
         {/* Visual Handle / indicator to scroll down */}
-        <div className="w-12 h-1.5 bg-slate-300/80 rounded-full mb-6 mt-[-10px]"></div>
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mb-6 mt-[-5px]"></div>
 
         <div className="w-full max-w-4xl space-y-3.5">
           {restOfList.map((student, index) => {
             const actualRank = student.rank.global || index + 4;
-            
+
             return (
               <motion.div
                 key={student.id}
                 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 + 0.3 }}
                 onClick={() => setSelectedStudent(student)}
-                className={`flex items-center gap-4 p-3.5 md:p-4 rounded-3xl cursor-pointer bg-white border transition-all duration-300 ${
-                  student.isYou 
-                    ? 'border-[#8B5CF6]/40 shadow-xl shadow-[#8B5CF6]/20 ring-2 ring-[#8B5CF6]/10' 
-                    : 'border-slate-100 shadow-[0_12px_25px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_30px_rgba(0,0,0,0.12)]'
-                }`}
+                className={`flex items-center gap-4 p-3.5 md:p-4 rounded-3xl cursor-pointer bg-white border transition-all duration-300 ${student.isYou
+                  ? 'border-[#8B5CF6]/40 shadow-xl shadow-[#8B5CF6]/20 ring-2 ring-[#8B5CF6]/10'
+                  : 'border-slate-100 shadow-[0_12px_25px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_30px_rgba(0,0,0,0.12)]'
+                  }`}
               >
                 {/* Rank Bubble */}
                 <div className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-slate-100 bg-white flex items-center justify-center font-display font-bold text-slate-500 shadow-sm text-sm">
@@ -383,8 +381,8 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
                 <div className="flex-1 flex justify-between items-center pr-2">
                   <div>
                     <h4 className="font-display font-bold text-[#1E293B] text-[15px] md:text-lg flex items-center gap-2 tracking-wide">
-                       {student.name}
-                       {student.isYou && <span className="text-[9px] uppercase tracking-wider bg-[#8B5CF6] text-white px-1.5 py-0.5 rounded font-bold">You</span>}
+                      {student.name}
+                      {student.isYou && <span className="text-[9px] uppercase tracking-wider bg-[#8B5CF6] text-white px-1.5 py-0.5 rounded font-bold">You</span>}
                     </h4>
                   </div>
                   <div>
