@@ -11,12 +11,15 @@ import {
   AlertTriangle,
   Play,
   Sparkles,
+  RotateCcw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ModuleFolderCard from './ModuleFolderCard';
 import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
+import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
+import DailyCheckInModal from './DailyCheckInModal';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { subjects, getActiveSubjectIdsForGrade, type Module, type SubjectId } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -53,6 +56,41 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [selectedModule, setSelectedModule] = useState<Module | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Daily Check-in State
+  const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
+  const [claimedDays, setClaimedDays] = useState<number[]>([]);
+  const currentDay = 3; // Mock day 3 for demonstration
+
+  // Check Daily Login on mount
+  useEffect(() => {
+    const lastClaimed = localStorage.getItem('mathpulse_last_claim_date');
+    const today = new Date().toDateString();
+    
+    // Mock past claimed days
+    const storedClaimedDays = JSON.parse(localStorage.getItem('mathpulse_claimed_days') || '[1, 2]');
+    setClaimedDays(storedClaimedDays);
+
+    if (lastClaimed !== today) {
+      const timer = setTimeout(() => setShowDailyCheckIn(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleClaimDailyReward = (reward: any) => {
+    const today = new Date().toDateString();
+    localStorage.setItem('mathpulse_last_claim_date', today);
+    
+    const newClaimed = [...claimedDays, currentDay];
+    setClaimedDays(newClaimed);
+    localStorage.setItem('mathpulse_claimed_days', JSON.stringify(newClaimed));
+    
+    if (onEarnXP) {
+      onEarnXP(reward?.amount || 0, `Daily Reward! +${reward?.amount || 0} XP`);
+    }
+    
+    setTimeout(() => setShowDailyCheckIn(false), 1500);
+  };
 
   // Handle navigation from initialModuleId when component is already mounted
   useEffect(() => {
@@ -145,6 +183,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   return (
     <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
+      <DailyCheckInModal
+        isOpen={showDailyCheckIn}
+        onClose={() => setShowDailyCheckIn(false)}
+        onClaim={handleClaimDailyReward}
+        currentDay={currentDay}
+        claimedDays={claimedDays}
+      />
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
           <div className="flex-1 max-w-3xl">
@@ -157,52 +202,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           </div>
 
             <div className="hidden md:flex flex-shrink-0 items-center justify-end w-[350px]">
-              <svg viewBox="0 0 300 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-sm">
-                {/* Character Base */}
-                <circle cx="210" cy="90" r="45" fill="#202124" />
-                <path d="M165 90 C165 65.1472 185.147 45 210 45 C234.853 45 255 65.1472 255 90 C255 114.853 234.853 135 210 135 C185.147 135 165 114.853 165 90 Z" fill="#202124"/>
-
-                {/* Hair/Body */}
-                <path d="M150 140 C140 120 160 80 200 70 C240 60 260 80 270 120 C275 140 260 180 210 180 C160 180 155 160 150 140 Z" fill="#202124"/>
-
-                {/* Face */}
-                <path d="M210 125 C195 125 185 110 185 95 C185 80 200 72 215 72 C230 72 245 80 245 95 C245 115 225 125 210 125 Z" fill="#e8eaed"/>
-                <circle cx="202" cy="92" r="2" fill="#202124"/>
-                <circle cx="225" cy="92" r="2" fill="#202124"/>
-                <path d="M210 105 Q 215 110 220 105" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-                <path d="M198 86 Q 202 84 206 86" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-                <path d="M220 86 Q 225 84 230 86" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-
-                {/* Earrings */}
-                <circle cx="180" cy="100" r="6" stroke="#202124" strokeWidth="2" fill="none"/>
-                <circle cx="248" cy="100" r="6" stroke="#202124" strokeWidth="2" fill="none"/>
-
-                {/* Shirt */}
-                <path d="M175 180 L 180 135 C185 125 235 125 240 135 L 245 180 Z" fill="#f8f9fa"/>
-                <path d="M175 180 L 180 135 C185 125 235 125 240 135 L 245 180 Z" stroke="#202124" strokeWidth="2" fill="none"/>
-
-                {/* Laptop */}
-                <path d="M170 178 L 220 178 L 230 130 L 180 130 Z" fill="white" stroke="#202124" strokeWidth="2" strokeLinejoin="round"/>
-                <path d="M160 178 L 250 178" stroke="#202124" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M195 130 C195 130 190 155 180 170" stroke="#202124" strokeWidth="2" strokeLinecap="round" fill="none"/>
-
-                {/* Floating Elements (Left) */}
-                <circle cx="120" cy="50" r="14" fill="white" stroke="#202124" strokeWidth="1.5"/>
-                <path d="M112 50 L 128 50 M 120 42 L 120 58 M 115 45 L 125 55 M 115 55 L 125 45" stroke="#202124" strokeWidth="1"/>
-                <rect x="135" cy="55" width="16" height="12" rx="2" fill="white" stroke="#202124" strokeWidth="1.5" y="45"/>
-                <path d="M140 50 h6 M140 53 h4" stroke="#202124" strokeWidth="1" strokeLinecap="round"/>
-
-                {/* Floating Graph (Right) */}
-                <circle cx="50" cy="110" r="4" fill="#202124"/>
-                <circle cx="80" cy="70" r="3" fill="#1FA7E1"/>
-                <circle cx="30" cy="80" r="3" fill="#1FA7E1"/>
-                <circle cx="85" cy="140" r="3" fill="#1FA7E1"/>
-                <circle cx="100" cy="100" r="3" fill="#1FA7E1"/>
-                <circle cx="20" cy="130" r="3" fill="#1FA7E1"/>
-                <path d="M50 110 L80 70 M50 110 L30 80 M50 110 L85 140 M50 110 L100 100 M50 110 L20 130" stroke="#1FA7E1" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
-                <path d="M100 35 L 105 25 L 110 35 L 100 35 Z" fill="white" stroke="#202124" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M40 40 L 45 40 L 42.5 35 Z" fill="#202124"/>
-              </svg>
+              <ModulesMascot />
             </div>
         </div>
 
@@ -218,8 +218,22 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search modules, lessons, or assessments..."
-            className="w-full pl-16 pr-6 py-4 rounded-full border border-[#dadce0] bg-white text-[#202124] text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+            className="w-full pl-16 pr-12 py-4 rounded-full border border-[#dadce0] bg-white text-[#202124] text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
           />
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => {
+                localStorage.removeItem('mathpulse_last_claim_date');
+                localStorage.setItem('mathpulse_claimed_days', '[1, 2]');
+                setClaimedDays([1, 2]);
+                setShowDailyCheckIn(true);
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-1"
+              title="Reset Daily Check-in (Dev Only)"
+            >
+              <RotateCcw size={18} />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/60 shadow-inner gap-1 w-max overflow-x-auto max-w-full no-scrollbar">
