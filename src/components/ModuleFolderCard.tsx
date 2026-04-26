@@ -25,9 +25,12 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
 
   return (
-    <motion.button
+    <motion.div
+      role="button"
+      tabIndex={0}
       whileHover={{ y: -8 }}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className="relative text-left rounded-[1.4rem] overflow-visible min-h-[290px] bg-transparent group w-full"
     >
       {/* FOLDER TAB */}
@@ -125,7 +128,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
           )}
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 };
 
