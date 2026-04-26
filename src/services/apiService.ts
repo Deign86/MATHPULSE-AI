@@ -610,6 +610,9 @@ export interface InferenceMetricsResponse {
     task_counts: Record<string, number>;
     provider_counts: Record<string, number>;
     status_code_counts: Record<string, number>;
+    avg_latency_ms: number;
+    active_model: string;
+    primary_provider: string;
     pro_enabled: boolean;
   };
 }
