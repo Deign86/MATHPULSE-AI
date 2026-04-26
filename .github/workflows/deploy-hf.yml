@@ -119,14 +119,17 @@ jobs:
             cd ..
           }
           
-          # Sync backend files into the Space repo
-          rsync -av --delete \
-            --exclude='.git' \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            backend/ hf-space/
+# Sync backend files into the Space repo
+rsync -av --delete \
+--exclude='.git' \
+--exclude='__pycache__' \
+--exclude='*.pyc' \
+backend/ hf-space/
 
-          # Ensure backend Space metadata README exists with LF-only frontmatter.
+# Sync the backend Dockerfile to the Space root (HF Spaces use Dockerfile at repo root)
+cp backend/Dockerfile hf-space/Dockerfile
+
+# Ensure backend Space metadata README exists with LF-only frontmatter.
           # This avoids malformed Space metadata states on the Hub API.
           printf '%s\n' \
             '---' \
