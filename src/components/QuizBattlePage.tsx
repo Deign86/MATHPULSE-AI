@@ -30,7 +30,7 @@ import {
 import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
-import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
+import { getActiveSubjectIdsForGrade, subjects, getTopicById, type SubjectId } from '../data/subjects';
 import {
   QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
@@ -129,6 +129,52 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
   );
 };
 
+const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; icon?: React.ReactNode }> = ({ value, label, delay = 0, icon }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (value <= 0) return;
+    const duration = 1000;
+    const steps = 30;
+    const stepTime = Math.abs(Math.floor(duration / steps));
+    let current = 0;
+    
+    const timeout = setTimeout(() => {
+      const timer = setInterval(() => {
+        current += Math.max(1, Math.floor(value / steps));
+        if (current >= value) {
+          setCount(value);
+          clearInterval(timer);
+        } else {
+          setCount(current);
+        }
+      }, stepTime);
+      return () => clearInterval(timer);
+    }, delay);
+    
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+
+  if (value <= 0) return null;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: delay / 1000, duration: 0.5 }}
+      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3"
+    >
+      <div className="flex items-center gap-3 text-white/80 font-bold uppercase tracking-wider text-sm">
+        {icon}
+        {label}
+      </div>
+      <div className="text-2xl font-black text-amber-400 tabular-nums">
+        +{count}
+      </div>
+    </motion.div>
+  );
+};
+
 type BattlePageTab = 'hub' | 'setup' | 'battle' | 'history' | 'stats' | 'leaderboard';
 
 type LaunchState =
@@ -199,6 +245,19 @@ const describeLifecycleEvent = (
   return 'Match completed.';
 };
 
+let globalAudioContext: AudioContext | null = null;
+
+const getAudioContext = () => {
+  if (typeof window === 'undefined') return null;
+  if (!globalAudioContext) {
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AudioContextCtor) {
+      globalAudioContext = new AudioContextCtor();
+    }
+  }
+  return globalAudioContext;
+};
+
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
@@ -237,10 +296,12 @@ const QuizBattlePage: React.FC = () => {
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
   const [roundLocked, setRoundLocked] = useState(false);
+  const [opponentSurrendered, setOpponentSurrendered] = useState(false);
   const [designPauseActive, setDesignPauseActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
+  const [pendingMatchUpdate, setPendingMatchUpdate] = useState<QuizBattleLiveMatchState | null>(null);
   const [floatingMomentum, setFloatingMomentum] = useState<{
     id: number;
     label: string;
@@ -256,6 +317,8 @@ const QuizBattlePage: React.FC = () => {
   const previousStreakRef = useRef(0);
   const previousScoreRef = useRef<{ matchId: string; scoreFor: number; scoreAgainst: number } | null>(null);
   const scorePulseTimeoutRef = useRef<number | null>(null);
+  // Tracks which round we last showed a popup for — avoids stale-closure double-fire in polling.
+  const popupShownForRoundRef = useRef<number>(-1);
   const isDesignPauseAvailable = import.meta.env.DEV;
 
   const gradeScopedSubjects = useMemo(() => {
@@ -293,6 +356,27 @@ const QuizBattlePage: React.FC = () => {
     const boost = Math.max(0, playerRoundStreak - 1) * 0.12;
     return Number((1 + Math.min(0.72, boost)).toFixed(2));
   }, [playerRoundStreak]);
+
+  // Compute live XP from round results, so the header counter updates per round.
+  // Formula: 10 XP base per correct answer + 5 XP speed streak bonus per streak above 1.
+  // Falls back to activeMatch.xpEarned (final server value) when match is completed.
+  const liveXpEarned = useMemo(() => {
+    if (!activeMatch) return 0;
+    if (activeMatch.status === 'completed') return activeMatch.xpEarned || 0;
+    const rounds = activeMatch.roundResults || [];
+    let streak = 0;
+    let total = 0;
+    for (const r of rounds) {
+      if (r.studentCorrect) {
+        streak++;
+        const streakBonus = streak >= 2 ? Math.min(25, (streak - 1) * 5) : 0;
+        total += 10 + streakBonus;
+      } else {
+        streak = 0;
+      }
+    }
+    return total;
+  }, [activeMatch?.status, activeMatch?.xpEarned, activeMatch?.roundResults]);
 
   const opponentVisualMultiplier = useMemo(() => {
     const boost = Math.max(0, opponentRoundStreak - 1) * 0.1;
@@ -340,11 +424,14 @@ const QuizBattlePage: React.FC = () => {
   const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss' | 'streak' | 'multiplier') => {
     if (!battleSoundEnabled || battleSoundVolume <= 0 || typeof window === 'undefined') return;
 
-    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
-
     try {
-      const context = new AudioContextCtor();
+      const context = getAudioContext();
+      if (!context) return;
+      
+      if (context.state === 'suspended') {
+        void context.resume().catch(e => console.warn('AudioContext resume failed:', e));
+      }
+
       const presets: Record<typeof kind, { notes: number[]; duration: number; type: OscillatorType; volume: number }> = {
         tick: { notes: [740], duration: 0.06, type: 'triangle', volume: 0.03 },
         lock: { notes: [520], duration: 0.08, type: 'square', volume: 0.04 },
@@ -378,11 +465,8 @@ const QuizBattlePage: React.FC = () => {
         oscillator.stop(startAt + preset.duration + 0.02);
       });
 
-      window.setTimeout(() => {
-        void context.close();
-      }, Math.ceil((preset.duration + preset.notes.length * noteSpacing + 0.06) * 1000));
     } catch (error) {
-      console.debug('Battle tone playback skipped:', error);
+      console.warn('Battle tone playback skipped or blocked:', error);
     }
   }, [battleSoundEnabled, battleSoundVolume]);
 
@@ -748,13 +832,46 @@ const QuizBattlePage: React.FC = () => {
 
           const latest = await getQuizBattleMatchState(activeMatch.matchId);
           if (cancelled) return;
-          setActiveMatch(latest);
-          if (latest.status === 'completed') {
-            setQueueActive(false);
-            setActiveRoom(null);
+
+          // Find the oldest resolved round we haven't shown a popup for yet.
+          // We do NOT use activeMatch.currentRound here — it would be stale inside this closure
+          // because currentRound is not in the useEffect dependency array.
+          // popupShownForRoundRef is a ref (always current) so this is safe.
+          const unshownResult = latest.roundResults
+            .filter((r: QuizBattleRoundResult) => r.roundNumber > popupShownForRoundRef.current)
+            .sort((a: QuizBattleRoundResult, b: QuizBattleRoundResult) => a.roundNumber - b.roundNumber)[0];
+
+          console.log(
+            '[Poll] Match state:', latest.status,
+            'currentRound:', latest.currentRound,
+            'roundResults:', latest.roundResults.length,
+            'popupShownFor:', popupShownForRoundRef.current,
+            'unshownResult:', unshownResult?.roundNumber ?? 'none',
+            'roundLocked:', roundLocked,
+          );
+
+          if (unshownResult) {
+            console.log('[Poll] Showing popup for round', unshownResult.roundNumber, '(player answered first path)');
+            popupShownForRoundRef.current = unshownResult.roundNumber;
+            setLastRoundResult(unshownResult);
+            setPendingMatchUpdate(latest);
+          } else {
+            setActiveMatch(latest);
+            if (latest.status === 'completed') {
+              setQueueActive(false);
+              setActiveRoom(null);
+            }
+            // Detect opponent surrender: match cancelled while we were still in_progress
+            if (latest.status === 'cancelled' && activeMatch.status === 'in_progress') {
+              console.log('[Poll] Match cancelled by server — opponent likely surrendered/disconnected');
+              setOpponentSurrendered(true);
+              setRoundLocked(false);
+            }
           }
+
           setConnectionState('connected');
           return;
+
         }
 
         if (activeRoom?.roomId) {
@@ -1087,6 +1204,36 @@ const QuizBattlePage: React.FC = () => {
     };
   }, [lastRoundMomentumDelta, lastRoundResult]);
 
+  useEffect(() => {
+    if (lastRoundResult && pendingMatchUpdate) {
+      if (lastRoundResult.studentCorrect) {
+        playBattleTone('win');
+      } else {
+        playBattleTone('loss');
+      }
+
+      const timeout = window.setTimeout(() => {
+        setActiveMatch(pendingMatchUpdate);
+        setLastRoundResult(null);
+        setSelectedOptionIndex(null);
+        setRoundLocked(false);
+        setPendingMatchUpdate(null);
+        // Do NOT reset popupShownForRoundRef here — keep it so polling doesn't re-fire for same round.
+        // It will naturally be overtaken once currentRound advances on the next active match state.
+        
+        if (pendingMatchUpdate.status === 'completed') {
+          setQueueActive(false);
+          setActiveRoom(null);
+          void refreshBattleInsights();
+          // Reset the ref for the next match
+          popupShownForRoundRef.current = -1;
+        }
+      }, 1500);
+
+      return () => window.clearTimeout(timeout);
+    }
+  }, [lastRoundResult, pendingMatchUpdate, playBattleTone, refreshBattleInsights]);
+
   const submitRoundAnswer = useCallback(
     async (forcedSelection: number | null) => {
       if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
@@ -1131,33 +1278,44 @@ const QuizBattlePage: React.FC = () => {
         autoSubmitRoundRef.current = null;
         autoSubmitRetryAtMsRef.current = 0;
 
-        setActiveMatch(response.match);
-        setLastRoundResult(response.roundResult);
-        setSelectedOptionIndex(null);
+        if (response.roundResult) {
+           // Gate with the ref so polling can't fire a second popup for this same round
+           console.log('[Submit] Got roundResult for round', response.roundResult.roundNumber, '— showing popup');
+           popupShownForRoundRef.current = response.roundResult.roundNumber;
+           setLastRoundResult(response.roundResult);
+           setPendingMatchUpdate(response.match);
+        } else {
+           setActiveMatch(response.match);
+           setLastRoundResult(null);
 
-        if (
-          response.match.mode === 'online' &&
-          response.match.status === 'in_progress' &&
-          !response.roundResult
-        ) {
-          setRoundLocked(true);
-          setLaunchState({
-            status: 'queued',
-            message: 'Answer locked. Waiting for opponent to finish the round...',
-          });
+           if (
+             response.match.mode === 'online' &&
+             response.match.status === 'in_progress'
+           ) {
+             // Keep selectedOptionIndex intact so the chosen answer stays highlighted
+             // while waiting for the opponent. It will be cleared when the round resolves.
+             setRoundLocked(true);
+             setLaunchState({
+               status: 'queued',
+               message: 'Answer locked. Waiting for opponent to finish the round...',
+             });
+           } else {
+             // Non-online path (e.g. timeout recovery): safe to clear selection
+             setSelectedOptionIndex(null);
+           }
         }
-
+        
         if (response.match.status === 'completed') {
-          setQueueActive(false);
-          setActiveRoom(null);
-          void refreshBattleInsights();
-          setLaunchState({
-            status: 'queued',
-            message: response.completion
-              ? `Match finished (${response.completion.outcome.toUpperCase()}) +${response.completion.xpEarned} XP`
-              : 'Match finished. Results saved.',
-          });
-        }
+             setQueueActive(false);
+             setActiveRoom(null);
+             void refreshBattleInsights();
+             setLaunchState({
+               status: 'queued',
+               message: response.completion
+                 ? `Match finished (${response.completion.outcome.toUpperCase()}) +${response.completion.xpEarned} XP`
+                 : 'Match finished. Results saved.',
+             });
+           }
       } catch (error) {
         const known = error as { message?: string };
         const message = known?.message || 'Unable to submit answer right now. Please try again.';
@@ -1508,7 +1666,86 @@ const QuizBattlePage: React.FC = () => {
           </WarpBackground>
         </div>
 
-        {/* Pause Overlay */}
+        {/* Surrender Notification Overlay */}
+        <AnimatePresence>
+          {opponentSurrendered && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[120] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center px-6"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: 'spring', damping: 18, stiffness: 250, delay: 0.1 }}
+                className="bg-[#1e2433] border border-white/10 rounded-[2rem] p-8 flex flex-col items-center gap-5 max-w-sm w-full shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
+              >
+                {/* Opponent avatar with speech bubble */}
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-[#1a2030] border-4 border-rose-500/50 overflow-hidden flex items-end justify-center shadow-xl">
+                    {activeMatch.mode === 'bot' ? (
+                      <Bot className="h-16 w-16 text-rose-400 mb-2" strokeWidth={1.5} />
+                    ) : (
+                      <Users className="h-14 w-14 text-slate-500 mb-2" strokeWidth={1.5} />
+                    )}
+                  </div>
+                  {/* Speech bubble */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5, x: -10 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
+                    className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
+                  >
+                    I give up! 🏳️
+                  </motion.div>
+                </div>
+
+                <div className="text-center">
+                  <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
+                  <p className="text-white/50 text-sm">
+                    <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 w-full">
+                  <Button
+                    size="lg"
+                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl"
+                    onClick={() => {
+                      setOpponentSurrendered(false);
+                      setActiveMatch(null);
+                      setActiveRoom(null);
+                      setQueueActive(false);
+                      setLaunchState({ status: 'idle' });
+                      setActiveTab('hub');
+                      void refreshBattleInsights();
+                    }}
+                  >
+                    🏆 Claim Victory
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full h-12 border-white/20 text-white/70 hover:bg-white/10 rounded-xl"
+                    onClick={() => {
+                      setOpponentSurrendered(false);
+                      setActiveMatch(null);
+                      setActiveRoom(null);
+                      setQueueActive(false);
+                      setLaunchState({ status: 'idle' });
+                      setActiveTab('setup');
+                    }}
+                  >
+                    Start New Match
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
         {designPauseActive && (
           <div className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center">
             <Card className="w-full max-w-sm border-border/50 bg-[#181d27] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
@@ -1544,49 +1781,53 @@ const QuizBattlePage: React.FC = () => {
           </div>
         )}
 
-        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 py-4">
+        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-10 pb-4">
           
           {/* Header Row */}
-          <header className="flex items-center justify-between shrink-0 h-16">
-            {/* Left: Branding & Bonuses */}
-            <div className="flex items-center gap-3 md:gap-4">
-              <motion.div
-                animate={playerRoundStreak >= 3 ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-                transition={{ duration: 1.2, repeat: playerRoundStreak >= 3 ? Infinity : 0, ease: 'easeInOut' }}
-                className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 ring-1 ring-primary/40 shadow-[0_0_15px_rgba(158,143,255,0.4)]"
-              >
-                <Swords className="h-6 w-6 text-primary" />
-              </motion.div>
-              <motion.div
-                key={`streak-${playerRoundStreak}`}
-                initial={{ opacity: 0.7, y: -3 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-              >
-                🔥 {playerRoundStreak} Streak
-              </motion.div>
-              <motion.div
-                key={`mult-${playerVisualMultiplier}`}
-                initial={{ opacity: 0.75, y: -3 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-300 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(139,92,246,0.2)]"
-              >
-                ✨ {playerVisualMultiplier.toFixed(2)}x Multiplier
-              </motion.div>
-              <motion.div
-                animate={scorePulseTarget === 'player' ? { scale: [1, 1.12, 1] } : scorePulseTarget === 'opponent' ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-                transition={{ duration: 0.45 }}
-                className={cn(
-                  'hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border font-black text-sm tracking-wide',
-                  scorePulseTarget === 'player'
-                    ? 'border-emerald-300/50 bg-emerald-500/20 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.28)]'
-                    : scorePulseTarget === 'opponent'
-                      ? 'border-rose-300/50 bg-rose-500/20 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.28)]'
-                      : 'border-white/25 bg-white/10 text-white/85'
-                )}
-              >
-                Score {activeMatch.scoreFor} : {activeMatch.scoreAgainst}
-              </motion.div>
+          <header className="flex items-center justify-between shrink-0 h-16 relative">
+            {/* Left: Simplified Stats */}
+            <div className="flex items-center">
+              <div className="flex items-center gap-3 md:gap-4 px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm">
+                  <span className="text-base">🔥</span> {playerRoundStreak}
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <div className="flex items-center gap-1.5 text-violet-300 font-bold text-sm">
+                  <Target className="w-4 h-4" /> {playerVisualMultiplier.toFixed(2)}x
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <motion.div
+                  key={liveXpEarned}
+                  animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
+                  transition={{ duration: 0.35 }}
+                  className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+                >
+                  <span className="text-sm leading-none">{liveXpEarned} pts</span>
+                  <span className="text-[8px] leading-none text-emerald-500/70 uppercase tracking-widest font-black">Battle Score</span>
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Middle: Topic */}
+            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-3 bg-black/20 px-5 py-2 rounded-full border border-white/5">
+              <div className="w-3.5 h-3.5 rounded-sm bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.5)] shrink-0" />
+              <div className="flex flex-col items-start justify-center -space-y-0.5">
+                {(() => {
+                  if (!activeMatch?.topicId) return <span className="font-bold text-white/90 tracking-wide text-sm">Practice Match</span>;
+                  for (const s of subjects) {
+                    const m = s.modules?.find(m => m.id === activeMatch.topicId);
+                    if (m) {
+                      return (
+                         <>
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">{s.title}</span>
+                            <span className="font-bold text-white/90 tracking-wide text-sm leading-none pt-1">{m.title}</span>
+                         </>
+                      );
+                    }
+                  }
+                  return <span className="font-bold text-white/90 tracking-wide text-sm">{activeMatch.topicId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>;
+                })()}
+              </div>
             </div>
 
             {/* Right: Controls */}
@@ -1668,98 +1909,119 @@ const QuizBattlePage: React.FC = () => {
           )}
 
           {/* Main Area: Question & Choices OR Match Complete Modal */}
-          <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pb-48 z-20" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pt-4 pb-28 z-20" style={{ scrollbarWidth: 'none' }}>
             
             {activeMatch.status === 'completed' ? (
-              <motion.div 
-                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                 className="w-full max-w-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[2.5rem] p-8 md:p-12 text-center"
-              >
-                  <h2 className={cn(
-                    "text-5xl font-black uppercase tracking-widest drop-shadow-lg mb-4",
-                    activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
-                  )}>
-                    {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
-                  </h2>
-                  <p className="text-white/80 font-bold text-xl mb-8 uppercase tracking-widest">
-                     Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
-                  </p>
-                  
-                  <div className="bg-white/10 rounded-2xl p-6 mb-10 border border-white/10 flex items-center justify-center gap-4">
-                     <Star className="text-amber-400 h-8 w-8" />
-                     <span className="text-white font-black text-2xl">+{activeMatch.xpEarned || 0} XP EARNED</span>
-                  </div>
+              <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md px-4">
+                <ConfettiBurst viewportHeight={800} viewportWidth={1200} />
+                <motion.div 
+                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                   animate={{ opacity: 1, scale: 1, y: 0 }}
+                   className="w-full max-w-sm sm:max-w-md bg-[#161a25]/90 border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[1.5rem] p-6 text-center"
+                >
+                    <h2 className={cn(
+                      "text-3xl font-black uppercase tracking-widest drop-shadow-md mb-2",
+                      activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
+                    )}>
+                      {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
+                    </h2>
+                    <p className="text-white/80 font-bold text-sm mb-4 uppercase tracking-widest">
+                       Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
+                    </p>
+                    
+                    {/* Performance & Reward Summary */}
+                    <div className="bg-black/50 rounded-xl p-4 mb-5 border border-white/5 flex flex-col gap-3">
+                      
+                      {/* Battle Score — frontend computed from round results */}
+                      <div>
+                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Battle Score</h3>
+                        {(() => {
+                          const rounds = activeMatch.roundResults || [];
+                          let streak = 0;
+                          let baseTotal = 0;
+                          let streakTotal = 0;
+                          for (const r of rounds) {
+                            if (r.studentCorrect) {
+                              streak++;
+                              const bonus = streak >= 2 ? Math.min(15, (streak - 1) * 5) : 0;
+                              baseTotal += 10;
+                              streakTotal += bonus;
+                            } else {
+                              streak = 0;
+                            }
+                          }
+                          return (
+                            <>
+                              <AnimatedCounter value={baseTotal} label="Correct Answers" delay={300} icon={<Check className="h-3 w-3 text-emerald-400" />} />
+                              <AnimatedCounter value={streakTotal} label="Streak Bonus" delay={900} icon={<Sparkles className="h-3 w-3 text-amber-400" />} />
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 1.5, duration: 0.4 }}
+                                className="flex items-center justify-between pt-1 mt-1 border-t border-white/5"
+                              >
+                                <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Total</span>
+                                <span className="text-base font-black text-white/80">{baseTotal + streakTotal} pts</span>
+                              </motion.div>
+                            </>
+                          );
+                        })()}
+                      </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                     <Button
-                       size="lg"
-                       onClick={() => {
-                         setActiveMatch(null);
-                         setActiveRoom(null);
-                         setQueueActive(false);
-                         setActiveTab('setup');
-                       }}
-                       className="h-16 px-8 rounded-2xl text-lg font-black bg-white/10 hover:bg-white/20 text-white border-2 border-white/20"
-                     >
-                       START NEW MATCH
-                     </Button>
-                     {activeMatch.mode === 'bot' && (
+                      {/* Divider */}
+                      <div className="w-full h-px bg-white/10" />
+
+                      {/* Match Reward — actual XP credited to profile (server outcome) */}
+                      <div>
+                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Match Reward</h3>
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="text-white/70 text-sm font-bold">
+                            {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
+                          </span>
+                          <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
+                        </motion.div>
+                        <p className="text-white/25 text-[9px] mt-1 text-right uppercase tracking-widest">Credited to your profile</p>
+                      </div>
+
+                    </div>
+
+                    <div className="flex flex-col gap-3 justify-center">
                        <Button
                          size="lg"
-                         onClick={() => void handleRequestRematch()}
-                         disabled={answerSubmitting}
-                         className="h-16 px-8 rounded-2xl text-lg font-black bg-violet-600 hover:bg-violet-500 text-white border-b-4 border-violet-800 active:border-b-0 active:translate-y-[4px]"
+                         onClick={() => {
+                           setActiveMatch(null);
+                           setActiveRoom(null);
+                           setQueueActive(false);
+                           setActiveTab('setup');
+                         }}
+                         className="w-full h-12 rounded-xl text-sm font-black bg-white/10 hover:bg-white/20 text-white border border-white/20"
                        >
-                         REMATCH
+                         START NEW MATCH
                        </Button>
-                     )}
-                  </div>
-              </motion.div>
+                       {activeMatch.mode === 'bot' && (
+                         <Button
+                           size="lg"
+                           onClick={() => void handleRequestRematch()}
+                           disabled={answerSubmitting}
+                           className="w-full h-12 rounded-xl text-sm font-black bg-violet-600 hover:bg-violet-500 text-white border-b-2 border-violet-800 active:border-b-0 active:translate-y-[2px]"
+                         >
+                           REMATCH
+                         </Button>
+                       )}
+                    </div>
+                </motion.div>
+              </div>
             ) : (
               <>
-                <div className="w-full max-w-4xl px-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <motion.div
-                    animate={scorePulseTarget === 'player' ? { y: [0, -4, 0], scale: [1, 1.03, 1] } : { y: 0, scale: 1 }}
-                    transition={{ duration: 0.4 }}
-                    className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-3 backdrop-blur-xl"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-100/75">You</p>
-                    <p className="text-2xl font-black text-emerald-100 tabular-nums">{activeMatch.scoreFor}</p>
-                    <p className="text-[11px] text-emerald-200/90 font-semibold">Streak {playerRoundStreak} · x{playerVisualMultiplier.toFixed(2)}</p>
-                  </motion.div>
-
-                  <motion.div
-                    key={`momentum-${momentumTier.label}`}
-                    initial={{ opacity: 0.7, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl border border-white/20 bg-white/5 p-3 backdrop-blur-xl"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-white/70">Momentum</p>
-                    <div className={cn('mt-1 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.16em]', momentumTier.badgeClass)}>
-                      <Sparkles className="h-3.5 w-3.5" /> {momentumTier.label}
-                    </div>
-                    {lastRoundMomentumDelta !== null && (
-                      <p className={cn('mt-2 text-[11px] font-bold', lastRoundMomentumDelta >= 0 ? 'text-emerald-200' : 'text-rose-200')}>
-                        Last swing {lastRoundMomentumDelta >= 0 ? '+' : ''}{lastRoundMomentumDelta}
-                      </p>
-                    )}
-                  </motion.div>
-
-                  <motion.div
-                    animate={scorePulseTarget === 'opponent' ? { y: [0, -4, 0], scale: [1, 1.03, 1] } : { y: 0, scale: 1 }}
-                    transition={{ duration: 0.4 }}
-                    className="rounded-2xl border border-rose-300/30 bg-rose-500/10 p-3 backdrop-blur-xl"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-rose-100/75">{activeMatch.opponentName}</p>
-                    <p className="text-2xl font-black text-rose-100 tabular-nums">{activeMatch.scoreAgainst}</p>
-                    <p className="text-[11px] text-rose-200/90 font-semibold">Streak {opponentRoundStreak} · x{opponentVisualMultiplier.toFixed(2)}</p>
-                  </motion.div>
-                </div>
 
                 {/* Question Card */}
-                <div className={cn('relative bg-[#1e2536] border shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[1.5rem] p-6 md:p-8 w-full max-w-4xl text-center flex flex-col items-center', roundSecondsLeft <= 3 ? 'border-rose-400/50' : 'border-white/10')}>
-                  <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-sm font-black shadow-lg uppercase tracking-wider">
+                <div className={cn('relative bg-[#1e2536] border shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[1.5rem] p-5 md:p-6 w-full max-w-4xl text-center flex flex-col items-center', roundSecondsLeft <= 3 ? 'border-rose-400/50' : 'border-white/10')}>
+                  <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-xs font-black shadow-lg uppercase tracking-wider">
                     {activeMatch.currentRound} / {activeMatch.totalRounds}
                   </div>
 
@@ -1771,7 +2033,7 @@ const QuizBattlePage: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.9 }}
                         className={cn(
-                          'absolute -top-12 rounded-full border px-4 py-1.5 text-xs font-black uppercase tracking-[0.15em] backdrop-blur-lg',
+                          'absolute -top-12 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] backdrop-blur-lg',
                           floatingMomentum.tone === 'positive'
                             ? 'border-emerald-300/70 bg-emerald-500/20 text-emerald-100'
                             : floatingMomentum.tone === 'negative'
@@ -1784,7 +2046,7 @@ const QuizBattlePage: React.FC = () => {
                     )}
                   </AnimatePresence>
 
-                  <p className="text-lg sm:text-xl md:text-2xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[60px] flex items-center justify-center">
+                  <p className="text-base sm:text-lg md:text-xl text-white font-extrabold leading-tight tracking-tight mt-1 min-h-[40px] flex items-center justify-center">
                     {activeMatch.currentQuestion?.prompt}
                   </p>
                 </div>
@@ -1794,110 +2056,215 @@ const QuizBattlePage: React.FC = () => {
                   {activeMatch.currentQuestion?.choices.map((choice, idx) => {
                     const isSelected = selectedOptionIndex === idx;
                     const isSubmitting = answerSubmitting || roundLocked;
-                    const btnColors = [
-                      'bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-emerald-950 border-emerald-400 shadow-[0_8px_0_rgba(5,150,105,1)]',
-                      'bg-violet-500 hover:bg-violet-400 active:bg-violet-600 text-white border-violet-400 shadow-[0_8px_0_rgba(109,40,217,1)]',
-                      'bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white border-sky-400 shadow-[0_8px_0_rgba(2,132,199,1)]',
-                      'bg-rose-500 hover:bg-rose-400 active:bg-rose-600 text-white border-rose-400 shadow-[0_8px_0_rgba(225,29,72,1)]'
-                    ];
+                    
+                    // Deriving state for post-round feedback
+                    const isRoundOver = !!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound;
+                    const isCorrectOption = isRoundOver && lastRoundResult.correctOptionIndex === idx;
+                    
+                    // Determine what the opponent picked (works for bot mode and online if server returns opponentSelectedIndex)
+                    let opponentPickedIdx = -1;
+                    if (isRoundOver) {
+                      if (activeMatch.mode === 'bot') {
+                        // Bot mode: derive from botCorrect
+                        if (lastRoundResult.botCorrect) {
+                          opponentPickedIdx = lastRoundResult.correctOptionIndex;
+                        } else {
+                          const wrongIndices = [0, 1, 2, 3].filter(i => i !== lastRoundResult.correctOptionIndex);
+                          opponentPickedIdx = wrongIndices[lastRoundResult.roundNumber % wrongIndices.length];
+                        }
+                      } else {
+                        // Online mode: server returns botSelectedIndex field which maps to opponentSelectedIndex
+                        // (the field is named botSelectedIndex in the interface but carries the opponent's choice in online)
+                        opponentPickedIdx = typeof lastRoundResult.botSelectedIndex === 'number'
+                          ? lastRoundResult.botSelectedIndex
+                          : -1;
+                      }
+                    }
+                    
+                    const opponentSelectedThis = opponentPickedIdx === idx;
+                    
+                    // Colors
+                    let btnColorClass = 'bg-[#1e2433] hover:bg-[#283042] border-[#2f384e] text-white shadow-[0_6px_0_rgba(15,20,30,0.5)]';
+                    
+                    if (isRoundOver) {
+                       if (isCorrectOption) {
+                          btnColorClass = 'bg-emerald-500 text-emerald-950 border-emerald-400 shadow-[0_6px_0_rgba(5,150,105,1)]';
+                       } else if (isSelected) {
+                          btnColorClass = 'bg-rose-500 text-white border-rose-400 shadow-[0_6px_0_rgba(225,29,72,1)]';
+                       } else {
+                          btnColorClass = 'bg-[#1e2433] opacity-40 border-[#2f384e] shadow-[0_6px_0_rgba(15,20,30,0.5)] text-white';
+                       }
+                    } else if (isSelected) {
+                       btnColorClass = 'bg-indigo-500 text-white border-indigo-400 shadow-[0_6px_0_rgba(79,70,229,1)]';
+                    }
 
                     return (
                       <motion.button
                         whileTap={{ y: 8, scale: 0.98 }}
-                        whileHover={{ scale: 1.02 }}
-                        disabled={isSubmitting || designPauseActive}
+                        whileHover={!isRoundOver && !isSubmitting ? { scale: 1.02 } : {}}
+                        disabled={isSubmitting || roundLocked || designPauseActive}
                         key={idx}
                         onClick={() => {
+                          if (isRoundOver || isSubmitting) return;
+                          getAudioContext()?.resume().catch(e => console.warn(e)); // Ensure unlocked on user interaction
+                          playBattleTone('lock'); // Give immediate audio feedback
                           setSelectedOptionIndex(idx);
                           void submitRoundAnswer(idx);
                         }}
                         className={cn(
-                          'relative h-16 md:h-24 rounded-2xl md:rounded-3xl font-black text-lg md:text-2xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed',
-                          btnColors[idx],
-                          isSelected ? 'ring-[6px] ring-white ring-offset-[6px] ring-offset-[#0B0F19]' : '',
-                          roundSecondsLeft <= 3 && !isSubmitting ? 'shadow-[0_0_0_2px_rgba(251,113,133,0.45),0_8px_0_rgba(127,29,29,1)]' : ''
+                          'relative h-16 md:h-20 rounded-2xl md:rounded-3xl font-black text-base md:text-lg pl-6 pr-20 border-[2px] border-b-[4px] flex items-center justify-start text-left transition-all disabled:cursor-not-allowed',
+                          btnColorClass,
+                          isSelected && !isRoundOver ? 'ring-[4px] ring-white/20 ring-offset-[4px] ring-offset-[#0B0F19]' : '',
+                          roundSecondsLeft <= 3 && !isSubmitting && !isRoundOver ? 'shadow-[0_0_0_2px_rgba(251,113,133,0.45),0_6px_0_rgba(127,29,29,1)]' : ''
                         )}
                       >
-                        <span className="mr-2 md:mr-3 text-sm md:text-base opacity-85">{String.fromCharCode(65 + idx)}.</span>
-                        <span>{choice}</span>
+                        <span className="mr-3 md:mr-4 text-xs md:text-sm opacity-60 bg-black/20 px-3 py-1 rounded-full">{String.fromCharCode(65 + idx)}</span>
+                        <span className="line-clamp-2">{choice}</span>
+
+                        {/* Avatars on choice */}
+                        <div className="absolute right-3 md:right-4 flex items-center gap-1.5 md:gap-2">
+                           {opponentSelectedThis && (
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[3px] border-[#0B0F19] overflow-hidden bg-rose-500 shadow-lg flex items-center justify-center z-10"
+                              >
+                                 {activeMatch.mode === 'bot' ? (
+                                   <Bot className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                                 ) : (
+                                   <Users className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                                 )}
+                              </motion.div>
+                           )}
+                           {isSelected && (
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="w-8 h-8 md:w-10 md:h-10 rounded-full border-[3px] border-[#0B0F19] overflow-hidden bg-indigo-200 shadow-lg z-20"
+                              >
+                                 <img src={studentProfile?.photo || quizBattleAvatar} alt="You" className="w-full h-full object-cover" />
+                              </motion.div>
+                           )}
+                        </div>
                       </motion.button>
                     );
                   })}
                 </div>
 
-                {lastRoundResult && (
-                  <motion.div
-                    key={`round-feedback-${lastRoundResult.roundNumber}`}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn(
-                      'w-full max-w-4xl px-4 py-3 rounded-2xl border backdrop-blur-xl',
-                      lastRoundResult.studentCorrect
-                        ? 'border-emerald-300/40 bg-emerald-500/10'
-                        : 'border-rose-300/40 bg-rose-500/10'
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-2 text-sm font-black tracking-wide text-white">
-                      <span>Round {lastRoundResult.roundNumber}</span>
-                      <span className="text-white/35">•</span>
-                      <span className={lastRoundResult.studentCorrect ? 'text-emerald-200' : 'text-rose-200'}>
-                        {lastRoundResult.studentCorrect ? 'Correct' : 'Incorrect'}
-                      </span>
-                      <span className="text-white/35">•</span>
-                      <span className="text-white/80">
-                        {activeMatch.mode === 'bot' ? 'Bot' : 'Opponent'} {lastRoundResult.botCorrect ? 'Correct' : 'Incorrect'}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
-                      <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-white/90">
-                        Correct option {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
-                      </span>
-                      <span className="rounded-full border border-violet-300/40 bg-violet-500/15 px-3 py-1 text-violet-200">
-                        Visual multiplier x{playerVisualMultiplier.toFixed(2)}
-                      </span>
-                      {lastRoundMomentumDelta !== null && (
-                        <span className={cn(
-                          'rounded-full border px-3 py-1',
-                          lastRoundMomentumDelta >= 0
-                            ? 'border-emerald-300/40 bg-emerald-500/15 text-emerald-200'
-                            : 'border-rose-300/40 bg-rose-500/15 text-rose-200'
+                {/* Waiting Indicator */}
+                <AnimatePresence>
+                  {roundLocked && !lastRoundResult && activeMatch.mode === 'online' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="mt-4 flex flex-col items-center gap-1"
+                    >
+                      <div className="flex items-center gap-2 text-white/70 font-semibold bg-black/30 px-6 py-2 rounded-full border border-white/10">
+                        <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                        Waiting for opponent...
+                      </div>
+                      <p className="text-white/30 text-[11px] mt-1">Choices locked until round resolves</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Result Pop-up Overlay */}
+                <AnimatePresence>
+                  {lastRoundResult && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none flex flex-col items-center justify-center"
+                    >
+                      <div className="bg-[#1e2433]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.6)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
+                        <img src={quizBattleAvatar} alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-xl" />
+                        <h2 className={cn(
+                          "text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest",
+                          lastRoundResult.studentCorrect ? "text-emerald-400" : "text-rose-400"
                         )}>
-                          {lastRoundMomentumDelta >= 0 ? '+' : ''}{lastRoundMomentumDelta} momentum
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
+                          {lastRoundResult.studentCorrect ? "Correct!" : "Incorrect"}
+                        </h2>
+                        
+                        {lastRoundResult.studentCorrect ? (
+                           <div className="flex items-center gap-3 w-full justify-center">
+                              <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl font-bold border border-emerald-500/30">
+                                 <span>+ 10 XP</span>
+                              </div>
+                              {lastRoundMomentumDelta !== null && lastRoundMomentumDelta > 0 && (
+                                <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-2 rounded-2xl font-bold border border-amber-500/30">
+                                  <span>+ {lastRoundMomentumDelta} <Sparkles className="w-4 h-4 inline" /></span>
+                                </div>
+                              )}
+                           </div>
+                        ) : (
+                           <div className="bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold px-5 py-2 rounded-xl text-center">
+                              Correct: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
+                           </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
               </>
             )}
           </div>
 
           {/* Footer Avatars row - Absolutely positioned to bottom so they never crop */}
-          <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-4 md:px-8 shrink-0 h-32 md:h-40 flex justify-between items-end pb-4 pointer-events-none z-30">
+          <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-4 md:px-8 shrink-0 h-32 md:h-48 flex justify-between items-end pb-0 pointer-events-none z-30">
              
              {/* Left: Player Avatar fixed strictly to base, blinking/ears only */}
              <div className="flex items-end gap-3 sm:gap-6 relative pointer-events-auto">
-                 <div className="relative w-28 h-28 md:w-36 md:h-36 overflow-hidden rounded-t-[40px]">
-                   <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-110 -mb-2" />
+                 <div className="relative w-28 h-28 md:w-40 md:h-40 rounded-t-[40px] flex items-end">
+                   <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-[1.15]" />
                  </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 max-w-[200px] md:max-w-[250px]">
-                   <span className="text-white font-black text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
-                   <span className="text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 md:px-5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-4 mb-4 max-w-[220px] md:max-w-[280px]">
+                   <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-white font-black text-base md:text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
+                      <span className="text-xs md:text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
+                   </div>
+                   <div className="h-10 w-px bg-white/20" />
+                   <div className="flex flex-col items-center justify-center shrink-0 w-10 md:w-12">
+                      <motion.span 
+                        animate={scorePulseTarget === 'player' ? { scale: [1, 1.4, 1], color: ['#fff', '#34d399', '#fff'] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className="text-2xl md:text-3xl font-black text-white leading-none"
+                      >
+                        {activeMatch.scoreFor}
+                      </motion.span>
+                      <span className="text-[9px] md:text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1 leading-none">Score</span>
+                   </div>
                 </div>
              </div>
 
              {/* Right: Opponent (Bot or Silhouette) */}
              <div className="flex items-end gap-3 sm:gap-6 relative flex-row-reverse pointer-events-auto">
-                <div className="relative w-28 h-28 md:w-36 md:h-36 bg-[#1a2030] overflow-hidden rounded-t-[40px] flex items-end justify-center border-t-4 border-slate-700/50 shadow-inner">
+                 <div className="relative w-28 h-28 md:w-40 md:h-40 bg-[#1a2030] rounded-t-[40px] flex items-end justify-center border-t-4 border-slate-700/50 shadow-inner">
                    {activeMatch.mode === 'bot' ? (
                      <Bot className="h-16 w-16 md:h-20 md:w-20 text-rose-400 mb-6 drop-shadow-xl" strokeWidth={1.5} />
                    ) : (
                      <Users className="h-16 w-16 md:h-20 md:w-20 text-slate-500 mb-6 drop-shadow-xl" strokeWidth={1.5} />
                    )}
                 </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 text-right max-w-[200px] md:max-w-[250px]">
-                   <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
-                   <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 md:px-5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-4 mb-4 flex-row-reverse text-right max-w-[220px] md:max-w-[280px]">
+                   <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-white font-black text-base md:text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
+                      <span className="text-xs md:text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
+                   </div>
+                   <div className="h-10 w-px bg-white/20" />
+                   <div className="flex flex-col items-center justify-center shrink-0 w-10 md:w-12">
+                      <motion.span 
+                        animate={scorePulseTarget === 'opponent' ? { scale: [1, 1.4, 1], color: ['#fff', '#fb7185', '#fff'] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className="text-2xl md:text-3xl font-black text-white leading-none"
+                      >
+                        {activeMatch.scoreAgainst}
+                      </motion.span>
+                      <span className="text-[9px] md:text-[10px] text-rose-400 font-bold uppercase tracking-widest mt-1 leading-none">Score</span>
+                   </div>
                 </div>
              </div>
 
