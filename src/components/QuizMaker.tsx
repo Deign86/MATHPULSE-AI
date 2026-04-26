@@ -41,7 +41,7 @@ interface QuizMakerProps {
   selectedClassName?: string;
 }
 
-type Step = 'configure' | 'preview' | 'results';
+type Step = 'setup' | 'topics' | 'style' | 'preview' | 'results';
 type MakerTab = 'create' | 'bank';
 
 const STATUS_COLORS: Record<GeneratedQuizStatus, string> = {
@@ -140,7 +140,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [activeTab, setActiveTab] = useState<MakerTab>('create');
 
   // Form state
-  const [step, setStep] = useState<Step>('configure');
+  const [step, setStep] = useState<Step>('setup');
   const [selectedGrade, setSelectedGrade] = useState(normalizeGradeLevel(initialGrade));
   const [numQuestions, setNumQuestions] = useState(10); // Capped at MAX_QUESTIONS_LIMIT
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
@@ -565,14 +565,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const handleBack = () => {
     if (generating) {
       if (window.confirm('Quiz generation is in progress. Are you sure you want to leave?')) {
-        setStep('configure');
+        setStep('setup');
         setQuizResult(null);
         setError('');
         onBack();
       }
       return;
     }
-    setStep('configure');
+    setStep('setup');
     setQuizResult(null);
     setError('');
     onBack();
@@ -1290,286 +1290,312 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
             </motion.div>
           )}
 
-          {/* ─── STEP: CONFIGURE ─── */}
-          {step === 'configure' && (
-            <div className="space-y-4">
-              {/* Supplemental notice */}
-              <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 flex items-start gap-3">
-                <Lightbulb size={18} className="text-sky-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-sky-800">Supplemental Assessment Tool</p>
-                  <p className="text-xs text-sky-600">
-                    This quiz maker generates supplemental assessments to support your classroom instruction — 
-                    it does not replace teacher-led learning. Questions follow Bloom's Taxonomy for comprehensive skill evaluation.
-                  </p>
-                  <p className="text-[11px] text-sky-400 mt-1 flex items-center gap-1">
-                    <AlertCircle size={11} />
-                    Generation limit: up to {MAX_QUESTIONS_LIMIT} questions and {MAX_TOPICS_LIMIT} topics per quiz.
-                  </p>
-                </div>
-              </div>
-
-              {/* Grade + Question Count */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="quiz-grade-level" className="text-sm font-semibold text-[#0a1628] mb-1.5 block">Grade Level</label>
-                  <select
-                    id="quiz-grade-level"
-                    value={selectedGrade}
-                    onChange={e => setSelectedGrade(normalizeGradeLevel(e.target.value))}
-                    className="w-full border border-[#dde3eb] rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none bg-white"
-                  >
-                    {GRADE_LEVELS.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="quiz-num-questions" className="text-sm font-semibold text-[#0a1628] mb-1.5 block">Number of Questions</label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
-                      className="w-9 h-9 border border-[#dde3eb] rounded-lg flex items-center justify-center hover:bg-[#edf1f7] transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <input
-                      id="quiz-num-questions"
-                      type="number"
-                      min={1}
-                      max={MAX_QUESTIONS_LIMIT}
-                      value={numQuestions}
-                      onChange={e => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, Math.max(1, parseInt(e.target.value) || 1)))}
-                      className="w-20 text-center border border-[#dde3eb] rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-sky-500 outline-none bg-white"
-                    />
-                    <button
-                      onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
-                      className="w-9 h-9 border border-[#dde3eb] rounded-lg flex items-center justify-center hover:bg-[#edf1f7] transition-colors"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Topics */}
-              {renderSection('topics', 'Topics', <BookOpen size={16} />, (
-                <div className="space-y-3">
-                  <div className="bg-[#f6f9ff] border border-[#dde3eb] rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#0a1628]">
-                      Imported topic context
-                      {selectedClassName ? ` for ${selectedClassName}` : ''}
-                    </p>
-                    <p className="text-xs text-[#5a6578] mt-1">
-                      {importedTopicsLoading
-                        ? 'Loading imported topics...'
-                        : importedTopics.length > 0
-                        ? `${importedTopics.length} imported topic${importedTopics.length !== 1 ? 's' : ''} available and prioritized during generation`
-                        : 'No imported topics found for the current class context'}
-                    </p>
-                    {importedTopicsWarning && (
-                      <p className="text-[11px] text-amber-700 mt-1">{importedTopicsWarning}</p>
+          {/* WIZARD PROGRESS BAR */}
+          {!generating && step !== 'results' && (
+            <div className="flex bg-white rounded-xl border border-[#dde3eb] mb-6 overflow-hidden shadow-sm">
+              {[
+                { id: 'setup', label: 'Setup' },
+                { id: 'topics', label: 'Topics' },
+                { id: 'style', label: 'Question style' },
+                { id: 'preview', label: 'Preview' }
+              ].map((s, idx) => {
+                const WIZARD_STEPS = ['setup', 'topics', 'style', 'preview'];
+                const currentIdx = WIZARD_STEPS.indexOf(step);
+                const isCompleted = currentIdx > idx;
+                const isCurrent = currentIdx === idx;
+                
+                return (
+                  <div key={s.id} className={`flex-1 flex items-center justify-center py-3 border-r last:border-r-0 border-[#dde3eb] ${isCurrent ? 'bg-purple-50' : 'bg-white'}`}>
+                    {isCompleted ? (
+                      <div className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center mr-2">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mr-2 ${isCurrent ? 'bg-[#9b51e0] text-white' : 'bg-[#edf1f7] text-slate-500'}`}>
+                        {idx + 1}
+                      </div>
                     )}
+                    <span className={`text-sm font-semibold ${isCurrent ? 'text-[#9b51e0]' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
                   </div>
-                  {topicsLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-[#5a6578]">
-                      <Loader2 size={14} className="animate-spin" /> Loading topics...
-                    </div>
-                  ) : (
-                    Object.entries(mergedAvailableTopics).map(([category, subtopics]) => (
-                      <div key={category}>
-                        <p className="text-xs font-bold text-[#5a6578] uppercase tracking-wide mb-2">{category}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {subtopics.map(topic => {
-                            const isSelected = selectedTopics.includes(topic);
-                            const isExcluded = excludeTopics.includes(topic);
-                            return (
-                              <div key={topic} className="flex items-center gap-1">
-                                <button
-                                  onClick={() => toggleTopic(topic)}
-                                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                                    isSelected
-                                      ? 'bg-sky-100 border-sky-400 text-sky-700 font-medium'
-                                      : isExcluded
-                                      ? 'bg-red-50 border-red-200 text-red-400 line-through'
-                                      : 'bg-white border-[#dde3eb] text-[#5a6578] hover:border-sky-300'
-                                  }`}
-                                >
-                                  {topic}
-                                </button>
-                                <button
-                                  onClick={() => toggleExclude(topic)}
-                                  title={isExcluded ? 'Include this topic' : 'Exclude this topic'}
-                                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors ${
-                                    isExcluded
-                                      ? 'bg-red-500 text-white'
-                                      : 'bg-[#edf1f7] text-slate-500 hover:bg-red-100 hover:text-red-500'
-                                  }`}
-                                >
-                                  <X size={10} />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {selectedTopics.length > 0 && (
-                    <p className={`text-xs mt-2 ${selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT ? 'text-rose-600 font-medium' : 'text-sky-600'}`}>
-                      {selectedTopics.filter(t => !excludeTopics.includes(t)).length} topic{selectedTopics.filter(t => !excludeTopics.includes(t)).length !== 1 ? 's' : ''} selected
-                      {selectedTopics.filter(t => !excludeTopics.includes(t)).length > MAX_TOPICS_LIMIT && ` (only first ${MAX_TOPICS_LIMIT} will be used)`}
-                    </p>
-                  )}
-                  {excludeTopics.length > 0 && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {excludeTopics.length} topic{excludeTopics.length !== 1 ? 's' : ''} excluded (class already competent)
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
 
-              {/* Question Types */}
-              {renderSection('types', 'Question Types', <FileText size={16} />, (
-                <div className="space-y-2">
-                  {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, typeof QUESTION_TYPE_LABELS[QuestionType]][]).map(([type, info]) => (
-                    <button
-                      key={type}
-                      onClick={() => toggleType(type)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-                        selectedTypes.includes(type)
-                          ? 'bg-sky-50 border-sky-300 text-sky-700'
-                          : 'bg-white border-[#dde3eb] text-[#5a6578] hover:border-sky-200'
-                      }`}
+          {/* ─── STEP: SETUP ─── */}
+          {step === 'setup' && !generating && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start gap-3">
+                <Info size={18} className="text-[#9b51e0] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-purple-800">
+                    This quiz maker generates <span className="font-bold">supplemental assessments</span> to support classroom instruction. Questions follow Bloom's Taxonomy for comprehensive skill evaluation. Generation limit: up to {MAX_QUESTIONS_LIMIT} questions and {MAX_TOPICS_LIMIT} topics per quiz.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-[#dde3eb] rounded-xl overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-[#dde3eb]">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">BASIC SETTINGS</p>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="quiz-grade-level" className="text-sm font-semibold text-[#0a1628] mb-2 block">Grade level</label>
+                    <select
+                      id="quiz-grade-level"
+                      value={selectedGrade}
+                      onChange={e => setSelectedGrade(normalizeGradeLevel(e.target.value))}
+                      className="w-full bg-white text-[#0a1628] rounded-lg px-4 py-3 text-sm outline-none border border-[#dde3eb] focus:ring-2 focus:ring-purple-500"
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        selectedTypes.includes(type) ? 'bg-sky-200' : 'bg-[#edf1f7]'
-                      }`}>
-                        {info.icon}
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium">{info.label}</span>
-                        <p className="text-xs text-slate-500">{info.description}</p>
-                      </div>
-                      {selectedTypes.includes(type) && <Check size={16} className="text-sky-600" />}
-                    </button>
-                  ))}
-
-                  {/* Graph toggle */}
-                  <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#dde3eb] cursor-pointer hover:bg-[#edf1f7] transition-colors mt-3">
-                    <input
-                      type="checkbox"
-                      checked={includeGraphs}
-                      onChange={e => setIncludeGraphs(e.target.checked)}
-                      className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-[#0a1628]">Include Graph Questions</span>
-                      <p className="text-xs text-slate-500">
-                        Generates identification-type questions about graphs (text-described, as graphing is challenging for students)
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              ))}
-
-              {/* Bloom's Taxonomy */}
-              {renderSection('bloom', <span className="flex items-center gap-2">Bloom's Taxonomy Levels<span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setShowBloomsModal(true); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setShowBloomsModal(true); } }} className="w-5 h-5 rounded-full bg-cyan-100 hover:bg-cyan-200 flex items-center justify-center transition-colors cursor-pointer" title="What is Bloom's Taxonomy?"><Info size={12} className="text-sky-600" /></span></span>, <GraduationCap size={16} />, (
-                <div className="space-y-3">
-                  <div className="bg-[#edf1f7] rounded-lg p-3 mb-3">
-                    <div className="flex items-start gap-2">
-                      <Info size={14} className="text-slate-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-[#5a6578]">
-                        Bloom's Taxonomy ensures questions assess different cognitive levels — from basic fact recall
-                        to complex analysis — providing comprehensive skill evaluation.
-                      </p>
+                      {GRADE_LEVELS.map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="quiz-num-questions" className="text-sm font-semibold text-[#0a1628] mb-2 block">Number of questions</label>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
+                        className="w-12 h-12 border border-[#dde3eb] rounded-l-lg flex items-center justify-center hover:bg-[#edf1f7] text-[#edf1f7] transition-colors bg-white font-bold text-xl"
+                        style={{color: '#edf1f7'}}
+                      >
+                        <span style={{color: '#dde3eb'}}>-</span>
+                      </button>
+                      <input
+                        id="quiz-num-questions"
+                        type="number"
+                        min={1}
+                        max={MAX_QUESTIONS_LIMIT}
+                        value={numQuestions}
+                        onChange={e => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, Math.max(1, parseInt(e.target.value) || 1)))}
+                        className="flex-1 h-12 text-center border-y border-[#dde3eb] px-3 text-base font-bold focus:outline-none bg-white text-[#0a1628]"
+                      />
+                      <button
+                        onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
+                        className="w-12 h-12 border border-[#dde3eb] rounded-r-lg flex items-center justify-center hover:bg-[#edf1f7] text-slate-200 transition-colors bg-white font-bold text-xl"
+                        style={{color: '#edf1f7'}}
+                      >
+                        <span style={{color: '#dde3eb'}}>+</span>
+                      </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(Object.entries(BLOOM_LABELS) as [BloomLevel, typeof BLOOM_LABELS[BloomLevel]][]).map(([level, info]) => (
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── STEP: TOPICS ─── */}
+          {step === 'topics' && !generating && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[#0a1628]">Select topics</h3>
+                  <p className="text-sm text-[#5a6578]">Choose up to {MAX_TOPICS_LIMIT} topics across all strands</p>
+                </div>
+                <div className="bg-purple-50 text-[#9b51e0] px-3 py-1 rounded-full text-sm font-bold">
+                  {selectedTopics.filter(t => !excludeTopics.includes(t)).length} of {MAX_TOPICS_LIMIT} selected
+                </div>
+              </div>
+
+              {topicsLoading ? (
+                <div className="flex items-center justify-center py-10 text-sm text-[#5a6578]">
+                  <Loader2 size={24} className="animate-spin text-[#9b51e0] mr-2" /> Loading topics...
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(mergedAvailableTopics).map(([category, subtopics]) => {
+                    const selectedCount = subtopics.filter(t => selectedTopics.includes(t) && !excludeTopics.includes(t)).length;
+                    const isOpen = expandedSection === category;
+                    
+                    return (
+                      <div key={category} className="border border-[#dde3eb] rounded-xl bg-white overflow-hidden shadow-sm">
+                        <button
+                          onClick={() => setExpandedSection(isOpen ? null : category)}
+                          className="w-full flex items-center justify-between p-4 hover:bg-[#f7f9fc] transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-1 h-6 bg-[#9b51e0] rounded-full"></div>
+                            <div className="text-left">
+                              <p className="font-bold text-[#0a1628] text-sm">{category}</p>
+                              <p className="text-xs text-slate-500">{subtopics.length} topics</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="bg-purple-100 text-[#9b51e0] px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                              {selectedCount} selected
+                            </span>
+                            {isOpen ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                          </div>
+                        </button>
+                        
+                        <AnimatePresence>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: 'auto' }}
+                              exit={{ height: 0 }}
+                              className="overflow-hidden border-t border-[#edf1f7]"
+                            >
+                              <div className="py-2">
+                                {subtopics.map((topic, idx) => {
+                                  const isSelected = selectedTopics.includes(topic);
+                                  const isExcluded = excludeTopics.includes(topic);
+                                  const effectiveSelected = isSelected && !isExcluded;
+                                  
+                                  let tag = 'Core';
+                                  if (idx % 3 === 0) tag = 'Foundation';
+                                  if (idx % 3 === 2) tag = 'Advanced';
+
+                                  return (
+                                    <div key={topic} className="flex items-center justify-between px-6 py-3 hover:bg-[#f7f9fc]">
+                                      <label className="flex items-center gap-3 cursor-pointer flex-1">
+                                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${effectiveSelected ? 'bg-[#9b51e0] border-[#9b51e0]' : 'border-2 border-[#dde3eb] bg-white'}`}>
+                                          {effectiveSelected && <Check size={14} className="text-white" />}
+                                        </div>
+                                        <input
+                                          type="checkbox"
+                                          className="hidden"
+                                          checked={effectiveSelected}
+                                          onChange={() => toggleTopic(topic)}
+                                        />
+                                        <span className={`text-sm font-semibold ${effectiveSelected ? 'text-[#0a1628]' : 'text-[#5a6578]'}`}>{topic}</span>
+                                      </label>
+                                      <span className={`border px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider ${tag === 'Advanced' ? 'bg-white text-slate-400 border-[#dde3eb]' : 'bg-purple-50 text-[#9b51e0] border-purple-100'}`}>
+                                        {tag}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── STEP: STYLE ─── */}
+          {step === 'style' && !generating && (
+            <div className="space-y-4">
+              <div className="bg-white border border-[#dde3eb] rounded-xl overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-[#dde3eb]">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">QUESTION TYPES</p>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, typeof QUESTION_TYPE_LABELS[QuestionType]][]).map(([type, info]) => {
+                    const isSelected = selectedTypes.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => toggleType(type)}
+                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                          isSelected ? 'bg-purple-50 border-purple-300' : 'bg-white border-[#dde3eb] hover:border-purple-200'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${isSelected ? 'bg-purple-200 text-[#9b51e0]' : 'bg-[#edf1f7] text-slate-400'}`}>
+                          {info.icon}
+                        </div>
+                        <span className={`text-sm font-semibold ${isSelected ? 'text-purple-800' : 'text-[#5a6578]'}`}>{info.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-white border border-[#dde3eb] rounded-xl overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-[#dde3eb]">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">BLOOM'S TAXONOMY LEVELS</p>
+                </div>
+                <div className="p-5 flex flex-wrap gap-3">
+                  {(Object.entries(BLOOM_LABELS) as [BloomLevel, typeof BLOOM_LABELS[BloomLevel]][]).map(([level, info]) => {
+                    const isSelected = selectedBlooms.includes(level);
+                    return (
                       <button
                         key={level}
                         onClick={() => toggleBloom(level)}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
-                          selectedBlooms.includes(level)
-                            ? info.color + ' font-medium'
-                            : 'bg-white border-[#dde3eb] text-[#5a6578]'
+                        className={`px-5 py-2.5 rounded-full border-2 transition-all text-sm font-semibold capitalize ${
+                          isSelected ? 'bg-white text-[#9b51e0] border-purple-300' : 'bg-white border-[#dde3eb] text-[#5a6578] hover:border-purple-200'
                         }`}
                       >
-                        <span className="text-sm">{info.label}</span>
-                        <span className="text-[10px] text-slate-500 ml-auto">{info.description}</span>
+                        {level}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
 
-              {/* Difficulty Distribution */}
-              {renderSection('difficulty', 'Difficulty Distribution', <BarChart3 size={16} />, (
-                <div className="space-y-4">
-                  {(Object.entries(difficultyDist) as [DifficultyLevel, number][]).map(([level, pct]) => (
-                    <div key={level} className="flex items-center gap-4">
-                      <span className={`text-sm font-medium w-16 capitalize ${DIFFICULTY_COLORS[level]}`}>{level}</span>
-                      <div className="flex-1 h-2 bg-[#edf1f7] rounded-full overflow-hidden">
-                        <motion.div
-                          animate={{ width: `${pct}%` }}
-                          className={`h-full rounded-full ${
-                            level === 'easy' ? 'bg-green-500' : level === 'medium' ? 'bg-rose-500' : 'bg-red-500'
-                          }`}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => adjustDifficulty(level, -5)}
-                          className="w-6 h-6 rounded border border-[#dde3eb] flex items-center justify-center hover:bg-[#edf1f7] text-slate-500"
-                        >
-                          <Minus size={10} />
-                        </button>
-                        <span className="text-sm font-bold w-10 text-center">{pct}%</span>
-                        <button
-                          onClick={() => adjustDifficulty(level, 5)}
-                          className="w-6 h-6 rounded border border-[#dde3eb] flex items-center justify-center hover:bg-[#edf1f7] text-slate-500"
-                        >
-                          <Plus size={10} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-xs text-slate-500 text-center">
-                    Total: {Object.values(difficultyDist).reduce((a, b) => a + b, 0)}%
-                  </p>
+              <div className="bg-white border border-[#dde3eb] rounded-xl overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-[#dde3eb]">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">DIFFICULTY DISTRIBUTION</p>
                 </div>
-              ))}
+                <div className="p-5 space-y-5">
+                  {(Object.entries(difficultyDist) as [DifficultyLevel, number][]).map(([level, pct]) => {
+                    const colorMap = {
+                      easy: 'bg-[#55b963]',
+                      medium: 'bg-[#faa541]',
+                      hard: 'bg-[#f47a75]'
+                    };
+                    const barColor = colorMap[level];
+                    return (
+                      <div key={level} className="flex items-center gap-4">
+                        <span className="text-sm font-semibold w-16 capitalize text-[#5a6578]">{level}</span>
+                        <div className="flex-1 h-2 bg-[#edf1f7] rounded-full overflow-hidden">
+                          <motion.div
+                            animate={{ width: `${pct}%` }}
+                            className={`h-full rounded-full ${barColor}`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 w-20 justify-end">
+                          <button onClick={() => adjustDifficulty(level, -5)} className="w-6 h-6 rounded border border-[#dde3eb] flex items-center justify-center hover:bg-[#edf1f7] text-slate-500"><Minus size={10} /></button>
+                          <span className="text-sm font-bold w-10 text-center text-slate-500">{pct}%</span>
+                          <button onClick={() => adjustDifficulty(level, 5)} className="w-6 h-6 rounded border border-[#dde3eb] flex items-center justify-center hover:bg-[#edf1f7] text-slate-500"><Plus size={10} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
           {/* ─── STEP: PREVIEW ─── */}
-          {step === 'preview' && previewResult && (
+          {step === 'preview' && !generating && !quizResult && (
             <div className="space-y-4">
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
-                <Eye size={18} className="text-rose-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-rose-800">Preview Mode</p>
-                  <p className="text-xs text-rose-600">
-                    Showing {previewResult.questions.length} sample questions.
-                    Click each question to reveal its answer and explanation. Review quality before generating the full quiz.
-                  </p>
+              <div className="bg-white border border-[#dde3eb] rounded-xl overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-[#dde3eb]">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">QUIZ SUMMARY</p>
                 </div>
-              </div>
-
-              {previewResult.questions.map((q, i) => renderQuestionCard(q, i, true))}
-
-              <div className="bg-[#edf1f7] rounded-xl p-4">
-                <p className="text-xs font-semibold text-[#5a6578] mb-2">Preview Metadata</p>
-                <div className="grid grid-cols-2 gap-2 text-xs text-[#5a6578]">
-                  <span>Topics: {Object.keys(previewResult.metadata.topicsCovered).join(', ')}</span>
-                  <span>Total Points: {previewResult.totalPoints}</span>
+                <div className="p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-purple-50 rounded-xl p-6 text-center border border-purple-100">
+                      <p className="text-3xl font-bold text-purple-800 mb-1">{numQuestions}</p>
+                      <p className="text-sm text-purple-600 font-medium">questions</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-xl p-6 text-center border border-purple-100">
+                      <p className="text-3xl font-bold text-purple-800 mb-1">{selectedTopics.filter(t => !excludeTopics.includes(t)).length}</p>
+                      <p className="text-sm text-purple-600 font-medium">topics</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-xl p-6 text-center border border-purple-100">
+                      <p className="text-3xl font-bold text-purple-800 mb-1">{selectedGrade.replace('Grade ', 'Gr. ')}</p>
+                      <p className="text-sm text-purple-600 font-medium">level</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-[#f7f9fc] rounded-lg p-5 border border-[#dde3eb] text-sm text-[#5a6578] leading-relaxed">
+                    {selectedTypes.map(t => QUESTION_TYPE_LABELS[t]?.label).join(' and ')} questions across {selectedTopics.filter(t => !excludeTopics.includes(t)).length} topics — aligned to {selectedBlooms.map(b => BLOOM_LABELS[b]?.label).join(', ')} levels of Bloom's Taxonomy. Easy {difficultyDist.easy}% · Medium {difficultyDist.medium}% · Hard {difficultyDist.hard}%.
+                  </div>
                 </div>
               </div>
             </div>
           )}
-
-          {/* ─── STEP: RESULTS ─── */}
+{/* ─── STEP: RESULTS ─── */}
           {step === 'results' && quizResult && (
             <div className="space-y-4">
               {/* Summary */}
@@ -1734,67 +1760,59 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
       {/* Footer (Create tab only) */}
       {activeTab === 'create' && (
-        <div className="border-t border-[#dde3eb] px-6 sm:px-6 xl:px-10 py-4 bg-white flex items-center justify-between flex-shrink-0">
-          <div className="text-xs text-slate-500">
-            {step === 'configure' && (
-              <span className="flex items-center gap-1">
-                <Sparkles size={12} /> Powered by Qwen/Qwen3.5-9B
-              </span>
-            )}
-            {step === 'preview' && <span>Preview: {previewResult?.questions.length || 0} sample questions</span>}
-            {step === 'results' && <span>{quizResult?.questions.length || 0} questions • {quizResult?.totalPoints || 0} points</span>}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {step === 'configure' && (
-              <>
-                <button
-                  onClick={handlePreview}
-                  disabled={!isFormValid || previewing}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    isFormValid && !previewing
-                      ? 'bg-white border border-sky-300 text-sky-700 hover:bg-sky-50'
-                      : 'bg-[#edf1f7] text-slate-500 cursor-not-allowed'
-                  }`}
-                >
-                  {previewing ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
-                  Preview (3 Qs)
-                </button>
-                <button
-                  onClick={handleGenerate}
-                  disabled={!isFormValid || generating}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    isFormValid && !generating
-                      ? 'bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white shadow-lg shadow-sky-200'
-                      : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
-                  }`}
-                >
-                  {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                  {generating ? `Generating... ${generationProgress}%` : 'Generate Quiz'}
-                </button>
-              </>
-            )}
-
-            {step === 'preview' && (
-              <>
-                <button
-                  onClick={() => setStep('configure')}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
-                >
-                  Back to Configure
-                </button>
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white shadow-lg shadow-sky-200 transition-all"
-                >
-                  {generating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                  {generating ? `Generating... ${generationProgress}%` : `Generate Full Quiz (${numQuestions} Qs)`}
-                </button>
-              </>
-            )}
-
-            {step === 'results' && (
+        <div className="border-t border-[#dde3eb] px-6 sm:px-6 xl:px-10 py-4 bg-[#f7f9fc] flex items-center justify-between flex-shrink-0">
+          {step === 'setup' && !generating && (
+             <>
+               <div></div>
+               <button onClick={() => setStep('topics')} className="bg-white border border-[#dde3eb] text-[#edf1f7] px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:text-slate-600 flex items-center">
+                  <span style={{color: '#edf1f7'}}>Next: Topics</span> <ChevronRight size={16} className="ml-2 text-slate-300" />
+               </button>
+             </>
+          )}
+          {step === 'topics' && !generating && (
+             <>
+               <div className="flex items-center gap-4">
+                  <button onClick={() => { setSelectedTopics([]); setExcludeTopics([]); }} className="text-[#9b51e0] text-sm font-semibold hover:underline">Clear all</button>
+                  <span className="text-sm text-[#9b51e0]">{selectedTopics.filter(t => !excludeTopics.includes(t)).length} of {MAX_TOPICS_LIMIT} topics selected</span>
+               </div>
+               <div className="flex items-center gap-3">
+                 <button onClick={() => setStep('setup')} className="bg-white border border-[#dde3eb] text-[#5a6578] px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-[#edf1f7] flex items-center">
+                    <ChevronLeft size={16} className="mr-2 text-slate-400" /> Back
+                 </button>
+                 <button onClick={() => setStep('style')} className="bg-[#9b51e0] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-purple-700 flex items-center shadow-md">
+                    Next: Question style <ChevronRight size={16} className="ml-2 text-purple-200" />
+                 </button>
+               </div>
+             </>
+          )}
+          {step === 'style' && !generating && (
+             <>
+               <button onClick={() => setStep('topics')} className="bg-white border border-[#dde3eb] text-[#5a6578] px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-[#edf1f7] flex items-center">
+                  <ChevronLeft size={16} className="mr-2 text-slate-400" /> Back
+               </button>
+               <button onClick={() => setStep('preview')} className="bg-[#9b51e0] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-purple-700 flex items-center shadow-md">
+                  Preview <ChevronRight size={16} className="ml-2 text-purple-200" />
+               </button>
+             </>
+          )}
+          {step === 'preview' && !generating && !quizResult && (
+             <>
+               <button onClick={() => setStep('style')} className="bg-white border border-[#dde3eb] text-[#5a6578] px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-[#edf1f7] flex items-center">
+                  <ChevronLeft size={16} className="mr-2 text-slate-400" /> Back
+               </button>
+               <button onClick={handleGenerate} className="bg-[#9b51e0] text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-colors hover:bg-purple-700 flex items-center shadow-md">
+                  <Check size={16} className="mr-2" /> Generate quiz
+               </button>
+             </>
+          )}
+          {generating && (
+             <div className="w-full flex items-center justify-center">
+                <div className="flex items-center gap-3 text-slate-500 font-medium text-sm">
+                   <Loader2 size={16} className="animate-spin" /> Generating quiz... Please wait.
+                </div>
+             </div>
+          )}
+          {step === 'results' && (
               viewingBankQuizId ? (
                 <>
                   <button
@@ -1823,7 +1841,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 <>
                   <button
                     onClick={() => {
-                      setStep('configure');
+                      setStep('setup');
                       setQuizResult(null);
                       setPreviewResult(null);
                       setSavedQuizId(null);
@@ -1872,9 +1890,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 </>
               )
             )}
-          </div>
         </div>
-        )}
+      )}
       
       <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
 

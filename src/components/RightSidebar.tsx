@@ -22,14 +22,14 @@ interface RightSidebarProps {
   userRole?: string;
 }
 
-const RightSidebar: React.FC<RightSidebarProps> = ({ 
-  onOpenRewards, 
+const RightSidebar: React.FC<RightSidebarProps> = ({
+  onOpenRewards,
   onOpenLeaderboard,
   onNavigateToModules,
   onNavigateToQuizBattle,
-  userLevel, 
+  userLevel,
   userPhoto,
-  currentXP, 
+  currentXP,
   xpToNextLevel,
   streak,
   streakHistory = [],
@@ -47,64 +47,64 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         className="rounded-2xl border border-[#9956DE]/25 cursor-pointer transition-all group relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] hover:shadow-[0_16px_40px_rgba(114,116,237,0.28)] hover:-translate-y-0.5"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(251,150,187,0.32),transparent_42%),radial-gradient(circle_at_85%_84%,rgba(117,208,106,0.24),transparent_40%)]" />
-        
+
         <div className="relative z-10 p-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="shrink-0 w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center border border-white/35 backdrop-blur-sm">
-              <Trophy size={14} className="text-white" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="shrink-0 w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center border border-white/35 backdrop-blur-sm">
+                <Trophy size={14} className="text-white" />
+              </div>
+              <h3 className="font-display font-bold text-[13px] leading-tight text-white tracking-wide">Rewards & <br className="hidden 2xl:block" /> Achievements</h3>
             </div>
-            <h3 className="font-display font-bold text-[13px] leading-tight text-white tracking-wide">Rewards & <br className="hidden 2xl:block"/> Achievements</h3>
+            <ChevronRight size={14} className="shrink-0 text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
           </div>
-          <ChevronRight size={14} className="shrink-0 text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-        </div>
 
-        {/* Compact inline stats */}
-        <div className="flex items-center justify-between gap-1 mb-3 bg-white/10 p-1.5 rounded-xl border border-white/20 backdrop-blur-sm">
-          <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
-            <Crown size={12} className="text-[#FFB356]" />
-            <span className="font-bold">Lv {userLevel}</span>
+          {/* Compact inline stats */}
+          <div className="flex items-center justify-between gap-1 mb-3 bg-white/10 p-1.5 rounded-xl border border-white/20 backdrop-blur-sm">
+            <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
+              <Crown size={12} className="text-[#FFB356]" />
+              <span className="font-bold">Lv {userLevel}</span>
+            </div>
+            <div className="w-px h-3 bg-white/35" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onNavigateToModules?.();
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-body px-1 text-white cursor-pointer transition-colors active:scale-95"
+                >
+                  <Star size={12} className="text-[#6ED1CF]" />
+                  <span className="font-bold whitespace-nowrap">{currentXP} XP</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-slate-900 text-white border border-slate-700">
+                Review more lessons to earn more XP!
+              </TooltipContent>
+            </Tooltip>
+            <div className="w-px h-3 bg-white/35" />
+            <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
+              <Flame size={12} className="text-[#FF8B8B]" />
+              <span className="font-bold">{streak}d</span>
+            </div>
           </div>
-          <div className="w-px h-3 bg-white/35" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onNavigateToModules?.();
-                }}
-                className="flex items-center gap-1.5 text-xs font-body px-1 text-white cursor-pointer transition-colors active:scale-95"
-              >
-                <Star size={12} className="text-[#6ED1CF]" />
-                <span className="font-bold whitespace-nowrap">{currentXP} XP</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="bg-slate-900 text-white border border-slate-700">
-              Review more lessons to earn more XP!
-            </TooltipContent>
-          </Tooltip>
-          <div className="w-px h-3 bg-white/35" />
-          <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
-            <Flame size={12} className="text-[#FF8B8B]" />
-            <span className="font-bold">{streak}d</span>
-          </div>
-        </div>
 
-        {/* Progress to next level */}
-        <div>
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-[11px] font-body text-white/90">Next: Level {userLevel + 1}</span>
-            <span className="text-[11px] font-body font-semibold text-white">{Math.round(progressPercentage)}%</span>
+          {/* Progress to next level */}
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-[11px] font-body text-white/90">Next: Level {userLevel + 1}</span>
+              <span className="text-[11px] font-body font-semibold text-white">{Math.round(progressPercentage)}%</span>
+            </div>
+            <div className="h-2 bg-white/25 rounded-full overflow-hidden border border-white/20">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercentage}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className="h-full bg-gradient-to-r from-[#6ED1CF] via-[#75D06A] to-[#FFB356] rounded-full"
+              />
+            </div>
           </div>
-          <div className="h-2 bg-white/25 rounded-full overflow-hidden border border-white/20">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-[#6ED1CF] via-[#75D06A] to-[#FFB356] rounded-full"
-            />
-          </div>
-        </div>
         </div>
       </motion.div>
 
@@ -134,25 +134,25 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           </div>
           <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 group-hover:text-amber-500 transition-transform" />
         </div>
-        
+
         {/* Miniature Stage Podium */}
         <div className="pt-8 pb-3 px-2 bg-gradient-to-b from-slate-50/30 to-white flex items-end justify-center gap-1.5 min-h-[170px]">
-          
+
           {/* Rank 2 (Left) */}
           <div className="flex flex-col items-center relative z-10">
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
               className="relative mb-2"
             >
               <img src="https://i.pravatar.cc/150?img=33" alt="You" className="w-10 h-10 rounded-full border-[3px] border-sky-400 z-10 relative object-cover shadow-sm bg-white" />
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">2</div>
             </motion.div>
-            <motion.div 
+            <motion.div
               initial={{ height: 0 }} animate={{ height: '54px' }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
               className="w-[70px] bg-gradient-to-b from-slate-200 to-slate-100 rounded-t-xl rounded-b-md border-t-2 border-slate-50 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.05)]"
             >
-               <span className="text-slate-400 font-black text-2xl opacity-40 translate-y-1">2</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
+              <span className="text-slate-400 font-black text-2xl opacity-40 translate-y-1">2</span>
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
             </motion.div>
             <div className="mt-2 text-center">
               <span className="block text-[12px] font-bold text-[#0a1628]">You</span>
@@ -162,7 +162,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
           {/* Rank 1 (Center) */}
           <div className="flex flex-col items-center relative z-20 -mx-2">
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
               className="relative mb-2"
             >
@@ -172,12 +172,12 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
               <img src="https://i.pravatar.cc/150?img=68" alt="Alex" className="w-[52px] h-[52px] rounded-full border-[3px] border-amber-400 z-10 relative object-cover shadow-md bg-white" />
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">1</div>
             </motion.div>
-            <motion.div 
+            <motion.div
               initial={{ height: 0 }} animate={{ height: '74px' }} transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
               className="w-[78px] bg-gradient-to-b from-amber-100 to-amber-50 rounded-t-xl rounded-b-md border-t-2 border-amber-50 flex items-center justify-center relative shadow-[inset_0_-4px_8px_rgba(251,191,36,0.1),0_6px_8px_rgba(0,0,0,0.05)]"
             >
-               <span className="text-amber-400 font-black text-3xl opacity-50 translate-y-1">1</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/80 rounded-t-xl"></div>
+              <span className="text-amber-400 font-black text-3xl opacity-50 translate-y-1">1</span>
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/80 rounded-t-xl"></div>
             </motion.div>
             <div className="mt-2 text-center">
               <span className="block text-[13px] font-black text-[#0a1628]">Alex M.</span>
@@ -187,26 +187,26 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
           {/* Rank 3 (Right) */}
           <div className="flex flex-col items-center relative z-10">
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }}
               className="relative mb-2"
             >
               <img src="https://i.pravatar.cc/150?img=47" alt="Sarah" className="w-10 h-10 rounded-full border-[3px] border-orange-400 z-10 relative object-cover shadow-sm bg-white" />
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">3</div>
             </motion.div>
-            <motion.div 
+            <motion.div
               initial={{ height: 0 }} animate={{ height: '38px' }} transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
               className="w-[70px] bg-gradient-to-b from-orange-50 to-slate-50 rounded-t-xl rounded-b-md border-t-2 border-orange-100 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(249,115,22,0.05),0_4px_6px_rgba(0,0,0,0.02)]"
             >
-               <span className="text-orange-400/60 font-black text-2xl opacity-60 translate-y-1">3</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
+              <span className="text-orange-400/60 font-black text-2xl opacity-60 translate-y-1">3</span>
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
             </motion.div>
             <div className="mt-2 text-center">
               <span className="block text-[12px] font-bold text-[#0a1628]">Sarah K.</span>
               <span className="block text-[10px] text-orange-600 font-bold">1.9k XP</span>
             </div>
           </div>
-          
+
         </div>
       </motion.div>
 
