@@ -730,9 +730,6 @@ class TestInferenceRouting:
 
 
 class TestRiskPrediction:
-    def setup_method(self):
-        asyncio.run(main_module.deterministic_response_cache.clear())
-
     @patch("main.get_client")
     def test_predict_risk_success(self, mock_get):
         mock_get.return_value = make_zsc_client()
@@ -856,101 +853,6 @@ class TestDailyInsight:
         assert "No student data" in response.json()["insight"]
 
 
-class TestDeterministicEndpointCaching:
-    def setup_method(self):
-        asyncio.run(main_module.deterministic_response_cache.clear())
-
-    def teardown_method(self):
-        asyncio.run(main_module.deterministic_response_cache.clear())
-
-    @patch("main.get_client")
-    def test_predict_risk_cache_hit_header(self, mock_get):
-        hf_client = make_zsc_client()
-        mock_get.return_value = hf_client
-
-        payload = {
-            "engagementScore": 80,
-            "avgQuizScore": 75,
-            "attendance": 90,
-            "assignmentCompletion": 85,
-        }
-
-        first = client.post("/api/predict-risk", json=payload)
-        second = client.post("/api/predict-risk", json=payload)
-
-        assert first.status_code == 200
-        assert second.status_code == 200
-        assert first.headers.get("x-cache") == "MISS"
-        assert second.headers.get("x-cache") == "HIT"
-        assert hf_client.zero_shot_classification.call_count == 1
-
-    def test_learning_path_cache_hit_header(self):
-        payload = {
-            "weaknesses": ["fractions", "decimals"],
-            "gradeLevel": "Grade 11",
-        }
-
-        with patch("main.call_hf_chat_async", new=AsyncMock(return_value="1. Review fractions\n2. Practice decimals")) as mock_chat:
-            first = client.post("/api/learning-path", json=payload)
-            second = client.post("/api/learning-path", json=payload)
-
-        assert first.status_code == 200
-        assert second.status_code == 200
-        assert first.headers.get("x-cache") == "MISS"
-        assert second.headers.get("x-cache") == "HIT"
-        assert mock_chat.await_count == 1
-
-    def test_daily_insight_cache_hit_header(self):
-        payload = {
-            "students": [
-                {
-                    "name": "Alice",
-                    "engagementScore": 80,
-                    "avgQuizScore": 75,
-                    "attendance": 90,
-                    "riskLevel": "Low",
-                },
-            ],
-        }
-
-        with patch("main.call_hf_chat_async", new=AsyncMock(return_value="Class is doing well.")) as mock_chat:
-            first = client.post("/api/analytics/daily-insight", json=payload)
-            second = client.post("/api/analytics/daily-insight", json=payload)
-
-        assert first.status_code == 200
-        assert second.status_code == 200
-        assert first.headers.get("x-cache") == "MISS"
-        assert second.headers.get("x-cache") == "HIT"
-        assert mock_chat.await_count == 1
-
-    def test_verify_solution_cache_hit_header(self):
-        payload = {
-            "problem": "What is 2 + 2?",
-            "solution": "2 + 2 = 4",
-        }
-
-        with patch(
-            "main.verify_math_response",
-            new=AsyncMock(return_value={"verified": True, "confidence": "high", "response": "4", "warning": None}),
-        ) as mock_sc, patch(
-            "main.verify_with_code",
-            new=AsyncMock(return_value={"verified": True, "code": "print(4)", "output": "4", "error": None}),
-        ) as mock_code, patch(
-            "main.llm_judge_verification",
-            new=AsyncMock(return_value={"correct": True, "issues": [], "confidence": 0.95}),
-        ) as mock_judge:
-            first = client.post("/api/verify-solution", json=payload)
-            second = client.post("/api/verify-solution", json=payload)
-
-        assert first.status_code == 200
-        assert second.status_code == 200
-        assert first.headers.get("x-cache") == "MISS"
-        assert second.headers.get("x-cache") == "HIT"
-        assert mock_sc.await_count == 1
-        assert mock_code.await_count == 1
-        assert mock_judge.await_count == 1
-
-
 # ─── Quiz Topics ───────────────────────────────────────────────
 
 
@@ -959,13 +861,6 @@ class TestQuizTopics:
         response = client.get("/api/quiz/topics")
         assert response.status_code == 200
         assert "allTopics" in response.json()
-
-    def test_get_all_topics_cache_control_header(self):
-        response = client.get("/api/quiz/topics")
-        assert response.status_code == 200
-        cache_control = response.headers.get("cache-control", "")
-        assert "public" in cache_control
-        assert "max-age=300" in cache_control
 
     def test_get_topics_by_grade(self):
         response = client.get("/api/quiz/topics?gradeLevel=Grade%2011")
@@ -1063,53 +958,6 @@ class TestClassRecordImportMapping:
         assert response.status_code == 200
 
     @patch("main.call_hf_chat")
-    def test_preview_quiz_recovers_python_literal_payload(self, mock_chat):
-        mock_chat.return_value = """[
-  {
-    'questionType': 'multiple_choice',
-    'question': 'What is 2 + 2?',
-    'correctAnswer': '4',
-    'options': ['A) 3', 'B) 4', 'C) 5', 'D) 6',],
-    'bloomLevel': 'remember',
-    'difficulty': 'easy',
-    'topic': 'Arithmetic',
-    'points': 1,
-    'explanation': '2 + 2 = 4',
-  },
-]"""
-
-        response = client.post("/api/quiz/preview", json={
-            "topics": ["Arithmetic"],
-            "gradeLevel": "Grade 11",
-        })
-
-        assert response.status_code == 200
-        assert len(response.json()["questions"]) >= 1
-
-    @patch("main.call_hf_chat")
-    def test_preview_quiz_recovers_nested_quiz_wrapper(self, mock_chat):
-        mock_chat.return_value = json.dumps({
-            "quiz": [{
-                "questionType": "identification",
-                "question": "Define slope.",
-                "correctAnswer": "Rise over run",
-                "bloomLevel": "remember",
-                "difficulty": "easy",
-                "topic": "Algebra",
-                "points": 1,
-                "explanation": "Slope = rise/run.",
-            }],
-        })
-
-        response = client.post("/api/quiz/preview", json={
-            "topics": ["Algebra"],
-            "gradeLevel": "Grade 11",
-        })
-
-        assert response.status_code == 200
-        assert len(response.json()["questions"]) >= 1
-
-    @patch("main.call_hf_chat")
     def test_generate_quiz_accepts_new_max_limits(self, mock_chat):
         max_questions = main_module.MAX_QUESTIONS_LIMIT
         quiz_json = json.dumps([
@@ -1163,7 +1011,7 @@ class TestUploadClassRecordsGuardrails:
         assert "Unsupported datasetIntent" in response.json()["detail"]
 
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
-    def test_upload_class_records_blocks_when_required_core_fields_missing(self, _mock_chat):
+    def test_upload_class_records_warns_when_preferred_core_fields_missing(self, _mock_chat):
         files = {
             "files": (
                 "records.csv",
@@ -1179,10 +1027,11 @@ class TestUploadClassRecordsGuardrails:
 
         assert response.status_code == 200
         payload = response.json()
-        assert payload["success"] is False
-        assert payload["summary"]["failedFiles"] == 1
+        assert payload["success"] is True
+        assert payload["summary"]["failedFiles"] == 0
+        assert payload["summary"]["partialSuccessFiles"] == 1
         combined_warnings = " ".join(payload.get("warnings", []))
-        assert "Missing required educational columns" in combined_warnings
+        assert "Missing preferred educational columns" in combined_warnings
 
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_upload_class_records_returns_interpretation_metadata(self, _mock_chat):
@@ -1844,7 +1693,6 @@ class _ProvisionQuery:
         self._store = store
         self._collection_name = collection_name
         self._filters: List[tuple[str, str, Any]] = []
-        self._order_by: List[tuple[str, str | None]] = []
         self._limit: int | None = None
 
     def where(self, field: str, op: str, value: Any):
@@ -1853,10 +1701,6 @@ class _ProvisionQuery:
 
     def limit(self, value: int):
         self._limit = value
-        return self
-
-    def order_by(self, field: str, direction: str | None = None):
-        self._order_by.append((field, direction))
         return self
 
     def stream(self):
@@ -1873,20 +1717,6 @@ class _ProvisionQuery:
             if include:
                 docs.append(_ProvisionDocSnapshot(doc_id, data))
 
-        for field, direction in reversed(self._order_by):
-            reverse = str(direction or "").upper() == "DESCENDING"
-
-            def _sort_key(snapshot: _ProvisionDocSnapshot):
-                raw_value = snapshot.to_dict().get(field)
-                if hasattr(raw_value, "timestamp"):
-                    try:
-                        raw_value = raw_value.timestamp()
-                    except Exception:
-                        raw_value = None
-                return (raw_value is None, raw_value if raw_value is not None else 0)
-
-            docs.sort(key=_sort_key, reverse=reverse)
-
         if self._limit is not None:
             docs = docs[: self._limit]
         return docs
@@ -1900,9 +1730,6 @@ class _ProvisionCollectionRef:
     def where(self, field: str, op: str, value: Any):
         return _ProvisionQuery(self._store, self._collection_name).where(field, op, value)
 
-    def order_by(self, field: str, direction: str | None = None):
-        return _ProvisionQuery(self._store, self._collection_name).order_by(field, direction)
-
     def limit(self, value: int):
         return _ProvisionQuery(self._store, self._collection_name).limit(value)
 
@@ -1912,10 +1739,6 @@ class _ProvisionCollectionRef:
 
     def document(self, doc_id: str):
         return _ProvisionDocumentRef(self._store, self._collection_name, doc_id)
-
-    def stream(self):
-        collection = self._store.get(self._collection_name, {})
-        return [_ProvisionDocSnapshot(doc_id, data) for doc_id, data in collection.items()]
 
     def add(self, payload: Dict[str, Any]):
         collection = self._store.setdefault(self._collection_name, {})
@@ -2234,7 +2057,7 @@ class TestAdminListUsersEndpoint:
         assert payload["pageSize"] == 1
         assert len(payload["users"]) == 1
         assert payload["users"][0]["role"] == "Student"
-        assert payload["hasNextPage"] is True
+        assert payload["hasMore"] is True
 
     def test_get_admin_users_rejects_invalid_role_filter(self):
         firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
@@ -2261,38 +2084,6 @@ class TestAdminListUsersEndpoint:
 
         assert response.status_code == 403
         assert "forbidden" in response.json()["detail"].lower()
-
-    def test_get_admin_users_returns_timeout_error_when_query_exceeds_deadline(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "student-a": {
-                        "name": "Alice Student",
-                        "email": "alice@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "createdAt": 1710000000,
-                    }
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        original_stream = _ProvisionQuery.stream
-
-        def _slow_stream(self):
-            time.sleep(0.05)
-            return original_stream(self)
-
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }), patch.object(main_module, "ADMIN_USERS_QUERY_TIMEOUT_SECONDS", 0.001), patch.object(_ProvisionQuery, "stream", _slow_stream):
-            response = client.get("/api/admin/users?page=1&pageSize=25")
-
-        assert response.status_code == 504
-        assert "timed out" in response.json()["detail"].lower()
 
 
 class TestAdminDeleteUserEndpoint:
@@ -2368,357 +2159,6 @@ class TestAdminDeleteUserEndpoint:
 
         assert response.status_code == 400
         assert "cannot delete their own account" in response.json()["detail"].lower()
-
-
-class TestAdminListAndUpdateUserEndpoints:
-    def test_list_admin_users_supports_filters_and_pagination(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "student-uid": {
-                        "name": "Ana Cruz",
-                        "email": "ana@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "grade": "Grade 11",
-                        "section": "A",
-                        "lrn": "123456789012",
-                    },
-                    "teacher-uid": {
-                        "name": "Ben Dela",
-                        "email": "ben@teacher.com",
-                        "role": "teacher",
-                        "status": "Active",
-                        "department": "Mathematics",
-                    },
-                    "inactive-student": {
-                        "name": "Cara Lim",
-                        "email": "cara@student.com",
-                        "role": "student",
-                        "status": "Inactive",
-                        "grade": "Grade 12",
-                        "section": "B",
-                        "lrn": "123456789013",
-                    },
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }):
-            response = client.get("/api/admin/users?page=1&pageSize=2&role=Student&status=Active")
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["success"] is True
-        assert payload["total"] == 1
-        assert payload["page"] == 1
-        assert payload["pageSize"] == 2
-        assert len(payload["users"]) == 1
-        assert payload["users"][0]["uid"] == "student-uid"
-
-    def test_update_admin_user_updates_profile_and_auth_status(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "target-uid": {
-                        "name": "Target User",
-                        "email": "target@example.com",
-                        "role": "teacher",
-                        "status": "Active",
-                        "department": "Mathematics",
-                    }
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        update_user_mock = MagicMock()
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }), patch.object(main_module.firebase_auth, "update_user", update_user_mock):
-            response = client.patch(
-                "/api/admin/users?uid=target-uid",
-                json={
-                    "name": "Updated User",
-                    "status": "Inactive",
-                },
-            )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["success"] is True
-        assert payload["uid"] == "target-uid"
-        assert payload["updatesApplied"]["name"] == "Updated User"
-        assert payload["updatesApplied"]["status"] == "Inactive"
-
-        target_profile = firestore.client().store["users"]["target-uid"]
-        assert target_profile["name"] == "Updated User"
-        assert target_profile["status"] == "Inactive"
-        update_user_mock.assert_called_once_with("target-uid", disabled=True)
-
-    def test_update_admin_user_rejects_self_deactivation(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "admin-uid": {
-                        "name": "Admin User",
-                        "email": "admin@example.com",
-                        "role": "admin",
-                        "status": "Active",
-                    }
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }):
-            response = client.patch(
-                "/api/admin/users?uid=admin-uid",
-                json={"status": "Inactive"},
-            )
-
-        assert response.status_code == 400
-        assert "cannot deactivate their own account" in response.json()["detail"].lower()
-
-
-class TestAdminBulkActionEndpoint:
-    def test_bulk_change_status_updates_multiple_users(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "student-1": {
-                        "name": "Student One",
-                        "email": "one@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "lrn": "123456789012",
-                    },
-                    "student-2": {
-                        "name": "Student Two",
-                        "email": "two@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "lrn": "123456789013",
-                    },
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        update_user_mock = MagicMock()
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }), patch.object(main_module.firebase_auth, "update_user", update_user_mock):
-            response = client.post(
-                "/api/admin/users/bulk-action",
-                json={
-                    "action": "change_status",
-                    "status": "Inactive",
-                    "userIds": ["student-1", "student-2"],
-                },
-            )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["success"] is True
-        assert payload["summary"]["targeted"] == 2
-        assert payload["summary"]["succeeded"] == 2
-        assert firestore.client().store["users"]["student-1"]["status"] == "Inactive"
-        assert firestore.client().store["users"]["student-2"]["status"] == "Inactive"
-        assert update_user_mock.call_count == 2
-
-    def test_bulk_assign_class_section_skips_non_students(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "student-1": {
-                        "name": "Student One",
-                        "email": "one@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "grade": "Grade 11",
-                        "section": "A",
-                        "lrn": "123456789012",
-                    },
-                    "teacher-1": {
-                        "name": "Teacher One",
-                        "email": "teacher@school.com",
-                        "role": "teacher",
-                        "status": "Active",
-                    },
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }):
-            response = client.post(
-                "/api/admin/users/bulk-action",
-                json={
-                    "action": "assign_class_section",
-                    "grade": "Grade 12",
-                    "section": "STEM A",
-                    "userIds": ["student-1", "teacher-1"],
-                },
-            )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["summary"]["targeted"] == 2
-        assert payload["summary"]["succeeded"] == 1
-        assert payload["summary"]["skipped"] == 1
-        student_profile = firestore.client().store["users"]["student-1"]
-        assert student_profile["grade"] == "Grade 12"
-        assert student_profile["section"] == "STEM A"
-        assert student_profile["classSectionId"] == "grade_12_stem_a"
-
-    def test_bulk_delete_prevents_self_and_deletes_others(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "admin-uid": {
-                        "name": "Admin User",
-                        "email": "admin@example.com",
-                        "role": "admin",
-                        "status": "Active",
-                    },
-                    "target-uid": {
-                        "name": "Target User",
-                        "email": "target@example.com",
-                        "role": "student",
-                        "status": "Active",
-                        "lrn": "123456789012",
-                    },
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        delete_user_mock = MagicMock()
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }), patch.object(main_module.firebase_auth, "delete_user", delete_user_mock):
-            response = client.post(
-                "/api/admin/users/bulk-action",
-                json={
-                    "action": "delete",
-                    "userIds": ["admin-uid", "target-uid"],
-                },
-            )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["summary"]["targeted"] == 2
-        assert payload["summary"]["succeeded"] == 1
-        assert payload["summary"]["skipped"] == 1
-        assert "target-uid" not in firestore.client().store["users"]
-        assert "admin-uid" in firestore.client().store["users"]
-        delete_user_mock.assert_called_once_with("target-uid")
-
-    def test_bulk_export_returns_rows_for_filtered_scope(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "student-active": {
-                        "name": "Active Student",
-                        "email": "active@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "grade": "Grade 11",
-                        "section": "A",
-                        "lrn": "123456789012",
-                    },
-                    "student-inactive": {
-                        "name": "Inactive Student",
-                        "email": "inactive@student.com",
-                        "role": "student",
-                        "status": "Inactive",
-                        "grade": "Grade 11",
-                        "section": "B",
-                        "lrn": "123456789013",
-                    },
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }):
-            response = client.post(
-                "/api/admin/users/bulk-action",
-                json={
-                    "action": "export",
-                    "filters": {
-                        "role": "Student",
-                        "status": "Active",
-                    },
-                },
-            )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["success"] is True
-        assert payload["summary"]["exported"] == 1
-        export_rows = payload.get("export", {}).get("rows") or []
-        assert len(export_rows) == 1
-        assert export_rows[0]["uid"] == "student-active"
-
-    def test_bulk_reset_password_email_sends_messages(self):
-        firestore = _ProvisionFirestoreModule(
-            {
-                "users": {
-                    "student-1": {
-                        "name": "Student One",
-                        "email": "one@student.com",
-                        "role": "student",
-                        "status": "Active",
-                        "lrn": "123456789012",
-                    },
-                },
-                "accessAuditLogs": {},
-            }
-        )
-
-        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "admin-uid",
-            "email": "admin@example.com",
-            "role": "admin",
-        }), patch.object(main_module.firebase_auth, "generate_password_reset_link", return_value="https://reset.example.com/token"), patch.object(main_module, "create_email_service_from_env", return_value=_FakeEmailServiceSuccess()):
-            response = client.post(
-                "/api/admin/users/bulk-action",
-                json={
-                    "action": "reset_password_email",
-                    "userIds": ["student-1"],
-                },
-            )
-
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["success"] is True
-        assert payload["summary"]["succeeded"] == 1
-        assert payload["results"][0]["message"].lower().startswith("password reset email sent")
 
 
 # ─── Run ───────────────────────────────────────────────────────

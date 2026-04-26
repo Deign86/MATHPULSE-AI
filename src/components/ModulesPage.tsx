@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BookOpen,
-  Clock,
   Search,
   Target,
   TrendingUp,
   Layers,
   AlertTriangle,
-  Play,
+  Filter,
+  X,
+  ExternalLink,
   Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -18,11 +19,18 @@ import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
 import QuizExperience from './QuizExperience';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
-import { subjects, getActiveSubjectIdsForGrade, type Module, type SubjectId } from '../data/subjects';
+import { type Module } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { cacheKeys } from '../utils/cacheKeys';
+import {
+  CURRICULUM_SUBJECT_META,
+  type CurriculumModuleRuntime,
+  type CurriculumQuarter,
+  getCurriculumModulesForLearner,
+  resolveLearnerGradeLevel,
+} from '../data/curriculumModules';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -33,6 +41,8 @@ interface ModulesPageProps {
 
 type ModulesTab = 'modules' | 'recommended' | 'practice';
 
+const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
+
 const ModulesPage: React.FC<ModulesPageProps> = ({
   onEarnXP,
   atRiskSubjects = [],
@@ -41,29 +51,48 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
-  
-  const studentGrade = (userProfile as StudentProfile | null)?.grade;
-  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
-  const gradeScopedSubjects = subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
+
+  const studentProfile = userProfile as StudentProfile | null;
+  const studentGrade = studentProfile?.grade;
+  const activeGradeLevel = resolveLearnerGradeLevel(studentGrade);
+  const [subjectFilter, setSubjectFilter] = useState<'all' | string>('all');
+  const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
+  const [competencyFilter, setCompetencyFilter] = useState('all');
+  const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
+
+  const assignedSubjects = useMemo(() => {
+    const rawAssignments = (studentProfile as (StudentProfile & {
+      learnerCurriculumAssignments?: { subjects?: string[] };
+      assignedSubjects?: string[];
+      curriculumAssignedSubjects?: string[];
+    }) | null)?.learnerCurriculumAssignments?.subjects
+      ?? (studentProfile as any)?.assignedSubjects
+      ?? (studentProfile as any)?.curriculumAssignedSubjects
+      ?? [];
+
+    return Array.isArray(rawAssignments) ? rawAssignments : [];
+  }, [studentProfile]);
+
+  const curriculumRuntimeModules = useMemo(
+    () => getCurriculumModulesForLearner(activeGradeLevel, assignedSubjects),
+    [activeGradeLevel, assignedSubjects],
+  );
   
   const initialModule = initialModuleId 
-    ? gradeScopedSubjects.flatMap(s => s.modules).find(m => m.id === initialModuleId) || null
+    ? curriculumRuntimeModules.find(m => m.id === initialModuleId) || null
     : null;
 
-  const [selectedModule, setSelectedModule] = useState<Module | null>(initialModule);
+  const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Handle navigation from initialModuleId when component is already mounted
   useEffect(() => {
     if (initialModuleId) {
-      const foundMod = gradeScopedSubjects.flatMap(s => s.modules).find(m => m.id === initialModuleId);
+      const foundMod = curriculumRuntimeModules.find(m => m.id === initialModuleId);
       if (foundMod) setSelectedModule(foundMod);
     }
-  }, [initialModuleId]);
-
-  // Module-first UX: we always anchor to General Mathematics when present.
-  const generalMathSubject = gradeScopedSubjects.find((subject) => subject.id === 'gen-math') ?? gradeScopedSubjects[0] ?? null;
+  }, [initialModuleId, curriculumRuntimeModules]);
 
   const normalizedRiskTopics = useMemo<DiagnosticTopicKey[]>(() => {
     const primary =
@@ -82,12 +111,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }, [priorityTopics, atRiskSubjects]);
 
   const { data: modulePool = [] } = useQuery({
-    queryKey: cacheKeys.modules(studentGrade, normalizedRiskTopics),
-    enabled: Boolean(generalMathSubject),
+    queryKey: cacheKeys.modules(activeGradeLevel, normalizedRiskTopics),
+    enabled: true,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     queryFn: async () => {
-      const base = generalMathSubject?.modules ?? [];
+      const base = curriculumRuntimeModules;
       if (normalizedRiskTopics.length === 0) return base;
 
       const ranking = new Map<string, number>(
@@ -102,18 +131,56 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     },
   });
 
+  const availableCompetencyGroups = useMemo(() => {
+    const groups = new Set<string>();
+    modulePool.forEach((module) => groups.add(module.competency_group));
+    return Array.from(groups);
+  }, [modulePool]);
+
   const filteredModules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return modulePool;
-
     return modulePool.filter((module) => {
-      const titleMatch = module.title.toLowerCase().includes(query);
-      const descMatch = module.description.toLowerCase().includes(query);
-      const lessonMatch = module.lessons.some((lesson) => lesson.title.toLowerCase().includes(query));
-      const quizMatch = module.quizzes.some((quiz) => quiz.title.toLowerCase().includes(query));
-      return titleMatch || descMatch || lessonMatch || quizMatch;
+      const titleMatch = !query || module.title.toLowerCase().includes(query);
+      const descMatch = !query || module.description.toLowerCase().includes(query);
+      const lessonMatch = !query || module.lessons.some((lesson) => lesson.title.toLowerCase().includes(query));
+      const quizMatch = !query || module.quizzes.some((quiz) => quiz.title.toLowerCase().includes(query));
+      const competencyMatch =
+        !query
+          ? true
+          : module.competencies.some(
+              (competency) =>
+                competency.outcome.toLowerCase().includes(query) ||
+                competency.code.toLowerCase().includes(query),
+            );
+
+      const subjectMatch = subjectFilter === 'all' || module.subjectId === subjectFilter;
+      const quarterMatch = quarterFilter === 'all' || module.quarter === quarterFilter;
+      const competencyGroupMatch = competencyFilter === 'all' || module.competency_group === competencyFilter;
+
+      return (titleMatch || descMatch || lessonMatch || quizMatch || competencyMatch) && subjectMatch && quarterMatch && competencyGroupMatch;
     });
-  }, [modulePool, searchQuery]);
+  }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter]);
+
+  const curriculumContextLabel = useMemo(() => {
+    const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
+    const visibleSubject =
+      subjectFilter === 'all'
+        ? 'All Subjects'
+        : CURRICULUM_SUBJECT_META[subjectFilter as keyof typeof CURRICULUM_SUBJECT_META]?.label ?? 'Subject';
+    return `${activeGradeLevel} · ${visibleSubject} · ${visibleQuarter}`;
+  }, [activeGradeLevel, subjectFilter, quarterFilter]);
+
+  const curriculumSubjects = useMemo(() => {
+    const unique = new Set(modulePool.map((module) => module.subjectId));
+    return Array.from(unique);
+  }, [modulePool]);
+
+  const clearFilters = () => {
+    setSubjectFilter('all');
+    setQuarterFilter('all');
+    setCompetencyFilter('all');
+    setSearchQuery('');
+  };
 
   const handleQuizComplete = (score: number, xpEarned: number) => {
     if (onEarnXP) {
@@ -149,11 +216,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
           <div className="flex-1 max-w-3xl">
             <h1 className="text-[36px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-4">
-              Explore Modules
+              Curriculum Modules
             </h1>
             <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
-              Welcome to your personalized learning hub for <span className="font-bold text-indigo-700">General Mathematics</span>. These modules are organized directly under the subject so you can jump straight into lessons and assessments without extra steps. MathPulse AI adapts challenge level and quiz support as you progress, helping you master each module with focus and momentum.
+              MathPulse AI now loads modules directly from the DepEd Strengthened SHS curriculum guides for General Mathematics, Finite Mathematics 1, and Finite Mathematics 2. Content, competency flow, and assessments are automatically shown based on your learner grade level.
             </p>
+            <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
+              {curriculumContextLabel}
+            </div>
           </div>
 
             <div className="hidden md:flex flex-shrink-0 items-center justify-end w-[350px]">
@@ -220,6 +290,62 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             placeholder="Search modules, lessons, or assessments..."
             className="w-full pl-16 pr-6 py-4 rounded-full border border-[#dadce0] bg-white text-[#202124] text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
           />
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="xl:col-span-1">
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">Subject</label>
+            <select
+              value={subjectFilter}
+              onChange={(e) => setSubjectFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none"
+            >
+              <option value="all">All Subjects</option>
+              {curriculumSubjects.map((subjectId) => (
+                <option key={subjectId} value={subjectId}>
+                  {CURRICULUM_SUBJECT_META[subjectId].label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="xl:col-span-1">
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">Quarter</label>
+            <select
+              value={quarterFilter}
+              onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none"
+            >
+              {QUARTER_FILTERS.map((quarter) => (
+                <option key={quarter} value={quarter}>{quarter === 'all' ? 'All Quarters' : quarter}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="xl:col-span-1">
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">Competency Group</label>
+            <select
+              value={competencyFilter}
+              onChange={(e) => setCompetencyFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none"
+            >
+              <option value="all">All Competency Groups</option>
+              {availableCompetencyGroups.map((group) => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="xl:col-span-1 flex items-end">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <Filter size={14} />
+              Reset Filters
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/60 shadow-inner gap-1 w-max overflow-x-auto max-w-full no-scrollbar">
@@ -299,23 +425,106 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           className="flex-1 overflow-y-auto"
         >
           {activeTab === 'practice' ? (
-            <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} allowedSubjectIds={allowedSubjectIds} />
+            <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
           ) : activeTab === 'modules' ? (
-            <ModulesLibraryView modules={filteredModules} onSelectModule={setSelectedModule} isAtRisk={normalizedRiskTopics.length > 0} />
+            <ModulesLibraryView
+              modules={filteredModules}
+              onSelectModule={setSelectedModule}
+              onPreviewSources={setSourcePreviewModule}
+              isAtRisk={normalizedRiskTopics.length > 0}
+            />
           ) : (
-            <RecommendedModulesView modules={filteredModules} fullPool={modulePool} onSelectModule={setSelectedModule} isAtRisk={normalizedRiskTopics.length > 0} />
+            <RecommendedModulesView
+              modules={filteredModules}
+              fullPool={modulePool}
+              onSelectModule={setSelectedModule}
+              onPreviewSources={setSourcePreviewModule}
+              isAtRisk={normalizedRiskTopics.length > 0}
+            />
           )}
         </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {sourcePreviewModule && (
+          <motion.aside
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 24 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl border-l border-slate-200 bg-white p-6 shadow-2xl"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-sky-700">Curriculum Preview</p>
+                <h3 className="mt-1 text-xl font-black text-slate-900">{sourcePreviewModule.title}</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  {sourcePreviewModule.active_grade_level} · {sourcePreviewModule.subject} · {sourcePreviewModule.quarter}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSourcePreviewModule(null)}
+                className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto pr-1">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Competency Group</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">{sourcePreviewModule.competency_group}</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Performance Standard</p>
+                <p className="mt-1 text-sm text-slate-700">{sourcePreviewModule.performance_standard}</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Competencies</p>
+                <div className="mt-2 space-y-2">
+                  {sourcePreviewModule.competencies.map((competency) => (
+                    <div key={competency.code} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs font-black text-slate-600">{competency.code}</p>
+                      <p className="mt-1 text-sm text-slate-700">{competency.outcome}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sources</p>
+                <div className="mt-2 space-y-2">
+                  {sourcePreviewModule.module_sources.map((source) => (
+                    <a
+                      key={source.id}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <span>{source.title}</span>
+                      <ExternalLink size={14} className="text-slate-400" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.aside>
+        )}
       </AnimatePresence>
     </div>
   );
 };
 
 const ModulesLibraryView: React.FC<{
-  modules: Module[];
-  onSelectModule: (module: Module) => void;
+  modules: CurriculumModuleRuntime[];
+  onSelectModule: (module: CurriculumModuleRuntime) => void;
+  onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
-}> = ({ modules, onSelectModule, isAtRisk = false }) => {
+}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false }) => {
   return (
     <div className="h-full overflow-y-auto pr-2 pb-8 scrollbar-hide space-y-8">
       <div>
@@ -323,7 +532,7 @@ const ModulesLibraryView: React.FC<{
           <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
             <Layers size={20} strokeWidth={2.5} />
           </div>
-          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">General Mathematics Modules</h2>
+          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">DepEd Strengthened SHS Modules</h2>
         </div>
 
         {modules.length === 0 ? (
@@ -341,6 +550,7 @@ const ModulesLibraryView: React.FC<{
                 module={module}
                 index={index}
                 onClick={() => onSelectModule(module)}
+                onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
               />
             ))}
@@ -352,11 +562,12 @@ const ModulesLibraryView: React.FC<{
 };
 
 const RecommendedModulesView: React.FC<{
-  modules: Module[];
-  fullPool: Module[];
-  onSelectModule: (module: Module) => void;
+  modules: CurriculumModuleRuntime[];
+  fullPool: CurriculumModuleRuntime[];
+  onSelectModule: (module: CurriculumModuleRuntime) => void;
+  onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
-}> = ({ modules, fullPool, onSelectModule, isAtRisk = false }) => {
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
@@ -375,6 +586,7 @@ const RecommendedModulesView: React.FC<{
                 module={module}
                 index={index}
                 onClick={() => onSelectModule(module)}
+                onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="In Progress"
               />
@@ -402,6 +614,7 @@ const RecommendedModulesView: React.FC<{
                 module={module}
                 index={index}
                 onClick={() => onSelectModule(module)}
+                onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
               />
