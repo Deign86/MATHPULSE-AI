@@ -30,7 +30,7 @@ import {
 import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
-import { getActiveSubjectIdsForGrade, subjects, getTopicById, type SubjectId } from '../data/subjects';
+import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
 import {
   QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
@@ -81,13 +81,9 @@ import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
-import { BattleTimerBar } from './battle/BattleTimerBar';
-import { BattleHeader } from './battle/BattleHeader';
-import { BattleFooter } from './battle/BattleFooter';
-import { BattleActiveContent } from './battle/BattleActiveContent';
-
 
 const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
+const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
   <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/10">
@@ -96,11 +92,12 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
         key={i}
         className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full"
         style={{ left: `${Math.random() * 100}%`, top: '-10%' }}
-        animate={{ y: [0, viewportHeight * 1.2], opacity: [0, 1, 1, 0] }}
+        animate={{ y: [0, viewportHeight * 1.2] }}
         transition={{
-          duration: 1 + Math.random() * 1,
+          duration: 0.6 + Math.random() * 0.4,
+          repeat: Infinity,
           ease: 'linear',
-          delay: Math.random() * 1.5,
+          delay: Math.random() * 2,
         }}
       />
     ))}
@@ -111,7 +108,7 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
   const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
   return (
     <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden">
-      {[...Array(80)].map((_, i) => (
+      {[...Array(60)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md"
@@ -120,87 +117,16 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
             y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
             x: [0, (Math.random() - 0.5) * viewportWidth * 0.8],
             rotate: [0, Math.random() * 720],
-            opacity: [1, 1, 0],
           }}
           transition={{
             duration: 3 + Math.random() * 2,
-            ease: "easeOut",
-            delay: Math.random() * 0.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: Math.random() * 1.5,
           }}
         />
       ))}
     </div>
-  );
-};
-
-const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
-  return (
-    <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex items-center justify-center">
-      {[...Array(30)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)]"
-          style={{ left: '50%', top: '50%' }}
-          animate={{
-            y: [(Math.random() - 0.5) * viewportHeight * 0.8],
-            x: [(Math.random() - 0.5) * viewportWidth * 0.8],
-            scale: [0, Math.random() * 1.5 + 0.5, 0],
-            opacity: [0, 1, 0],
-          }}
-          transition={{
-            duration: 2 + Math.random() * 2,
-            ease: "easeOut",
-            delay: Math.random() * 1,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
-const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; icon?: React.ReactNode }> = ({ value, label, delay = 0, icon }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (value <= 0) return;
-    const duration = 1000;
-    const steps = 30;
-    const stepTime = Math.abs(Math.floor(duration / steps));
-    let current = 0;
-    
-    const timeout = setTimeout(() => {
-      const timer = setInterval(() => {
-        current += Math.max(1, Math.floor(value / steps));
-        if (current >= value) {
-          setCount(value);
-          clearInterval(timer);
-        } else {
-          setCount(current);
-        }
-      }, stepTime);
-      return () => clearInterval(timer);
-    }, delay);
-    
-    return () => clearTimeout(timeout);
-  }, [value, delay]);
-
-  if (value <= 0) return null;
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: delay / 1000, duration: 0.5 }}
-      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3"
-    >
-      <div className="flex items-center gap-3 text-white/80 font-bold uppercase tracking-wider text-sm">
-        {icon}
-        {label}
-      </div>
-      <div className="text-2xl font-black text-amber-400 tabular-nums">
-        +{count}
-      </div>
-    </motion.div>
   );
 };
 
@@ -274,19 +200,6 @@ const describeLifecycleEvent = (
   return 'Match completed.';
 };
 
-let globalAudioContext: AudioContext | null = null;
-
-const getAudioContext = () => {
-  if (typeof window === 'undefined') return null;
-  if (!globalAudioContext) {
-    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (AudioContextCtor) {
-      globalAudioContext = new AudioContextCtor();
-    }
-  }
-  return globalAudioContext;
-};
-
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
@@ -299,15 +212,10 @@ const QuizBattlePage: React.FC = () => {
   const [privateRoomCodeInput, setPrivateRoomCodeInput] = useState('');
   const [copiedRoomCode, setCopiedRoomCode] = useState<string | null>(null);
   const [queueWaitSeconds, setQueueWaitSeconds] = useState(0);
+  const [queueTimeoutDeadlineAtMs, setQueueTimeoutDeadlineAtMs] = useState<number | null>(null);
   const [battleSoundEnabled, setBattleSoundEnabled] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.localStorage.getItem('quiz_battle_sound_enabled') !== '0';
-  });
-  const [battleSoundVolume, setBattleSoundVolume] = useState(() => {
-    if (typeof window === 'undefined') return 0.7;
-    const stored = Number(window.localStorage.getItem('quiz_battle_sound_volume') || '0.7');
-    if (!Number.isFinite(stored)) return 0.7;
-    return clampNumber(stored, 0, 1);
   });
   const [connectionState, setConnectionState] = useState<'connected' | 'reconnecting' | 'disconnected'>('connected');
   const [historyFilterMode, setHistoryFilterMode] = useState<'all' | QuizBattleMode>('all');
@@ -325,29 +233,16 @@ const QuizBattlePage: React.FC = () => {
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
   const [roundLocked, setRoundLocked] = useState(false);
-  const [opponentSurrendered, setOpponentSurrendered] = useState(false);
   const [designPauseActive, setDesignPauseActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
-  const [pendingMatchUpdate, setPendingMatchUpdate] = useState<QuizBattleLiveMatchState | null>(null);
-  const [floatingMomentum, setFloatingMomentum] = useState<{
-    id: number;
-    label: string;
-    tone: 'positive' | 'negative' | 'neutral';
-  } | null>(null);
-  const [scorePulseTarget, setScorePulseTarget] = useState<'player' | 'opponent' | null>(null);
   const lifecycleEventRef = useRef<string>('');
   const countdownSoundRef = useRef<number | null>(null);
   const autoSubmitRoundRef = useRef<number | null>(null);
   const autoSubmitRetryAtMsRef = useRef(0);
   const celebratedMatchIdRef = useRef<string>('');
   const botReadyStartFailuresRef = useRef(0);
-  const previousStreakRef = useRef(0);
-  const previousScoreRef = useRef<{ matchId: string; scoreFor: number; scoreAgainst: number } | null>(null);
-  const scorePulseTimeoutRef = useRef<number | null>(null);
-  // Tracks which round we last showed a popup for — avoids stale-closure double-fire in polling.
-  const popupShownForRoundRef = useRef<number>(-1);
   const isDesignPauseAvailable = import.meta.env.DEV;
 
   const gradeScopedSubjects = useMemo(() => {
@@ -363,141 +258,47 @@ const QuizBattlePage: React.FC = () => {
     }));
   }, [gradeScopedSubjects, setupConfig.subjectId]);
 
-  const playerRoundStreak = useMemo(() => {
-    const rounds = activeMatch?.roundResults || [];
-    let streak = 0;
-    rounds.forEach((result) => {
-      streak = result.studentCorrect ? streak + 1 : 0;
-    });
-    return streak;
-  }, [activeMatch?.roundResults]);
+  const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss') => {
+    if (!battleSoundEnabled || typeof window === 'undefined') return;
 
-  const opponentRoundStreak = useMemo(() => {
-    const rounds = activeMatch?.roundResults || [];
-    let streak = 0;
-    rounds.forEach((result) => {
-      streak = result.botCorrect ? streak + 1 : 0;
-    });
-    return streak;
-  }, [activeMatch?.roundResults]);
-
-  const playerVisualMultiplier = useMemo(() => {
-    const boost = Math.max(0, playerRoundStreak - 1) * 0.12;
-    return Number((1 + Math.min(0.72, boost)).toFixed(2));
-  }, [playerRoundStreak]);
-
-  // Compute live XP from round results, so the header counter updates per round.
-  // Formula: 10 XP base per correct answer + 5 XP speed streak bonus per streak above 1.
-  // Falls back to activeMatch.xpEarned (final server value) when match is completed.
-  const liveXpEarned = useMemo(() => {
-    if (!activeMatch) return 0;
-    if (activeMatch.status === 'completed') return activeMatch.xpEarned || 0;
-    const rounds = activeMatch.roundResults || [];
-    let streak = 0;
-    let total = 0;
-    for (const r of rounds) {
-      if (r.studentCorrect) {
-        streak++;
-        const streakBonus = streak >= 2 ? Math.min(25, (streak - 1) * 5) : 0;
-        total += 10 + streakBonus;
-      } else {
-        streak = 0;
-      }
-    }
-    return total;
-  }, [activeMatch?.status, activeMatch?.xpEarned, activeMatch?.roundResults]);
-
-  const opponentVisualMultiplier = useMemo(() => {
-    const boost = Math.max(0, opponentRoundStreak - 1) * 0.1;
-    return Number((1 + Math.min(0.5, boost)).toFixed(2));
-  }, [opponentRoundStreak]);
-
-  const momentumTier = useMemo(() => {
-    if (playerRoundStreak >= 5) {
-      return {
-        label: 'Inferno',
-        badgeClass: 'text-amber-300 border-amber-300/50 bg-amber-500/20 shadow-[0_0_18px_rgba(251,191,36,0.35)]',
-      };
-    }
-
-    if (playerRoundStreak >= 3) {
-      return {
-        label: 'Heating Up',
-        badgeClass: 'text-orange-300 border-orange-300/50 bg-orange-500/15 shadow-[0_0_16px_rgba(249,115,22,0.3)]',
-      };
-    }
-
-    if (lastRoundResult?.studentCorrect) {
-      return {
-        label: 'Steady',
-        badgeClass: 'text-emerald-300 border-emerald-300/40 bg-emerald-500/15 shadow-[0_0_14px_rgba(16,185,129,0.25)]',
-      };
-    }
-
-    return {
-      label: 'Rebuild',
-      badgeClass: 'text-slate-300 border-slate-300/30 bg-slate-500/15 shadow-[0_0_14px_rgba(148,163,184,0.2)]',
-    };
-  }, [lastRoundResult?.studentCorrect, playerRoundStreak]);
-
-  const lastRoundMomentumDelta = useMemo(() => {
-    if (!lastRoundResult) return null;
-
-    const base = lastRoundResult.studentCorrect ? 12 : -8;
-    const duelBonus = lastRoundResult.studentCorrect && !lastRoundResult.botCorrect ? 6 : 0;
-    const streakBonus = lastRoundResult.studentCorrect ? Math.max(0, (playerRoundStreak - 1) * 2) : 0;
-
-    return base + duelBonus + streakBonus;
-  }, [lastRoundResult, playerRoundStreak]);
-
-  const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss' | 'streak' | 'multiplier') => {
-    if (!battleSoundEnabled || battleSoundVolume <= 0 || typeof window === 'undefined') return;
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
 
     try {
-      const context = getAudioContext();
-      if (!context) return;
-      
-      if (context.state === 'suspended') {
-        void context.resume().catch(e => console.warn('AudioContext resume failed:', e));
-      }
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
 
-      const presets: Record<typeof kind, { notes: number[]; duration: number; type: OscillatorType; volume: number }> = {
-        tick: { notes: [740], duration: 0.06, type: 'triangle', volume: 0.03 },
-        lock: { notes: [520], duration: 0.08, type: 'square', volume: 0.04 },
-        result: { notes: [660, 720], duration: 0.08, type: 'sine', volume: 0.04 },
-        win: { notes: [920, 1040, 1180], duration: 0.12, type: 'triangle', volume: 0.05 },
-        loss: { notes: [260, 220], duration: 0.14, type: 'sawtooth', volume: 0.045 },
-        streak: { notes: [780, 920], duration: 0.09, type: 'triangle', volume: 0.045 },
-        multiplier: { notes: [660, 880, 1120], duration: 0.08, type: 'triangle', volume: 0.05 },
+      const presets: Record<typeof kind, { frequency: number; duration: number; type: OscillatorType; volume: number }> = {
+        tick: { frequency: 740, duration: 0.06, type: 'triangle', volume: 0.035 },
+        lock: { frequency: 520, duration: 0.08, type: 'square', volume: 0.04 },
+        result: { frequency: 660, duration: 0.1, type: 'sine', volume: 0.045 },
+        win: { frequency: 920, duration: 0.18, type: 'triangle', volume: 0.05 },
+        loss: { frequency: 240, duration: 0.16, type: 'sawtooth', volume: 0.045 },
       };
 
       const preset = presets[kind];
       const now = context.currentTime;
-      const noteSpacing = 0.07;
-      const scaledVolume = clampNumber(preset.volume * battleSoundVolume, 0.004, 0.08);
 
-      preset.notes.forEach((frequency, index) => {
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        const startAt = now + index * noteSpacing;
+      oscillator.type = preset.type;
+      oscillator.frequency.setValueAtTime(preset.frequency, now);
 
-        oscillator.type = preset.type;
-        oscillator.frequency.setValueAtTime(frequency, startAt);
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(preset.volume, now + 0.015);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration);
 
-        gainNode.gain.setValueAtTime(0.0001, startAt);
-        gainNode.gain.exponentialRampToValueAtTime(scaledVolume, startAt + 0.012);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + preset.duration);
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + preset.duration + 0.02);
 
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.start(startAt);
-        oscillator.stop(startAt + preset.duration + 0.02);
-      });
-
+      window.setTimeout(() => {
+        void context.close();
+      }, Math.ceil((preset.duration + 0.06) * 1000));
     } catch (error) {
-      console.warn('Battle tone playback skipped or blocked:', error);
+      console.debug('Battle tone playback skipped:', error);
     }
-  }, [battleSoundEnabled, battleSoundVolume]);
+  }, [battleSoundEnabled]);
 
   const handleCopyRoomCode = useCallback(async (roomCode: string) => {
     if (!roomCode || typeof window === 'undefined') return;
@@ -530,6 +331,19 @@ const QuizBattlePage: React.FC = () => {
       return next;
     });
   }, [isDesignPauseAvailable]);
+
+  const clearPublicMatchmakingSession = useCallback((message: string) => {
+    setQueueActive(false);
+    setActiveRoom(null);
+    setActiveMatch(null);
+    setQueueWaitSeconds(0);
+    setQueueTimeoutDeadlineAtMs(null);
+    setLaunchState({
+      status: 'error',
+      message,
+    });
+    setActiveTab('setup');
+  }, []);
 
   const refreshBattleInsights = useCallback(async (): Promise<{
     stats: StudentBattleStats | null;
@@ -691,6 +505,9 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(false);
         setActiveRoom(resumed.room || null);
         setActiveMatch(syncedMatch);
+        setQueueTimeoutDeadlineAtMs(
+          resumed.queue?.expiresAtMs || syncedMatch.expiresAtMs || null,
+        );
         setActiveTab('battle');
         setConnectionState('connected');
         return;
@@ -700,6 +517,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(false);
         setActiveRoom(resumed.room);
         setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+        setQueueTimeoutDeadlineAtMs(null);
         setConnectionState('connected');
         return;
       }
@@ -708,6 +526,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(true);
         setActiveRoom(null);
         setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+        setQueueTimeoutDeadlineAtMs(resumed.queue?.expiresAtMs || null);
         setConnectionState('connected');
         return;
       }
@@ -715,6 +534,7 @@ const QuizBattlePage: React.FC = () => {
       setQueueActive(false);
       setActiveRoom(null);
       setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+      setQueueTimeoutDeadlineAtMs(null);
       setConnectionState('connected');
     } catch (error) {
       console.warn('Quiz Battle session resume failed:', error);
@@ -733,11 +553,6 @@ const QuizBattlePage: React.FC = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('quiz_battle_sound_enabled', battleSoundEnabled ? '1' : '0');
   }, [battleSoundEnabled]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem('quiz_battle_sound_volume', battleSoundVolume.toFixed(2));
-  }, [battleSoundVolume]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -773,19 +588,60 @@ const QuizBattlePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')))) {
+    const deadlineActive = queueTimeoutDeadlineAtMs !== null;
+
+    if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')) || deadlineActive)) {
       setQueueWaitSeconds(0);
       return;
     }
 
+    const syncWaitClock = () => {
+      if (!queueTimeoutDeadlineAtMs) {
+        setQueueWaitSeconds((prev) => prev + 1);
+        return;
+      }
+
+      setQueueWaitSeconds(Math.max(0, Math.ceil((queueTimeoutDeadlineAtMs - Date.now()) / 1000)));
+    };
+
+    syncWaitClock();
+
+    const intervalId = window.setInterval(syncWaitClock, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [queueActive, activeRoom?.status, activeRoom?.roomId, queueTimeoutDeadlineAtMs]);
+
+  useEffect(() => {
+    if (!queueTimeoutDeadlineAtMs) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
-      setQueueWaitSeconds((prev) => prev + 1);
+      const remainingMs = queueTimeoutDeadlineAtMs - Date.now();
+      if (remainingMs <= 0) {
+        window.clearInterval(intervalId);
+        void (async () => {
+          try {
+            if (queueActive || !activeRoom) {
+              await leaveQuizBattleQueue();
+            }
+          } catch {
+            // backend may have already expired the session
+          } finally {
+            clearPublicMatchmakingSession(
+              'Public matchmaking timed out after 5 minutes. Please start again.',
+            );
+          }
+        })();
+      }
     }, 1000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [queueActive, activeRoom?.status, activeRoom?.roomId]);
+  }, [activeRoom, clearPublicMatchmakingSession, queueActive, queueTimeoutDeadlineAtMs]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -840,6 +696,7 @@ const QuizBattlePage: React.FC = () => {
           if (cancelled) return;
           setActiveMatch(started);
           setConnectionState('connected');
+          setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
           botReadyStartFailuresRef.current = 0;
           if (started.status === 'in_progress') {
             setLaunchState({ status: 'queued', message: 'Practice bot match started.' });
@@ -853,6 +710,7 @@ const QuizBattlePage: React.FC = () => {
             if (cancelled) return;
             setActiveMatch(started);
             setConnectionState('connected');
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             if (started.status === 'in_progress') {
               setLaunchState({ status: 'queued', message: 'Match started. Round timer is live.' });
             }
@@ -861,46 +719,14 @@ const QuizBattlePage: React.FC = () => {
 
           const latest = await getQuizBattleMatchState(activeMatch.matchId);
           if (cancelled) return;
-
-          // Find the oldest resolved round we haven't shown a popup for yet.
-          // We do NOT use activeMatch.currentRound here — it would be stale inside this closure
-          // because currentRound is not in the useEffect dependency array.
-          // popupShownForRoundRef is a ref (always current) so this is safe.
-          const unshownResult = latest.roundResults
-            .filter((r: QuizBattleRoundResult) => r.roundNumber > popupShownForRoundRef.current)
-            .sort((a: QuizBattleRoundResult, b: QuizBattleRoundResult) => a.roundNumber - b.roundNumber)[0];
-
-          console.log(
-            '[Poll] Match state:', latest.status,
-            'currentRound:', latest.currentRound,
-            'roundResults:', latest.roundResults.length,
-            'popupShownFor:', popupShownForRoundRef.current,
-            'unshownResult:', unshownResult?.roundNumber ?? 'none',
-            'roundLocked:', roundLocked,
-          );
-
-          if (unshownResult) {
-            console.log('[Poll] Showing popup for round', unshownResult.roundNumber, '(player answered first path)');
-            popupShownForRoundRef.current = unshownResult.roundNumber;
-            setLastRoundResult(unshownResult);
-            setPendingMatchUpdate(latest);
-          } else {
-            setActiveMatch(latest);
-            if (latest.status === 'completed') {
-              setQueueActive(false);
-              setActiveRoom(null);
-            }
-            // Detect opponent surrender: match cancelled while we were still in_progress
-            if (latest.status === 'cancelled' && activeMatch.status === 'in_progress') {
-              console.log('[Poll] Match cancelled by server — opponent likely surrendered/disconnected');
-              setOpponentSurrendered(true);
-              setRoundLocked(false);
-            }
+          setActiveMatch(latest);
+          if (latest.status === 'completed') {
+            setQueueActive(false);
+            setActiveRoom(null);
+            setQueueTimeoutDeadlineAtMs(null);
           }
-
           setConnectionState('connected');
           return;
-
         }
 
         if (activeRoom?.roomId) {
@@ -916,6 +742,7 @@ const QuizBattlePage: React.FC = () => {
             setActiveMatch(started);
             setActiveRoom(roomState.room);
             setQueueActive(false);
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             setActiveTab('battle');
             setConnectionState('connected');
             setLaunchState({
@@ -939,6 +766,7 @@ const QuizBattlePage: React.FC = () => {
             setActiveMatch(started);
             setActiveRoom(resumed.room || null);
             setQueueActive(false);
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             setActiveTab('battle');
             setConnectionState('connected');
             setLaunchState({ status: 'queued', message: 'Opponent found. Preparing synchronized start...' });
@@ -948,6 +776,7 @@ const QuizBattlePage: React.FC = () => {
           if (resumed.sessionType === 'room' && resumed.room) {
             setQueueActive(false);
             setActiveRoom(resumed.room);
+            setQueueTimeoutDeadlineAtMs(null);
             setConnectionState('connected');
             return;
           }
@@ -1146,123 +975,6 @@ const QuizBattlePage: React.FC = () => {
     }
   }, [activeMatch?.status, roundSecondsLeft, roundLocked, answerSubmitting, designPauseActive, playBattleTone]);
 
-  useEffect(() => {
-    if (!activeMatch || activeMatch.status !== 'in_progress') {
-      previousStreakRef.current = 0;
-      return;
-    }
-
-    if (playerRoundStreak > previousStreakRef.current && playerRoundStreak >= 2) {
-      playBattleTone(playerRoundStreak >= 4 ? 'multiplier' : 'streak');
-    }
-
-    previousStreakRef.current = playerRoundStreak;
-  }, [activeMatch?.matchId, activeMatch?.status, playerRoundStreak, playBattleTone]);
-
-  useEffect(() => {
-    if (!activeMatch) {
-      previousScoreRef.current = null;
-      setScorePulseTarget(null);
-      return;
-    }
-
-    const previous = previousScoreRef.current;
-    if (!previous || previous.matchId !== activeMatch.matchId) {
-      previousScoreRef.current = {
-        matchId: activeMatch.matchId,
-        scoreFor: activeMatch.scoreFor,
-        scoreAgainst: activeMatch.scoreAgainst,
-      };
-      setScorePulseTarget(null);
-      return;
-    }
-
-    if (activeMatch.scoreFor !== previous.scoreFor || activeMatch.scoreAgainst !== previous.scoreAgainst) {
-      const pulseTarget = activeMatch.scoreFor > previous.scoreFor ? 'player' : 'opponent';
-      setScorePulseTarget(pulseTarget);
-
-      if (scorePulseTimeoutRef.current) {
-        window.clearTimeout(scorePulseTimeoutRef.current);
-      }
-
-      scorePulseTimeoutRef.current = window.setTimeout(() => {
-        setScorePulseTarget(null);
-      }, 850);
-    }
-
-    previousScoreRef.current = {
-      matchId: activeMatch.matchId,
-      scoreFor: activeMatch.scoreFor,
-      scoreAgainst: activeMatch.scoreAgainst,
-    };
-  }, [activeMatch?.matchId, activeMatch?.scoreAgainst, activeMatch?.scoreFor]);
-
-  useEffect(() => {
-    return () => {
-      if (scorePulseTimeoutRef.current) {
-        window.clearTimeout(scorePulseTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!lastRoundResult || lastRoundMomentumDelta === null) {
-      setFloatingMomentum(null);
-      return;
-    }
-
-    const tone: 'positive' | 'negative' | 'neutral' =
-      lastRoundMomentumDelta > 0
-        ? 'positive'
-        : lastRoundMomentumDelta < 0
-          ? 'negative'
-          : 'neutral';
-
-    setFloatingMomentum({
-      id: Date.now(),
-      label: `${lastRoundMomentumDelta >= 0 ? '+' : ''}${lastRoundMomentumDelta} Momentum`,
-      tone,
-    });
-
-    const timeout = window.setTimeout(() => {
-      setFloatingMomentum(null);
-    }, 1400);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [lastRoundMomentumDelta, lastRoundResult]);
-
-  useEffect(() => {
-    if (lastRoundResult && pendingMatchUpdate) {
-      if (lastRoundResult.studentCorrect) {
-        playBattleTone('win');
-      } else {
-        playBattleTone('loss');
-      }
-
-      const timeout = window.setTimeout(() => {
-        setActiveMatch(pendingMatchUpdate);
-        setLastRoundResult(null);
-        setSelectedOptionIndex(null);
-        setRoundLocked(false);
-        setPendingMatchUpdate(null);
-        // Do NOT reset popupShownForRoundRef here — keep it so polling doesn't re-fire for same round.
-        // It will naturally be overtaken once currentRound advances on the next active match state.
-        
-        if (pendingMatchUpdate.status === 'completed') {
-          setQueueActive(false);
-          setActiveRoom(null);
-          void refreshBattleInsights();
-          // Reset the ref for the next match
-          popupShownForRoundRef.current = -1;
-        }
-      }, 1500);
-
-      return () => window.clearTimeout(timeout);
-    }
-  }, [lastRoundResult, pendingMatchUpdate, playBattleTone, refreshBattleInsights]);
-
   const submitRoundAnswer = useCallback(
     async (forcedSelection: number | null) => {
       if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
@@ -1282,6 +994,7 @@ const QuizBattlePage: React.FC = () => {
             if (latest.status === 'completed') {
               setQueueActive(false);
               setActiveRoom(null);
+              setQueueTimeoutDeadlineAtMs(null);
             }
           })
           .catch(() => {
@@ -1307,44 +1020,34 @@ const QuizBattlePage: React.FC = () => {
         autoSubmitRoundRef.current = null;
         autoSubmitRetryAtMsRef.current = 0;
 
-        if (response.roundResult) {
-           // Gate with the ref so polling can't fire a second popup for this same round
-           console.log('[Submit] Got roundResult for round', response.roundResult.roundNumber, '— showing popup');
-           popupShownForRoundRef.current = response.roundResult.roundNumber;
-           setLastRoundResult(response.roundResult);
-           setPendingMatchUpdate(response.match);
-        } else {
-           setActiveMatch(response.match);
-           setLastRoundResult(null);
+        setActiveMatch(response.match);
+        setLastRoundResult(response.roundResult);
+        setSelectedOptionIndex(null);
 
-           if (
-             response.match.mode === 'online' &&
-             response.match.status === 'in_progress'
-           ) {
-             // Keep selectedOptionIndex intact so the chosen answer stays highlighted
-             // while waiting for the opponent. It will be cleared when the round resolves.
-             setRoundLocked(true);
-             setLaunchState({
-               status: 'queued',
-               message: 'Answer locked. Waiting for opponent to finish the round...',
-             });
-           } else {
-             // Non-online path (e.g. timeout recovery): safe to clear selection
-             setSelectedOptionIndex(null);
-           }
+        if (
+          response.match.mode === 'online' &&
+          response.match.status === 'in_progress' &&
+          !response.roundResult
+        ) {
+          setRoundLocked(true);
+          setLaunchState({
+            status: 'queued',
+            message: 'Answer locked. Waiting for opponent to finish the round...',
+          });
         }
-        
+
         if (response.match.status === 'completed') {
-             setQueueActive(false);
-             setActiveRoom(null);
-             void refreshBattleInsights();
-             setLaunchState({
-               status: 'queued',
-               message: response.completion
-                 ? `Match finished (${response.completion.outcome.toUpperCase()}) +${response.completion.xpEarned} XP`
-                 : 'Match finished. Results saved.',
-             });
-           }
+          setQueueActive(false);
+          setActiveRoom(null);
+          setQueueTimeoutDeadlineAtMs(null);
+          void refreshBattleInsights();
+          setLaunchState({
+            status: 'queued',
+            message: response.completion
+              ? `Match finished (${response.completion.outcome.toUpperCase()}) +${response.completion.xpEarned} XP`
+              : 'Match finished. Results saved.',
+          });
+        }
       } catch (error) {
         const known = error as { message?: string };
         const message = known?.message || 'Unable to submit answer right now. Please try again.';
@@ -1373,6 +1076,7 @@ const QuizBattlePage: React.FC = () => {
             if (latest.status === 'completed') {
               setQueueActive(false);
               setActiveRoom(null);
+              setQueueTimeoutDeadlineAtMs(null);
               void refreshBattleInsights();
               setLaunchState({
                 status: 'queued',
@@ -1465,6 +1169,7 @@ const QuizBattlePage: React.FC = () => {
       setActiveMatch(started);
       setActiveRoom(null);
       setQueueActive(false);
+      setQueueTimeoutDeadlineAtMs(null);
       setLastRoundResult(null);
       setSelectedOptionIndex(null);
       setRoundLocked(false);
@@ -1510,6 +1215,7 @@ const QuizBattlePage: React.FC = () => {
     setLastRoundResult(null);
     setSelectedOptionIndex(null);
     setRoundLocked(false);
+    setQueueTimeoutDeadlineAtMs(null);
     setSetupConfig((previous) => ({
       ...previous,
       mode,
@@ -1540,6 +1246,7 @@ const QuizBattlePage: React.FC = () => {
       });
       setPrivateRoomCodeInput('');
       setQueueWaitSeconds(0);
+      setQueueTimeoutDeadlineAtMs(null);
 
       setLaunchState({
         status: 'queued',
@@ -1577,6 +1284,7 @@ const QuizBattlePage: React.FC = () => {
           setQueueActive(false);
           setActiveRoom(roomResult.room);
           setPrivateRoomCodeInput('');
+          setQueueTimeoutDeadlineAtMs(roomResult.match?.expiresAtMs || null);
 
           if (roomResult.match) {
             const started = await startQuizBattleMatch(roomResult.match.matchId);
@@ -1585,6 +1293,7 @@ const QuizBattlePage: React.FC = () => {
             setSelectedOptionIndex(null);
             setRoundLocked(false);
             setActiveTab('battle');
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             setLaunchState({
               status: 'queued',
               message: started.status === 'ready'
@@ -1595,6 +1304,7 @@ const QuizBattlePage: React.FC = () => {
           }
 
           setActiveMatch(null);
+          setQueueTimeoutDeadlineAtMs(null);
           setLaunchState({
             status: 'queued',
             message: joinCode
@@ -1615,6 +1325,7 @@ const QuizBattlePage: React.FC = () => {
           setSelectedOptionIndex(null);
           setRoundLocked(false);
           setActiveTab('battle');
+          setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
           setLaunchState({
             status: 'queued',
             message: 'Opponent found. Preparing synchronized start...',
@@ -1625,6 +1336,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(true);
         setActiveRoom(null);
         setActiveMatch(null);
+        setQueueTimeoutDeadlineAtMs(queueResponse.expiresAtMs || Date.now() + PUBLIC_MATCHMAKING_TIMEOUT_MS);
         setQueueWaitSeconds(0);
         setLaunchState({ status: 'queued', message: 'Joined matchmaking queue. Waiting for an opponent...' });
         return;
@@ -1639,6 +1351,7 @@ const QuizBattlePage: React.FC = () => {
       setSelectedOptionIndex(null);
       setRoundLocked(false);
       setRoundSecondsLeft(liveMatch.timePerQuestionSec);
+      setQueueTimeoutDeadlineAtMs(null);
       setActiveTab('battle');
       setLaunchState({
         status: 'queued',
@@ -1688,9 +1401,6 @@ const QuizBattlePage: React.FC = () => {
         {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
           <RainStorm viewportHeight={viewportSize.height} />
         )}
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'draw' && (
-          <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
-        )}
         {/* Animated BG */}
         <div className="absolute inset-0 z-0 opacity-40">
           <WarpBackground>
@@ -1698,86 +1408,7 @@ const QuizBattlePage: React.FC = () => {
           </WarpBackground>
         </div>
 
-        {/* Surrender Notification Overlay */}
-        <AnimatePresence>
-          {opponentSurrendered && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[120] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center px-6"
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.85, y: 40 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: 'spring', damping: 18, stiffness: 250, delay: 0.1 }}
-                className="bg-[#1e2433] border border-white/10 rounded-[2rem] p-8 flex flex-col items-center gap-5 max-w-sm w-full shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
-              >
-                {/* Opponent avatar with speech bubble */}
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-[#1a2030] border-4 border-rose-500/50 overflow-hidden flex items-end justify-center shadow-xl">
-                    {activeMatch.mode === 'bot' ? (
-                      <Bot className="h-16 w-16 text-rose-400 mb-2" strokeWidth={1.5} />
-                    ) : (
-                      <Users className="h-14 w-14 text-slate-500 mb-2" strokeWidth={1.5} />
-                    )}
-                  </div>
-                  {/* Speech bubble */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5, x: -10 }}
-                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                    transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
-                    className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
-                  >
-                    I give up! 🏳️
-                  </motion.div>
-                </div>
-
-                <div className="text-center">
-                  <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
-                  <p className="text-white/50 text-sm">
-                    <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3 w-full">
-                  <Button
-                    size="lg"
-                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl"
-                    onClick={() => {
-                      setOpponentSurrendered(false);
-                      setActiveMatch(null);
-                      setActiveRoom(null);
-                      setQueueActive(false);
-                      setLaunchState({ status: 'idle' });
-                      setActiveTab('hub');
-                      void refreshBattleInsights();
-                    }}
-                  >
-                    🏆 Claim Victory
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full h-12 border-white/20 text-white/70 hover:bg-white/10 rounded-xl"
-                    onClick={() => {
-                      setOpponentSurrendered(false);
-                      setActiveMatch(null);
-                      setActiveRoom(null);
-                      setQueueActive(false);
-                      setLaunchState({ status: 'idle' });
-                      setActiveTab('hub');
-                    }}
-                  >
-                    Back to Arena
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-
+        {/* Pause Overlay */}
         {designPauseActive && (
           <div className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center">
             <Card className="w-full max-w-sm border-border/50 bg-[#181d27] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
@@ -1813,172 +1444,211 @@ const QuizBattlePage: React.FC = () => {
           </div>
         )}
 
-        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-10 pb-4">
+        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 py-4">
           
-        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-10 pb-4">
-          
-          <BattleHeader 
-            playerRoundStreak={playerRoundStreak}
-            playerVisualMultiplier={playerVisualMultiplier}
-            liveXpEarned={liveXpEarned}
-            activeMatch={activeMatch}
-            subjects={subjects}
-            battleSoundEnabled={battleSoundEnabled}
-            onToggleSound={() => setBattleSoundEnabled((p) => !p)}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={() => {
-              if (typeof document === 'undefined') return;
-              if (document.fullscreenElement) {
-                document.exitFullscreen().catch(e => console.warn(e));
-              } else {
-                document.documentElement.requestFullscreen().catch(e => console.warn(e));
-              }
-            }}
-            isDesignPauseAvailable={isDesignPauseAvailable}
-            onTogglePause={handleToggleDesignPause}
-          />
+          {/* Header Row */}
+          <header className="flex items-center justify-between shrink-0 h-16">
+            {/* Left: Branding & Bonuses */}
+            <div className="flex items-center gap-3 md:gap-5">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 ring-1 ring-primary/40 shadow-[0_0_15px_rgba(158,143,255,0.4)]">
+                <Swords className="h-6 w-6 text-primary" />
+              </div>
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                🔥 3 Streak
+              </div>
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                ✨ 1.5x XP
+              </div>
+            </div>
 
+            {/* Right: Controls */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
+                onClick={() => {
+                  if (typeof document === 'undefined') return;
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch((error) => {
+                      console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
+                    });
+                  } else {
+                    document.documentElement.requestFullscreen().catch((error) => {
+                      console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
+                    });
+                  }
+                }}
+                aria-label={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
+                title={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
+              >
+                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "h-12 w-12 rounded-full border-white/20 text-white",
+                  isDesignPauseAvailable
+                    ? "bg-black/20 hover:bg-white/10"
+                    : "bg-black/10 opacity-50 cursor-not-allowed",
+                )}
+                onClick={handleToggleDesignPause}
+                disabled={!isDesignPauseAvailable}
+                aria-label={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
+                title={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
+              >
+                 <Menu className="h-5 w-5" />
+              </Button>
+            </div>
+          </header>
+
+          {/* Shrinking Timer Bar */}
           {activeMatch.status === 'in_progress' ? (
-            <BattleTimerBar 
-              roundSecondsLeft={roundSecondsLeft}
-              timePerQuestionSec={activeMatch.timePerQuestionSec}
-              currentRound={activeMatch.currentRound}
-              totalRounds={activeMatch.totalRounds}
-            />
+            <div className="shrink-0 w-full max-w-4xl mx-auto h-2 bg-white/10 rounded-full overflow-hidden mt-6 mb-4">
+              <motion.div 
+                className="h-full"
+                animate={{ 
+                  width: `${Math.max(0, (roundSecondsLeft / activeMatch.timePerQuestionSec) * 100)}%`,
+                  backgroundColor: roundSecondsLeft > Math.floor(activeMatch.timePerQuestionSec / 2) 
+                    ? '#10b981' 
+                    : roundSecondsLeft > 3 
+                      ? '#f59e0b' 
+                      : '#ef4444' 
+                }}
+                transition={{ duration: 1, ease: "linear" }}
+              />
+            </div>
           ) : (
-            <div className="shrink-0 h-6 md:h-10 w-full" />
+            <div className="shrink-0 h-6 md:h-10 w-full" /* Spacer for completed mode */ />
           )}
 
-          <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative">
+          {/* Main Area: Question & Choices OR Match Complete Modal */}
+          <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pb-48 z-20" style={{ scrollbarWidth: 'none' }}>
+            
             {activeMatch.status === 'completed' ? (
-              <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md px-4">
-                <motion.div 
-                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                   className="w-full max-w-sm sm:max-w-md bg-[#161a25]/90 border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[1.5rem] p-6 text-center"
-                >
-                    <h2 className={cn(
-                      "text-3xl font-black uppercase tracking-widest drop-shadow-md mb-2",
-                      activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
-                    )}>
-                      {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
-                    </h2>
-                    <p className="text-white/80 font-bold text-sm mb-4 uppercase tracking-widest">
-                       Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
-                    </p>
-                    
-                    <div className="bg-black/50 rounded-xl p-4 mb-5 border border-white/5 flex flex-col gap-3">
-                      <div>
-                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Battle Score</h3>
-                        {(() => {
-                          const rounds = activeMatch.roundResults || [];
-                          let streak = 0;
-                          let baseTotal = 0;
-                          let streakTotal = 0;
-                          for (const r of rounds) {
-                            if (r.studentCorrect) {
-                              streak++;
-                              const bonus = streak >= 2 ? Math.min(15, (streak - 1) * 5) : 0;
-                              baseTotal += 10;
-                              streakTotal += bonus;
-                            } else {
-                              streak = 0;
-                            }
-                          }
-                          return (
-                            <>
-                              <AnimatedCounter value={baseTotal} label="Correct Answers" delay={300} icon={<Check className="h-3 w-3 text-emerald-400" />} />
-                              <AnimatedCounter value={streakTotal} label="Streak Bonus" delay={900} icon={<Sparkles className="h-3 w-3 text-amber-400" />} />
-                              <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 1.5, duration: 0.4 }}
-                                className="flex items-center justify-between pt-1 mt-1 border-t border-white/5"
-                              >
-                                <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Total</span>
-                                <span className="text-base font-black text-white/80">{baseTotal + streakTotal} pts</span>
-                              </motion.div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <div className="w-full h-px bg-white/10" />
-                      <div>
-                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Match Reward</h3>
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-white/70 text-sm font-bold">
-                            {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
-                          </span>
-                          <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
-                        </motion.div>
-                        <p className="text-white/25 text-[9px] mt-1 text-right uppercase tracking-widest">Credited to your profile</p>
-                      </div>
-                    </div>
+              <motion.div 
+                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                 className="w-full max-w-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[2.5rem] p-8 md:p-12 text-center"
+              >
+                  <h2 className={cn(
+                    "text-5xl font-black uppercase tracking-widest drop-shadow-lg mb-4",
+                    activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
+                  )}>
+                    {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
+                  </h2>
+                  <p className="text-white/80 font-bold text-xl mb-8 uppercase tracking-widest">
+                     Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
+                  </p>
+                  
+                  <div className="bg-white/10 rounded-2xl p-6 mb-10 border border-white/10 flex items-center justify-center gap-4">
+                     <Star className="text-amber-400 h-8 w-8" />
+                     <span className="text-white font-black text-2xl">+{activeMatch.xpEarned || 0} XP EARNED</span>
+                  </div>
 
-                    <div className="flex flex-col gap-3 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                     <Button
+                       size="lg"
+                       onClick={() => {
+                         setActiveMatch(null);
+                         setActiveRoom(null);
+                         setQueueActive(false);
+                         setActiveTab('setup');
+                       }}
+                       className="h-16 px-8 rounded-2xl text-lg font-black bg-white/10 hover:bg-white/20 text-white border-2 border-white/20"
+                     >
+                       START NEW MATCH
+                     </Button>
+                     {activeMatch.mode === 'bot' && (
                        <Button
                          size="lg"
-                         onClick={() => {
-                           setActiveMatch(null);
-                           setActiveRoom(null);
-                           setQueueActive(false);
-                           setActiveTab('hub');
-                         }}
-                         className="w-full h-12 rounded-xl text-sm font-black bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                         onClick={() => void handleRequestRematch()}
+                         disabled={answerSubmitting}
+                         className="h-16 px-8 rounded-2xl text-lg font-black bg-violet-600 hover:bg-violet-500 text-white border-b-4 border-violet-800 active:border-b-0 active:translate-y-[4px]"
                        >
-                         BACK TO ARENA
+                         REMATCH
                        </Button>
-                       {activeMatch.mode === 'bot' && (
-                         <Button
-                           size="lg"
-                           onClick={() => void handleRequestRematch()}
-                           disabled={answerSubmitting}
-                           className="w-full h-12 rounded-xl text-sm font-black bg-violet-600 hover:bg-violet-500 text-white border-b-2 border-violet-800 active:border-b-0 active:translate-y-[2px]"
-                         >
-                           REMATCH
-                         </Button>
-                       )}
-                    </div>
-                </motion.div>
-              </div>
+                     )}
+                  </div>
+              </motion.div>
             ) : (
-              <BattleActiveContent 
-                activeMatch={activeMatch}
-                roundSecondsLeft={roundSecondsLeft}
-                lastRoundResult={lastRoundResult}
-                selectedOptionIndex={selectedOptionIndex}
-                roundLocked={roundLocked}
-                answerSubmitting={answerSubmitting}
-                designPauseActive={designPauseActive}
-                onOptionSelect={(idx) => {
-                  if (!!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound) return;
-                  if (answerSubmitting || roundLocked) return;
-                  getAudioContext()?.resume().catch(e => console.warn(e));
-                  playBattleTone('lock');
-                  setSelectedOptionIndex(idx);
-                  void submitRoundAnswer(idx);
-                }}
-                floatingMomentum={floatingMomentum}
-                lastRoundMomentumDelta={lastRoundMomentumDelta}
-                studentProfile={studentProfile}
-                quizBattleAvatar={quizBattleAvatar}
-              />
+              <>
+            {/* Question Card */}
+            <div className="relative bg-[#1e2536] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[1.5rem] p-6 md:p-8 w-full max-w-4xl text-center flex flex-col items-center">
+               <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-sm font-black shadow-lg uppercase tracking-wider">
+                  {activeMatch.currentRound} / {activeMatch.totalRounds}
+               </div>
+               
+               <p className="text-lg sm:text-xl md:text-2xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[60px] flex items-center justify-center">
+                 {activeMatch.currentQuestion?.prompt}
+               </p>
+            </div>
+
+            {/* Choices Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl px-4">
+               {activeMatch.currentQuestion?.choices.map((choice, idx) => {
+                  const isSelected = selectedOptionIndex === idx;
+                  const isSubmitting = answerSubmitting || roundLocked;
+                  const btnColors = [
+                    "bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-emerald-950 border-emerald-400 shadow-[0_8px_0_rgba(5,150,105,1)]", 
+                    "bg-violet-500 hover:bg-violet-400 active:bg-violet-600 text-white border-violet-400 shadow-[0_8px_0_rgba(109,40,217,1)]", 
+                    "bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white border-sky-400 shadow-[0_8px_0_rgba(2,132,199,1)]", 
+                    "bg-rose-500 hover:bg-rose-400 active:bg-rose-600 text-white border-rose-400 shadow-[0_8px_0_rgba(225,29,72,1)]"
+                  ];
+
+                  return (
+                    <motion.button
+                      whileTap={{ y: 8, scale: 0.98 }}
+                      whileHover={{ scale: 1.02 }}
+                      disabled={isSubmitting || designPauseActive}
+                      key={idx}
+                      onClick={() => void submitRoundAnswer(idx)}
+                      className={cn(
+                        "relative h-16 md:h-24 rounded-2xl md:rounded-3xl font-black text-lg md:text-2xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                        btnColors[idx],
+                        isSelected ? "ring-[6px] ring-white ring-offset-[6px] ring-offset-[#0B0F19]" : ""
+                      )}
+                    >
+                      {choice}
+                    </motion.button>
+                  );
+               })}
+            </div>
+              </>
             )}
           </div>
 
-          <BattleFooter 
-            studentProfile={studentProfile}
-            activeMatch={activeMatch}
-            scorePulseTarget={scorePulseTarget}
-            quizBattleAvatar={quizBattleAvatar}
-          />
+          {/* Footer Avatars row - Absolutely positioned to bottom so they never crop */}
+          <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-4 md:px-8 shrink-0 h-32 md:h-40 flex justify-between items-end pb-4 pointer-events-none z-30">
+             
+             {/* Left: Player Avatar fixed strictly to base, blinking/ears only */}
+             <div className="flex items-end gap-3 sm:gap-6 relative pointer-events-auto">
+                 <div className="relative w-28 h-28 md:w-36 md:h-36 overflow-hidden rounded-t-[40px]">
+                   <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-110 -mb-2" />
+                 </div>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 max-w-[200px] md:max-w-[250px]">
+                   <span className="text-white font-black text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
+                   <span className="text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
+                </div>
+             </div>
 
-        </div>
+             {/* Right: Opponent (Bot or Silhouette) */}
+             <div className="flex items-end gap-3 sm:gap-6 relative flex-row-reverse pointer-events-auto">
+                <div className="relative w-28 h-28 md:w-36 md:h-36 bg-[#1a2030] overflow-hidden rounded-t-[40px] flex items-end justify-center border-t-4 border-slate-700/50 shadow-inner">
+                   {activeMatch.mode === 'bot' ? (
+                     <Bot className="h-16 w-16 md:h-20 md:w-20 text-rose-400 mb-6 drop-shadow-xl" strokeWidth={1.5} />
+                   ) : (
+                     <Users className="h-16 w-16 md:h-20 md:w-20 text-slate-500 mb-6 drop-shadow-xl" strokeWidth={1.5} />
+                   )}
+                </div>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 text-right max-w-[200px] md:max-w-[250px]">
+                   <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
+                   <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
+                </div>
+             </div>
+
+          </div>
 
         </div>
       </div>
@@ -2726,41 +2396,6 @@ const QuizBattlePage: React.FC = () => {
                           </div>
                           <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
                         </label>
-
-                        <motion.div
-                          initial={false}
-                          animate={{
-                            opacity: battleSoundEnabled ? 1 : 0.45,
-                            y: battleSoundEnabled ? 0 : -2,
-                          }}
-                          className={cn(
-                            'rounded-[16px] border bg-white/40 p-4 shadow-sm dark:bg-black/40',
-                            setupConfig.mode === 'online'
-                              ? 'border-[#8A3FD3]/20 dark:border-[#8A3FD3]/20'
-                              : 'border-[#1FA7E1]/20 dark:border-[#1FA7E1]/20'
-                          )}
-                        >
-                          <div className="mb-2 flex items-center justify-between">
-                            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700 dark:text-slate-200">SFX Volume</p>
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{Math.round(battleSoundVolume * 100)}%</p>
-                          </div>
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={Math.round(battleSoundVolume * 100)}
-                            disabled={!battleSoundEnabled}
-                            onChange={(event) => {
-                              const next = clampNumber(Number(event.target.value) / 100, 0, 1);
-                              setBattleSoundVolume(next);
-                            }}
-                            onMouseUp={() => playBattleTone('tick')}
-                            onTouchEnd={() => playBattleTone('tick')}
-                            className="h-2 w-full cursor-pointer accent-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Battle sound effects volume"
-                          />
-                        </motion.div>
                       </div>
 
                       {/* Action Bar (Pinned to Bottom of Column) */}
@@ -2979,6 +2614,11 @@ const QuizBattlePage: React.FC = () => {
                               ? 'Waiting for both players to lock in start...'
                               : 'Starting practice bot round...'}
                           </p>
+                          {activeMatch.mode === 'online' && activeMatch.expiresAtMs && (
+                            <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
+                              Public match expires in <span className="font-semibold tabular-nums">{formatWaitClock(queueWaitSeconds)}</span> if the synchronized start does not happen.
+                            </p>
+                          )}
                           {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
                           <Button
                             variant="outline"
