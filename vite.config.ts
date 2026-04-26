@@ -89,16 +89,21 @@ const cssTimingProbePlugins = createCssTimingProbePlugins();
 export default defineConfig({
   plugins: [...cssTimingProbePlugins, react(), tailwindcss()],
   optimizeDeps: {
-    // Keep this list narrow to avoid over-bundling on startup.
     include: [
       'firebase/app',
       'firebase/auth',
       'firebase/firestore',
       'firebase/storage',
       'firebase/analytics',
+      'firebase/database',
+      'firebase/functions',
+      '@tanstack/react-query',
       'motion/react',
       'lucide-react',
       'sonner',
+      'recharts',
+      'zod',
+      'react-hook-form',
     ],
   },
   resolve: {
