@@ -1,4 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+vi.mock('../lib/firebase', () => ({
+  auth: { currentUser: null },
+  storage: {},
+  db: {},
+  cloudFunctions: {},
+  default: { options: { projectId: 'test-project' } },
+}));
+
 import {
   PROFILE_PICTURE_MAX_BYTES,
   buildProfilePictureStoragePath,

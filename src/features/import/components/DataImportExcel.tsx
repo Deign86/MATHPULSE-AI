@@ -46,10 +46,16 @@ export const DataImportExcel: React.FC<DataImportExcelProps> = ({ className, onP
 
   const detectedSheetSummary = useMemo(() => (result ? summarizeDetectedSheets(result) : []), [result]);
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit to mitigate ReDoS risks
+
   const handleFile = async (file: File) => {
     if (!file) return;
     if (!/\.(xlsx|xls)$/i.test(file.name)) {
       toast.error('Please upload an Excel workbook (.xlsx or .xls).');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File size exceeds 10MB limit. Please use a smaller Excel file.');
       return;
     }
 
