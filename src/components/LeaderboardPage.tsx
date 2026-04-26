@@ -60,15 +60,12 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
     try {
       const mappedFilter = timeFilter === 'all' ? 'all' : 'week';
 
-      // Race the query against a timeout to prevent infinite hanging
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Leaderboard query timed out')), 10000)
-      );
+      const entries = await getLeaderboard(currentUser.uid, false, mappedFilter as any, 20);
 
-      const entries = await Promise.race([
-        getLeaderboard(currentUser.uid, false, mappedFilter as any, 20),
-        timeoutPromise,
-      ]);
+      if (!entries || entries.length === 0) {
+        setStudents([]);
+        return;
+      }
 
       const leaderboardData: LeaderboardStudent[] = entries.map((entry, index) => ({
         id: entry.userId,
