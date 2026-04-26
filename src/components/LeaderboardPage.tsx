@@ -174,26 +174,22 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
         {/* Radial base fading from purple at bottom center to the very top */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_100%,#9333ea_0%,#c084fc_50%,transparent_100%)]"></div>
 
-        {/* Sunburst Rays - Originating from precisely the bottom of the podiums */}
+        {/* Sunburst Rays - GPU-accelerated CSS animation */}
         <div
           className="absolute inset-x-[-30px] top-[-30px] bottom-0 opacity-50 pointer-events-none mix-blend-plus-lighter overflow-hidden"
         >
-          <motion.div
-            className="absolute top-[540px] md:top-[600px] left-1/2"
+          <div
+            className="animate-sunburst-spin absolute top-[540px] md:top-[600px] left-1/2"
             style={{
-              width: "4000px",
-              height: "4000px",
-              marginLeft: "-2000px",
-              marginTop: "-2000px",
-              originX: 0.5,
-              originY: 0.5,
+              width: "2000px",
+              height: "2000px",
+              marginLeft: "-1000px",
+              marginTop: "-1000px",
+              willChange: "transform",
               background: `repeating-conic-gradient(from 0deg at 50% 50%, 
               rgba(255, 250, 193, 1) 0deg, rgba(255, 250, 193, 0.7) 4deg, 
               transparent 4deg, transparent 8deg)`
-
             }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 240, repeat: Infinity, ease: "linear" }}
           />
         </div>
 

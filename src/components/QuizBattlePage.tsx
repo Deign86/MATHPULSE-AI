@@ -1656,7 +1656,7 @@ const QuizBattlePage: React.FC = () => {
   }
 
   return (
-    <WarpBackground className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
+    <WarpBackground bgVideo="/videos/warp_bg.mp4" className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
       <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
         <motion.div
         initial={{ opacity: 0, y: 16 }}
