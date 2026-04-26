@@ -58,6 +58,8 @@ permissions:
 jobs:
   normalize:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     outputs:
       suggested_branch: ${{ steps.infer.outputs.suggested_branch }}
       branch_type: ${{ steps.infer.outputs.branch_type }}
@@ -67,7 +69,7 @@ jobs:
       is_compliant: ${{ steps.infer.outputs.is_compliant }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -97,7 +99,7 @@ jobs:
           node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('branch-governor.json','utf8'));process.stdout.write(data.reportMarkdown + '\n');" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload branch normalization report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: branch-normalization-report
           path: branch-governor.json

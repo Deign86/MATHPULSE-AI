@@ -263,12 +263,8 @@ export const createUserProfile = async (
 // Get user profile from Firestore
 export const getUserProfile = async (uid: string): Promise<User | null> => {
   try {
-    console.log('[FIRESTORE DEBUG] getUserProfile called for uid:', uid);
     const docRef = doc(db, 'users', uid);
-    console.log('[FIRESTORE DEBUG] Calling getDoc');
     const docSnap = await getDoc(docRef);
-    console.log('[FIRESTORE DEBUG] getDoc completed');
-
     if (docSnap.exists()) {
       return { ...docSnap.data(), uid: docSnap.id } as User;
     }
@@ -303,14 +299,12 @@ export const getUserProfileFromServer = async (uid: string): Promise<User | null
 export const updateUserProfile = async (
   uid: string,
   updates: Partial<User> &
-    Partial<Omit<StudentProfile, keyof User | 'role'>> &
-    Partial<Omit<TeacherProfile, keyof User | 'role'>> &
-    Partial<Omit<AdminProfile, keyof User | 'role'>>
+  Partial<Omit<StudentProfile, keyof User | 'role'>> &
+  Partial<Omit<TeacherProfile, keyof User | 'role'>> &
+  Partial<Omit<AdminProfile, keyof User | 'role'>>
 ): Promise<void> => {
   try {
-    console.log('[FIRESTORE DEBUG] updateUserProfile called for uid:', uid);
     const currentProfile = await getUserProfile(uid);
-    console.log('[FIRESTORE DEBUG] currentProfile fetched:', currentProfile);
     if (!currentProfile) {
       throw new Error('Profile not found');
     }
@@ -346,11 +340,8 @@ export const updateUserProfile = async (
       sanitizedUpdates[key] = value;
     });
 
-    console.log('[FIRESTORE DEBUG] sanitizedUpdates:', sanitizedUpdates);
     const docRef = doc(db, 'users', uid);
-    console.log('[FIRESTORE DEBUG] Calling setDoc');
     await setDoc(docRef, { ...sanitizedUpdates, updatedAt: serverTimestamp() }, { merge: true });
-    console.log('[FIRESTORE DEBUG] setDoc completed');
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;
