@@ -9,6 +9,7 @@ import AdminAuditLog from './AdminAuditLog';
 import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
+import AdminAIMonitoring from './AdminAIMonitoring';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
 import {
@@ -215,6 +216,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 {activeTab === 'Audit Log' && 'Audit Log'}
                 {activeTab === 'User Management' && 'User Management'}
                 {activeTab === 'Analytics' && 'Analytics'}
+                {activeTab === 'AI Monitoring' && 'AI Monitoring'}
                 {activeTab === 'Settings' && 'Settings'}
               </h1>
               <p className="text-xs text-[#5a6578] font-body">
@@ -223,6 +225,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 {activeTab === 'Audit Log' && 'Monitor system activity'}
                 {activeTab === 'User Management' && 'Manage all user accounts'}
                 {activeTab === 'Analytics' && 'Detailed performance metrics'}
+                {activeTab === 'AI Monitoring' && 'Platform AI usage and system health'}
                 {activeTab === 'Settings' && 'Configure platform settings'}
               </p>
             </div>
@@ -459,6 +462,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             />
           )}
           {activeTab === 'Analytics' && <AdminAnalytics />}
+          {activeTab === 'AI Monitoring' && <AdminAIMonitoring />}
           {activeTab === 'Settings' && <AdminSettings onDirtyChange={setSettingsDirty} />}
         </main>
       </div>

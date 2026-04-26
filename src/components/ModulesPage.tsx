@@ -125,18 +125,21 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       onEarnXP(reward?.amount || 0, `Daily Reward! +${reward?.amount || 0} XP`);
     }
 
-    // Avatar Rewards Unlock Logic
+    // Auto-close quickly without waiting for async operations
+    setTimeout(() => setShowDailyCheckIn(false), 800);
+
+    // Avatar Rewards Unlock Logic (Run in background)
     if (userProfile?.uid) {
       if (currentDay === 3) {
-        await unlockAvatarItem(userProfile.uid, 'acc_blue_cap');
-        toast.success("✨ Blue Cap unlocked in Avatar Studio!");
+        unlockAvatarItem(userProfile.uid, 'acc_blue_cap')
+          .then(() => toast.success("✨ Blue Cap unlocked in Avatar Studio!"))
+          .catch(console.error);
       } else if (currentDay === 7) {
-        await unlockAvatarItem(userProfile.uid, 'acc_crown');
-        toast.success("👑 Golden Crown unlocked in Avatar Studio!");
+        unlockAvatarItem(userProfile.uid, 'acc_crown')
+          .then(() => toast.success("👑 Golden Crown unlocked in Avatar Studio!"))
+          .catch(console.error);
       }
     }
-    
-    setTimeout(() => setShowDailyCheckIn(false), 1500);
   };
 
   // Handle navigation from initialModuleId when component is already mounted
