@@ -6,7 +6,7 @@ if [ -d "/data" ]; then
     : "${VECTORSTORE_DIR:=/data/vectorstore}"
 else
     : "${CURRICULUM_DIR:=/app/datasets/curriculum}"
-    : "${VECTORSTORE_DIR:/app/datasets/vectorstore}"
+    : "${VECTORSTORE_DIR:=/app/datasets/vectorstore}"
 fi
 
 export CURRICULUM_DIR
