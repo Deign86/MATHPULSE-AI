@@ -19,10 +19,11 @@ COPY backend/ .
 COPY scripts/ingest_curriculum.py /app/scripts/ingest_curriculum.py
 COPY datasets/curriculum/ /app/datasets/curriculum/
 
-RUN if [ -d /app/datasets/curriculum ] && [ "$(ls -A /app/datasets/curriculum 2>/dev/null)" ]; then \
+ARG RUN_CURRICULUM_INGEST_ON_BUILD=false
+RUN if [ "${RUN_CURRICULUM_INGEST_ON_BUILD}" = "true" ] && [ -d /app/datasets/curriculum ] && [ "$(ls -A /app/datasets/curriculum 2>/dev/null)" ]; then \
             python /app/scripts/ingest_curriculum.py || echo "Curriculum ingest skipped during image build"; \
         else \
-            echo "No curriculum PDFs present during image build; skipping ingest"; \
+            echo "Curriculum ingest skipped during image build; set RUN_CURRICULUM_INGEST_ON_BUILD=true to enable it"; \
         fi
 
 EXPOSE 8000
