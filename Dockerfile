@@ -6,7 +6,7 @@
 # --- Stage 1: Backend ---
 FROM python:3.11-slim AS backend
 
-WORKDIR /app/backend
+WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -16,12 +16,10 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
-COPY scripts/ingest_curriculum.py /app/scripts/ingest_curriculum.py
-COPY scripts/startup.sh /app/scripts/startup.sh
 
 EXPOSE 8000
 
-CMD ["/bin/sh", "/app/scripts/startup.sh"]
+CMD ["/bin/sh", "/app/startup.sh"]
 
 # --- Stage 2: Frontend ---
 FROM node:20-alpine AS frontend
