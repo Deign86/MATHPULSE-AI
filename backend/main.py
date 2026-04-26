@@ -8872,6 +8872,251 @@ async def _validate_generated_lesson_plan(
     }
 
 
+def _coerce_nonempty_str_list(raw_value: Any) -> List[str]:
+    if not isinstance(raw_value, list):
+        return []
+    return [str(item).strip() for item in raw_value if str(item).strip()]
+
+
+def _build_lesson_generation_content(
+    *,
+    lesson_payload: Dict[str, Any],
+    request: LessonGenerationRequest,
+    curriculum_competency: str,
+    lesson_title_hint: str,
+    retrieval_band: str,
+    retrieval_confidence: float,
+    source_legitimacy_report: Dict[str, Any],
+    curriculum_chunks: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    lesson_title = str(lesson_payload.get("lessonTitle") or lesson_title_hint or "Intervention-Grounded Math Lesson Plan").strip()
+    curriculum_competency = str(
+        lesson_payload.get("curriculumCompetency")
+        or request.learningCompetency
+        or curriculum_competency
+        or lesson_title
+    ).strip()
+    lesson_objective = str(
+        lesson_payload.get("lessonObjective")
+        or f"Demonstrate {curriculum_competency} using DepEd curriculum evidence and Philippine real-life contexts."
+    ).strip()
+    real_world_hook = str(
+        lesson_payload.get("realWorldHook")
+        or "Connect the competency to practical decisions in work, business, finance, or daily life."
+    ).strip()
+    explanation = str(
+        lesson_payload.get("explanation")
+        or f"Use the retrieved curriculum evidence to explain {curriculum_competency} clearly and step by step."
+    ).strip()
+    reflection_prompt = str(
+        lesson_payload.get("reflectionPrompt")
+        or "How does this competency help you solve a real problem in school, work, or daily life?"
+    ).strip()
+
+    raw_worked_example = lesson_payload.get("workedExample") if isinstance(lesson_payload, dict) else None
+    if isinstance(raw_worked_example, dict):
+        worked_example = GroundedWorkedExample(
+            problem=str(raw_worked_example.get("problem") or raw_worked_example.get("question") or "").strip()
+            or f"Worked example for {curriculum_competency}",
+            solution=str(raw_worked_example.get("solution") or raw_worked_example.get("answer") or "").strip()
+            or "Step-by-step solution grounded in the retrieved curriculum context.",
+        )
+    else:
+        worked_example = GroundedWorkedExample(
+            problem=f"Worked example for {curriculum_competency}",
+            solution="Step-by-step solution grounded in the retrieved curriculum context.",
+        )
+
+    guided_practice = _coerce_nonempty_str_list(lesson_payload.get("guidedPractice") if isinstance(lesson_payload, dict) else None)
+    if not guided_practice:
+        guided_practice = [
+            f"Solve a guided item on {curriculum_competency} using one cue from the retrieved curriculum evidence.",
+            "Compare your answer with a partner and justify each step.",
+        ]
+
+    independent_practice = _coerce_nonempty_str_list(lesson_payload.get("independentPractice") if isinstance(lesson_payload, dict) else None)
+    if not independent_practice:
+        independent_practice = [
+            f"Complete an independent task that applies {curriculum_competency} to a Philippine context.",
+            "Write a short justification of your answer using the curriculum language.",
+        ]
+
+    quick_assessment = _coerce_nonempty_str_list(lesson_payload.get("quickAssessment") if isinstance(lesson_payload, dict) else None)
+    if not quick_assessment:
+        quick_assessment = [
+            "One exit-ticket item that checks procedural accuracy.",
+            "One reflection question that checks real-world transfer.",
+        ]
+
+    raw_source_citations = lesson_payload.get("sourceCitations") if isinstance(lesson_payload, dict) else []
+    source_citations = _coerce_nonempty_str_list(raw_source_citations)
+    if not source_citations:
+        source_citations = [
+            f"{chunk.get('source_file')} p.{chunk.get('page')} ({chunk.get('content_domain')}/{chunk.get('chunk_type')})"
+            for chunk in curriculum_chunks[:5]
+            if chunk.get("source_file")
+        ]
+
+    needs_review = bool(lesson_payload.get("needsReview")) if isinstance(lesson_payload, dict) else False
+    needs_review = needs_review or retrieval_band == "low"
+    review_reason = str(lesson_payload.get("reviewReason") or "").strip() if isinstance(lesson_payload, dict) else ""
+    if not review_reason and retrieval_band == "low":
+        review_reason = "Curriculum retrieval confidence was low, so the lesson should be reviewed before classroom use."
+    if source_legitimacy_report.get("status") != "verified":
+        needs_review = True
+        if not review_reason:
+            review_reason = "One or more source checks require review."
+
+    if needs_review:
+        review_reason = review_reason or "Lesson marked as needs review."
+
+    retrieved_evidence: List[CurriculumEvidenceSource] = []
+    for chunk in curriculum_chunks[:5]:
+        retrieved_evidence.append(
+            CurriculumEvidenceSource(
+                subject=str(chunk.get("subject") or request.subject or "general_math"),
+                quarter=int(chunk.get("quarter") or request.quarter or 1),
+                content=str(chunk.get("content") or "").strip(),
+                sourceFile=str(chunk.get("source_file") or "").strip() or None,
+                page=int(chunk.get("page") or 0) or None,
+                score=float(chunk.get("score") or 0.0),
+                contentDomain=str(chunk.get("content_domain") or "").strip() or None,
+                chunkType=str(chunk.get("chunk_type") or "").strip() or None,
+            )
+        )
+
+    return {
+        "lessonTitle": lesson_title,
+        "curriculumCompetency": curriculum_competency,
+        "lessonObjective": lesson_objective,
+        "realWorldHook": real_world_hook,
+        "explanation": explanation,
+        "reflectionPrompt": reflection_prompt,
+        "workedExample": worked_example,
+        "guidedPractice": guided_practice,
+        "independentPractice": independent_practice,
+        "quickAssessment": quick_assessment,
+        "sourceCitations": source_citations,
+        "needsReview": needs_review,
+        "reviewReason": review_reason,
+        "retrievedEvidence": retrieved_evidence,
+    }
+
+
+def _build_lesson_generation_blocks(
+    *,
+    lesson_title: str,
+    lesson_objective: str,
+    real_world_hook: str,
+    explanation: str,
+    worked_example: GroundedWorkedExample,
+    guided_practice: List[str],
+    independent_practice: List[str],
+    quick_assessment: List[str],
+    reflection_prompt: str,
+    retrieved_evidence: List[CurriculumEvidenceSource],
+    selected_topics: List[str],
+) -> Dict[str, Any]:
+    provenance_summary: List[Dict[str, Optional[str]]] = []
+    for evidence in retrieved_evidence:
+        summary_row = {
+            "topicId": None,
+            "title": evidence.content[:120] if evidence.content else lesson_title,
+            "materialId": evidence.sourceFile,
+            "sourceFile": evidence.sourceFile,
+            "sectionId": f"p.{evidence.page}" if evidence.page else None,
+        }
+        if summary_row not in provenance_summary:
+            provenance_summary.append(summary_row)
+
+    if not provenance_summary:
+        provenance_summary = [
+            {
+                "topicId": None,
+                "title": topic,
+                "materialId": None,
+                "sourceFile": None,
+                "sectionId": None,
+            }
+            for topic in selected_topics[:3]
+        ]
+
+    first_provenance = provenance_summary[0] if provenance_summary else None
+    blocks: List[LessonPlanBlock] = [
+        LessonPlanBlock(
+            blockId="block_1",
+            title="Real-World Hook",
+            objective=lesson_objective,
+            strategy="Context-setting discussion with retrieved curriculum evidence.",
+            estimatedMinutes=8,
+            activities=[real_world_hook],
+            checksForUnderstanding=["Ask students to identify the competency in the example."],
+            remediationTips=["Restate the context using simpler language if needed."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_2",
+            title="Concept Explanation",
+            objective=lesson_objective,
+            strategy="Teacher-led explanation grounded in retrieved excerpts.",
+            estimatedMinutes=15,
+            activities=[explanation],
+            checksForUnderstanding=["Students paraphrase the key idea in their own words."],
+            remediationTips=["Break the explanation into smaller steps and repeat the terminology."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_3",
+            title="Worked Example",
+            objective=worked_example.problem,
+            strategy="Model the solution path and annotate each step.",
+            estimatedMinutes=15,
+            activities=[f"Problem: {worked_example.problem}", f"Solution: {worked_example.solution}"],
+            checksForUnderstanding=["Students identify which step uses the retrieved competency."],
+            remediationTips=["Provide a partially completed solution scaffold if needed."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_4",
+            title="Guided Practice",
+            objective="Apply the same method with scaffolded support.",
+            strategy="Teacher circulates while students complete guided items.",
+            estimatedMinutes=15,
+            activities=guided_practice,
+            checksForUnderstanding=["Check one correct answer and one justification."],
+            remediationTips=["Offer hints tied directly to the retrieved evidence."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_5",
+            title="Independent Practice and Quick Check",
+            objective="Transfer the competency to a new but related context.",
+            strategy="Independent task followed by a short formative check.",
+            estimatedMinutes=15,
+            activities=independent_practice + quick_assessment,
+            checksForUnderstanding=["Collect an exit ticket and review misconceptions."],
+            remediationTips=["Revisit the retrieved source excerpt if students struggle."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_6",
+            title="Reflection",
+            objective=reflection_prompt,
+            strategy="Metacognitive reflection and transfer discussion.",
+            estimatedMinutes=7,
+            activities=[reflection_prompt],
+            checksForUnderstanding=["Ask students to connect the skill to a real decision."],
+            remediationTips=["Prompt with a local example if reflection is shallow."],
+            provenance=first_provenance,
+        ),
+    ]
+
+    return {
+        "provenanceSummary": provenance_summary,
+        "blocks": blocks,
+    }
+
+
 @app.post("/api/lesson/generate", response_model=LessonPlanResponse)
 async def generate_lesson_plan(http_request: Request, request: LessonGenerationRequest):
     """
@@ -9008,19 +9253,6 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
             max_records=500,
         )
 
-        topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}
-        for topic in (imported_topics_payload.get("topics") or []):
-            title = str(topic.get("title") or "").strip()
-            if not title:
-                continue
-            topic_provenance_map[_normalize_topic_key(title)] = {
-                "topicId": str(topic.get("topicId") or "") or None,
-                "title": title,
-                "materialId": str(topic.get("materialId") or "") or None,
-                "sourceFile": str(topic.get("sourceFile") or "") or None,
-                "sectionId": str(topic.get("sectionId") or "") or None,
-            }
-
         curriculum_context_block = ""
         if request.curriculumContext and str(request.curriculumContext).strip():
             curriculum_context_block = f"{str(request.curriculumContext).strip()}\n\n"
@@ -9066,214 +9298,49 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
             logger.warning(f"Lesson generation AI fallback engaged: {lesson_exc}")
             warnings.append("AI lesson synthesis failed; generated deterministic scaffolded content from retrieved evidence.")
 
-        lesson_title = str(lesson_payload.get("lessonTitle") or lesson_title_hint or "Intervention-Grounded Math Lesson Plan").strip()
-        curriculum_competency = str(
-            lesson_payload.get("curriculumCompetency")
-            or request.learningCompetency
-            or competency_hint
-            or lesson_title
-        ).strip()
-        lesson_objective = str(
-            lesson_payload.get("lessonObjective")
-            or f"Demonstrate {curriculum_competency} using DepEd curriculum evidence and Philippine real-life contexts."
-        ).strip()
-        real_world_hook = str(
-            lesson_payload.get("realWorldHook")
-            or "Connect the competency to practical decisions in work, business, finance, or daily life."
-        ).strip()
-        explanation = str(
-            lesson_payload.get("explanation")
-            or f"Use the retrieved curriculum evidence to explain {curriculum_competency} clearly and step by step."
-        ).strip()
-        reflection_prompt = str(
-            lesson_payload.get("reflectionPrompt")
-            or "How does this competency help you solve a real problem in school, work, or daily life?"
-        ).strip()
-
-        raw_worked_example = lesson_payload.get("workedExample") if isinstance(lesson_payload, dict) else None
-        if isinstance(raw_worked_example, dict):
-            worked_example = GroundedWorkedExample(
-                problem=str(raw_worked_example.get("problem") or raw_worked_example.get("question") or "").strip()
-                or f"Worked example for {curriculum_competency}",
-                solution=str(raw_worked_example.get("solution") or raw_worked_example.get("answer") or "").strip()
-                or "Step-by-step solution grounded in the retrieved curriculum context.",
-            )
-        else:
-            worked_example = GroundedWorkedExample(
-                problem=f"Worked example for {curriculum_competency}",
-                solution="Step-by-step solution grounded in the retrieved curriculum context.",
-            )
-
-        raw_guided_practice = lesson_payload.get("guidedPractice") if isinstance(lesson_payload, dict) else []
-        guided_practice = [
-            str(item).strip()
-            for item in raw_guided_practice
-            if str(item).strip()
-        ] if isinstance(raw_guided_practice, list) else []
-        if not guided_practice:
-            guided_practice = [
-                f"Solve a guided item on {curriculum_competency} using one cue from the retrieved curriculum evidence.",
-                "Compare your answer with a partner and justify each step.",
-            ]
-
-        raw_independent_practice = lesson_payload.get("independentPractice") if isinstance(lesson_payload, dict) else []
-        independent_practice = [
-            str(item).strip()
-            for item in raw_independent_practice
-            if str(item).strip()
-        ] if isinstance(raw_independent_practice, list) else []
-        if not independent_practice:
-            independent_practice = [
-                f"Complete an independent task that applies {curriculum_competency} to a Philippine context.",
-                "Write a short justification of your answer using the curriculum language.",
-            ]
-
-        raw_quick_assessment = lesson_payload.get("quickAssessment") if isinstance(lesson_payload, dict) else []
-        quick_assessment = [
-            str(item).strip()
-            for item in raw_quick_assessment
-            if str(item).strip()
-        ] if isinstance(raw_quick_assessment, list) else []
-        if not quick_assessment:
-            quick_assessment = [
-                "One exit-ticket item that checks procedural accuracy.",
-                "One reflection question that checks real-world transfer.",
-            ]
-
-        raw_source_citations = lesson_payload.get("sourceCitations") if isinstance(lesson_payload, dict) else []
-        source_citations = [str(item).strip() for item in raw_source_citations if str(item).strip()] if isinstance(raw_source_citations, list) else []
-        if not source_citations:
-            source_citations = [
-                f"{chunk.get('source_file')} p.{chunk.get('page')} ({chunk.get('content_domain')}/{chunk.get('chunk_type')})"
-                for chunk in curriculum_chunks[:5]
-                if chunk.get("source_file")
-            ]
-
-        needs_review = bool(lesson_payload.get("needsReview")) if isinstance(lesson_payload, dict) else False
-        needs_review = needs_review or retrieval_band == "low"
-        review_reason = str(lesson_payload.get("reviewReason") or "").strip() if isinstance(lesson_payload, dict) else ""
-        if not review_reason and retrieval_band == "low":
-            review_reason = "Curriculum retrieval confidence was low, so the lesson should be reviewed before classroom use."
-        if source_legitimacy_report.get("status") != "verified":
-            needs_review = True
-            if not review_reason:
-                review_reason = "One or more source checks require review."
+        lesson_core = _build_lesson_generation_content(
+            lesson_payload=lesson_payload,
+            request=request,
+            curriculum_competency=competency_hint,
+            lesson_title_hint=lesson_title_hint,
+            retrieval_band=retrieval_band,
+            retrieval_confidence=retrieval_confidence,
+            source_legitimacy_report=source_legitimacy_report,
+            curriculum_chunks=curriculum_chunks,
+        )
+        lesson_title = str(lesson_core["lessonTitle"])
+        curriculum_competency = str(lesson_core["curriculumCompetency"])
+        lesson_objective = str(lesson_core["lessonObjective"])
+        real_world_hook = str(lesson_core["realWorldHook"])
+        explanation = str(lesson_core["explanation"])
+        reflection_prompt = str(lesson_core["reflectionPrompt"])
+        worked_example = cast(GroundedWorkedExample, lesson_core["workedExample"])
+        guided_practice = cast(List[str], lesson_core["guidedPractice"])
+        independent_practice = cast(List[str], lesson_core["independentPractice"])
+        quick_assessment = cast(List[str], lesson_core["quickAssessment"])
+        source_citations = cast(List[str], lesson_core["sourceCitations"])
+        needs_review = bool(lesson_core["needsReview"])
+        review_reason = str(lesson_core["reviewReason"])
+        retrieved_evidence = cast(List[CurriculumEvidenceSource], lesson_core["retrievedEvidence"])
 
         if needs_review:
-            warnings.append(review_reason or "Lesson marked as needs review.")
+            warnings.append(review_reason)
 
-        retrieved_evidence: List[CurriculumEvidenceSource] = []
-        for chunk in curriculum_chunks[:5]:
-            retrieved_evidence.append(
-                CurriculumEvidenceSource(
-                    subject=str(chunk.get("subject") or requested_subject),
-                    quarter=int(chunk.get("quarter") or requested_quarter),
-                    content=str(chunk.get("content") or "").strip(),
-                    sourceFile=str(chunk.get("source_file") or "").strip() or None,
-                    page=int(chunk.get("page") or 0) or None,
-                    score=float(chunk.get("score") or 0.0),
-                    contentDomain=str(chunk.get("content_domain") or "").strip() or None,
-                    chunkType=str(chunk.get("chunk_type") or "").strip() or None,
-                )
-            )
-
-        provenance_summary: List[Dict[str, Optional[str]]] = []
-        for evidence in retrieved_evidence:
-            summary_row = {
-                "topicId": None,
-                "title": evidence.content[:120] if evidence.content else lesson_title,
-                "materialId": evidence.sourceFile,
-                "sourceFile": evidence.sourceFile,
-                "sectionId": f"p.{evidence.page}" if evidence.page else None,
-            }
-            if summary_row not in provenance_summary:
-                provenance_summary.append(summary_row)
-
-        if not provenance_summary:
-            provenance_summary = [
-                {
-                    "topicId": None,
-                    "title": topic,
-                    "materialId": None,
-                    "sourceFile": None,
-                    "sectionId": None,
-                }
-                for topic in selected_topics[:3]
-            ]
-
-        first_provenance = provenance_summary[0] if provenance_summary else None
-        default_objective = lesson_objective
-        blocks: List[LessonPlanBlock] = [
-            LessonPlanBlock(
-                blockId="block_1",
-                title="Real-World Hook",
-                objective=default_objective,
-                strategy="Context-setting discussion with retrieved curriculum evidence.",
-                estimatedMinutes=8,
-                activities=[real_world_hook],
-                checksForUnderstanding=["Ask students to identify the competency in the example."],
-                remediationTips=["Restate the context using simpler language if needed."],
-                provenance=first_provenance,
-            ),
-            LessonPlanBlock(
-                blockId="block_2",
-                title="Concept Explanation",
-                objective=lesson_objective,
-                strategy="Teacher-led explanation grounded in retrieved excerpts.",
-                estimatedMinutes=15,
-                activities=[explanation],
-                checksForUnderstanding=["Students paraphrase the key idea in their own words."],
-                remediationTips=["Break the explanation into smaller steps and repeat the terminology."],
-                provenance=first_provenance,
-            ),
-            LessonPlanBlock(
-                blockId="block_3",
-                title="Worked Example",
-                objective=worked_example.problem,
-                strategy="Model the solution path and annotate each step.",
-                estimatedMinutes=15,
-                activities=[f"Problem: {worked_example.problem}", f"Solution: {worked_example.solution}"],
-                checksForUnderstanding=["Students identify which step uses the retrieved competency."],
-                remediationTips=["Provide a partially completed solution scaffold if needed."],
-                provenance=first_provenance,
-            ),
-            LessonPlanBlock(
-                blockId="block_4",
-                title="Guided Practice",
-                objective="Apply the same method with scaffolded support.",
-                strategy="Teacher circulates while students complete guided items.",
-                estimatedMinutes=15,
-                activities=guided_practice,
-                checksForUnderstanding=["Check one correct answer and one justification."],
-                remediationTips=["Offer hints tied directly to the retrieved evidence."],
-                provenance=first_provenance,
-            ),
-            LessonPlanBlock(
-                blockId="block_5",
-                title="Independent Practice and Quick Check",
-                objective="Transfer the competency to a new but related context.",
-                strategy="Independent task followed by a short formative check.",
-                estimatedMinutes=15,
-                activities=independent_practice + quick_assessment,
-                checksForUnderstanding=["Collect an exit ticket and review misconceptions."],
-                remediationTips=["Revisit the retrieved source excerpt if students struggle."],
-                provenance=first_provenance,
-            ),
-            LessonPlanBlock(
-                blockId="block_6",
-                title="Reflection",
-                objective=reflection_prompt,
-                strategy="Metacognitive reflection and transfer discussion.",
-                estimatedMinutes=7,
-                activities=[reflection_prompt],
-                checksForUnderstanding=["Ask students to connect the skill to a real decision."],
-                remediationTips=["Prompt with a local example if reflection is shallow."],
-                provenance=first_provenance,
-            ),
-        ]
-
-        if not lesson_title:
-            lesson_title = "Intervention-Grounded Math Lesson Plan"
+        block_data = _build_lesson_generation_blocks(
+            lesson_title=lesson_title,
+            lesson_objective=lesson_objective,
+            real_world_hook=real_world_hook,
+            explanation=explanation,
+            worked_example=worked_example,
+            guided_practice=guided_practice,
+            independent_practice=independent_practice,
+            quick_assessment=quick_assessment,
+            reflection_prompt=reflection_prompt,
+            retrieved_evidence=retrieved_evidence,
+            selected_topics=selected_topics,
+        )
+        provenance_summary = cast(List[Dict[str, Optional[str]]], block_data["provenanceSummary"])
+        blocks = cast(List[LessonPlanBlock], block_data["blocks"])
 
         self_validation_report = await _validate_generated_lesson_plan(
             lesson_title=lesson_title,
