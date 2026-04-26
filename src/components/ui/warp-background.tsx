@@ -12,6 +12,7 @@ export interface WarpBackgroundProps extends HTMLAttributes<HTMLDivElement> {
    beamDelayMin?: number;
    beamDuration?: number;
    gridColor?: string;
+   bgVideo?: string;
 }
 
 const Beam = ({
@@ -58,12 +59,13 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
    children,
    perspective = 100,
    className,
+   bgVideo,
    beamsPerSide = 6,
    beamSize = 4,
    beamDelayMax = 1.5,
    beamDelayMin = 0,
-   beamDuration = 4, // Slightly faster for more frequent, engaging animation
-   gridColor = "rgba(100, 116, 139, 0.08)", // Very light grid color
+   beamDuration = 4,
+   gridColor = "rgba(100, 116, 139, 0.08)",
    ...props
 }) => {
    const generateBeams = useCallback(() => {
@@ -86,21 +88,28 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
    const bottomBeams = useMemo(() => generateBeams(), [generateBeams]);
    const leftBeams = useMemo(() => generateBeams(), [generateBeams]);
 
-   return (
+return (
       <div className={cn("relative w-full h-full", className)} {...props}>
-         <div
-            style={
-               {
-                  "--perspective": `${perspective}px`,
-                  "--grid-color": gridColor,
-                  "--beam-size": `${beamSize}%`,
-               } as React.CSSProperties
-            }
-            className={
-               // Set the background container to absolutely fill the parent WarpBackground context
-               "pointer-events-none absolute inset-0 overflow-hidden [clip-path:inset(0)] [container-type:size] [perspective:var(--perspective)] [transform-style:preserve-3d] -z-10 bg-[#42389d]"
-            }
-         >
+         {bgVideo ? (
+            <video
+               autoPlay
+               loop
+               muted
+               playsInline
+               className="pointer-events-none absolute inset-0 w-full h-full object-cover -z-10"
+               src={bgVideo}
+            />
+         ) : (
+            <div
+               style={
+                  {
+                     "--perspective": `${perspective}px`,
+                     "--grid-color": gridColor,
+                     "--beam-size": `${beamSize}%`,
+                  } as React.CSSProperties
+               }
+               className="pointer-events-none absolute inset-0 overflow-hidden [clip-path:inset(0)] [container-type:size] [perspective:var(--perspective)] [transform-style:preserve-3d] -z-10 bg-[#42389d]"
+            >
             <div className="absolute [transform-style:preserve-3d] [background-size:var(--beam-size)_var(--beam-size)] [background:linear-gradient(var(--grid-color)_0_1px,_transparent_1px_var(--beam-size))_50%_-0.5px_/var(--beam-size)_var(--beam-size),linear-gradient(90deg,_var(--grid-color)_0_1px,_transparent_1px_var(--beam-size))_50%_50%_/var(--beam-size)_var(--beam-size)] [container-type:inline-size] [height:100cqmax] [transform-origin:50%_0%] [transform:rotateX(-90deg)] [width:100cqi]">
                {topBeams.map((beam, index) => (
                   <Beam
@@ -146,6 +155,7 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
                ))}
             </div>
          </div>
+         )}
          <div className="relative z-10 w-full h-full">{children}</div>
       </div>
    );

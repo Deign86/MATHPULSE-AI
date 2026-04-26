@@ -114,7 +114,7 @@ const AdminAIMonitoring: React.FC = () => {
             failedRequests: m.requests_error || 0,
             tutoringSessions: m.task_counts?.chat || 0,
             quizGenerationRequests: m.task_counts?.quiz_generation || 0,
-            tokenUsage: m.token_usage || (m.requests_total || 0) * 850,
+            tokenUsage: (m as any).token_usage || (m.requests_total || 0) * 850,
             recentActivity: [
               {
                 id: 'log-sys-1',
