@@ -60,9 +60,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const studentProfile = userProfile as StudentProfile | null;
   const studentGrade = studentProfile?.grade;
   const activeGradeLevel = resolveLearnerGradeLevel(studentGrade);
-  const [subjectFilter, setSubjectFilter] = useState<'all' | string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('all');
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
   const [competencyFilter, setCompetencyFilter] = useState('all');
+  const [isScrolled, setIsScrolled] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
 
   const assignedSubjects = useMemo(() => {
@@ -89,7 +91,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+
 
   // Daily Check-in State
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
@@ -262,7 +264,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
+    <div 
+      className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative"
+      onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 100)}
+    >
       <DailyCheckInModal
         isOpen={showDailyCheckIn}
         onClose={() => setShowDailyCheckIn(false)}
@@ -270,62 +275,65 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         currentDay={currentDay}
         claimedDays={claimedDays}
       />
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
-          <div className="flex-1 max-w-3xl">
-            <h1 className="text-[36px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-4">
-              Curriculum Modules
-            </h1>
-            <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
-              MathPulse AI now loads modules directly from the DepEd Strengthened SHS curriculum guides for General Mathematics, Finite Mathematics 1, and Finite Mathematics 2. Content, competency flow, and assessments are automatically shown based on your learner grade level.
-            </p>
-            <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
-              {curriculumContextLabel}
+
+      {/* Hero Section */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-6 gap-6">
+        <div className="flex-1 max-w-3xl">
+          <h1 className="text-[36px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-4">
+            Curriculum Modules
+          </h1>
+          <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
+            MathPulse AI now loads modules directly from the DepEd Strengthened SHS curriculum guides for General Mathematics, Finite Mathematics 1, and Finite Mathematics 2. Content, competency flow, and assessments are automatically shown based on your learner grade level.
+          </p>
+          <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
+            {curriculumContextLabel}
+          </div>
+        </div>
+        <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">
+          <ModulesMascot />
+        </div>
+      </div>
+
+      {/* ── Sticky filter + tab bar ── */}
+      <div className={`sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
+        {/* Search + filters row */}
+        <div className="flex flex-col lg:flex-row items-center gap-3 w-full">
+          <div className="relative flex-1 w-full">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f6368]">
+              <Search size={16} strokeWidth={2.5} />
             </div>
+            <input
+              id="modules-search"
+              name="modules-search"
+              aria-label="Search modules"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search modules, lessons, or assessments..."
+              className="w-full pl-10 pr-10 py-2 rounded-xl border border-[#dadce0] bg-white text-[#202124] text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+            />
+            {import.meta.env.DEV && (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('mathpulse_last_claim_date');
+                  localStorage.setItem('mathpulse_claimed_days', '[1, 2]');
+                  setClaimedDays([1, 2]);
+                  setShowDailyCheckIn(true);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-1.5 rounded-lg hover:bg-amber-50"
+                title="Reset Daily Check-in (Dev Only)"
+              >
+                <RotateCcw size={14} />
+              </button>
+            )}
           </div>
 
-            <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">
-              <ModulesMascot />
-            </div>
-        </div>
-
-        <div className="relative mb-6">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#5f6368]">
-            <Search size={22} strokeWidth={2.5} />
-          </div>
-          <input
-            id="modules-search"
-            name="modules-search"
-            aria-label="Search modules"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search modules, lessons, or assessments..."
-            className="w-full pl-16 pr-12 py-4 rounded-full border border-[#dadce0] bg-white text-[#202124] text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
-          />
-          {import.meta.env.DEV && (
-            <button
-              onClick={() => {
-                localStorage.removeItem('mathpulse_last_claim_date');
-                localStorage.setItem('mathpulse_claimed_days', '[1, 2]');
-                setClaimedDays([1, 2]);
-                setShowDailyCheckIn(true);
-              }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-2 rounded-full hover:bg-amber-50"
-              title="Reset Daily Check-in (Dev Only)"
-            >
-              <RotateCcw size={18} />
-            </button>
-          )}
-        </div>
-
-        <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="xl:col-span-1">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">Subject</label>
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none"
+              className="w-full md:w-auto rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
+              aria-label="Subject"
             >
               <option value="all">All Subjects</option>
               {curriculumSubjects.map((subjectId) => (
@@ -334,80 +342,107 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 </option>
               ))}
             </select>
-          </div>
 
-          <div className="xl:col-span-1">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">Quarter</label>
             <select
               value={quarterFilter}
               onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none"
+              className="w-full md:w-auto rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
+              aria-label="Quarter"
             >
               {QUARTER_FILTERS.map((quarter) => (
                 <option key={quarter} value={quarter}>{quarter === 'all' ? 'All Quarters' : quarter}</option>
               ))}
             </select>
-          </div>
 
-          <div className="xl:col-span-1">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-600">Competency Group</label>
             <select
               value={competencyFilter}
               onChange={(e) => setCompetencyFilter(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none"
+              className="w-full md:w-auto rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
+              aria-label="Competency Group"
             >
-              <option value="all">All Competency Groups</option>
+              <option value="all">All Competencies</option>
               {availableCompetencyGroups.map((group) => (
                 <option key={group} value={group}>{group}</option>
               ))}
             </select>
-          </div>
 
-          <div className="xl:col-span-1 flex items-end">
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+              className="inline-flex w-full md:w-auto items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm shrink-0"
             >
               <Filter size={14} />
-              Reset Filters
+              Reset
             </button>
           </div>
         </div>
 
-        <div className="flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/60 shadow-inner gap-1 w-max overflow-x-auto max-w-full no-scrollbar">
-          {[
-            { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
-            { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
-            { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
-          ].map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as ModulesTab)}
-                className={`relative flex items-center gap-2.5 px-6 py-3 rounded-full text-[15px] font-bold transition-all duration-300 flex-shrink-0 ${
-                  isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="modulesTabBackground"
-                    className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <span className={`relative z-10 flex items-center gap-2 ${isActive ? tab.color : ''}`}>
-                  <tab.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Tabs + section heading row */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-slate-100/80 p-1 rounded-full border border-slate-200/60 shadow-inner gap-1 overflow-x-auto no-scrollbar">
+            {[
+              { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
+              { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
+              { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as ModulesTab)}
+                  className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
+                    isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="modulesTabBackground"
+                      className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
+                    <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
+          {/* Section heading — changes with active tab */}
+          <div className="flex items-center gap-2 ml-1">
+            {activeTab === 'modules' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500">
+                  <Layers size={15} strokeWidth={2.5} />
+                </div>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">DepEd Strengthened SHS Modules</span>
+              </>
+            )}
+            {activeTab === 'recommended' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-[#75D06A]/10 flex items-center justify-center">
+                  <Sparkles size={15} className="text-[#75D06A]" />
+                </div>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Suggested Next</span>
+              </>
+            )}
+            {activeTab === 'practice' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center">
+                  <Target size={15} className="text-[#FFB356]" />
+                </div>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4">
         {normalizedRiskTopics.length > 0 && (
-          <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm">
+          <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="inline-flex items-center gap-2 text-sm font-black text-amber-900">
@@ -427,7 +462,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <ArrowRight size={14} />
               </button>
             </div>
-
             <div className="mt-3 flex flex-wrap gap-2">
               {normalizedRiskTopics.map((topic, index) => (
                 <span
@@ -440,7 +474,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </div>
           </div>
         )}
-      </div>
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -449,7 +482,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
-          className="flex-1 overflow-y-auto"
+          className="pb-8 mt-4"
         >
           {activeTab === 'practice' ? (
             <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
@@ -471,6 +504,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           )}
         </motion.div>
       </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {sourcePreviewModule && (
@@ -553,14 +587,8 @@ const ModulesLibraryView: React.FC<{
   isAtRisk?: boolean;
 }> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false }) => {
   return (
-    <div className="h-full overflow-y-auto pr-2 pb-8 scrollbar-hide space-y-8">
+    <div className="pr-2 space-y-8">
       <div>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
-            <Layers size={20} strokeWidth={2.5} />
-          </div>
-          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">DepEd Strengthened SHS Modules</h2>
-        </div>
 
         {modules.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#dde3eb] p-8 text-center">
@@ -570,7 +598,7 @@ const ModulesLibraryView: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
             {modules.map((module, index) => (
               <ModuleFolderCard
                 key={module.id}
@@ -599,14 +627,14 @@ const RecommendedModulesView: React.FC<{
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
   return (
-    <div className="h-full overflow-y-auto pr-2 pb-8 space-y-10 scrollbar-hide">
+    <div className="pr-2 space-y-10">
       {inProgress.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner">🔥</div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
             {inProgress.slice(0, 4).map((module, index) => (
               <ModuleFolderCard
                 key={module.id}
@@ -623,18 +651,12 @@ const RecommendedModulesView: React.FC<{
       )}
 
       <div>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-[14px] bg-[#75D06A]/10 flex items-center justify-center text-[20px] shadow-inner">
-            <Sparkles size={19} className="text-[#75D06A]" />
-          </div>
-          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Suggested Next</h2>
-        </div>
         {suggested.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#dde3eb] p-8 text-center text-slate-500 font-medium">
             You are all caught up. Practice more quizzes to unlock additional recommendations.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
             {suggested.map((module, index) => (
               <ModuleFolderCard
                 key={module.id}
