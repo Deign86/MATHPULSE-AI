@@ -106,7 +106,6 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                 {/* Day Header */}
                 <div className={`py-0.5 text-center font-black text-[10px] uppercase tracking-wider ${
                   isToday ? 'bg-amber-400 text-amber-900' :
-                  isClaimed ? 'bg-slate-300 text-slate-500' :
                   reward.headerColor
                 }`}>
                   Day {reward.day}
@@ -123,10 +122,10 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                       transition={{ type: 'spring', bounce: 0.5 }}
                       className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
                     >
-                      <div className="relative w-12 h-12 rounded-full border-[3px] border-[#75D06A] bg-[#f0f9ef] flex items-center justify-center transform -rotate-12 shadow-sm">
-                        <img src="/mascot/modules_head.png" alt="Claimed" className="w-8 h-8 object-contain opacity-90 ml-1" />
-                        <div className="absolute -bottom-1 -right-1 bg-[#75D06A] rounded-full p-0.5 border border-white">
-                           <Check size={10} className="text-white" strokeWidth={4} />
+                      <div className="relative w-14 h-14 rounded-full border-[3px] border-rose-500 bg-rose-50 flex items-center justify-center transform -rotate-12 shadow-sm opacity-90">
+                        <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-10 h-10 object-contain drop-shadow-sm" />
+                        <div className="absolute -bottom-2 bg-rose-500 rounded px-1.5 py-0.5 border border-rose-200 shadow-sm">
+                           <span className="text-[8px] font-black text-white uppercase tracking-widest leading-none">Claimed</span>
                         </div>
                       </div>
                     </motion.div>
@@ -153,7 +152,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                           <span className="text-2xl drop-shadow-sm">📦</span>
                         </div>
                         {reward.asset && (
-                          <div className="absolute -right-3 -bottom-2 w-8 h-8 bg-white rounded-lg p-1 border-2 border-amber-300 shadow-md transform rotate-[10deg]">
+                          <div className="absolute -right-5 -bottom-3 w-12 h-12 bg-white rounded-lg p-1 border-2 border-amber-300 shadow-md transform rotate-[10deg]">
                             <img src={reward.asset} alt="Reward Item" className="w-full h-full object-contain drop-shadow-sm" />
                           </div>
                         )}
@@ -176,9 +175,8 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
               'border-[#dde3eb] bg-white'
             }`}
           >
-             <div className={`py-1 text-center font-black text-[10px] uppercase tracking-widest ${
+              <div className={`py-1 text-center font-black text-[10px] uppercase tracking-widest ${
                 currentDay === 7 && !claimedDays.includes(7) ? 'bg-amber-400 text-amber-900' :
-                claimedDays.includes(7) ? 'bg-slate-300 text-slate-500' :
                 rewards[6].headerColor
               }`}>
                 Day 7 • Epic Reward
@@ -193,10 +191,10 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                       transition={{ type: 'spring', bounce: 0.5 }}
                       className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
                     >
-                      <div className="relative w-16 h-16 rounded-full border-[3px] border-[#75D06A] bg-[#f0f9ef] flex items-center justify-center transform rotate-12 shadow-sm">
-                        <img src="/mascot/modules_head.png" alt="Claimed" className="w-10 h-10 object-contain opacity-90 ml-1" />
-                        <div className="absolute -bottom-1 -right-1 bg-[#75D06A] rounded-full p-1 border-2 border-white">
-                           <Check size={12} className="text-white" strokeWidth={4} />
+                      <div className="relative w-20 h-20 rounded-full border-[4px] border-rose-500 bg-rose-50 flex items-center justify-center transform rotate-12 shadow-sm opacity-90">
+                        <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-14 h-14 object-contain drop-shadow-sm" />
+                        <div className="absolute -bottom-2.5 bg-rose-500 rounded-md px-2 py-0.5 border border-rose-200 shadow-md">
+                           <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Claimed</span>
                         </div>
                       </div>
                     </motion.div>
@@ -216,7 +214,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                       <div className="w-16 h-16 bg-purple-50 rounded-xl flex items-center justify-center border-2 border-purple-200 shadow-sm">
                         <span className="text-4xl drop-shadow-md">🧰</span>
                       </div>
-                      <div className="absolute -right-4 -bottom-3 w-12 h-12 bg-white rounded-xl p-1 border-2 border-amber-300 shadow-lg transform rotate-[-5deg]">
+                      <div className="absolute -right-6 -bottom-5 w-16 h-16 bg-white rounded-xl p-1.5 border-2 border-amber-300 shadow-lg transform rotate-[-5deg]">
                           <img src="/avatar/crown_thumbnail.png" alt="Crown" className="w-full h-full object-contain drop-shadow-md" />
                       </div>
                    </div>

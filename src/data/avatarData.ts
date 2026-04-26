@@ -7,6 +7,7 @@ export interface ShopItem {
   src: string;
   thumbnail: string;
   price?: number; // XP cost, 0 or undefined means free/earned
+  isReward?: boolean; // True if item is an exclusive reward
 }
 
 export const MOCK_INVENTORY: ShopItem[] = [
@@ -18,6 +19,10 @@ export const MOCK_INVENTORY: ShopItem[] = [
 
   { id: 'acc_red_cap', name: 'Red Cap', category: 'accessory', src: '/avatar/red_cap.png', thumbnail: '/avatar/red_cap_thumbnail.png', price: 250 },
   { id: 'acc_traffic_cone', name: 'Traffic Cone', category: 'accessory', src: '/avatar/traffic_cone.png', thumbnail: '/avatar/traffic_cone_thumbnail.png', price: 500 },
+  
+  // Exclusive Rewards
+  { id: 'acc_blue_cap', name: 'Blue Cap', category: 'accessory', src: '/avatar/blue_cap.png', thumbnail: '/avatar/blue_cap_thumbnail.png', isReward: true },
+  { id: 'acc_crown', name: 'Gold Crown', category: 'accessory', src: '/avatar/crown.png', thumbnail: '/avatar/crown_thumbnail.png', isReward: true },
 
 ];
 
