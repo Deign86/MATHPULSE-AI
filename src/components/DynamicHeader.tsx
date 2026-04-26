@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import SearchBar from './SearchBar';
 import NotificationCenter from './NotificationCenter';
 
 interface DynamicHeaderProps {
@@ -62,11 +61,6 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-        <SearchBar
-          onSelect={(result) => {
-            console.log('Selected:', result);
-          }}
-        />
         <NotificationCenter userRole={userRole} />
         
         <button 
