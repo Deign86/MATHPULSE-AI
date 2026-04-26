@@ -1,8 +1,12 @@
-import React from 'react';
-import { ChevronRight, Trophy, Flame, Star, Crown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, Trophy, Flame, Star, Crown, Loader2, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import DailyChallengeWidget from './DailyChallengeWidget';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import UserAvatar from './UserAvatar';
+import { useAuth } from '../contexts/AuthContext';
+import { subscribeToLeaderboard } from '../services/gamificationService';
+import { LeaderboardEntry } from '../types/models';
 
 interface RightSidebarProps {
   onOpenRewards: () => void;
@@ -18,7 +22,13 @@ interface RightSidebarProps {
   onOpenProfile?: () => void;
   userName?: string;
   userRole?: string;
+  userPhoto?: string;
 }
+
+const formatXP = (xp: number): string => {
+  if (xp >= 1000) return `${(xp / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(xp);
+};
 
 const RightSidebar: React.FC<RightSidebarProps> = ({ 
   onOpenRewards, 
@@ -29,8 +39,74 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   xpToNextLevel,
   streak,
   streakHistory = [],
+  userPhoto,
+  userName,
 }) => {
+  const { currentUser } = useAuth();
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
+
+  // Real leaderboard data
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+
+  useEffect(() => {
+    setLeaderboardLoading(true);
+    const unsubscribe = subscribeToLeaderboard(
+      (entries) => {
+        setLeaderboardEntries(entries);
+        setLeaderboardLoading(false);
+      },
+      currentUser?.uid,
+      false,
+      'all',
+      3
+    );
+
+    // Safety timeout — if data never arrives, stop loading
+    const timeout = setTimeout(() => {
+      setLeaderboardLoading(false);
+    }, 8000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [currentUser?.uid]);
+
+  // Build top 3 display data
+  const topThree = leaderboardEntries.slice(0, 3);
+
+  // Determine which entry is the current user
+  const getIsYou = (entry: LeaderboardEntry) => entry.userId === currentUser?.uid;
+
+  const renderLeaderboardAvatar = (entry: LeaderboardEntry, size: number, borderColor: string) => {
+    // Use the user's own photo prop if this entry is the current user
+    const photoSrc = getIsYou(entry) ? (userPhoto || entry.photo) : entry.photo;
+    if (photoSrc && (photoSrc.startsWith('http') || photoSrc.startsWith('data:'))) {
+      return (
+        <img
+          src={photoSrc}
+          alt={getIsYou(entry) ? 'You' : entry.name}
+          className={`w-full h-full rounded-full object-cover border-[3px] ${borderColor} z-10 relative shadow-sm bg-white`}
+        />
+      );
+    }
+    return (
+      <div className={`w-full h-full rounded-full border-[3px] ${borderColor} z-10 relative overflow-hidden shadow-sm bg-white flex items-center justify-center`}>
+        <UserAvatar src={photoSrc} name={getIsYou(entry) ? (userName || 'You') : entry.name} className="w-full h-full" />
+      </div>
+    );
+  };
+
+  const getDisplayName = (entry: LeaderboardEntry) => {
+    if (getIsYou(entry)) return 'You';
+    // Shorten long names to first name + initial
+    const parts = entry.name.trim().split(/\s+/);
+    if (parts.length > 1 && entry.name.length > 10) {
+      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    }
+    return entry.name;
+  };
 
   return (
     <div className="space-y-2.5">
@@ -50,7 +126,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             <div className="shrink-0 w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center border border-white/35 backdrop-blur-sm">
               <Trophy size={14} className="text-white" />
             </div>
-            <h3 className="font-display font-bold text-[13px] leading-tight text-white tracking-wide">Rewards & <br className="hidden 2xl:block"/> Achievements</h3>
+            <h3 className="font-display font-bold text-[13px] leading-tight text-white tracking-wide">Rewards & <br className="hidden 2xl:block"/>Achievements</h3>
           </div>
           <ChevronRight size={14} className="shrink-0 text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
         </div>
@@ -113,7 +189,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         <DailyChallengeWidget streakHistory={streakHistory} />
       </motion.div>
 
-      {/* Leaderboard Preview with Miniature Stage */}
+      {/* Leaderboard Preview with Miniature Stage — Real Data */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -131,77 +207,102 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 group-hover:text-amber-500 transition-transform" />
         </div>
         
-        {/* Miniature Stage Podium */}
+        {/* Miniature Stage Podium — Live Data */}
         <div className="pt-8 pb-3 px-2 bg-gradient-to-b from-slate-50/30 to-white flex items-end justify-center gap-1.5 min-h-[170px]">
           
-          {/* Rank 2 (Left) */}
-          <div className="flex flex-col items-center relative z-10">
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
-              className="relative mb-2"
-            >
-              <img src="https://i.pravatar.cc/150?img=33" alt="You" className="w-10 h-10 rounded-full border-[3px] border-sky-400 z-10 relative object-cover shadow-sm bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">2</div>
-            </motion.div>
-            <motion.div 
-              initial={{ height: 0 }} animate={{ height: '54px' }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
-              className="w-[70px] bg-gradient-to-b from-slate-200 to-slate-100 rounded-t-xl rounded-b-md border-t-2 border-slate-50 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.05)]"
-            >
-               <span className="text-slate-400 font-black text-2xl opacity-40 translate-y-1">2</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[12px] font-bold text-[#0a1628]">You</span>
-              <span className="block text-[10px] text-sky-600 font-bold">2.1k XP</span>
+          {leaderboardLoading ? (
+            <div className="flex items-center justify-center w-full py-8">
+              <Loader2 size={20} className="animate-spin text-slate-300" />
             </div>
-          </div>
+          ) : topThree.length === 0 ? (
+            <div className="flex flex-col items-center justify-center w-full py-6 gap-2">
+              <User size={24} className="text-slate-300" />
+              <p className="text-xs text-slate-400 font-medium">No rankings yet</p>
+            </div>
+          ) : (
+            <>
+              {/* Rank 2 (Left) */}
+              {topThree.length >= 2 && (
+                <div className="flex flex-col items-center relative z-10">
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
+                    className="relative mb-2"
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden">
+                      {renderLeaderboardAvatar(topThree[1], 40, 'border-sky-400')}
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">2</div>
+                  </motion.div>
+                  <motion.div 
+                    initial={{ height: 0 }} animate={{ height: '54px' }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
+                    className="w-[70px] bg-gradient-to-b from-slate-200 to-slate-100 rounded-t-xl rounded-b-md border-t-2 border-slate-50 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.05)]"
+                  >
+                     <span className="text-slate-400 font-black text-2xl opacity-40 translate-y-1">2</span>
+                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
+                  </motion.div>
+                  <div className="mt-2 text-center">
+                    <span className="block text-[12px] font-bold text-[#0a1628]">{getDisplayName(topThree[1])}</span>
+                    <span className="block text-[10px] text-sky-600 font-bold">{formatXP(topThree[1].xp)} XP</span>
+                  </div>
+                </div>
+              )}
 
-          {/* Rank 1 (Center) */}
-          <div className="flex flex-col items-center relative z-20 -mx-2">
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
-              className="relative mb-2"
-            >
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                <Crown size={22} className="text-amber-400 drop-shadow-md mb-1" fill="#fbbf24" strokeWidth={1.5} />
-              </div>
-              <img src="https://i.pravatar.cc/150?img=68" alt="Alex" className="w-[52px] h-[52px] rounded-full border-[3px] border-amber-400 z-10 relative object-cover shadow-md bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">1</div>
-            </motion.div>
-            <motion.div 
-              initial={{ height: 0 }} animate={{ height: '74px' }} transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-              className="w-[78px] bg-gradient-to-b from-amber-100 to-amber-50 rounded-t-xl rounded-b-md border-t-2 border-amber-50 flex items-center justify-center relative shadow-[inset_0_-4px_8px_rgba(251,191,36,0.1),0_6px_8px_rgba(0,0,0,0.05)]"
-            >
-               <span className="text-amber-400 font-black text-3xl opacity-50 translate-y-1">1</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/80 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[13px] font-black text-[#0a1628]">Alex M.</span>
-              <span className="block text-[11px] text-amber-600 font-bold">2.4k XP</span>
-            </div>
-          </div>
+              {/* Rank 1 (Center) */}
+              {topThree.length >= 1 && (
+                <div className="flex flex-col items-center relative z-20 -mx-2">
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
+                    className="relative mb-2"
+                  >
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+                      <Crown size={22} className="text-amber-400 drop-shadow-md mb-1" fill="#fbbf24" strokeWidth={1.5} />
+                    </div>
+                    <div className="w-[52px] h-[52px] rounded-full overflow-hidden">
+                      {renderLeaderboardAvatar(topThree[0], 52, 'border-amber-400')}
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">1</div>
+                  </motion.div>
+                  <motion.div 
+                    initial={{ height: 0 }} animate={{ height: '74px' }} transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+                    className="w-[78px] bg-gradient-to-b from-amber-100 to-amber-50 rounded-t-xl rounded-b-md border-t-2 border-amber-50 flex items-center justify-center relative shadow-[inset_0_-4px_8px_rgba(251,191,36,0.1),0_6px_8px_rgba(0,0,0,0.05)]"
+                  >
+                     <span className="text-amber-400 font-black text-3xl opacity-50 translate-y-1">1</span>
+                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/80 rounded-t-xl"></div>
+                  </motion.div>
+                  <div className="mt-2 text-center">
+                    <span className="block text-[13px] font-black text-[#0a1628]">{getDisplayName(topThree[0])}</span>
+                    <span className="block text-[11px] text-amber-600 font-bold">{formatXP(topThree[0].xp)} XP</span>
+                  </div>
+                </div>
+              )}
 
-          {/* Rank 3 (Right) */}
-          <div className="flex flex-col items-center relative z-10">
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }}
-              className="relative mb-2"
-            >
-              <img src="https://i.pravatar.cc/150?img=47" alt="Sarah" className="w-10 h-10 rounded-full border-[3px] border-orange-400 z-10 relative object-cover shadow-sm bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">3</div>
-            </motion.div>
-            <motion.div 
-              initial={{ height: 0 }} animate={{ height: '38px' }} transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
-              className="w-[70px] bg-gradient-to-b from-orange-50 to-slate-50 rounded-t-xl rounded-b-md border-t-2 border-orange-100 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(249,115,22,0.05),0_4px_6px_rgba(0,0,0,0.02)]"
-            >
-               <span className="text-orange-400/60 font-black text-2xl opacity-60 translate-y-1">3</span>
-               <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[12px] font-bold text-[#0a1628]">Sarah K.</span>
-              <span className="block text-[10px] text-orange-600 font-bold">1.9k XP</span>
-            </div>
-          </div>
+              {/* Rank 3 (Right) */}
+              {topThree.length >= 3 && (
+                <div className="flex flex-col items-center relative z-10">
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }}
+                    className="relative mb-2"
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden">
+                      {renderLeaderboardAvatar(topThree[2], 40, 'border-orange-400')}
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">3</div>
+                  </motion.div>
+                  <motion.div 
+                    initial={{ height: 0 }} animate={{ height: '38px' }} transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
+                    className="w-[70px] bg-gradient-to-b from-orange-50 to-slate-50 rounded-t-xl rounded-b-md border-t-2 border-orange-100 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(249,115,22,0.05),0_4px_6px_rgba(0,0,0,0.02)]"
+                  >
+                     <span className="text-orange-400/60 font-black text-2xl opacity-60 translate-y-1">3</span>
+                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
+                  </motion.div>
+                  <div className="mt-2 text-center">
+                    <span className="block text-[12px] font-bold text-[#0a1628]">{getDisplayName(topThree[2])}</span>
+                    <span className="block text-[10px] text-orange-600 font-bold">{formatXP(topThree[2].xp)} XP</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           
         </div>
       </motion.div>

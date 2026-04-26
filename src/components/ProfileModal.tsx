@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Camera, Mail, Phone, MapPin, Calendar, BookOpen, Award, Users, Building, Globe, Save } from 'lucide-react';
+import { X, Mail, Phone, MapPin, Calendar, BookOpen, Award, Users, Building, Globe, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { getLeaderboard, getUserRank } from '../services/gamificationService';
 import { LeaderboardEntry } from '../types/models';
-import CompositeAvatar from './CompositeAvatar';
+import ProfilePictureUploader from './ProfilePictureUploader';
 
 interface ProfileData {
   uid?: string;
@@ -84,19 +84,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
     loadLeaderboardData();
   }, [isOpen, editedData.role, editedData.uid]);
 
-  const handlePhotoChange = () => {
-    // In a real app, this would open a file picker
-    const photos = [
-      'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200&h=200&fit=crop'
-    ];
-    const randomPhoto = photos[Math.floor(Math.random() * photos.length)];
-    setEditedData({ ...editedData, photo: randomPhoto });
-  };
-
   const handleSave = () => {
     onSave(editedData);
     setIsEditing(false);
@@ -168,26 +155,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               {/* Content */}
               <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#edf1f7]">
                 {/* Profile Photo Section */}
-                <div className="flex flex-col items-center mb-8">
-                  <div className="relative group">
-                    <CompositeAvatar 
-                      layers={editedData.avatarLayers} 
-                      className="w-28 h-28 rounded-xl bg-[#0B1021] shadow-lg border-2 border-[#dde3eb] ring-4 ring-sky-100" 
-                      fallbackSrc={editedData.photo}
-                    />
-                    {isEditing && (
-                      <button
-                        onClick={handlePhotoChange}
-                        className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-50"
-                      >
-                        <div className="text-center text-white">
-                          <Camera size={32} className="mx-auto mb-1" />
-                          <span className="text-xs font-bold">Change Photo</span>
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-4 text-center">
+                <div className="mb-8 space-y-4">
+                  <ProfilePictureUploader
+                    uid={editedData.uid}
+                    photoURL={editedData.photo}
+                    displayName={editedData.name}
+                    onUploaded={(photoURL) => setEditedData((prev) => ({ ...prev, photo: photoURL }))}
+                  />
+                  <div className="text-center">
                     <h3 className="text-lg font-display font-bold text-[#0a1628]">{editedData.name}</h3>
                     <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-body font-semibold border ${getRoleBadgeColor(editedData.role)}`}>
                       {editedData.role.charAt(0).toUpperCase() + editedData.role.slice(1)}

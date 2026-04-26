@@ -29,6 +29,16 @@ COPY automation_engine.py /app/automation_engine.py
 COPY services /app/services
 COPY models /app/models
 COPY config /app/config
+COPY rag /app/rag
+COPY routes /app/routes
+COPY scripts/ingest_curriculum.py /app/scripts/ingest_curriculum.py
+COPY datasets/curriculum /app/datasets/curriculum
+
+RUN if [ -d /app/datasets/curriculum ] && [ "$(ls -A /app/datasets/curriculum 2>/dev/null)" ]; then \
+            python /app/scripts/ingest_curriculum.py || echo "Curriculum ingest skipped during image build"; \
+        else \
+            echo "No curriculum PDFs present during image build; skipping ingest"; \
+        fi
 
 EXPOSE 7860
 
