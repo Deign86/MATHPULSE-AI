@@ -1,7 +1,0 @@
-MIT License
-
-This skill references guidance from the VoltAgent awesome-design-md repository:
-https://github.com/VoltAgent/awesome-design-md
-
-The upstream repository is licensed under MIT. See the upstream LICENSE for
-complete terms.
