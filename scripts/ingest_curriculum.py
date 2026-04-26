@@ -15,8 +15,24 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-CURRICULUM_DIR = BASE_DIR / "datasets" / "curriculum"
-VECTORSTORE_DIR = BASE_DIR / "datasets" / "vectorstore"
+
+
+def _resolve_default_dir(local_path: Path, data_path: Path) -> Path:
+    return data_path if data_path.parent.exists() else local_path
+
+
+CURRICULUM_DIR = Path(
+    os.getenv(
+        "CURRICULUM_DIR",
+        str(_resolve_default_dir(BASE_DIR / "datasets" / "curriculum", Path("/data/curriculum"))),
+    )
+)
+VECTORSTORE_DIR = Path(
+    os.getenv(
+        "VECTORSTORE_DIR",
+        str(_resolve_default_dir(BASE_DIR / "datasets" / "vectorstore", Path("/data/vectorstore"))),
+    )
+)
 COLLECTION_NAME = "curriculum_chunks"
 EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 CURRICULUM_SOURCE_REPO_ID = os.getenv("CURRICULUM_SOURCE_REPO_ID", "").strip()

@@ -1,13 +1,14 @@
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/data/.huggingface \
-    HUGGINGFACE_HUB_CACHE=/data/.huggingface/hub \
-    TRANSFORMERS_CACHE=/data/.huggingface/transformers \
-    MPLCONFIGDIR=/tmp/matplotlib
+PYTHONUNBUFFERED=1 \
+PIP_DISABLE_PIP_VERSION_CHECK=1 \
+PIP_NO_CACHE_DIR=1 \
+HF_HOME=/data/.huggingface \
+HUGGINGFACE_HUB_CACHE=/data/.huggingface/hub \
+TRANSFORMERS_CACHE=/data/.huggingface/transformers \
+MPLCONFIGDIR=/tmp/matplotlib \
+CURRICULUM_SOURCE_REPO_ID=Deign86/mathpulse-api-v3test
 
 WORKDIR /app
 
@@ -33,7 +34,6 @@ COPY rag /app/rag
 COPY routes /app/routes
 COPY scripts/ingest_curriculum.py /app/scripts/ingest_curriculum.py
 COPY startup.sh /app/startup.sh
-COPY datasets/curriculum /app/datasets/curriculum
 
 EXPOSE 7860
 
