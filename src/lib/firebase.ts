@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
@@ -54,20 +54,13 @@ if (!firebaseConfig.apiKey) {
   console.error('[ERROR] Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
 }
 
-// Debug logging (no secrets)
-console.log('[FIREBASE] Config:', {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
-  configured: !!firebaseConfig.apiKey
-});
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const db = initializeFirestore(app, typeof window !== 'undefined' ? {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache()
 } : {});
 export const storage = getStorage(app);
 export const cloudFunctions = getFunctions(app);
