@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections import Counter
 from datetime import datetime, timezone
@@ -9,6 +10,7 @@ from typing import Dict, List
 
 import chromadb
 import pdfplumber
+from huggingface_hub import snapshot_download
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
@@ -17,6 +19,9 @@ CURRICULUM_DIR = BASE_DIR / "datasets" / "curriculum"
 VECTORSTORE_DIR = BASE_DIR / "datasets" / "vectorstore"
 COLLECTION_NAME = "curriculum_chunks"
 EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+CURRICULUM_SOURCE_REPO_ID = os.getenv("CURRICULUM_SOURCE_REPO_ID", "").strip()
+CURRICULUM_SOURCE_REPO_TYPE = os.getenv("CURRICULUM_SOURCE_REPO_TYPE", "dataset").strip() or "dataset"
+CURRICULUM_SOURCE_REVISION = os.getenv("CURRICULUM_SOURCE_REVISION", "main").strip() or "main"
 
 SUBJECT_MAP = {
     "SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf": "general_math",
@@ -105,11 +110,45 @@ def chunk_text(page_text: str) -> List[str]:
     return [chunk.strip() for chunk in splitter.split_text(page_text) if chunk.strip()]
 
 
+def _ensure_curriculum_pdfs() -> List[Path]:
+    pdf_files = sorted(CURRICULUM_DIR.glob("*.pdf"))
+    if pdf_files:
+        return pdf_files
+
+    if not CURRICULUM_SOURCE_REPO_ID:
+        raise SystemExit(
+            "No PDF files found in datasets/curriculum/ and CURRICULUM_SOURCE_REPO_ID is not set. "
+            "Upload the PDFs to a Hugging Face repo and point CURRICULUM_SOURCE_REPO_ID at it."
+        )
+
+    snapshot_dir = Path(
+        snapshot_download(
+            repo_id=CURRICULUM_SOURCE_REPO_ID,
+            repo_type=CURRICULUM_SOURCE_REPO_TYPE,
+            revision=CURRICULUM_SOURCE_REVISION,
+            allow_patterns=["*.pdf", "**/*.pdf"],
+        )
+    )
+
+    source_pdfs = sorted(snapshot_dir.rglob("*.pdf"))
+    if not source_pdfs:
+        raise SystemExit(
+            f"No PDF files found in Hugging Face repo {CURRICULUM_SOURCE_REPO_TYPE}:{CURRICULUM_SOURCE_REPO_ID}@{CURRICULUM_SOURCE_REVISION}."
+        )
+
+    CURRICULUM_DIR.mkdir(parents=True, exist_ok=True)
+    for source_pdf in source_pdfs:
+        target_pdf = CURRICULUM_DIR / source_pdf.name
+        target_pdf.write_bytes(source_pdf.read_bytes())
+
+    return sorted(CURRICULUM_DIR.glob("*.pdf"))
+
+
 def main() -> None:
     if not CURRICULUM_DIR.exists():
         raise SystemExit(f"Missing curriculum directory: {CURRICULUM_DIR}")
 
-    pdf_files = sorted(CURRICULUM_DIR.glob("*.pdf"))
+    pdf_files = _ensure_curriculum_pdfs()
     if not pdf_files:
         raise SystemExit("No PDF files found in datasets/curriculum/")
 

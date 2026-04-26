@@ -23,3 +23,12 @@ FastAPI backend for the MathPulse AI educational platform.
 - `POST /api/learning-path` - Generate personalized learning paths
 - `POST /api/analytics/daily-insight` - Daily classroom insights
 - `POST /api/upload/class-records` - Smart document parsing
+
+## Curriculum PDFs
+The curriculum PDFs are not meant to live in git. Upload them to a Hugging Face dataset or Space repo and set:
+
+- `CURRICULUM_SOURCE_REPO_ID`
+- `CURRICULUM_SOURCE_REPO_TYPE` (`dataset` or `space`)
+- `CURRICULUM_SOURCE_REVISION`
+
+At build/startup, the backend downloads those PDFs into `datasets/curriculum/` before running ingestion.
