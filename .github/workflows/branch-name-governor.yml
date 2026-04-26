@@ -58,6 +58,8 @@ permissions:
 jobs:
   normalize:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     outputs:
       suggested_branch: ${{ steps.infer.outputs.suggested_branch }}
       branch_type: ${{ steps.infer.outputs.branch_type }}
