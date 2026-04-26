@@ -321,7 +321,7 @@ const randomInRange = (min: number, max: number): number => {
 const computeSimulatedBotScore = (
   rounds: number,
   difficulty: QuizBattleSetupConfig['botDifficulty'],
-): { scoreFor: number; scoreAgainst: number; accuracy: number; averageResponseMs: number } => {
+): { scoreFor: number; scoreAgainst: number; accuracy: number; averageResponseMs: number; totalPoints: number } => {
   const cappedRounds = Math.max(3, rounds);
   const difficultyPenalty =
     difficulty === 'easy' ? 0 : difficulty === 'medium' ? 1 : difficulty === 'hard' ? 2 : 1;
@@ -334,11 +334,27 @@ const computeSimulatedBotScore = (
   const accuracy = Math.max(0, Math.min(100, (scoreFor / cappedRounds) * 100 + randomInRange(-8, 6)));
   const averageResponseMs = randomInRange(1800, 6200);
 
+  // Gamification Phase 3 formula: (Base * Difficulty) * Streak Multiplier + Speed Bonus
+  // Simulate total points for the match based on these derived numbers:
+  let totalPoints = 0;
+  let simulatedStreak = 0;
+  
+  const difficultyMultiplier = difficulty === 'hard' ? 1.3 : difficulty === 'medium' ? 1.15 : 1.0;
+
+  for (let i = 0; i < scoreFor; i++) {
+    simulatedStreak++;
+    const streakMultiplier = Math.min(1.5, 1.0 + 0.05 * Math.max(0, simulatedStreak - 1));
+    const speedBonus = Math.max(0, Math.floor(20 - (averageResponseMs / 1000) * 2));
+    const questionPoints = Math.round(100 * difficultyMultiplier * streakMultiplier + speedBonus);
+    totalPoints += questionPoints;
+  }
+
   return {
     scoreFor,
     scoreAgainst,
     accuracy,
     averageResponseMs,
+    totalPoints,
   };
 };
 
@@ -372,7 +388,7 @@ const persistSimulatedBotResult = (
     accuracy: scoring.accuracy,
     averageResponseMs: scoring.averageResponseMs,
     bestStreak: localStore.stats.bestStreak,
-    xpEarned: outcome === 'win' ? 60 : outcome === 'draw' ? 40 : 20,
+    xpEarned: outcome === 'win' ? Math.min(140, Math.floor(scoring.totalPoints * 0.1) + 40) : outcome === 'draw' ? 40 : 20,
     opponentName: 'Practice Bot',
     opponentType: 'bot',
     createdAt: now,

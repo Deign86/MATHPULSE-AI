@@ -24,6 +24,8 @@ import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { subjects, getActiveSubjectIdsForGrade, type Module, type SubjectId } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
+import { toast } from 'sonner';
+import { unlockAvatarItem } from '../services/gamificationService';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { cacheKeys } from '../utils/cacheKeys';
 
@@ -77,7 +79,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     }
   }, []);
 
-  const handleClaimDailyReward = (reward: any) => {
+  const handleClaimDailyReward = async (reward: any) => {
     const today = new Date().toDateString();
     localStorage.setItem('mathpulse_last_claim_date', today);
     
@@ -87,6 +89,17 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     
     if (onEarnXP) {
       onEarnXP(reward?.amount || 0, `Daily Reward! +${reward?.amount || 0} XP`);
+    }
+
+    // Avatar Rewards Unlock Logic
+    if (userProfile?.uid) {
+      if (currentDay === 3) {
+        await unlockAvatarItem(userProfile.uid, 'acc_blue_cap');
+        toast.success("✨ Blue Cap unlocked in Avatar Studio!");
+      } else if (currentDay === 7) {
+        await unlockAvatarItem(userProfile.uid, 'acc_crown');
+        toast.success("👑 Golden Crown unlocked in Avatar Studio!");
+      }
     }
     
     setTimeout(() => setShowDailyCheckIn(false), 1500);
@@ -201,7 +214,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </p>
           </div>
 
-            <div className="hidden md:flex flex-shrink-0 items-center justify-end w-[350px]">
+            <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">
               <ModulesMascot />
             </div>
         </div>
@@ -228,7 +241,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 setClaimedDays([1, 2]);
                 setShowDailyCheckIn(true);
               }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-1"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-2 rounded-full hover:bg-amber-50"
               title="Reset Daily Check-in (Dev Only)"
             >
               <RotateCcw size={18} />

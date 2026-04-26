@@ -491,3 +491,35 @@ export const resetAvatarPurchasesForTesting = async (userId: string): Promise<{ 
     return { success: false, newXP: 0 };
   }
 };
+
+// Unlock an avatar item (e.g. from a reward or chest) without deducting XP
+export const unlockAvatarItem = async (
+  userId: string,
+  itemId: string
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+
+    const userData = userDoc.data();
+    const ownedItems = userData.ownedAvatarItems || [];
+
+    if (ownedItems.includes(itemId)) {
+      return { success: true, message: 'Item already owned' };
+    }
+
+    await updateDoc(userRef, {
+      ownedAvatarItems: arrayUnion(itemId),
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: 'Avatar item unlocked!' };
+  } catch (error) {
+    console.error('Error unlocking avatar item:', error);
+    return { success: false, message: 'Failed to unlock item' };
+  }
+};
