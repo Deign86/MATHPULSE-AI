@@ -172,7 +172,13 @@ def get_inference_client():
         with _inference_client_lock:
             if _inference_client is None:
                 logger.info("🔧 Initializing InferenceClient...")
-                _inference_client = create_default_client()
+                firestore_client = None
+                if HAS_FIREBASE_ADMIN and _firebase_ready:
+                    try:
+                        firestore_client = firebase_firestore.client()
+                    except Exception:
+                        pass
+                _inference_client = create_default_client(firestore_client=firestore_client)
                 logger.info("✅ InferenceClient initialized")
     return _inference_client
 
