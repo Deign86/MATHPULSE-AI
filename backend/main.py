@@ -9104,33 +9104,36 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
                 solution="Step-by-step solution grounded in the retrieved curriculum context.",
             )
 
+        raw_guided_practice = lesson_payload.get("guidedPractice") if isinstance(lesson_payload, dict) else []
         guided_practice = [
             str(item).strip()
-            for item in (lesson_payload.get("guidedPractice") if isinstance(lesson_payload.get("guidedPractice"), list) else [])
+            for item in raw_guided_practice
             if str(item).strip()
-        ]
+        ] if isinstance(raw_guided_practice, list) else []
         if not guided_practice:
             guided_practice = [
                 f"Solve a guided item on {curriculum_competency} using one cue from the retrieved curriculum evidence.",
                 "Compare your answer with a partner and justify each step.",
             ]
 
+        raw_independent_practice = lesson_payload.get("independentPractice") if isinstance(lesson_payload, dict) else []
         independent_practice = [
             str(item).strip()
-            for item in (lesson_payload.get("independentPractice") if isinstance(lesson_payload.get("independentPractice"), list) else [])
+            for item in raw_independent_practice
             if str(item).strip()
-        ]
+        ] if isinstance(raw_independent_practice, list) else []
         if not independent_practice:
             independent_practice = [
                 f"Complete an independent task that applies {curriculum_competency} to a Philippine context.",
                 "Write a short justification of your answer using the curriculum language.",
             ]
 
+        raw_quick_assessment = lesson_payload.get("quickAssessment") if isinstance(lesson_payload, dict) else []
         quick_assessment = [
             str(item).strip()
-            for item in (lesson_payload.get("quickAssessment") if isinstance(lesson_payload.get("quickAssessment"), list) else [])
+            for item in raw_quick_assessment
             if str(item).strip()
-        ]
+        ] if isinstance(raw_quick_assessment, list) else []
         if not quick_assessment:
             quick_assessment = [
                 "One exit-ticket item that checks procedural accuracy.",
