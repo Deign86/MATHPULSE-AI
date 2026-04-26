@@ -597,6 +597,23 @@ export interface AsyncTaskCancelResponse {
   message: string;
 }
 
+export interface InferenceMetricsResponse {
+  success: boolean;
+  metrics: {
+    uptime_sec: number;
+    requests_total: number;
+    requests_ok: number;
+    requests_error: number;
+    retries_total: number;
+    fallback_attempts: number;
+    route_counts: Record<string, number>;
+    task_counts: Record<string, number>;
+    provider_counts: Record<string, number>;
+    status_code_counts: Record<string, number>;
+    pro_enabled: boolean;
+  };
+}
+
 export interface ImportGroundedFeedbackRequest {
   flow: 'quiz' | 'lesson';
   status: 'success' | 'failed' | 'skipped';
@@ -2350,6 +2367,13 @@ export const apiService = {
     return apiFetch('/api/automation/content-updated', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  },
+
+  // Ops endpoints
+  getInferenceMetrics: async (): Promise<InferenceMetricsResponse> => {
+    return apiFetch<InferenceMetricsResponse>('/api/ops/inference-metrics', {
+      method: 'GET',
     });
   },
 };
