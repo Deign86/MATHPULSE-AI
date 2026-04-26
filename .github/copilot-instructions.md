@@ -29,9 +29,12 @@
 
 ## Copilot Skill Invocation Policy
 
-- Use the `awesome-design-md` skill for substantial frontend/UI design work when requested or when it clearly improves delivery quality.
-- For mixed tasks, apply `awesome-design-md` to the UI portion while still following all architecture and service-layer rules in this guide.
-- If the request is not frontend/UI related, do not use this skill.
+- ALWAYS auto-invoke `ui-ux-pro-max` whenever a task changes UI, UX, or visual behavior.
+- This includes both explicit UI requests and implicit UI edits in mixed tasks.
+- Trigger auto-invocation when touching frontend files such as `src/components/**`, `src/features/**`, `src/styles/**`, `src/index.css`, `src/critical.css`, `src/App.tsx`, and `index.html`.
+- Trigger auto-invocation for UI-impacting changes even outside those paths (layout, spacing, typography, color, animation, responsiveness, accessibility, interaction states, or component structure).
+- For mixed tasks, apply `ui-ux-pro-max` to the UI portion while still following all architecture and service-layer rules in this guide.
+- Skip this skill only when a task is strictly non-UI (backend/API/data/infrastructure with no UI surface changes).
 
 ## Architecture Overview
 
@@ -288,14 +291,14 @@ import { Button } from '@/components/ui/button';
 
 ---
 
-## Awesome DESIGN.md Skill
+## UI UX Pro Max Skill
 
-> Based on [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md). Use curated DESIGN.md profiles as the visual source-of-truth for UI work in this repo.
+> Based on [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill). Use this as the visual and UX source-of-truth for UI work in this repo.
 
 ### Invocation Rules
 
 - Use this skill when the request is explicitly frontend design-oriented or when a UI-heavy task benefits from a stronger design profile.
-- Choose a relevant DESIGN.md profile from the awesome-design-md collection before implementing UI.
+- Use `ui-ux-pro-max` recommendations (style, palette, typography, UX rules) before implementing UI.
 - Translate the chosen profile into this stack: React 18 + TypeScript + Tailwind CSS + Radix UI + Motion for React.
 
 ### Design Thinking

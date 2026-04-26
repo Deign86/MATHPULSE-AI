@@ -49,39 +49,39 @@ const quizQuestionBanks: Record<string, Question[]> = {
   'gm-4': [
     { id: 1, type: 'multiple-choice', question: 'Solve for x: 2x + 4 = 10', options: ['x = 3', 'x = 2', 'x = 6', 'x = 4'], correctAnswer: 'x = 3', explanation: 'Subtract 4: 2x = 6. Divide by 2: x = 3.', optionExplanations: { 'x = 3': 'Correct! 2(3)+4 = 10.', 'x = 2': '2(2)+4 = 8, not 10.', 'x = 6': 'You may have forgotten to divide by 2.', 'x = 4': '2(4)+4 = 12, not 10.' } },
     { id: 2, type: 'fill-in-blank', question: 'Simplify: 3(x + 2) = ___', correctAnswer: '3x + 6', explanation: 'Distribute: 3-+x + 3-+2 = 3x + 6.' },
-    { id: 3, type: 'true-false', question: 'The expression 5x GêÆ 3x simplifies to 2x.', correctAnswer: 'True', explanation: 'Combine like terms: 5x GêÆ 3x = 2x.', optionExplanations: { 'True': 'Correct! Subtracting coefficients: 5GêÆ3 = 2.', 'False': '5x and 3x are like terms and can be combined.' } },
-    { id: 4, type: 'multiple-choice', question: 'What is the slope-intercept form of a linear equation?', options: ['ax + by = c', 'y = mx + b', 'x = my + b', 'y = mx GêÆ b'], correctAnswer: 'y = mx + b', explanation: 'Slope-intercept form is y = mx + b, where m is slope and b is y-intercept.', optionExplanations: { 'ax + by = c': 'This is standard form.', 'y = mx + b': 'Correct! m = slope, b = y-intercept.', 'x = my + b': 'x and y are reversed.', 'y = mx GêÆ b': 'The intercept should be + b.' } },
-    { id: 5, type: 'multiple-choice', question: 'If f(x) = 3x + 2, what is f(4)?', options: ['10', '12', '14', '16'], correctAnswer: '14', explanation: 'f(4) = 3(4) + 2 = 12 + 2 = 14.', optionExplanations: { '10': 'Check: 3(4)+2 = 14, not 10.', '12': 'You forgot to add 2. 3(4) = 12, then +2 = 14.', '14': 'Correct! 3(4)+2 = 14.', '16': 'Check your multiplication: 3+ù4 = 12, not 14.' } }
+    { id: 3, type: 'true-false', question: 'The expression 5x Gï¿½ï¿½ 3x simplifies to 2x.', correctAnswer: 'True', explanation: 'Combine like terms: 5x Gï¿½ï¿½ 3x = 2x.', optionExplanations: { 'True': 'Correct! Subtracting coefficients: 5Gï¿½ï¿½3 = 2.', 'False': '5x and 3x are like terms and can be combined.' } },
+    { id: 4, type: 'multiple-choice', question: 'What is the slope-intercept form of a linear equation?', options: ['ax + by = c', 'y = mx + b', 'x = my + b', 'y = mx Gï¿½ï¿½ b'], correctAnswer: 'y = mx + b', explanation: 'Slope-intercept form is y = mx + b, where m is slope and b is y-intercept.', optionExplanations: { 'ax + by = c': 'This is standard form.', 'y = mx + b': 'Correct! m = slope, b = y-intercept.', 'x = my + b': 'x and y are reversed.', 'y = mx Gï¿½ï¿½ b': 'The intercept should be + b.' } },
+    { id: 5, type: 'multiple-choice', question: 'If f(x) = 3x + 2, what is f(4)?', options: ['10', '12', '14', '16'], correctAnswer: '14', explanation: 'f(4) = 3(4) + 2 = 12 + 2 = 14.', optionExplanations: { '10': 'Check: 3(4)+2 = 14, not 10.', '12': 'You forgot to add 2. 3(4) = 12, then +2 = 14.', '14': 'Correct! 3(4)+2 = 14.', '16': 'Check your multiplication: 3+ï¿½4 = 12, not 14.' } }
   ],
   // General Mathematics - Module 5: Geometry Fundamentals
   'gm-5': [
-    { id: 1, type: 'multiple-choice', question: 'What is the sum of interior angles in a triangle?', options: ['90-¦', '180-¦', '270-¦', '360-¦'], correctAnswer: '180-¦', explanation: 'The sum of interior angles in any triangle is always 180-¦.', optionExplanations: { '90-¦': 'That is a right angle, not the sum of all angles.', '180-¦': 'Correct! All triangle angles sum to 180-¦.', '270-¦': 'This is the sum for a different shape.', '360-¦': 'This is the sum for a quadrilateral.' } },
-    { id: 2, type: 'fill-in-blank', question: 'The area of a rectangle with length 8 and width 5 is ___', correctAnswer: '40', explanation: 'Area = length +ù width = 8 +ù 5 = 40.' },
+    { id: 1, type: 'multiple-choice', question: 'What is the sum of interior angles in a triangle?', options: ['90-ï¿½', '180-ï¿½', '270-ï¿½', '360-ï¿½'], correctAnswer: '180-ï¿½', explanation: 'The sum of interior angles in any triangle is always 180-ï¿½.', optionExplanations: { '90-ï¿½': 'That is a right angle, not the sum of all angles.', '180-ï¿½': 'Correct! All triangle angles sum to 180-ï¿½.', '270-ï¿½': 'This is the sum for a different shape.', '360-ï¿½': 'This is the sum for a quadrilateral.' } },
+    { id: 2, type: 'fill-in-blank', question: 'The area of a rectangle with length 8 and width 5 is ___', correctAnswer: '40', explanation: 'Area = length +ï¿½ width = 8 +ï¿½ 5 = 40.' },
     { id: 3, type: 'true-false', question: 'A square is a special type of rectangle.', correctAnswer: 'True', explanation: 'A square has four right angles and opposite sides equal, meeting all rectangle criteria.', optionExplanations: { 'True': 'Correct! A square is a rectangle with all sides equal.', 'False': 'A square satisfies all properties of a rectangle.' } },
-    { id: 4, type: 'multiple-choice', question: 'What is the circumference of a circle with radius 7? (Use -Ç Gëê 22/7)', options: ['22', '44', '154', '14'], correctAnswer: '44', explanation: 'C = 2-Çr = 2 +ù 22/7 +ù 7 = 44.', optionExplanations: { '22': 'This is -Çr, not 2-Çr.', '44': 'Correct! 2 +ù 22/7 +ù 7 = 44.', '154': 'This is the area (-Çr-¦), not circumference.', '14': 'This is the diameter (2r).' } },
+    { id: 4, type: 'multiple-choice', question: 'What is the circumference of a circle with radius 7? (Use -ï¿½ Gï¿½ï¿½ 22/7)', options: ['22', '44', '154', '14'], correctAnswer: '44', explanation: 'C = 2-ï¿½r = 2 +ï¿½ 22/7 +ï¿½ 7 = 44.', optionExplanations: { '22': 'This is -ï¿½r, not 2-ï¿½r.', '44': 'Correct! 2 +ï¿½ 22/7 +ï¿½ 7 = 44.', '154': 'This is the area (-ï¿½r-ï¿½), not circumference.', '14': 'This is the diameter (2r).' } },
     { id: 5, type: 'multiple-choice', question: 'How many sides does a hexagon have?', options: ['5', '6', '7', '8'], correctAnswer: '6', explanation: 'A hexagon has 6 sides. The prefix "hex" means 6.', optionExplanations: { '5': 'That is a pentagon.', '6': 'Correct! Hexagon = 6 sides.', '7': 'That is a heptagon.', '8': 'That is an octagon.' } }
   ],
   // General Mathematics - Module 6: Sets and Logic
   'gm-6': [
-    { id: 1, type: 'multiple-choice', question: 'If A = {1,2,3} and B = {2,3,4}, what is A Gê¬ B?', options: ['{1,2,3,4}', '{2,3}', '{1,4}', '{1}'], correctAnswer: '{2,3}', explanation: 'A Gê¬ B (intersection) contains elements common to both: {2,3}.', optionExplanations: { '{1,2,3,4}': 'That is A Gê¬ B (union).', '{2,3}': 'Correct! The intersection has shared elements.', '{1,4}': 'These elements are only in one set each.', '{1}': '1 is only in A, not in both.' } },
-    { id: 2, type: 'true-false', question: 'The empty set is a subset of every set.', correctAnswer: 'True', explanation: 'By definition, the empty set Gêà is a subset of every set.', optionExplanations: { 'True': 'Correct! Gêà Gèå A for any set A.', 'False': 'The empty set is indeed a subset of every set by definition.' } },
-    { id: 3, type: 'fill-in-blank', question: 'If A = {a, b, c}, the number of elements |A| = ___', correctAnswer: '3', explanation: 'The cardinality |A| counts the elements: a, b, c GåÆ 3.' },
-    { id: 4, type: 'multiple-choice', question: 'What does A Gê¬ B represent?', options: ['Elements in both A and B', 'Elements in A or B or both', 'Elements in A but not B', 'Elements not in A'], correctAnswer: 'Elements in A or B or both', explanation: 'Union (Gê¬) combines all elements from both sets.', optionExplanations: { 'Elements in both A and B': 'That describes intersection (Gê¬).', 'Elements in A or B or both': 'Correct! Union includes all elements.', 'Elements in A but not B': 'That describes set difference AGêÆB.', 'Elements not in A': 'That describes the complement of A.' } },
-    { id: 5, type: 'multiple-choice', question: 'Which logical connective represents "and"?', options: ['Gê¿', 'Gêº', '-¼', 'GåÆ'], correctAnswer: 'Gêº', explanation: 'Gêº is the logical AND connective.', optionExplanations: { 'Gê¿': 'Gê¿ means OR.', 'Gêº': 'Correct! Gêº means AND.', '-¼': '-¼ means NOT.', 'GåÆ': 'GåÆ means IMPLIES.' } }
+    { id: 1, type: 'multiple-choice', question: 'If A = {1,2,3} and B = {2,3,4}, what is A Gï¿½ B?', options: ['{1,2,3,4}', '{2,3}', '{1,4}', '{1}'], correctAnswer: '{2,3}', explanation: 'A Gï¿½ B (intersection) contains elements common to both: {2,3}.', optionExplanations: { '{1,2,3,4}': 'That is A Gï¿½ B (union).', '{2,3}': 'Correct! The intersection has shared elements.', '{1,4}': 'These elements are only in one set each.', '{1}': '1 is only in A, not in both.' } },
+    { id: 2, type: 'true-false', question: 'The empty set is a subset of every set.', correctAnswer: 'True', explanation: 'By definition, the empty set Gï¿½ï¿½ is a subset of every set.', optionExplanations: { 'True': 'Correct! Gï¿½ï¿½ Gï¿½ï¿½ A for any set A.', 'False': 'The empty set is indeed a subset of every set by definition.' } },
+    { id: 3, type: 'fill-in-blank', question: 'If A = {a, b, c}, the number of elements |A| = ___', correctAnswer: '3', explanation: 'The cardinality |A| counts the elements: a, b, c Gï¿½ï¿½ 3.' },
+    { id: 4, type: 'multiple-choice', question: 'What does A Gï¿½ B represent?', options: ['Elements in both A and B', 'Elements in A or B or both', 'Elements in A but not B', 'Elements not in A'], correctAnswer: 'Elements in A or B or both', explanation: 'Union (Gï¿½) combines all elements from both sets.', optionExplanations: { 'Elements in both A and B': 'That describes intersection (Gï¿½).', 'Elements in A or B or both': 'Correct! Union includes all elements.', 'Elements in A but not B': 'That describes set difference AGï¿½ï¿½B.', 'Elements not in A': 'That describes the complement of A.' } },
+    { id: 5, type: 'multiple-choice', question: 'Which logical connective represents "and"?', options: ['Gï¿½', 'Gï¿½', '-ï¿½', 'Gï¿½ï¿½'], correctAnswer: 'Gï¿½', explanation: 'Gï¿½ is the logical AND connective.', optionExplanations: { 'Gï¿½': 'Gï¿½ means OR.', 'Gï¿½': 'Correct! Gï¿½ means AND.', '-ï¿½': '-ï¿½ means NOT.', 'Gï¿½ï¿½': 'Gï¿½ï¿½ means IMPLIES.' } }
   ],
   // Pre-Calculus - Module 1: Functions
   'pc-1': [
-    { id: 1, type: 'multiple-choice', question: 'If f(x) = x-¦ + 1, what is f(3)?', options: ['7', '9', '10', '12'], correctAnswer: '10', explanation: 'f(3) = 3-¦ + 1 = 9 + 1 = 10.', optionExplanations: { '7': 'Check: 3-¦+1 = 10.', '9': 'You forgot to add 1.', '10': 'Correct! 9+1 = 10.', '12': 'Check your calculation.' } },
+    { id: 1, type: 'multiple-choice', question: 'If f(x) = x-ï¿½ + 1, what is f(3)?', options: ['7', '9', '10', '12'], correctAnswer: '10', explanation: 'f(3) = 3-ï¿½ + 1 = 9 + 1 = 10.', optionExplanations: { '7': 'Check: 3-ï¿½+1 = 10.', '9': 'You forgot to add 1.', '10': 'Correct! 9+1 = 10.', '12': 'Check your calculation.' } },
     { id: 2, type: 'true-false', question: 'Every function is a relation, but not every relation is a function.', correctAnswer: 'True', explanation: 'A function is a special relation where each input has exactly one output.', optionExplanations: { 'True': 'Correct! Functions are a subset of relations.', 'False': 'Functions require unique outputs for each input, making them a special type of relation.' } },
     { id: 3, type: 'fill-in-blank', question: 'The domain of f(x) = 1/x excludes x = ___', correctAnswer: '0', explanation: 'Division by zero is undefined, so x = 0 is excluded.' },
-    { id: 4, type: 'multiple-choice', question: 'What is the range of f(x) = x-¦?', options: ['All real numbers', 'x GëÑ 0', 'y GëÑ 0', 'y > 0'], correctAnswer: 'y GëÑ 0', explanation: 'x-¦ is always non-negative, so the range is y GëÑ 0.', optionExplanations: { 'All real numbers': 'x-¦ can never be negative.', 'x GëÑ 0': 'This describes the domain restriction, not the range.', 'y GëÑ 0': 'Correct! Squares are always GëÑ 0.', 'y > 0': 'f(0) = 0, so y = 0 is included.' } },
-    { id: 5, type: 'multiple-choice', question: 'If f(x) = 2x and g(x) = x+3, what is (fGêÿg)(x)?', options: ['2x+3', '2x+6', '2(x+3)', 'Both B and C'], correctAnswer: 'Both B and C', explanation: 'f(g(x)) = f(x+3) = 2(x+3) = 2x+6. Both B and C are equivalent.', optionExplanations: { '2x+3': 'This adds 3 after multiplying. The correct order is f(g(x)) = 2(x+3).', '2x+6': 'Correct form! 2(x+3) = 2x+6.', '2(x+3)': 'Correct form! This equals 2x+6.', 'Both B and C': 'Correct! 2(x+3) and 2x+6 are equivalent.' } }
+    { id: 4, type: 'multiple-choice', question: 'What is the range of f(x) = x-ï¿½?', options: ['All real numbers', 'x Gï¿½ï¿½ 0', 'y Gï¿½ï¿½ 0', 'y > 0'], correctAnswer: 'y Gï¿½ï¿½ 0', explanation: 'x-ï¿½ is always non-negative, so the range is y Gï¿½ï¿½ 0.', optionExplanations: { 'All real numbers': 'x-ï¿½ can never be negative.', 'x Gï¿½ï¿½ 0': 'This describes the domain restriction, not the range.', 'y Gï¿½ï¿½ 0': 'Correct! Squares are always Gï¿½ï¿½ 0.', 'y > 0': 'f(0) = 0, so y = 0 is included.' } },
+    { id: 5, type: 'multiple-choice', question: 'If f(x) = 2x and g(x) = x+3, what is (fGï¿½ï¿½g)(x)?', options: ['2x+3', '2x+6', '2(x+3)', 'Both B and C'], correctAnswer: 'Both B and C', explanation: 'f(g(x)) = f(x+3) = 2(x+3) = 2x+6. Both B and C are equivalent.', optionExplanations: { '2x+3': 'This adds 3 after multiplying. The correct order is f(g(x)) = 2(x+3).', '2x+6': 'Correct form! 2(x+3) = 2x+6.', '2(x+3)': 'Correct form! This equals 2x+6.', 'Both B and C': 'Correct! 2(x+3) and 2x+6 are equivalent.' } }
   ],
   // Basic Calculus
   'bc': [
-    { id: 1, type: 'multiple-choice', question: 'What is the derivative of x-¦?', options: ['2x', 'x', '2', 'x-¦'], correctAnswer: '2x', explanation: 'Using the power rule d/dx[xGü+] = nxGü+Gü+-¦: derivative of x-¦ is 2x.', optionExplanations: { '2x': 'Correct! Power rule: 2x-¦Gü+-¦ = 2x.', 'x': 'This would be the derivative of x-¦/2.', '2': 'The derivative of x-¦ varies with x.', 'x-¦': 'This is the original function.' } },
-    { id: 2, type: 'true-false', question: 'The limit of a function always exists at every point.', correctAnswer: 'False', explanation: 'Limits don\'t always exist, e.g. lim(xGåÆ0) 1/x does not exist.', optionExplanations: { 'True': 'Limits can fail at discontinuities or asymptotes.', 'False': 'Correct! Limits do not always exist.' } },
-    { id: 3, type: 'fill-in-blank', question: 'The integral of 2x is ___', correctAnswer: 'x-¦', explanation: 'Gê½2x dx = x-¦ + C.' },
+    { id: 1, type: 'multiple-choice', question: 'What is the derivative of x-ï¿½?', options: ['2x', 'x', '2', 'x-ï¿½'], correctAnswer: '2x', explanation: 'Using the power rule d/dx[xGï¿½+] = nxGï¿½+Gï¿½+-ï¿½: derivative of x-ï¿½ is 2x.', optionExplanations: { '2x': 'Correct! Power rule: 2x-ï¿½Gï¿½+-ï¿½ = 2x.', 'x': 'This would be the derivative of x-ï¿½/2.', '2': 'The derivative of x-ï¿½ varies with x.', 'x-ï¿½': 'This is the original function.' } },
+    { id: 2, type: 'true-false', question: 'The limit of a function always exists at every point.', correctAnswer: 'False', explanation: 'Limits don\'t always exist, e.g. lim(xGï¿½ï¿½0) 1/x does not exist.', optionExplanations: { 'True': 'Limits can fail at discontinuities or asymptotes.', 'False': 'Correct! Limits do not always exist.' } },
+    { id: 3, type: 'fill-in-blank', question: 'The integral of 2x is ___', correctAnswer: 'x-ï¿½', explanation: 'Gï¿½2x dx = x-ï¿½ + C.' },
     { id: 4, type: 'multiple-choice', question: 'What is the derivative of sin(x)?', options: ['cos(x)', '-cos(x)', 'sin(x)', '-sin(x)'], correctAnswer: 'cos(x)', explanation: 'd/dx[sin(x)] = cos(x).', optionExplanations: { 'cos(x)': 'Correct!', '-cos(x)': 'The derivative of sin is positive cos.', 'sin(x)': 'sin is the original, not the derivative.', '-sin(x)': 'This is the derivative of cos(x).' } },
     { id: 5, type: 'multiple-choice', question: 'What does the derivative represent geometrically?', options: ['Area under the curve', 'Slope of the tangent line', 'Y-intercept', 'Maximum value'], correctAnswer: 'Slope of the tangent line', explanation: 'The derivative at a point gives the slope of the tangent line at that point.', optionExplanations: { 'Area under the curve': 'That is the integral.', 'Slope of the tangent line': 'Correct!', 'Y-intercept': 'The y-intercept is f(0).', 'Maximum value': 'Derivatives help find max/min but don\'t directly give them.' } }
   ],
@@ -91,18 +91,18 @@ const quizQuestionBanks: Record<string, Question[]> = {
     { id: 2, type: 'fill-in-blank', question: 'The probability of getting heads on a fair coin flip is ___', correctAnswer: '0.5', explanation: 'A fair coin has equal probability: 1/2 = 0.5.' },
     { id: 3, type: 'true-false', question: 'The median of a dataset is always equal to the mean.', correctAnswer: 'False', explanation: 'Median and mean are equal only in symmetric distributions.', optionExplanations: { 'True': 'They are equal only in perfectly symmetric distributions.', 'False': 'Correct! Skewed data has different mean and median.' } },
     { id: 4, type: 'multiple-choice', question: 'What is the mode of {3, 5, 5, 7, 9}?', options: ['3', '5', '7', '9'], correctAnswer: '5', explanation: 'Mode is the most frequent value. 5 appears twice.', optionExplanations: { '3': '3 appears once.', '5': 'Correct! 5 appears most frequently (twice).', '7': '7 appears once.', '9': '9 appears once.' } },
-    { id: 5, type: 'multiple-choice', question: 'If P(A) = 0.3, what is P(not A)?', options: ['0.3', '0.5', '0.7', '1.0'], correctAnswer: '0.7', explanation: 'P(not A) = 1 GêÆ P(A) = 1 GêÆ 0.3 = 0.7.', optionExplanations: { '0.3': 'That is P(A), not its complement.', '0.5': 'Complements only equal 0.5 when P(A) = 0.5.', '0.7': 'Correct! 1 GêÆ 0.3 = 0.7.', '1.0': '1.0 means certain, but A doesn\'t always not happen.' } }
+    { id: 5, type: 'multiple-choice', question: 'If P(A) = 0.3, what is P(not A)?', options: ['0.3', '0.5', '0.7', '1.0'], correctAnswer: '0.7', explanation: 'P(not A) = 1 Gï¿½ï¿½ P(A) = 1 Gï¿½ï¿½ 0.3 = 0.7.', optionExplanations: { '0.3': 'That is P(A), not its complement.', '0.5': 'Complements only equal 0.5 when P(A) = 0.5.', '0.7': 'Correct! 1 Gï¿½ï¿½ 0.3 = 0.7.', '1.0': '1.0 means certain, but A doesn\'t always not happen.' } }
   ]
 };
 
 // Get questions for a quiz based on its ID
 const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Question[] => {
-  // Extract module prefix from quiz ID (e.g., 'gm-2-q1' GåÆ 'gm-2')
+  // Extract module prefix from quiz ID (e.g., 'gm-2-q1' Gï¿½ï¿½ 'gm-2')
   const parts = quizId.split('-');
   let moduleKey = '';
   
   if (parts.length >= 3) {
-    // Format: 'gm-2-q1' GåÆ module key 'gm-2'
+    // Format: 'gm-2-q1' Gï¿½ï¿½ module key 'gm-2'
     moduleKey = `${parts[0]}-${parts[1]}`;
   } else if (parts.length === 2) {
     moduleKey = quizId;
@@ -143,6 +143,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }, [module.id]);
 
   const subjectId = useMemo(() => {
+    const curriculumSubjectId = (module as Module & { subjectId?: string }).subjectId;
+    if (curriculumSubjectId) return curriculumSubjectId;
     const parent = subjects.find((s) => s.modules.some((m) => m.id === module.id));
     return parent?.id ?? null;
   }, [module.id]);
@@ -151,11 +153,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const MODULE_PALETTE = ['#1FA7E1', '#9956DE', '#75D06A', '#FFB356', '#7274ED', '#FF8B8B', '#6ED1CF', '#FB96BB'];
 
   const moduleAccentHex = useMemo(() => {
+    const curriculumAccent = (module as Module & { subjectAccentColor?: string }).subjectAccentColor;
+    if (curriculumAccent) return curriculumAccent;
     const parent = subjectId ? subjects.find((s) => s.id === subjectId) : null;
     const idx = parent?.modules?.findIndex((m) => m.id === module.id) ?? 0;
     const safeIdx = idx >= 0 ? idx : 0;
     return MODULE_PALETTE[safeIdx % MODULE_PALETTE.length];
-  }, [module.id, subjectId]);
+  }, [module, module.id, subjectId]);
 
   useEffect(() => {
     if (!userProfile?.uid) return;
@@ -654,7 +658,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">
-                              Module Task GÇó General Quiz
+                              Module Task Gï¿½ï¿½ General Quiz
                             </p>
                             <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">
                               {standaloneQuiz.title}
@@ -696,7 +700,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       <Target size={28} className="text-rose-400" />
                     </div>
                     <div>
-                      <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">Module Task GÇó General Quiz</p>
+                      <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">Module Task Gï¿½ï¿½ General Quiz</p>
                       <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">{standaloneQuiz.title}</h3>
                       <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
                         <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>

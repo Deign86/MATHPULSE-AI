@@ -7,9 +7,9 @@ export const DIAGNOSTIC_TOPIC_LABELS: Record<DiagnosticTopicKey, string> = {
 };
 
 export const TOPIC_TO_MODULE_ID: Record<DiagnosticTopicKey, string> = {
-  Functions: 'gm-1',
-  BusinessMath: 'gm-2',
-  Logic: 'gm-3',
+  Functions: 'gm-q2-functions-graphs',
+  BusinessMath: 'gm-q1-business-finance',
+  Logic: 'gm-q4-propositions-syllogisms-fallacies',
 };
 
 export const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {

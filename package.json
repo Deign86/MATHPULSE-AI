@@ -49,6 +49,7 @@
             "react-day-picker": "^8.10.1",
             "react-dom": "^18.3.1",
             "react-draggable": "^4.5.0",
+            "react-easy-crop": "^5.5.7",
             "react-hook-form": "^7.55.0",
             "react-markdown": "^10.1.0",
             "react-resizable-panels": "^2.1.7",
@@ -59,6 +60,7 @@
             "tailwind-merge": "*",
             "tailwindcss": "^4.1.18",
             "vaul": "^1.1.2",
+            "xlsx": "^0.18.5",
             "zod": "^4.3.6"
       },
       "devDependencies": {
