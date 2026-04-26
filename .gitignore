@@ -71,3 +71,7 @@ ui-debug.log
 kaggle_llm_api_job/
 kaggle_merge_job/
 datasets/vectorstore/
+
+# Curriculum binaries are hosted on HF storage, not in git
+datasets/curriculum/*.pdf
+backend/datasets/curriculum/*.pdf
