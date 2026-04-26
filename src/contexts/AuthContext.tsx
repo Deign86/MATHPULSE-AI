@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase.ts';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models.ts';
-import { getUserProfile, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService.ts';
+import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService.ts';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -120,7 +120,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshProfile = async () => {
     if (currentUser) {
-      const profile = await getUserProfile(currentUser.uid);
+      // Bypass the persistent IndexedDB cache so we get the freshest data
+      // (e.g. right after a profile picture upload wrote to Firestore).
+      const profile = await getUserProfileFromServer(currentUser.uid);
       if (profile) {
         setUserProfile(profile);
       }

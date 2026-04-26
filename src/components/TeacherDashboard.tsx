@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
 import LogoutActionButton from './LogoutActionButton';
+import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -1315,10 +1316,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-[#9956DE]/45 bg-card flex items-center justify-center">
-                  <img
-                    src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
-                    alt={teacherName}
-                    className="w-full h-full object-cover"
+                  <UserAvatar
+                    src={userProfile?.photo}
+                    name={teacherName}
+                    className="w-full h-full rounded-lg"
                   />
                 </div>
                 <div className="hidden md:block min-w-0 text-left">
