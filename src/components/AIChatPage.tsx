@@ -3,8 +3,10 @@ import { Bot, Send, Search, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useChatContext } from '../contexts/ChatContext';
+import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
+import UserAvatar from './UserAvatar';
 
 const AIChatPage = () => {
   const { 
@@ -18,6 +20,8 @@ const AIChatPage = () => {
     deleteSession,
     getActiveSession 
   } = useChatContext();
+
+  const { userProfile } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMessage, setCurrentMessage] = useState('');
@@ -235,8 +239,13 @@ const AIChatPage = () => {
                     key={message.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
+                    {message.sender !== 'user' && (
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-r from-sky-600 to-sky-500 flex items-center justify-center flex-shrink-0 mb-1">
+                        <img src="/avatar/avatar_icon.png" alt="AI" className="w-5 h-5 object-contain" />
+                      </div>
+                    )}
                     <div
                       className={`max-w-[70%] rounded-2xl px-5 py-3 ${
                         message.sender === 'user'
@@ -255,6 +264,14 @@ const AIChatPage = () => {
                         {message.timestamp}
                       </p>
                     </div>
+                    {message.sender === 'user' && (
+                      <UserAvatar
+                        src={userProfile?.photo}
+                        name={userProfile?.name}
+                        className="w-7 h-7 flex-shrink-0 mb-1"
+                        fallbackClassName="text-[10px]"
+                      />
+                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>

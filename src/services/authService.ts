@@ -11,7 +11,7 @@ import {
   updatePassword,
   deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocFromServer, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
 
@@ -263,8 +263,11 @@ export const createUserProfile = async (
 // Get user profile from Firestore
 export const getUserProfile = async (uid: string): Promise<User | null> => {
   try {
+    console.log('[FIRESTORE DEBUG] getUserProfile called for uid:', uid);
     const docRef = doc(db, 'users', uid);
+    console.log('[FIRESTORE DEBUG] Calling getDoc');
     const docSnap = await getDoc(docRef);
+    console.log('[FIRESTORE DEBUG] getDoc completed');
 
     if (docSnap.exists()) {
       return { ...docSnap.data(), uid: docSnap.id } as User;
@@ -273,6 +276,26 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
   } catch (error) {
     console.error('Error getting user profile:', error);
     return null;
+  }
+};
+
+/**
+ * Fetch user profile directly from the server, bypassing the persistent
+ * IndexedDB cache. Use this after mutations (e.g. profile picture upload)
+ * where the cache is likely stale.  Falls back to the cached read if the
+ * server is unreachable.
+ */
+export const getUserProfileFromServer = async (uid: string): Promise<User | null> => {
+  try {
+    const docRef = doc(db, 'users', uid);
+    const docSnap = await getDocFromServer(docRef);
+    if (docSnap.exists()) {
+      return { ...docSnap.data(), uid: docSnap.id } as User;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[getUserProfileFromServer] Server read failed, falling back to cache:', error);
+    return getUserProfile(uid);
   }
 };
 
@@ -285,7 +308,9 @@ export const updateUserProfile = async (
     Partial<Omit<AdminProfile, keyof User | 'role'>>
 ): Promise<void> => {
   try {
+    console.log('[FIRESTORE DEBUG] updateUserProfile called for uid:', uid);
     const currentProfile = await getUserProfile(uid);
+    console.log('[FIRESTORE DEBUG] currentProfile fetched:', currentProfile);
     if (!currentProfile) {
       throw new Error('Profile not found');
     }
@@ -321,8 +346,11 @@ export const updateUserProfile = async (
       sanitizedUpdates[key] = value;
     });
 
+    console.log('[FIRESTORE DEBUG] sanitizedUpdates:', sanitizedUpdates);
     const docRef = doc(db, 'users', uid);
+    console.log('[FIRESTORE DEBUG] Calling setDoc');
     await setDoc(docRef, { ...sanitizedUpdates, updatedAt: serverTimestamp() }, { merge: true });
+    console.log('[FIRESTORE DEBUG] setDoc completed');
   } catch (error) {
     console.error('Error updating user profile:', error);
     throw error;

@@ -1,6 +1,8 @@
 import { db } from '../lib/firebase';
 import { collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { LessonPlanResponse } from './apiService';
+import { apiService, getCurriculumGroundedLesson } from './apiService';
+import type { CurriculumSource } from '../types/curriculum';
 
 export type GeneratedLessonPlanStatus = 'draft' | 'published';
 
@@ -56,4 +58,97 @@ export async function publishLessonPlan(lessonId: string): Promise<void> {
     publishedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function generateLessonPlanWithCurriculumGrounding(
+  request: {
+    gradeLevel: string;
+    subject?: string;
+    quarter?: number;
+    moduleUnit?: string;
+    lessonTitle?: string;
+    learningCompetency?: string;
+    learnerLevel?: string;
+    classSectionId?: string;
+    className?: string;
+    materialId?: string;
+    focusTopics?: string[];
+    topicCount?: number;
+    preferImportedTopics?: boolean;
+    allowReviewSources?: boolean;
+    allowUnverifiedLesson?: boolean;
+  },
+  useRAG: boolean = true,
+): Promise<LessonPlanResponse & { curriculumSources?: CurriculumSource[]; curriculumContext?: string }> {
+  const topic = request.learningCompetency || request.lessonTitle || (request.focusTopics && request.focusTopics[0]) || 'general mathematics';
+  const subject = request.subject || 'general_math';
+  const quarter = request.quarter ?? 1;
+
+  let curriculumContext = '';
+  let curriculumSources: CurriculumSource[] = [];
+  let retrievalConfidence: number | undefined;
+  let retrievalBand: 'high' | 'medium' | 'low' | undefined;
+  let retrievalQuery: string | undefined;
+  let needsReview = false;
+
+  if (useRAG) {
+    try {
+      const grounded = await getCurriculumGroundedLesson(topic, subject, quarter, {
+        lessonTitle: request.lessonTitle,
+        learningCompetency: request.learningCompetency,
+        moduleUnit: request.moduleUnit,
+        learnerLevel: request.learnerLevel,
+      });
+      curriculumSources = grounded.sources || [];
+      curriculumContext = grounded.explanation || '';
+      retrievalConfidence = grounded.retrievalConfidence;
+      retrievalBand = grounded.retrievalBand;
+      retrievalQuery = grounded.retrievalQuery;
+      needsReview = grounded.needsReview ?? false;
+    } catch {
+      curriculumContext = '';
+      curriculumSources = [];
+    }
+  }
+
+  const payload = {
+    ...request,
+    subject,
+    quarter,
+    curriculumContext: curriculumContext
+      ? `[CURRICULUM CONTEXT]\n${curriculumContext}`
+      : undefined,
+    curriculumRetrievalConfidence: retrievalConfidence,
+    curriculumRetrievalBand: retrievalBand,
+    curriculumRetrievalQuery: retrievalQuery,
+    needsReview,
+  } as unknown as {
+    gradeLevel: string;
+    subject?: string;
+    quarter?: number;
+    moduleUnit?: string;
+    lessonTitle?: string;
+    learningCompetency?: string;
+    learnerLevel?: string;
+    classSectionId?: string;
+    className?: string;
+    materialId?: string;
+    focusTopics?: string[];
+    topicCount?: number;
+    preferImportedTopics?: boolean;
+    allowReviewSources?: boolean;
+    allowUnverifiedLesson?: boolean;
+    curriculumContext?: string;
+    curriculumRetrievalConfidence?: number;
+    curriculumRetrievalBand?: 'high' | 'medium' | 'low';
+    curriculumRetrievalQuery?: string;
+    needsReview?: boolean;
+  };
+
+  const lessonPlan = await apiService.generateLessonPlan(payload);
+  return {
+    ...lessonPlan,
+    curriculumSources,
+    curriculumContext,
+  };
 }

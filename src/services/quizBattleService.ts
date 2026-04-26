@@ -49,6 +49,7 @@ export interface QuizBattleQueueJoinResponse {
   status: 'queued' | 'matched' | 'idle';
   queueEntryId?: string;
   matchId?: string;
+  expiresAtMs?: number;
 }
 
 export interface QuizBattleLeaveSessionResponse {
@@ -85,6 +86,7 @@ export interface QuizBattleResumeSessionResponse {
     status: 'searching' | 'matched' | 'cancelled';
     queueType: 'public_matchmaking' | 'private_room';
     matchId?: string;
+    expiresAtMs?: number;
   };
   room?: QuizBattlePrivateRoomState;
   match?: QuizBattleLiveMatchState;
@@ -135,6 +137,7 @@ export interface QuizBattleLiveMatchState {
   scoreAgainst: number;
   opponentName: string;
   roundDeadlineAtMs?: number;
+  expiresAtMs?: number;
   lifecycle?: QuizBattleLifecycleState;
   currentQuestion: QuizBattleLiveQuestion | null;
   roundResults: QuizBattleRoundResult[];

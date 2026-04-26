@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
 import LogoutActionButton from './LogoutActionButton';
+import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -41,13 +42,18 @@ import {
 import {
   apiService,
   ApiError,
+  fetchAnalysisCurriculumContext,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
-  type StudentAccountImportCommitResponse,
-  type StudentAccountImportPreviewResponse,
   type UploadResponse,
 } from '../services/apiService';
-import { publishLessonPlan, saveGeneratedLessonPlan } from '../services/lessonPlanService';
+import {
+  publishLessonPlan,
+  saveGeneratedLessonPlan,
+  generateLessonPlanWithCurriculumGrounding,
+} from '../services/lessonPlanService';
+import type { CurriculumSource } from '../types/curriculum';
+import CurriculumSourceBadge from './CurriculumSourceBadge';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
 import TopicMasteryView from './TopicMasteryView';
@@ -57,6 +63,9 @@ import TeacherNotificationsView from './TeacherNotificationsView';
 import TeacherCalendarView from './TeacherCalendarView';
 import { Skeleton } from './ui/skeleton';
 import type { ClassSectionMetadata } from '../types/models';
+import type { ParseWorkbookResult } from '../features/import/services/shsExcel/parser/types';
+import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
+import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -1307,10 +1316,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-[#9956DE]/45 bg-card flex items-center justify-center">
-                  <img
-                    src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=random`}
-                    alt={teacherName}
-                    className="w-full h-full object-cover"
+                  <UserAvatar
+                    src={userProfile?.photo}
+                    name={teacherName}
+                    className="w-full h-full rounded-lg"
                   />
                 </div>
                 <div className="hidden md:block min-w-0 text-left">
@@ -2060,6 +2069,8 @@ const InterventionView: React.FC<{
   const [sectionDraft, setSectionDraft] = useState(student.section || 'Section A');
   const [savingSection, setSavingSection] = useState(false);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResponse | null>(null);
+  const [lessonCurriculumSources, setLessonCurriculumSources] = useState<CurriculumSource[]>([]);
+  const [analysisCurriculumContext, setAnalysisCurriculumContext] = useState('');
   const [lessonLoading, setLessonLoading] = useState(false);
   const [lessonError, setLessonError] = useState('');
   const [lessonSourceFilter, setLessonSourceFilter] = useState<string>('all');
@@ -2079,13 +2090,29 @@ const InterventionView: React.FC<{
     const fetchPath = async () => {
       setPathLoading(true);
       try {
+        let curriculumContext = '';
+        try {
+          curriculumContext = await fetchAnalysisCurriculumContext(
+            student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+            'general_math',
+          );
+          setAnalysisCurriculumContext(curriculumContext);
+        } catch {
+          setAnalysisCurriculumContext('');
+        }
+
         const response = await apiService.getLearningPath({
           weaknesses: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
           gradeLevel: 'High School',
+          subject: 'general_math',
         });
-        setLearningPath(response.learningPath);
+        const enrichedLearningPath = curriculumContext
+          ? `${response.learningPath}\n\n${curriculumContext}`
+          : response.learningPath;
+        setLearningPath(enrichedLearningPath);
       } catch {
         setLearningPath('Unable to generate learning path. Please try again later.');
+        setAnalysisCurriculumContext('');
       } finally {
         setPathLoading(false);
       }
@@ -2098,8 +2125,15 @@ const InterventionView: React.FC<{
     setLessonError('');
     try {
       const classSectionId = student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A');
-      const response = await apiService.generateLessonPlan({
+      const selectedCompetency = student.struggles.length > 0 ? student.struggles[0] : student.weakestTopic;
+      const response = await generateLessonPlanWithCurriculumGrounding({
         gradeLevel: gradeDraft || student.grade || 'Grade 11',
+        subject: 'general_math',
+        quarter: 1,
+        moduleUnit: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
+        lessonTitle: `Grounded Lesson: ${selectedCompetency}`,
+        learningCompetency: selectedCompetency,
+        learnerLevel: student.avgScore < 60 ? 'support' : student.avgScore < 80 ? 'developing' : 'advanced',
         classSectionId,
         className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
         focusTopics: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
@@ -2107,8 +2141,9 @@ const InterventionView: React.FC<{
         preferImportedTopics: rolloutFlags.lessonEnabled,
         allowReviewSources,
         allowUnverifiedLesson,
-      });
+      }, true);
       setLessonPlan(response);
+      setLessonCurriculumSources(response.curriculumSources || []);
       setSavedLessonPlanId(null);
       void apiService.reportImportGroundedFeedback({
         flow: 'lesson',
@@ -2152,6 +2187,7 @@ const InterventionView: React.FC<{
       }
       setLessonError(errorMessage);
       setLessonPlan(null);
+      setLessonCurriculumSources([]);
       void apiService.reportImportGroundedFeedback({
         flow: 'lesson',
         status: 'failed',
@@ -2424,6 +2460,12 @@ const InterventionView: React.FC<{
               <h2 className="text-xl font-display font-bold text-foreground mb-2">
                 {isUrgentBarrier ? 'AI Analysis - Learning Barriers' : 'AI Analysis - Learning Strengths & Next Steps'}
               </h2>
+              {analysisCurriculumContext && (
+                <CurriculumSourceBadge
+                  sources={lessonCurriculumSources}
+                  className="mt-1"
+                />
+              )}
               <BoneSkeleton
                 name="teacher-intervention-analysis"
                 loading={pathLoading}
@@ -2618,16 +2660,116 @@ const InterventionView: React.FC<{
             {lessonPlan && (
               <div className="space-y-4">
                 <div className="bg-secondary border border-border rounded-xl p-4">
+                  <div className="mb-2">
+                    <CurriculumSourceBadge sources={lessonCurriculumSources} />
+                  </div>
                   <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
                     {' \u2022 '}Imported topic count: {lessonPlan.importedTopicCount}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
+                    Subject: {lessonPlan.subject || 'general_math'} {' \u2022 '}Quarter: Q{lessonPlan.quarter || 1}
+                  </p>
+                  {lessonPlan.curriculumCompetency && (
+                    <p className="text-xs text-[#9956DE] font-semibold mt-1">
+                      Competency: {lessonPlan.curriculumCompetency}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
                     Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
                   </p>
                   {lessonPlan.warnings.length > 0 && (
                     <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.warnings.join(' ')}</p>
+                  )}
+                </div>
+
+                <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Curriculum Grounding</p>
+                      <p className="text-sm font-bold text-foreground mt-1">Source-backed lesson basis</p>
+                    </div>
+                    {lessonPlan.curriculumGrounding && (
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-semibold border ${lessonPlan.curriculumGrounding.confidenceBand === 'high' ? 'bg-[#75D06A]/15 text-[#2E7D32] border-[#75D06A]/40' : lessonPlan.curriculumGrounding.confidenceBand === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-[#FF8B8B]/14 text-[#C65E63] border-[#FF8B8B]/35'}`}>
+                        {lessonPlan.curriculumGrounding.confidenceBand.toUpperCase()} confidence
+                      </span>
+                    )}
+                  </div>
+
+                  {lessonPlan.lessonObjective && (
+                    <div className="bg-muted/60 rounded-xl p-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Lesson objective</p>
+                      <p className="text-sm text-foreground mt-1">{lessonPlan.lessonObjective}</p>
+                    </div>
+                  )}
+
+                  {lessonPlan.realWorldHook && (
+                    <div className="bg-[#9956DE]/10 border border-[#9956DE]/20 rounded-xl p-3">
+                      <p className="text-[11px] font-semibold text-[#9956DE] uppercase tracking-wider">Real-life application</p>
+                      <p className="text-sm text-foreground mt-1">{lessonPlan.realWorldHook}</p>
+                    </div>
+                  )}
+
+                  {lessonPlan.curriculumGrounding && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-muted-foreground font-semibold">Retrieval confidence</p>
+                        <p className="text-sm font-bold text-foreground mt-1">{Math.round((lessonPlan.curriculumGrounding.confidence || 0) * 100)}%</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-muted-foreground font-semibold">Retrieved chunks</p>
+                        <p className="text-sm font-bold text-foreground mt-1">{lessonPlan.curriculumGrounding.retrievedChunks}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-muted-foreground font-semibold">Review state</p>
+                        <p className="text-sm font-bold text-foreground mt-1">{lessonPlan.needsReview ? 'Needs review' : 'Ready for review'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {lessonPlan.explanation && (
+                    <div className="bg-card border border-border rounded-xl p-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Explanation</p>
+                      <p className="text-sm text-foreground leading-relaxed">{lessonPlan.explanation}</p>
+                    </div>
+                  )}
+
+                  <details className="group rounded-xl border border-border bg-card p-3">
+                    <summary className="cursor-pointer list-none text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between gap-2">
+                      Retrieved source snippets
+                      <span className="text-[11px] text-[#9956DE] group-open:rotate-180 transition-transform">▾</span>
+                    </summary>
+                    <div className="mt-3 space-y-2">
+                      {(lessonPlan.retrievedEvidence?.length || 0) > 0 ? (
+                        lessonPlan.retrievedEvidence?.map((source, index) => (
+                          <div key={`${source.sourceFile || 'source'}-${source.page || index}`} className="rounded-xl bg-muted/60 border border-border p-3">
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                              <span className="font-semibold text-foreground">{source.sourceFile || 'Curriculum source'}</span>
+                              <span>p.{source.page || '?'}</span>
+                              <span>{source.contentDomain || 'n/a'}</span>
+                              <span>score {(source.score * 100).toFixed(1)}%</span>
+                            </div>
+                            <p className="text-sm text-foreground mt-2 leading-relaxed">{source.content}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No retrieved snippets were returned.</p>
+                      )}
+                    </div>
+                  </details>
+
+                  {lessonPlan.sourceCitations && lessonPlan.sourceCitations.length > 0 && (
+                    <div className="rounded-xl bg-muted/50 border border-border p-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Source citations</p>
+                      <div className="flex flex-wrap gap-2">
+                        {lessonPlan.sourceCitations.slice(0, 6).map((citation) => (
+                          <span key={citation} className="px-2 py-1 rounded-full bg-card border border-border text-[11px] text-foreground">
+                            {citation}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -2777,17 +2919,12 @@ const ImportView: React.FC<{
   }) => void;
   onDataChanged?: () => void;
 }> = ({ onEditRecords, classSectionId, className, classMetadata, onImportedClassRecords, onDataChanged }) => {
+  const [shsExcelResult, setShsExcelResult] = useState<ParseWorkbookResult | null>(null);
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
-  const [dragOver3, setDragOver3] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
-  const [previewingAccounts, setPreviewingAccounts] = useState(false);
-  const [committingAccounts, setCommittingAccounts] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
-  const [accountPreview, setAccountPreview] = useState<StudentAccountImportPreviewResponse | null>(null);
-  const [accountCommitResult, setAccountCommitResult] = useState<StudentAccountImportCommitResponse | null>(null);
-  const [provisionDefaultPassword, setProvisionDefaultPassword] = useState('');
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
     summary?: {
@@ -2807,14 +2944,123 @@ const ImportView: React.FC<{
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
-  const accountInputRef = useRef<HTMLInputElement>(null);
+
+  const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const toFiniteNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    const parsed = Number(String(value ?? '').replace(/[^0-9.-]+/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const clampPercent = (value: number, fallback: number): number => {
+    const finiteValue = Number.isFinite(value) ? value : fallback;
+    return Math.max(0, Math.min(100, finiteValue));
+  };
+
+  const toCsvCell = (value: string | number): string => {
+    const text = String(value ?? '');
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const buildNormalizedWorkbookCsv = (workbookResult: ParseWorkbookResult, sourceFileName: string): File | null => {
+    const scoreByLearner = new Map<string, number[]>();
+    const scoreFields = ['quarterlyGrade', 'finalGrades', 'firstSemester', 'firstQuarter', 'secondQuarter', 'initialGrade'] as const;
+
+    workbookResult.mapping.gradeEntities.forEach((gradeRow) => {
+      const learnerKey = normalizeLearnerKey(gradeRow.fullName || '');
+      if (!learnerKey) return;
+
+      const values = scoreFields
+        .map((field) => toFiniteNumber(gradeRow[field]))
+        .filter((value): value is number => value !== null);
+
+      if (values.length === 0) return;
+      const existing = scoreByLearner.get(learnerKey) || [];
+      scoreByLearner.set(learnerKey, existing.concat(values));
+    });
+
+    const students = workbookResult.mapping.studentEntities || [];
+    if (students.length === 0) {
+      return null;
+    }
+
+    const fallbackTerm = (workbookResult.imported.schoolContext.semester || workbookResult.imported.schoolContext.schoolYear || 'First Semester').trim();
+    const fallbackAssessment = (workbookResult.imported.schoolContext.subjectName || 'Class Record Import').trim();
+    const classToken = (classSectionId || className || 'import').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12) || 'IMPORT';
+
+    const header = ['name', 'lrn', 'email', 'engagementScore', 'avgQuizScore', 'attendance', 'assignmentCompletion', 'term', 'assessmentName'];
+    const rows = [header.join(',')];
+
+    students.forEach((student, index) => {
+      const learnerKey = normalizeLearnerKey(student.fullName || '');
+      const learnerScores = scoreByLearner.get(learnerKey) || [];
+      const avgScore = learnerScores.length > 0
+        ? learnerScores.reduce((sum, value) => sum + value, 0) / learnerScores.length
+        : 75;
+
+      const avgQuizScore = clampPercent(avgScore, 75);
+      const attendance = clampPercent(avgQuizScore + 5, 85);
+      const engagementScore = clampPercent((avgQuizScore * 0.7) + (attendance * 0.3), 80);
+      const assignmentCompletion = clampPercent((attendance * 0.6) + (avgQuizScore * 0.4), 82);
+
+      const learnerNoSeed = student.learnerNo || (index + 1);
+      const lrn = `IMP-${classToken}-${String(learnerNoSeed).padStart(4, '0')}`;
+      const name = student.fullName || `Learner ${index + 1}`;
+
+      rows.push([
+        toCsvCell(name),
+        toCsvCell(lrn),
+        toCsvCell(''),
+        toCsvCell(Number(engagementScore.toFixed(1))),
+        toCsvCell(Number(avgQuizScore.toFixed(1))),
+        toCsvCell(Number(attendance.toFixed(1))),
+        toCsvCell(Number(assignmentCompletion.toFixed(1))),
+        toCsvCell(fallbackTerm),
+        toCsvCell(fallbackAssessment),
+      ].join(','));
+    });
+
+    if (rows.length <= 1) {
+      return null;
+    }
+
+    const normalizedName = sourceFileName.replace(/\.(xlsx|xls)$/i, '');
+    return new File([rows.join('\n')], `${normalizedName}-normalized.csv`, { type: 'text/csv' });
+  };
 
   const handleFileUpload = async (file: File) => {
     setUploadingClassRecords(true);
     setUploadResult('');
     setUploadInterpretation(null);
+
+    let uploadFile = file;
+
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      try {
+        const workbookResult = await parseShsWorkbook(file, {
+          confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD,
+        });
+        setShsExcelResult(workbookResult);
+
+        const normalizedFile = buildNormalizedWorkbookCsv(workbookResult, file.name);
+        if (normalizedFile) {
+          uploadFile = normalizedFile;
+        }
+      } catch {
+        setShsExcelResult(null);
+      }
+    } else {
+      setShsExcelResult(null);
+    }
+
     try {
-      const result = await apiService.uploadClassRecords(file, {
+      const result = await apiService.uploadClassRecords(uploadFile, {
         classSectionId,
         className,
         datasetIntent: 'synthetic_student_records',
@@ -2946,120 +3192,6 @@ const ImportView: React.FC<{
     }
   };
 
-  const downloadProvisioningCsv = (result: StudentAccountImportCommitResponse) => {
-    const rows = result.rows || [];
-    if (rows.length === 0) {
-      toast.error('No provisioning rows to export.');
-      return;
-    }
-
-    const escapeCsv = (value: unknown) => {
-      const text = String(value ?? '');
-      if (/[,"\n]/.test(text)) {
-        return `"${text.replace(/"/g, '""')}"`;
-      }
-      return text;
-    };
-
-    const header = ['rowNumber', 'studentId', 'fullName', 'email', 'uid', 'classSectionId', 'status', 'message', 'temporaryPassword'];
-    const csvLines = [
-      header.join(','),
-      ...rows.map((row) => [
-        row.rowNumber,
-        row.studentId,
-        row.fullName,
-        row.email,
-        row.uid || '',
-        row.classSectionId,
-        row.status,
-        row.message,
-        row.temporaryPassword || '',
-      ].map(escapeCsv).join(',')),
-    ];
-
-    const csvBlob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(csvBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `student-account-provisioning-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleAccountPreviewUpload = async (file: File) => {
-    setPreviewingAccounts(true);
-    setAccountCommitResult(null);
-    setUploadResult('');
-
-    try {
-      const fallbackClass = parseClassName(className || classMetadata?.className || 'Grade 11 - Section A');
-      const preview = await apiService.previewStudentAccountImport(file, {
-        classSectionId,
-        className,
-        defaultGrade: classMetadata?.grade || fallbackClass.grade,
-        defaultSection: classMetadata?.section || fallbackClass.section,
-      });
-
-      setAccountPreview(preview);
-      const summary = preview.summary;
-      toast.success(`Preview ready: ${summary.validRows} valid, ${summary.invalidRows} invalid, ${summary.duplicateRows} duplicate rows.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to preview student-account import.';
-      toast.error(message);
-      setAccountPreview(null);
-    } finally {
-      setPreviewingAccounts(false);
-    }
-  };
-
-  const handleAccountDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver3(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      void handleAccountPreviewUpload(file);
-    }
-  };
-
-  const handleAccountSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      void handleAccountPreviewUpload(file);
-    }
-  };
-
-  const handleCommitAccountProvisioning = async () => {
-    if (!accountPreview?.previewToken) {
-      toast.error('Run preview before committing student account provisioning.');
-      return;
-    }
-
-    setCommittingAccounts(true);
-    try {
-      const result = await apiService.commitStudentAccountImport({
-        previewToken: accountPreview.previewToken,
-        defaultPassword: provisionDefaultPassword.trim() || undefined,
-        forcePasswordChange: true,
-        createAuthUsers: true,
-      });
-
-      setAccountCommitResult(result);
-      const { createdRows, updatedRows, blockedRows, failedRows } = result.summary;
-      if (failedRows > 0) {
-        toast.error(`Provisioning completed with ${failedRows} failed row(s).`);
-      } else {
-        toast.success(`Provisioned accounts: ${createdRows} created, ${updatedRows} updated, ${blockedRows} blocked.`);
-      }
-      onDataChanged?.();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to commit student account provisioning.');
-    } finally {
-      setCommittingAccounts(false);
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -3084,48 +3216,53 @@ const ImportView: React.FC<{
         </div>
 
         {/* Upload Zones */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Class Records */}
           <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
-            onDragLeave={() => setDragOver1(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#9956DE]/60 hover:bg-[#9956DE]/12 ${
-              dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12 scale-105' : 'border-border'
+            className={`bg-card border-4 border-dashed rounded-3xl p-6 transition-all ${
+              dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12' : 'border-border'
             }`}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <div className="w-20 h-20 bg-[#9956DE]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              {uploadingClassRecords ? (
-                <Skeleton className="h-10 w-10 rounded-2xl bg-[#9956DE]/32" />
-              ) : (
-                <FileSpreadsheet size={40} className="text-[#9956DE]" />
-              )}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
+              onDragLeave={() => setDragOver1(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-2xl border-2 border-dashed border-border p-8 text-center transition-all cursor-pointer hover:border-[#9956DE]/60 hover:bg-[#9956DE]/8"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <div className="w-20 h-20 bg-[#9956DE]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                {uploadingClassRecords ? (
+                  <Skeleton className="h-10 w-10 rounded-2xl bg-[#9956DE]/32" />
+                ) : (
+                  <FileSpreadsheet size={40} className="text-[#9956DE]" />
+                )}
+              </div>
+              <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
+              <p className="text-muted-foreground mb-4">
+                {uploadingClassRecords ? (
+                  <span className="inline-flex flex-col items-center gap-2">
+                    <Skeleton className="h-4 w-44 bg-[#9956DE]/32" />
+                    <Skeleton className="h-4 w-36 bg-[#9956DE]/20" />
+                  </span>
+                ) : 'Upload student grades, attendance, and quiz scores'}
+              </p>
+              <p className="text-xs text-muted-foreground mb-4 flex items-center justify-center gap-2">
+                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
+                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
+                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
+                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
+              </p>
+              <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-bold px-6 py-3 rounded-xl w-full transition-colors">
+                Click or drag & drop
+              </Button>
             </div>
-            <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
-            <p className="text-muted-foreground mb-4">
-              {uploadingClassRecords ? (
-                <span className="inline-flex flex-col items-center gap-2">
-                  <Skeleton className="h-4 w-44 bg-[#9956DE]/32" />
-                  <Skeleton className="h-4 w-36 bg-[#9956DE]/20" />
-                </span>
-              ) : 'Upload student grades, attendance, and quiz scores'}
-            </p>
-            <p className="text-xs text-muted-foreground mb-4 flex items-center justify-center gap-2">
-                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
-                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
-                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
-            </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-bold px-6 py-3 rounded-xl w-full transition-colors">
-              Click or drag & drop
-            </Button>
           </div>
 
           {/* Course Materials */}
@@ -3171,49 +3308,31 @@ const ImportView: React.FC<{
             </Button>
           </div>
 
-          {/* Student Accounts Provisioning */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver3(true); }}
-            onDragLeave={() => setDragOver3(false)}
-            onDrop={handleAccountDrop}
-            onClick={() => accountInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#75D06A]/60 hover:bg-[#75D06A]/14 ${
-              dragOver3 ? 'border-[#75D06A] bg-[#75D06A]/14 scale-105' : 'border-border'
-            }`}
-          >
-            <input
-              ref={accountInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleAccountSelect}
-              className="hidden"
-            />
-            <div className="w-20 h-20 bg-[#75D06A]/22 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              {previewingAccounts ? (
-                <Skeleton className="h-10 w-10 rounded-2xl bg-emerald-200" />
-              ) : (
-                <Users size={40} className="text-[#75D06A]" />
-              )}
-            </div>
-            <h3 className="text-xl font-display font-bold text-foreground mb-2">Student Accounts</h3>
-            <p className="text-muted-foreground mb-4">
-              {previewingAccounts ? (
-                <span className="inline-flex flex-col items-center gap-2">
-                  <Skeleton className="h-4 w-52 bg-emerald-200" />
-                  <Skeleton className="h-4 w-44 bg-[#75D06A]/22" />
-                </span>
-              ) : 'Preview and securely provision student Auth + profile accounts'}
-            </p>
-            <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
-              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
-              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
-              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
-            </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#75D06A] hover:text-[#75D06A] font-bold px-6 py-3 rounded-xl w-full transition-colors">
-              Click or drag & drop
-            </Button>
-          </div>
         </div>
+
+        {shsExcelResult && (
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <h3 className="text-base font-display font-bold text-foreground mb-2">Workbook Preview Summary</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">School</p>
+                <p className="font-semibold text-foreground">{shsExcelResult.imported.schoolContext.schoolName || 'N/A'}</p>
+              </div>
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">Subject</p>
+                <p className="font-semibold text-foreground">{shsExcelResult.imported.schoolContext.subjectName || 'N/A'}</p>
+              </div>
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">Learners</p>
+                <p className="font-semibold text-foreground">{shsExcelResult.imported.learners.length}</p>
+              </div>
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">Confidence</p>
+                <p className="font-semibold text-foreground">{shsExcelResult.imported.validation.confidence.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Info Box */}
         <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-2xl p-6">
@@ -3302,170 +3421,6 @@ const ImportView: React.FC<{
             ) : (
               <p className="text-sm text-muted-foreground">No per-column interpretation data was returned for this upload.</p>
             )}
-          </div>
-        )}
-
-        {accountPreview && (
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border space-y-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-lg font-display font-bold text-foreground">Student Account Provisioning Preview</h3>
-                <p className="text-sm text-muted-foreground">
-                  Validate duplicates and section mappings before creating Auth and Firestore student accounts.
-                </p>
-              </div>
-              <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground font-medium">
-                Token: {accountPreview.previewToken ? `${accountPreview.previewToken.slice(0, 10)}...` : 'n/a'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
-                <p className="text-xs text-muted-foreground">Total Rows</p>
-                <p className="text-xl font-bold text-foreground">{accountPreview.summary.totalRows}</p>
-              </div>
-              <div className="bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-xl p-3">
-                <p className="text-xs text-[#4D9F46]">Valid</p>
-                <p className="text-xl font-bold text-[#4D9F46]">{accountPreview.summary.validRows}</p>
-              </div>
-              <div className="bg-[#F08386]/12 border border-[#F08386]/30 rounded-xl p-3">
-                <p className="text-xs text-[#C65E63]">Invalid</p>
-                <p className="text-xl font-bold text-[#C65E63]">{accountPreview.summary.invalidRows}</p>
-              </div>
-              <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3">
-                <p className="text-xs text-[#CC8A37]">Duplicates</p>
-                <p className="text-xl font-bold text-[#CC8A37]">{accountPreview.summary.duplicateRows}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">Default Temporary Password (optional)</label>
-                <Input
-                  value={provisionDefaultPassword}
-                  onChange={(event) => setProvisionDefaultPassword(event.target.value)}
-                  placeholder="Leave blank to auto-generate per account"
-                  className="h-10"
-                />
-              </div>
-              <Button
-                onClick={() => void handleCommitAccountProvisioning()}
-                disabled={committingAccounts || accountPreview.summary.validRows === 0}
-                className="bg-[#75D06A] hover:bg-[#5AB84E] text-white h-10"
-              >
-                {committingAccounts ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Commit Provisioning'}
-              </Button>
-            </div>
-
-            <div className="max-h-72 overflow-auto border border-border rounded-xl">
-              <table className="w-full text-sm">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Row</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Name</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Student ID</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Email</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Class Section</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accountPreview.rows.slice(0, 60).map((row) => (
-                    <tr key={`preview-row-${row.rowNumber}-${row.studentId}`} className="border-t border-border">
-                      <td className="px-3 py-2">{row.rowNumber}</td>
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-foreground">{row.fullName}</p>
-                        {row.issues.length > 0 && (
-                          <p className="text-[11px] text-[#C65E63]">{row.issues.slice(0, 2).join('; ')}</p>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-xs">{row.studentId || '-'}</td>
-                      <td className="px-3 py-2 text-xs">{row.email || '-'}</td>
-                      <td className="px-3 py-2 text-xs">{row.classSectionId || '-'}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          row.status === 'valid'
-                            ? 'bg-[#75D06A]/22 text-[#4D9F46]'
-                            : row.status === 'duplicate'
-                              ? 'bg-[#FFB356]/24 text-[#CC8A37]'
-                              : 'bg-[#F08386]/20 text-[#C65E63]'
-                        }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {accountPreview.warnings.length > 0 && (
-              <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3 text-xs text-[#A56D29]">
-                {accountPreview.warnings.slice(0, 5).join(' ')}
-              </div>
-            )}
-          </div>
-        )}
-
-        {accountCommitResult && (
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border space-y-3">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-lg font-display font-bold text-foreground">Provisioning Result</h3>
-                <p className="text-sm text-muted-foreground">
-                  Created: {accountCommitResult.summary.createdRows} | Updated: {accountCommitResult.summary.updatedRows} |
-                  Blocked: {accountCommitResult.summary.blockedRows} | Failed: {accountCommitResult.summary.failedRows}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => downloadProvisioningCsv(accountCommitResult)}
-                className="border-emerald-300 text-[#4D9F46]"
-              >
-                <Download size={14} className="mr-2" />
-                Download Credential CSV
-              </Button>
-            </div>
-
-            <div className="max-h-64 overflow-auto border border-border rounded-xl">
-              <table className="w-full text-sm">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Row</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Student</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accountCommitResult.rows.map((row) => (
-                    <tr key={`commit-row-${row.rowNumber}-${row.studentId}`} className="border-t border-border">
-                      <td className="px-3 py-2">{row.rowNumber}</td>
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-foreground">{row.fullName}</p>
-                        <p className="text-[11px] text-muted-foreground">{row.email}</p>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          row.status === 'created'
-                            ? 'bg-[#75D06A]/22 text-[#4D9F46]'
-                            : row.status === 'updated'
-                              ? 'bg-[#9956DE]/20 text-[#9956DE]'
-                              : row.status === 'blocked'
-                                ? 'bg-[#FFB356]/24 text-[#CC8A37]'
-                                : row.status === 'failed'
-                                  ? 'bg-[#F08386]/20 text-[#C65E63]'
-                                  : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{row.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         )}
 

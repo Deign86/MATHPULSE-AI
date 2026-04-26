@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { resolveCurriculumVersionSetId } from "../config/diagnosticPolicies";
+import { createRuntimeCacheKey, runtimeCache } from "../services/runtimeCache";
 
 const ALLOWED_SUBJECT_IDS = new Set(["gen-math", "stats-prob", "pre-calc", "basic-calc"]);
 const ALLOWED_DIFFICULTIES = new Set(["easy", "medium", "hard", "adaptive"]);
@@ -16,6 +17,7 @@ const ROOM_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const ROOM_EMPTY_GRACE_MS = 60 * 1000;
 const ROOM_TIMEOUT_SWEEP_CONCURRENCY = 12;
 const MAX_MATCHMAKING_PAIRS_PER_PASS = 20;
+const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
 const isEnvFlagEnabled = (raw: string | undefined, fallback = false): boolean => {
   if (typeof raw !== "string") return fallback;
@@ -47,6 +49,18 @@ const QUIZ_BATTLE_ALLOW_ADMIN_SHARED_MODE = isEnvFlagEnabled(
 const QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START = isEnvFlagEnabled(
   process.env.QUIZ_BATTLE_REQUIRE_AI_SOURCE_FOR_START,
   false,
+);
+const QUIZ_BATTLE_QUESTION_BANK_CACHE_TTL_MS = clampNumberEnv(
+  process.env.QUIZ_BATTLE_QUESTION_BANK_CACHE_TTL_MS,
+  45_000,
+  5_000,
+  300_000,
+);
+const QUIZ_BATTLE_PROFILE_CACHE_TTL_MS = clampNumberEnv(
+  process.env.QUIZ_BATTLE_PROFILE_CACHE_TTL_MS,
+  30_000,
+  5_000,
+  180_000,
 );
 
 function clampNumberEnv(raw: string | undefined, fallback: number, min: number, max: number): number {
@@ -148,6 +162,7 @@ interface QuizBattleMatchStateResponse {
   scoreAgainst: number;
   opponentName: string;
   roundDeadlineAtMs?: number;
+  expiresAtMs?: number;
   lifecycle?: MatchLifecycleStateResponse;
   currentQuestion: BattleQuestionPublic | null;
   roundResults: RoundResultRecord[];
@@ -196,6 +211,7 @@ interface ResumeSessionResponse {
     status: QueueStatus;
     queueType: "public_matchmaking" | "private_room";
     matchId?: string;
+    expiresAtMs?: number;
   };
   room?: PrivateRoomStateResponse;
   match?: QuizBattleMatchStateResponse;
@@ -2094,6 +2110,24 @@ const fetchQuestionBankPool = async (
   tx: FirebaseFirestore.Transaction | undefined,
   selector: QuestionPoolSelector,
 ): Promise<CanonicalBattleQuestion[]> => {
+  const useRuntimeCache = !tx;
+  const cacheKey = createRuntimeCacheKey(
+    "quiz-battle-question-bank",
+    QUIZ_BATTLE_QUESTION_BANK_COLLECTION,
+    selector.subjectId,
+    QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT,
+  );
+
+  if (useRuntimeCache) {
+    const cached = runtimeCache.get<CanonicalBattleQuestion[]>(cacheKey);
+    if (cached) {
+      return cached.map((entry) => ({
+        ...entry,
+        choices: [...entry.choices],
+      }));
+    }
+  }
+
   const baseQuery = db
     .collection(QUIZ_BATTLE_QUESTION_BANK_COLLECTION)
     .where("isActive", "==", true)
@@ -2101,9 +2135,15 @@ const fetchQuestionBankPool = async (
     .limit(QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT);
 
   const querySnap = tx ? await tx.get(baseQuery) : await baseQuery.get();
-  return querySnap.docs
+  const normalized = querySnap.docs
     .map((entry) => normalizeCanonicalBattleQuestion(entry.id, entry.data() as Record<string, unknown>))
     .filter((entry): entry is CanonicalBattleQuestion => entry !== null);
+
+  if (useRuntimeCache) {
+    runtimeCache.set(cacheKey, normalized, QUIZ_BATTLE_QUESTION_BANK_CACHE_TTL_MS);
+  }
+
+  return normalized;
 };
 
 const selectQuestionSet = async (params: {
@@ -2362,6 +2402,7 @@ const mapMatchStateForStudent = (
 
   const lifecycle = mapLifecycleState(data.lifecycle);
   const roundDeadlineAtMs = status === "in_progress" ? getRoundDeadlineAtMs(data) : 0;
+  const expiresAtMs = isPublicMatchmakingReadyMatch(data) ? getPublicMatchmakingDeadlineMs(data) : 0;
 
   const baseState: QuizBattleMatchStateResponse = {
     matchId,
@@ -2379,6 +2420,7 @@ const mapMatchStateForStudent = (
     scoreAgainst,
     opponentName,
     roundDeadlineAtMs: roundDeadlineAtMs > 0 ? roundDeadlineAtMs : undefined,
+    expiresAtMs: expiresAtMs > 0 ? expiresAtMs : undefined,
     lifecycle,
     currentQuestion,
     roundResults,
@@ -2474,9 +2516,17 @@ const loadUserBattleProfile = async (
   db: FirebaseFirestore.Firestore,
   uid: string,
 ): Promise<BattlePlayerEligibility> => {
+  const cacheKey = createRuntimeCacheKey("quiz-battle-profile", uid);
+  const cachedProfile = runtimeCache.get<BattlePlayerEligibility>(cacheKey);
+  if (cachedProfile) {
+    return { ...cachedProfile };
+  }
+
   const userSnap = await db.collection("users").doc(uid).get();
   const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
-  return mapUserDataToEligibility(uid, userData);
+  const profile = mapUserDataToEligibility(uid, userData);
+  runtimeCache.set(cacheKey, profile, QUIZ_BATTLE_PROFILE_CACHE_TTL_MS);
+  return profile;
 };
 
 const createOnlineMatchInTransaction = async (
@@ -2529,6 +2579,10 @@ const createOnlineMatchInTransaction = async (
     scoreB: 0,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    readyAt: admin.firestore.FieldValue.serverTimestamp(),
+    ...(source === "public_matchmaking"
+      ? { expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + PUBLIC_MATCHMAKING_TIMEOUT_MS) }
+      : {}),
     startedAt: null,
     endedAt: null,
     metadata: {
@@ -3320,6 +3374,92 @@ const queueCompatibilityKey = (queueData: Record<string, unknown>): string => {
   ].join("|");
 };
 
+const getPublicMatchmakingDeadlineMs = (data: Record<string, unknown>): number => {
+  const explicitDeadline = Math.floor(asNumber(data.expiresAt, 0));
+  if (explicitDeadline > 0) {
+    return explicitDeadline;
+  }
+
+  const readyAtMs = asTimestampMillis(data.readyAt, 0);
+  if (readyAtMs > 0) {
+    return readyAtMs + PUBLIC_MATCHMAKING_TIMEOUT_MS;
+  }
+
+  const joinedAtMs = asTimestampMillis(data.joinedAt, 0);
+  if (joinedAtMs > 0) {
+    return joinedAtMs + PUBLIC_MATCHMAKING_TIMEOUT_MS;
+  }
+
+  const createdAtMs = asTimestampMillis(data.createdAt, 0);
+  if (createdAtMs > 0) {
+    return createdAtMs + PUBLIC_MATCHMAKING_TIMEOUT_MS;
+  }
+
+  return 0;
+};
+
+const isPublicMatchmakingReadyMatch = (matchData: Record<string, unknown>): boolean => {
+  const status = asString(matchData.status, "ready");
+  if (status !== "ready") {
+    return false;
+  }
+
+  const mode = asString(matchData.mode, "online");
+  if (mode !== "online") {
+    return false;
+  }
+
+  const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+  return asString(metadata.source, "") === "public_matchmaking";
+};
+
+const isExpiredPublicMatchmakingSession = (data: Record<string, unknown>): boolean => {
+  const deadlineMs = getPublicMatchmakingDeadlineMs(data);
+  return deadlineMs > 0 && Date.now() > deadlineMs;
+};
+
+const cancelExpiredPublicMatchIfNeeded = async (
+  db: FirebaseFirestore.Firestore,
+  matchRef: FirebaseFirestore.DocumentReference,
+): Promise<boolean> => {
+  let expired = false;
+
+  await db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) {
+      return;
+    }
+
+    const matchData = matchSnap.data() as Record<string, unknown>;
+    if (!isPublicMatchmakingReadyMatch(matchData) || !isExpiredPublicMatchmakingSession(matchData)) {
+      return;
+    }
+
+    const playerAId = asString(matchData.playerAId);
+    const playerBId = asString(matchData.playerBId);
+
+    tx.update(matchRef, {
+      status: "cancelled" as MatchStatus,
+      endedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      cancellationReason: "public_match_timeout",
+      expiresAt: admin.firestore.FieldValue.delete(),
+    });
+
+    if (playerAId) {
+      tx.delete(db.collection("quizBattleQueue").doc(playerAId));
+    }
+
+    if (playerBId) {
+      tx.delete(db.collection("quizBattleQueue").doc(playerBId));
+    }
+
+    expired = true;
+  });
+
+  return expired;
+};
+
 const writePresenceHeartbeat = async (
   studentId: string,
   scope: HeartbeatScope,
@@ -3339,8 +3479,9 @@ const writePresenceHeartbeat = async (
 const resolvePublicMatchmakingPass = async (
   db: FirebaseFirestore.Firestore,
   maxPairs = MAX_MATCHMAKING_PAIRS_PER_PASS,
-): Promise<{ paired: number; staleRemoved: number }> => {
+): Promise<{ paired: number; staleRemoved: number; readyMatchesExpired: number }> => {
   const queueSnap = await db.collection("quizBattleQueue").limit(300).get();
+  const readyMatchSnap = await db.collection("quizBattleMatches").where("status", "==", "ready").limit(300).get();
   const now = Date.now();
   const staleRefs: FirebaseFirestore.DocumentReference[] = [];
   const candidatesByKey = new Map<string, FirebaseFirestore.QueryDocumentSnapshot[]>();
@@ -3356,9 +3497,10 @@ const resolvePublicMatchmakingPass = async (
       : "grade_strict";
     const heartbeatMs = asTimestampMillis(data.heartbeatAt, 0);
     const updatedMs = asTimestampMillis(data.updatedAt, 0);
+    const deadlineMs = getPublicMatchmakingDeadlineMs(data);
 
     if (status === "searching") {
-      if (heartbeatMs > 0 && now - heartbeatMs > QUEUE_HEARTBEAT_STALE_MS) {
+      if ((heartbeatMs > 0 && now - heartbeatMs > QUEUE_HEARTBEAT_STALE_MS) || (deadlineMs > 0 && now > deadlineMs)) {
         staleRefs.push(entry.ref);
         return;
       }
@@ -3385,7 +3527,10 @@ const resolvePublicMatchmakingPass = async (
       return;
     }
 
-    if (status === "matched" && updatedMs > 0 && now - updatedMs > QUEUE_MATCHED_TTL_MS) {
+    if (
+      status === "matched" &&
+      ((updatedMs > 0 && now - updatedMs > QUEUE_MATCHED_TTL_MS) || (deadlineMs > 0 && now > deadlineMs))
+    ) {
       staleRefs.push(entry.ref);
     }
   });
@@ -3401,6 +3546,13 @@ const resolvePublicMatchmakingPass = async (
     deduped.forEach((ref) => batch.delete(ref));
     await batch.commit();
     staleRemoved = deduped.size;
+  }
+
+  let readyMatchesExpired = 0;
+  for (const matchRef of readyMatchSnap.docs.map((entry) => entry.ref)) {
+    if (await cancelExpiredPublicMatchIfNeeded(db, matchRef)) {
+      readyMatchesExpired += 1;
+    }
   }
 
   let paired = 0;
@@ -3470,7 +3622,7 @@ const resolvePublicMatchmakingPass = async (
     }
   }
 
-  return { paired, staleRemoved };
+  return { paired, staleRemoved, readyMatchesExpired };
 };
 
 const resolvePrivateRoomTimeoutPass = async (
@@ -3931,6 +4083,7 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
       joinedAt: admin.firestore.FieldValue.serverTimestamp(),
       heartbeatAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + PUBLIC_MATCHMAKING_TIMEOUT_MS),
     },
     { merge: true },
   );
@@ -3946,6 +4099,7 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
     status: status === "matched" ? "matched" : "queued",
     queueEntryId: studentId,
     matchId: asString(refreshedData.matchId, "") || undefined,
+    expiresAtMs: getPublicMatchmakingDeadlineMs(refreshedData) || undefined,
   };
 });
 
@@ -4452,6 +4606,14 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     }
   }
 
+  if (isPublicMatchmakingReadyMatch(postGenerationData) && isExpiredPublicMatchmakingSession(postGenerationData)) {
+    await cancelExpiredPublicMatchIfNeeded(db, matchRef);
+    const refreshedExpiredSnap = await matchRef.get();
+    if (refreshedExpiredSnap.exists) {
+      return mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as Record<string, unknown>);
+    }
+  }
+
   let nonAiSourceDetectedInTransaction = false;
 
   try {
@@ -4476,6 +4638,17 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
       }
 
       if (status === "in_progress") {
+        return;
+      }
+
+      if (isPublicMatchmakingReadyMatch(matchData) && isExpiredPublicMatchmakingSession(matchData)) {
+        tx.update(matchRef, {
+          status: "cancelled" as MatchStatus,
+          endedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          cancellationReason: "public_match_timeout",
+          expiresAt: admin.firestore.FieldValue.delete(),
+        });
         return;
       }
 
@@ -4600,6 +4773,17 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
 
   if (studentId !== participantA && studentId !== participantB) {
     throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
+  }
+
+  if (isPublicMatchmakingReadyMatch(matchData) && isExpiredPublicMatchmakingSession(matchData)) {
+    await cancelExpiredPublicMatchIfNeeded(db, matchRef);
+    const refreshedExpiredSnap = await matchRef.get();
+    if (refreshedExpiredSnap.exists) {
+      return {
+        success: true,
+        match: mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as Record<string, unknown>),
+      };
+    }
   }
 
   return {
@@ -5210,6 +5394,9 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     }))
     .filter((entry) => {
       const status = asString(entry.data.status, "ready");
+      if (status === "ready" && isPublicMatchmakingReadyMatch(entry.data) && isExpiredPublicMatchmakingSession(entry.data)) {
+        return false;
+      }
       return status === "ready" || status === "in_progress";
     })
     .sort((a, b) => b.updatedMs - a.updatedMs);
@@ -5243,6 +5430,11 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
+      const matchData = matchSnap.data() as Record<string, unknown>;
+      if (isPublicMatchmakingReadyMatch(matchData) && isExpiredPublicMatchmakingSession(matchData)) {
+        return { success: true, sessionType: "idle" };
+      }
+
       return {
         success: true,
         sessionType: "match",
@@ -5250,6 +5442,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
           status: "matched",
           queueType: "public_matchmaking",
           matchId: queueMatchId,
+          expiresAtMs: getPublicMatchmakingDeadlineMs(queueData),
         },
         match: mapMatchStateForStudent(queueMatchId, studentId, matchSnap.data() as Record<string, unknown>),
       };
@@ -5305,14 +5498,45 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
   }
 
   if (queueData && queueStatus === "searching") {
-    return {
-      success: true,
-      sessionType: "queue",
-      queue: {
-        status: "searching",
-        queueType: "public_matchmaking",
-      },
-    };
+    await resolvePublicMatchmakingPass(db, 1);
+    const refreshedQueueSnap = await queueRef.get();
+    if (refreshedQueueSnap.exists) {
+      const refreshedQueueData = refreshedQueueSnap.data() as Record<string, unknown>;
+      const refreshedStatus = asString(refreshedQueueData.status, "searching");
+      const refreshedMatchId = asString(refreshedQueueData.matchId, "");
+      if (refreshedStatus === "matched" && refreshedMatchId) {
+        const matchRef = db.collection("quizBattleMatches").doc(refreshedMatchId);
+        await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
+        const matchSnap = await matchRef.get();
+        if (matchSnap.exists) {
+          return {
+            success: true,
+            sessionType: "match",
+            queue: {
+              status: "matched",
+              queueType: "public_matchmaking",
+              matchId: refreshedMatchId,
+              expiresAtMs: getPublicMatchmakingDeadlineMs(refreshedQueueData),
+            },
+            match: mapMatchStateForStudent(refreshedMatchId, studentId, matchSnap.data() as Record<string, unknown>),
+          };
+        }
+      }
+
+      if (refreshedStatus === "searching") {
+        return {
+          success: true,
+          sessionType: "queue",
+          queue: {
+            status: "searching",
+            queueType: "public_matchmaking",
+            expiresAtMs: getPublicMatchmakingDeadlineMs(refreshedQueueData),
+          },
+        };
+      }
+    }
+
+    return { success: true, sessionType: "idle" };
   }
 
   return {
@@ -5348,4 +5572,7 @@ export const __quizBattleTestUtils = {
   generateAiQuestionSet,
   classifyGenerationError,
   QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE,
+  getPublicMatchmakingDeadlineMs,
+  isPublicMatchmakingReadyMatch,
+  isExpiredPublicMatchmakingSession,
 };
