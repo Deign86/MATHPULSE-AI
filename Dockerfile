@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 COPY scripts/ingest_curriculum.py /app/scripts/ingest_curriculum.py
 COPY scripts/startup.sh /app/scripts/startup.sh
-COPY datasets/curriculum/ /app/datasets/curriculum/
 
 EXPOSE 8000
 
