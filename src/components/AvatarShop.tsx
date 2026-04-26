@@ -26,7 +26,7 @@ const ENCOURAGEMENT_PHRASES = [
 ];
 
 const DEFAULT_TOP_ITEM_ID = 'top_blue';
-const AVATAR_INVENTORY_CACHE_KEY = 'mathpulse:avatar-inventory:v1';
+const AVATAR_INVENTORY_CACHE_KEY = 'mathpulse:avatar-inventory:v2';
 const AVATAR_INVENTORY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 type AvatarInventoryItem = (typeof MOCK_INVENTORY)[number];
@@ -128,8 +128,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   const handleEquip = (category: keyof AvatarLayers, id: string) => {
     const item = inventoryItems.find(i => i.id === id);
-    if (item && item.price && item.price > 0 && !ownedItems.includes(id)) {
-      toast.error('This item is locked. Purchase it first!');
+    if (item && ((item.price && item.price > 0) || item.isReward) && !ownedItems.includes(id)) {
+      toast.error('This item is locked. Earn or purchase it first!');
       return;
     }
 
@@ -364,7 +364,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                         {categoryItems.map(item => {
                           const isEquipped = equipped[cat.id as keyof typeof equipped] === item.id;
                       const isOwned = ownedItems.includes(item.id);
-                      const isLocked = Boolean(item.price && item.price > 0 && !isOwned);
+                      const isLocked = Boolean(((item.price && item.price > 0) || item.isReward) && !isOwned);
 
                       return (
                         <div key={item.id} className="flex flex-col gap-1.5">
@@ -402,24 +402,30 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                           <p className="text-xs font-bold text-slate-700 text-center line-clamp-2">{item.name}</p>
                           
                           {isLocked && (
-                            <motion.button
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              onClick={(e) => handlePurchaseItem(e, item.id, item.price || 0)}
-                              disabled={purchasingItemId === item.id}
-                              className="w-full py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm transition-all disabled:opacity-70"
-                            >
-                              {purchasingItemId === item.id ? (
-                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                                  <ShoppingBag size={11} />
-                                </motion.div>
-                              ) : (
-                                <>
-                                  <ShoppingBag size={11} />
-                                  {item.price} XP
-                                </>
-                              )}
-                            </motion.button>
+                            item.isReward ? (
+                              <div className="w-full py-1 bg-slate-200 text-slate-500 text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm border border-slate-300">
+                                <Lock size={11} /> Exclusive Reward
+                              </div>
+                            ) : (
+                              <motion.button
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                onClick={(e) => handlePurchaseItem(e, item.id, item.price || 0)}
+                                disabled={purchasingItemId === item.id}
+                                className="w-full py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm transition-all disabled:opacity-70"
+                              >
+                                {purchasingItemId === item.id ? (
+                                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                                    <ShoppingBag size={11} />
+                                  </motion.div>
+                                ) : (
+                                  <>
+                                    <ShoppingBag size={11} />
+                                    {item.price} XP
+                                  </>
+                                )}
+                              </motion.button>
+                            )
                           )}
                         </div>
                       );
