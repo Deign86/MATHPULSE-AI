@@ -682,7 +682,7 @@ const App = () => {
     name: userProfile.name,
     email: userProfile.email,
     phone: userProfile.phone || '',
-    photo: userProfile.photo || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
+    photo: userProfile.photo || '',
     avatarLayers: userProfile.avatarLayers,
     role: userProfile.role,
     ...(userRole === 'student' && studentProfile ? {
@@ -700,7 +700,7 @@ const App = () => {
     name: 'User',
     email: '',
     phone: '',
-    photo: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop',
+    photo: '',
     avatarLayers: undefined,
     role: userRole,
   };
@@ -1099,6 +1099,7 @@ const App = () => {
                         {dashboardShellDeferredReady ? (
                           <Suspense fallback={dashboardPanelFallback}>
                             <RightSidebar 
+                              currentUserId={userProfile?.uid || ''}
                               onOpenRewards={() => setShowRewardsModal(true)}
                               onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                               onNavigateToModules={() => setActiveTab('Modules')}
@@ -1110,7 +1111,6 @@ const App = () => {
                               overallXP={currentXP}
                               streak={streak}
                               streakHistory={studentProfile?.streakHistory || []}
-                              userPhoto={profileData.photo}
                               userName={firstName}
                             />
                           </Suspense>

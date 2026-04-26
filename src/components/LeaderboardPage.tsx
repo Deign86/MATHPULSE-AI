@@ -49,8 +49,6 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
   const [students, setStudents] = useState<LeaderboardStudent[]>([]);
   const myClassSection = [studentProfile?.grade, studentProfile?.section].filter(Boolean).join(' - ');
 
-  const avatars = ['', '', '', '', '', '', '', ''];
-
   // Load leaderboard data from Firebase
   const loadLeaderboard = useCallback(async () => {
     if (!currentUser) {
@@ -78,8 +76,8 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
         name: entry.name,
         avatar:
           entry.userId === currentUser.uid
-            ? (currentUserPhoto || entry.photo || avatars[index % avatars.length])
-            : (entry.photo || avatars[index % avatars.length]),
+            ? (currentUserPhoto || entry.photo || '')
+            : (entry.photo || ''),
         level: entry.level,
         totalXP: entry.xp,
         currentStreak: 0,
@@ -121,27 +119,18 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
       return (a.rank[rankKey] || 999) - (b.rank[rankKey] || 999);
     });
 
-    // Fallback: Pad array to ensure we always have 3 for the podium layout
-    while (sorted.length > 0 && sorted.length < 3) {
-      const mockRank = sorted.length + 1;
-      sorted.push({
-        id: `mock-${mockRank}`, uid: `mock-${mockRank}`, name: `Student ${mockRank}`,
-        avatar: '', level: 1, totalXP: 0, currentStreak: 0, section: myClassSection || '',
-        rank: { global: mockRank, section: mockRank, change: 0 }, stats: { quizzesCompleted: 0, averageScore: 0, modulesCompleted: 0, studyHours: 0 },
-        isOnline: false, isYou: false
-      });
-    }
-
     return sorted;
   };
 
   const filteredStudents = getFilteredStudents();
 
-  const yourRank = filteredStudents.find(s => s.isYou)?.rank.section || 4;
-  const percentile = Math.max(10, Math.min(99, 100 - (yourRank / Math.max(1, filteredStudents.length)) * 100));
+  const yourRank = filteredStudents.find(s => s.isYou)?.rank.section || (filteredStudents.length + 1);
+  const percentile = filteredStudents.length > 1
+    ? Math.max(10, Math.min(99, 100 - (yourRank / Math.max(1, filteredStudents.length)) * 100))
+    : 90;
 
-  const topThree = filteredStudents.length >= 3 ? filteredStudents.slice(0, 3) : [];
-  const restOfList = filteredStudents.length >= 3 ? filteredStudents.slice(3) : [];
+  const topThree = filteredStudents.slice(0, 3);
+  const restOfList = filteredStudents.slice(3);
 
   const renderAvatar = (avatar: string | undefined, size: number) => {
     if (!avatar) return <User size={size} className="text-slate-400 opacity-70" />;

@@ -1,10 +1,13 @@
-import React from 'react';
-import { ChevronRight, Trophy, Flame, Star, Crown } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { ChevronRight, Trophy, Flame, Star, Crown, Loader2, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import DailyChallengeWidget from './DailyChallengeWidget';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { subscribeToLeaderboard } from '../services/gamificationService';
+import type { LeaderboardEntry } from '../types/models';
 
 interface RightSidebarProps {
+  currentUserId: string;
   onOpenRewards: () => void;
   onOpenLeaderboard?: () => void;
   onNavigateToModules?: () => void;
@@ -22,7 +25,74 @@ interface RightSidebarProps {
   userRole?: string;
 }
 
+const formatXP = (xp: number): string => {
+  if (xp >= 1000) {
+    const k = xp / 1000;
+    return k >= 10 ? `${Math.round(k)}k` : `${k.toFixed(1)}k`;
+  }
+  return `${xp}`;
+};
+
+const PodiumAvatar: React.FC<{
+  entry?: LeaderboardEntry;
+  rank: number;
+  isYou: boolean;
+  userPhoto?: string;
+  rankColor: { bg: string; border: string; badge: string; shadow: string };
+}> = ({ entry, rank, isYou, userPhoto, rankColor }) => {
+  const photoSrc = isYou ? (userPhoto || entry?.photo) : entry?.photo;
+  const name = isYou ? 'You' : (entry?.name || '---');
+  const xp = entry?.xp || 0;
+
+  return (
+    <>
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3 + rank * 0.1 }}
+        className="relative mb-2"
+      >
+        {rank === 1 && (
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+            <Crown size={22} className="text-amber-400 drop-shadow-md mb-1" fill="#fbbf24" strokeWidth={1.5} />
+          </div>
+        )}
+        <div
+          className={`w-10 h-10 rounded-full border-[3px] ${rank === 1 ? 'w-[52px] h-[52px]' : ''} ${rankColor.border} z-10 relative overflow-hidden ${rankColor.shadow} bg-white`}
+        >
+          {photoSrc ? (
+            <img
+              src={photoSrc}
+              alt={name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+              <User size={rank === 1 ? 22 : 16} className="text-slate-400" />
+            </div>
+          )}
+        </div>
+        <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 ${rankColor.badge} text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm`}>
+          {rank}
+        </div>
+      </motion.div>
+      <div className="mt-2 text-center">
+        <span className={`block ${rank === 1 ? 'text-[13px] font-black' : 'text-[12px] font-bold'} text-[#0a1628] truncate max-w-[80px]`}>
+          {name}
+        </span>
+        <span className={`block ${rank === 1 ? 'text-[11px]' : 'text-[10px]'} ${rankColor.badge.replace('bg-', 'text-').replace('-500', '-600').replace('-400', '-600').replace('amber', 'amber')} font-bold`}>
+          {formatXP(xp)} XP
+        </span>
+      </div>
+    </>
+  );
+};
+
 const RightSidebar: React.FC<RightSidebarProps> = ({
+  currentUserId,
   onOpenRewards,
   onOpenLeaderboard,
   onNavigateToModules,
@@ -35,10 +105,93 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   streakHistory = [],
 }) => {
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [lbLoading, setLbLoading] = useState(true);
+  const [lbError, setLbError] = useState<string | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setLbLoading(false);
+      return;
+    }
+
+    setLbLoading(true);
+    setLbError(null);
+
+    const unsubscribe = subscribeToLeaderboard(
+      (entries) => {
+        setLeaderboard(entries);
+        setLbLoading(false);
+        setLbError(null);
+      },
+      currentUserId,
+      false,
+      'all',
+      3,
+    );
+
+    unsubscribeRef.current = unsubscribe;
+
+    const timeout = setTimeout(() => {
+      if (setLbLoading) {
+        setLbLoading(false);
+        setLbError('Leaderboard data unavailable');
+      }
+    }, 12000);
+
+    return () => {
+      clearTimeout(timeout);
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [currentUserId]);
+
+  const topThree = leaderboard.slice(0, 3);
+  const userInTopThree = topThree.some((e) => e.userId === currentUserId);
+
+  const podiumColors = [
+    { bg: 'from-amber-100 to-amber-50', border: 'border-amber-400', badge: 'bg-amber-500', shadow: 'shadow-md' },
+    { bg: 'from-slate-200 to-slate-100', border: 'border-sky-400', badge: 'bg-sky-500', shadow: 'shadow-sm' },
+    { bg: 'from-orange-50 to-slate-50', border: 'border-orange-400', badge: 'bg-orange-500', shadow: 'shadow-sm' },
+  ];
+
+  const podiumHeights = ['74px', '54px', '38px'];
+  const podiumWidths = ['w-[78px]', 'w-[70px]', 'w-[70px]'];
+
+  const renderPodiumEntry = (
+    entry: LeaderboardEntry | undefined,
+    rankIndex: number,
+    rankDisplay: number,
+    label: string,
+    colorIdx: number,
+  ) => (
+    <div className="flex flex-col items-center relative z-10">
+      <PodiumAvatar
+        entry={entry}
+        rank={rankDisplay}
+        isYou={label === 'You'}
+        userPhoto={userPhoto}
+        rankColor={podiumColors[colorIdx]}
+      />
+      <motion.div
+        initial={{ height: 0 }}
+        animate={{ height: podiumHeights[rankIndex] }}
+        transition={{ delay: 0.2 + rankIndex * 0.1, duration: 0.5, ease: 'easeOut' }}
+        className={`${podiumWidths[rankIndex]} bg-gradient-to-b ${podiumColors[colorIdx].bg} rounded-t-xl rounded-b-md border-t-2 border-white/20 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.05)]`}
+      >
+        <span className={`${colorIdx === 0 ? 'text-amber-400 text-3xl' : 'text-slate-400 text-2xl'} font-black opacity-40 translate-y-1`}>
+          {rankDisplay}
+        </span>
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl" />
+      </motion.div>
+    </div>
+  );
 
   return (
     <div className="space-y-2.5">
-      {/* Compact Rewards Card — clickable, leads to full rewards modal */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -59,7 +212,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             <ChevronRight size={14} className="shrink-0 text-white/80 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
           </div>
 
-          {/* Compact inline stats */}
           <div className="flex items-center justify-between gap-1 mb-3 bg-white/10 p-1.5 rounded-xl border border-white/20 backdrop-blur-sm">
             <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
               <Crown size={12} className="text-[#FFB356]" />
@@ -90,7 +242,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             </div>
           </div>
 
-          {/* Progress to next level */}
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <span className="text-[11px] font-body text-white/90">Next: Level {userLevel + 1}</span>
@@ -108,7 +259,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         </div>
       </motion.div>
 
-      {/* Daily Challenge & Streak Calendar Widget */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -117,7 +267,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         <DailyChallengeWidget streakHistory={streakHistory} onNavigateToQuizBattle={onNavigateToQuizBattle} userPhoto={userPhoto} />
       </motion.div>
 
-      {/* Leaderboard Preview with Miniature Stage */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -135,78 +284,26 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
           <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 group-hover:text-amber-500 transition-transform" />
         </div>
 
-        {/* Miniature Stage Podium */}
         <div className="pt-8 pb-3 px-2 bg-gradient-to-b from-slate-50/30 to-white flex items-end justify-center gap-1.5 min-h-[170px]">
-
-          {/* Rank 2 (Left) */}
-          <div className="flex flex-col items-center relative z-10">
-            <motion.div
-              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
-              className="relative mb-2"
-            >
-              <img src="https://i.pravatar.cc/150?img=33" alt="You" className="w-10 h-10 rounded-full border-[3px] border-sky-400 z-10 relative object-cover shadow-sm bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">2</div>
-            </motion.div>
-            <motion.div
-              initial={{ height: 0 }} animate={{ height: '54px' }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
-              className="w-[70px] bg-gradient-to-b from-slate-200 to-slate-100 rounded-t-xl rounded-b-md border-t-2 border-slate-50 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(0,0,0,0.05),0_4px_6px_rgba(0,0,0,0.05)]"
-            >
-              <span className="text-slate-400 font-black text-2xl opacity-40 translate-y-1">2</span>
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[12px] font-bold text-[#0a1628]">You</span>
-              <span className="block text-[10px] text-sky-600 font-bold">2.1k XP</span>
+          {lbLoading ? (
+            <div className="flex flex-col items-center justify-center h-full py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-amber-400 mb-2" />
+              <span className="text-xs text-slate-400">Loading rankings...</span>
             </div>
-          </div>
-
-          {/* Rank 1 (Center) */}
-          <div className="flex flex-col items-center relative z-20 -mx-2">
-            <motion.div
-              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
-              className="relative mb-2"
-            >
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                <Crown size={22} className="text-amber-400 drop-shadow-md mb-1" fill="#fbbf24" strokeWidth={1.5} />
-              </div>
-              <img src="https://i.pravatar.cc/150?img=68" alt="Alex" className="w-[52px] h-[52px] rounded-full border-[3px] border-amber-400 z-10 relative object-cover shadow-md bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">1</div>
-            </motion.div>
-            <motion.div
-              initial={{ height: 0 }} animate={{ height: '74px' }} transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-              className="w-[78px] bg-gradient-to-b from-amber-100 to-amber-50 rounded-t-xl rounded-b-md border-t-2 border-amber-50 flex items-center justify-center relative shadow-[inset_0_-4px_8px_rgba(251,191,36,0.1),0_6px_8px_rgba(0,0,0,0.05)]"
-            >
-              <span className="text-amber-400 font-black text-3xl opacity-50 translate-y-1">1</span>
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/80 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[13px] font-black text-[#0a1628]">Alex M.</span>
-              <span className="block text-[11px] text-amber-600 font-bold">2.4k XP</span>
+          ) : lbError || topThree.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-8">
+              <User className="w-8 h-8 text-slate-300 mb-2" />
+              <span className="text-xs text-slate-400 text-center">
+                {lbError || 'No rankings available yet'}
+              </span>
             </div>
-          </div>
-
-          {/* Rank 3 (Right) */}
-          <div className="flex flex-col items-center relative z-10">
-            <motion.div
-              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }}
-              className="relative mb-2"
-            >
-              <img src="https://i.pravatar.cc/150?img=47" alt="Sarah" className="w-10 h-10 rounded-full border-[3px] border-orange-400 z-10 relative object-cover shadow-sm bg-white" />
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-sm">3</div>
-            </motion.div>
-            <motion.div
-              initial={{ height: 0 }} animate={{ height: '38px' }} transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
-              className="w-[70px] bg-gradient-to-b from-orange-50 to-slate-50 rounded-t-xl rounded-b-md border-t-2 border-orange-100 flex items-center justify-center relative shadow-[inset_0_-4px_6px_rgba(249,115,22,0.05),0_4px_6px_rgba(0,0,0,0.02)]"
-            >
-              <span className="text-orange-400/60 font-black text-2xl opacity-60 translate-y-1">3</span>
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/70 rounded-t-xl"></div>
-            </motion.div>
-            <div className="mt-2 text-center">
-              <span className="block text-[12px] font-bold text-[#0a1628]">Sarah K.</span>
-              <span className="block text-[10px] text-orange-600 font-bold">1.9k XP</span>
-            </div>
-          </div>
-
+          ) : (
+            <>
+              {renderPodiumEntry(topThree[1], 1, 2, topThree[1]?.name || '---', 1)}
+              {renderPodiumEntry(topThree[0], 0, 1, topThree[0]?.name || '---', 0)}
+              {renderPodiumEntry(topThree[2], 2, 3, topThree[2]?.name || '---', 2)}
+            </>
+          )}
         </div>
       </motion.div>
 
