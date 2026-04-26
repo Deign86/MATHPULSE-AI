@@ -420,3 +420,60 @@ Scope decision (confirmed): Quiz Battle UI first, frontend-only, no backend/rule
 2. This pass intentionally avoids introducing new score payload fields (`pointsAwarded`, `streakMultiplierApplied`, etc.) until backend scoring contract work is scheduled.
 
 3. When backend scoring payloads are available, this UI can be switched from visual heuristics to server-returned per-round breakdown without structural redesign.
+
+---
+
+## 12) Frontend-Only Implementation Log (2026-04-26)
+
+### 12.1 Scope
+
+1v1 online mode bug fixes and UX polish pass. No backend or Firestore schema changes.
+
+### 12.2 Files Updated
+
+- `src/components/QuizBattlePage.tsx`
+- `current_xp_system.md`
+- `docs/xp-scoring-backend-contract.md` (new file)
+
+### 12.3 Bug Fixes
+
+**1. Popup spam bug (stale closure)**
+- Root cause: The polling `useEffect` captured `lastRoundResult` as `null` in a stale closure because it was not in the dependency array. Every 3-second poll incorrectly detected a "new" round result and re-triggered the popup overlay.
+- Fix: Replaced state-based check with `popupShownForRoundRef` (a `useRef`). Refs are always current regardless of closures. Both the polling path and the `submitRoundAnswer` path now write to this ref before triggering the popup, ensuring each round fires exactly one popup.
+
+**2. "Waiting for opponent" did not actually block input**
+- Root cause: The choice button `disabled` prop only checked `isSubmitting || designPauseActive`. `roundLocked` state was set but never wired to the `disabled` attribute.
+- Fix: Added `roundLocked` to the `disabled` prop. Also improved the waiting indicator UI with a sub-label "Choices locked until round resolves".
+
+**3. First-answering player never received the round result popup**
+- Root cause: The polling detection used `r.roundNumber === activeMatch.currentRound` where `activeMatch` is a stale closure value. When the server advances `currentRound` after the opponent answers, the stale closure value may no longer match the round in `roundResults`.
+- Fix: Removed the `currentRound` equality check entirely. Now uses only `r.roundNumber > popupShownForRoundRef.current` with a `.sort()` to show the oldest unshown result first. This is closure-safe and handles all timing edge cases.
+
+**4. Chosen answer highlight disappears while waiting for opponent**
+- Root cause: When `submitRoundAnswer` returns without a `roundResult` (player answered first), the code called `setSelectedOptionIndex(null)` unconditionally, wiping the visual selection before entering `roundLocked`.
+- Fix: Moved `setSelectedOptionIndex(null)` inside the non-online `else` branch. In online mode, `selectedOptionIndex` is preserved until the round fully resolves via the `pendingMatchUpdate` timeout (1.5s after popup). The chosen option now stays highlighted with the indigo color throughout the waiting period.
+
+**5. Opponent avatar not shown on choice buttons in online mode**
+- Root cause: Avatar-on-choice logic was hardcoded to `botSelectedIndex` for bot mode only. Online mode uses the same `botSelectedIndex` field to carry the opponent's selected choice, but the rendering code never read it for online.
+- Fix: Unified into `opponentPickedIdx` that branches on `activeMatch.mode`. Bot mode derives from `botCorrect`. Online mode reads `botSelectedIndex` directly. Opponent icon renders as `<Users>` for human opponents instead of `<Bot>`.
+
+**6. Opponent surrender / disconnect not handled**
+- Root cause: No frontend detection of `status === 'cancelled'` transition mid-match.
+- Fix: Added `opponentSurrendered` state. Polling now checks if `latest.status === 'cancelled'` while `activeMatch.status === 'in_progress'`. If so, triggers a surrender notification modal with a speech bubble from the opponent avatar ("I give up! 🏳️") and two actions: Claim Victory / Start New Match.
+
+### 12.4 XP System Clarifications
+
+- Separated the in-game "Battle Score" (frontend-computed per-round accumulation) from the "Match Reward" (server-authoritative Win/Draw/Loss XP).
+- Match summary now shows both separately with clear labels.
+- In-game header counter re-labeled from "XP" to "Battle Score" to avoid confusion.
+- Full backend scoring contract written to `docs/xp-scoring-backend-contract.md`.
+
+### 12.5 Known Remaining Gaps (Online Mode)
+
+| Gap | Impact | Owner |
+|:---|:---|:---|
+| `opponentSelectedIndex` is not a distinct field in `QuizBattleRoundResult` — reuses `botSelectedIndex` | Brittle naming, confusing for devs | Backend (rename field) |
+| Reconnection after tab close shows blank hub briefly before match resumes | Poor UX for reconnecting players | Backend (resume session loading state) |
+| Round timer uses client-side countdown, not server `roundDeadlineAtMs` | Clock drift between players | Backend (Phase 2) |
+| No "rematch" flow for online mode | Players must create new match | Backend + Frontend |
+| Surrender only detected via `cancelled` status from polling — delay up to 3 seconds | Latent surrender notification | Backend (push event for surrender) |
