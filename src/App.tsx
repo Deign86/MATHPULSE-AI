@@ -12,6 +12,7 @@ import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, Us
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
+import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 
 type ProfileSaveData = Partial<User> &
@@ -991,10 +992,10 @@ const App = () => {
                 className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
                 aria-label={`Profile: ${profileData.name}`}
               >
-                <img 
+                <UserAvatar
                   src={profileData.photo}
-                  alt={profileData.name}
-                  className="w-8 h-8 rounded-lg object-cover"
+                  name={profileData.name}
+                  className="w-8 h-8 rounded-lg"
                 />
                 <div className="hidden sm:block text-left min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
@@ -1117,6 +1118,8 @@ const App = () => {
                               overallXP={currentXP}
                               streak={streak}
                               streakHistory={studentProfile?.streakHistory || []}
+                              userPhoto={profileData.photo}
+                              userName={firstName}
                             />
                           </Suspense>
                         ) : (
