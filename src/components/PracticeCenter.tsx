@@ -135,12 +135,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
   };
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#0a1628] mb-2">Practice Center</h1>
-        <p className="text-[#5a6578]">Sharpen your skills with quizzes, challenges, and mastery tests</p>
-      </div>
+    <div className="px-4 sm:px-6 xl:px-10 py-4 sm:py-6">
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -243,7 +238,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
 
       {/* Quizzes Grid */}
       <div 
-        className="flex-1 overflow-y-auto pr-2 pb-4 scrollbar-hide rounded-[2rem] border border-slate-200 shadow-inner relative"
+        className="pr-2 pb-4 rounded-[2rem] border border-slate-200 shadow-inner relative"
         style={{
           backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
           backgroundSize: '24px 24px',

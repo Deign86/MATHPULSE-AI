@@ -28,7 +28,7 @@ const HeroBanner = lazy(() => import('./components/HeroBanner.tsx'));
 const RightSidebar = lazy(() => import('./components/RightSidebar.tsx'));
 const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
 const NotificationCenter = lazy(() => import('./components/NotificationCenter.tsx'));
-const SearchBar = lazy(() => import('./components/SearchBar.tsx'));
+
 const SupplementalBanner = lazy(() => import('./components/SupplementalBanner.tsx'));
 const LearningPath = lazy(() => import('./components/LearningPath.tsx'));
 const CompetencyRadarChart = lazy(() =>
@@ -64,9 +64,7 @@ const App = () => {
   const compactControlFallback = (
     <div className="h-11 w-11 shrink-0 rounded-xl bg-[#edf1f7]" aria-hidden="true" />
   );
-  const searchBarFallback = (
-    <div className="h-11 w-full rounded-xl bg-[#edf1f7]" aria-hidden="true" />
-  );
+
   const sidebarShellFallback = (
     <div className="h-screen w-72 border-r border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
@@ -966,15 +964,7 @@ const App = () => {
               </div>
             </div>
             <div className="flex flex-wrap md:flex-nowrap items-center gap-2 min-w-0">
-              <div className="hidden md:block flex-1 min-w-0 max-w-[420px]">
-                <Suspense fallback={searchBarFallback}>
-                  <SearchBar
-                    onSelect={(result) => {
-                      // TODO: Navigate to selected search result
-                    }}
-                  />
-                </Suspense>
-              </div>
+
               {/* Calculator toggle */}
               <button
                 onClick={() => setShowCalculator(prev => !prev)}
@@ -1009,16 +999,16 @@ const App = () => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 p-3 lg:p-4 ${activeTab === 'AI Chat' ? 'overflow-hidden' : 'overflow-y-auto pb-24 sm:pb-28'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-24 sm:pb-28'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={activeTab === 'AI Chat' ? 'h-full min-h-0' : ''}
+                className={activeTab === 'AI Chat' || activeTab === 'Modules' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">

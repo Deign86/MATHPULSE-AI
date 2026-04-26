@@ -141,11 +141,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="flex-1">
                     <h2 className="text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
-                    <p className="text-zinc-400 text-sm font-body">Manage your account information</p>
+                    <p className="text-white/90 text-sm font-body">Manage your account information</p>
                   </div>
                   <button
                     onClick={onClose}
-                    className="text-zinc-500 hover:text-sky-700 hover:bg-slate-100 p-2 rounded-lg transition-all"
+                    className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all"
                   >
                     <X size={20} />
                   </button>

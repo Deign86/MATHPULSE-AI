@@ -419,9 +419,9 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-6 xl:px-10 py-6 sm:py-8 lg:overflow-hidden relative">
-      {/* Floating Header & Navigation */}
-      <div className="sticky top-0 sm:top-4 z-50 mb-6 xl:mb-8 w-full sm:w-max">
+    <div className="h-full overflow-y-auto scrollbar-hide px-4 sm:px-6 xl:px-10 py-6 sm:py-8 relative">
+      {/* Header & Navigation */}
+      <div className="relative mb-6 xl:mb-8 w-full sm:w-max">
         <button
           onClick={onBack}
           className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/80 backdrop-blur-xl border border-slate-200/60 text-slate-600 hover:text-indigo-600 font-bold text-sm tracking-wide transition-all hover:-translate-x-1 shadow-sm hover:shadow-md"
@@ -509,7 +509,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       </motion.div>
 
       {/* Single-column lesson flow with nested activities */}
-      <div className="flex-1 overflow-y-auto pr-2 pb-8 scrollbar-hide">
+      <div className="pb-8">
         <div className="relative rounded-[2rem] border border-slate-200 bg-white/90 shadow-sm overflow-hidden">
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(153,86,222,0.08),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(31,167,225,0.08),transparent_45%)]" />
 
