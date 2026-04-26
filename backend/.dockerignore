@@ -19,11 +19,11 @@ tests/
 docs/
 datasets/
 jobs/
-scripts/
-
 build/
 dist/
 node_modules/
 
 Dockerfile*
 docker-compose.yml
+*.md
+!README.md
