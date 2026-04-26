@@ -3282,11 +3282,6 @@ async def predict_risk(student_data: StudentRiskData, response: Response):
             "predict_risk",
             student_data.model_dump(),
         )
-        cached_payload = await deterministic_response_cache.get(cache_key)
-        if isinstance(cached_payload, dict):
-            _set_cache_response_header(response, hit=True)
-            return RiskPrediction(**cached_payload)
-
         _set_cache_response_header(response, hit=False)
         hf = get_client()
 
@@ -5011,6 +5006,7 @@ class AdminUserListResponse(BaseModel):
     total: int
     totalPages: int
     hasNextPage: bool
+    hasMore: bool
     users: List[AdminUserListItem]
     filters: Dict[str, Optional[str]] = Field(default_factory=dict)
 
@@ -6016,6 +6012,7 @@ async def list_admin_users(
         total=total,
         totalPages=total_pages,
         hasNextPage=end < total,
+        hasMore=end < total,
         users=[AdminUserListItem(**entry) for entry in paged_records],
         filters={
             "search": _strip_optional_string(search),
@@ -7156,6 +7153,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
         persisted_rows = int(aggregate_dedup.get("inserted", 0) or 0) + int(aggregate_dedup.get("updated", 0) or 0)
         rejected_reason_counts = dict(Counter(item.get("reason", "unknown") for item in all_rejected_rows))
         inferred_coverage_pct = round((float(inferred_rows_total) / float(max(interpreted_rows_total, 1))) * 100.0, 1)
+        partial_success_files = sum(1 for f in per_file_results if f.get("status") == "partial_success")
 
         response_payload = {
             "success": overall_success,
@@ -7187,6 +7185,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
             "summary": {
                 "totalFiles": len(per_file_results),
                 "successfulFiles": successful_files,
+                "partialSuccessFiles": partial_success_files,
                 "failedFiles": failed_files,
             },
             "riskRefresh": risk_refresh,
