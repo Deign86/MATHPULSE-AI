@@ -57,7 +57,7 @@ jobs:
       - name: Detect changed files
         id: changed
         if: ${{ github.event_name == 'pull_request' }}
-        uses: tj-actions/changed-files@v45.2
+        uses: tj-actions/changed-files@v45
         with:
           json: true
           escape_json: false
