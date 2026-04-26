@@ -494,7 +494,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       email: user.email,
       password: '',
       confirmPassword: '',
-      role: user.role,
+      role: user.role as 'Student' | 'Teacher' | 'Admin',
       status: user.status,
       department: user.department,
       grade: user.grade || 'Grade 11',
@@ -1340,7 +1340,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 <Select 
                   value={formData.role} 
                   onValueChange={(value) => {
-                    setFormData({ ...formData, role: value, lrn: value === 'Student' ? formData.lrn : '' });
+                    setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
                     setFormErrors((prev) => ({ ...prev, role: undefined, lrn: undefined }));
                   }}
                 >
