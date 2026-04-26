@@ -44,7 +44,7 @@ const mockData: AIMonitoringStats = {
   avgResponseTimeMs: 840,
   estimatedCostToday: 4.50,
   estimatedCostMonth: 135.20,
-  activeModel: 'qwen-2.5-coder-32b-instruct',
+  activeModel: 'Qwen/Qwen3-32B',
   healthStatus: 'healthy',
   failedRequests: 12,
   tutoringSessions: 430,
@@ -105,16 +105,16 @@ const AdminAIMonitoring: React.FC = () => {
           // Map backend stats to UI representation
           setStats({
             totalRequests: m.requests_total || 0,
-            requestsToday: m.requests_total || 0, // Approx until backend supports daily buckets
-            avgResponseTimeMs: 840, // Static placeholder (latency not exposed yet)
+            requestsToday: m.requests_total || 0, // Persistent across restarts now
+            avgResponseTimeMs: m.avg_latency_ms || 0,
             estimatedCostToday: 0.00, // HF Spaces flat rate pricing
             estimatedCostMonth: 0.00,
-            activeModel: import.meta.env.VITE_HF_MATH_MODEL_ID || 'qwen-2.5-coder-32b-instruct',
+            activeModel: m.active_model || import.meta.env.VITE_HF_MATH_MODEL_ID || 'Qwen/Qwen3-32B',
             healthStatus: m.requests_error > (m.requests_total * 0.2) ? 'degraded' : 'healthy',
             failedRequests: m.requests_error || 0,
             tutoringSessions: m.task_counts?.chat || 0,
             quizGenerationRequests: m.task_counts?.quiz_generation || 0,
-            tokenUsage: (m.requests_total || 0) * 850, // Approx 850 tokens per request
+            tokenUsage: m.token_usage || (m.requests_total || 0) * 850,
             recentActivity: [
               {
                 id: 'log-sys-1',
