@@ -234,6 +234,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         roleFilter: activeFilters.role,
         statusFilter: activeFilters.status,
       });
+      console.log('[DEBUG ADMIN USERS] Received users:', pageData.users.map(u => ({ id: u.id, name: u.name, photo: u.photo, raw: u })));
       setUsers(pageData.users);
       setCurrentPage(pageData.total === 0 ? 1 : pageData.page);
       setTotalUsers(pageData.total);

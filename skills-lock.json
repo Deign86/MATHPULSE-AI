@@ -1,8 +1,8 @@
 {
   "version": 1,
   "skills": {
-    "awesome-design-md": {
-      "source": "VoltAgent/awesome-design-md",
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github"
     }
   }

@@ -18,6 +18,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import ConfirmModal from './ConfirmModal';
+import ProfilePictureUploader from './ProfilePictureUploader';
 import { DEFAULT_USER_SETTINGS, ProfileVisibility, QuizDifficultyPreference, StudyTimePreference, UserSettings } from '../types/models';
 
 interface ProfileData {
@@ -372,6 +373,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex-1 overflow-y-auto p-6">
               {activeSection === 'account' && (
                 <div className="space-y-6">
+                  <ProfilePictureUploader
+                    uid={accountData.uid}
+                    photoURL={accountData.photo}
+                    displayName={accountData.name}
+                    onUploaded={(photoURL) => setAccountData((prev) => ({ ...prev, photo: photoURL }))}
+                  />
+
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Full Name</label>
                     <Input

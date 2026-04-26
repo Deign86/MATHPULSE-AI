@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, AlertTriangle } from 'lucide-react';
+import { BookOpen, Clock, AlertTriangle, Link2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const THEMES = [
@@ -13,12 +13,14 @@ interface ModuleFolderCardProps {
   module: any;
   index: number;
   onClick: () => void;
+  onPreviewSources?: () => void;
   isAtRisk?: boolean;
   badgeLabel?: string;
 }
 
-const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, isAtRisk, badgeLabel }) => {
+const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel }) => {
   const theme = THEMES[index % THEMES.length];
+  const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
 
   return (
     <motion.button
@@ -46,11 +48,22 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
         <div className="relative z-10 flex-1 flex flex-col h-full">
           <div className="flex items-start justify-between mb-4">
             <span className="px-3 py-1.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider backdrop-blur-sm shadow-sm border border-white/10">
-              General Mathematics
+              {module.curriculum_aligned_label || 'Curriculum-aligned'}
             </span>
             {(badgeLabel || module.status === 'Locked') && (
               <span className="px-2.5 py-1 rounded-full bg-black/30 text-white/90 text-[10px] font-black uppercase tracking-wider backdrop-blur-sm">
                 {badgeLabel || 'Locked'}
+              </span>
+            )}
+          </div>
+
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-bold text-white/95">
+              {curriculumBadge}
+            </span>
+            {module.content_domain && (
+              <span className="rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-bold text-white/95">
+                {module.content_domain}
               </span>
             )}
           </div>
@@ -61,6 +74,13 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
           <p className="text-white/85 text-sm line-clamp-2 mb-6 font-medium leading-relaxed pr-2">
             {module.subtitle || module.description || 'Master this module to unlock the next level of your mathematical journey.'}
           </p>
+
+          {module.competency_group && (
+            <div className="mb-4 rounded-xl border border-white/15 bg-black/20 px-3 py-2">
+              <p className="text-[10px] font-black uppercase tracking-wide text-white/70">Competency Group</p>
+              <p className="mt-1 line-clamp-1 text-[12px] font-bold text-white">{module.competency_group}</p>
+            </div>
+          )}
           
           <div className="mt-auto">
             {/* Lessons & Quizzes Pills */}
@@ -84,6 +104,22 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                  style={{ width: `${module.progress > 0 ? module.progress : 0}%` }} 
                />
             </div>
+
+            {onPreviewSources && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onPreviewSources();
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/20 px-2.5 py-1.5 text-[11px] font-bold text-white/95 transition-colors hover:bg-black/30"
+                >
+                  <Link2 size={12} />
+                  View Curriculum Source
+                </button>
+              </div>
+            )}
           </div>
 
           {isAtRisk && (

@@ -74,6 +74,14 @@ from services.user_provisioning_service import (
     UserProvisioningError,
     UserProvisioningService,
 )
+from routes.rag_routes import router as rag_router
+from rag.curriculum_rag import (
+    build_analysis_curriculum_context,
+    build_lesson_prompt,
+    build_lesson_query,
+    retrieve_curriculum_context,
+    summarize_retrieval_confidence,
+)
 
 try:
     import firebase_admin  # type: ignore[import-not-found]
@@ -201,6 +209,7 @@ ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDB
 ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_ASYNC_GENERATION = os.getenv("ENABLE_ASYNC_GENERATION", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_LLM_RISK_RECOMMENDATIONS = os.getenv("ENABLE_LLM_RISK_RECOMMENDATIONS", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_RAG_ANALYSIS_CONTEXT = os.getenv("ENABLE_RAG_ANALYSIS_CONTEXT", "true").strip().lower() in {"1", "true", "yes", "on"}
 ASYNC_TASK_TTL_SECONDS = int(os.getenv("ASYNC_TASK_TTL_SECONDS", "3600"))
 ASYNC_TASK_MAX_ITEMS = int(os.getenv("ASYNC_TASK_MAX_ITEMS", "400"))
 LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
@@ -284,6 +293,7 @@ PUBLIC_PATHS: Set[str] = {
 }
 PUBLIC_API_PATHS: Set[str] = {
     "/api/quiz/topics",
+    "/api/rag/health",
 }
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
@@ -308,6 +318,9 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/quiz/preview": TEACHER_OR_ADMIN,
     "/api/lesson/generate": TEACHER_OR_ADMIN,
     "/api/lesson/generate-async": TEACHER_OR_ADMIN,
+    "/api/rag/lesson": TEACHER_OR_ADMIN,
+    "/api/rag/generate-problem": TEACHER_OR_ADMIN,
+    "/api/rag/analysis-context": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded/summary": TEACHER_OR_ADMIN,
     "/api/import-grounded/access-audit": TEACHER_OR_ADMIN,
@@ -960,6 +973,7 @@ class RequestMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
+app.include_router(rag_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -2104,6 +2118,7 @@ class LearningPathRequest(BaseModel):
     weaknesses: List[str]
     gradeLevel: str
     learningStyle: Optional[str] = "visual"
+    subject: Optional[str] = None
 
 
 class LearningPathResponse(BaseModel):
@@ -3186,8 +3201,6 @@ def _basic_risk_top_factors(student_data: StudentRiskData) -> List[str]:
     factors: List[str] = []
     if student_data.avgQuizScore < 55:
         factors.append("Low average quiz performance")
-    if student_data.attendance < 70:
-        factors.append("Low attendance rate")
     if student_data.assignmentCompletion < 65:
         factors.append("Incomplete assignment submission trend")
     if student_data.engagementScore < 50:
@@ -3235,7 +3248,6 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
         f"risk_score: {result.risk_score:.2f}\n"
         f"engagementScore: {data.engagementScore:.1f}\n"
         f"avgQuizScore: {data.avgQuizScore:.1f}\n"
-        f"attendance: {data.attendance:.1f}\n"
         f"assignmentCompletion: {data.assignmentCompletion:.1f}\n"
         f"streak: {int(data.streak or 0)}\n"
         f"daysSinceLastActivity: {int(data.daysSinceLastActivity or 0)}\n"
@@ -3282,7 +3294,6 @@ async def predict_risk(student_data: StudentRiskData, response: Response):
             f"Student academic performance summary: "
             f"Engagement score is {student_data.engagementScore:.0f}%. "
             f"Average quiz score is {student_data.avgQuizScore:.0f}%. "
-            f"Attendance rate is {student_data.attendance:.0f}%. "
             f"Assignment completion rate is {student_data.assignmentCompletion:.0f}%."
         )
 
@@ -3386,7 +3397,28 @@ async def generate_learning_path(request: LearningPathRequest, response: Respons
             return LearningPathResponse(**cached_payload)
 
         _set_cache_response_header(response, hit=False)
+        rag_context_block = ""
+        if ENABLE_RAG_ANALYSIS_CONTEXT:
+            try:
+                subject_for_context = (request.subject or "general_math").strip() or "general_math"
+                competency_chunks = build_analysis_curriculum_context(request.weaknesses, subject_for_context)
+                if competency_chunks:
+                    lines = []
+                    for idx, row in enumerate(competency_chunks[:8], start=1):
+                        lines.append(
+                            f"{idx}. {row.get('content')} (Source: {row.get('source_file')} p.{row.get('page')}, "
+                            f"Q{row.get('quarter')}, {row.get('content_domain')})"
+                        )
+                    rag_context_block = (
+                        "RELEVANT DEPED LEARNING COMPETENCIES FOR WEAK TOPICS:\n"
+                        + "\n".join(lines)
+                        + "\n\n"
+                    )
+            except Exception as rag_err:
+                logger.warning(f"RAG analysis context skipped: {rag_err}")
+
         prompt = f"""Generate a personalized math learning path for a student with these details:
+{rag_context_block}STUDENT PERFORMANCE DATA:
 - Weak Topics: {', '.join(request.weaknesses)}
 - Grade Level: {request.gradeLevel}
 - Learning Style: {request.learningStyle or 'visual'}
@@ -4162,9 +4194,9 @@ def _resolve_import_class_context(
 
 
 def _derive_risk_level(avg_quiz: float, attendance: float, engagement: float) -> str:
-    if avg_quiz < 60 or attendance < 75 or engagement < 55:
+    if avg_quiz < 60 or engagement < 55:
         return "High"
-    if avg_quiz < 75 or attendance < 85 or engagement < 70:
+    if avg_quiz < 75 or engagement < 70:
         return "Medium"
     return "Low"
 
@@ -4180,7 +4212,7 @@ def _infer_student_state(
     risk_level = _derive_risk_level(avg_quiz, attendance, engagement)
 
     if risk_level == "High":
-        if avg_quiz < 50 or attendance < 65 or engagement < 45:
+        if avg_quiz < 50 or engagement < 45:
             state = "urgent_intervention"
         else:
             state = "at_risk"
@@ -4189,12 +4221,12 @@ def _infer_student_state(
     else:
         state = "on_track"
 
-    non_default_metrics = 3 - len(defaulted_metrics)
-    completeness = max(0.0, min(1.0, float(non_default_metrics) / 3.0))
+    relevant_metrics = {"avgQuizScore", "engagementScore"}
+    non_default_metrics = len(relevant_metrics - defaulted_metrics)
+    completeness = max(0.0, min(1.0, float(non_default_metrics) / float(len(relevant_metrics))))
 
     threshold_gap = max(
         max(0.0, 60.0 - avg_quiz) / 60.0,
-        max(0.0, 75.0 - attendance) / 75.0,
         max(0.0, 55.0 - engagement) / 55.0,
     )
     confidence = 0.45 + (0.45 * completeness) + (0.1 * min(1.0, threshold_gap))
@@ -4203,8 +4235,6 @@ def _infer_student_state(
     signals: List[str] = []
     if avg_quiz < 60:
         signals.append("low_avg_quiz_score")
-    if attendance < 75:
-        signals.append("low_attendance")
     if engagement < 55:
         signals.append("low_engagement")
     if defaulted_metrics:
@@ -4215,8 +4245,7 @@ def _infer_student_state(
         signals.append("stable_core_metrics")
 
     explanation = (
-        f"State inferred from avgQuizScore={avg_quiz:.1f}, attendance={attendance:.1f}, "
-        f"engagementScore={engagement:.1f}."
+        f"State inferred from avgQuizScore={avg_quiz:.1f}, engagementScore={engagement:.1f}."
     )
 
     return {
@@ -6953,13 +6982,10 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
 
                 missing_core_fields, missing_identity = _validate_class_record_mapping(file_column_mapping)
                 if missing_core_fields:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            "Missing required educational columns after mapping: "
-                            + ", ".join(missing_core_fields)
-                            + ". Add equivalent columns or rename headers before upload."
-                        ),
+                    file_warnings.append(
+                        "Missing preferred educational columns after mapping: "
+                        + ", ".join(missing_core_fields)
+                        + ". Import will continue with metric defaults where needed."
                     )
                 if missing_identity:
                     raise HTTPException(
@@ -8136,6 +8162,12 @@ class CalculatorResponse(BaseModel):
 
 class LessonGenerationRequest(BaseModel):
     gradeLevel: str = Field(..., description="Grade level context for lesson generation")
+    subject: Optional[str] = Field(default="general_math", description="Curriculum subject identifier")
+    quarter: Optional[int] = Field(default=1, ge=1, le=4, description="Curriculum quarter")
+    moduleUnit: Optional[str] = Field(default=None, description="Optional module or unit context")
+    lessonTitle: Optional[str] = Field(default=None, description="Optional lesson title")
+    learningCompetency: Optional[str] = Field(default=None, description="Optional learning competency text")
+    learnerLevel: Optional[str] = Field(default=None, description="Optional learner level context")
     classSectionId: Optional[str] = Field(default=None, description="Optional class section context")
     className: Optional[str] = Field(default=None, description="Optional class display name")
     materialId: Optional[str] = Field(default=None, description="Optional specific course-material artifact ID")
@@ -8144,6 +8176,32 @@ class LessonGenerationRequest(BaseModel):
     preferImportedTopics: bool = Field(default=True, description="Prefer persisted imported topics when available")
     allowReviewSources: bool = Field(default=False, description="Allow generation from review_required sources")
     allowUnverifiedLesson: bool = Field(default=False, description="Allow returning lessons that fail self-validation")
+    curriculumContext: Optional[str] = Field(default=None, description="Optional RAG curriculum context block")
+
+
+class CurriculumEvidenceSource(BaseModel):
+    subject: str
+    quarter: int
+    content: str
+    sourceFile: Optional[str] = None
+    page: Optional[int] = None
+    score: float = 0.0
+    contentDomain: Optional[str] = None
+    chunkType: Optional[str] = None
+
+
+class CurriculumGroundingSummary(BaseModel):
+    query: str
+    confidence: float
+    confidenceBand: str
+    retrievedChunks: int
+    needsReview: bool
+    issues: List[str] = Field(default_factory=list)
+
+
+class GroundedWorkedExample(BaseModel):
+    problem: str
+    solution: str
 
 
 class LessonPlanBlock(BaseModel):
@@ -8178,9 +8236,25 @@ class LessonSelfValidationReport(BaseModel):
 class LessonPlanResponse(BaseModel):
     success: bool
     lessonTitle: str
+    curriculumCompetency: Optional[str] = None
+    lessonObjective: Optional[str] = None
+    realWorldHook: Optional[str] = None
+    explanation: Optional[str] = None
+    workedExample: Optional[GroundedWorkedExample] = None
+    guidedPractice: List[str] = Field(default_factory=list)
+    independentPractice: List[str] = Field(default_factory=list)
+    quickAssessment: List[str] = Field(default_factory=list)
+    reflectionPrompt: Optional[str] = None
+    sourceCitations: List[str] = Field(default_factory=list)
+    retrievedEvidence: List[CurriculumEvidenceSource] = Field(default_factory=list)
+    curriculumGrounding: CurriculumGroundingSummary
     gradeLevel: str
     classSectionId: Optional[str] = None
     className: Optional[str] = None
+    subject: Optional[str] = None
+    quarter: Optional[int] = None
+    moduleUnit: Optional[str] = None
+    learnerLevel: Optional[str] = None
     usedImportedTopics: bool
     importedTopicCount: int
     weakSignals: Dict[str, float]
@@ -8190,6 +8264,8 @@ class LessonPlanResponse(BaseModel):
     sourceLegitimacy: SourceLegitimacyReport
     selfValidation: LessonSelfValidationReport
     publishReady: bool
+    needsReview: bool = False
+    reviewReason: Optional[str] = None
     warnings: List[str]
 
 
@@ -8570,7 +8646,7 @@ def _load_class_performance_artifacts(
         engagement_rates.append(engagement)
         completion_rates.append(completion)
 
-        if score < 60 or attendance < 75 or engagement < 55:
+        if score < 60 or engagement < 55:
             at_risk_count += 1
 
     count = len(scores)
@@ -8848,6 +8924,38 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
 
         selected_topics = selected_topics[: request.topicCount]
 
+        requested_subject = (str(request.subject or "general_math").strip() or "general_math")
+        requested_quarter = int(request.quarter or 1)
+        competency_hint = str(request.learningCompetency or "").strip() or (selected_topics[0] if selected_topics else "")
+        lesson_title_hint = str(request.lessonTitle or "").strip() or competency_hint or "Grounded Math Lesson"
+        module_unit_hint = str(request.moduleUnit or "").strip() or None
+        learner_level_hint = str(request.learnerLevel or "").strip() or None
+
+        retrieval_query = build_lesson_query(
+            competency_hint or lesson_title_hint,
+            requested_subject,
+            requested_quarter,
+            lesson_title=lesson_title_hint,
+            competency=competency_hint,
+            module_unit=module_unit_hint,
+            learner_level=learner_level_hint,
+        )
+
+        curriculum_chunks = retrieve_curriculum_context(
+            query=retrieval_query,
+            subject=requested_subject,
+            quarter=requested_quarter,
+            top_k=5,
+        )
+        retrieval_summary = summarize_retrieval_confidence(curriculum_chunks)
+        retrieval_confidence = float(retrieval_summary.get("confidence") or 0.0)
+        retrieval_band = str(retrieval_summary.get("band") or "low")
+        retrieval_issues: List[str] = []
+        if not curriculum_chunks:
+            retrieval_issues.append("No curriculum evidence was retrieved for the selected competency.")
+        elif retrieval_band == "low":
+            retrieval_issues.append("Retrieved evidence is weakly aligned; manual review recommended.")
+
         source_legitimacy_report = _evaluate_lesson_source_legitimacy(
             imported_topics_payload,
             allow_review_sources=request.allowReviewSources,
@@ -8863,6 +8971,18 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
                 "evidenceChecked": ["builtin_curriculum_fallback"],
                 "issues": [],
             }
+
+        if retrieval_issues:
+            source_legitimacy_report["status"] = "review_required"
+            source_legitimacy_report["score"] = min(float(source_legitimacy_report.get("score") or 0.0), retrieval_confidence or 0.5)
+            source_legitimacy_report.setdefault("issues", [])
+            source_legitimacy_report["issues"] = list({*map(str, source_legitimacy_report.get("issues") or []), *retrieval_issues})
+            source_legitimacy_report.setdefault("evidenceChecked", [])
+            evidence_checked = list(source_legitimacy_report.get("evidenceChecked") or [])
+            evidence_checked.extend([
+                f"{chunk.get('source_file')} p.{chunk.get('page')}" for chunk in curriculum_chunks if chunk.get("source_file")
+            ])
+            source_legitimacy_report["evidenceChecked"] = sorted({str(item) for item in evidence_checked if str(item).strip()})
 
         if ENFORCE_LEGIT_SOURCES_FOR_LESSONS and using_imported_sources:
             source_status = str(source_legitimacy_report.get("status") or "review_required")
@@ -8902,46 +9022,31 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
                 "sectionId": str(topic.get("sectionId") or "") or None,
             }
 
-        prompt = f"""Generate a JSON lesson plan for {request.gradeLevel}.
+        curriculum_context_block = ""
+        if request.curriculumContext and str(request.curriculumContext).strip():
+            curriculum_context_block = f"{str(request.curriculumContext).strip()}\n\n"
 
-Class context:
-- Class section: {request.classSectionId or 'n/a'}
-- Class name: {request.className or 'n/a'}
+        prompt = build_lesson_prompt(
+            lesson_title=lesson_title_hint,
+            competency=competency_hint or lesson_title_hint,
+            grade_level=request.gradeLevel,
+            subject=requested_subject,
+            quarter=requested_quarter,
+            learner_level=learner_level_hint,
+            module_unit=module_unit_hint,
+            curriculum_chunks=curriculum_chunks,
+        )
 
-Performance signals:
-- recordsCount: {int(class_signals.get('recordsCount', 0))}
-- averageQuizScore: {class_signals.get('averageQuizScore', 0.0):.1f}
-- averageAttendance: {class_signals.get('averageAttendance', 0.0):.1f}
-- averageEngagement: {class_signals.get('averageEngagement', 0.0):.1f}
-- averageAssignmentCompletion: {class_signals.get('averageAssignmentCompletion', 0.0):.1f}
-- atRiskRate: {class_signals.get('atRiskRate', 0.0):.2f}
-
-Focus topics:
-{json.dumps(selected_topics)}
-
-Return JSON only with this structure:
-{{
-  "lessonTitle": "...",
-  "blocks": [
-    {{
-      "title": "...",
-      "topic": "...",
-      "objective": "...",
-      "strategy": "...",
-      "estimatedMinutes": 10,
-      "activities": ["..."],
-      "checksForUnderstanding": ["..."],
-      "remediationTips": ["..."]
-    }}
-  ]
-}}
-
-Rules:
-- Use the provided focus topics only.
-- Include 3 to 6 blocks.
-- Prioritize prerequisite reinforcement and intervention scaffolds when risk is elevated.
-- Keep activities practical and teacher-editable.
-"""
+        if curriculum_context_block:
+            prompt = f"{curriculum_context_block}{prompt}"
+        prompt = (
+            f"{prompt}\n\n"
+            f"Class section: {request.classSectionId or 'n/a'}\n"
+            f"Class name: {request.className or 'n/a'}\n"
+            f"Performance signals: {json.dumps(class_signals)}\n"
+            f"Focus topics: {json.dumps(selected_topics)}\n"
+            "Use the retrieved curriculum evidence to ground the lesson and to generate explicit real-world applications."
+        )
 
         lesson_payload: Dict[str, Any] = {}
         try:
@@ -8960,62 +9065,213 @@ Rules:
             lesson_payload = _parse_lesson_plan_json(raw)
         except Exception as lesson_exc:
             logger.warning(f"Lesson generation AI fallback engaged: {lesson_exc}")
-            warnings.append("AI lesson synthesis failed; generated deterministic scaffold blocks.")
+            warnings.append("AI lesson synthesis failed; generated deterministic scaffolded content from retrieved evidence.")
 
-        raw_blocks = lesson_payload.get("blocks") if isinstance(lesson_payload, dict) else None
-        if not isinstance(raw_blocks, list) or not raw_blocks:
-            raw_blocks = [
-                {
-                    "title": f"Targeted Focus: {topic}",
-                    "topic": topic,
-                    "objective": f"Strengthen conceptual understanding and application for {topic}.",
-                    "strategy": "Model-practice-feedback loop with explicit prerequisite checks.",
-                    "estimatedMinutes": 12,
-                    "activities": [
-                        f"Activate prior knowledge related to {topic} with quick retrieval prompts.",
-                        f"Guided worked examples for {topic} with think-aloud reasoning.",
-                        "Partner practice with immediate corrective feedback.",
-                    ],
-                    "checksForUnderstanding": [
-                        "Use mini whiteboard checks after each worked example.",
-                        "Collect one-sentence justification from students for the final item.",
-                    ],
-                    "remediationTips": [
-                        "Re-teach prerequisite vocabulary and notation before independent work.",
-                        "Provide tiered hints before revealing full solutions.",
-                    ],
-                }
-                for topic in selected_topics[: min(4, len(selected_topics))]
+        lesson_title = str(lesson_payload.get("lessonTitle") or lesson_title_hint or "Intervention-Grounded Math Lesson Plan").strip()
+        curriculum_competency = str(
+            lesson_payload.get("curriculumCompetency")
+            or request.learningCompetency
+            or competency_hint
+            or lesson_title
+        ).strip()
+        lesson_objective = str(
+            lesson_payload.get("lessonObjective")
+            or f"Demonstrate {curriculum_competency} using DepEd curriculum evidence and Philippine real-life contexts."
+        ).strip()
+        real_world_hook = str(
+            lesson_payload.get("realWorldHook")
+            or "Connect the competency to practical decisions in work, business, finance, or daily life."
+        ).strip()
+        explanation = str(
+            lesson_payload.get("explanation")
+            or f"Use the retrieved curriculum evidence to explain {curriculum_competency} clearly and step by step."
+        ).strip()
+        reflection_prompt = str(
+            lesson_payload.get("reflectionPrompt")
+            or "How does this competency help you solve a real problem in school, work, or daily life?"
+        ).strip()
+
+        raw_worked_example = lesson_payload.get("workedExample") if isinstance(lesson_payload, dict) else None
+        if isinstance(raw_worked_example, dict):
+            worked_example = GroundedWorkedExample(
+                problem=str(raw_worked_example.get("problem") or raw_worked_example.get("question") or "").strip()
+                or f"Worked example for {curriculum_competency}",
+                solution=str(raw_worked_example.get("solution") or raw_worked_example.get("answer") or "").strip()
+                or "Step-by-step solution grounded in the retrieved curriculum context.",
+            )
+        else:
+            worked_example = GroundedWorkedExample(
+                problem=f"Worked example for {curriculum_competency}",
+                solution="Step-by-step solution grounded in the retrieved curriculum context.",
+            )
+
+        guided_practice = [
+            str(item).strip()
+            for item in (lesson_payload.get("guidedPractice") if isinstance(lesson_payload.get("guidedPractice"), list) else [])
+            if str(item).strip()
+        ]
+        if not guided_practice:
+            guided_practice = [
+                f"Solve a guided item on {curriculum_competency} using one cue from the retrieved curriculum evidence.",
+                "Compare your answer with a partner and justify each step.",
             ]
 
-        lesson_title = str(lesson_payload.get("lessonTitle") or "Intervention-Grounded Math Lesson Plan").strip()
-        blocks: List[LessonPlanBlock] = []
-        provenance_summary: List[Dict[str, Optional[str]]] = []
+        independent_practice = [
+            str(item).strip()
+            for item in (lesson_payload.get("independentPractice") if isinstance(lesson_payload.get("independentPractice"), list) else [])
+            if str(item).strip()
+        ]
+        if not independent_practice:
+            independent_practice = [
+                f"Complete an independent task that applies {curriculum_competency} to a Philippine context.",
+                "Write a short justification of your answer using the curriculum language.",
+            ]
 
-        for idx, block in enumerate(raw_blocks[:6]):
-            if not isinstance(block, dict):
-                continue
-            topic_hint = str(block.get("topic") or selected_topics[min(idx, len(selected_topics) - 1)]).strip()
-            matched_provenance = topic_provenance_map.get(_normalize_topic_key(topic_hint))
+        quick_assessment = [
+            str(item).strip()
+            for item in (lesson_payload.get("quickAssessment") if isinstance(lesson_payload.get("quickAssessment"), list) else [])
+            if str(item).strip()
+        ]
+        if not quick_assessment:
+            quick_assessment = [
+                "One exit-ticket item that checks procedural accuracy.",
+                "One reflection question that checks real-world transfer.",
+            ]
 
-            lesson_block = LessonPlanBlock(
-                blockId=f"block_{idx + 1}",
-                title=str(block.get("title") or f"Lesson Block {idx + 1}").strip(),
-                objective=str(block.get("objective") or f"Build understanding of {topic_hint}.").strip(),
-                strategy=str(block.get("strategy") or "Guided explicit instruction with scaffolded practice.").strip(),
-                estimatedMinutes=max(5, min(25, int(block.get("estimatedMinutes") or 12))),
-                activities=[str(item).strip() for item in (block.get("activities") or []) if str(item).strip()] or [f"Practice and discussion for {topic_hint}."],
-                checksForUnderstanding=[str(item).strip() for item in (block.get("checksForUnderstanding") or []) if str(item).strip()] or ["Exit ticket: one solved item plus reasoning."],
-                remediationTips=[str(item).strip() for item in (block.get("remediationTips") or []) if str(item).strip()] or ["Revisit prerequisite examples and provide targeted hints."],
-                provenance=matched_provenance,
+        raw_source_citations = lesson_payload.get("sourceCitations") if isinstance(lesson_payload, dict) else []
+        source_citations = [str(item).strip() for item in raw_source_citations if str(item).strip()] if isinstance(raw_source_citations, list) else []
+        if not source_citations:
+            source_citations = [
+                f"{chunk.get('source_file')} p.{chunk.get('page')} ({chunk.get('content_domain')}/{chunk.get('chunk_type')})"
+                for chunk in curriculum_chunks[:5]
+                if chunk.get("source_file")
+            ]
+
+        needs_review = bool(lesson_payload.get("needsReview")) if isinstance(lesson_payload, dict) else False
+        needs_review = needs_review or retrieval_band == "low"
+        review_reason = str(lesson_payload.get("reviewReason") or "").strip() if isinstance(lesson_payload, dict) else ""
+        if not review_reason and retrieval_band == "low":
+            review_reason = "Curriculum retrieval confidence was low, so the lesson should be reviewed before classroom use."
+        if source_legitimacy_report.get("status") != "verified":
+            needs_review = True
+            if not review_reason:
+                review_reason = "One or more source checks require review."
+
+        if needs_review:
+            warnings.append(review_reason or "Lesson marked as needs review.")
+
+        retrieved_evidence: List[CurriculumEvidenceSource] = []
+        for chunk in curriculum_chunks[:5]:
+            retrieved_evidence.append(
+                CurriculumEvidenceSource(
+                    subject=str(chunk.get("subject") or requested_subject),
+                    quarter=int(chunk.get("quarter") or requested_quarter),
+                    content=str(chunk.get("content") or "").strip(),
+                    sourceFile=str(chunk.get("source_file") or "").strip() or None,
+                    page=int(chunk.get("page") or 0) or None,
+                    score=float(chunk.get("score") or 0.0),
+                    contentDomain=str(chunk.get("content_domain") or "").strip() or None,
+                    chunkType=str(chunk.get("chunk_type") or "").strip() or None,
+                )
             )
-            blocks.append(lesson_block)
 
-            if matched_provenance and matched_provenance not in provenance_summary:
-                provenance_summary.append(matched_provenance)
+        provenance_summary: List[Dict[str, Optional[str]]] = []
+        for evidence in retrieved_evidence:
+            summary_row = {
+                "topicId": None,
+                "title": evidence.content[:120] if evidence.content else lesson_title,
+                "materialId": evidence.sourceFile,
+                "sourceFile": evidence.sourceFile,
+                "sectionId": f"p.{evidence.page}" if evidence.page else None,
+            }
+            if summary_row not in provenance_summary:
+                provenance_summary.append(summary_row)
 
-        if not blocks:
-            raise HTTPException(status_code=500, detail="Unable to generate lesson blocks.")
+        if not provenance_summary:
+            provenance_summary = [
+                {
+                    "topicId": None,
+                    "title": topic,
+                    "materialId": None,
+                    "sourceFile": None,
+                    "sectionId": None,
+                }
+                for topic in selected_topics[:3]
+            ]
+
+        first_provenance = provenance_summary[0] if provenance_summary else None
+        default_objective = lesson_objective
+        blocks: List[LessonPlanBlock] = [
+            LessonPlanBlock(
+                blockId="block_1",
+                title="Real-World Hook",
+                objective=default_objective,
+                strategy="Context-setting discussion with retrieved curriculum evidence.",
+                estimatedMinutes=8,
+                activities=[real_world_hook],
+                checksForUnderstanding=["Ask students to identify the competency in the example."],
+                remediationTips=["Restate the context using simpler language if needed."],
+                provenance=first_provenance,
+            ),
+            LessonPlanBlock(
+                blockId="block_2",
+                title="Concept Explanation",
+                objective=lesson_objective,
+                strategy="Teacher-led explanation grounded in retrieved excerpts.",
+                estimatedMinutes=15,
+                activities=[explanation],
+                checksForUnderstanding=["Students paraphrase the key idea in their own words."],
+                remediationTips=["Break the explanation into smaller steps and repeat the terminology."],
+                provenance=first_provenance,
+            ),
+            LessonPlanBlock(
+                blockId="block_3",
+                title="Worked Example",
+                objective=worked_example.problem,
+                strategy="Model the solution path and annotate each step.",
+                estimatedMinutes=15,
+                activities=[f"Problem: {worked_example.problem}", f"Solution: {worked_example.solution}"],
+                checksForUnderstanding=["Students identify which step uses the retrieved competency."],
+                remediationTips=["Provide a partially completed solution scaffold if needed."],
+                provenance=first_provenance,
+            ),
+            LessonPlanBlock(
+                blockId="block_4",
+                title="Guided Practice",
+                objective="Apply the same method with scaffolded support.",
+                strategy="Teacher circulates while students complete guided items.",
+                estimatedMinutes=15,
+                activities=guided_practice,
+                checksForUnderstanding=["Check one correct answer and one justification."],
+                remediationTips=["Offer hints tied directly to the retrieved evidence."],
+                provenance=first_provenance,
+            ),
+            LessonPlanBlock(
+                blockId="block_5",
+                title="Independent Practice and Quick Check",
+                objective="Transfer the competency to a new but related context.",
+                strategy="Independent task followed by a short formative check.",
+                estimatedMinutes=15,
+                activities=independent_practice + quick_assessment,
+                checksForUnderstanding=["Collect an exit ticket and review misconceptions."],
+                remediationTips=["Revisit the retrieved source excerpt if students struggle."],
+                provenance=first_provenance,
+            ),
+            LessonPlanBlock(
+                blockId="block_6",
+                title="Reflection",
+                objective=reflection_prompt,
+                strategy="Metacognitive reflection and transfer discussion.",
+                estimatedMinutes=7,
+                activities=[reflection_prompt],
+                checksForUnderstanding=["Ask students to connect the skill to a real decision."],
+                remediationTips=["Prompt with a local example if reflection is shallow."],
+                provenance=first_provenance,
+            ),
+        ]
+
+        if not lesson_title:
+            lesson_title = "Intervention-Grounded Math Lesson Plan"
 
         self_validation_report = await _validate_generated_lesson_plan(
             lesson_title=lesson_title,
@@ -9034,16 +9290,40 @@ Rules:
                 )
 
         publish_ready = bool(
-            self_validation_report.get("passed") and
-            source_legitimacy_report.get("status") == "verified"
+            self_validation_report.get("passed")
+            and source_legitimacy_report.get("status") == "verified"
+            and retrieval_band != "low"
+            and not needs_review
         )
-
         return LessonPlanResponse(
             success=True,
             lessonTitle=lesson_title,
+            curriculumCompetency=curriculum_competency,
+            lessonObjective=lesson_objective,
+            realWorldHook=real_world_hook,
+            explanation=explanation,
+            workedExample=worked_example,
+            guidedPractice=guided_practice,
+            independentPractice=independent_practice,
+            quickAssessment=quick_assessment,
+            reflectionPrompt=reflection_prompt,
+            sourceCitations=source_citations,
+            retrievedEvidence=retrieved_evidence,
+            curriculumGrounding=CurriculumGroundingSummary(
+                query=retrieval_query,
+                confidence=retrieval_confidence,
+                confidenceBand=retrieval_band,
+                retrievedChunks=len(curriculum_chunks),
+                needsReview=needs_review,
+                issues=sorted({*(retrieval_issues or []), *(source_legitimacy_report.get("issues") or [])}),
+            ),
             gradeLevel=request.gradeLevel,
             classSectionId=request.classSectionId,
             className=request.className,
+            subject=requested_subject,
+            quarter=requested_quarter,
+            moduleUnit=request.moduleUnit,
+            learnerLevel=request.learnerLevel,
             usedImportedTopics=bool(imported_topic_titles),
             importedTopicCount=len(imported_topics_payload.get("topics") or []),
             weakSignals=class_signals,
@@ -9053,6 +9333,8 @@ Rules:
             sourceLegitimacy=SourceLegitimacyReport(**source_legitimacy_report),
             selfValidation=LessonSelfValidationReport(**self_validation_report),
             publishReady=publish_ready,
+            needsReview=needs_review,
+            reviewReason=review_reason or None,
             warnings=warnings,
         )
 
