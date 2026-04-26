@@ -83,6 +83,7 @@ import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
 
 const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
+const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
   <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/10">
@@ -211,6 +212,7 @@ const QuizBattlePage: React.FC = () => {
   const [privateRoomCodeInput, setPrivateRoomCodeInput] = useState('');
   const [copiedRoomCode, setCopiedRoomCode] = useState<string | null>(null);
   const [queueWaitSeconds, setQueueWaitSeconds] = useState(0);
+  const [queueTimeoutDeadlineAtMs, setQueueTimeoutDeadlineAtMs] = useState<number | null>(null);
   const [battleSoundEnabled, setBattleSoundEnabled] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.localStorage.getItem('quiz_battle_sound_enabled') !== '0';
@@ -329,6 +331,19 @@ const QuizBattlePage: React.FC = () => {
       return next;
     });
   }, [isDesignPauseAvailable]);
+
+  const clearPublicMatchmakingSession = useCallback((message: string) => {
+    setQueueActive(false);
+    setActiveRoom(null);
+    setActiveMatch(null);
+    setQueueWaitSeconds(0);
+    setQueueTimeoutDeadlineAtMs(null);
+    setLaunchState({
+      status: 'error',
+      message,
+    });
+    setActiveTab('setup');
+  }, []);
 
   const refreshBattleInsights = useCallback(async (): Promise<{
     stats: StudentBattleStats | null;
@@ -490,6 +505,9 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(false);
         setActiveRoom(resumed.room || null);
         setActiveMatch(syncedMatch);
+        setQueueTimeoutDeadlineAtMs(
+          resumed.queue?.expiresAtMs || syncedMatch.expiresAtMs || null,
+        );
         setActiveTab('battle');
         setConnectionState('connected');
         return;
@@ -499,6 +517,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(false);
         setActiveRoom(resumed.room);
         setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+        setQueueTimeoutDeadlineAtMs(null);
         setConnectionState('connected');
         return;
       }
@@ -507,6 +526,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(true);
         setActiveRoom(null);
         setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+        setQueueTimeoutDeadlineAtMs(resumed.queue?.expiresAtMs || null);
         setConnectionState('connected');
         return;
       }
@@ -514,6 +534,7 @@ const QuizBattlePage: React.FC = () => {
       setQueueActive(false);
       setActiveRoom(null);
       setActiveMatch((current) => (current?.mode === 'bot' ? current : null));
+      setQueueTimeoutDeadlineAtMs(null);
       setConnectionState('connected');
     } catch (error) {
       console.warn('Quiz Battle session resume failed:', error);
@@ -567,19 +588,60 @@ const QuizBattlePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')))) {
+    const deadlineActive = queueTimeoutDeadlineAtMs !== null;
+
+    if (!(queueActive || (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')) || deadlineActive)) {
       setQueueWaitSeconds(0);
       return;
     }
 
+    const syncWaitClock = () => {
+      if (!queueTimeoutDeadlineAtMs) {
+        setQueueWaitSeconds((prev) => prev + 1);
+        return;
+      }
+
+      setQueueWaitSeconds(Math.max(0, Math.ceil((queueTimeoutDeadlineAtMs - Date.now()) / 1000)));
+    };
+
+    syncWaitClock();
+
+    const intervalId = window.setInterval(syncWaitClock, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [queueActive, activeRoom?.status, activeRoom?.roomId, queueTimeoutDeadlineAtMs]);
+
+  useEffect(() => {
+    if (!queueTimeoutDeadlineAtMs) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
-      setQueueWaitSeconds((prev) => prev + 1);
+      const remainingMs = queueTimeoutDeadlineAtMs - Date.now();
+      if (remainingMs <= 0) {
+        window.clearInterval(intervalId);
+        void (async () => {
+          try {
+            if (queueActive || !activeRoom) {
+              await leaveQuizBattleQueue();
+            }
+          } catch {
+            // backend may have already expired the session
+          } finally {
+            clearPublicMatchmakingSession(
+              'Public matchmaking timed out after 5 minutes. Please start again.',
+            );
+          }
+        })();
+      }
     }, 1000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [queueActive, activeRoom?.status, activeRoom?.roomId]);
+  }, [activeRoom, clearPublicMatchmakingSession, queueActive, queueTimeoutDeadlineAtMs]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -634,6 +696,7 @@ const QuizBattlePage: React.FC = () => {
           if (cancelled) return;
           setActiveMatch(started);
           setConnectionState('connected');
+          setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
           botReadyStartFailuresRef.current = 0;
           if (started.status === 'in_progress') {
             setLaunchState({ status: 'queued', message: 'Practice bot match started.' });
@@ -647,6 +710,7 @@ const QuizBattlePage: React.FC = () => {
             if (cancelled) return;
             setActiveMatch(started);
             setConnectionState('connected');
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             if (started.status === 'in_progress') {
               setLaunchState({ status: 'queued', message: 'Match started. Round timer is live.' });
             }
@@ -659,6 +723,7 @@ const QuizBattlePage: React.FC = () => {
           if (latest.status === 'completed') {
             setQueueActive(false);
             setActiveRoom(null);
+            setQueueTimeoutDeadlineAtMs(null);
           }
           setConnectionState('connected');
           return;
@@ -677,6 +742,7 @@ const QuizBattlePage: React.FC = () => {
             setActiveMatch(started);
             setActiveRoom(roomState.room);
             setQueueActive(false);
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             setActiveTab('battle');
             setConnectionState('connected');
             setLaunchState({
@@ -700,6 +766,7 @@ const QuizBattlePage: React.FC = () => {
             setActiveMatch(started);
             setActiveRoom(resumed.room || null);
             setQueueActive(false);
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             setActiveTab('battle');
             setConnectionState('connected');
             setLaunchState({ status: 'queued', message: 'Opponent found. Preparing synchronized start...' });
@@ -709,6 +776,7 @@ const QuizBattlePage: React.FC = () => {
           if (resumed.sessionType === 'room' && resumed.room) {
             setQueueActive(false);
             setActiveRoom(resumed.room);
+            setQueueTimeoutDeadlineAtMs(null);
             setConnectionState('connected');
             return;
           }
@@ -926,6 +994,7 @@ const QuizBattlePage: React.FC = () => {
             if (latest.status === 'completed') {
               setQueueActive(false);
               setActiveRoom(null);
+              setQueueTimeoutDeadlineAtMs(null);
             }
           })
           .catch(() => {
@@ -970,6 +1039,7 @@ const QuizBattlePage: React.FC = () => {
         if (response.match.status === 'completed') {
           setQueueActive(false);
           setActiveRoom(null);
+          setQueueTimeoutDeadlineAtMs(null);
           void refreshBattleInsights();
           setLaunchState({
             status: 'queued',
@@ -1006,6 +1076,7 @@ const QuizBattlePage: React.FC = () => {
             if (latest.status === 'completed') {
               setQueueActive(false);
               setActiveRoom(null);
+              setQueueTimeoutDeadlineAtMs(null);
               void refreshBattleInsights();
               setLaunchState({
                 status: 'queued',
@@ -1098,6 +1169,7 @@ const QuizBattlePage: React.FC = () => {
       setActiveMatch(started);
       setActiveRoom(null);
       setQueueActive(false);
+      setQueueTimeoutDeadlineAtMs(null);
       setLastRoundResult(null);
       setSelectedOptionIndex(null);
       setRoundLocked(false);
@@ -1143,6 +1215,7 @@ const QuizBattlePage: React.FC = () => {
     setLastRoundResult(null);
     setSelectedOptionIndex(null);
     setRoundLocked(false);
+    setQueueTimeoutDeadlineAtMs(null);
     setSetupConfig((previous) => ({
       ...previous,
       mode,
@@ -1173,6 +1246,7 @@ const QuizBattlePage: React.FC = () => {
       });
       setPrivateRoomCodeInput('');
       setQueueWaitSeconds(0);
+      setQueueTimeoutDeadlineAtMs(null);
 
       setLaunchState({
         status: 'queued',
@@ -1210,6 +1284,7 @@ const QuizBattlePage: React.FC = () => {
           setQueueActive(false);
           setActiveRoom(roomResult.room);
           setPrivateRoomCodeInput('');
+          setQueueTimeoutDeadlineAtMs(roomResult.match?.expiresAtMs || null);
 
           if (roomResult.match) {
             const started = await startQuizBattleMatch(roomResult.match.matchId);
@@ -1218,6 +1293,7 @@ const QuizBattlePage: React.FC = () => {
             setSelectedOptionIndex(null);
             setRoundLocked(false);
             setActiveTab('battle');
+            setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
             setLaunchState({
               status: 'queued',
               message: started.status === 'ready'
@@ -1228,6 +1304,7 @@ const QuizBattlePage: React.FC = () => {
           }
 
           setActiveMatch(null);
+          setQueueTimeoutDeadlineAtMs(null);
           setLaunchState({
             status: 'queued',
             message: joinCode
@@ -1248,6 +1325,7 @@ const QuizBattlePage: React.FC = () => {
           setSelectedOptionIndex(null);
           setRoundLocked(false);
           setActiveTab('battle');
+          setQueueTimeoutDeadlineAtMs(started.expiresAtMs || null);
           setLaunchState({
             status: 'queued',
             message: 'Opponent found. Preparing synchronized start...',
@@ -1258,6 +1336,7 @@ const QuizBattlePage: React.FC = () => {
         setQueueActive(true);
         setActiveRoom(null);
         setActiveMatch(null);
+        setQueueTimeoutDeadlineAtMs(queueResponse.expiresAtMs || Date.now() + PUBLIC_MATCHMAKING_TIMEOUT_MS);
         setQueueWaitSeconds(0);
         setLaunchState({ status: 'queued', message: 'Joined matchmaking queue. Waiting for an opponent...' });
         return;
@@ -1272,6 +1351,7 @@ const QuizBattlePage: React.FC = () => {
       setSelectedOptionIndex(null);
       setRoundLocked(false);
       setRoundSecondsLeft(liveMatch.timePerQuestionSec);
+      setQueueTimeoutDeadlineAtMs(null);
       setActiveTab('battle');
       setLaunchState({
         status: 'queued',
@@ -2534,6 +2614,11 @@ const QuizBattlePage: React.FC = () => {
                               ? 'Waiting for both players to lock in start...'
                               : 'Starting practice bot round...'}
                           </p>
+                          {activeMatch.mode === 'online' && activeMatch.expiresAtMs && (
+                            <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
+                              Public match expires in <span className="font-semibold tabular-nums">{formatWaitClock(queueWaitSeconds)}</span> if the synchronized start does not happen.
+                            </p>
+                          )}
                           {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
                           <Button
                             variant="outline"

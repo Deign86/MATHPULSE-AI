@@ -217,6 +217,15 @@ Operational tips:
 - Use `/api/feedback/import-grounded/summary` for pilot telemetry rollups.
 - Use `/api/import-grounded/access-audit` for scoped access/audit review.
 
+## Curriculum PDFs
+The curriculum PDFs are stored outside git. Upload them to a public Hugging Face dataset or Space repo and set:
+
+- `CURRICULUM_SOURCE_REPO_ID`
+- `CURRICULUM_SOURCE_REPO_TYPE` (`dataset` or `space`)
+- `CURRICULUM_SOURCE_REVISION`
+
+The Space downloads those PDFs at startup and regenerates the vector store locally.
+
 ## 🏗 Architecture
 
 ### Hugging Face PRO + Async Architecture

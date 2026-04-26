@@ -26,6 +26,10 @@ const ENCOURAGEMENT_PHRASES = [
 ];
 
 const DEFAULT_TOP_ITEM_ID = 'top_blue';
+const AVATAR_INVENTORY_CACHE_KEY = 'mathpulse:avatar-inventory:v2';
+const AVATAR_INVENTORY_CACHE_TTL_MS = 10 * 60 * 1000;
+
+type AvatarInventoryItem = (typeof MOCK_INVENTORY)[number];
 
 const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModules }) => {
   const { userProfile, refreshProfile } = useAuth();
@@ -42,6 +46,43 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const [currentXP, setCurrentXP] = useState(0);
   const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null);
   const [avatarSpeech, setAvatarSpeech] = useState<string | null>(null);
+  const [inventoryItems, setInventoryItems] = useState<AvatarInventoryItem[]>(MOCK_INVENTORY);
+  const [activeCategory, setActiveCategory] = useState<keyof AvatarLayers>('top');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const now = Date.now();
+
+    try {
+      const raw = sessionStorage.getItem(AVATAR_INVENTORY_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { expiresAt?: number; items?: AvatarInventoryItem[] };
+        if (Array.isArray(parsed.items) && typeof parsed.expiresAt === 'number' && parsed.expiresAt > now) {
+          setInventoryItems(parsed.items);
+          return;
+        }
+      }
+    } catch {
+      // Ignore malformed cache payloads.
+    }
+
+    setInventoryItems(MOCK_INVENTORY);
+
+    try {
+      sessionStorage.setItem(
+        AVATAR_INVENTORY_CACHE_KEY,
+        JSON.stringify({
+          expiresAt: now + AVATAR_INVENTORY_CACHE_TTL_MS,
+          items: MOCK_INVENTORY,
+        }),
+      );
+    } catch {
+      // Ignore session storage quota/write failures.
+    }
+  }, []);
 
   useEffect(() => {
     if (userProfile && userProfile.role === 'student') {
@@ -86,9 +127,9 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   }, [avatarSpeech]);
 
   const handleEquip = (category: keyof AvatarLayers, id: string) => {
-    const item = MOCK_INVENTORY.find(i => i.id === id);
-    if (item && item.price && item.price > 0 && !ownedItems.includes(id)) {
-      toast.error('This item is locked. Purchase it first!');
+    const item = inventoryItems.find(i => i.id === id);
+    if (item && ((item.price && item.price > 0) || item.isReward) && !ownedItems.includes(id)) {
+      toast.error('This item is locked. Earn or purchase it first!');
       return;
     }
 
@@ -232,8 +273,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   ];
 
   return (
-    <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
-      <div className="relative w-full max-w-[1000px] h-[80vh] min-h-[500px] max-h-[700px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12 overflow-hidden">
+    <div className="h-full w-full flex items-start xl:items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto xl:overflow-hidden">
+      <div className="relative w-full max-w-[1000px] min-h-[500px] xl:h-[80vh] xl:max-h-[700px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-8 xl:gap-12 overflow-visible xl:overflow-hidden">
 
         <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
@@ -241,7 +282,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-100/30 rounded-full blur-3xl" />
         </div>
 
-        <div className="flex flex-col h-full min-h-0 relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1 min-h-0">
+        <div className="flex flex-col xl:h-full min-h-0 relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1">
           <div className="mb-6 flex flex-col gap-2 shrink-0">
             <div className="flex flex-wrap items-center justify-between xl:justify-start gap-4">
               <h1 className="text-3xl md:text-4xl font-display font-black text-[#0a1628] tracking-tight flex items-center gap-2.5">
@@ -288,7 +329,11 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
             <p className="text-slate-500 font-medium text-sm md:text-base">Design your perfect learning companion.</p>
           </div>
 
-          <Tabs.Root defaultValue="top" className="flex flex-col flex-1 min-h-0">
+          <Tabs.Root
+            value={activeCategory}
+            onValueChange={(value) => setActiveCategory(value as keyof AvatarLayers)}
+            className="flex flex-col flex-1 min-h-0"
+          >
             <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-1 sm:space-x-2 mb-4 bg-white shadow-sm p-1 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
               {categories.map((cat) => (
                 <Tabs.Trigger
@@ -304,7 +349,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pb-6 scrollbar-hide px-2 -mx-2">
               {categories.map(cat => {
-                const categoryItems = MOCK_INVENTORY.filter(item => item.category === cat.id);
+                const categoryItems = inventoryItems.filter(item => item.category === cat.id);
                 
                 return (
                   <Tabs.Content key={cat.id} value={cat.id} className="outline-none pt-2 h-full">
@@ -319,7 +364,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                         {categoryItems.map(item => {
                           const isEquipped = equipped[cat.id as keyof typeof equipped] === item.id;
                       const isOwned = ownedItems.includes(item.id);
-                      const isLocked = Boolean(item.price && item.price > 0 && !isOwned);
+                      const isLocked = Boolean(((item.price && item.price > 0) || item.isReward) && !isOwned);
 
                       return (
                         <div key={item.id} className="flex flex-col gap-1.5">
@@ -357,24 +402,30 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                           <p className="text-xs font-bold text-slate-700 text-center line-clamp-2">{item.name}</p>
                           
                           {isLocked && (
-                            <motion.button
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              onClick={(e) => handlePurchaseItem(e, item.id, item.price || 0)}
-                              disabled={purchasingItemId === item.id}
-                              className="w-full py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm transition-all disabled:opacity-70"
-                            >
-                              {purchasingItemId === item.id ? (
-                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                                  <ShoppingBag size={11} />
-                                </motion.div>
-                              ) : (
-                                <>
-                                  <ShoppingBag size={11} />
-                                  {item.price} XP
-                                </>
-                              )}
-                            </motion.button>
+                            item.isReward ? (
+                              <div className="w-full py-1 bg-slate-200 text-slate-500 text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm border border-slate-300">
+                                <Lock size={11} /> Exclusive Reward
+                              </div>
+                            ) : (
+                              <motion.button
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                onClick={(e) => handlePurchaseItem(e, item.id, item.price || 0)}
+                                disabled={purchasingItemId === item.id}
+                                className="w-full py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[9px] font-bold flex items-center justify-center gap-1 rounded shadow-sm transition-all disabled:opacity-70"
+                              >
+                                {purchasingItemId === item.id ? (
+                                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                                    <ShoppingBag size={11} />
+                                  </motion.div>
+                                ) : (
+                                  <>
+                                    <ShoppingBag size={11} />
+                                    {item.price} XP
+                                  </>
+                                )}
+                              </motion.button>
+                            )
                           )}
                         </div>
                       );
@@ -388,7 +439,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
           </Tabs.Root>
         </div>
 
-        <div className="flex flex-col gap-4 relative z-10 w-full xl:w-[350px] shrink-0 xl:self-center">
+        <div className="flex flex-col gap-4 relative z-10 w-full xl:w-[350px] max-w-[420px] xl:max-w-none shrink-0 xl:self-center mx-auto xl:mx-0">
           <div className="bg-[#0f1422] rounded-[2rem] overflow-hidden relative shadow-[0_20px_50px_rgba(15,20,34,0.2)] h-[400px] w-full flex items-center justify-center mx-auto border-4 border-slate-800">
             
             <div

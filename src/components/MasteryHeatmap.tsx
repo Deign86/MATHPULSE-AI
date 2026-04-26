@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { Grid3X3, ChevronDown, Info, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { cacheKeys } from '../utils/cacheKeys';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -105,17 +107,17 @@ function getMasteryBgHex(mastery: number): string {
 const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide Subject Mastery' }) => {
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
-  const [allData, setAllData] = useState<HeatmapCell[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch and aggregate progress data from Firebase
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+  const {
+    data: allData = [],
+    isLoading: loading,
+  } = useQuery({
+    queryKey: cacheKeys.masteryHeatmap(),
+    staleTime: 3 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    queryFn: async (): Promise<HeatmapCell[]> => {
       try {
         const snapshot = await getDocs(collection(db, 'progress'));
 
-        // Aggregate: topicKey -> { totalMastery, count }
         const aggMap: Record<string, { totalMastery: number; count: number }> = {};
 
         snapshot.forEach(docSnap => {
@@ -135,7 +137,6 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
           }
         });
 
-        // Build HeatmapCell array
         const cells: HeatmapCell[] = [];
         for (const subject of SUBJECTS) {
           const topics = TOPICS_BY_SUBJECT[subject.id] || [];
@@ -151,16 +152,13 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
           }
         }
 
-        setAllData(cells);
+        return cells;
       } catch (err) {
         console.error('[MasteryHeatmap] Error fetching progress data:', err);
-      } finally {
-        setLoading(false);
+        return [];
       }
-    };
-
-    fetchData();
-  }, []);
+    },
+  });
 
   const filteredSubjects = selectedSubject === 'all'
     ? SUBJECTS

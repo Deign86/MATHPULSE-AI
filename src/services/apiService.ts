@@ -28,6 +28,11 @@ import {
 } from './apiUtils';
 import { auth } from '../lib/firebase';
 import type { ClassSectionMetadata } from '../types/models';
+import type {
+  CurriculumGroundedLessonResponse,
+  CurriculumGroundedProblemResponse,
+  CurriculumSource,
+} from '../types/curriculum';
 
 // Re-export error classes so consumers can catch them
 export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
@@ -101,6 +106,7 @@ export interface LearningPathRequest {
   weaknesses: string[];
   gradeLevel: string;
   learningStyle?: string;
+  subject?: string;
 }
 
 export interface LearningPathResponse {
@@ -427,6 +433,12 @@ export interface CourseMaterialTopicMapResponse {
 
 export interface LessonGenerationRequest {
   gradeLevel: string;
+  subject?: string;
+  quarter?: number;
+  moduleUnit?: string;
+  lessonTitle?: string;
+  learningCompetency?: string;
+  learnerLevel?: string;
   classSectionId?: string;
   className?: string;
   materialId?: string;
@@ -472,12 +484,42 @@ export interface LessonPlanBlock {
   } | null;
 }
 
+export interface GroundedWorkedExample {
+  problem: string;
+  solution: string;
+}
+
+export interface CurriculumGroundingSummary {
+  query: string;
+  confidence: number;
+  confidenceBand: 'high' | 'medium' | 'low';
+  retrievedChunks: number;
+  needsReview: boolean;
+  issues: string[];
+}
+
 export interface LessonPlanResponse {
   success: boolean;
   lessonTitle: string;
+  curriculumCompetency?: string | null;
+  lessonObjective?: string | null;
+  realWorldHook?: string | null;
+  explanation?: string | null;
+  workedExample?: GroundedWorkedExample | null;
+  guidedPractice?: string[];
+  independentPractice?: string[];
+  quickAssessment?: string[];
+  reflectionPrompt?: string | null;
+  sourceCitations?: string[];
+  retrievedEvidence?: CurriculumSource[];
+  curriculumGrounding?: CurriculumGroundingSummary;
   gradeLevel: string;
   classSectionId?: string | null;
   className?: string | null;
+  subject?: string | null;
+  quarter?: number | null;
+  moduleUnit?: string | null;
+  learnerLevel?: string | null;
   usedImportedTopics: boolean;
   importedTopicCount: number;
   weakSignals: {
@@ -500,6 +542,8 @@ export interface LessonPlanResponse {
   sourceLegitimacy: SourceLegitimacyReport;
   selfValidation: LessonSelfValidationReport;
   publishReady: boolean;
+  needsReview?: boolean;
+  reviewReason?: string | null;
   warnings: string[];
 }
 
@@ -551,6 +595,23 @@ export interface AsyncTaskCancelResponse {
   taskId: string;
   status: AsyncTaskStatus;
   message: string;
+}
+
+export interface InferenceMetricsResponse {
+  success: boolean;
+  metrics: {
+    uptime_sec: number;
+    requests_total: number;
+    requests_ok: number;
+    requests_error: number;
+    retries_total: number;
+    fallback_attempts: number;
+    route_counts: Record<string, number>;
+    task_counts: Record<string, number>;
+    provider_counts: Record<string, number>;
+    status_code_counts: Record<string, number>;
+    pro_enabled: boolean;
+  };
 }
 
 export interface ImportGroundedFeedbackRequest {
@@ -751,6 +812,106 @@ export interface AdminDeleteUserApiResponse {
   warnings: string[];
 }
 
+export interface AdminUserApiRecord {
+  uid: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  department: string;
+  grade?: string | null;
+  section?: string | null;
+  classSectionId?: string | null;
+  lrn?: string | null;
+  photo?: string | null;
+  lastLogin?: string | null;
+  createdAt?: string | null;
+}
+
+export interface AdminUserListApiResponse {
+  success: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  users: AdminUserApiRecord[];
+  filters: {
+    search?: string | null;
+    role?: string | null;
+    status?: string | null;
+    grade?: string | null;
+    section?: string | null;
+    classSectionId?: string | null;
+  };
+}
+
+export interface AdminUpdateUserApiRequest {
+  name?: string;
+  role?: string;
+  status?: string;
+  department?: string;
+  grade?: string;
+  section?: string;
+  lrn?: string;
+}
+
+export interface AdminUpdateUserApiResponse {
+  success: boolean;
+  uid: string;
+  message: string;
+  updatesApplied: Record<string, unknown>;
+  warnings: string[];
+}
+
+export interface AdminBulkActionFiltersApi {
+  search?: string;
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+}
+
+export interface AdminBulkActionRequestApi {
+  action: 'change_role' | 'change_status' | 'assign_class_section' | 'activate' | 'deactivate' | 'reset_password_email' | 'delete' | 'export';
+  userIds?: string[];
+  excludeUserIds?: string[];
+  filters?: AdminBulkActionFiltersApi;
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  lrn?: string;
+  dryRun?: boolean;
+  exportFormat?: 'csv' | 'json';
+}
+
+export interface AdminBulkActionResultItemApi {
+  uid: string;
+  email?: string | null;
+  status: 'succeeded' | 'failed' | 'skipped' | string;
+  message: string;
+}
+
+export interface AdminBulkActionApiResponse {
+  success: boolean;
+  action: string;
+  summary: {
+    targeted: number;
+    succeeded: number;
+    failed: number;
+    skipped: number;
+    exported: number;
+  };
+  results: AdminBulkActionResultItemApi[];
+  warnings: string[];
+  export?: {
+    format: string;
+    rows: Record<string, unknown>[];
+  } | null;
+}
+
 // ─── Quiz Maker Types ────────────────────────────────────────
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
@@ -876,6 +1037,14 @@ const CHAT_RETRY_OPTS: RetryFetchOptions = {
   maxRetries: 1,
   timeoutMs: 45_000,
   baseBackoffMs: 750,
+};
+
+/** Keep admin user list requests responsive when backend scans are slow. */
+const ADMIN_USERS_RETRY_OPTS: RetryFetchOptions = {
+  ...DEFAULT_RETRY_OPTS,
+  maxRetries: 1,
+  timeoutMs: 20_000,
+  baseBackoffMs: 500,
 };
 
 /** Upload-specific: longer timeout, fewer retries */
@@ -1636,6 +1805,67 @@ export const apiService = {
     );
   },
 
+  /** Retrieve admin users with server-side pagination and filters. */
+  async getAdminUsers(options?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    role?: string;
+    status?: string;
+    grade?: string;
+    section?: string;
+    classSectionId?: string;
+  }): Promise<AdminUserListApiResponse> {
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 25;
+    validateRange('/api/admin/users', 'page', page, 1, 10_000);
+    validateRange('/api/admin/users', 'pageSize', pageSize, 1, 200);
+
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('pageSize', String(pageSize));
+    if (options?.search?.trim()) params.set('search', options.search.trim());
+    if (options?.role?.trim()) params.set('role', options.role.trim());
+    if (options?.status?.trim()) params.set('status', options.status.trim());
+    if (options?.grade?.trim()) params.set('grade', options.grade.trim());
+    if (options?.section?.trim()) params.set('section', options.section.trim());
+    if (options?.classSectionId?.trim()) params.set('classSectionId', options.classSectionId.trim());
+
+    return apiFetch<AdminUserListApiResponse>(
+      `/api/admin/users?${params.toString()}`,
+      { method: 'GET' },
+      ADMIN_USERS_RETRY_OPTS,
+    );
+  },
+
+  /** Update one user profile via backend (Auth + Firestore synchronization where needed). */
+  async updateAdminUser(uid: string, payload: AdminUpdateUserApiRequest): Promise<AdminUpdateUserApiResponse> {
+    const normalizedUid = uid.trim();
+    validateRequired('/api/admin/users', { uid: normalizedUid });
+
+    const params = new URLSearchParams();
+    params.set('uid', normalizedUid);
+
+    return apiFetch<AdminUpdateUserApiResponse>(
+      `/api/admin/users?${params.toString()}`,
+      { method: 'PATCH', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /** Execute admin bulk actions for targeted users or filtered scope. */
+  async bulkAdminUsers(payload: AdminBulkActionRequestApi): Promise<AdminBulkActionApiResponse> {
+    validateRequired('/api/admin/users/bulk-action', {
+      action: payload.action,
+    });
+
+    return apiFetch<AdminBulkActionApiResponse>(
+      '/api/admin/users/bulk-action',
+      { method: 'POST', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
   /** Create one user account via backend (Auth + Firestore) and send welcome credentials email. */
   async createAdminUser(payload: AdminCreateUserApiRequest): Promise<AdminCreateUserApiResponse> {
     validateRequired('/api/admin/users', {
@@ -2139,4 +2369,100 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Ops endpoints
+  getInferenceMetrics: async (): Promise<InferenceMetricsResponse> => {
+    return apiFetch<InferenceMetricsResponse>('/api/ops/inference-metrics', {
+      method: 'GET',
+    });
+  },
 };
+
+// Fetch a curriculum-grounded lesson explanation
+export async function getCurriculumGroundedLesson(
+  topic: string,
+  subject: string,
+  quarter: number,
+  options?: {
+    lessonTitle?: string;
+    learningCompetency?: string;
+    moduleUnit?: string;
+    learnerLevel?: string;
+  },
+): Promise<{ explanation: string; sources: CurriculumSource[]; retrievalConfidence?: number; retrievalBand?: 'high' | 'medium' | 'low'; retrievalQuery?: string; needsReview?: boolean }> {
+  validateRequired('/api/rag/lesson', { topic, subject, quarter });
+  validateRange('/api/rag/lesson', 'quarter', quarter, 1, 4);
+  const result = await apiFetch<CurriculumGroundedLessonResponse>('/api/rag/lesson', {
+    method: 'POST',
+    body: JSON.stringify({
+      topic,
+      subject,
+      quarter,
+      lessonTitle: options?.lessonTitle,
+      learningCompetency: options?.learningCompetency,
+      moduleUnit: options?.moduleUnit,
+      learnerLevel: options?.learnerLevel,
+    }),
+  });
+
+  const sources = (result.sources || []).map((source) => ({
+    ...source,
+    sourceFile: (source as unknown as { source_file?: string }).source_file || source.sourceFile,
+    content: (source as unknown as { content?: string }).content || source.content,
+    contentDomain: (source as unknown as { content_domain?: string }).content_domain || source.contentDomain,
+    chunkType: (source as unknown as { chunk_type?: string }).chunk_type || source.chunkType,
+  }));
+
+  return {
+    explanation: result.explanation,
+    sources,
+    retrievalConfidence: result.retrievalConfidence,
+    retrievalBand: result.retrievalBand,
+    retrievalQuery: result.retrievalQuery,
+    needsReview: result.needsReview,
+  };
+}
+
+// Generate a curriculum-grounded practice problem
+export async function generateGroundedProblem(
+  topic: string,
+  subject: string,
+  quarter: number,
+  difficulty: 'easy' | 'medium' | 'hard',
+): Promise<{ problem: string; solution: string; competencyReference: string; sources: CurriculumSource[] }> {
+  validateRequired('/api/rag/generate-problem', { topic, subject, quarter, difficulty });
+  validateRange('/api/rag/generate-problem', 'quarter', quarter, 1, 4);
+  const result = await apiFetch<CurriculumGroundedProblemResponse>('/api/rag/generate-problem', {
+    method: 'POST',
+    body: JSON.stringify({ topic, subject, quarter, difficulty }),
+  });
+
+  const sources = (result.sources || []).map((source) => ({
+    ...source,
+    sourceFile: (source as unknown as { source_file?: string }).source_file || source.sourceFile,
+  }));
+
+  return {
+    problem: result.problem,
+    solution: result.solution,
+    competencyReference: result.competencyReference,
+    sources,
+  };
+}
+
+// Enrich analysis with curriculum competency context
+export async function fetchAnalysisCurriculumContext(
+  weakTopics: string[],
+  subject: string,
+): Promise<string> {
+  if (!Array.isArray(weakTopics) || weakTopics.length === 0) {
+    return '';
+  }
+
+  const result = await apiFetch<{ curriculumContext: string }>('/api/rag/analysis-context', {
+    method: 'POST',
+    body: JSON.stringify({ weakTopics, subject }),
+  });
+
+  return result.curriculumContext || '';
+}

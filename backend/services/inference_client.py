@@ -49,7 +49,10 @@ class InferenceRequest:
 
 
 class InferenceClient:
-    def __init__(self) -> None:
+    def __init__(self, firestore_client: Optional[Any] = None) -> None:
+        self.firestore = firestore_client
+        self._last_persist_time = 0.0
+        self._persist_throttle_sec = 30.0  # Persist at most every 30 seconds
         # Try multiple config paths (HF Space, Docker, local development)
         # The deploy script uploads config/ to the space root
         config_paths = [
@@ -294,11 +297,16 @@ class InferenceClient:
             "requests_error": 0,
             "retries_total": 0,
             "fallback_attempts": 0,
+            "latency_sum_ms": 0.0,
+            "latency_count": 0,
             "route_counts": {},
             "task_counts": {},
             "provider_counts": {},
             "status_code_counts": {},
         }
+        
+        # Load persistent metrics if available
+        self._load_persistent_metrics()
 
     def _bump_metric(self, key: str, inc: int = 1) -> None:
         with self._metrics_lock:
@@ -306,6 +314,7 @@ class InferenceClient:
             if not isinstance(current, int):
                 current = 0
             self._metrics[key] = current + inc
+        self._persist_metrics()
 
     def _bump_bucket(self, key: str, bucket: str, inc: int = 1) -> None:
         with self._metrics_lock:
@@ -317,6 +326,54 @@ class InferenceClient:
             if not isinstance(current, int):
                 current = 0
             mapping[bucket] = current + inc
+        self._persist_metrics()
+
+
+    def _record_completion(self, *, latency_ms: float) -> None:
+        with self._metrics_lock:
+            self._metrics["latency_sum_ms"] = (self._metrics.get("latency_sum_ms") or 0.0) + latency_ms
+            self._metrics["latency_count"] = (self._metrics.get("latency_count") or 0) + 1
+        self._persist_metrics()
+
+    def _load_persistent_metrics(self) -> None:
+        if not self.firestore:
+            return
+        try:
+            doc_ref = self.firestore.collection("system_metrics").document("inference_stats")
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                with self._metrics_lock:
+                    # Merge persistent data into current metrics
+                    # We only override counters, keeping local objects if needed
+                    for k, v in data.items():
+                        if k in self._metrics:
+                            if isinstance(v, (int, float)):
+                                self._metrics[k] = v
+                            elif isinstance(v, dict) and isinstance(self._metrics[k], dict):
+                                self._metrics[k].update(v)
+                LOGGER.info("✅ Persistent inference metrics loaded from Firestore")
+        except Exception as e:
+            LOGGER.warning(f"⚠️ Failed to load persistent metrics: {e}")
+
+    def _persist_metrics(self, force: bool = False) -> None:
+        if not self.firestore:
+            return
+        
+        now = time.time()
+        if not force and (now - self._last_persist_time < self._persist_throttle_sec):
+            return
+
+        try:
+            self._last_persist_time = now
+            doc_ref = self.firestore.collection("system_metrics").document("inference_stats")
+            with self._metrics_lock:
+                snapshot = dict(self._metrics)
+            
+            # Use set with merge=True to be safe
+            doc_ref.set(snapshot, merge=True)
+        except Exception as e:
+            LOGGER.warning(f"⚠️ Failed to persist metrics: {e}")
 
     def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
         self._bump_metric("requests_total", 1)
@@ -328,6 +385,10 @@ class InferenceClient:
 
     def snapshot_metrics(self) -> Dict[str, Any]:
         with self._metrics_lock:
+            l_sum = self._metrics.get("latency_sum_ms") or 0.0
+            l_count = self._metrics.get("latency_count") or 0
+            avg_latency = round(l_sum / l_count, 2) if l_count > 0 else 0.0
+
             snapshot = {
                 "uptime_sec": round(max(0.0, time.time() - self._metrics_started_at), 2),
                 "requests_total": self._metrics.get("requests_total") or 0,
@@ -335,6 +396,9 @@ class InferenceClient:
                 "requests_error": self._metrics.get("requests_error") or 0,
                 "retries_total": self._metrics.get("retries_total") or 0,
                 "fallback_attempts": self._metrics.get("fallback_attempts") or 0,
+                "avg_latency_ms": avg_latency,
+                "active_model": self.default_model,
+                "primary_provider": self.provider,
                 "route_counts": dict(self._metrics.get("route_counts") or {}),
                 "task_counts": dict(self._metrics.get("task_counts") or {}),
                 "provider_counts": dict(self._metrics.get("provider_counts") or {}),
@@ -762,6 +826,7 @@ class InferenceClient:
                 route=route,
                 fallback_depth=fallback_depth,
             )
+            self._record_completion(latency_ms=latency_ms)
             self._bump_metric("requests_ok", 1)
             return text
             
@@ -928,6 +993,7 @@ class InferenceClient:
             fallback_depth=fallback_depth,
             route=route,
         )
+        self._record_completion(latency_ms=latency_ms)
         self._bump_metric("requests_ok", 1)
         return text
 
@@ -1067,5 +1133,5 @@ class InferenceClient:
         return text.strip()
 
 
-def create_default_client() -> InferenceClient:
-    return InferenceClient()
+def create_default_client(firestore_client: Optional[Any] = None) -> InferenceClient:
+    return InferenceClient(firestore_client=firestore_client)

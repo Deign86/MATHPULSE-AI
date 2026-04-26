@@ -16,7 +16,9 @@ import os
 import io
 import re
 import json
+import ast
 import math
+import html
 import hashlib
 import logging
 import traceback
@@ -63,13 +65,22 @@ import requests as http_requests
 import httpx
 import uvicorn
 from services.inference_client import InferenceRequest, create_default_client
+from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
-from services.email_service import create_email_service_from_env
+from services.email_service import create_email_service_from_env, EmailMessagePayload
 from services.user_provisioning_service import (
     AdminCreateUserInput,
     CreateUserAndNotifyResult,
     UserProvisioningError,
     UserProvisioningService,
+)
+from routes.rag_routes import router as rag_router
+from rag.curriculum_rag import (
+    build_analysis_curriculum_context,
+    build_lesson_prompt,
+    build_lesson_query,
+    retrieve_curriculum_context,
+    summarize_retrieval_confidence,
 )
 
 try:
@@ -161,7 +172,13 @@ def get_inference_client():
         with _inference_client_lock:
             if _inference_client is None:
                 logger.info("🔧 Initializing InferenceClient...")
-                _inference_client = create_default_client()
+                firestore_client = None
+                if HAS_FIREBASE_ADMIN and _firebase_ready:
+                    try:
+                        firestore_client = firebase_firestore.client()
+                    except Exception:
+                        pass
+                _inference_client = create_default_client(firestore_client=firestore_client)
                 logger.info("✅ InferenceClient initialized")
     return _inference_client
 
@@ -189,6 +206,8 @@ UPLOAD_MAX_COLS = int(os.getenv("UPLOAD_MAX_COLS", "60"))
 UPLOAD_MAX_PDF_PAGES = int(os.getenv("UPLOAD_MAX_PDF_PAGES", "20"))
 UPLOAD_RATE_LIMIT_PER_MIN = int(os.getenv("UPLOAD_RATE_LIMIT_PER_MIN", "12"))
 UPLOAD_MAX_FILES_PER_REQUEST = int(os.getenv("UPLOAD_MAX_FILES_PER_REQUEST", "8"))
+ADMIN_USERS_QUERY_TIMEOUT_SECONDS = float(os.getenv("ADMIN_USERS_QUERY_TIMEOUT_SECONDS", "18"))
+ADMIN_USERS_MAX_SCAN_DOCS = int(os.getenv("ADMIN_USERS_MAX_SCAN_DOCS", "5000"))
 IMPORT_RETENTION_DAYS = int(os.getenv("IMPORT_RETENTION_DAYS", "180"))
 ENABLE_IMPORT_GROUNDED_QUIZ = os.getenv("ENABLE_IMPORT_GROUNDED_QUIZ", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_IMPORT_GROUNDED_LESSON = os.getenv("ENABLE_IMPORT_GROUNDED_LESSON", "true").strip().lower() in {"1", "true", "yes", "on"}
@@ -196,6 +215,7 @@ ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS = os.getenv("ENABLE_IMPORT_GROUNDED_FEEDB
 ENFORCE_LEGIT_SOURCES_FOR_LESSONS = os.getenv("ENFORCE_LEGIT_SOURCES_FOR_LESSONS", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_ASYNC_GENERATION = os.getenv("ENABLE_ASYNC_GENERATION", "true").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_LLM_RISK_RECOMMENDATIONS = os.getenv("ENABLE_LLM_RISK_RECOMMENDATIONS", "true").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_RAG_ANALYSIS_CONTEXT = os.getenv("ENABLE_RAG_ANALYSIS_CONTEXT", "true").strip().lower() in {"1", "true", "yes", "on"}
 ASYNC_TASK_TTL_SECONDS = int(os.getenv("ASYNC_TASK_TTL_SECONDS", "3600"))
 ASYNC_TASK_MAX_ITEMS = int(os.getenv("ASYNC_TASK_MAX_ITEMS", "400"))
 LESSON_SOURCE_MIN_TEXT_LENGTH = int(os.getenv("LESSON_SOURCE_MIN_TEXT_LENGTH", "240"))
@@ -239,6 +259,15 @@ CHAT_STREAM_COMPLETION_MODE_DEFAULT = os.getenv(
 if CHAT_STREAM_COMPLETION_MODE_DEFAULT not in {"auto", "marker", "none"}:
     CHAT_STREAM_COMPLETION_MODE_DEFAULT = "auto"
 
+DETERMINISTIC_CACHE_ENABLED = os.getenv("DETERMINISTIC_CACHE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+DETERMINISTIC_CACHE_MAX_ENTRIES = max(100, int(os.getenv("DETERMINISTIC_CACHE_MAX_ENTRIES", "1200")))
+DETERMINISTIC_CACHE_REDIS_URL = os.getenv("DETERMINISTIC_CACHE_REDIS_URL", "").strip() or None
+
+VERIFY_SOLUTION_CACHE_TTL_SECONDS = max(30, int(os.getenv("VERIFY_SOLUTION_CACHE_TTL_SECONDS", "900")))
+PREDICT_RISK_CACHE_TTL_SECONDS = max(30, int(os.getenv("PREDICT_RISK_CACHE_TTL_SECONDS", "600")))
+LEARNING_PATH_CACHE_TTL_SECONDS = max(30, int(os.getenv("LEARNING_PATH_CACHE_TTL_SECONDS", "300")))
+DAILY_INSIGHT_CACHE_TTL_SECONDS = max(30, int(os.getenv("DAILY_INSIGHT_CACHE_TTL_SECONDS", "180")))
+
 ALLOWED_UPLOAD_EXTENSIONS: Set[str] = {".csv", ".xlsx", ".xls", ".pdf"}
 ALLOWED_UPLOAD_MIME_TYPES: Set[str] = {
     "text/csv",
@@ -270,6 +299,7 @@ PUBLIC_PATHS: Set[str] = {
 }
 PUBLIC_API_PATHS: Set[str] = {
     "/api/quiz/topics",
+    "/api/rag/health",
 }
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
@@ -285,6 +315,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import/student-accounts/preview": TEACHER_OR_ADMIN,
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
     "/api/admin/users": ADMIN_ONLY,
+    "/api/admin/users/bulk-action": ADMIN_ONLY,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
@@ -293,6 +324,9 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/quiz/preview": TEACHER_OR_ADMIN,
     "/api/lesson/generate": TEACHER_OR_ADMIN,
     "/api/lesson/generate-async": TEACHER_OR_ADMIN,
+    "/api/rag/lesson": TEACHER_OR_ADMIN,
+    "/api/rag/generate-problem": TEACHER_OR_ADMIN,
+    "/api/rag/analysis-context": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded/summary": TEACHER_OR_ADMIN,
     "/api/import-grounded/access-audit": TEACHER_OR_ADMIN,
@@ -325,6 +359,19 @@ if not HF_TOKEN:
         "HF_TOKEN is not set. AI features will fail. "
         "On HF Spaces this is injected automatically as a secret."
     )
+
+deterministic_response_cache = DeterministicResponseCache(
+    enabled=DETERMINISTIC_CACHE_ENABLED,
+    max_entries=DETERMINISTIC_CACHE_MAX_ENTRIES,
+    redis_url=DETERMINISTIC_CACHE_REDIS_URL,
+    logger=logger,
+)
+
+
+def _set_cache_response_header(response: Optional[Response], hit: bool) -> None:
+    if response is None:
+        return
+    response.headers["X-Cache"] = "HIT" if hit else "MISS"
 
 # ─── FastAPI App ───────────────────────────────────────────────
 
@@ -932,6 +979,7 @@ class RequestMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
+app.include_router(rag_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -2076,6 +2124,7 @@ class LearningPathRequest(BaseModel):
     weaknesses: List[str]
     gradeLevel: str
     learningStyle: Optional[str] = "visual"
+    subject: Optional[str] = None
 
 
 class LearningPathResponse(BaseModel):
@@ -3011,7 +3060,7 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
 
 
 @app.post("/api/verify-solution", response_model=VerifySolutionResponse)
-async def verify_solution(request: VerifySolutionRequest):
+async def verify_solution(request: VerifySolutionRequest, response: Response):
     """
     Run all 3 verification methods on a problem+solution pair:
     1. Self-consistency (multiple samples)
@@ -3021,6 +3070,16 @@ async def verify_solution(request: VerifySolutionRequest):
     """
     try:
         logger.info(f"Running full verification for problem: {request.problem[:80]}...")
+        cache_key = deterministic_response_cache.build_cache_key(
+            "verify_solution",
+            request.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return VerifySolutionResponse(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
         warnings: List[str] = []
 
         # Build messages for self-consistency check
@@ -3101,7 +3160,7 @@ async def verify_solution(request: VerifySolutionRequest):
             f"aggregated_confidence={aggregated}"
         )
 
-        return VerifySolutionResponse(
+        result = VerifySolutionResponse(
             overall_verified=overall_verified,
             aggregated_confidence=aggregated,
             self_consistency=sc_model,
@@ -3109,6 +3168,12 @@ async def verify_solution(request: VerifySolutionRequest):
             llm_judge=lj_model,
             warnings=warnings,
         )
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            VERIFY_SOLUTION_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except Exception as e:
         logger.error(f"Verify solution error: {e}\n{traceback.format_exc()}")
@@ -3142,8 +3207,6 @@ def _basic_risk_top_factors(student_data: StudentRiskData) -> List[str]:
     factors: List[str] = []
     if student_data.avgQuizScore < 55:
         factors.append("Low average quiz performance")
-    if student_data.attendance < 70:
-        factors.append("Low attendance rate")
     if student_data.assignmentCompletion < 65:
         factors.append("Incomplete assignment submission trend")
     if student_data.engagementScore < 50:
@@ -3191,7 +3254,6 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
         f"risk_score: {result.risk_score:.2f}\n"
         f"engagementScore: {data.engagementScore:.1f}\n"
         f"avgQuizScore: {data.avgQuizScore:.1f}\n"
-        f"attendance: {data.attendance:.1f}\n"
         f"assignmentCompletion: {data.assignmentCompletion:.1f}\n"
         f"streak: {int(data.streak or 0)}\n"
         f"daysSinceLastActivity: {int(data.daysSinceLastActivity or 0)}\n"
@@ -3219,16 +3281,20 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
 
 
 @app.post("/api/predict-risk", response_model=RiskPrediction)
-async def predict_risk(student_data: StudentRiskData):
+async def predict_risk(student_data: StudentRiskData, response: Response):
     """Student risk prediction using facebook/bart-large-mnli zero-shot classification"""
     try:
+        cache_key = deterministic_response_cache.build_cache_key(
+            "predict_risk",
+            student_data.model_dump(),
+        )
+        _set_cache_response_header(response, hit=False)
         hf = get_client()
 
         text = (
             f"Student academic performance summary: "
             f"Engagement score is {student_data.engagementScore:.0f}%. "
             f"Average quiz score is {student_data.avgQuizScore:.0f}%. "
-            f"Attendance rate is {student_data.attendance:.0f}%. "
             f"Assignment completion rate is {student_data.assignmentCompletion:.0f}%."
         )
 
@@ -3268,7 +3334,7 @@ async def predict_risk(student_data: StudentRiskData):
         strict_risk_level = _to_strict_risk_level(risk_level)
         top_factors = _basic_risk_top_factors(student_data)
 
-        return RiskPrediction(
+        result = RiskPrediction(
             riskLevel=risk_level,
             confidence=round(float(top_score), 4),
             analysis={
@@ -3279,6 +3345,12 @@ async def predict_risk(student_data: StudentRiskData):
             risk_score=round(float(top_score), 4),
             top_factors=top_factors,
         )
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            PREDICT_RISK_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except HTTPException:
         raise
@@ -3293,7 +3365,7 @@ async def predict_risk_batch(request: BatchRiskRequest):
     results = []
     for student in request.students:
         try:
-            result = await predict_risk(student)
+            result = await predict_risk(student, Response())
             results.append(result)
         except Exception:
             results.append(
@@ -3313,10 +3385,41 @@ async def predict_risk_batch(request: BatchRiskRequest):
 
 
 @app.post("/api/learning-path", response_model=LearningPathResponse)
-async def generate_learning_path(request: LearningPathRequest):
+async def generate_learning_path(request: LearningPathRequest, response: Response):
     """Generate AI-powered personalized learning path"""
     try:
+        cache_key = deterministic_response_cache.build_cache_key(
+            "learning_path",
+            request.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return LearningPathResponse(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
+        rag_context_block = ""
+        if ENABLE_RAG_ANALYSIS_CONTEXT:
+            try:
+                subject_for_context = (request.subject or "general_math").strip() or "general_math"
+                competency_chunks = build_analysis_curriculum_context(request.weaknesses, subject_for_context)
+                if competency_chunks:
+                    lines = []
+                    for idx, row in enumerate(competency_chunks[:8], start=1):
+                        lines.append(
+                            f"{idx}. {row.get('content')} (Source: {row.get('source_file')} p.{row.get('page')}, "
+                            f"Q{row.get('quarter')}, {row.get('content_domain')})"
+                        )
+                    rag_context_block = (
+                        "RELEVANT DEPED LEARNING COMPETENCIES FOR WEAK TOPICS:\n"
+                        + "\n".join(lines)
+                        + "\n\n"
+                    )
+            except Exception as rag_err:
+                logger.warning(f"RAG analysis context skipped: {rag_err}")
+
         prompt = f"""Generate a personalized math learning path for a student with these details:
+{rag_context_block}STUDENT PERFORMANCE DATA:
 - Weak Topics: {', '.join(request.weaknesses)}
 - Grade Level: {request.gradeLevel}
 - Learning Style: {request.learningStyle or 'visual'}
@@ -3351,7 +3454,13 @@ Format as a numbered list. Be specific to the math topics mentioned."""
                 detail="Learning path generation is temporarily unavailable.",
             )
 
-        return LearningPathResponse(learningPath=content)
+        result = LearningPathResponse(learningPath=content)
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            LEARNING_PATH_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except HTTPException:
         raise
@@ -3364,13 +3473,29 @@ Format as a numbered list. Be specific to the math topics mentioned."""
 
 
 @app.post("/api/analytics/daily-insight", response_model=DailyInsightResponse)
-async def daily_insight(request: DailyInsightRequest):
+async def daily_insight(request: DailyInsightRequest, response: Response):
     """Generate daily AI insights for teacher dashboard"""
     try:
+        cache_key = deterministic_response_cache.build_cache_key(
+            "daily_insight",
+            request.model_dump(),
+        )
+        cached_payload = await deterministic_response_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            _set_cache_response_header(response, hit=True)
+            return DailyInsightResponse(**cached_payload)
+
+        _set_cache_response_header(response, hit=False)
         students = request.students
         total = len(students)
         if total == 0:
-            return DailyInsightResponse(insight="No student data available for analysis.")
+            empty_result = DailyInsightResponse(insight="No student data available for analysis.")
+            await deterministic_response_cache.set(
+                cache_key,
+                empty_result.model_dump(),
+                DAILY_INSIGHT_CACHE_TTL_SECONDS,
+            )
+            return empty_result
 
         avg_engagement = sum(s.engagementScore for s in students) / total
         avg_quiz = sum(s.avgQuizScore for s in students) / total
@@ -3418,7 +3543,13 @@ Keep the response under 200 words. Be specific and practical."""
                 detail="AI insight generation is temporarily unavailable.",
             )
 
-        return DailyInsightResponse(insight=content)
+        result = DailyInsightResponse(insight=content)
+        await deterministic_response_cache.set(
+            cache_key,
+            result.model_dump(),
+            DAILY_INSIGHT_CACHE_TTL_SECONDS,
+        )
+        return result
 
     except HTTPException:
         raise
@@ -4064,9 +4195,9 @@ def _resolve_import_class_context(
 
 
 def _derive_risk_level(avg_quiz: float, attendance: float, engagement: float) -> str:
-    if avg_quiz < 60 or attendance < 75 or engagement < 55:
+    if avg_quiz < 60 or engagement < 55:
         return "High"
-    if avg_quiz < 75 or attendance < 85 or engagement < 70:
+    if avg_quiz < 75 or engagement < 70:
         return "Medium"
     return "Low"
 
@@ -4082,7 +4213,7 @@ def _infer_student_state(
     risk_level = _derive_risk_level(avg_quiz, attendance, engagement)
 
     if risk_level == "High":
-        if avg_quiz < 50 or attendance < 65 or engagement < 45:
+        if avg_quiz < 50 or engagement < 45:
             state = "urgent_intervention"
         else:
             state = "at_risk"
@@ -4091,12 +4222,12 @@ def _infer_student_state(
     else:
         state = "on_track"
 
-    non_default_metrics = 3 - len(defaulted_metrics)
-    completeness = max(0.0, min(1.0, float(non_default_metrics) / 3.0))
+    relevant_metrics = {"avgQuizScore", "engagementScore"}
+    non_default_metrics = len(relevant_metrics - defaulted_metrics)
+    completeness = max(0.0, min(1.0, float(non_default_metrics) / float(len(relevant_metrics))))
 
     threshold_gap = max(
         max(0.0, 60.0 - avg_quiz) / 60.0,
-        max(0.0, 75.0 - attendance) / 75.0,
         max(0.0, 55.0 - engagement) / 55.0,
     )
     confidence = 0.45 + (0.45 * completeness) + (0.1 * min(1.0, threshold_gap))
@@ -4105,8 +4236,6 @@ def _infer_student_state(
     signals: List[str] = []
     if avg_quiz < 60:
         signals.append("low_avg_quiz_score")
-    if attendance < 75:
-        signals.append("low_attendance")
     if engagement < 55:
         signals.append("low_engagement")
     if defaulted_metrics:
@@ -4117,8 +4246,7 @@ def _infer_student_state(
         signals.append("stable_core_metrics")
 
     explanation = (
-        f"State inferred from avgQuizScore={avg_quiz:.1f}, attendance={attendance:.1f}, "
-        f"engagementScore={engagement:.1f}."
+        f"State inferred from avgQuizScore={avg_quiz:.1f}, engagementScore={engagement:.1f}."
     )
 
     return {
@@ -4861,6 +4989,493 @@ class AdminDeleteUserResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class AdminUserListItem(BaseModel):
+    uid: str
+    name: str
+    email: str
+    role: str
+    status: str
+    department: str
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    classSectionId: Optional[str] = None
+    lrn: Optional[str] = None
+    photo: Optional[str] = None
+    lastLogin: Optional[str] = None
+    createdAt: Optional[str] = None
+
+
+class AdminUserListResponse(BaseModel):
+    success: bool
+    page: int
+    pageSize: int
+    total: int
+    totalPages: int
+    hasNextPage: bool
+    hasMore: bool
+    users: List[AdminUserListItem]
+    filters: Dict[str, Optional[str]] = Field(default_factory=dict)
+
+
+class AdminUpdateUserRequest(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    department: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    lrn: Optional[str] = None
+
+    @field_validator("name", "role", "status", "department", "grade", "section", "lrn", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+
+class AdminUpdateUserResponse(BaseModel):
+    success: bool
+    uid: str
+    message: str
+    updatesApplied: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class AdminBulkActionFilters(BaseModel):
+    search: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    classSectionId: Optional[str] = None
+
+    @field_validator("search", "role", "status", "grade", "section", "classSectionId", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+
+class AdminBulkActionRequest(BaseModel):
+    action: str
+    userIds: List[str] = Field(default_factory=list)
+    excludeUserIds: List[str] = Field(default_factory=list)
+    filters: Optional[AdminBulkActionFilters] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    lrn: Optional[str] = None
+    dryRun: bool = False
+    exportFormat: str = "csv"
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def _strip_action(cls, value: Any) -> str:
+        cleaned = str(value or "").strip()
+        if not cleaned:
+            raise ValueError("action is required")
+        return cleaned
+
+    @field_validator("role", "status", "grade", "section", "lrn", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+
+class AdminBulkActionResultItem(BaseModel):
+    uid: str
+    email: Optional[str] = None
+    status: str
+    message: str
+
+
+class AdminBulkActionResponse(BaseModel):
+    success: bool
+    action: str
+    summary: Dict[str, int]
+    results: List[AdminBulkActionResultItem]
+    warnings: List[str] = Field(default_factory=list)
+    export: Optional[Dict[str, Any]] = None
+
+
+ADMIN_BULK_ACTIONS: Set[str] = {
+    "change_role",
+    "change_status",
+    "assign_class_section",
+    "activate",
+    "deactivate",
+    "reset_password_email",
+    "delete",
+    "export",
+}
+
+
+def _strip_optional_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def _normalize_admin_role_value(role: str) -> str:
+    normalized = str(role or "").strip().lower()
+    if normalized not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail="Role must be Student, Teacher, or Admin.")
+    return normalized
+
+
+def _normalize_admin_status_value(status: str) -> str:
+    normalized = str(status or "").strip().lower()
+    if normalized not in {"active", "inactive"}:
+        raise HTTPException(status_code=400, detail="Status must be Active or Inactive.")
+    return "Active" if normalized == "active" else "Inactive"
+
+
+def _coerce_iso_timestamp(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat()
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+
+    to_datetime = getattr(value, "to_datetime", None)
+    if callable(to_datetime):
+        try:
+            converted = to_datetime()
+            if isinstance(converted, datetime):
+                if converted.tzinfo is None:
+                    converted = converted.replace(tzinfo=timezone.utc)
+                return converted.astimezone(timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    to_date = getattr(value, "toDate", None)
+    if callable(to_date):
+        try:
+            converted = to_date()
+            if isinstance(converted, datetime):
+                if converted.tzinfo is None:
+                    converted = converted.replace(tzinfo=timezone.utc)
+                return converted.astimezone(timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    seconds = getattr(value, "seconds", None)
+    if isinstance(seconds, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(seconds), tz=timezone.utc).isoformat()
+        except Exception:
+            pass
+
+    return str(value)
+
+
+def _iso_sort_key(value: Optional[str]) -> float:
+    if not value:
+        return 0.0
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
+
+
+def _build_admin_user_record(uid: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    role_lower = str(data.get("role") or "student").strip().lower()
+    if role_lower not in VALID_ROLES:
+        role_lower = "student"
+
+    status_value = str(data.get("status") or "Active").strip().lower()
+    status_display = "Active" if status_value == "active" else "Inactive"
+
+    grade = _strip_optional_string(data.get("grade"))
+    section = _strip_optional_string(data.get("section"))
+    class_section_id = _strip_optional_string(data.get("classSectionId"))
+    if not class_section_id and grade and section:
+        class_section_id = re.sub(r"\s+", "_", f"{grade}_{section}".strip()).lower()
+
+    department = _strip_optional_string(data.get("department")) or ""
+    if role_lower == "student" and not department:
+        department = " - ".join([part for part in [grade, section] if part])
+
+    return {
+        "uid": uid,
+        "name": _strip_optional_string(data.get("name")) or "Unknown",
+        "email": _strip_optional_string(data.get("email")) or "",
+        "role": role_lower.capitalize(),
+        "status": status_display,
+        "department": department,
+        "grade": grade,
+        "section": section,
+        "classSectionId": class_section_id,
+        "lrn": _strip_optional_string(data.get("lrn")),
+        "photo": _strip_optional_string(data.get("photo")) or _strip_optional_string(data.get("photoURL")),
+        "lastLogin": _coerce_iso_timestamp(data.get("lastLogin")),
+        "createdAt": _coerce_iso_timestamp(data.get("createdAt")),
+    }
+
+
+def _filter_admin_user_records(
+    records: Sequence[Dict[str, Any]],
+    *,
+    search: Optional[str] = None,
+    role: Optional[str] = None,
+    status: Optional[str] = None,
+    grade: Optional[str] = None,
+    section: Optional[str] = None,
+    class_section_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    search_term = (search or "").strip().lower()
+    role_filter = (role or "").strip().lower()
+    status_filter = (status or "").strip().lower()
+    grade_filter = (grade or "").strip().lower()
+    section_filter = (section or "").strip().lower()
+    class_section_filter = (class_section_id or "").strip().lower()
+
+    filtered: List[Dict[str, Any]] = []
+    for record in records:
+        if search_term:
+            searchable = " ".join(
+                [
+                    str(record.get("uid") or ""),
+                    str(record.get("name") or ""),
+                    str(record.get("email") or ""),
+                ]
+            ).lower()
+            if search_term not in searchable:
+                continue
+
+        if role_filter and role_filter not in {"all", "all roles"}:
+            if str(record.get("role") or "").strip().lower() != role_filter:
+                continue
+
+        if status_filter and status_filter not in {"all", "all status"}:
+            if str(record.get("status") or "").strip().lower() != status_filter:
+                continue
+
+        if grade_filter and str(record.get("grade") or "").strip().lower() != grade_filter:
+            continue
+
+        if section_filter and str(record.get("section") or "").strip().lower() != section_filter:
+            continue
+
+        if class_section_filter and str(record.get("classSectionId") or "").strip().lower() != class_section_filter:
+            continue
+
+        filtered.append(record)
+
+    return filtered
+
+
+def _load_all_admin_user_records(firestore_client: Any) -> List[Dict[str, Any]]:
+    docs = list(firestore_client.collection("users").stream())
+    records: List[Dict[str, Any]] = []
+    for doc in docs:
+        data = _snapshot_to_dict(doc)
+        records.append(_build_admin_user_record(str(doc.id), data))
+
+    records.sort(
+        key=lambda item: _iso_sort_key(item.get("createdAt") or item.get("lastLogin")),
+        reverse=True,
+    )
+    return records
+
+
+async def _load_admin_user_records_for_list(
+    firestore_client: Any,
+    *,
+    scan_limit: int,
+    role: Optional[str],
+    class_section_id: Optional[str],
+) -> List[Dict[str, Any]]:
+    normalized_role = (role or "").strip().lower()
+    normalized_class_section_id = (class_section_id or "").strip().lower()
+
+    base_query = firestore_client.collection("users")
+    query_ref: Any = base_query
+    applied_filter: Optional[Tuple[str, str]] = None
+
+    if normalized_class_section_id:
+        query_ref = query_ref.where("classSectionId", "==", normalized_class_section_id)
+        applied_filter = ("classSectionId", normalized_class_section_id)
+    elif normalized_role in VALID_ROLES:
+        query_ref = query_ref.where("role", "==", normalized_role)
+        applied_filter = ("role", normalized_role)
+
+    query_ref = query_ref.limit(scan_limit)
+
+    try:
+        docs = await asyncio.wait_for(
+            asyncio.to_thread(lambda: list(cast(Any, query_ref).stream())),
+            timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="User list query timed out. Please narrow your filters and try again.",
+        )
+    except Exception as query_error:
+        query_error_text = str(query_error).lower()
+        if applied_filter and ("failed-precondition" in query_error_text or "index" in query_error_text):
+            logger.warning(
+                "Admin user list fallback scan due to index issue (%s=%s): %s",
+                applied_filter[0],
+                applied_filter[1],
+                query_error,
+            )
+            fallback_query = base_query.limit(scan_limit)
+            try:
+                docs = await asyncio.wait_for(
+                    asyncio.to_thread(lambda: list(cast(Any, fallback_query).stream())),
+                    timeout=ADMIN_USERS_QUERY_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(
+                    status_code=504,
+                    detail="User list query timed out. Please narrow your filters and try again.",
+                )
+            except Exception as fallback_error:
+                logger.error("Admin user list fallback query error: %s", fallback_error)
+                raise HTTPException(status_code=500, detail="Failed to load admin users.")
+        else:
+            logger.error("Admin user list query error: %s", query_error)
+            raise HTTPException(status_code=500, detail="Failed to load admin users.")
+
+    records: List[Dict[str, Any]] = []
+    for doc in docs:
+        data = _snapshot_to_dict(doc)
+        records.append(_build_admin_user_record(str(doc.id), data))
+
+    records.sort(
+        key=lambda item: _iso_sort_key(item.get("createdAt") or item.get("lastLogin")),
+        reverse=True,
+    )
+    return records
+
+
+def _resolve_admin_bulk_target_records(
+    firestore_client: Any,
+    *,
+    user_ids: Sequence[str],
+    filters: Optional[AdminBulkActionFilters],
+    excluded_user_ids: Sequence[str],
+) -> List[Dict[str, Any]]:
+    excluded = {str(uid or "").strip() for uid in excluded_user_ids if str(uid or "").strip()}
+    normalized_user_ids = [str(uid or "").strip() for uid in user_ids if str(uid or "").strip()]
+
+    records: List[Dict[str, Any]] = []
+    if normalized_user_ids:
+        seen: Set[str] = set()
+        for uid in normalized_user_ids:
+            if uid in seen or uid in excluded:
+                continue
+            seen.add(uid)
+            doc = cast(Any, firestore_client.collection("users").document(uid).get())
+            if not _snapshot_exists(doc):
+                continue
+            records.append(_build_admin_user_record(uid, _snapshot_to_dict(doc)))
+        return records
+
+    all_records = _load_all_admin_user_records(firestore_client)
+    filtered = _filter_admin_user_records(
+        all_records,
+        search=filters.search if filters else None,
+        role=filters.role if filters else None,
+        status=filters.status if filters else None,
+        grade=filters.grade if filters else None,
+        section=filters.section if filters else None,
+        class_section_id=filters.classSectionId if filters else None,
+    )
+
+    return [record for record in filtered if str(record.get("uid") or "") not in excluded]
+
+
+def _build_password_reset_email_message(name: str, email: str, reset_link: str) -> EmailMessagePayload:
+    safe_name = html.escape(name or "Learner")
+    safe_link = html.escape(reset_link, quote=True)
+    html_body = (
+        "<div style=\"font-family:Segoe UI,Arial,sans-serif;background:#0f1220;color:#e5e7eb;padding:20px;\">"
+        "<div style=\"max-width:640px;margin:0 auto;background:#181d2f;border:1px solid #343e62;border-radius:14px;padding:24px;\">"
+        "<h2 style=\"margin:0 0 12px 0;color:#f3f4f6;\">Password Reset Requested</h2>"
+        f"<p style=\"margin:0 0 14px 0;line-height:1.6;color:#d6daeb;\">Hello {safe_name}, your administrator requested a password reset for your MathPulse AI account.</p>"
+        f"<p style=\"margin:0 0 18px 0;\"><a href=\"{safe_link}\" style=\"display:inline-block;background:#9956DE;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:600;\">Reset Password</a></p>"
+        "<p style=\"margin:0;font-size:12px;color:#a8b3d1;line-height:1.5;\">If you did not request this change, contact your administrator immediately.</p>"
+        "</div></div>"
+    )
+    text_body = (
+        "MathPulse AI Password Reset\n\n"
+        f"Hello {name or 'Learner'},\n\n"
+        "An administrator requested a password reset for your account.\n"
+        f"Reset your password here: {reset_link}\n\n"
+        "If you did not request this change, contact your administrator immediately.\n"
+    )
+    return EmailMessagePayload(
+        to_name=name or "Learner",
+        to_email=email,
+        subject="MathPulse AI Password Reset",
+        html_content=html_body,
+        text_content=text_body,
+    )
+
+
+def _prepare_admin_profile_updates(existing: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any]:
+    updates: Dict[str, Any] = {"updatedAt": FIRESTORE_SERVER_TIMESTAMP}
+
+    if payload.get("name") is not None:
+        updates["name"] = str(payload.get("name") or "").strip()
+
+    role_value = payload.get("role")
+    role_lower = str(existing.get("role") or "student").strip().lower()
+    if role_value is not None:
+        role_lower = _normalize_admin_role_value(str(role_value))
+        updates["role"] = role_lower
+
+    status_value = payload.get("status")
+    if status_value is not None:
+        updates["status"] = _normalize_admin_status_value(str(status_value))
+
+    if payload.get("department") is not None:
+        updates["department"] = str(payload.get("department") or "").strip()
+
+    if payload.get("grade") is not None:
+        updates["grade"] = str(payload.get("grade") or "").strip()
+
+    if payload.get("section") is not None:
+        updates["section"] = str(payload.get("section") or "").strip()
+
+    if payload.get("lrn") is not None:
+        updates["lrn"] = str(payload.get("lrn") or "").strip()
+
+    if role_lower == "student":
+        grade_value = str(updates.get("grade") or existing.get("grade") or "").strip()
+        section_value = str(updates.get("section") or existing.get("section") or "").strip()
+        lrn_value = str(updates.get("lrn") or existing.get("lrn") or "").strip()
+        if not lrn_value:
+            raise HTTPException(status_code=400, detail="LRN is required for student accounts.")
+        updates["lrn"] = lrn_value
+        if grade_value:
+            updates["grade"] = grade_value
+        if section_value:
+            updates["section"] = section_value
+        if grade_value and section_value:
+            updates["classSectionId"] = re.sub(r"\s+", "_", f"{grade_value}_{section_value}".strip()).lower()
+
+    return updates
+
+
 @app.post("/api/import/student-accounts/preview")
 async def preview_student_account_import(
     request: Request,
@@ -5334,6 +5949,530 @@ async def commit_student_account_import(
     except Exception as exc:
         logger.error(f"Student account import commit error: {exc}")
         raise HTTPException(status_code=500, detail=f"Student account import commit error: {str(exc)}")
+
+
+@app.get("/api/admin/users", response_model=AdminUserListResponse)
+async def list_admin_users(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=25, ge=1, le=200),
+    search: Optional[str] = Query(default=None),
+    role: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    grade: Optional[str] = Query(default=None),
+    section: Optional[str] = Query(default=None),
+    classSectionId: Optional[str] = Query(default=None),
+):
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    normalized_role_filter = str(role or "").strip().lower()
+    if normalized_role_filter and normalized_role_filter not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail="role must be one of student, teacher, or admin")
+
+    if not _firebase_ready or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    start_index = (page - 1) * pageSize
+    if start_index >= ADMIN_USERS_MAX_SCAN_DOCS:
+        raise HTTPException(
+            status_code=400,
+            detail="Requested page is too deep. Narrow filters or use a smaller page number.",
+        )
+
+    required_window = page * pageSize
+    scan_limit = min(max(required_window * 4, pageSize * 8), ADMIN_USERS_MAX_SCAN_DOCS)
+
+    firestore_client = cast(Any, firebase_firestore).client()
+    records = await _load_admin_user_records_for_list(
+        firestore_client,
+        scan_limit=scan_limit,
+        role=role,
+        class_section_id=classSectionId,
+    )
+    filtered = _filter_admin_user_records(
+        records,
+        search=search,
+        role=role,
+        status=status,
+        grade=grade,
+        section=section,
+        class_section_id=classSectionId,
+    )
+
+    total = len(filtered)
+    total_pages = int(math.ceil(total / pageSize)) if total > 0 else 0
+    page_index = page
+    if total_pages > 0:
+        page_index = min(page, total_pages)
+
+    start = (page_index - 1) * pageSize
+    end = start + pageSize
+    paged_records = filtered[start:end]
+
+    return AdminUserListResponse(
+        success=True,
+        page=page_index,
+        pageSize=pageSize,
+        total=total,
+        totalPages=total_pages,
+        hasNextPage=end < total,
+        hasMore=end < total,
+        users=[AdminUserListItem(**entry) for entry in paged_records],
+        filters={
+            "search": _strip_optional_string(search),
+            "role": _strip_optional_string(role),
+            "status": _strip_optional_string(status),
+            "grade": _strip_optional_string(grade),
+            "section": _strip_optional_string(section),
+            "classSectionId": _strip_optional_string(classSectionId),
+        },
+    )
+
+
+@app.patch("/api/admin/users", response_model=AdminUpdateUserResponse)
+async def update_admin_user_account(
+    request: Request,
+    payload: AdminUpdateUserRequest,
+    uid: str = Query(..., min_length=1),
+):
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not _firebase_ready or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    normalized_uid = str(uid or "").strip()
+    if not normalized_uid:
+        raise HTTPException(status_code=400, detail="User uid is required")
+
+    update_payload = {
+        "name": payload.name,
+        "role": payload.role,
+        "status": payload.status,
+        "department": payload.department,
+        "grade": payload.grade,
+        "section": payload.section,
+        "lrn": payload.lrn,
+    }
+    if not any(value is not None for value in update_payload.values()):
+        raise HTTPException(status_code=400, detail="At least one field is required for update")
+
+    if normalized_uid == user.uid:
+        if payload.role and _normalize_admin_role_value(payload.role) != "admin":
+            raise HTTPException(status_code=400, detail="Admin users cannot remove their own admin role")
+        if payload.status and _normalize_admin_status_value(payload.status) == "Inactive":
+            raise HTTPException(status_code=400, detail="Admin users cannot deactivate their own account")
+
+    firestore_client = cast(Any, firebase_firestore).client()
+    profile_ref = firestore_client.collection("users").document(normalized_uid)
+    profile_snapshot = cast(Any, profile_ref.get())
+    if not _snapshot_exists(profile_snapshot):
+        raise HTTPException(status_code=404, detail="User profile not found")
+
+    existing_profile = _snapshot_to_dict(profile_snapshot)
+    prepared_updates = _prepare_admin_profile_updates(existing_profile, update_payload)
+    profile_ref.set(prepared_updates, merge=True)
+
+    warnings: List[str] = []
+    if "status" in prepared_updates and firebase_auth is not None:
+        try:
+            cast(Any, firebase_auth).update_user(
+                normalized_uid,
+                disabled=(prepared_updates.get("status") == "Inactive"),
+            )
+        except Exception as auth_update_error:
+            if _is_auth_user_not_found_error(auth_update_error):
+                warnings.append("Authentication account was already missing while syncing status.")
+            else:
+                warnings.append("Failed to sync status with authentication account.")
+
+    _write_access_audit_log(
+        request,
+        action="admin_user_update",
+        status="success",
+        metadata={
+            "uid": normalized_uid,
+            "fields": sorted([key for key in prepared_updates.keys() if key != "updatedAt"]),
+            "warnings": list(dict.fromkeys(warnings)),
+        },
+    )
+
+    updates_applied = {
+        key: value
+        for key, value in prepared_updates.items()
+        if key != "updatedAt"
+    }
+
+    return AdminUpdateUserResponse(
+        success=True,
+        uid=normalized_uid,
+        message="User profile updated successfully.",
+        updatesApplied=updates_applied,
+        warnings=list(dict.fromkeys(warnings)),
+    )
+
+
+@app.post("/api/admin/users/bulk-action", response_model=AdminBulkActionResponse)
+async def apply_admin_user_bulk_action(
+    request: Request,
+    payload: AdminBulkActionRequest,
+):
+    user = get_current_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not _firebase_ready or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    action = payload.action.strip().lower()
+    if action not in ADMIN_BULK_ACTIONS:
+        raise HTTPException(status_code=400, detail="Unsupported bulk action")
+
+    if not payload.userIds and payload.filters is None:
+        raise HTTPException(status_code=400, detail="Provide userIds or filters to target users")
+
+    if action == "change_role" and not payload.role:
+        raise HTTPException(status_code=400, detail="role is required for change_role action")
+    if action == "change_status" and not payload.status:
+        raise HTTPException(status_code=400, detail="status is required for change_status action")
+    if action == "assign_class_section" and (not payload.grade or not payload.section):
+        raise HTTPException(status_code=400, detail="grade and section are required for assign_class_section action")
+
+    firestore_client = cast(Any, firebase_firestore).client()
+    target_records = _resolve_admin_bulk_target_records(
+        firestore_client,
+        user_ids=payload.userIds,
+        filters=payload.filters,
+        excluded_user_ids=payload.excludeUserIds,
+    )
+
+    if not target_records:
+        return AdminBulkActionResponse(
+            success=True,
+            action=action,
+            summary={"targeted": 0, "succeeded": 0, "failed": 0, "skipped": 0, "exported": 0},
+            results=[],
+            warnings=[],
+            export={"format": payload.exportFormat.lower(), "rows": []} if action == "export" else None,
+        )
+
+    warnings: List[str] = []
+    results: List[AdminBulkActionResultItem] = []
+    succeeded = 0
+    failed = 0
+    skipped = 0
+    exported_rows: List[Dict[str, Any]] = []
+
+    email_service = create_email_service_from_env() if action == "reset_password_email" else None
+
+    for record in target_records:
+        uid_value = str(record.get("uid") or "").strip()
+        email_value = _strip_optional_string(record.get("email"))
+
+        if not uid_value:
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid="",
+                    email=email_value,
+                    status="failed",
+                    message="Target user is missing uid.",
+                )
+            )
+            continue
+
+        if uid_value == user.uid and action in {"delete", "deactivate"}:
+            skipped += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="skipped",
+                    message="Skipped self-targeted destructive action.",
+                )
+            )
+            continue
+
+        if payload.dryRun:
+            succeeded += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="succeeded",
+                    message="Dry run validation succeeded.",
+                )
+            )
+            continue
+
+        profile_ref = firestore_client.collection("users").document(uid_value)
+        profile_snapshot = cast(Any, profile_ref.get())
+        if not _snapshot_exists(profile_snapshot):
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="failed",
+                    message="User profile not found.",
+                )
+            )
+            continue
+
+        existing_profile = _snapshot_to_dict(profile_snapshot)
+
+        try:
+            if action == "export":
+                exported_rows.append(
+                    {
+                        "uid": uid_value,
+                        "name": record.get("name") or "",
+                        "email": record.get("email") or "",
+                        "role": record.get("role") or "",
+                        "status": record.get("status") or "",
+                        "grade": record.get("grade") or "",
+                        "section": record.get("section") or "",
+                        "classSectionId": record.get("classSectionId") or "",
+                        "department": record.get("department") or "",
+                        "lrn": record.get("lrn") or "",
+                    }
+                )
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="User exported.",
+                    )
+                )
+                continue
+
+            if action in {"activate", "deactivate", "change_status"}:
+                target_status = payload.status if action == "change_status" else ("Active" if action == "activate" else "Inactive")
+                normalized_status = _normalize_admin_status_value(str(target_status or ""))
+                profile_ref.set({"status": normalized_status, "updatedAt": FIRESTORE_SERVER_TIMESTAMP}, merge=True)
+
+                if firebase_auth is not None:
+                    try:
+                        cast(Any, firebase_auth).update_user(uid_value, disabled=(normalized_status == "Inactive"))
+                    except Exception as auth_update_error:
+                        if _is_auth_user_not_found_error(auth_update_error):
+                            warnings.append(f"Auth account missing for {uid_value} while syncing status.")
+                        else:
+                            warnings.append(f"Failed to sync auth status for {uid_value}.")
+
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message=f"Status set to {normalized_status}.",
+                    )
+                )
+                continue
+
+            if action == "change_role":
+                update_payload = _prepare_admin_profile_updates(
+                    existing_profile,
+                    {
+                        "role": payload.role,
+                        "grade": payload.grade,
+                        "section": payload.section,
+                        "lrn": payload.lrn,
+                    },
+                )
+                if uid_value == user.uid and update_payload.get("role") != "admin":
+                    skipped += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="skipped",
+                            message="Skipped self-admin role removal.",
+                        )
+                    )
+                    continue
+
+                profile_ref.set(update_payload, merge=True)
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="Role updated.",
+                    )
+                )
+                continue
+
+            if action == "assign_class_section":
+                role_lower = str(existing_profile.get("role") or "").strip().lower()
+                if role_lower != "student":
+                    skipped += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="skipped",
+                            message="Only student profiles can be assigned to class sections.",
+                        )
+                    )
+                    continue
+
+                update_payload = _prepare_admin_profile_updates(
+                    existing_profile,
+                    {
+                        "grade": payload.grade,
+                        "section": payload.section,
+                        "lrn": payload.lrn,
+                    },
+                )
+                profile_ref.set(update_payload, merge=True)
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="Class and section updated.",
+                    )
+                )
+                continue
+
+            if action == "reset_password_email":
+                if firebase_auth is None:
+                    raise HTTPException(status_code=503, detail="Authentication service unavailable")
+                if not email_value:
+                    skipped += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="skipped",
+                            message="Skipped user without email address.",
+                        )
+                    )
+                    continue
+
+                reset_link = cast(Any, firebase_auth).generate_password_reset_link(email_value)
+                email_payload = _build_password_reset_email_message(
+                    name=str(existing_profile.get("name") or record.get("name") or "Learner"),
+                    email=email_value,
+                    reset_link=str(reset_link),
+                )
+
+                send_result = email_service.send_transactional_email(email_payload) if email_service else None
+                if send_result is None or not send_result.success:
+                    error_message = send_result.error_message if send_result else "Email service unavailable"
+                    failed += 1
+                    results.append(
+                        AdminBulkActionResultItem(
+                            uid=uid_value,
+                            email=email_value,
+                            status="failed",
+                            message=f"Failed to send reset email: {error_message}",
+                        )
+                    )
+                    continue
+
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="Password reset email sent.",
+                    )
+                )
+                continue
+
+            if action == "delete":
+                if firebase_auth is None:
+                    raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+                try:
+                    cast(Any, firebase_auth).delete_user(uid_value)
+                except Exception as auth_delete_error:
+                    if _is_auth_user_not_found_error(auth_delete_error):
+                        warnings.append(f"Authentication account already missing for {uid_value}.")
+                    else:
+                        raise HTTPException(status_code=500, detail=f"Failed to delete auth account for {uid_value}")
+
+                profile_ref.delete()
+                succeeded += 1
+                results.append(
+                    AdminBulkActionResultItem(
+                        uid=uid_value,
+                        email=email_value,
+                        status="succeeded",
+                        message="User account deleted.",
+                    )
+                )
+                continue
+
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="failed",
+                    message="Unsupported action.",
+                )
+            )
+        except HTTPException:
+            raise
+        except Exception as action_error:
+            failed += 1
+            results.append(
+                AdminBulkActionResultItem(
+                    uid=uid_value,
+                    email=email_value,
+                    status="failed",
+                    message=f"Action failed: {action_error}",
+                )
+            )
+
+    summary = {
+        "targeted": len(target_records),
+        "succeeded": succeeded,
+        "failed": failed,
+        "skipped": skipped,
+        "exported": len(exported_rows),
+    }
+
+    _write_access_audit_log(
+        request,
+        action="admin_user_bulk_action",
+        status="success" if failed == 0 else "partial_success",
+        metadata={
+            "action": action,
+            "summary": summary,
+            "dryRun": payload.dryRun,
+            "filtersApplied": payload.filters.model_dump() if payload.filters else None,
+            "userIdsCount": len(payload.userIds),
+        },
+    )
+
+    export_payload: Optional[Dict[str, Any]] = None
+    if action == "export":
+        export_payload = {
+            "format": (payload.exportFormat or "csv").strip().lower(),
+            "rows": exported_rows,
+        }
+
+    return AdminBulkActionResponse(
+        success=failed == 0,
+        action=action,
+        summary=summary,
+        results=results,
+        warnings=list(dict.fromkeys(warnings)),
+        export=export_payload,
+    )
 
 
 @app.post("/api/admin/users", response_model=AdminCreateUserResponse)
@@ -5846,13 +6985,10 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
 
                 missing_core_fields, missing_identity = _validate_class_record_mapping(file_column_mapping)
                 if missing_core_fields:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            "Missing required educational columns after mapping: "
-                            + ", ".join(missing_core_fields)
-                            + ". Add equivalent columns or rename headers before upload."
-                        ),
+                    file_warnings.append(
+                        "Missing preferred educational columns after mapping: "
+                        + ", ".join(missing_core_fields)
+                        + ". Import will continue with metric defaults where needed."
                     )
                 if missing_identity:
                     raise HTTPException(
@@ -6023,6 +7159,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
         persisted_rows = int(aggregate_dedup.get("inserted", 0) or 0) + int(aggregate_dedup.get("updated", 0) or 0)
         rejected_reason_counts = dict(Counter(item.get("reason", "unknown") for item in all_rejected_rows))
         inferred_coverage_pct = round((float(inferred_rows_total) / float(max(interpreted_rows_total, 1))) * 100.0, 1)
+        partial_success_files = sum(1 for f in per_file_results if f.get("status") == "partial_success")
 
         response_payload = {
             "success": overall_success,
@@ -6054,6 +7191,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
             "summary": {
                 "totalFiles": len(per_file_results),
                 "successfulFiles": successful_files,
+                "partialSuccessFiles": partial_success_files,
                 "failedFiles": failed_files,
             },
             "riskRefresh": risk_refresh,
@@ -7029,6 +8167,12 @@ class CalculatorResponse(BaseModel):
 
 class LessonGenerationRequest(BaseModel):
     gradeLevel: str = Field(..., description="Grade level context for lesson generation")
+    subject: Optional[str] = Field(default="general_math", description="Curriculum subject identifier")
+    quarter: Optional[int] = Field(default=1, ge=1, le=4, description="Curriculum quarter")
+    moduleUnit: Optional[str] = Field(default=None, description="Optional module or unit context")
+    lessonTitle: Optional[str] = Field(default=None, description="Optional lesson title")
+    learningCompetency: Optional[str] = Field(default=None, description="Optional learning competency text")
+    learnerLevel: Optional[str] = Field(default=None, description="Optional learner level context")
     classSectionId: Optional[str] = Field(default=None, description="Optional class section context")
     className: Optional[str] = Field(default=None, description="Optional class display name")
     materialId: Optional[str] = Field(default=None, description="Optional specific course-material artifact ID")
@@ -7037,6 +8181,32 @@ class LessonGenerationRequest(BaseModel):
     preferImportedTopics: bool = Field(default=True, description="Prefer persisted imported topics when available")
     allowReviewSources: bool = Field(default=False, description="Allow generation from review_required sources")
     allowUnverifiedLesson: bool = Field(default=False, description="Allow returning lessons that fail self-validation")
+    curriculumContext: Optional[str] = Field(default=None, description="Optional RAG curriculum context block")
+
+
+class CurriculumEvidenceSource(BaseModel):
+    subject: str
+    quarter: int
+    content: str
+    sourceFile: Optional[str] = None
+    page: Optional[int] = None
+    score: float = 0.0
+    contentDomain: Optional[str] = None
+    chunkType: Optional[str] = None
+
+
+class CurriculumGroundingSummary(BaseModel):
+    query: str
+    confidence: float
+    confidenceBand: str
+    retrievedChunks: int
+    needsReview: bool
+    issues: List[str] = Field(default_factory=list)
+
+
+class GroundedWorkedExample(BaseModel):
+    problem: str
+    solution: str
 
 
 class LessonPlanBlock(BaseModel):
@@ -7071,9 +8241,25 @@ class LessonSelfValidationReport(BaseModel):
 class LessonPlanResponse(BaseModel):
     success: bool
     lessonTitle: str
+    curriculumCompetency: Optional[str] = None
+    lessonObjective: Optional[str] = None
+    realWorldHook: Optional[str] = None
+    explanation: Optional[str] = None
+    workedExample: Optional[GroundedWorkedExample] = None
+    guidedPractice: List[str] = Field(default_factory=list)
+    independentPractice: List[str] = Field(default_factory=list)
+    quickAssessment: List[str] = Field(default_factory=list)
+    reflectionPrompt: Optional[str] = None
+    sourceCitations: List[str] = Field(default_factory=list)
+    retrievedEvidence: List[CurriculumEvidenceSource] = Field(default_factory=list)
+    curriculumGrounding: CurriculumGroundingSummary
     gradeLevel: str
     classSectionId: Optional[str] = None
     className: Optional[str] = None
+    subject: Optional[str] = None
+    quarter: Optional[int] = None
+    moduleUnit: Optional[str] = None
+    learnerLevel: Optional[str] = None
     usedImportedTopics: bool
     importedTopicCount: int
     weakSignals: Dict[str, float]
@@ -7083,6 +8269,8 @@ class LessonPlanResponse(BaseModel):
     sourceLegitimacy: SourceLegitimacyReport
     selfValidation: LessonSelfValidationReport
     publishReady: bool
+    needsReview: bool = False
+    reviewReason: Optional[str] = None
     warnings: List[str]
 
 
@@ -7463,7 +8651,7 @@ def _load_class_performance_artifacts(
         engagement_rates.append(engagement)
         completion_rates.append(completion)
 
-        if score < 60 or attendance < 75 or engagement < 55:
+        if score < 60 or engagement < 55:
             at_risk_count += 1
 
     count = len(scores)
@@ -7690,6 +8878,251 @@ async def _validate_generated_lesson_plan(
     }
 
 
+def _coerce_nonempty_str_list(raw_value: Any) -> List[str]:
+    if not isinstance(raw_value, list):
+        return []
+    return [str(item).strip() for item in raw_value if str(item).strip()]
+
+
+def _build_lesson_generation_content(
+    *,
+    lesson_payload: Dict[str, Any],
+    request: LessonGenerationRequest,
+    curriculum_competency: str,
+    lesson_title_hint: str,
+    retrieval_band: str,
+    retrieval_confidence: float,
+    source_legitimacy_report: Dict[str, Any],
+    curriculum_chunks: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    lesson_title = str(lesson_payload.get("lessonTitle") or lesson_title_hint or "Intervention-Grounded Math Lesson Plan").strip()
+    curriculum_competency = str(
+        lesson_payload.get("curriculumCompetency")
+        or request.learningCompetency
+        or curriculum_competency
+        or lesson_title
+    ).strip()
+    lesson_objective = str(
+        lesson_payload.get("lessonObjective")
+        or f"Demonstrate {curriculum_competency} using DepEd curriculum evidence and Philippine real-life contexts."
+    ).strip()
+    real_world_hook = str(
+        lesson_payload.get("realWorldHook")
+        or "Connect the competency to practical decisions in work, business, finance, or daily life."
+    ).strip()
+    explanation = str(
+        lesson_payload.get("explanation")
+        or f"Use the retrieved curriculum evidence to explain {curriculum_competency} clearly and step by step."
+    ).strip()
+    reflection_prompt = str(
+        lesson_payload.get("reflectionPrompt")
+        or "How does this competency help you solve a real problem in school, work, or daily life?"
+    ).strip()
+
+    raw_worked_example = lesson_payload.get("workedExample") if isinstance(lesson_payload, dict) else None
+    if isinstance(raw_worked_example, dict):
+        worked_example = GroundedWorkedExample(
+            problem=str(raw_worked_example.get("problem") or raw_worked_example.get("question") or "").strip()
+            or f"Worked example for {curriculum_competency}",
+            solution=str(raw_worked_example.get("solution") or raw_worked_example.get("answer") or "").strip()
+            or "Step-by-step solution grounded in the retrieved curriculum context.",
+        )
+    else:
+        worked_example = GroundedWorkedExample(
+            problem=f"Worked example for {curriculum_competency}",
+            solution="Step-by-step solution grounded in the retrieved curriculum context.",
+        )
+
+    guided_practice = _coerce_nonempty_str_list(lesson_payload.get("guidedPractice") if isinstance(lesson_payload, dict) else None)
+    if not guided_practice:
+        guided_practice = [
+            f"Solve a guided item on {curriculum_competency} using one cue from the retrieved curriculum evidence.",
+            "Compare your answer with a partner and justify each step.",
+        ]
+
+    independent_practice = _coerce_nonempty_str_list(lesson_payload.get("independentPractice") if isinstance(lesson_payload, dict) else None)
+    if not independent_practice:
+        independent_practice = [
+            f"Complete an independent task that applies {curriculum_competency} to a Philippine context.",
+            "Write a short justification of your answer using the curriculum language.",
+        ]
+
+    quick_assessment = _coerce_nonempty_str_list(lesson_payload.get("quickAssessment") if isinstance(lesson_payload, dict) else None)
+    if not quick_assessment:
+        quick_assessment = [
+            "One exit-ticket item that checks procedural accuracy.",
+            "One reflection question that checks real-world transfer.",
+        ]
+
+    raw_source_citations = lesson_payload.get("sourceCitations") if isinstance(lesson_payload, dict) else []
+    source_citations = _coerce_nonempty_str_list(raw_source_citations)
+    if not source_citations:
+        source_citations = [
+            f"{chunk.get('source_file')} p.{chunk.get('page')} ({chunk.get('content_domain')}/{chunk.get('chunk_type')})"
+            for chunk in curriculum_chunks[:5]
+            if chunk.get("source_file")
+        ]
+
+    needs_review = bool(lesson_payload.get("needsReview")) if isinstance(lesson_payload, dict) else False
+    needs_review = needs_review or retrieval_band == "low"
+    review_reason = str(lesson_payload.get("reviewReason") or "").strip() if isinstance(lesson_payload, dict) else ""
+    if not review_reason and retrieval_band == "low":
+        review_reason = "Curriculum retrieval confidence was low, so the lesson should be reviewed before classroom use."
+    if source_legitimacy_report.get("status") != "verified":
+        needs_review = True
+        if not review_reason:
+            review_reason = "One or more source checks require review."
+
+    if needs_review:
+        review_reason = review_reason or "Lesson marked as needs review."
+
+    retrieved_evidence: List[CurriculumEvidenceSource] = []
+    for chunk in curriculum_chunks[:5]:
+        retrieved_evidence.append(
+            CurriculumEvidenceSource(
+                subject=str(chunk.get("subject") or request.subject or "general_math"),
+                quarter=int(chunk.get("quarter") or request.quarter or 1),
+                content=str(chunk.get("content") or "").strip(),
+                sourceFile=str(chunk.get("source_file") or "").strip() or None,
+                page=int(chunk.get("page") or 0) or None,
+                score=float(chunk.get("score") or 0.0),
+                contentDomain=str(chunk.get("content_domain") or "").strip() or None,
+                chunkType=str(chunk.get("chunk_type") or "").strip() or None,
+            )
+        )
+
+    return {
+        "lessonTitle": lesson_title,
+        "curriculumCompetency": curriculum_competency,
+        "lessonObjective": lesson_objective,
+        "realWorldHook": real_world_hook,
+        "explanation": explanation,
+        "reflectionPrompt": reflection_prompt,
+        "workedExample": worked_example,
+        "guidedPractice": guided_practice,
+        "independentPractice": independent_practice,
+        "quickAssessment": quick_assessment,
+        "sourceCitations": source_citations,
+        "needsReview": needs_review,
+        "reviewReason": review_reason,
+        "retrievedEvidence": retrieved_evidence,
+    }
+
+
+def _build_lesson_generation_blocks(
+    *,
+    lesson_title: str,
+    lesson_objective: str,
+    real_world_hook: str,
+    explanation: str,
+    worked_example: GroundedWorkedExample,
+    guided_practice: List[str],
+    independent_practice: List[str],
+    quick_assessment: List[str],
+    reflection_prompt: str,
+    retrieved_evidence: List[CurriculumEvidenceSource],
+    selected_topics: List[str],
+) -> Dict[str, Any]:
+    provenance_summary: List[Dict[str, Optional[str]]] = []
+    for evidence in retrieved_evidence:
+        summary_row = {
+            "topicId": None,
+            "title": evidence.content[:120] if evidence.content else lesson_title,
+            "materialId": evidence.sourceFile,
+            "sourceFile": evidence.sourceFile,
+            "sectionId": f"p.{evidence.page}" if evidence.page else None,
+        }
+        if summary_row not in provenance_summary:
+            provenance_summary.append(summary_row)
+
+    if not provenance_summary:
+        provenance_summary = [
+            {
+                "topicId": None,
+                "title": topic,
+                "materialId": None,
+                "sourceFile": None,
+                "sectionId": None,
+            }
+            for topic in selected_topics[:3]
+        ]
+
+    first_provenance = provenance_summary[0] if provenance_summary else None
+    blocks: List[LessonPlanBlock] = [
+        LessonPlanBlock(
+            blockId="block_1",
+            title="Real-World Hook",
+            objective=lesson_objective,
+            strategy="Context-setting discussion with retrieved curriculum evidence.",
+            estimatedMinutes=8,
+            activities=[real_world_hook],
+            checksForUnderstanding=["Ask students to identify the competency in the example."],
+            remediationTips=["Restate the context using simpler language if needed."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_2",
+            title="Concept Explanation",
+            objective=lesson_objective,
+            strategy="Teacher-led explanation grounded in retrieved excerpts.",
+            estimatedMinutes=15,
+            activities=[explanation],
+            checksForUnderstanding=["Students paraphrase the key idea in their own words."],
+            remediationTips=["Break the explanation into smaller steps and repeat the terminology."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_3",
+            title="Worked Example",
+            objective=worked_example.problem,
+            strategy="Model the solution path and annotate each step.",
+            estimatedMinutes=15,
+            activities=[f"Problem: {worked_example.problem}", f"Solution: {worked_example.solution}"],
+            checksForUnderstanding=["Students identify which step uses the retrieved competency."],
+            remediationTips=["Provide a partially completed solution scaffold if needed."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_4",
+            title="Guided Practice",
+            objective="Apply the same method with scaffolded support.",
+            strategy="Teacher circulates while students complete guided items.",
+            estimatedMinutes=15,
+            activities=guided_practice,
+            checksForUnderstanding=["Check one correct answer and one justification."],
+            remediationTips=["Offer hints tied directly to the retrieved evidence."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_5",
+            title="Independent Practice and Quick Check",
+            objective="Transfer the competency to a new but related context.",
+            strategy="Independent task followed by a short formative check.",
+            estimatedMinutes=15,
+            activities=independent_practice + quick_assessment,
+            checksForUnderstanding=["Collect an exit ticket and review misconceptions."],
+            remediationTips=["Revisit the retrieved source excerpt if students struggle."],
+            provenance=first_provenance,
+        ),
+        LessonPlanBlock(
+            blockId="block_6",
+            title="Reflection",
+            objective=reflection_prompt,
+            strategy="Metacognitive reflection and transfer discussion.",
+            estimatedMinutes=7,
+            activities=[reflection_prompt],
+            checksForUnderstanding=["Ask students to connect the skill to a real decision."],
+            remediationTips=["Prompt with a local example if reflection is shallow."],
+            provenance=first_provenance,
+        ),
+    ]
+
+    return {
+        "provenanceSummary": provenance_summary,
+        "blocks": blocks,
+    }
+
+
 @app.post("/api/lesson/generate", response_model=LessonPlanResponse)
 async def generate_lesson_plan(http_request: Request, request: LessonGenerationRequest):
     """
@@ -7741,6 +9174,38 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
 
         selected_topics = selected_topics[: request.topicCount]
 
+        requested_subject = (str(request.subject or "general_math").strip() or "general_math")
+        requested_quarter = int(request.quarter or 1)
+        competency_hint = str(request.learningCompetency or "").strip() or (selected_topics[0] if selected_topics else "")
+        lesson_title_hint = str(request.lessonTitle or "").strip() or competency_hint or "Grounded Math Lesson"
+        module_unit_hint = str(request.moduleUnit or "").strip() or None
+        learner_level_hint = str(request.learnerLevel or "").strip() or None
+
+        retrieval_query = build_lesson_query(
+            competency_hint or lesson_title_hint,
+            requested_subject,
+            requested_quarter,
+            lesson_title=lesson_title_hint,
+            competency=competency_hint,
+            module_unit=module_unit_hint,
+            learner_level=learner_level_hint,
+        )
+
+        curriculum_chunks = retrieve_curriculum_context(
+            query=retrieval_query,
+            subject=requested_subject,
+            quarter=requested_quarter,
+            top_k=5,
+        )
+        retrieval_summary = summarize_retrieval_confidence(curriculum_chunks)
+        retrieval_confidence = float(retrieval_summary.get("confidence") or 0.0)
+        retrieval_band = str(retrieval_summary.get("band") or "low")
+        retrieval_issues: List[str] = []
+        if not curriculum_chunks:
+            retrieval_issues.append("No curriculum evidence was retrieved for the selected competency.")
+        elif retrieval_band == "low":
+            retrieval_issues.append("Retrieved evidence is weakly aligned; manual review recommended.")
+
         source_legitimacy_report = _evaluate_lesson_source_legitimacy(
             imported_topics_payload,
             allow_review_sources=request.allowReviewSources,
@@ -7756,6 +9221,18 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
                 "evidenceChecked": ["builtin_curriculum_fallback"],
                 "issues": [],
             }
+
+        if retrieval_issues:
+            source_legitimacy_report["status"] = "review_required"
+            source_legitimacy_report["score"] = min(float(source_legitimacy_report.get("score") or 0.0), retrieval_confidence or 0.5)
+            source_legitimacy_report.setdefault("issues", [])
+            source_legitimacy_report["issues"] = list({*map(str, source_legitimacy_report.get("issues") or []), *retrieval_issues})
+            source_legitimacy_report.setdefault("evidenceChecked", [])
+            evidence_checked = list(source_legitimacy_report.get("evidenceChecked") or [])
+            evidence_checked.extend([
+                f"{chunk.get('source_file')} p.{chunk.get('page')}" for chunk in curriculum_chunks if chunk.get("source_file")
+            ])
+            source_legitimacy_report["evidenceChecked"] = sorted({str(item) for item in evidence_checked if str(item).strip()})
 
         if ENFORCE_LEGIT_SOURCES_FOR_LESSONS and using_imported_sources:
             source_status = str(source_legitimacy_report.get("status") or "review_required")
@@ -7782,59 +9259,31 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
             max_records=500,
         )
 
-        topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}
-        for topic in (imported_topics_payload.get("topics") or []):
-            title = str(topic.get("title") or "").strip()
-            if not title:
-                continue
-            topic_provenance_map[_normalize_topic_key(title)] = {
-                "topicId": str(topic.get("topicId") or "") or None,
-                "title": title,
-                "materialId": str(topic.get("materialId") or "") or None,
-                "sourceFile": str(topic.get("sourceFile") or "") or None,
-                "sectionId": str(topic.get("sectionId") or "") or None,
-            }
+        curriculum_context_block = ""
+        if request.curriculumContext and str(request.curriculumContext).strip():
+            curriculum_context_block = f"{str(request.curriculumContext).strip()}\n\n"
 
-        prompt = f"""Generate a JSON lesson plan for {request.gradeLevel}.
+        prompt = build_lesson_prompt(
+            lesson_title=lesson_title_hint,
+            competency=competency_hint or lesson_title_hint,
+            grade_level=request.gradeLevel,
+            subject=requested_subject,
+            quarter=requested_quarter,
+            learner_level=learner_level_hint,
+            module_unit=module_unit_hint,
+            curriculum_chunks=curriculum_chunks,
+        )
 
-Class context:
-- Class section: {request.classSectionId or 'n/a'}
-- Class name: {request.className or 'n/a'}
-
-Performance signals:
-- recordsCount: {int(class_signals.get('recordsCount', 0))}
-- averageQuizScore: {class_signals.get('averageQuizScore', 0.0):.1f}
-- averageAttendance: {class_signals.get('averageAttendance', 0.0):.1f}
-- averageEngagement: {class_signals.get('averageEngagement', 0.0):.1f}
-- averageAssignmentCompletion: {class_signals.get('averageAssignmentCompletion', 0.0):.1f}
-- atRiskRate: {class_signals.get('atRiskRate', 0.0):.2f}
-
-Focus topics:
-{json.dumps(selected_topics)}
-
-Return JSON only with this structure:
-{{
-  "lessonTitle": "...",
-  "blocks": [
-    {{
-      "title": "...",
-      "topic": "...",
-      "objective": "...",
-      "strategy": "...",
-      "estimatedMinutes": 10,
-      "activities": ["..."],
-      "checksForUnderstanding": ["..."],
-      "remediationTips": ["..."]
-    }}
-  ]
-}}
-
-Rules:
-- Use the provided focus topics only.
-- Include 3 to 6 blocks.
-- Prioritize prerequisite reinforcement and intervention scaffolds when risk is elevated.
-- Keep activities practical and teacher-editable.
-"""
+        if curriculum_context_block:
+            prompt = f"{curriculum_context_block}{prompt}"
+        prompt = (
+            f"{prompt}\n\n"
+            f"Class section: {request.classSectionId or 'n/a'}\n"
+            f"Class name: {request.className or 'n/a'}\n"
+            f"Performance signals: {json.dumps(class_signals)}\n"
+            f"Focus topics: {json.dumps(selected_topics)}\n"
+            "Use the retrieved curriculum evidence to ground the lesson and to generate explicit real-world applications."
+        )
 
         lesson_payload: Dict[str, Any] = {}
         try:
@@ -7853,62 +9302,51 @@ Rules:
             lesson_payload = _parse_lesson_plan_json(raw)
         except Exception as lesson_exc:
             logger.warning(f"Lesson generation AI fallback engaged: {lesson_exc}")
-            warnings.append("AI lesson synthesis failed; generated deterministic scaffold blocks.")
+            warnings.append("AI lesson synthesis failed; generated deterministic scaffolded content from retrieved evidence.")
 
-        raw_blocks = lesson_payload.get("blocks") if isinstance(lesson_payload, dict) else None
-        if not isinstance(raw_blocks, list) or not raw_blocks:
-            raw_blocks = [
-                {
-                    "title": f"Targeted Focus: {topic}",
-                    "topic": topic,
-                    "objective": f"Strengthen conceptual understanding and application for {topic}.",
-                    "strategy": "Model-practice-feedback loop with explicit prerequisite checks.",
-                    "estimatedMinutes": 12,
-                    "activities": [
-                        f"Activate prior knowledge related to {topic} with quick retrieval prompts.",
-                        f"Guided worked examples for {topic} with think-aloud reasoning.",
-                        "Partner practice with immediate corrective feedback.",
-                    ],
-                    "checksForUnderstanding": [
-                        "Use mini whiteboard checks after each worked example.",
-                        "Collect one-sentence justification from students for the final item.",
-                    ],
-                    "remediationTips": [
-                        "Re-teach prerequisite vocabulary and notation before independent work.",
-                        "Provide tiered hints before revealing full solutions.",
-                    ],
-                }
-                for topic in selected_topics[: min(4, len(selected_topics))]
-            ]
+        lesson_core = _build_lesson_generation_content(
+            lesson_payload=lesson_payload,
+            request=request,
+            curriculum_competency=competency_hint,
+            lesson_title_hint=lesson_title_hint,
+            retrieval_band=retrieval_band,
+            retrieval_confidence=retrieval_confidence,
+            source_legitimacy_report=source_legitimacy_report,
+            curriculum_chunks=curriculum_chunks,
+        )
+        lesson_title = str(lesson_core["lessonTitle"])
+        curriculum_competency = str(lesson_core["curriculumCompetency"])
+        lesson_objective = str(lesson_core["lessonObjective"])
+        real_world_hook = str(lesson_core["realWorldHook"])
+        explanation = str(lesson_core["explanation"])
+        reflection_prompt = str(lesson_core["reflectionPrompt"])
+        worked_example = cast(GroundedWorkedExample, lesson_core["workedExample"])
+        guided_practice = cast(List[str], lesson_core["guidedPractice"])
+        independent_practice = cast(List[str], lesson_core["independentPractice"])
+        quick_assessment = cast(List[str], lesson_core["quickAssessment"])
+        source_citations = cast(List[str], lesson_core["sourceCitations"])
+        needs_review = bool(lesson_core["needsReview"])
+        review_reason = str(lesson_core["reviewReason"])
+        retrieved_evidence = cast(List[CurriculumEvidenceSource], lesson_core["retrievedEvidence"])
 
-        lesson_title = str(lesson_payload.get("lessonTitle") or "Intervention-Grounded Math Lesson Plan").strip()
-        blocks: List[LessonPlanBlock] = []
-        provenance_summary: List[Dict[str, Optional[str]]] = []
+        if needs_review:
+            warnings.append(review_reason)
 
-        for idx, block in enumerate(raw_blocks[:6]):
-            if not isinstance(block, dict):
-                continue
-            topic_hint = str(block.get("topic") or selected_topics[min(idx, len(selected_topics) - 1)]).strip()
-            matched_provenance = topic_provenance_map.get(_normalize_topic_key(topic_hint))
-
-            lesson_block = LessonPlanBlock(
-                blockId=f"block_{idx + 1}",
-                title=str(block.get("title") or f"Lesson Block {idx + 1}").strip(),
-                objective=str(block.get("objective") or f"Build understanding of {topic_hint}.").strip(),
-                strategy=str(block.get("strategy") or "Guided explicit instruction with scaffolded practice.").strip(),
-                estimatedMinutes=max(5, min(25, int(block.get("estimatedMinutes") or 12))),
-                activities=[str(item).strip() for item in (block.get("activities") or []) if str(item).strip()] or [f"Practice and discussion for {topic_hint}."],
-                checksForUnderstanding=[str(item).strip() for item in (block.get("checksForUnderstanding") or []) if str(item).strip()] or ["Exit ticket: one solved item plus reasoning."],
-                remediationTips=[str(item).strip() for item in (block.get("remediationTips") or []) if str(item).strip()] or ["Revisit prerequisite examples and provide targeted hints."],
-                provenance=matched_provenance,
-            )
-            blocks.append(lesson_block)
-
-            if matched_provenance and matched_provenance not in provenance_summary:
-                provenance_summary.append(matched_provenance)
-
-        if not blocks:
-            raise HTTPException(status_code=500, detail="Unable to generate lesson blocks.")
+        block_data = _build_lesson_generation_blocks(
+            lesson_title=lesson_title,
+            lesson_objective=lesson_objective,
+            real_world_hook=real_world_hook,
+            explanation=explanation,
+            worked_example=worked_example,
+            guided_practice=guided_practice,
+            independent_practice=independent_practice,
+            quick_assessment=quick_assessment,
+            reflection_prompt=reflection_prompt,
+            retrieved_evidence=retrieved_evidence,
+            selected_topics=selected_topics,
+        )
+        provenance_summary = cast(List[Dict[str, Optional[str]]], block_data["provenanceSummary"])
+        blocks = cast(List[LessonPlanBlock], block_data["blocks"])
 
         self_validation_report = await _validate_generated_lesson_plan(
             lesson_title=lesson_title,
@@ -7927,16 +9365,40 @@ Rules:
                 )
 
         publish_ready = bool(
-            self_validation_report.get("passed") and
-            source_legitimacy_report.get("status") == "verified"
+            self_validation_report.get("passed")
+            and source_legitimacy_report.get("status") == "verified"
+            and retrieval_band != "low"
+            and not needs_review
         )
-
         return LessonPlanResponse(
             success=True,
             lessonTitle=lesson_title,
+            curriculumCompetency=curriculum_competency,
+            lessonObjective=lesson_objective,
+            realWorldHook=real_world_hook,
+            explanation=explanation,
+            workedExample=worked_example,
+            guidedPractice=guided_practice,
+            independentPractice=independent_practice,
+            quickAssessment=quick_assessment,
+            reflectionPrompt=reflection_prompt,
+            sourceCitations=source_citations,
+            retrievedEvidence=retrieved_evidence,
+            curriculumGrounding=CurriculumGroundingSummary(
+                query=retrieval_query,
+                confidence=retrieval_confidence,
+                confidenceBand=retrieval_band,
+                retrievedChunks=len(curriculum_chunks),
+                needsReview=needs_review,
+                issues=sorted({*(retrieval_issues or []), *(source_legitimacy_report.get("issues") or [])}),
+            ),
             gradeLevel=request.gradeLevel,
             classSectionId=request.classSectionId,
             className=request.className,
+            subject=requested_subject,
+            quarter=requested_quarter,
+            moduleUnit=request.moduleUnit,
+            learnerLevel=request.learnerLevel,
             usedImportedTopics=bool(imported_topic_titles),
             importedTopicCount=len(imported_topics_payload.get("topics") or []),
             weakSignals=class_signals,
@@ -7946,6 +9408,8 @@ Rules:
             sourceLegitimacy=SourceLegitimacyReport(**source_legitimacy_report),
             selfValidation=LessonSelfValidationReport(**self_validation_report),
             publishReady=publish_ready,
+            needsReview=needs_review,
+            reviewReason=review_reason or None,
             warnings=warnings,
         )
 
@@ -8530,15 +9994,17 @@ def _distribute_questions(
 
 def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     """Robustly extract a JSON array of quiz questions from LLM output."""
-    # Try direct parse
     cleaned = raw.strip()
     # Remove markdown fences
-    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
+    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\n?```\s*$", "", cleaned)
     cleaned = cleaned.strip()
 
+    # Remove known reasoning wrappers and preambles that can precede JSON.
+    cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE)
     # Remove common reasoning preambles before JSON output.
     cleaned = re.sub(r"^\s*thinking\s*process\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^\s*json\s*[:\-]?\s*", "", cleaned, flags=re.IGNORECASE)
 
     def _extract_json_blocks(text: str) -> List[str]:
         blocks: List[str] = []
@@ -8573,40 +10039,76 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
                         break
         return blocks
 
+    def _normalize_candidate(candidate: str) -> str:
+        normalized = candidate.strip().lstrip("\ufeff")
+        normalized = (
+            normalized
+            .replace("\u201c", '"')
+            .replace("\u201d", '"')
+            .replace("\u2018", "'")
+            .replace("\u2019", "'")
+        )
+        # Remove trailing commas before object/array closers.
+        normalized = re.sub(r",(\s*[}\]])", r"\1", normalized)
+        return normalized
+
+    def _jsonish_loads(candidate: str) -> Any:
+        normalized = _normalize_candidate(candidate)
+        try:
+            return json.loads(normalized)
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback for Python-literal style payloads using single quotes / True / None.
+        python_like = re.sub(r"\btrue\b", "True", normalized, flags=re.IGNORECASE)
+        python_like = re.sub(r"\bfalse\b", "False", python_like, flags=re.IGNORECASE)
+        python_like = re.sub(r"\bnull\b", "None", python_like, flags=re.IGNORECASE)
+        try:
+            return ast.literal_eval(python_like)
+        except (ValueError, SyntaxError):
+            return None
+
     def _coerce_question_list(value: Any) -> List[Dict[str, Any]]:
         if not isinstance(value, list):
             return []
         return [item for item in value if isinstance(item, dict)]
 
-    # Try every balanced JSON block and accept array payloads directly.
+    def _extract_question_list(payload: Any) -> List[Dict[str, Any]]:
+        if isinstance(payload, list):
+            return _coerce_question_list(payload)
+
+        if isinstance(payload, dict):
+            for key in ("questions", "quiz", "items", "data"):
+                nested = payload.get(key)
+                if isinstance(nested, list):
+                    return _coerce_question_list(nested)
+
+        return []
+
+    # Try every balanced JSON-ish block and accept known payload wrappers.
     for candidate in _extract_json_blocks(cleaned):
-        try:
-            parsed = json.loads(candidate)
-            if isinstance(parsed, list):
-                return _coerce_question_list(parsed)
-            if isinstance(parsed, dict) and isinstance(parsed.get("questions"), list):
-                return _coerce_question_list(parsed.get("questions") or [])
-        except json.JSONDecodeError:
-            continue
+        parsed = _jsonish_loads(candidate)
+        extracted = _extract_question_list(parsed)
+        if extracted:
+            return extracted
 
     # Try to find array brackets
     arr_start = cleaned.find("[")
     arr_end = cleaned.rfind("]") + 1
     if arr_start >= 0 and arr_end > arr_start:
-        try:
-            return _coerce_question_list(json.loads(cleaned[arr_start:arr_end]))
-        except json.JSONDecodeError:
-            pass
+        parsed = _jsonish_loads(cleaned[arr_start:arr_end])
+        extracted = _extract_question_list(parsed)
+        if extracted:
+            return extracted
 
-    # Fallback: try parsing individual objects
+    # Fallback: salvage individually parseable question-like objects.
     objects: List[Dict[str, Any]] = []
-    for match in re.finditer(r"\{[^{}]+\}", cleaned, re.DOTALL):
-        try:
-            obj = json.loads(match.group())
-            if "question" in obj:
-                objects.append(obj)
-        except json.JSONDecodeError:
+    for candidate in _extract_json_blocks(cleaned):
+        if not candidate.lstrip().startswith("{"):
             continue
+        parsed = _jsonish_loads(candidate)
+        if isinstance(parsed, dict) and str(parsed.get("question") or "").strip():
+            objects.append(parsed)
 
     return objects
 
@@ -9300,12 +10802,14 @@ async def get_inference_metrics(http_request: Request):
 
 
 @app.get("/api/quiz/topics")
-async def get_quiz_topics(gradeLevel: Optional[str] = None):
+async def get_quiz_topics(response: Response, gradeLevel: Optional[str] = None):
     """
     Return structured list of SHS math topics organised by grade level.
     Only Grade 11 and Grade 12 are supported.
     If gradeLevel is provided, return topics for that grade only.
     """
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
+
     if gradeLevel:
         key = _resolve_grade_level_key(gradeLevel)
         if key:

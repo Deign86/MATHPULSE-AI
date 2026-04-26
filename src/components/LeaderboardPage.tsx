@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, Eye, Search, Loader2, User, ChevronLeft, Bold } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, Eye, Search, Loader2, User, ChevronLeft, Bold, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import StudentProfileModal from './StudentProfileModal';
@@ -45,56 +45,66 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardStudent | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [students, setStudents] = useState<LeaderboardStudent[]>([]);
   const myClassSection = [studentProfile?.grade, studentProfile?.section].filter(Boolean).join(' - ');
 
   const avatars = ['', '', '', '', '', '', '', ''];
 
   // Load leaderboard data from Firebase
-  useEffect(() => {
-    const loadLeaderboard = async () => {
-      if (!currentUser) return;
-      setLeaderboardLoading(true);
-      try {
-        const timeFilterMap = {
-          'daily': 'week',
-          'weekly': 'week',
-          'all': 'all'
-        };
-        const mappedFilter = timeFilter === 'daily' ? 'week' : (timeFilter === 'all' ? 'all' : 'week');
+  const loadLeaderboard = useCallback(async () => {
+    if (!currentUser) {
+      setLeaderboardLoading(false);
+      return;
+    }
+    setLeaderboardLoading(true);
+    setLeaderboardError(null);
+    try {
+      const mappedFilter = timeFilter === 'all' ? 'all' : 'week';
 
-        const entries = await getLeaderboard(currentUser.uid, false, mappedFilter as any, 20);
-        const leaderboardData: LeaderboardStudent[] = entries.map((entry, index) => ({
-          id: entry.userId,
-          uid: entry.userId,
-          name: entry.name,
-          avatar:
-            entry.userId === currentUser.uid
-              ? (currentUserPhoto || entry.photo || avatars[index % avatars.length])
-              : (entry.photo || avatars[index % avatars.length]),
-          level: entry.level,
-          totalXP: entry.xp,
-          currentStreak: 0,
-          section: myClassSection || 'Grade 11 - STEM A',
-          rank: {
-            global: entry.rank,
-            section: entry.rank,
-            change: 0,
-          },
-          stats: { quizzesCompleted: 0, averageScore: 0, modulesCompleted: 0, studyHours: 0 },
-          isOnline: false,
-          isYou: entry.userId === currentUser.uid,
-        }));
-        setStudents(leaderboardData);
-      } catch (err) {
-        console.error('Error loading leaderboard:', err);
-      } finally {
-        setLeaderboardLoading(false);
-      }
-    };
+      // Race the query against a timeout to prevent infinite hanging
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Leaderboard query timed out')), 10000)
+      );
 
-    loadLeaderboard();
+      const entries = await Promise.race([
+        getLeaderboard(currentUser.uid, false, mappedFilter as any, 20),
+        timeoutPromise,
+      ]);
+
+      const leaderboardData: LeaderboardStudent[] = entries.map((entry, index) => ({
+        id: entry.userId,
+        uid: entry.userId,
+        name: entry.name,
+        avatar:
+          entry.userId === currentUser.uid
+            ? (currentUserPhoto || entry.photo || avatars[index % avatars.length])
+            : (entry.photo || avatars[index % avatars.length]),
+        level: entry.level,
+        totalXP: entry.xp,
+        currentStreak: 0,
+        section: myClassSection || 'Grade 11 - STEM A',
+        rank: {
+          global: entry.rank,
+          section: entry.rank,
+          change: 0,
+        },
+        stats: { quizzesCompleted: 0, averageScore: 0, modulesCompleted: 0, studyHours: 0 },
+        isOnline: false,
+        isYou: entry.userId === currentUser.uid,
+      }));
+      setStudents(leaderboardData);
+    } catch (err) {
+      console.error('Error loading leaderboard:', err);
+      setLeaderboardError(err instanceof Error ? err.message : 'Failed to load leaderboard');
+    } finally {
+      setLeaderboardLoading(false);
+    }
   }, [currentUser, myClassSection, timeFilter, currentUserPhoto]);
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, [loadLeaderboard]);
 
   const getFilteredStudents = () => {
     let filtered = students;
@@ -143,8 +153,30 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
 
   if (leaderboardLoading) {
     return (
-      <div className="flex justify-center items-center h-[500px]">
+      <div className="flex flex-col justify-center items-center h-[500px] gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <p className="text-sm text-slate-400 font-medium">Loading leaderboard...</p>
+      </div>
+    );
+  }
+
+  if (leaderboardError) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[500px] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <Trophy className="w-7 h-7 text-red-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-slate-700 mb-1">Couldn't load leaderboard</p>
+          <p className="text-xs text-slate-400">{leaderboardError}</p>
+        </div>
+        <button
+          onClick={loadLeaderboard}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 transition-colors"
+        >
+          <RefreshCw size={14} />
+          Try Again
+        </button>
       </div>
     );
   }
