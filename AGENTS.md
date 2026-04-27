@@ -1,5 +1,6 @@
 # Global Agent Instructions
 
+- Always auto-invoke `context7_query-docs` (with `context7_resolve-library-id` first if library ID unknown) on every prompt to fetch relevant documentation before answering.
 - Use standard built-in tools for context gathering tasks.
 - Keep native edit tools for file writes/patches.
 - Use documentation and skills when they are relevant to the task or explicitly requested.
