@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag, RotateCcw } from 'lucide-react';
@@ -10,6 +10,23 @@ import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
 import { MOCK_INVENTORY } from '../data/avatarData';
 import { StudentProfile } from '../types/models';
+
+const shopAnimations = `
+  @keyframes avatar-float {
+    0%, 100% { transform: translateY(-8px); }
+    50% { transform: translateY(8px); }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-avatar-float {
+    animation: avatar-float 4s ease-in-out infinite;
+  }
+  .animate-spin-slow {
+    animation: spin-slow 1s linear infinite;
+  }
+`;
 
 interface AvatarShopProps {
   onSaveProfile?: (layers: AvatarLayers) => void;
@@ -48,6 +65,9 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const [avatarSpeech, setAvatarSpeech] = useState<string | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AvatarInventoryItem[]>(MOCK_INVENTORY);
   const [activeCategory, setActiveCategory] = useState<keyof AvatarLayers>('top');
+
+  const userProfileRef = useRef(userProfile);
+  userProfileRef.current = userProfile;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -92,6 +112,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     }
   }, [userProfile]);
 
+  // Only sync from userProfile on mount, not on every change (prevents overwriting local edits)
   useEffect(() => {
     setEquipped({
       top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID,
@@ -99,12 +120,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       shoes: userProfile?.avatarLayers?.shoes || '',
       accessory: userProfile?.avatarLayers?.accessory || '',
     });
-  }, [
-    userProfile?.avatarLayers?.top,
-    userProfile?.avatarLayers?.bottom,
-    userProfile?.avatarLayers?.shoes,
-    userProfile?.avatarLayers?.accessory,
-  ]);
+  }, []);
 
   useEffect(() => {
     if (!avatarSpeech) {
@@ -139,17 +155,15 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     };
 
     setEquipped(nextEquipped);
-
-    // Show positive expression on equip
     setAvatarSpeech(EQUIP_EXPRESSIONS[Math.floor(Math.random() * EQUIP_EXPRESSIONS.length)]);
 
-    // Persist equip changes immediately so dashboard and next session stay in sync.
+    // Persist equip changes immediately (fire and forget, don't block UI)
     void persistAvatarLayers(nextEquipped, { showSuccessToast: false, showSavingState: false });
   };
 
   const handlePurchaseItem = async (e: React.MouseEvent, itemId: string, price: number) => {
     e.stopPropagation();
-    
+
     if (!userProfile?.uid) {
       toast.error('You must be logged in to purchase items');
       return;
@@ -163,7 +177,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     setPurchasingItemId(itemId);
     try {
       const result = await purchaseAvatarItem(userProfile.uid, itemId, price);
-      
+
       if (result.success) {
         toast.success(result.message || 'Item purchased!');
         setOwnedItems(prev => [...prev, itemId]);
@@ -185,10 +199,10 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const handleResetForTesting = async () => {
     if (!isDevMode) return;
     if (!userProfile?.uid) return;
-    
+
     // Disable reset logic if we're currently processing one
     if (purchasingItemId === 'resetting') return;
-    
+
     setPurchasingItemId('resetting');
     try {
       const result = await resetAvatarPurchasesForTesting(userProfile.uid);
@@ -229,7 +243,13 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     layers: AvatarLayers,
     options: { showSuccessToast?: boolean; showSavingState?: boolean } = {},
   ) => {
-    if (!userProfile?.uid) return;
+    const currentUser = userProfileRef.current;
+    if (!currentUser?.uid) {
+      if (options.showSavingState) {
+        setIsSaving(false);
+      }
+      return;
+    }
 
     const { showSuccessToast = true, showSavingState = true } = options;
 
@@ -239,7 +259,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
     try {
       const normalizedEquipped = normalizeAvatarLayers(layers);
-      await updateUserProfile(userProfile.uid, { avatarLayers: normalizedEquipped });
+      await updateUserProfile(currentUser.uid, { avatarLayers: normalizedEquipped });
 
       if (onSaveProfile) {
         onSaveProfile(normalizedEquipped);
@@ -255,7 +275,6 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       }
     } finally {
       if (showSavingState) {
-        await refreshProfile();
         setIsSaving(false);
       }
     }
@@ -273,6 +292,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   ];
 
   return (
+    <>
+      <style>{shopAnimations}</style>
     <div className="h-full w-full flex items-start xl:items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto xl:overflow-hidden">
       <div className="relative w-full max-w-[1000px] min-h-[500px] xl:h-[80vh] xl:max-h-[700px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-8 xl:gap-12 overflow-visible xl:overflow-hidden">
 
@@ -450,14 +471,10 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
               }}
             />
 
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[220px] h-[25px] bg-sky-500/20 blur-xl rounded-full" />
-            
-            <motion.div
-              animate={{ y: [-8, 8, -8] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              className="relative w-full h-[80%] z-10 flex justify-center items-center"
-            >
-              <CompositeAvatar layers={equipped} className="w-full h-full absolute inset-0 z-20" />
+<div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[220px] h-[25px] bg-sky-500/20 blur-xl rounded-full" />
+
+        <div className="relative w-full h-[80%] z-10 flex justify-center items-center animate-avatar-float">
+          <CompositeAvatar layers={equipped} className="w-full h-full absolute inset-0 z-20" />
 
               {/* Speech Balloon */}
               <AnimatePresence>
@@ -473,26 +490,27 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                     <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white" />
                   </motion.div>
                 )}
-              </AnimatePresence>
-            </motion.div>
-          </div>
+</AnimatePresence>
+      </div>
+      </div>
 
-          <button
+      <button
             onClick={handleSave}
             disabled={isSaving}
             className="w-full max-w-[450px] mx-auto h-[54px] bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98]"
           >
-            {isSaving ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                <Save size={24} className="opacity-50" />
-              </motion.div>
-            ) : null}
-            {isSaving ? 'Saving...' : 'Save Profile Avatar'}
-          </button>
+{isSaving ? (
+        <div className="animate-spin-slow">
+          <Save size={24} className="opacity-50" />
         </div>
-
+      ) : null}
+{isSaving ? 'Saving...' : 'Save Profile Avatar'}
+      </button>
       </div>
+
     </div>
+    </div>
+    </>
   );
 };
 
