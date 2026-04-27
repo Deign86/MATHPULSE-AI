@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import quizBattleAvatar from '../assets/quiz_battle_avatar.png';
-// { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Check,
@@ -83,6 +82,54 @@ import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
 
 const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
+
+const battleAnimations = `
+  @keyframes mascot-float {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-24px) rotate(3deg); }
+  }
+  @keyframes vs-pulse {
+    0%, 100% { transform: scale(1.1); }
+    50% { transform: scale(1.15); }
+  }
+  @keyframes avatar-left {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes avatar-right {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes ghost-left {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes ghost-right {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes main-avatar {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes star-float {
+    0%, 100% { transform: translateY(-4px); }
+    50% { transform: translateY(4px); }
+  }
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-mascot-float { animation: mascot-float 4s ease-in-out infinite; }
+  .animate-vs-pulse { animation: vs-pulse 2s ease-in-out infinite; }
+  .animate-avatar-left { animation: avatar-left 4s ease-in-out infinite; }
+  .animate-avatar-right { animation: avatar-right 4s ease-in-out infinite 0.4s; }
+  .animate-ghost-left { animation: ghost-left 3.5s ease-in-out infinite 0.3s; }
+  .animate-ghost-right { animation: ghost-right 3.5s ease-in-out infinite 0.6s; }
+  .animate-main-avatar { animation: main-avatar 3.5s ease-in-out infinite; }
+  .animate-star-float { animation: star-float 3s ease-in-out infinite; }
+  .animate-marquee { animation: marquee 15s linear infinite; }
+`;
 const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
@@ -1187,20 +1234,23 @@ const QuizBattlePage: React.FC = () => {
     } finally {
       setAnswerSubmitting(false);
     }
-  }, [activeMatch]);
+}, [activeMatch]);
 
   if (userRole !== 'student') {
     return (
-      <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-        <Card className={cn(cardFrameClass, 'max-w-2xl')}>
-          <CardHeader>
-            <CardTitle>Quiz Battle is student-only</CardTitle>
-            <CardDescription className="text-muted-foreground dark:text-[#aab3c7]">
-              Your account role does not have access to this module.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <>
+        <style>{battleAnimations}</style>
+        <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
+          <Card className={cn(cardFrameClass, 'max-w-2xl')}>
+            <CardHeader>
+              <CardTitle>Quiz Battle is student-only</CardTitle>
+              <CardDescription className="text-muted-foreground dark:text-[#aab3c7]">
+                Your account role does not have access to this module.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </>
     );
   }
 
@@ -1394,6 +1444,8 @@ const QuizBattlePage: React.FC = () => {
 
   if (activeMatch && (activeMatch.status === 'in_progress' || activeMatch.status === 'completed')) {
     return (
+      <>
+        <style>{battleAnimations}</style>
       <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
         {activeMatch.status === 'completed' && activeMatch.outcome === 'win' && (
           <ConfettiBurst viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
@@ -1645,18 +1697,21 @@ const QuizBattlePage: React.FC = () => {
                 <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 text-right max-w-[200px] md:max-w-[250px]">
                    <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
                    <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
-                </div>
-             </div>
-
-          </div>
-
-        </div>
+</div>
       </div>
+
+      </div>
+
+      </div>
+      </div>
+      </>
     );
   }
 
   return (
-    <WarpBackground bgVideo="/videos/warp_bg.mp4" className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
+    <>
+<style>{battleAnimations}</style>
+      <WarpBackground bgVideo="/videos/warp_bg.mp4" className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
       <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
         <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -1708,16 +1763,14 @@ const QuizBattlePage: React.FC = () => {
                           </div>
                         </div>
                         
-                        {/* Enlarged Avatar floating without overflow clipping */}
-                        <div className="hidden md:block absolute right-[-5px] lg:right-[-15px] top-0 lg:top-[5px] w-[200px] lg:w-[260px] shrink-0 pointer-events-none z-20">
-                          <motion.img 
-                             src={quizBattleAvatar} 
-                             alt="Mascot" 
-                             className="w-full h-full object-contain" 
-                             animate={{ y: [0, -24, 0], rotate: [-3, 3, -3] }}
-                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                          />
-                        </div>
+{/* Enlarged Avatar floating without overflow clipping - CSS WAAPI for smooth compositor animation */}
+          <div className="hidden md:block absolute right-[-5px] lg:right-[-15px] top-0 lg:top-[5px] w-[200px] lg:w-[260px] shrink-0 pointer-events-none z-20">
+            <img
+              src={quizBattleAvatar}
+              alt="Mascot"
+              className="w-full h-full object-contain animate-mascot-float"
+            />
+          </div>
                       </div>
                     </div>
 
@@ -1756,35 +1809,27 @@ const QuizBattlePage: React.FC = () => {
                               {/* Expanded Full-Width Stage (Dark Purple) */}
                               <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
                               
-                              {/* Animated Avatar Clones (VS Match) */}
-                              <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
-                                {/* Left Avatar */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="" 
-                                  className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)]"
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                />
-                                {/* Center VS */}
-                                <motion.div 
-                                  className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1]"
-                                  animate={{ scale: [1.1, 1.15, 1.1] }}
-                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                >
-                                  <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: "1.5px #666" }}>
-                                    <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
-                                  </span>
-                                </motion.div>
-                                {/* Right Avatar (Flipped) */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="" 
-                                  className="h-[120%] sm:h-[125%] object-contain relative z-10 scale-x-[-1] origin-bottom left-[-20px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)]"
-                                  animate={{ y: [0, -4, 0] }}
-                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-                                />
-                              </div>
+{/* Animated Avatar Clones (VS Match) - CSS WAAPI animations */}
+            <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
+              {/* Left Avatar */}
+              <img
+                src="/avatar/avatar_icon.png"
+                alt=""
+                className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-left"
+              />
+              {/* Center VS */}
+              <div className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1] animate-vs-pulse">
+                <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: "1.5px #666" }}>
+                  <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
+                </span>
+              </div>
+              {/* Right Avatar (Flipped) */}
+              <img
+                src="/avatar/avatar_icon.png"
+                alt=""
+                className="h-[120%] sm:h-[125%] object-contain relative z-10 scale-x-[-1] origin-bottom left-[-20px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-right"
+              />
+            </div>
                             </div>
                             
                             <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
@@ -1824,33 +1869,27 @@ const QuizBattlePage: React.FC = () => {
                               {/* Expanded Full-Width Stage (Dark Blue) */}
                               <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
                               
-                              {/* Ghosting Avatars */}
-                              <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
-                                {/* Left Ghost */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="" 
-                                  className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85]"
-                                  animate={{ y: [0, -3, 0] }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                                />
-                                {/* Right Ghost */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="" 
-                                  className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85]"
-                                  animate={{ y: [0, -3, 0] }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-                                />
-                                {/* Main Avatar */}
-                                <motion.img 
-                                  src="/avatar/avatar_icon.png" 
-                                  alt="VS Bot" 
-                                  className="relative opacity-100 scale-100 h-[105%] sm:h-[115%] object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] z-20 origin-bottom"
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                                />
-                              </div>
+{/* Ghosting Avatars - CSS WAAPI for smooth compositor animation */}
+            <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
+              {/* Left Ghost */}
+              <img
+                src="/avatar/avatar_icon.png"
+                alt=""
+                className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-left"
+              />
+              {/* Right Ghost */}
+              <img
+                src="/avatar/avatar_icon.png"
+                alt=""
+                className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-right"
+              />
+              {/* Main Avatar */}
+              <img
+                src="/avatar/avatar_icon.png"
+                alt="VS Bot"
+                className="relative opacity-100 scale-100 h-[105%] sm:h-[115%] object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] z-20 origin-bottom animate-main-avatar"
+              />
+            </div>
                             </div>
                             
                             <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
@@ -1878,9 +1917,9 @@ const QuizBattlePage: React.FC = () => {
                            <div className="absolute top-[1px] sm:-top-[30px] w-full flex justify-center items-end px-2 z-0">
                               <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] -rotate-[15deg] -mr-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
                               
-                              <motion.div animate={{ y: [-4, 4, -4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="z-10 relative">
-                                <Star strokeWidth={0} fill="currentColor" className="w-[60px] h-[60px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
-                              </motion.div>
+<div className="z-10 relative animate-star-float">
+                <Star strokeWidth={0} fill="currentColor" className="w-[60px] h-[60px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
+              </div>
 
                               <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] rotate-[15deg] -ml-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
                            </div>
@@ -1958,12 +1997,8 @@ const QuizBattlePage: React.FC = () => {
                         <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
                         <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
                         
-                        <motion.div 
-                          className="flex w-max pl-3"
-                          animate={{ x: ["0%", "-50%"] }}
-                          transition={{ ease: "linear", duration: 15, repeat: Infinity }}
-                        >
-                          {[0, 1].map((i) => (
+<div className="flex w-max pl-3 animate-marquee">
+              {[0, 1].map((i) => (
                             <div key={i} className="flex gap-2.5 pr-2.5">
                               {/* Card 1: Win Rate */}
                               <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#f0eaff] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#d6ccf5]">
@@ -2004,9 +2039,9 @@ const QuizBattlePage: React.FC = () => {
                                   <p className="text-[6px] lg:text-[7px] font-extrabold text-[#dd9a9a] uppercase tracking-wider leading-none whitespace-nowrap">Total XP</p>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </motion.div>
+</div>
+              ))}
+            </div>
                       </div>
                     </div>
 
@@ -3087,6 +3122,7 @@ const QuizBattlePage: React.FC = () => {
       </motion.div>
       </div>
     </WarpBackground>
+    </>
   );
 };
 
