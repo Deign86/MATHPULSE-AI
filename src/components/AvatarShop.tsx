@@ -45,6 +45,7 @@ const ENCOURAGEMENT_PHRASES = [
 const DEFAULT_TOP_ITEM_ID = 'top_blue';
 const AVATAR_INVENTORY_CACHE_KEY = 'mathpulse:avatar-inventory:v2';
 const AVATAR_INVENTORY_CACHE_TTL_MS = 10 * 60 * 1000;
+const AVATAR_SAVE_TIMEOUT_MS = 20_000;
 
 type AvatarInventoryItem = (typeof MOCK_INVENTORY)[number];
 
@@ -68,6 +69,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   const userProfileRef = useRef(userProfile);
   userProfileRef.current = userProfile;
+  const saveGuardRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -157,7 +159,6 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     setEquipped(nextEquipped);
     setAvatarSpeech(EQUIP_EXPRESSIONS[Math.floor(Math.random() * EQUIP_EXPRESSIONS.length)]);
 
-    // Persist equip changes immediately (fire and forget, don't block UI)
     void persistAvatarLayers(nextEquipped, { showSuccessToast: false, showSavingState: false });
   };
 
@@ -239,41 +240,59 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     accessory: typeof layers.accessory === 'string' ? layers.accessory : '',
   });
 
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`));
+      }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    });
+  };
+
   const persistAvatarLayers = async (
     layers: AvatarLayers,
     options: { showSuccessToast?: boolean; showSavingState?: boolean } = {},
   ) => {
     const currentUser = userProfileRef.current;
-    if (!currentUser?.uid) {
-      if (options.showSavingState) {
-        setIsSaving(false);
+    if (!currentUser?.uid) return;
+
+    const { showSuccessToast = true, showSavingState = true } = options;
+
+    if (saveGuardRef.current) {
+      if (showSuccessToast) {
+        toast.info('Save already in progress...');
       }
       return;
     }
 
-    const { showSuccessToast = true, showSavingState = true } = options;
-
+    saveGuardRef.current = true;
     if (showSavingState) {
       setIsSaving(true);
     }
 
     try {
       const normalizedEquipped = normalizeAvatarLayers(layers);
-      await updateUserProfile(currentUser.uid, { avatarLayers: normalizedEquipped });
-
-      if (onSaveProfile) {
-        onSaveProfile(normalizedEquipped);
-      }
-
-      if (showSuccessToast) {
-        toast.success('Avatar saved successfully');
-      }
+      await withTimeout(
+        updateUserProfile(currentUser.uid, { avatarLayers: normalizedEquipped }),
+        AVATAR_SAVE_TIMEOUT_MS,
+        'Avatar save',
+      );
+      if (onSaveProfile) onSaveProfile(normalizedEquipped);
+      if (showSuccessToast) toast.success('Avatar saved successfully');
     } catch (err) {
       console.error(err);
       if (showSuccessToast) {
-        toast.error('Failed to save avatar');
+        const isTimeout = err instanceof Error && err.message.includes('timed out');
+        toast.error(isTimeout ? 'Avatar save timed out. Please try again.' : 'Failed to save avatar');
       }
     } finally {
+      saveGuardRef.current = false;
       if (showSavingState) {
         setIsSaving(false);
       }
