@@ -120,6 +120,47 @@ const battleAnimations = `
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }
   }
+  @keyframes orb-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.2); opacity: 0.6; }
+  }
+  @keyframes orb-pulse-delayed {
+    0%, 100% { transform: scale(1); opacity: 0.2; }
+    50% { transform: scale(1.3); opacity: 0.5; }
+  }
+  @keyframes icon-bob {
+    0%, 100% { transform: translateY(-3px); }
+    50% { transform: translateY(3px); }
+  }
+  @keyframes icon-rotate {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+  }
+  @keyframes reward-pop {
+    0% { transform: scale(0.9) translateY(10px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  @keyframes score-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+  }
+  @keyframes overlay-fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  @keyframes overlay-slide-up {
+    0% { transform: translateY(40px) scale(0.85); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  @keyframes badge-float-in {
+    0% { transform: translateY(14px) scale(0.92); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  @keyframes badge-float-out {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-10px) scale(0.9); opacity: 0; }
+  }
   .animate-mascot-float { animation: mascot-float 4s ease-in-out infinite; }
   .animate-vs-pulse { animation: vs-pulse 2s ease-in-out infinite; }
   .animate-avatar-left { animation: avatar-left 4s ease-in-out infinite; }
@@ -129,6 +170,13 @@ const battleAnimations = `
   .animate-main-avatar { animation: main-avatar 3.5s ease-in-out infinite; }
   .animate-star-float { animation: star-float 3s ease-in-out infinite; }
   .animate-marquee { animation: marquee 15s linear infinite; }
+  .animate-orb-pulse { animation: orb-pulse 5s ease-in-out infinite; }
+  .animate-orb-pulse-delayed { animation: orb-pulse-delayed 4s ease-in-out infinite 1.5s; }
+  .animate-icon-bob { animation: icon-bob 3s ease-in-out infinite; }
+  .animate-icon-rotate { animation: icon-rotate 4s ease-in-out infinite; }
+  .animate-reward-pop { animation: reward-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  .animate-score-pop { animation: score-pop 0.5s ease-out forwards; }
+  .animate-overlay-slide-up { animation: overlay-slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 `;
 const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -174,6 +222,78 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
         />
       ))}
     </div>
+  );
+};
+
+const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex items-center justify-center">
+      {[...Array(30)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)]"
+          style={{ left: '50%', top: '50%' }}
+          animate={{
+            y: [(Math.random() - 0.5) * viewportHeight * 0.8],
+            x: [(Math.random() - 0.5) * viewportWidth * 0.8],
+            scale: [0, Math.random() * 1.5 + 0.5, 0],
+            opacity: [0, 1, 0],
+          }}
+          transition={{
+            duration: 2 + Math.random() * 2,
+            repeat: Infinity,
+            ease: "easeOut",
+            delay: Math.random() * 1,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; icon?: React.ReactNode }> = ({ value, label, delay = 0, icon }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (value <= 0) return;
+    const duration = 1000;
+    const steps = 30;
+    const stepTime = Math.abs(Math.floor(duration / steps));
+    let current = 0;
+
+    const timeout = setTimeout(() => {
+      const timer = setInterval(() => {
+        current += Math.max(1, Math.floor(value / steps));
+        if (current >= value) {
+          setCount(value);
+          clearInterval(timer);
+        } else {
+          setCount(current);
+        }
+      }, stepTime);
+      return () => clearInterval(timer);
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+
+  if (value <= 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, transform: 'translateX(-20px)' }}
+      animate={{ opacity: 1, transform: 'translateX(0)' }}
+      transition={{ delay: delay / 1000, duration: 0.5 }}
+      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-3"
+    >
+      <div className="flex items-center gap-3 text-white/80 font-bold uppercase tracking-wider text-sm">
+        {icon}
+        {label}
+      </div>
+      <div className="text-2xl font-black text-amber-400 tabular-nums">
+        +{count}
+      </div>
+    </motion.div>
   );
 };
 
@@ -284,12 +404,24 @@ const QuizBattlePage: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportSize, setViewportSize] = useState(DEFAULT_VIEWPORT_SIZE);
   const [lastRoundResult, setLastRoundResult] = useState<QuizBattleRoundResult | null>(null);
+  const [opponentSurrendered, setOpponentSurrendered] = useState(false);
+  const [pendingMatchUpdate, setPendingMatchUpdate] = useState<QuizBattleLiveMatchState | null>(null);
+  const [floatingMomentum, setFloatingMomentum] = useState<{
+    id: number;
+    label: string;
+    tone: 'positive' | 'negative' | 'neutral';
+  } | null>(null);
+  const [scorePulseTarget, setScorePulseTarget] = useState<'player' | 'opponent' | null>(null);
   const lifecycleEventRef = useRef<string>('');
   const countdownSoundRef = useRef<number | null>(null);
   const autoSubmitRoundRef = useRef<number | null>(null);
   const autoSubmitRetryAtMsRef = useRef(0);
   const celebratedMatchIdRef = useRef<string>('');
   const botReadyStartFailuresRef = useRef(0);
+  const previousStreakRef = useRef(0);
+  const previousScoreRef = useRef<{ matchId: string; scoreFor: number; scoreAgainst: number } | null>(null);
+  const scorePulseTimeoutRef = useRef<number | null>(null);
+  const popupShownForRoundRef = useRef<number>(-1);
   const isDesignPauseAvailable = import.meta.env.DEV;
 
   const gradeScopedSubjects = useMemo(() => {
@@ -305,7 +437,86 @@ const QuizBattlePage: React.FC = () => {
     }));
   }, [gradeScopedSubjects, setupConfig.subjectId]);
 
-  const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss') => {
+  const playerRoundStreak = useMemo(() => {
+    const rounds = activeMatch?.roundResults || [];
+    let streak = 0;
+    rounds.forEach((result) => {
+      streak = result.studentCorrect ? streak + 1 : 0;
+    });
+    return streak;
+  }, [activeMatch?.roundResults]);
+
+  const opponentRoundStreak = useMemo(() => {
+    const rounds = activeMatch?.roundResults || [];
+    let streak = 0;
+    rounds.forEach((result) => {
+      streak = result.botCorrect ? streak + 1 : 0;
+    });
+    return streak;
+  }, [activeMatch?.roundResults]);
+
+  const playerVisualMultiplier = useMemo(() => {
+    const boost = Math.max(0, playerRoundStreak - 1) * 0.12;
+    return Number((1 + Math.min(0.72, boost)).toFixed(2));
+  }, [playerRoundStreak]);
+
+  const liveXpEarned = useMemo(() => {
+    if (!activeMatch) return 0;
+    if (activeMatch.status === 'completed') return activeMatch.xpEarned || 0;
+    const rounds = activeMatch.roundResults || [];
+    let streak = 0;
+    let total = 0;
+    for (const r of rounds) {
+      if (r.studentCorrect) {
+        streak++;
+        const streakBonus = streak >= 2 ? Math.min(25, (streak - 1) * 5) : 0;
+        total += 10 + streakBonus;
+      } else {
+        streak = 0;
+      }
+    }
+    return total;
+  }, [activeMatch?.status, activeMatch?.xpEarned, activeMatch?.roundResults]);
+
+  const opponentVisualMultiplier = useMemo(() => {
+    const boost = Math.max(0, opponentRoundStreak - 1) * 0.1;
+    return Number((1 + Math.min(0.5, boost)).toFixed(2));
+  }, [opponentRoundStreak]);
+
+  const momentumTier = useMemo(() => {
+    if (playerRoundStreak >= 5) {
+      return {
+        label: 'Inferno',
+        badgeClass: 'text-amber-300 border-amber-300/50 bg-amber-500/20 shadow-[0_0_18px_rgba(251,191,36,0.35)]',
+      };
+    }
+    if (playerRoundStreak >= 3) {
+      return {
+        label: 'Heating Up',
+        badgeClass: 'text-orange-300 border-orange-300/50 bg-orange-500/15 shadow-[0_0_16px_rgba(249,115,22,0.3)]',
+      };
+    }
+    if (lastRoundResult?.studentCorrect) {
+      return {
+        label: 'Steady',
+        badgeClass: 'text-emerald-300 border-emerald-300/40 bg-emerald-500/15 shadow-[0_0_14px_rgba(16,185,129,0.25)]',
+      };
+    }
+    return {
+      label: 'Rebuild',
+      badgeClass: 'text-slate-300 border-slate-300/30 bg-slate-500/15 shadow-[0_0_14px_rgba(148,163,184,0.2)]',
+    };
+  }, [lastRoundResult?.studentCorrect, playerRoundStreak]);
+
+  const lastRoundMomentumDelta = useMemo(() => {
+    if (!lastRoundResult) return null;
+    const base = lastRoundResult.studentCorrect ? 12 : -8;
+    const duelBonus = lastRoundResult.studentCorrect && !lastRoundResult.botCorrect ? 6 : 0;
+    const streakBonus = lastRoundResult.studentCorrect ? Math.max(0, (playerRoundStreak - 1) * 2) : 0;
+    return base + duelBonus + streakBonus;
+  }, [lastRoundResult, playerRoundStreak]);
+
+  const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss' | 'streak' | 'multiplier') => {
     if (!battleSoundEnabled || typeof window === 'undefined') return;
 
     const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -322,6 +533,8 @@ const QuizBattlePage: React.FC = () => {
         result: { frequency: 660, duration: 0.1, type: 'sine', volume: 0.045 },
         win: { frequency: 920, duration: 0.18, type: 'triangle', volume: 0.05 },
         loss: { frequency: 240, duration: 0.16, type: 'sawtooth', volume: 0.045 },
+        streak: { frequency: 780, duration: 0.12, type: 'triangle', volume: 0.05 },
+        multiplier: { frequency: 880, duration: 0.1, type: 'triangle', volume: 0.05 },
       };
 
       const preset = presets[kind];
@@ -766,12 +979,28 @@ const QuizBattlePage: React.FC = () => {
 
           const latest = await getQuizBattleMatchState(activeMatch.matchId);
           if (cancelled) return;
-          setActiveMatch(latest);
-          if (latest.status === 'completed') {
-            setQueueActive(false);
-            setActiveRoom(null);
-            setQueueTimeoutDeadlineAtMs(null);
+
+          const unshownResult = latest.roundResults
+            .filter((r: QuizBattleRoundResult) => r.roundNumber > popupShownForRoundRef.current)
+            .sort((a: QuizBattleRoundResult, b: QuizBattleRoundResult) => a.roundNumber - b.roundNumber)[0];
+
+          if (unshownResult) {
+            popupShownForRoundRef.current = unshownResult.roundNumber;
+            setLastRoundResult(unshownResult);
+            setPendingMatchUpdate(latest);
+          } else {
+            setActiveMatch(latest);
+            if (latest.status === 'completed') {
+              setQueueActive(false);
+              setActiveRoom(null);
+              setQueueTimeoutDeadlineAtMs(null);
+            }
+            if (latest.status === 'cancelled' && activeMatch.status === 'in_progress') {
+              setOpponentSurrendered(true);
+              setRoundLocked(false);
+            }
           }
+
           setConnectionState('connected');
           return;
         }
@@ -1022,6 +1251,120 @@ const QuizBattlePage: React.FC = () => {
     }
   }, [activeMatch?.status, roundSecondsLeft, roundLocked, answerSubmitting, designPauseActive, playBattleTone]);
 
+  useEffect(() => {
+    if (!activeMatch || activeMatch.status !== 'in_progress') {
+      previousStreakRef.current = 0;
+      return;
+    }
+
+    if (playerRoundStreak > previousStreakRef.current && playerRoundStreak >= 2) {
+      playBattleTone(playerRoundStreak >= 4 ? 'multiplier' : 'streak');
+    }
+
+    previousStreakRef.current = playerRoundStreak;
+  }, [activeMatch?.matchId, activeMatch?.status, playerRoundStreak, playBattleTone]);
+
+  useEffect(() => {
+    if (!activeMatch) {
+      previousScoreRef.current = null;
+      setScorePulseTarget(null);
+      return;
+    }
+
+    const previous = previousScoreRef.current;
+    if (!previous || previous.matchId !== activeMatch.matchId) {
+      previousScoreRef.current = {
+        matchId: activeMatch.matchId,
+        scoreFor: activeMatch.scoreFor,
+        scoreAgainst: activeMatch.scoreAgainst,
+      };
+      setScorePulseTarget(null);
+      return;
+    }
+
+    if (activeMatch.scoreFor !== previous.scoreFor || activeMatch.scoreAgainst !== previous.scoreAgainst) {
+      const pulseTarget = activeMatch.scoreFor > previous.scoreFor ? 'player' : 'opponent';
+      setScorePulseTarget(pulseTarget);
+
+      if (scorePulseTimeoutRef.current) {
+        window.clearTimeout(scorePulseTimeoutRef.current);
+      }
+
+      scorePulseTimeoutRef.current = window.setTimeout(() => {
+        setScorePulseTarget(null);
+      }, 850);
+    }
+
+    previousScoreRef.current = {
+      matchId: activeMatch.matchId,
+      scoreFor: activeMatch.scoreFor,
+      scoreAgainst: activeMatch.scoreAgainst,
+    };
+  }, [activeMatch?.matchId, activeMatch?.scoreAgainst, activeMatch?.scoreFor]);
+
+  useEffect(() => {
+    return () => {
+      if (scorePulseTimeoutRef.current) {
+        window.clearTimeout(scorePulseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!lastRoundResult || lastRoundMomentumDelta === null) {
+      setFloatingMomentum(null);
+      return;
+    }
+
+    const tone: 'positive' | 'negative' | 'neutral' =
+      lastRoundMomentumDelta > 0
+        ? 'positive'
+        : lastRoundMomentumDelta < 0
+          ? 'negative'
+          : 'neutral';
+
+    setFloatingMomentum({
+      id: Date.now(),
+      label: `${lastRoundMomentumDelta >= 0 ? '+' : ''}${lastRoundMomentumDelta} Momentum`,
+      tone,
+    });
+
+    const timeout = window.setTimeout(() => {
+      setFloatingMomentum(null);
+    }, 1400);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [lastRoundMomentumDelta, lastRoundResult]);
+
+  useEffect(() => {
+    if (lastRoundResult && pendingMatchUpdate) {
+      if (lastRoundResult.studentCorrect) {
+        playBattleTone('win');
+      } else {
+        playBattleTone('loss');
+      }
+
+      const timeout = window.setTimeout(() => {
+        setActiveMatch(pendingMatchUpdate);
+        setLastRoundResult(null);
+        setSelectedOptionIndex(null);
+        setRoundLocked(false);
+        setPendingMatchUpdate(null);
+
+        if (pendingMatchUpdate.status === 'completed') {
+          setQueueActive(false);
+          setActiveRoom(null);
+          void refreshBattleInsights();
+          popupShownForRoundRef.current = -1;
+        }
+      }, 1500);
+
+      return () => window.clearTimeout(timeout);
+    }
+  }, [lastRoundResult, pendingMatchUpdate, playBattleTone, refreshBattleInsights]);
+
   const submitRoundAnswer = useCallback(
     async (forcedSelection: number | null) => {
       if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
@@ -1067,20 +1410,26 @@ const QuizBattlePage: React.FC = () => {
         autoSubmitRoundRef.current = null;
         autoSubmitRetryAtMsRef.current = 0;
 
-        setActiveMatch(response.match);
-        setLastRoundResult(response.roundResult);
-        setSelectedOptionIndex(null);
+        if (response.roundResult) {
+          popupShownForRoundRef.current = response.roundResult.roundNumber;
+          setLastRoundResult(response.roundResult);
+          setPendingMatchUpdate(response.match);
+        } else {
+          setActiveMatch(response.match);
+          setLastRoundResult(null);
 
-        if (
-          response.match.mode === 'online' &&
-          response.match.status === 'in_progress' &&
-          !response.roundResult
-        ) {
-          setRoundLocked(true);
-          setLaunchState({
-            status: 'queued',
-            message: 'Answer locked. Waiting for opponent to finish the round...',
-          });
+          if (
+            response.match.mode === 'online' &&
+            response.match.status === 'in_progress'
+          ) {
+            setRoundLocked(true);
+            setLaunchState({
+              status: 'queued',
+              message: 'Answer locked. Waiting for opponent to finish the round...',
+            });
+          } else {
+            setSelectedOptionIndex(null);
+          }
         }
 
         if (response.match.status === 'completed') {
@@ -1453,12 +1802,92 @@ const QuizBattlePage: React.FC = () => {
         {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
           <RainStorm viewportHeight={viewportSize.height} />
         )}
+        {activeMatch.status === 'completed' && activeMatch.outcome === 'draw' && (
+          <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
+        )}
         {/* Animated BG */}
         <div className="absolute inset-0 z-0 opacity-40">
           <WarpBackground>
             <div className="h-full w-full" />
           </WarpBackground>
         </div>
+
+        {/* Opponent Surrender Overlay */}
+        <AnimatePresence>
+          {opponentSurrendered && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[120] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center px-6"
+            >
+              <motion.div
+                initial={{ opacity: 0, transform: 'translateY(40px) scale(0.85)' }}
+                animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
+                transition={{ type: 'spring', damping: 18, stiffness: 250, delay: 0.1 }}
+                className="bg-[#1e2433] border border-white/10 rounded-[2rem] p-8 flex flex-col items-center gap-5 max-w-sm w-full shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
+              >
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-[#1a2030] border-4 border-rose-500/50 overflow-hidden flex items-end justify-center shadow-xl">
+                    {activeMatch.mode === 'bot' ? (
+                      <Bot className="h-16 w-16 text-rose-400 mb-2" strokeWidth={1.5} />
+                    ) : (
+                      <Users className="h-14 w-14 text-slate-500 mb-2" strokeWidth={1.5} />
+                    )}
+                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, transform: 'scale(0.5) translateX(-10px)' }}
+                    animate={{ opacity: 1, transform: 'scale(1) translateX(0)' }}
+                    transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
+                    className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
+                  >
+                    I give up! 🏳️
+                  </motion.div>
+                </div>
+
+                <div className="text-center">
+                  <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
+                  <p className="text-white/50 text-sm">
+                    <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 w-full">
+                  <Button
+                    size="lg"
+                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl"
+                    onClick={() => {
+                      setOpponentSurrendered(false);
+                      setActiveMatch(null);
+                      setActiveRoom(null);
+                      setQueueActive(false);
+                      setLaunchState({ status: 'idle' });
+                      setActiveTab('hub');
+                      void refreshBattleInsights();
+                    }}
+                  >
+                    🏆 Claim Victory
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full h-12 border-white/20 text-white/70 hover:bg-white/10 rounded-xl"
+                    onClick={() => {
+                      setOpponentSurrendered(false);
+                      setActiveMatch(null);
+                      setActiveRoom(null);
+                      setQueueActive(false);
+                      setLaunchState({ status: 'idle' });
+                      setActiveTab('hub');
+                    }}
+                  >
+                    Back to Arena
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Pause Overlay */}
         {designPauseActive && (
@@ -1506,11 +1935,25 @@ const QuizBattlePage: React.FC = () => {
                 <Swords className="h-6 w-6 text-primary" />
               </div>
               <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-                🔥 3 Streak
+                🔥 {playerRoundStreak || 0} Streak
               </div>
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(139,92,246,0.2)]">
-                ✨ 1.5x XP
-              </div>
+              <motion.div
+                key={liveXpEarned}
+                animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
+                transition={{ duration: 0.35 }}
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(139,92,246,0.2)]"
+              >
+                ✨ {playerVisualMultiplier.toFixed(2)}x
+              </motion.div>
+              <motion.div
+                key={liveXpEarned}
+                animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
+                transition={{ duration: 0.35 }}
+                className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+              >
+                <span className="text-sm leading-none">{liveXpEarned} pts</span>
+                <span className="text-[8px] leading-none text-emerald-500/70 uppercase tracking-widest font-black">Battle Score</span>
+              </motion.div>
             </div>
 
             {/* Right: Controls */}
@@ -1580,7 +2023,7 @@ const QuizBattlePage: React.FC = () => {
             
             {activeMatch.status === 'completed' ? (
               <motion.div 
-                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                  animate={{ opacity: 1, scale: 1, y: 0 }}
                  className="w-full max-w-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[2.5rem] p-8 md:p-12 text-center"
               >
@@ -1594,9 +2037,51 @@ const QuizBattlePage: React.FC = () => {
                      Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
                   </p>
                   
-                  <div className="bg-white/10 rounded-2xl p-6 mb-10 border border-white/10 flex items-center justify-center gap-4">
-                     <Star className="text-amber-400 h-8 w-8" />
-                     <span className="text-white font-black text-2xl">+{activeMatch.xpEarned || 0} XP EARNED</span>
+                  <div className="bg-white/10 rounded-2xl p-6 mb-10 border border-white/10 flex flex-col gap-4">
+                     {(() => {
+                       const rounds = activeMatch.roundResults || [];
+                       let streak = 0;
+                       let baseTotal = 0;
+                       let streakTotal = 0;
+                       for (const r of rounds) {
+                         if (r.studentCorrect) {
+                           streak++;
+                           const bonus = streak >= 2 ? Math.min(15, (streak - 1) * 5) : 0;
+                           baseTotal += 10;
+                           streakTotal += bonus;
+                         } else {
+                           streak = 0;
+                         }
+                       }
+                       return (
+                         <>
+                           <AnimatedCounter value={baseTotal} label="Correct Answers" delay={300} icon={<Check className="h-3 w-3 text-emerald-400" />} />
+                           <AnimatedCounter value={streakTotal} label="Streak Bonus" delay={900} icon={<Sparkles className="h-3 w-3 text-amber-400" />} />
+                           <motion.div
+                             initial={{ opacity: 0 }}
+                             animate={{ opacity: 1 }}
+                             transition={{ delay: 1.5, duration: 0.4 }}
+                             className="flex items-center justify-between pt-1 mt-1 border-t border-white/5"
+                           >
+                             <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Total</span>
+                             <span className="text-base font-black text-white/80">{baseTotal + streakTotal} pts</span>
+                           </motion.div>
+                         </>
+                       );
+                     })()}
+                     <div className="w-full h-px bg-white/10" />
+                     <motion.div
+                       initial={{ opacity: 0, scale: 0.9 }}
+                       animate={{ opacity: 1, scale: 1 }}
+                       transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
+                       className="flex items-center justify-between"
+                     >
+                       <span className="text-white/70 text-sm font-bold">
+                         {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
+                       </span>
+                       <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
+                     </motion.div>
+                     <p className="text-white/25 text-[9px] text-right uppercase tracking-widest">Credited to your profile</p>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -1631,6 +2116,27 @@ const QuizBattlePage: React.FC = () => {
                <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-sm font-black shadow-lg uppercase tracking-wider">
                   {activeMatch.currentRound} / {activeMatch.totalRounds}
                </div>
+
+               <AnimatePresence>
+                 {floatingMomentum && (
+                   <motion.div
+                     key={floatingMomentum.id}
+                     initial={{ opacity: 0, transform: 'translateY(14px) scale(0.92)' }}
+                     animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
+                     exit={{ opacity: 0, transform: 'translateY(-10px) scale(0.9)' }}
+                     className={cn(
+                       'absolute -top-12 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] backdrop-blur-lg',
+                       floatingMomentum.tone === 'positive'
+                         ? 'border-emerald-300/70 bg-emerald-500/20 text-emerald-100'
+                         : floatingMomentum.tone === 'negative'
+                           ? 'border-rose-300/70 bg-rose-500/20 text-rose-100'
+                           : 'border-slate-300/50 bg-slate-500/20 text-slate-100',
+                     )}
+                   >
+                     {floatingMomentum.label}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
                
                <p className="text-lg sm:text-xl md:text-2xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[60px] flex items-center justify-center">
                  {activeMatch.currentQuestion?.prompt}
@@ -1655,7 +2161,7 @@ const QuizBattlePage: React.FC = () => {
                       whileHover={{ scale: 1.02 }}
                       disabled={isSubmitting || designPauseActive}
                       key={idx}
-                      onClick={() => void submitRoundAnswer(idx)}
+                      onClick={() => { setSelectedOptionIndex(idx); submitRoundAnswer(idx).catch(() => {}); }}
                       className={cn(
                         "relative h-16 md:h-24 rounded-2xl md:rounded-3xl font-black text-lg md:text-2xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
                         btnColors[idx],
@@ -1667,6 +2173,60 @@ const QuizBattlePage: React.FC = () => {
                   );
                })}
             </div>
+            <AnimatePresence>
+              {roundLocked && !lastRoundResult && activeMatch.mode === 'online' && (
+                <motion.div
+                  initial={{ opacity: 0, transform: 'translateY(10px)' }}
+                  animate={{ opacity: 1, transform: 'translateY(0)' }}
+                  exit={{ opacity: 0, transform: 'translateY(10px)' }}
+                  className="mt-4 flex flex-col items-center gap-1"
+                >
+                  <div className="flex items-center gap-2 text-white/70 font-semibold bg-black/30 px-6 py-2 rounded-full border border-white/10">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    Waiting for opponent...
+                  </div>
+                  <p className="text-white/30 text-[11px] mt-1">Choices locked until round resolves</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {lastRoundResult && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                  className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none flex flex-col items-center justify-center"
+                >
+                  <div className="bg-[#1e2433]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.6)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
+                    <img src={quizBattleAvatar} alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-xl" />
+                    <h2 className={cn(
+                      "text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest",
+                      lastRoundResult.studentCorrect ? "text-emerald-400" : "text-rose-400"
+                    )}>
+                      {lastRoundResult.studentCorrect ? "Correct!" : "Incorrect"}
+                    </h2>
+                    
+                    {lastRoundResult.studentCorrect ? (
+                       <div className="flex items-center gap-3 w-full justify-center">
+                          <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl font-bold border border-emerald-500/30">
+                             <span>+ 10 XP</span>
+                          </div>
+                          {lastRoundMomentumDelta !== null && lastRoundMomentumDelta > 0 && (
+                            <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-2 rounded-2xl font-bold border border-amber-500/30">
+                              <span>+ {lastRoundMomentumDelta} <Sparkles className="w-4 h-4 inline" /></span>
+                            </div>
+                          )}
+                       </div>
+                    ) : (
+                       <div className="bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold px-5 py-2 rounded-xl text-center">
+                          Correct: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
+                       </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
               </>
             )}
           </div>
@@ -1679,9 +2239,22 @@ const QuizBattlePage: React.FC = () => {
                  <div className="relative w-28 h-28 md:w-36 md:h-36 overflow-hidden rounded-t-[40px]">
                    <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-110 -mb-2" />
                  </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 max-w-[200px] md:max-w-[250px]">
-                   <span className="text-white font-black text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
-                   <span className="text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-4 mb-4 max-w-[220px] md:max-w-[280px]">
+                   <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-white font-black text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
+                      <span className="text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
+                   </div>
+                   <div className="h-10 w-px bg-white/20" />
+                   <div className="flex flex-col items-center justify-center shrink-0 w-10 md:w-12">
+                      <motion.span 
+                        animate={scorePulseTarget === 'player' ? { scale: [1, 1.4, 1], color: ['#fff', '#34d399', '#fff'] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className="text-2xl md:text-3xl font-black text-white leading-none"
+                      >
+                        {activeMatch.scoreFor}
+                      </motion.span>
+                      <span className="text-[9px] md:text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1 leading-none">Score</span>
+                   </div>
                 </div>
              </div>
 
@@ -1694,9 +2267,22 @@ const QuizBattlePage: React.FC = () => {
                      <Users className="h-16 w-16 md:h-20 md:w-20 text-slate-500 mb-6 drop-shadow-xl" strokeWidth={1.5} />
                    )}
                 </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex flex-col mb-4 text-right max-w-[200px] md:max-w-[250px]">
-                   <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
-                   <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
+                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-4 mb-4 flex-row-reverse text-right max-w-[220px] md:max-w-[280px]">
+                   <div className="flex flex-col flex-1 min-w-0">
+                      <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
+                      <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
+                   </div>
+                   <div className="h-10 w-px bg-white/20" />
+                   <div className="flex flex-col items-center justify-center shrink-0 w-10 md:w-12">
+                      <motion.span 
+                        animate={scorePulseTarget === 'opponent' ? { scale: [1, 1.4, 1], color: ['#fff', '#fb7185', '#fff'] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className="text-2xl md:text-3xl font-black text-white leading-none"
+                      >
+                        {activeMatch.scoreAgainst}
+                      </motion.span>
+                      <span className="text-[9px] md:text-[10px] text-rose-400 font-bold uppercase tracking-widest mt-1 leading-none">Score</span>
+                   </div>
 </div>
       </div>
 
@@ -2152,19 +2738,15 @@ const QuizBattlePage: React.FC = () => {
                       : "from-sky-500/20 via-cyan-500/10 to-sky-600/5 dark:from-sky-500/20 dark:via-cyan-500/10 dark:to-sky-900/10"
                   )} />
                   
-                  <motion.div 
-                    className={cn("pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl",
+                  <div 
+                    className={cn("pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl animate-orb-pulse",
                       setupConfig.mode === 'online' ? "bg-purple-400/20" : "bg-sky-400/20"
                     )}
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                   />
-                  <motion.div 
-                    className={cn("pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full blur-2xl",
+                  <div 
+                    className={cn("pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full blur-2xl animate-orb-pulse-delayed",
                       setupConfig.mode === 'online' ? "bg-fuchsia-400/30" : "bg-cyan-400/30"
                     )}
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
                   />
                   <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMEgxdjFIMHoiIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPgo8L3N2Zz4=')] opacity-30 dark:opacity-10 mix-blend-overlay" />
                   
@@ -2189,10 +2771,7 @@ const QuizBattlePage: React.FC = () => {
                           ? "from-purple-600 to-fuchsia-500 dark:from-purple-300 dark:to-fuchsia-200"
                           : "from-sky-600 to-cyan-500 dark:from-sky-300 dark:to-cyan-200"
                       )}>
-                        <motion.div
-                          animate={{ y: [-3, 3, -3] }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                          className={cn("p-2 rounded-2xl shadow-inner border",
+                        <div className={cn("p-2 rounded-2xl shadow-inner border animate-icon-bob",
                             setupConfig.mode === 'online'
                               ? "bg-purple-100 dark:bg-purple-900/50 border-purple-200 dark:border-purple-700/50"
                               : "bg-sky-100 dark:bg-sky-900/50 border-sky-200 dark:border-sky-700/50"
@@ -2202,7 +2781,7 @@ const QuizBattlePage: React.FC = () => {
                             ? <Users className="h-8 w-8 text-purple-600 dark:text-purple-400 drop-shadow-[0_0_8px_rgba(138,63,211,0.5)]" /> 
                             : <Bot className="h-8 w-8 text-sky-600 dark:text-sky-400 drop-shadow-[0_0_8px_rgba(31,167,225,0.5)]" />
                           }
-                        </motion.div>
+                        </div>
                         {setupConfig.mode === 'online' ? "1v1 Online" : "1v1 vs Bot"}
                       </h2>
                       <p className={cn("text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm",
@@ -2822,16 +3401,8 @@ const QuizBattlePage: React.FC = () => {
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:via-teal-500/10 dark:to-teal-900/10" />
                   
                   {/* Animated Background Elements */}
-                  <motion.div 
-                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <motion.div 
-                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-400/20 blur-2xl"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                  />
+                  <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl animate-orb-pulse" />
+                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-400/20 blur-2xl animate-orb-pulse-delayed" />
 
                   <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-5">
@@ -2840,13 +3411,9 @@ const QuizBattlePage: React.FC = () => {
                       </Button>
                       <div>
                         <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-emerald-600 to-teal-500 dark:from-emerald-300 dark:to-teal-200 drop-shadow-sm">
-                          <motion.div
-                            animate={{ rotate: [-5, 5, -5] }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                            className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-2xl shadow-inner border border-emerald-200 dark:border-emerald-700/50"
-                          >
+                          <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-2xl shadow-inner border border-emerald-200 dark:border-emerald-700/50 animate-icon-rotate">
                             <History className="h-8 w-8 text-emerald-600 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                          </motion.div>
+                          </div>
                           Matches History
                         </h2>
                         <p className="text-sm font-bold text-emerald-800/80 dark:text-emerald-100/70 mt-2 tracking-wide uppercase">
@@ -2923,16 +3490,8 @@ const QuizBattlePage: React.FC = () => {
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-indigo-600/5 dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-purple-900/10" />
                   
                   {/* Animated Background Elements */}
-                  <motion.div 
-                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <motion.div 
-                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-400/20 blur-2xl"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-                  />
+                  <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl animate-orb-pulse" />
+                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-400/20 blur-2xl animate-orb-pulse-delayed" />
 
                   <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-5">
@@ -2941,13 +3500,9 @@ const QuizBattlePage: React.FC = () => {
                       </Button>
                       <div>
                         <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-500 dark:from-indigo-300 dark:to-purple-200 drop-shadow-sm">
-                          <motion.div
-                            animate={{ y: [-3, 3, -3] }}
-                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                            className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-2xl shadow-inner border border-indigo-200 dark:border-indigo-700/50"
-                          >
+                          <div className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-2xl shadow-inner border border-indigo-200 dark:border-indigo-700/50 animate-icon-bob">
                             <Target className="h-8 w-8 text-indigo-600 dark:text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                          </motion.div>
+                          </div>
                           My Statistics
                         </h2>
                         <p className="text-sm font-bold text-indigo-800/80 dark:text-indigo-100/70 mt-2 tracking-wide uppercase">
@@ -3010,16 +3565,8 @@ const QuizBattlePage: React.FC = () => {
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-600/5 dark:from-amber-600/20 dark:via-orange-500/10 dark:to-orange-900/10" />
                   
                   {/* Animated Background Elements */}
-                  <motion.div 
-                    className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <motion.div 
-                    className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-400/20 blur-2xl"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                  />
+                  <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl animate-orb-pulse" />
+                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-400/20 blur-2xl animate-orb-pulse-delayed" />
 
                   <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-5">
