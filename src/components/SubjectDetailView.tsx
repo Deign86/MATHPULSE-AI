@@ -96,7 +96,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
         </button>
 
         {/* Subject Hero Banner */}
-        <div style={{ backgroundColor: palette.primary, borderColor: palette.primary, boxShadow: `0 20px 40px -15px ${palette.glow}` }} className={`rounded-[2rem] p-8 border relative overflow-hidden`}>
+            <div className={`rounded-[2rem] p-8 border relative overflow-hidden subject-card`} style={{ ['--bg' as any]: palette.primary, ['--border' as any]: palette.primary, ['--glow' as any]: palette.glow }}>
           <div className="absolute right-[-5%] top-[-10%] opacity-10 text-white transform rotate-12">
             <Icon size={320} />
           </div>
@@ -107,7 +107,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
             <div className="flex-1 w-full relative z-10">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <div style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl mb-4 backdrop-blur-sm border border-white/20 shadow-sm`}>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl mb-4 backdrop-blur-sm border border-white/20 shadow-sm bg-white-20`}>
                     <Icon size={20} className="text-white" />
                     <span className={`text-sm font-bold text-white tracking-wide`}>{subject.title}</span>
                   </div>
@@ -119,7 +119,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
 
               {/* Progress Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
-                <div style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} className="backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm">
+                <div className="backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm bg-white-15">
                   <div className="flex items-center gap-2 mb-2">
                     <BookOpen size={18} className="text-white/90" />
                     <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Total Modules</span>
@@ -127,7 +127,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                   <p className="text-3xl font-black text-white">{subject.totalModules}</p>
                 </div>
                 
-                <div style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} className="backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm">
+                <div className="backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm bg-white-15">
                   <div className="flex items-center gap-2 mb-2">
                     <Trophy size={18} className="text-white/90" />
                     <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Completed</span>
@@ -135,7 +135,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                   <p className="text-3xl font-black text-white">{subject.completedModules}</p>
                 </div>
                 
-                <div style={{ backgroundColor: 'rgba(255,255,255,0.15)' }} className="backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm">
+                <div className="backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm bg-white-15">
                   <div className="flex items-center gap-2 mb-2">
                     <Star size={18} className="text-amber-300 fill-amber-300" />
                     <span className="text-xs font-bold text-white/90 uppercase tracking-wider">Progress</span>
@@ -150,7 +150,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                   <span className="text-sm font-bold text-white/90 uppercase tracking-widest">Overall Progress</span>
                   <span className="text-sm font-black text-white bg-white/20 px-3 py-1 rounded-full">{subject.progress}%</span>
                 </div>
-                <div style={{ backgroundColor: 'rgba(0,0,0,0.15)' }} className="h-4 rounded-full overflow-hidden shadow-inner p-1">
+                <div className="h-4 rounded-full overflow-hidden shadow-inner p-1 bg-black-15">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${subject.progress}%` }}

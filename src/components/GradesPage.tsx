@@ -411,8 +411,8 @@ const GradesPage = () => {
                   </div>
                   <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                     <div 
-                      className={`h-full rounded-full ${colorClasses.bar} shadow-sm relative overflow-hidden transition-all duration-1000`}
-                      style={{ width: `${Math.max(subject.average, 5)}%` }}
+                      className={`h-full rounded-full e-w ${colorClasses.bar} shadow-sm relative overflow-hidden transition-all duration-1000`}
+                      style={{ ['--w' as any]: `${Math.max(subject.average, 5)}%` }}
                     >
                       <div className="absolute inset-0 bg-white/20 w-1/2 -skew-x-12 translate-x-[-100%] group-hover:animate-[shimmer_1.5s_ease-out]" />
                     </div>

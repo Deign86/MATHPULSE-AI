@@ -839,14 +839,13 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       {isOpen && (
           <div
             ref={calcWrapperRef}
-            className="fixed z-50"
-            style={{ top: calcPos.y, left: calcPos.x, width: 300 }}
+            className="fixed z-50 e-left-top w-[300px]"
+            style={{ ['--top' as any]: `${calcPos.y}px`, ['--left' as any]: `${calcPos.x}px` }}
             onClick={() => setIsFocused(true)}
           >
             {/* Header bar – draggable */}
             <div
-              className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-t-2xl px-2.5 py-1.5 flex items-center justify-between"
-              style={{ cursor: 'move' }}
+              className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-t-2xl px-2.5 py-1.5 flex items-center justify-between cursor-move"
               onMouseDown={handleDragStart}
             >
               <div className="flex items-center gap-2">
