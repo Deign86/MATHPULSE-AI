@@ -10,7 +10,8 @@ name: Cleanup Merged PR Branches
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
+  issues: write
 
 jobs:
   cleanup:
@@ -53,7 +54,9 @@ jobs:
               candidates.push({
                 prNumber: pr?.number || null,
                 headRef: pr?.head?.ref || '',
-                headRepoFullName: pr?.head?.repo?.full_name || ''
+                headRepoFullName: pr?.head?.repo?.full_name || '',
+                creator: pr?.user?.login,
+                mergedBy: pr?.merged_by?.login
               });
             } else {
               const maxClosedPrs = Number(process.env.MAX_CLOSED_PRS_TO_SCAN || 200);
@@ -82,7 +85,9 @@ jobs:
                   candidates.push({
                     prNumber: pr.number,
                     headRef: pr.head?.ref || '',
-                    headRepoFullName: pr.head?.repo?.full_name || ''
+                    headRepoFullName: pr.head?.repo?.full_name || '',
+                    creator: pr.user?.login,
+                    mergedBy: null
                   });
                 }
 
@@ -115,14 +120,38 @@ jobs:
                 continue;
               }
 
-              uniqueCandidates.set(headRef, candidate.prNumber);
+              uniqueCandidates.set(headRef, candidate);
             }
 
             const deleted = [];
             const skipped = [];
             const failed = [];
 
-            for (const [headRef, prNumber] of uniqueCandidates.entries()) {
+            for (const [headRef, candidate] of uniqueCandidates.entries()) {
+              const prNumber = candidate.prNumber;
+              let creator = candidate.creator;
+              let mergedBy = candidate.mergedBy;
+
+              if (prNumber && (!creator || !mergedBy)) {
+                try {
+                  const { data: prData } = await github.rest.pulls.get({
+                    owner,
+                    repo,
+                    pull_number: prNumber
+                  });
+                  creator = prData.user?.login;
+                  mergedBy = prData.merged_by?.login;
+                } catch (e) {
+                  core.warning(`Could not fetch PR #${prNumber} details: ${e.message}`);
+                }
+              }
+
+              if (creator && mergedBy && creator !== mergedBy) {
+                core.info(`Skip ${headRef}: PR merged by @${mergedBy}, but owned by @${creator}.`);
+                skipped.push({ headRef, prNumber, reason: 'Merged by someone else' });
+                continue;
+              }
+
               try {
                 await github.rest.git.deleteRef({
                   owner,
@@ -131,6 +160,19 @@ jobs:
                 });
                 deleted.push({ headRef, prNumber });
                 core.info(`Deleted branch ${headRef} (PR #${prNumber || 'unknown'}).`);
+
+                if (prNumber && creator && mergedBy && creator === mergedBy) {
+                  try {
+                    await github.rest.issues.createComment({
+                      owner,
+                      repo,
+                      issue_number: prNumber,
+                      body: `👋 @${creator} Reminder: Your branch \`${headRef}\` has been automatically deleted because you merged it yourself.`
+                    });
+                  } catch (e) {
+                    core.warning(`Could not create reminder comment on PR #${prNumber}: ${e.message}`);
+                  }
+                }
               } catch (error) {
                 if (error.status === 404 || error.status === 422) {
                   skipped.push({ headRef, prNumber, reason: error.message });
