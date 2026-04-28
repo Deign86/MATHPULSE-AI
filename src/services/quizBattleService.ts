@@ -109,6 +109,24 @@ export interface QuizBattleLiveQuestion {
   choices: string[];
 }
 
+export interface RoundScoreBreakdown {
+  basePoints: number;
+  difficultyMultiplier: number;
+  streakMultiplier: number;
+  speedBonus: number;
+  totalPointsAwarded: number;
+  streakAtAnswer: number;
+  serverValidatedLatencyMs: number;
+}
+
+export interface MatchXPBreakdown {
+  baseMatchXP: number;
+  performanceXP: number;
+  totalXPAwarded: number;
+  totalPointsEarned: number;
+  scoringVersion: 'v2';
+}
+
 export interface QuizBattleRoundResult {
   roundNumber: number;
   questionId: string;
@@ -116,11 +134,13 @@ export interface QuizBattleRoundResult {
   studentSelectedIndex: number | null;
   studentCorrect: boolean;
   botSelectedIndex: number;
+  opponentSelectedIndex: number | null;
   botCorrect: boolean;
   winner: 'playerA' | 'playerB' | 'draw';
   playerAResponseMs: number;
   botResponseMs: number;
   resolvedAtMs: number;
+  scoreBreakdown?: RoundScoreBreakdown;
 }
 
 export interface QuizBattleLiveMatchState {
@@ -143,6 +163,7 @@ export interface QuizBattleLiveMatchState {
   roundResults: QuizBattleRoundResult[];
   outcome?: 'win' | 'loss' | 'draw';
   xpEarned?: number;
+  xpBreakdown?: MatchXPBreakdown;
 }
 
 export interface QuizBattleGenerationAudit {
@@ -359,6 +380,10 @@ const persistSimulatedBotResult = (
         ? 'loss'
         : 'draw';
   const now = new Date();
+  const baseMatchXP = outcome === 'win' ? 60 : outcome === 'draw' ? 40 : 20;
+  const estimatedTotalPoints = scoring.scoreFor * 100;
+  const performanceXP = Math.floor(estimatedTotalPoints * 0.08);
+  const xpEarned = Math.min(baseMatchXP + performanceXP, 140);
 
   const historyEntry: QuizBattleMatchSummary = {
     matchId,
@@ -375,7 +400,7 @@ const persistSimulatedBotResult = (
     accuracy: scoring.accuracy,
     averageResponseMs: scoring.averageResponseMs,
     bestStreak: localStore.stats.bestStreak,
-    xpEarned: outcome === 'win' ? 60 : outcome === 'draw' ? 40 : 20,
+    xpEarned,
     opponentName: 'Practice Bot',
     opponentType: 'bot',
     createdAt: now,

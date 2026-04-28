@@ -8,11 +8,26 @@
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
             ".write": "auth != null && auth.uid === $uid",
-            ".validate": "newData.val() == null || (newData.hasChildren(['state', 'updatedAt']) && newData.childrenCount() <= 3)",
-            "state": {
-              ".validate": "newData.isString() && newData.val().matches(/^(online|matching|in_battle|offline)$/)"
+            ".validate": "newData.val() == null || newData.hasChildren(['studentId', 'scope', 'resourceId', 'online', 'updatedAt'])",
+            "studentId": {
+              ".validate": "newData.isString() && newData.val().length >= 1"
+            },
+            "scope": {
+              ".validate": "newData.isString() && newData.val().matches(/^(queue|room|match)$/)"
+            },
+            "resourceId": {
+              ".validate": "newData.isString() && newData.val().length >= 1"
+            },
+            "online": {
+              ".validate": "newData.isBoolean()"
+            },
+            "heartbeatAt": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
             },
             "updatedAt": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
+            },
+            "disconnectedAt": {
               ".validate": "newData.isNumber() && newData.val() > 0"
             },
             "displayName": {
