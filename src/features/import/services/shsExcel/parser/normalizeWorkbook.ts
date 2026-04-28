@@ -83,7 +83,7 @@ function mergeReferenceSignatures(
     ...references.signatures,
   ];
 
-  const deduped = new Map<string, ImportedShsWorkbook['references']['signatures'][number]>();
+  const deduped = new Map<string, NonNullable<ImportedShsWorkbook['references']['signatures']>[number]>();
   signatures.forEach((sig) => {
     const key = `${normalizeText(sig.role)}|${normalizeText(sig.name || '')}|${sig.sourceSheet}`;
     deduped.set(key, sig);
