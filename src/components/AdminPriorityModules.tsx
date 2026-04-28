@@ -54,8 +54,7 @@ const AdminPriorityModules: React.FC = () => {
         <div 
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-6 hide-scrollbar"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-6 no-scrollbar"
         >
           {mockModules.map((module) => {
             const Icon = module.icon;
@@ -104,8 +103,8 @@ const AdminPriorityModules: React.FC = () => {
 
                   <div className="w-full h-2 rounded-full bg-white/30 overflow-hidden shadow-inner mt-1">
                     <div
-                      className="h-full bg-white rounded-full"
-                      style={{ width: `${module.progress}%` }}
+                      className="h-full bg-white rounded-full e-w"
+                      style={{ ['--w' as any]: `${module.progress}%` }}
                     />
                   </div>
 
@@ -135,11 +134,7 @@ const AdminPriorityModules: React.FC = () => {
         ))}
       </div>
       
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+      
     </div>
   );
 };

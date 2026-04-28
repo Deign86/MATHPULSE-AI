@@ -48,12 +48,8 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
 
   return (
     <motion.header
-      style={{
-        backgroundColor: `rgba(248, 247, 244, ${opacity})`,
-        backdropFilter: `blur(${blur}px)`,
-        boxShadow: shadow,
-      }}
-      className="w-full border-b border-[#dde3eb] px-6 py-4 flex items-center justify-between transition-all duration-200"
+      style={{ ['--bg' as any]: `rgba(248, 247, 244, ${opacity})`, ['--blur' as any]: `${blur}px`, ['--shadow' as any]: shadow }}
+      className="w-full border-b border-[#dde3eb] px-6 py-4 flex items-center justify-between transition-all duration-200 dynamic-header"
     >
       <div>
         <h1 className="text-xl font-display font-bold text-[#0a1628] tracking-tight">{title}</h1>

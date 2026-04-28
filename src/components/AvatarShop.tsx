@@ -440,8 +440,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                             <img 
                               src={item.thumbnail} 
                               alt={item.name} 
-                              className={`w-3/4 h-3/4 object-contain transition-transform ${!isLocked && 'group-hover:scale-110'}`}
-                              style={{ filter: isLocked ? 'grayscale(70%)' : 'none' }}
+                              className={`w-3/4 h-3/4 object-contain transition-transform e-filter ${!isLocked && 'group-hover:scale-110'}`}
+                              style={{ ['--filter' as any]: isLocked ? 'grayscale(70%)' : 'none' }}
                             />
                           </button>
                           
@@ -488,13 +488,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         <div className="flex flex-col gap-4 relative z-10 w-full xl:w-[350px] max-w-[420px] xl:max-w-none shrink-0 xl:self-center mx-auto xl:mx-0">
           <div className="bg-[#0f1422] rounded-[2rem] overflow-hidden relative shadow-[0_20px_50px_rgba(15,20,34,0.2)] h-[400px] w-full flex items-center justify-center mx-auto border-4 border-slate-800">
             
-            <div
-              className="absolute top-[-10%] left-0 right-0 h-[110%] pointer-events-none mix-blend-screen opacity-70"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.05) 60%, transparent 100%)',
-                clipPath: 'polygon(15% 0, 85% 0, 65% 100%, 35% 100%)'
-              }}
-            />
+            <div className="absolute top-[-10%] left-0 right-0 h-[110%] pointer-events-none mix-blend-screen opacity-70 avatar-gloss" />
 
 <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[220px] h-[25px] bg-sky-500/20 blur-xl rounded-full" />
 

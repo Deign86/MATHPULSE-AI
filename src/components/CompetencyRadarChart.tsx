@@ -236,12 +236,12 @@ export const CompetencyRadarChart: React.FC = () => {
                           {payload.map((pl) => (
                             <div key={pl.name} className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pl.stroke }} />
+                                <div className="w-2 h-2 rounded-full e-bg" style={{ ['--bg' as any]: pl.stroke }} />
                                 <span className="text-xs font-bold text-slate-600 uppercase tracking-wide truncate max-w-[120px]" title={String(pl.name)}>
                                   {String(pl.name)}
                                 </span>
                               </div>
-                              <span className="text-sm font-black" style={{ color: pl.stroke }}>
+                              <span className="text-sm font-black e-color" style={{ ['--c' as any]: pl.stroke }}>
                                 {Math.round(pl.value as number)}%
                               </span>
                             </div>
@@ -264,8 +264,8 @@ export const CompetencyRadarChart: React.FC = () => {
           {modulesList.map((mod) => (
             <div key={mod.id} className="flex items-center gap-1.5">
               <div 
-                className="w-2.5 h-2.5 rounded-full" 
-                style={{ backgroundColor: mod.color }} 
+                className="w-2.5 h-2.5 rounded-full e-bg" 
+                style={{ ['--bg' as any]: mod.color }} 
               />
               <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                 {mod.name.length > 15 ? mod.name.substring(0,12) + '...' : mod.name}
