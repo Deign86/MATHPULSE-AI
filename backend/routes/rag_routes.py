@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Dict, List, Optional
@@ -9,21 +11,26 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from services.inference_client import InferenceRequest, create_default_client
+from services.inference_client import (
+    InferenceRequest,
+    create_default_client,
+    is_sequential_model,
+)
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
     build_lesson_query,
     build_problem_generation_prompt,
+    format_retrieved_chunks,
     retrieve_curriculum_context,
     summarize_retrieval_confidence,
 )
-from rag.vectorstore_loader import get_vectorstore_health
+from rag.vectorstore_loader import get_vectorstore_health, reset_vectorstore_singleton
 
 try:
-    from firebase_admin import firestore as firebase_firestore  # type: ignore[import-not-found]
+    from firebase_admin import firestore as firebase_firestore
 except Exception:
-    firebase_firestore = None  # type: ignore[assignment]
+    firebase_firestore = None
 
 logger = logging.getLogger("mathpulse.rag")
 router = APIRouter(prefix="/api/rag", tags=["rag"])
@@ -41,7 +48,12 @@ def _get_inference_client():
     return _inference_client
 
 
-async def _generate_text(prompt: str, task_type: str, max_new_tokens: int = 900) -> str:
+async def _generate_text(
+    prompt: str,
+    task_type: str,
+    max_new_tokens: int = 900,
+    enable_thinking: bool = False,
+) -> str:
     request = InferenceRequest(
         messages=[
             {"role": "system", "content": "You are a precise DepEd-aligned curriculum assistant."},
@@ -51,6 +63,7 @@ async def _generate_text(prompt: str, task_type: str, max_new_tokens: int = 900)
         max_new_tokens=max_new_tokens,
         temperature=0.2,
         top_p=0.9,
+        enable_thinking=enable_thinking,
     )
     return _get_inference_client().generate_from_messages(request)
 
@@ -88,6 +101,21 @@ def _log_rag_usage(
         logger.warning("rag_usage logging skipped: %s", exc)
 
 
+def _strip_thinking_and_parse(text: str) -> dict:
+    cleaned = text.strip()
+    cleaned = re.sub(r" </think>", "", cleaned, flags=re.DOTALL).strip()
+    if "{" in cleaned and "}" in cleaned:
+        try:
+            start = cleaned.find("{")
+            end = cleaned.rfind("}") + 1
+            parsed = json.loads(cleaned[start:end])
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+    return {"explanation": text}
+
+
 class RagLessonRequest(BaseModel):
     topic: str
     subject: str
@@ -122,6 +150,7 @@ async def rag_health():
             "chunkCount": health["chunkCount"],
             "subjects": health["subjects"],
             "lastIngested": datetime.now(timezone.utc).isoformat(),
+            "activeModel": os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B"),
         }
     except Exception as exc:
         return {
@@ -129,6 +158,7 @@ async def rag_health():
             "chunkCount": 0,
             "subjects": {},
             "lastIngested": None,
+            "activeModel": os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B"),
             "warning": str(exc),
         }
 
@@ -160,7 +190,13 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         module_unit=payload.moduleUnit,
         curriculum_chunks=chunks,
     )
-    explanation = await _generate_text(prompt, task_type="lesson_generation")
+    raw_explanation = await _generate_text(
+        prompt,
+        task_type="lesson_generation",
+        max_new_tokens=1800,
+        enable_thinking=True,
+    )
+    parsed_lesson = _strip_thinking_and_parse(raw_explanation)
     retrieval_summary = summarize_retrieval_confidence(chunks)
 
     _log_rag_usage(
@@ -172,12 +208,12 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         chunks=chunks,
     )
 
-    return {
-        "explanation": explanation,
+    result = {
+        **parsed_lesson,
         "retrievalConfidence": retrieval_summary.get("confidence", 0.0),
         "retrievalBand": retrieval_summary.get("band", "low"),
         "retrievalQuery": retrieval_query,
-        "needsReview": retrieval_summary.get("band", "low") == "low",
+        "needsReview": parsed_lesson.get("needsReview", retrieval_summary.get("band", "low") == "low"),
         "sources": [
             {
                 "subject": row.get("subject"),
@@ -191,7 +227,9 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             }
             for row in chunks
         ],
+        "activeModel": os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B"),
     }
+    return result
 
 
 @router.post("/generate-problem")
@@ -203,19 +241,20 @@ async def rag_generate_problem(request: Request, payload: RagProblemRequest):
         top_k=5,
     )
     prompt = build_problem_generation_prompt(payload.topic, payload.difficulty, chunks)
-    raw = await _generate_text(prompt, task_type="quiz_generation")
+    raw = await _generate_text(
+        prompt,
+        task_type="quiz_generation",
+        max_new_tokens=600,
+        enable_thinking=False,
+    )
 
-    parsed: Dict[str, Any] = {}
-    cleaned = raw.strip()
-    if "{" in cleaned and "}" in cleaned:
-        try:
-            start = cleaned.find("{")
-            end = cleaned.rfind("}") + 1
-            parsed = json.loads(cleaned[start:end])
-        except Exception:
-            parsed = {}
+    parsed = _strip_thinking_and_parse(raw)
 
     problem = str(parsed.get("problem") or raw)
+    if not problem or problem.startswith("{"):
+        problem = str(parsed.get("content") or str(parsed))
+    if len(problem) < 3 or problem.startswith("{"):
+        problem = raw
     solution = str(parsed.get("solution") or "")
     competency_ref = str(parsed.get("competencyReference") or "DepEd competency-aligned")
 

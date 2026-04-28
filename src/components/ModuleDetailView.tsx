@@ -9,6 +9,7 @@ import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
 import type { UserProgress } from '../types/models';
+import { getRagHealth, generateRagProblem } from '../services/apiService';
 
 interface ModuleDetailViewProps {
   module: Module;
@@ -16,19 +17,14 @@ interface ModuleDetailViewProps {
   onEarnXP?: (xp: number, message: string) => void;
 }
 
-// Question banks per module/quiz topic
-const quizQuestionBanks: Record<string, Question[]> = {};
-
-// Get questions for a quiz based on its ID
-const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Question[] => {
-  return [];
-};
-
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
   const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<Record<string, Question[]>>({});
+  const [loadingQuizId, setLoadingQuizId] = useState<string | null>(null);
+  const [activeModel, setActiveModel] = useState<string>("Qwen/Qwen3-235B-A22B");
 
   const moduleLevel = useMemo(() => {
     const candidate = Number(module.id.split('-').pop());
@@ -42,7 +38,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return parent?.id ?? null;
   }, [module.id]);
 
-  // Palette (requested) used for per-module accents where the curriculum data isn't differentiated.
   const MODULE_PALETTE = ['#1FA7E1', '#9956DE', '#75D06A', '#FFB356', '#7274ED', '#FF8B8B', '#6ED1CF', '#FB96BB'];
 
   const moduleAccentHex = useMemo(() => {
@@ -58,6 +53,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (!userProfile?.uid) return;
     return subscribeToUserProgress(userProfile.uid, setUserProgress);
   }, [userProfile?.uid]);
+
+  useEffect(() => {
+    getRagHealth()
+      .then((h) => setActiveModel(h.activeModel ?? "Qwen/Qwen3-235B-A22B"))
+      .catch(() => {});
+  }, []);
 
   const dbModuleProgress = useMemo(() => {
     if (!subjectId) return null;
@@ -80,20 +81,15 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const completedQuizzes = dbModuleProgress?.quizzesCompleted?.length ?? module.quizzes.filter(q => q.completed).length;
   const moduleProgressPercentFromDb = dbModuleProgress?.progress ?? module.progress;
 
-  // Calculate overall module progress
   const totalItems = module.lessons.length + module.quizzes.length;
   const completedItems = completedLessons + completedQuizzes;
-  const lessonProgressPercent = module.lessons.length ? (completedLessons / module.lessons.length) * 100 : 0;
-  const quizProgressPercent = module.quizzes.length ? (completedQuizzes / module.quizzes.length) * 100 : 0;
 
-  // Per-lesson progress (0-100) persisted in Firestore under progress.lessons[lessonId].
   const getLessonProgressPercent = (lessonId: string, isCompleted: boolean) => {
-    const pct = userProgress?.lessons?.[lessonId]?.score; // Assuming score stores the percentage here based on models
+    const pct = userProgress?.lessons?.[lessonId]?.score;
     if (typeof pct === 'number' && Number.isFinite(pct)) return Math.max(0, Math.min(100, pct));
     return isCompleted ? 100 : 0;
   };
 
-  // Derived module progress that includes partial lesson progress.
   const derivedModuleProgressPercent = useMemo(() => {
     if (!totalItems) return 0;
     const lessonSum = module.lessons.reduce((sum, lesson) => {
@@ -116,38 +112,77 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   const lessonActivityMap = useMemo(() => {
     const mapped = new Map<string, Quiz[]>();
-
     module.lessons.forEach((lesson) => {
       mapped.set(lesson.id, []);
     });
-
     const lessonCount = module.lessons.length;
     if (lessonCount === 0) return mapped;
-
     module.quizzes.forEach((quiz, index) => {
       if (standaloneQuiz?.id === quiz.id) return;
       const lessonIndex = Math.min(index, lessonCount - 1);
       const lesson = module.lessons[lessonIndex];
       if (!lesson) return;
-
       const bucket = mapped.get(lesson.id) ?? [];
       bucket.push(quiz);
       mapped.set(lesson.id, bucket);
     });
-
     return mapped;
   }, [module.lessons, module.quizzes, standaloneQuiz?.id]);
 
-  const standaloneInsertIndex = useMemo(() => {
-    return Math.max(1, Math.ceil(module.lessons.length / 2));
-  }, [module.lessons.length]);
+  const loadQuestionsForQuiz = async (quiz: Quiz, topic: string) => {
+    if (quizQuestions[quiz.id]) return;
+    setLoadingQuizId(quiz.id);
 
-  // If a lesson is selected, show the appropriate viewer
+    const subject = (module as any).subjectId ?? (module as any).subject ?? "General Mathematics";
+    const quarter = (module as any).quarter
+      ? parseInt(String((module as any).quarter).replace('Q', ''))
+      : 1;
+
+    const difficulties: Array<"easy" | "medium" | "hard"> = ["easy", "easy", "medium", "medium", "hard"];
+
+    try {
+      let results;
+      const isSequential = activeModel.includes("235B");
+
+      if (isSequential) {
+        results = [];
+        for (const difficulty of difficulties) {
+          const r = await generateRagProblem({ topic, subject, quarter, difficulty });
+          results.push(r);
+        }
+      } else {
+        results = await Promise.all(
+          difficulties.map((difficulty) =>
+            generateRagProblem({ topic, subject, quarter, difficulty })
+          )
+        );
+      }
+
+      const questions: Question[] = results.map((r, i) => ({
+        id: i + 1,
+        question: r.problem,
+        options: [],
+        correctAnswer: r.solution,
+        explanation: r.competencyReference,
+        type: 'fill-in-blank' as const,
+      }));
+
+      setQuizQuestions((prev) => ({ ...prev, [quiz.id]: questions }));
+    } catch {
+      setQuizQuestions((prev) => ({ ...prev, [quiz.id]: [] }));
+    } finally {
+      setLoadingQuizId(null);
+    }
+  };
+
+  const handleSelectQuiz = async (quiz: Quiz) => {
+    await loadQuestionsForQuiz(quiz, module.title);
+    setSelectedLesson({ type: 'quiz', quiz });
+  };
+
   if (selectedLesson) {
     if (selectedLesson.type === 'lesson') {
       const associatedQuiz = lessonActivityMap.get(selectedLesson.lesson.id)?.[0] ?? null;
-
-      // Show the actual lesson content viewer
       const practiceQuizCompleted = associatedQuiz ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed) : false;
 
       return (
@@ -164,16 +199,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           onStartPractice={() => {
             if (associatedQuiz) {
               setReturningToLesson(selectedLesson.lesson);
-              setSelectedLesson({ type: 'quiz', quiz: associatedQuiz });
+              handleSelectQuiz(associatedQuiz);
             }
           }}
           onProgressUpdate={(percent) => {
-            // This is lesson-scoped progress; no subject/module IDs needed.
             if (userProfile?.uid) {
               updateLessonProgressPercent(userProfile.uid, selectedLesson.lesson.id, percent);
             }
-
-            // Optimistic UI update so the module lesson card rim reflects immediately.
             setUserProgress((prev) => {
               if (!prev) return prev;
               const lessonId = selectedLesson.lesson.id;
@@ -195,12 +227,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             });
           }}
           onComplete={(score, totalXP, goToNext) => {
-            // Standard lesson rewards are intentionally lower to keep pacing balanced.
             const xpAmount = STANDARD_LESSON_XP;
-            console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
             onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
-
-            // Persist progress for Competency Matrix (Concept Grasp)
             if (userProfile?.uid && subjectId) {
               void (async () => {
                 try {
@@ -224,18 +252,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 }
               })();
             }
-
-            // Figure out the next index based on current lesson inside module.lessons
             if (goToNext) {
               const currentIdx = module.lessons.findIndex(l => l.id === selectedLesson.lesson.id);
               if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
-                // Automatically move to the next lesson
                 setSelectedLesson({ type: 'lesson', lesson: module.lessons[currentIdx + 1] });
               } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
-                // If it was the last lesson, move to the first quiz
-                setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
+                handleSelectQuiz(module.quizzes[0]);
               } else {
-                // Nothing left to go to
                 setSelectedLesson(null);
               }
             } else {
@@ -245,8 +268,24 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         />
       );
     } else {
-      // Show the quiz interface
-      const questions = getQuestionsForLesson(selectedLesson.quiz.id, 'quiz');
+      if (loadingQuizId && loadingQuizId === selectedLesson.quiz.id) {
+        const isSequential = activeModel.includes("235B");
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f0f0f0] gap-4">
+            <div className="w-12 h-12 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
+            <p className="text-slate-600 font-semibold text-sm">
+              Generating practice problems from DepEd curriculum...
+            </p>
+            {isSequential && (
+              <p className="text-slate-400 text-xs">
+                Generating 5 problems one by one — this takes about 30–60 seconds.
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      const questions = quizQuestions[selectedLesson.quiz.id] ?? [];
       return (
         <InteractiveLesson
           lesson={{
@@ -267,9 +306,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             }
           }}
           onComplete={(score, totalXP) => {
-            console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
-
-            // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {
               void (async () => {
                 try {
@@ -295,7 +331,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 }
               })();
             }
-
             if (returningToLesson) {
               setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
               setReturningToLesson(null);
@@ -308,9 +343,33 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     }
   }
 
+  const buildLessonStepNumber = () => {
+    let counter = 0;
+    const result: { lessons: number[]; quizzes: number[]; standaloneQuiz: number } = {
+      lessons: [],
+      quizzes: [],
+      standaloneQuiz: 0,
+    };
+    module.lessons.forEach((lesson) => {
+      counter++;
+      result.lessons.push(counter);
+      const associatedQuizzes = lessonActivityMap.get(lesson.id) || [];
+      associatedQuizzes.forEach(() => {
+        counter++;
+        result.quizzes.push(counter);
+      });
+    });
+    if (standaloneQuiz) {
+      counter++;
+      result.standaloneQuiz = counter;
+    }
+    return result;
+  };
+
+  const stepNumbers = buildLessonStepNumber();
+
   return (
     <div className="h-full overflow-y-auto scrollbar-hide px-4 sm:px-6 xl:px-10 py-6 sm:py-8 relative">
-      {/* Header & Navigation */}
       <div className="relative mb-6 xl:mb-8 w-full sm:w-max">
         <button
           onClick={onBack}
@@ -321,15 +380,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         </button>
       </div>
 
-      {/* Book Cover / Hero Banner */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`relative mb-6 lg:mb-8 rounded-[2rem] ${module.accentColor} shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] shrink-0 overflow-hidden`}
       >
-        {/* Simple black overlay to darken the specific module color */}
         <div className="absolute inset-0 bg-black/60 pointer-events-none z-0" />
-        {/* Decorative Textbook Background */}
         <div 
           className="absolute inset-0 opacity-10 pointer-events-none" 
           style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px)' }}
@@ -354,7 +410,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               {module.description}
             </p>
 
-            {/* Elegant Linear Progress instead of redundant circles/bars */}
             <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/10 max-w-xl">
               <div className="flex justify-between items-end mb-3">
                 <div className="flex items-center gap-2.5">
@@ -398,7 +453,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         </div>
       </motion.div>
 
-      {/* Single-column lesson flow with nested activities */}
       <div className="pb-8">
         <div className="relative rounded-[2rem] border border-slate-200 bg-white/90 shadow-sm overflow-hidden">
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(153,86,222,0.08),transparent_45%),radial-gradient(circle_at_bottom_left,rgba(31,167,225,0.08),transparent_45%)]" />
@@ -410,12 +464,162 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             </h2>
           </div>
 
-          <div className="relative z-10 px-4 sm:px-6 md:px-8 py-16 md:py-24 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Clock size={32} className="text-slate-400" />
-            </div>
-            <h3 className="text-2xl font-display font-black text-slate-800 mb-2">Lessons coming soon</h3>
-            <p className="text-slate-500 font-medium">Lessons are currently non-functional and will be available soon.</p>
+          <div className="relative z-10 px-4 sm:px-6 md:px-8 py-6 md:py-8">
+            {module.lessons.length === 0 && module.quizzes.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-slate-500 font-medium">No lessons available for this module yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {module.lessons.map((lesson, lessonIdx) => {
+                  const stepNum = stepNumbers.lessons[lessonIdx] ?? (lessonIdx + 1);
+                  const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
+                  const progressPct = getLessonProgressPercent(lesson.id, isCompleted);
+                  const associatedQuizzes = lessonActivityMap.get(lesson.id) || [];
+
+                  return (
+                    <React.Fragment key={lesson.id}>
+                      <div
+                        onClick={() => setSelectedLesson({
+                          type: 'lesson',
+                          lesson: {
+                            ...lesson,
+                            subject: (module as any).subjectId ?? (module as any).subject ?? 'General Mathematics',
+                            quarter: (module as any).quarter
+                              ? parseInt(String((module as any).quarter).replace('Q', ''))
+                              : 1,
+                          } as any,
+                        })}
+                        className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${
+                          isCompleted ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
+                          isCompleted ? 'bg-emerald-500 text-white' : 'bg-sky-500 text-white'
+                        }`}>
+                          {stepNum}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-bold text-sm ${isCompleted ? 'text-slate-500' : 'text-slate-800'}`}>
+                            {lesson.title}
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                            <Clock size={12} />
+                            {lesson.duration}
+                            {isCompleted ? ' · Completed' : progressPct > 0 && progressPct < 100 ? ` · ${Math.round(progressPct)}% done` : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <svg width="28" height="28" viewBox="0 0 36 36" className="shrink-0">
+                            <circle cx="18" cy="18" r="15" fill="none" stroke="#E2E8F0" strokeWidth="3" />
+                            <circle
+                              cx="18" cy="18" r="15" fill="none"
+                              stroke={isCompleted ? '#75D06A' : '#1FA7E1'}
+                              strokeWidth="3"
+                              strokeDasharray={`${Math.round(progressPct)} ${100 - Math.round(progressPct)}`}
+                              strokeDashoffset="100"
+                              transform="rotate(-90 18 18)"
+                            />
+                          </svg>
+                          <button
+                            type="button"
+                            className={`px-4 py-2 rounded-lg text-xs font-black tracking-wide transition-all ${
+                              isCompleted
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                : 'bg-sky-500 text-white hover:bg-sky-600 shadow-sm'
+                            }`}
+                          >
+                            {isCompleted ? 'Review' : 'Start'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {associatedQuizzes.map((quiz, quizIdx) => {
+                        const quizStepNum = quizIdx < (stepNumbers.quizzes?.length ?? 0)
+                          ? (stepNumbers.quizzes[quizIdx] ?? 0)
+                          : 0;
+                        const quizCompleted = completedQuizIds.has(quiz.id) || quiz.completed;
+                        return (
+                          <div
+                            key={quiz.id}
+                            onClick={() => handleSelectQuiz(quiz)}
+                            className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md ml-10 ${
+                              quiz.locked
+                                ? 'border-slate-100 bg-slate-50/50 opacity-60'
+                                : quizCompleted
+                                ? 'border-purple-200 bg-purple-50/50'
+                                : 'border-purple-200 bg-white hover:bg-purple-50'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                              quizCompleted ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-600'
+                            }`}>
+                              <PenTool size={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className={`font-bold text-sm ${quizCompleted ? 'text-purple-500' : 'text-slate-800'}`}>
+                                  {quiz.title}
+                                </h3>
+                                {quiz.locked && <Lock size={12} className="text-slate-400" />}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {quiz.questions} questions · {quiz.duration}
+                                {quizCompleted ? ' · Completed' : ''}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className={`px-4 py-2 rounded-lg text-xs font-black tracking-wide transition-all ${
+                                quiz.locked
+                                  ? 'bg-slate-100 text-slate-400'
+                                  : quizCompleted
+                                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                  : 'bg-purple-500 text-white hover:bg-purple-600 shadow-sm'
+                              }`}
+                            >
+                              {quiz.locked ? 'Locked' : quizCompleted ? 'Review' : 'Take Quiz'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
+
+                {standaloneQuiz && (
+                  <div
+                    onClick={() => handleSelectQuiz(standaloneQuiz)}
+                    className={`flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-lg ml-10 ${
+                      completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed
+                        ? 'border-amber-300 bg-amber-50/50'
+                        : 'border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 bg-amber-400 text-white">
+                      <Trophy size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-sm text-slate-800">
+                        Module Quiz: {standaloneQuiz.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {standaloneQuiz.questions} questions · {standaloneQuiz.duration}
+                        {standaloneQuiz.completed ? ' · Completed' : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-lg text-xs font-black tracking-wide bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all"
+                    >
+                      Attempt
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
