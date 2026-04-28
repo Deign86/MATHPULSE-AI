@@ -433,7 +433,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
     } else if (studentId) {
-      // Persist static quiz attempts to progress
+      // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
       recordPracticeQuiz(
         studentId,
         quiz.id,
@@ -445,7 +445,6 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           isCorrect: r.correct,
         })),
         timeSpent,
-        xpEarned,
       ).catch((err) => console.error('[WARN] Practice quiz persist failed:', err));
     }
 

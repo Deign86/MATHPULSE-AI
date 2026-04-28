@@ -238,7 +238,6 @@ export const recordPracticeQuiz = async (
   score: number,
   answers: QuizAnswer[],
   timeSpent: number,
-  xpAmount: number,
 ): Promise<void> => {
   try {
     const progressRef = doc(db, 'progress', userId);
@@ -266,8 +265,6 @@ export const recordPracticeQuiz = async (
       ...(isNewQuiz && { totalQuizzesCompleted: increment(1) }),
       updatedAt: serverTimestamp(),
     });
-
-    await awardXP(userId, xpAmount, 'practice_quiz', `Completed practice quiz: ${quizId} (Score: ${score}%)`);
   } catch (error) {
     console.error('Error recording practice quiz:', error);
     throw error;
