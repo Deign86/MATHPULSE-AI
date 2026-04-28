@@ -743,7 +743,7 @@ const LoginPage: React.FC = () => {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                       whileTap={{ scale: 0.9 }}
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                     </motion.button>
                   </div>
                   {isSignUp && (
