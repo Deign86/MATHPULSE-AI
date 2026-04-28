@@ -85,7 +85,6 @@ const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading 
   return (
     <div
       className="app-loader-screen"
-      style={screenStyle}
       role="status"
       aria-live="polite"
       aria-busy="true"
@@ -96,36 +95,32 @@ const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading 
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
         className="app-loader-card"
-        style={cardStyle}
       >
         <motion.div
           animate={{ y: [0, -10, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           className="app-loader-avatar-shell"
-          style={avatarShellStyle}
         >
           <img 
             src="/avatar/avatar_icon.png" 
             alt="Loading..." 
-            className="app-loader-avatar"
-            style={{ ...avatarStyle, display: showFallbackIcon ? 'none' : 'block' }}
+            className={`app-loader-avatar ${showFallbackIcon ? 'hidden' : 'block'}`}
             onError={() => {
               setShowFallbackIcon(true);
             }}
           />
-          <Bot className="app-loader-bot-icon" style={{ display: showFallbackIcon ? 'block' : 'none' }} />
+          <Bot className={`app-loader-bot-icon ${showFallbackIcon ? 'block' : 'hidden'}`} />
         </motion.div>
         
         <div className="app-loader-copy">
-          <h2 className="app-loader-title" style={titleStyle}>MathPulse AI</h2>
-          <div className="app-loader-message-row" style={messageRowStyle}>
+          <h2 className="app-loader-title">MathPulse AI</h2>
+          <div className="app-loader-message-row">
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
               className="app-loader-spinner"
-              style={spinnerStyle}
             />
-            <p className="app-loader-message" style={messageStyle}>{message}</p>
+            <p className="app-loader-message">{message}</p>
           </div>
         </div>
       </motion.div>
