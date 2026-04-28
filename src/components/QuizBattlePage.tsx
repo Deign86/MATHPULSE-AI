@@ -189,8 +189,7 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
     {[...Array(40)].map((_, i) => (
       <motion.div
         key={i}
-        className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full"
-        className="e-left-top"
+        className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full e-left-top"
         style={{ ['--left' as any]: `${Math.random() * 100}%`, ['--top' as any]: '-10%' }}
         animate={{ y: [0, viewportHeight * 1.2] }}
         transition={{
@@ -211,8 +210,7 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
       {[...Array(60)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md"
-          className="e-left-top e-bg"
+          className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md e-left-top e-bg"
           style={{ ['--left' as any]: `${20 + Math.random() * 60}%`, ['--bg' as any]: colors[i % colors.length] }}
           animate={{
             y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
@@ -237,8 +235,7 @@ const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = 
       {[...Array(30)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)]"
-          className="e-left-top"
+          className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] e-left-top"
           style={{ ['--left' as any]: '50%', ['--top' as any]: '50%' }}
           animate={{
             y: [(Math.random() - 0.5) * viewportHeight * 0.8],
@@ -2222,8 +2219,7 @@ const QuizBattlePage: React.FC = () => {
                       <div className="absolute inset-0 bg-black/60 pointer-events-none z-0 rounded-[2rem]" />
                       {/* Decorative Textbook Background */}
                       <div 
-                        className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden" 
-                        className="repeating-stripe-bg"
+                        className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden repeating-stripe-bg"
                       />
                       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
                       

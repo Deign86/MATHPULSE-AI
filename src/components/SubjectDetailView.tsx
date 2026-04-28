@@ -111,7 +111,6 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subject, onBack, 
                     <Icon size={20} className="text-white" />
                     <span className={`text-sm font-bold text-white tracking-wide`}>{subject.title}</span>
                   </div>
-                  </div>
                   <p className="text-white/95 max-w-2xl text-[17px] leading-relaxed font-medium drop-shadow-sm">
                     {subject.description}
                   </p>
