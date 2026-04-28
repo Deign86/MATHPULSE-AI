@@ -12,6 +12,12 @@ _VECTORSTORE_LOCK = Lock()
 _VECTORSTORE_SINGLETON: Tuple[Any, Any, SentenceTransformer] | None = None
 
 
+def reset_vectorstore_singleton() -> None:
+    global _VECTORSTORE_SINGLETON
+    with _VECTORSTORE_LOCK:
+        _VECTORSTORE_SINGLETON = None
+
+
 def _resolve_vectorstore_dir() -> Path:
     raw = os.getenv("CURRICULUM_VECTORSTORE_DIR", "datasets/vectorstore")
     path = Path(raw)
