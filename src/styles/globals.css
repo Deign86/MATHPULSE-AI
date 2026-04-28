@@ -454,6 +454,80 @@ html.smart-dark [data-preserve-color='true'] {
   background: linear-gradient(135deg, #f1f5f9 0%, #e8eef6 100%);
   border: 1px solid rgba(203, 213, 225, 0.5);
 }
+.bg-white-20 { background-color: rgba(255,255,255,0.2); }
+.bg-white-15 { background-color: rgba(255,255,255,0.15); }
+.bg-black-15 { background-color: rgba(0,0,0,0.15); }
+
+/* CSS-variable helpers used by components for dynamic values */
+.e-w { width: var(--w); }
+.e-bg { background-color: var(--bg); }
+.e-color { color: var(--c); fill: var(--c); stroke: var(--c); }
+.e-grid-cols { grid-template-columns: var(--grid-cols); }
+.e-perspective { perspective: var(--perspective); }
+.e-transform { transform: var(--tr); }
+.e-left-top { left: var(--left); top: var(--top); }
+.e-z { z-index: var(--z); }
+
+/* Filter helper: set via --filter */
+.e-filter { filter: var(--filter); }
+
+/* Opacity helper for dynamic opacity via --o */
+.e-opacity { opacity: var(--o); }
+
+/* No scrollbar utility (cross-browser) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Module detail repeating grid pattern */
+.module-detail-grid-pattern {
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+/* Leaderboard mask helper to replace inline -webkit-mask-image */
+.leaderboard-mask { -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%); mask-image: linear-gradient(to bottom, transparent, black 15%); }
+
+/* App loader components (moved from inline styles) */
+.app-loader-screen { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #f7f9fc; }
+.app-loader-card { width: min(100%, 24rem); padding: 2rem; border-radius: 2rem; border: 1px solid #dde3eb; background: #ffffff; box-shadow: 0 24px 40px rgba(56, 189, 248, 0.12); display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
+.app-loader-avatar-shell { width: 6rem; height: 6rem; border-radius: 1.5rem; border: 2px solid #ffffff; background: linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); display: flex; align-items: center; justify-content: center; }
+.app-loader-avatar { width: 4rem; height: 4rem; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(15, 23, 42, 0.2)); }
+.app-loader-bot-icon { width: 4rem; height: 4rem; }
+.app-loader-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #0a1628; }
+.app-loader-message-row { margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.app-loader-spinner { width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid #0284c7; border-top-color: transparent; }
+.app-loader-message { margin: 0; font-size: 0.875rem; font-weight: 600; color: #64748b; }
+
+/* Avatar shop gloss overlay used in AvatarShop component */
+.avatar-gloss {
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.05) 60%, transparent 100%);
+  clip-path: polygon(15% 0, 85% 0, 65% 100%, 35% 100%);
+  pointer-events: none;
+}
+
+/* Login page backgrounds and orbs */
+.login-bg { background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 30%, #fff1f2 60%, #f0f9ff 100%); }
+.login-frost-overlay { background: radial-gradient(ellipse at 30% 50%, rgba(240,249,255,0.2) 0%, rgba(248,250,252,0.5) 50%, rgba(255,241,242,0.4) 80%, rgba(248,250,252,0.85) 100%); pointer-events: none; }
+.login-orb-purple { background: radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%); }
+.login-orb-pink { background: radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%); }
+.login-orb-blue { background: radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%); }
+
+/* Dynamic header variables: --bg, --blur, --shadow */
+.dynamic-header { background-color: var(--bg); backdrop-filter: blur(var(--blur)); box-shadow: var(--shadow); }
+
+/* Max-height helper for collapsing panels via --max-h */
+.e-max-h { max-height: var(--max-h); overflow: hidden; transition: max-height 220ms ease; }
+
+/* Hero clip helpers */
+.hero-clip-inset { clip-path: inset(-100% -50% 0 -50%); }
+/* 3D card helper */
+.card-3d {
+  transform-origin: left center;
+  transition: transform 2s ease-in-out;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 
 /* ─── Accent Border Cards ────────────────────────────── */
 .card-accent-sky {

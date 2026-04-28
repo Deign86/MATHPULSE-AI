@@ -1941,14 +1941,13 @@ const AnalyticsView: React.FC<{
                     <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
                     <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
                   </div>
-                  <div className="h-2 bg-card rounded-full overflow-hidden">
+                  <div className="h-2 bg-card rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${student.avgScore}%` }}>
                     <div
                       className={`h-full rounded-full ${
                         student.riskLevel === 'high' ? 'bg-[#FF8B8B]' :
                         student.riskLevel === 'medium' ? 'bg-[#F08386]' :
                         'bg-[#75D06A]'
                       }`}
-                      style={{ width: `${student.avgScore}%` }}
                     ></div>
                   </div>
                 </div>
