@@ -11,6 +11,8 @@ import {
   User,
   X,
   Palette,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -84,6 +86,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const hasInitializedForOpenRef = useRef(false);
   const initialSettingsRef = useRef<UserSettings>(cloneDefaultSettings());
 
@@ -182,6 +185,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsDeleteConfirmOpen(false);
     setIsPasswordModalOpen(false);
     setNewPassword('');
+    setShowPassword(false);
     onApplySettingsPreview?.(initialSettingsRef.current);
     onClose();
   };
@@ -216,6 +220,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
 
     setNewPassword('');
+    setShowPassword(false);
     setIsPasswordModalOpen(true);
   };
 
@@ -240,6 +245,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       toast.success('Password updated successfully.');
       setIsPasswordModalOpen(false);
       setNewPassword('');
+      setShowPassword(false);
     } catch (error) {
       console.error('Error updating password:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to update password');
@@ -984,7 +990,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </motion.div>
       </div>
 
-      {isPasswordModalOpen ? (
+{isPasswordModalOpen ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -994,6 +1000,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             if (isUpdatingPassword) return;
             setIsPasswordModalOpen(false);
             setNewPassword('');
+            setShowPassword(false);
           }}
         >
           <motion.div
@@ -1011,29 +1018,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   if (isUpdatingPassword) return;
                   setIsPasswordModalOpen(false);
                   setNewPassword('');
+                  setShowPassword(false);
                 }}
                 className="p-2 rounded-xl hover:bg-[#edf1f7] transition-colors"
-                aria-label="Close password update dialog"
+aria-label="Close password update dialog"
               >
                 <X size={18} className="text-[#5a6578]" />
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <p className="text-sm text-[#5a6578]">Enter a new password with at least 8 characters.</p>
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="New password"
-                autoFocus
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    void handleSubmitPasswordUpdate();
-                  }
-                }}
-                disabled={isUpdatingPassword}
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  placeholder="New password"
+                  autoFocus
+                  className="pr-10"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void handleSubmitPasswordUpdate();
+                    }
+                  }}
+                  disabled={isUpdatingPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
@@ -1041,6 +1060,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     if (isUpdatingPassword) return;
                     setIsPasswordModalOpen(false);
                     setNewPassword('');
+                    setShowPassword(false);
                   }}
                   disabled={isUpdatingPassword}
                 >

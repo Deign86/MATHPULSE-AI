@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Search, Plus,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
-  GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle
+  GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle,
+  Eye, EyeOff,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -132,6 +133,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const [pendingConfirmAction, setPendingConfirmAction] = useState<PendingConfirmState | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [formErrors, setFormErrors] = useState<AdminCreateUserValidationErrors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState(buildDefaultFormData());
@@ -263,6 +266,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const handleOpenAddModal = useCallback((preferredRole: 'Student' | 'Teacher' | 'Admin' = 'Student') => {
     setEditingUser(null);
     setFormErrors({});
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setFormData(buildDefaultFormData(preferredRole));
     setIsModalOpen(true);
   }, []);
@@ -489,6 +494,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const handleOpenEditModal = (user: AdminUser) => {
     setEditingUser(user);
     setFormErrors({});
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setFormData({
       name: user.name,
       email: user.email,
@@ -601,8 +608,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         await loadUsers(1);
       }
       setIsModalOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save user');
+      setShowPassword(false);
+      setShowConfirmPassword(false);
     } finally {
       setSaving(false);
     }
@@ -1490,10 +1497,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
                 <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
                   <label htmlFor="password" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Password</label>
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-3 relative">
                     <Input
                       id="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => {
                         setFormData({ ...formData, password: e.target.value });
@@ -1502,18 +1509,26 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         }
                       }}
                       placeholder="Min 8 chars, upper/lowercase, number, and symbol"
-                      className={formErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                      className={(formErrors.password ? 'border-red-500 focus-visible:ring-red-500 pr-10 ' : 'pr-10 ') + ''}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                    </button>
                     {formErrors.password ? <p className="mt-1 text-xs text-red-600">{formErrors.password}</p> : null}
                   </div>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
                   <label htmlFor="confirmPassword" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Confirm</label>
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-3 relative">
                     <Input
                       id="confirmPassword"
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       value={formData.confirmPassword}
                       onChange={(e) => {
                         setFormData({ ...formData, confirmPassword: e.target.value });
@@ -1522,8 +1537,16 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         }
                       }}
                       placeholder="Retype password"
-                      className={formErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                      className={(formErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500 pr-10 ' : 'pr-10 ') + ''}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                    </button>
                     {formErrors.confirmPassword ? <p className="mt-1 text-xs text-red-600">{formErrors.confirmPassword}</p> : null}
                   </div>
                 </div>
@@ -1531,7 +1554,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setIsModalOpen(false); setShowPassword(false); setShowConfirmPassword(false); }} disabled={saving}>Cancel</Button>
             <Button onClick={handleSaveUser} className="bg-sky-600 hover:bg-sky-700 text-white" disabled={saving}>
               {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
               {editingUser ? 'Save Changes' : 'Create User & Send Email'}

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb, Calculator, Pl
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Lesson, Quiz } from '../data/subjects';
+import { generateRagLesson, type RagLessonResponse } from '../services/apiService';
 
 interface LessonViewerProps {
   lesson: Lesson;
@@ -27,9 +28,7 @@ interface LessonContent {
   }[];
 }
 
-// Mock lesson content generator based on lesson title
 const generateLessonContent = (lessonTitle: string): LessonContent => {
-  // This is a simplified version - in a real app, this would come from a database
   return {
     title: lessonTitle,
     sections: [
@@ -47,7 +46,7 @@ const generateLessonContent = (lessonTitle: string): LessonContent => {
         type: 'video',
         heading: 'Video Lesson',
         content: 'Watch this explanation to understand the concepts visually.',
-        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ' // Placeholder
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
       },
       {
         type: 'example',
@@ -83,6 +82,43 @@ const generateLessonContent = (lessonTitle: string): LessonContent => {
   };
 };
 
+const buildSectionsFromRag = (rag: RagLessonResponse): LessonContent['sections'] => {
+  const sections: LessonContent['sections'] = [];
+
+  if (rag.realWorldHook) {
+    sections.push({ type: 'key-point', heading: 'Why This Matters', content: rag.realWorldHook });
+  }
+  if (rag.lessonObjective) {
+    sections.push({ type: 'text', heading: 'Learning Objective', content: rag.lessonObjective });
+  }
+  if (rag.explanation) {
+    sections.push({ type: 'text', heading: 'Core Concept', content: rag.explanation });
+  }
+  if (rag.workedExample) {
+    sections.push({
+      type: 'example',
+      heading: 'Worked Example',
+      content: 'Study the worked example below step by step.',
+      examples: [{ problem: 'Worked Example', solution: rag.workedExample }],
+    });
+  }
+  if (rag.guidedPractice) {
+    sections.push({ type: 'text', heading: 'Guided Practice', content: rag.guidedPractice });
+  }
+  if (rag.independentPractice) {
+    sections.push({ type: 'practice', heading: 'Try It Yourself', content: rag.independentPractice });
+  }
+  if (rag.reflectionPrompt) {
+    sections.push({ type: 'text', heading: 'Reflect', content: rag.reflectionPrompt });
+  }
+
+  if (sections.length === 0) {
+    sections.push({ type: 'text', heading: 'Lesson Content', content: rag.explanation ?? 'Lesson content unavailable.' });
+  }
+
+  return sections;
+};
+
 const LessonViewer: React.FC<LessonViewerProps> = ({
   lesson,
   lessonCompletionXP = 10,
@@ -100,7 +136,43 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [progress, setProgress] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
 
-  const content = generateLessonContent(lesson.title);
+  const [ragLesson, setRagLesson] = useState<RagLessonResponse | null>(null);
+  const [ragLoading, setRagLoading] = useState(true);
+  const [ragError, setRagError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRagLoading(true);
+    setRagError(null);
+    setRagLesson(null);
+
+    generateRagLesson({
+      topic: lesson.title,
+      lessonTitle: lesson.title,
+      subject: (lesson as any).subject ?? "General Mathematics",
+      quarter: (lesson as any).quarter ?? 1,
+      learnerLevel: "mixed",
+    })
+      .then((data) => {
+        if (!cancelled) {
+          setRagLesson(data);
+          setRagLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRagError("Could not load lesson content. Showing offline content.");
+          setRagLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [lesson.id]);
+
+  const content: LessonContent = ragLesson
+    ? { title: ragLesson.lessonTitle ?? lesson.title, sections: buildSectionsFromRag(ragLesson) }
+    : { title: lesson.title, sections: generateLessonContent(lesson.title).sections };
+
   const totalSections = content.sections.length;
 
   const getInitialSectionIndex = () => {
@@ -151,18 +223,34 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const currentSectionData = content.sections[currentSection];
   const sectionSymbolMap: Record<LessonContent['sections'][number]['type'], string> = {
-    text: '=���',
-    example: '=���',
-    video: '=�ļ',
-    'key-point': '=���',
-    practice: 'G��n+�',
+    text: '📝',
+    example: '📊',
+    video: '🎬',
+    'key-point': '🔑',
+    practice: '✏️',
   };
-  const sectionSymbol = currentSectionData ? sectionSymbolMap[currentSectionData.type] || '=���' : '=���';
+  const sectionSymbol = currentSectionData ? sectionSymbolMap[currentSectionData.type] || '📝' : '📝';
+
+  if (ragLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f0f0f0] gap-4">
+        <div className="w-12 h-12 rounded-full border-4 border-[#1FA7E1] border-t-transparent animate-spin" />
+        <p className="text-slate-600 font-semibold text-sm">Loading lesson from DepEd curriculum...</p>
+        <p className="text-slate-400 text-xs">This may take a moment while the AI reasons through the content.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[radial-gradient(circle_at_top_left,#f8fbff_0%,#eef4ff_40%,#f8f4ff_100%)] overflow-hidden">
       
-      {/* Header */}
+      {ragError && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs font-semibold text-amber-800 flex items-center justify-between">
+          <span>⚠ {ragError}</span>
+          <button onClick={() => setRagError(null)} className="ml-4 text-amber-600 hover:text-amber-800">✕</button>
+        </div>
+      )}
+
       <header className="flex-none bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 sm:px-10 lg:px-16 py-4 shadow-sm relative z-40">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -176,6 +264,23 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               <div className="flex items-center gap-2 text-xs text-[#5a6578] font-medium mb-1 uppercase tracking-wider">
                 <BookOpen size={14} />
                 <span>Notebook Lesson</span>
+                <div className="flex items-center gap-1.5">
+                  {ragLesson?.activeModel && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                      {ragLesson.activeModel.includes("235B") ? "Qwen3-235B" : "QwQ-32B"}
+                    </span>
+                  )}
+                  {ragLesson && ragLesson.retrievalBand === 'high' && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      DepEd Curriculum Source
+                    </span>
+                  )}
+                  {ragLesson?.needsReview && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      ⚠ Limited Source Coverage
+                    </span>
+                  )}
+                </div>
               </div>
               <h1 className="font-bold text-lg text-[#0a1628]">{content.title}</h1>
             </div>
@@ -198,7 +303,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-hidden px-6 sm:px-10 lg:px-16 py-10 flex items-center justify-center bg-[#f0f0f0]">
         <div className="max-w-4xl w-full h-[600px] relative" style={{ perspective: '1500px' }}>
           {content.sections.map((sectionData, idx) => {
@@ -219,7 +323,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   WebkitBackfaceVisibility: 'hidden'
                 }}
               >
-              {/* Section Header */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 text-sm text-[#5a6578] font-medium mb-2">
                   <span>Section {idx + 1} of {totalSections}</span>
@@ -232,7 +335,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 )}
               </div>
 
-              {/* Content Based on Type */}
               <div className="relative bg-white rounded-3xl p-8 shadow-inner border border-[#dde3eb] min-h-[450px] overflow-hidden">
                 <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/70 pointer-events-none" />
                 <div className="absolute left-[56px] top-0 bottom-0 w-px bg-rose-100/60 pointer-events-none" />
@@ -244,7 +346,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 />
 
                 <div className="relative z-10 pl-8 md:pl-12">
-                {/* Text Content */}
                 {sectionData.type === 'text' && (
                   <div className="prose prose-slate max-w-none">
                     <p className="text-lg text-[#0a1628] leading-relaxed whitespace-pre-line">
@@ -253,7 +354,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
                 )}
 
-                {/* Key Point */}
                 {sectionData.type === 'key-point' && (
                   <div className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-6 border-2 border-rose-200">
                     <div className="flex items-start gap-4">
@@ -268,7 +368,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
                 )}
 
-                {/* Video */}
                 {sectionData.type === 'video' && (
                   <div>
                     <div className="bg-slate-900 rounded-2xl overflow-hidden mb-4 aspect-video flex items-center justify-center">
@@ -284,7 +383,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
                 )}
 
-                {/* Examples */}
                 {sectionData.type === 'example' && (
                   <div>
                     <p className="text-[#0a1628] mb-6">{sectionData.content}</p>
@@ -311,7 +409,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
                 )}
 
-                {/* Practice Prompt */}
                 {currentSectionData.type === 'practice' && (
                   <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-8 border-2 border-[#1FA7E1]/30 text-center">
                     <div className="w-16 h-16 bg-[#1FA7E1] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -353,7 +450,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             );
           })}
 
-          {/* Section Navigation Dots */}
           <div className="flex items-center justify-center gap-2 mt-8 mb-4">
             {content.sections.map((_, idx) => (
               <button
@@ -375,7 +471,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         </div>
       </main>
 
-      {/* Footer Navigation */}
       <footer className="bg-white border-t border-[#dde3eb] px-6 py-4 shadow-lg">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Button
@@ -414,7 +509,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         )}
       </footer>
 
-      {/* COMPLETION MODAL LAYER */}
       {showCompletion && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4">
           <motion.div
