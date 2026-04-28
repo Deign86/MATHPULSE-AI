@@ -814,12 +814,12 @@ const StudentCompetencyTable: React.FC<{
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
+                          className={`h-full rounded-full e-w ${
                             row.student.avgQuizScore >= 80 ? 'bg-[var(--chart-3)]' :
                             row.student.avgQuizScore >= 60 ? 'bg-[var(--chart-4)]' :
                             'bg-[var(--chart-2)]'
                           }`}
-                          style={{ width: `${row.student.avgQuizScore}%` }}
+                          style={{ ['--w' as any]: `${row.student.avgQuizScore}%` }}
                         />
                       </div>
                       <span className="text-xs font-bold text-muted-foreground w-8 text-right">{row.student.avgQuizScore}%</span>
@@ -831,12 +831,12 @@ const StudentCompetencyTable: React.FC<{
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
+                          className={`h-full rounded-full e-w ${
                             row.student.engagementScore >= 75 ? 'bg-[var(--primary)]' :
                             row.student.engagementScore >= 50 ? 'bg-[var(--primary)]/60' :
                             'bg-muted-foreground'
                           }`}
-                          style={{ width: `${row.student.engagementScore}%` }}
+                          style={{ ['--w' as any]: `${row.student.engagementScore}%` }}
                         />
                       </div>
                       <span className="text-xs font-bold text-muted-foreground w-8 text-right">{row.student.engagementScore}%</span>

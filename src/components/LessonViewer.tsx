@@ -304,7 +304,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </header>
 
       <main className="flex-1 overflow-hidden px-6 sm:px-10 lg:px-16 py-10 flex items-center justify-center bg-[#f0f0f0]">
-        <div className="max-w-4xl w-full h-[600px] relative" style={{ perspective: '1500px' }}>
+        <div className="max-w-4xl w-full h-[600px] relative e-perspective" style={{ ['--perspective' as any]: '1500px' }}>
           {content.sections.map((sectionData, idx) => {
             const isFlipped = idx < currentSection;
             const zIndex = totalSections - idx;
@@ -313,15 +313,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             return (
               <div
                 key={idx}
-                className="absolute top-0 left-0 w-full h-full bg-white rounded-3xl p-8 shadow-[0_0_15px_rgba(0,0,0,0.15)] overflow-y-auto pb-50"
-                style={{
-                  zIndex,
-                  transformOrigin: 'left center',
-                  transform: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)',
-                  transition: 'transform 2s ease-in-out',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden'
-                }}
+                className="absolute top-0 left-0 w-full h-full bg-white rounded-3xl p-8 shadow-[0_0_15px_rgba(0,0,0,0.15)] overflow-y-auto pb-50 card-3d e-transform e-z"
+                style={{ ['--z' as any]: zIndex, ['--tr' as any]: isFlipped ? 'rotateY(-180deg)' : 'rotateY(0deg)' }}
               >
               <div className="mb-6">
                 <div className="flex items-center gap-2 text-sm text-[#5a6578] font-medium mb-2">
