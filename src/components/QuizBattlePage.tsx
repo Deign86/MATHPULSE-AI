@@ -2069,18 +2069,28 @@ const QuizBattlePage: React.FC = () => {
                          </>
                        );
                      })()}
-                     <div className="w-full h-px bg-white/10" />
-                     <motion.div
-                       initial={{ opacity: 0, scale: 0.9 }}
-                       animate={{ opacity: 1, scale: 1 }}
-                       transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
-                       className="flex items-center justify-between"
-                     >
-                       <span className="text-white/70 text-sm font-bold">
-                         {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
-                       </span>
-                       <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
-                     </motion.div>
+<div className="w-full h-px bg-white/10" />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
+                        className="flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/70 text-sm font-bold">
+                            {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
+                          </span>
+                          <span className="text-2xl font-black text-amber-400 drop-shadow-md">
+                            +{activeMatch.xpBreakdown?.totalXPAwarded ?? activeMatch.xpEarned ?? (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP
+                          </span>
+                        </div>
+                        {activeMatch.xpBreakdown && (
+                          <div className="flex justify-between text-xs text-white/40">
+                            <span>Base: +{activeMatch.xpBreakdown.baseMatchXP} XP</span>
+                            <span>Points: {activeMatch.xpBreakdown.totalPointsEarned} pts × 8% = +{activeMatch.xpBreakdown.performanceXP} XP</span>
+                          </div>
+                        )}
+                      </motion.div>
                      <p className="text-white/25 text-[9px] text-right uppercase tracking-widest">Credited to your profile</p>
                   </div>
 
@@ -3347,9 +3357,12 @@ const QuizBattlePage: React.FC = () => {
                             <p className="mt-1 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
                               Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
                             </p>
-                            <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
-                              XP Earned: +{activeMatch.xpEarned || 0}
-                            </p>
+<p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                               XP Earned: +{activeMatch.xpBreakdown?.totalXPAwarded ?? activeMatch.xpEarned ?? 0}
+                               {activeMatch.xpBreakdown && (
+                                 <span className="block">Base: +{activeMatch.xpBreakdown.baseMatchXP} + Performance: +{activeMatch.xpBreakdown.performanceXP}</span>
+                               )}
+                             </p>
                           </div>
                           <div className="flex items-center justify-end gap-2">
                             <Button

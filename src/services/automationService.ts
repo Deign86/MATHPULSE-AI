@@ -195,6 +195,7 @@ export async function triggerQuizSubmitted(
   // Write to quizResults — Cloud Function triggers from here
   await addDoc(collection(db, 'quizResults'), {
     lrn: payload.lrn,
+    studentId: payload.lrn,
     quizId: payload.quizId,
     subject: payload.subject,
     score: payload.score,

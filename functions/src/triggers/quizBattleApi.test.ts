@@ -199,12 +199,14 @@ test("static fallback expansion deterministically backfills missing rounds", () 
       prompt: "A value grows from 200 to 260. What is the percent increase?",
       choices: ["20%", "25%", "30%", "35%"],
       correctOptionIndex: 2,
+      difficulty: 'medium' as const,
     },
     {
       questionId: "qb-gm-04",
       prompt: "If p -> q is true and p is true, then q is:",
       choices: ["True", "False", "Unknown", "Contradiction"],
       correctOptionIndex: 0,
+    difficulty: 'medium' as const,
     },
   ];
 
