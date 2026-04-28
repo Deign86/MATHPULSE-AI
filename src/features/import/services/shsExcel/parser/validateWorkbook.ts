@@ -215,7 +215,7 @@ export function mapWorkbookToMathPulseEntities(workbook: ImportedShsWorkbook) {
     fullName: row.fullName,
     remark: row.remarks || null,
     additionalRemarks: row.additionalRemarks || null,
-    statuses: row.statuses,
+    statuses: 'statuses' in row ? row.statuses : undefined,
     sourceSheet: row.sourceSheet,
     sourceRow: row.sourceRow,
   }));

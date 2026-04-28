@@ -147,5 +147,5 @@ Level is determined by **Total (Lifetime) XP** using an exponential cumulative s
 |:---|:---|:---|:---|
 | ~~Score multiplier is visual-only~~ | `QuizBattlePage.tsx` | ✅ Resolved via server scoring engine (v2) | ✅ Backend done (Phase 2) |
 | ~~No daily XP cap~~ | `gamificationService.ts` | ✅ 500 XP/day server-enforced for battles | ✅ Backend done |
-| Module quiz can double-award XP | `ModuleDetailView.tsx` + `gamificationService.ts` | Profile XP inflation | Backend (Phase 4) |
+| ~~Module quiz can double-award XP~~ | `ModuleDetailView.tsx` + `gamificationService.ts` | ✅ Resolved: XP flows through `completeQuiz` / parent `onEarnXP`; `recordPracticeQuiz` is now persist-only | ✅ Completed (Phase 4) |
 | ~~In-game counter ≠ awarded XP~~ | `QuizBattlePage.tsx` | ✅ Resolved via label split (Phase 1) + real scoring (Phase 2) | ✅ Completed |
