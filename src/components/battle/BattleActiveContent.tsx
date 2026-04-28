@@ -33,7 +33,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
   quizBattleAvatar,
 }) => {
   return (
-    <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pt-4 pb-28 z-20" style={{ scrollbarWidth: 'none' }}>
+    <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pt-4 pb-28 z-20 no-scrollbar">
       {/* Question Card */}
       <div className={cn('relative bg-[#1e2536] border shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[1.5rem] p-5 md:p-6 w-full max-w-4xl text-center flex flex-col items-center', roundSecondsLeft <= 3 ? 'border-rose-400/50' : 'border-white/10')}>
         <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-xs font-black shadow-lg uppercase tracking-wider">

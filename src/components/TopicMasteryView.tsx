@@ -535,7 +535,7 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-2 bg-[#edf1f7] rounded-full overflow-hidden max-w-20">
-                            <div className={`h-full rounded-full ${avgColor}`} style={{ width: `${topic.classAverage}%` }} />
+                            <div className={`h-full rounded-full e-w ${avgColor}`} style={{ ['--w' as any]: `${topic.classAverage}%` }} />
                           </div>
                           <span className="text-xs font-bold text-[#0a1628] w-8 text-right">{topic.classAverage}%</span>
                         </div>

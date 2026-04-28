@@ -953,8 +953,8 @@ const App = () => {
                 >
                   <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
                   <span className="text-xs font-display font-bold text-violet-700">{currentXP} XP</span>
-                  <div className="w-12 h-1.5 bg-violet-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${(progressXPInLevel / xpToNextLevel) * 100}%` }} />
+                  <div className="w-12 h-1.5 bg-violet-100 rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${(progressXPInLevel / xpToNextLevel) * 100}%` }}>
+                    <div className="h-full bg-violet-500 rounded-full transition-all" />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
