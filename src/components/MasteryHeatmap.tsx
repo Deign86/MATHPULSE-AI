@@ -263,13 +263,13 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
             <div key={subject.id} className="mb-5 last:mb-0">
               {/* Subject header */}
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: subject.color }} />
+                <div className="w-3 h-3 rounded-sm e-bg" style={{ ['--bg' as any]: subject.color }} />
                 <span className="text-xs font-bold text-[#0a1628]">{subject.name}</span>
                 <span className="text-[10px] text-slate-500 ml-1">Avg: {subjectAvg}%</span>
               </div>
 
               {/* Topic grid */}
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${topics.length}, minmax(0, 1fr))` }}>
+              <div className="grid gap-1 e-grid-cols" style={{ ['--grid-cols' as any]: `repeat(${topics.length}, minmax(0, 1fr))` }}>
                 {/* Labels row */}
                 {topics.map((topic, i) => (
                   <div key={`label-${i}`} className="text-center">

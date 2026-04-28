@@ -1360,9 +1360,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       <button
                         onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
                         className="w-12 h-12 border border-[#dde3eb] rounded-l-lg flex items-center justify-center hover:bg-[#edf1f7] text-[#edf1f7] transition-colors bg-white font-bold text-xl"
-                        style={{color: '#edf1f7'}}
                       >
-                        <span style={{color: '#dde3eb'}}>-</span>
+                        <span className="text-[#dde3eb]">-</span>
                       </button>
                       <input
                         id="quiz-num-questions"
@@ -1375,10 +1374,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       />
                       <button
                         onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
-                        className="w-12 h-12 border border-[#dde3eb] rounded-r-lg flex items-center justify-center hover:bg-[#edf1f7] text-slate-200 transition-colors bg-white font-bold text-xl"
-                        style={{color: '#edf1f7'}}
+                        className="w-12 h-12 border border-[#dde3eb] rounded-r-lg flex items-center justify-center hover:bg-[#edf1f7] text-[#edf1f7] transition-colors bg-white font-bold text-xl"
                       >
-                        <span style={{color: '#dde3eb'}}>+</span>
+                        <span className="text-[#dde3eb]">+</span>
                       </button>
                     </div>
                   </div>
@@ -1765,7 +1763,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
              <>
                <div></div>
                <button onClick={() => setStep('topics')} className="bg-white border border-[#dde3eb] text-[#edf1f7] px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:text-slate-600 flex items-center">
-                  <span style={{color: '#edf1f7'}}>Next: Topics</span> <ChevronRight size={16} className="ml-2 text-slate-300" />
+                  <span className="text-[#edf1f7]">Next: Topics</span> <ChevronRight size={16} className="ml-2 text-slate-300" />
                </button>
              </>
           )}

@@ -212,8 +212,8 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
       {/* ── Floating toolbar ──────────────────────────────── */}
       {toolbarVisible && (
         <div
-          className="fixed z-[60] bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-3 flex flex-col gap-3 w-[220px] pointer-events-auto"
-          style={{ top: toolbarPos.top, left: toolbarPos.left }}
+          className="fixed z-[60] bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-3 flex flex-col gap-3 w-[220px] pointer-events-auto e-left-top"
+          style={{ ['--top' as any]: `${toolbarPos.top}px`, ['--left' as any]: `${toolbarPos.left}px` }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {/* Row 1: Powers */}

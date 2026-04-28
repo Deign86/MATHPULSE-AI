@@ -208,8 +208,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
               </div>
               <div className="h-3 bg-white/20 rounded-full overflow-hidden border border-white/20">
                 <div
-                  className="h-full bg-gradient-to-r from-[#6ED1CF] via-[#75D06A] to-[#FFB356] rounded-full transition-all duration-500"
-                  style={{ width: `${(currentXP / xpToNextLevel) * 100}%` }}
+                  className="h-full bg-gradient-to-r from-[#6ED1CF] via-[#75D06A] to-[#FFB356] rounded-full transition-all duration-500 e-w"
+                  style={{ ['--w' as any]: `${(currentXP / xpToNextLevel) * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -259,8 +259,8 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                             </div>
                             <div className="h-1.5 bg-[#dde3eb] rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-[#7274ED] to-[#1FA7E1] rounded-full transition-all"
-                                style={{ width: `${(achievement.progress / achievement.total) * 100}%` }}
+                                className="h-full bg-gradient-to-r from-[#7274ED] to-[#1FA7E1] rounded-full transition-all e-w"
+                                style={{ ['--w' as any]: `${(achievement.progress / achievement.total) * 100}%` }}
                               ></div>
                             </div>
                           </div>
