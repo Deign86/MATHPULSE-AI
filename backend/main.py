@@ -390,6 +390,28 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
 
+    active_model = os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B")
+    try:
+        from rag.vectorstore_loader import get_vectorstore_health
+        health = get_vectorstore_health()
+        logger.info(
+            "RAG vectorstore ready: %d chunks | subjects: %s | model: %s",
+            health["chunkCount"],
+            list(health["subjects"].keys()),
+            active_model,
+        )
+        if health["chunkCount"] == 0:
+            logger.warning(
+                "RAG vectorstore is EMPTY. Run: python backend/scripts/ingest_curriculum.py"
+            )
+        if "235B" in active_model:
+            logger.info(
+                "Production model active: %s — sequential inference only (--max-num-seqs 1)",
+                active_model,
+            )
+    except Exception as exc:
+        logger.error("RAG vectorstore warm-up failed: %s", exc)
+
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")

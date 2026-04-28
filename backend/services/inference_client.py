@@ -41,11 +41,12 @@ class InferenceRequest:
     model: Optional[str] = None
     task_type: str = "default"
     request_tag: str = ""
-    max_new_tokens: int = 512
+    max_new_tokens: int = 900
     temperature: float = 0.2
     top_p: float = 0.9
     repetition_penalty: float = 1.15
     timeout_sec: Optional[int] = None
+    enable_thinking: bool = False
 
 
 class InferenceClient:
@@ -882,6 +883,10 @@ class InferenceClient:
             "temperature": req.temperature,
             "top_p": req.top_p,
         }
+        if req.enable_thinking and "Qwen3" in model_base:
+            payload["extra_body"] = {
+                "chat_template_kwargs": {"enable_thinking": True}
+            }
         headers = {
             "Authorization": f"Bearer {self.hf_token}",
             "Content-Type": "application/json",
@@ -1135,3 +1140,8 @@ class InferenceClient:
 
 def create_default_client(firestore_client: Optional[Any] = None) -> InferenceClient:
     return InferenceClient(firestore_client=firestore_client)
+
+
+def is_sequential_model() -> bool:
+    model_id = os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B")
+    return "235B" in model_id

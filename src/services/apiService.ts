@@ -915,7 +915,140 @@ export interface AdminBulkActionApiResponse {
   } | null;
 }
 
-// ─── Quiz Maker Types ────────────────────────────────────────
+// ─── RAG API Types ────────────────────────────────────────────
+
+export interface RagSource {
+  subject: string; quarter: number; source_file: string;
+  page: number; score: number; content?: string;
+  content_domain?: string; chunk_type?: string;
+}
+
+export interface RagLessonRequest {
+  topic: string; subject: string; quarter: number;
+  lessonTitle?: string; learningCompetency?: string;
+  moduleUnit?: string; learnerLevel?: string; userId?: string;
+}
+
+export interface RagLessonResponse {
+  lessonTitle?: string; curriculumCompetency?: string;
+  lessonObjective?: string; realWorldHook?: string;
+  explanation?: string; workedExample?: string;
+  guidedPractice?: string; independentPractice?: string;
+  quickAssessment?: string; reflectionPrompt?: string;
+  sourceCitations?: string[]; needsReview?: boolean;
+  reviewReason?: string; retrievalConfidence: number;
+  retrievalBand: "high" | "medium" | "low";
+  retrievalQuery: string; sources: RagSource[];
+  activeModel?: string;
+}
+
+export interface RagProblemRequest {
+  topic: string; subject: string; quarter: number;
+  difficulty?: "easy" | "medium" | "hard"; userId?: string;
+}
+
+export interface RagProblemResponse {
+  problem: string; solution: string;
+  competencyReference: string; sources: RagSource[];
+}
+
+export interface RagAnalysisContextRequest {
+  weakTopics: string[]; subject: string; userId?: string;
+}
+
+export interface RagAnalysisContextResponse { curriculumContext: string; }
+
+export interface RagHealthResponse {
+  status: "ok" | "degraded"; chunkCount: number;
+  subjects: Record<string, number>; lastIngested: string | null;
+  activeModel: string; warning?: string;
+}
+
+// ─── RAG API Functions ──────────────────────────────────────
+
+export async function getRagHealth(): Promise<RagHealthResponse> {
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken(false);
+      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+    } catch { /* non-critical */ }
+  }
+  const res = await fetch(`${API_BASE}/api/rag/health`, { headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GET /api/rag/health failed: ${res.status} ${body}`);
+  }
+  return res.json();
+}
+
+export async function generateRagLesson(payload: RagLessonRequest): Promise<RagLessonResponse> {
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken(false);
+      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+    } catch { /* non-critical */ }
+  }
+  const res = await fetch(`${API_BASE}/api/rag/lesson`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`POST /api/rag/lesson failed: ${res.status} ${body}`);
+  }
+  return res.json();
+}
+
+export async function generateRagProblem(payload: RagProblemRequest): Promise<RagProblemResponse> {
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken(false);
+      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+    } catch { /* non-critical */ }
+  }
+  const res = await fetch(`${API_BASE}/api/rag/generate-problem`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`POST /api/rag/generate-problem failed: ${res.status} ${body}`);
+  }
+  return res.json();
+}
+
+export async function getRagAnalysisContext(payload: RagAnalysisContextRequest): Promise<RagAnalysisContextResponse> {
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken(false);
+      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+    } catch { /* non-critical */ }
+  }
+  const res = await fetch(`${API_BASE}/api/rag/analysis-context`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`POST /api/rag/analysis-context failed: ${res.status} ${body}`);
+  }
+  return res.json();
+}
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';
 export type BloomLevel = 'remember' | 'understand' | 'apply' | 'analyze';

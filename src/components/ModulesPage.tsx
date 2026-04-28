@@ -36,6 +36,7 @@ import {
   getCurriculumModulesForLearner,
   resolveLearnerGradeLevel,
 } from '../data/curriculumModules';
+import { getRagAnalysisContext } from '../services/apiService';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -91,6 +92,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
+  const [learningPathContext, setLearningPathContext] = useState<string | null>(null);
+  const [learningPathLoading, setLearningPathLoading] = useState(false);
 
 
   // Daily Check-in State
@@ -237,6 +240,22 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     setCompetencyFilter('all');
     setSearchQuery('');
   };
+
+  useEffect(() => {
+    if (activeTab !== 'recommended' || normalizedRiskTopics.length === 0) return;
+    setLearningPathLoading(true);
+
+    getRagAnalysisContext({
+      weakTopics: normalizedRiskTopics.map(t => DIAGNOSTIC_TOPIC_LABELS[t]),
+      subject: subjectFilter !== 'all' ? subjectFilter : 'General Mathematics',
+      userId: userProfile?.uid,
+    })
+      .then((res) => {
+        setLearningPathContext(res.curriculumContext);
+        setLearningPathLoading(false);
+      })
+      .catch(() => setLearningPathLoading(false));
+  }, [activeTab, normalizedRiskTopics]);
 
   const handleQuizComplete = (score: number, xpEarned: number) => {
     if (onEarnXP) {
@@ -503,6 +522,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0}
+              learningPathContext={learningPathContext}
+              learningPathLoading={learningPathLoading}
             />
           )}
         </motion.div>
@@ -625,12 +646,34 @@ const RecommendedModulesView: React.FC<{
   onSelectModule: (module: CurriculumModuleRuntime) => void;
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false }) => {
+  learningPathContext?: string | null;
+  learningPathLoading?: boolean;
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
   return (
     <div className="pr-2 space-y-10">
+      {learningPathLoading && (
+        <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 flex items-center gap-3">
+          <div className="w-5 h-5 rounded-full border-2 border-sky-400 border-t-transparent animate-spin flex-shrink-0" />
+          <p className="text-sm font-semibold text-sky-800">
+            Building your personalized learning path from DepEd curriculum...
+          </p>
+        </div>
+      )}
+
+      {learningPathContext && !learningPathLoading && (
+        <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 px-5 py-4 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-wide text-indigo-700 mb-2">
+            📚 Your Personalized Learning Path
+          </p>
+          <pre className="whitespace-pre-wrap text-sm text-indigo-900 font-medium leading-relaxed font-sans">
+            {learningPathContext}
+          </pre>
+        </div>
+      )}
+
       {inProgress.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-6">

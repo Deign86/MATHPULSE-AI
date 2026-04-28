@@ -1,0 +1,137 @@
+[
+  {
+    "content": "The learner demonstrates understanding of key concepts of functions. Functions can be represented as ordered pairs, tables of values, graphs, and equations. A function is a relation where each element in the domain corresponds to exactly one element in the range. Key types include linear functions (f(x)=mx+b), quadratic functions (f(x)=ax^2+bx+c), and polynomial functions of higher degrees.",
+    "subject": "General Mathematics",
+    "quarter": 1,
+    "content_domain": "Functions and Their Graphs",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 1
+  },
+  {
+    "content": "Learning Competency (M11GM-Ia-1): Represents real-life situations using functions, including piece-wise functions. Example: A taxi fare is computed as P40 for the first 500 meters plus P3.50 for every additional 300 meters or fraction thereof. This is a piecewise function where f(d)=40 for d<=500 and f(d)=40+3.5*ceil((d-500)/300) for d>500.",
+    "subject": "General Mathematics",
+    "quarter": 1,
+    "content_domain": "Functions and Their Graphs",
+    "chunk_type": "learning_competency",
+    "source_file": "sample_curriculum.json",
+    "page": 1
+  },
+  {
+    "content": "Learning Competency (M11GM-Ia-2): Evaluates a function. To evaluate f(x) at x=a, substitute a for every occurrence of x in the expression and simplify. Example: Given f(x)=2x^2-3x+5, evaluate f(2): f(2)=2(4)-3(2)+5=8-6+5=7.",
+    "subject": "General Mathematics",
+    "quarter": 1,
+    "content_domain": "Functions and Their Graphs",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 2
+  },
+  {
+    "content": "Rational Functions have the form f(x)=P(x)/Q(x) where P(x) and Q(x) are polynomials and Q(x)!=0. Key features: vertical asymptotes occur where Q(x)=0 but P(x)!=0; horizontal asymptotes depend on the degrees of P and Q. The domain of f(x) excludes all x-values that make the denominator zero. Solving rational equations and inequalities requires careful handling of the denominator signs.",
+    "subject": "General Mathematics",
+    "quarter": 1,
+    "content_domain": "Rational Functions",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 3
+  },
+  {
+    "content": "Learning Competency (M11GM-Ib-3): Solves problems involving rational functions, rational equations, and rational inequalities. Example: A jeepney operator's average revenue per trip is modeled by R(n)=(5000+300n)/n where n is the number of trips per day. Find how many trips are needed for average revenue to reach P450.",
+    "subject": "General Mathematics",
+    "quarter": 1,
+    "content_domain": "Rational Functions",
+    "chunk_type": "learning_competency",
+    "source_file": "sample_curriculum.json",
+    "page": 3
+  },
+  {
+    "content": "Exponential Functions f(x)=a*b^x (a!=0, b>0, b!=1) model growth and decay. Key properties: domain is all real numbers; range is (0,infinity) for a>0; horizontal asymptote at y=0; y-intercept at (0,a). Solving exponential equations involves expressing both sides with the same base and equating exponents. Philippine applications include bacterial growth and radioactive decay in medical contexts.",
+    "subject": "General Mathematics",
+    "quarter": 2,
+    "content_domain": "Exponential Functions",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 4
+  },
+  {
+    "content": "Compound Interest is calculated using A=P(1+r/n)^(nt) where A is the final amount, P is the principal, r is the annual interest rate (decimal), n is the number of compounding periods per year, and t is the time in years. Philippine banks offer savings and loan products with various compounding frequencies: annually (n=1), semi-annually (n=2), quarterly (n=4), monthly (n=12).",
+    "subject": "General Mathematics",
+    "quarter": 3,
+    "content_domain": "Business Mathematics",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 5
+  },
+  {
+    "content": "Learning Competency (M11GM-IIc-1): Illustrates simple and compound interests. Simple interest I=Prt where P is principal, r is rate, t is time. Compound interest uses compounding formula. Example: Juana deposits P50,000 in a bank offering 3.5% interest compounded quarterly. After 3 years, her balance will be A=50000(1+0.035/4)^(4*3)=55543.19 using the compound interest formula.",
+    "subject": "General Mathematics",
+    "quarter": 3,
+    "content_domain": "Business Mathematics",
+    "chunk_type": "learning_competency",
+    "source_file": "sample_curriculum.json",
+    "page": 5
+  },
+  {
+    "content": "Annuities are sequences of equal payments made at equal time intervals. The future value of an ordinary annuity (payment at end of period) is FV=PMT*[(1+r)^n-1]/r and present value is PV=PMT*[1-(1+r)^(-n)]/r. Applications include Pag-IBIG housing loans, SSS contributions, and insurance premiums. Philippine context problems often involve 15-year and 25-year housing loans.",
+    "subject": "General Mathematics",
+    "quarter": 3,
+    "content_domain": "Business Mathematics",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 6
+  },
+  {
+    "content": "Stocks and Bonds represent two types of investments. Stocks represent ownership shares in a corporation with dividends as earnings — prices are quoted per share in the Philippine Stock Exchange (PSE). Bonds are debt instruments where the issuing entity borrows money and pays periodic interest then repays principal at maturity. Key computations: stock yield = annual dividend per share / market price; bond yield = annual interest payment / market price.",
+    "subject": "General Mathematics",
+    "quarter": 3,
+    "content_domain": "Business Mathematics",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 6
+  },
+  {
+    "content": "A Random Variable is a function that assigns a real number to each outcome in the sample space of a random experiment. A Discrete Random Variable has a countable number of possible values. The probability mass function (PMF) gives the probability P(X=x) for each value x. Key properties: sum of all P(X=x)=1 and P(X=x)>=0 for all x. Common discrete distributions include Binomial for success/failure and Poisson for rare events.",
+    "subject": "Statistics and Probability",
+    "quarter": 1,
+    "content_domain": "Random Variables and Probability Distributions",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 7
+  },
+  {
+    "content": "Learning Competency (M11/12SP-IIIa-1): Illustrates a random variable (discrete and continuous). A discrete random variable takes countable values like the number of defective items in a batch of 50 bulbs. A continuous random variable takes infinite uncountable values in an interval, such as the height of Grade 11 students in centimeters. The learner distinguishes between discrete and continuous random variables for real Philippine data.",
+    "subject": "Statistics and Probability",
+    "quarter": 1,
+    "content_domain": "Random Variables and Probability Distributions",
+    "chunk_type": "learning_competency",
+    "source_file": "sample_curriculum.json",
+    "page": 7
+  },
+  {
+    "content": "The Normal Distribution (Gaussian) is a continuous probability distribution with a bell-shaped curve symmetric about the mean mu. Standard normal distribution has mu=0 and sigma=1; converting to standard normal z=(x-mu)/sigma allows probability calculation using z-tables. Properties: 68% of data within 1 sigma of mu, 95% within 2 sigma, 99.7% within 3 sigma. Philippine applications include standardized test scores (NAT, college entrance exams) and quality control in manufacturing.",
+    "subject": "Statistics and Probability",
+    "quarter": 1,
+    "content_domain": "Random Variables and Probability Distributions",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 8
+  },
+  {
+    "content": "Conic Sections are curves formed by the intersection of a plane and a double-napped cone. The four types are: Circle (all points equidistant from a center), Parabola (all points equidistant from a focus and directrix), Ellipse (sum of distances to two foci is constant), and Hyperbola (absolute difference of distances to two foci is constant). Standard forms: Circle (x-h)^2+(y-k)^2=r^2; Parabola (x-h)^2=4p(y-k) or (y-k)^2=4p(x-h).",
+    "subject": "Pre-Calculus",
+    "quarter": 1,
+    "content_domain": "Analytic Geometry",
+    "chunk_type": "content_explanation",
+    "source_file": "sample_curriculum.json",
+    "page": 9
+  },
+  {
+    "content": "Learning Competency (STEM_PC11AG-Ia-1): Illustrates the different types of conic sections: circle, parabola, ellipse, and hyperbola. The learner identifies conic sections from their standard equations and determines their key properties including center, radius (for circles), vertex, focus, directrix (for parabolas), and asymptotes (for hyperbolas). Real-world applications include satellite dishes, telescope mirrors, and bridge arch designs.",
+    "subject": "Pre-Calculus",
+    "quarter": 1,
+    "content_domain": "Analytic Geometry",
+    "chunk_type": "learning_competency",
+    "source_file": "sample_curriculum.json",
+    "page": 9
+  }
+]
