@@ -70,6 +70,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const userProfileRef = useRef(userProfile);
   userProfileRef.current = userProfile;
   const saveGuardRef = useRef(false);
+  const pendingSaveRef = useRef<{ layers: AvatarLayers; options: { showSuccessToast?: boolean; showSavingState?: boolean } } | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -265,9 +266,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     const { showSuccessToast = true, showSavingState = true } = options;
 
     if (saveGuardRef.current) {
-      if (showSuccessToast) {
-        toast.info('Save already in progress...');
-      }
+      pendingSaveRef.current = { layers: normalizeAvatarLayers(layers), options: { showSuccessToast, showSavingState } };
+      if (showSavingState) setIsSaving(true);
       return;
     }
 
@@ -292,8 +292,14 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         toast.error(isTimeout ? 'Avatar save timed out. Please try again.' : 'Failed to save avatar');
       }
     } finally {
+      const queuedSave = pendingSaveRef.current;
+      pendingSaveRef.current = null;
       saveGuardRef.current = false;
-      if (showSavingState) {
+      if (queuedSave) {
+        void persistAvatarLayers(queuedSave.layers, queuedSave.options);
+        return;
+      }
+      if (showSavingState || isSaving) {
         setIsSaving(false);
       }
     }
