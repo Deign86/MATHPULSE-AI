@@ -45,14 +45,28 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'workflow_dispatch' || (inputs.requires_ci && inputs.run_frontend) }}
     steps:
-- name: Checkout repository
-        uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Install backend dependencies
         run: |
@@ -85,3 +99,6 @@ jobs:
 
       - name: Build functions
         run: npm run build
+
+      - name: Run functions tests
+        run: npm test
