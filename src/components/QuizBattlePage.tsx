@@ -80,6 +80,10 @@ import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
+import { BattleTimerBar } from './battle/BattleTimerBar';
+import { BattleHeader } from './battle/BattleHeader';
+import { BattleFooter } from './battle/BattleFooter';
+import { BattleActiveContent } from './battle/BattleActiveContent';
 
 const DEFAULT_VIEWPORT_SIZE = { width: 1280, height: 720 };
 
@@ -186,7 +190,8 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
       <motion.div
         key={i}
         className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full"
-        style={{ left: `${Math.random() * 100}%`, top: '-10%' }}
+        className="e-left-top"
+        style={{ ['--left' as any]: `${Math.random() * 100}%`, ['--top' as any]: '-10%' }}
         animate={{ y: [0, viewportHeight * 1.2] }}
         transition={{
           duration: 0.6 + Math.random() * 0.4,
@@ -207,7 +212,8 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
         <motion.div
           key={i}
           className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md"
-          style={{ left: `${20 + Math.random() * 60}%`, backgroundColor: colors[i % colors.length] }}
+          className="e-left-top e-bg"
+          style={{ ['--left' as any]: `${20 + Math.random() * 60}%`, ['--bg' as any]: colors[i % colors.length] }}
           animate={{
             y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
             x: [0, (Math.random() - 0.5) * viewportWidth * 0.8],
@@ -232,7 +238,8 @@ const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = 
         <motion.div
           key={i}
           className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)]"
-          style={{ left: '50%', top: '50%' }}
+          className="e-left-top"
+          style={{ ['--left' as any]: '50%', ['--top' as any]: '50%' }}
           animate={{
             y: [(Math.random() - 0.5) * viewportHeight * 0.8],
             x: [(Math.random() - 0.5) * viewportWidth * 0.8],
@@ -367,6 +374,19 @@ const describeLifecycleEvent = (
   return 'Match completed.';
 };
 
+let globalAudioContext: AudioContext | null = null;
+
+const getAudioContext = () => {
+  if (typeof window === 'undefined') return null;
+  if (!globalAudioContext) {
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AudioContextCtor) {
+      globalAudioContext = new AudioContextCtor();
+    }
+  }
+  return globalAudioContext;
+};
+
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
@@ -383,6 +403,12 @@ const QuizBattlePage: React.FC = () => {
   const [battleSoundEnabled, setBattleSoundEnabled] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.localStorage.getItem('quiz_battle_sound_enabled') !== '0';
+  });
+  const [battleSoundVolume, setBattleSoundVolume] = useState(() => {
+    if (typeof window === 'undefined') return 0.7;
+    const stored = Number(window.localStorage.getItem('quiz_battle_sound_volume') || '0.7');
+    if (!Number.isFinite(stored)) return 0.7;
+    return clampNumber(stored, 0, 1);
   });
   const [connectionState, setConnectionState] = useState<'connected' | 'reconnecting' | 'disconnected'>('connected');
   const [historyFilterMode, setHistoryFilterMode] = useState<'all' | QuizBattleMode>('all');
@@ -517,48 +543,52 @@ const QuizBattlePage: React.FC = () => {
   }, [lastRoundResult, playerRoundStreak]);
 
   const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss' | 'streak' | 'multiplier') => {
-    if (!battleSoundEnabled || typeof window === 'undefined') return;
-
-    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
+    if (!battleSoundEnabled || battleSoundVolume <= 0 || typeof window === 'undefined') return;
 
     try {
-      const context = new AudioContextCtor();
-      const oscillator = context.createOscillator();
-      const gainNode = context.createGain();
+      const context = getAudioContext();
+      if (!context) return;
 
-      const presets: Record<typeof kind, { frequency: number; duration: number; type: OscillatorType; volume: number }> = {
-        tick: { frequency: 740, duration: 0.06, type: 'triangle', volume: 0.035 },
-        lock: { frequency: 520, duration: 0.08, type: 'square', volume: 0.04 },
-        result: { frequency: 660, duration: 0.1, type: 'sine', volume: 0.045 },
-        win: { frequency: 920, duration: 0.18, type: 'triangle', volume: 0.05 },
-        loss: { frequency: 240, duration: 0.16, type: 'sawtooth', volume: 0.045 },
-        streak: { frequency: 780, duration: 0.12, type: 'triangle', volume: 0.05 },
-        multiplier: { frequency: 880, duration: 0.1, type: 'triangle', volume: 0.05 },
+      if (context.state === 'suspended') {
+        void context.resume().catch(() => {});
+      }
+
+      const presets: Record<typeof kind, { notes: number[]; duration: number; type: OscillatorType; volume: number }> = {
+        tick: { notes: [740], duration: 0.06, type: 'triangle', volume: 0.03 },
+        lock: { notes: [520], duration: 0.08, type: 'square', volume: 0.04 },
+        result: { notes: [660, 720], duration: 0.08, type: 'sine', volume: 0.04 },
+        win: { notes: [920, 1040, 1180], duration: 0.12, type: 'triangle', volume: 0.05 },
+        loss: { notes: [260, 220], duration: 0.14, type: 'sawtooth', volume: 0.045 },
+        streak: { notes: [780, 920], duration: 0.09, type: 'triangle', volume: 0.045 },
+        multiplier: { notes: [660, 880, 1120], duration: 0.08, type: 'triangle', volume: 0.05 },
       };
 
       const preset = presets[kind];
       const now = context.currentTime;
+      const noteSpacing = 0.07;
+      const scaledVolume = clampNumber(preset.volume * battleSoundVolume, 0.004, 0.08);
 
-      oscillator.type = preset.type;
-      oscillator.frequency.setValueAtTime(preset.frequency, now);
+      preset.notes.forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        const startAt = now + index * noteSpacing;
 
-      gainNode.gain.setValueAtTime(0.0001, now);
-      gainNode.gain.exponentialRampToValueAtTime(preset.volume, now + 0.015);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration);
+        oscillator.type = preset.type;
+        oscillator.frequency.setValueAtTime(frequency, startAt);
 
-      oscillator.connect(gainNode);
-      gainNode.connect(context.destination);
-      oscillator.start(now);
-      oscillator.stop(now + preset.duration + 0.02);
+        gainNode.gain.setValueAtTime(0.0001, startAt);
+        gainNode.gain.exponentialRampToValueAtTime(scaledVolume, startAt + 0.012);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + preset.duration);
 
-      window.setTimeout(() => {
-        void context.close();
-      }, Math.ceil((preset.duration + 0.06) * 1000));
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.start(startAt);
+        oscillator.stop(startAt + preset.duration + 0.02);
+      });
     } catch (error) {
-      console.debug('Battle tone playback skipped:', error);
+      console.warn('Battle tone playback skipped or blocked:', error);
     }
-  }, [battleSoundEnabled]);
+  }, [battleSoundEnabled, battleSoundVolume]);
 
   const handleCopyRoomCode = useCallback(async (roomCode: string) => {
     if (!roomCode || typeof window === 'undefined') return;
@@ -813,6 +843,11 @@ const QuizBattlePage: React.FC = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('quiz_battle_sound_enabled', battleSoundEnabled ? '1' : '0');
   }, [battleSoundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('quiz_battle_sound_volume', battleSoundVolume.toFixed(2));
+  }, [battleSoundVolume]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -2018,285 +2053,134 @@ const QuizBattlePage: React.FC = () => {
             <div className="shrink-0 h-6 md:h-10 w-full" /* Spacer for completed mode */ />
           )}
 
-          {/* Main Area: Question & Choices OR Match Complete Modal */}
-          <div className="flex-1 flex flex-col justify-center items-center gap-4 md:gap-6 w-full min-h-0 overflow-y-auto pb-48 z-20" style={{ scrollbarWidth: 'none' }}>
-            
+          <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative">
             {activeMatch.status === 'completed' ? (
-              <motion.div 
-                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                 className="w-full max-w-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[2.5rem] p-8 md:p-12 text-center"
-              >
-                  <h2 className={cn(
-                    "text-5xl font-black uppercase tracking-widest drop-shadow-lg mb-4",
-                    activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
-                  )}>
-                    {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
-                  </h2>
-                  <p className="text-white/80 font-bold text-xl mb-8 uppercase tracking-widest">
-                     Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
-                  </p>
-                  
-                  <div className="bg-white/10 rounded-2xl p-6 mb-10 border border-white/10 flex flex-col gap-4">
-                     {(() => {
-                       const rounds = activeMatch.roundResults || [];
-                       let streak = 0;
-                       let baseTotal = 0;
-                       let streakTotal = 0;
-                       for (const r of rounds) {
-                         if (r.studentCorrect) {
-                           streak++;
-                           const bonus = streak >= 2 ? Math.min(15, (streak - 1) * 5) : 0;
-                           baseTotal += 10;
-                           streakTotal += bonus;
-                         } else {
-                           streak = 0;
-                         }
-                       }
-                       return (
-                         <>
-                           <AnimatedCounter value={baseTotal} label="Correct Answers" delay={300} icon={<Check className="h-3 w-3 text-emerald-400" />} />
-                           <AnimatedCounter value={streakTotal} label="Streak Bonus" delay={900} icon={<Sparkles className="h-3 w-3 text-amber-400" />} />
-                           <motion.div
-                             initial={{ opacity: 0 }}
-                             animate={{ opacity: 1 }}
-                             transition={{ delay: 1.5, duration: 0.4 }}
-                             className="flex items-center justify-between pt-1 mt-1 border-t border-white/5"
-                           >
-                             <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Total</span>
-                             <span className="text-base font-black text-white/80">{baseTotal + streakTotal} pts</span>
-                           </motion.div>
-                         </>
-                       );
-                     })()}
-<div className="w-full h-px bg-white/10" />
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
-                        className="flex flex-col gap-2"
-                      >
-                        <div className="flex items-center justify-between">
+              <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md px-4">
+                <motion.div 
+                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                   animate={{ opacity: 1, scale: 1, y: 0 }}
+                   className="w-full max-w-sm sm:max-w-md bg-[#161a25]/90 border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[1.5rem] p-6 text-center"
+                >
+                    <h2 className={cn(
+                      "text-3xl font-black uppercase tracking-widest drop-shadow-md mb-2",
+                      activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
+                    )}>
+                      {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
+                    </h2>
+                    <p className="text-white/80 font-bold text-sm mb-4 uppercase tracking-widest">
+                       Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
+                    </p>
+                    
+                    <div className="bg-black/50 rounded-xl p-4 mb-5 border border-white/5 flex flex-col gap-3">
+                      <div>
+                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Battle Score</h3>
+                        {(() => {
+                          const rounds = activeMatch.roundResults || [];
+                          let streak = 0;
+                          let baseTotal = 0;
+                          let streakTotal = 0;
+                          for (const r of rounds) {
+                            if (r.studentCorrect) {
+                              streak++;
+                              const bonus = streak >= 2 ? Math.min(15, (streak - 1) * 5) : 0;
+                              baseTotal += 10;
+                              streakTotal += bonus;
+                            } else {
+                              streak = 0;
+                            }
+                          }
+                          return (
+                            <>
+                              <AnimatedCounter value={baseTotal} label="Correct Answers" delay={300} icon={<Check className="h-3 w-3 text-emerald-400" />} />
+                              <AnimatedCounter value={streakTotal} label="Streak Bonus" delay={900} icon={<Sparkles className="h-3 w-3 text-amber-400" />} />
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 1.5, duration: 0.4 }}
+                                className="flex items-center justify-between pt-1 mt-1 border-t border-white/5"
+                              >
+                                <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Total</span>
+                                <span className="text-base font-black text-white/80">{baseTotal + streakTotal} pts</span>
+                              </motion.div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="w-full h-px bg-white/10" />
+                      <div>
+                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Match Reward</h3>
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 2.0, duration: 0.5, type: 'spring' }}
+                          className="flex items-center justify-between"
+                        >
                           <span className="text-white/70 text-sm font-bold">
                             {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
                           </span>
-                          <span className="text-2xl font-black text-amber-400 drop-shadow-md">
-                            +{activeMatch.xpBreakdown?.totalXPAwarded ?? activeMatch.xpEarned ?? (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP
-                          </span>
-                        </div>
-                        {activeMatch.xpBreakdown && (
-                          <div className="flex justify-between text-xs text-white/40">
-                            <span>Base: +{activeMatch.xpBreakdown.baseMatchXP} XP</span>
-                            <span>Points: {activeMatch.xpBreakdown.totalPointsEarned} pts × 8% = +{activeMatch.xpBreakdown.performanceXP} XP</span>
-                          </div>
-                        )}
-                      </motion.div>
-                     <p className="text-white/25 text-[9px] text-right uppercase tracking-widest">Credited to your profile</p>
-                  </div>
+                          <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
+                        </motion.div>
+                        <p className="text-white/25 text-[9px] mt-1 text-right uppercase tracking-widest">Credited to your profile</p>
+                      </div>
+                    </div>
 
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                     <Button
-                       size="lg"
-                       onClick={() => {
-                         setActiveMatch(null);
-                         setActiveRoom(null);
-                         setQueueActive(false);
-                         setActiveTab('setup');
-                       }}
-                       className="h-16 px-8 rounded-2xl text-lg font-black bg-white/10 hover:bg-white/20 text-white border-2 border-white/20"
-                     >
-                       START NEW MATCH
-                     </Button>
-                     {activeMatch.mode === 'bot' && (
+                    <div className="flex flex-col gap-3 justify-center">
                        <Button
                          size="lg"
-                         onClick={() => void handleRequestRematch()}
-                         disabled={answerSubmitting}
-                         className="h-16 px-8 rounded-2xl text-lg font-black bg-violet-600 hover:bg-violet-500 text-white border-b-4 border-violet-800 active:border-b-0 active:translate-y-[4px]"
+                         onClick={() => {
+                           setActiveMatch(null);
+                           setActiveRoom(null);
+                           setQueueActive(false);
+                           setActiveTab('hub');
+                         }}
+                         className="w-full h-12 rounded-xl text-sm font-black bg-white/10 hover:bg-white/20 text-white border border-white/20"
                        >
-                         REMATCH
+                         BACK TO ARENA
                        </Button>
-                     )}
-                  </div>
-              </motion.div>
+                       {activeMatch.mode === 'bot' && (
+                         <Button
+                           size="lg"
+                           onClick={() => void handleRequestRematch()}
+                           disabled={answerSubmitting}
+                           className="w-full h-12 rounded-xl text-sm font-black bg-violet-600 hover:bg-violet-500 text-white border-b-2 border-violet-800 active:border-b-0 active:translate-y-[2px]"
+                         >
+                           REMATCH
+                         </Button>
+                       )}
+                    </div>
+                </motion.div>
+              </div>
             ) : (
-              <>
-            {/* Question Card */}
-            <div className="relative bg-[#1e2536] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-[1.5rem] p-6 md:p-8 w-full max-w-4xl text-center flex flex-col items-center">
-               <div className="absolute -top-3.5 bg-[#2f3547] border border-white/10 text-white/80 px-4 py-1 rounded-full text-sm font-black shadow-lg uppercase tracking-wider">
-                  {activeMatch.currentRound} / {activeMatch.totalRounds}
-               </div>
-
-               <AnimatePresence>
-                 {floatingMomentum && (
-                   <motion.div
-                     key={floatingMomentum.id}
-                     initial={{ opacity: 0, transform: 'translateY(14px) scale(0.92)' }}
-                     animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
-                     exit={{ opacity: 0, transform: 'translateY(-10px) scale(0.9)' }}
-                     className={cn(
-                       'absolute -top-12 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] backdrop-blur-lg',
-                       floatingMomentum.tone === 'positive'
-                         ? 'border-emerald-300/70 bg-emerald-500/20 text-emerald-100'
-                         : floatingMomentum.tone === 'negative'
-                           ? 'border-rose-300/70 bg-rose-500/20 text-rose-100'
-                           : 'border-slate-300/50 bg-slate-500/20 text-slate-100',
-                     )}
-                   >
-                     {floatingMomentum.label}
-                   </motion.div>
-                 )}
-               </AnimatePresence>
-               
-               <p className="text-lg sm:text-xl md:text-2xl text-white font-extrabold leading-tight tracking-tight mt-2 min-h-[60px] flex items-center justify-center">
-                 {activeMatch.currentQuestion?.prompt}
-               </p>
-            </div>
-
-            {/* Choices Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl px-4">
-               {activeMatch.currentQuestion?.choices.map((choice, idx) => {
-                  const isSelected = selectedOptionIndex === idx;
-                  const isSubmitting = answerSubmitting || roundLocked;
-                  const btnColors = [
-                    "bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-emerald-950 border-emerald-400 shadow-[0_8px_0_rgba(5,150,105,1)]", 
-                    "bg-violet-500 hover:bg-violet-400 active:bg-violet-600 text-white border-violet-400 shadow-[0_8px_0_rgba(109,40,217,1)]", 
-                    "bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-white border-sky-400 shadow-[0_8px_0_rgba(2,132,199,1)]", 
-                    "bg-rose-500 hover:bg-rose-400 active:bg-rose-600 text-white border-rose-400 shadow-[0_8px_0_rgba(225,29,72,1)]"
-                  ];
-
-                  return (
-                    <motion.button
-                      whileTap={{ y: 8, scale: 0.98 }}
-                      whileHover={{ scale: 1.02 }}
-                      disabled={isSubmitting || designPauseActive}
-                      key={idx}
-                      onClick={() => { setSelectedOptionIndex(idx); submitRoundAnswer(idx).catch(() => {}); }}
-                      className={cn(
-                        "relative h-16 md:h-24 rounded-2xl md:rounded-3xl font-black text-lg md:text-2xl px-6 md:px-8 border-t-[3px] flex items-center justify-center text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                        btnColors[idx],
-                        isSelected ? "ring-[6px] ring-white ring-offset-[6px] ring-offset-[#0B0F19]" : ""
-                      )}
-                    >
-                      {choice}
-                    </motion.button>
-                  );
-               })}
-            </div>
-            <AnimatePresence>
-              {roundLocked && !lastRoundResult && activeMatch.mode === 'online' && (
-                <motion.div
-                  initial={{ opacity: 0, transform: 'translateY(10px)' }}
-                  animate={{ opacity: 1, transform: 'translateY(0)' }}
-                  exit={{ opacity: 0, transform: 'translateY(10px)' }}
-                  className="mt-4 flex flex-col items-center gap-1"
-                >
-                  <div className="flex items-center gap-2 text-white/70 font-semibold bg-black/30 px-6 py-2 rounded-full border border-white/10">
-                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                    Waiting for opponent...
-                  </div>
-                  <p className="text-white/30 text-[11px] mt-1">Choices locked until round resolves</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {lastRoundResult && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                  className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none flex flex-col items-center justify-center"
-                >
-                  <div className="bg-[#1e2433]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.6)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
-                    <img src={quizBattleAvatar} alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-xl" />
-                    <h2 className={cn(
-                      "text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest",
-                      lastRoundResult.studentCorrect ? "text-emerald-400" : "text-rose-400"
-                    )}>
-                      {lastRoundResult.studentCorrect ? "Correct!" : "Incorrect"}
-                    </h2>
-                    
-                    {lastRoundResult.studentCorrect ? (
-                       <div className="flex items-center gap-3 w-full justify-center">
-                          <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-2xl font-bold border border-emerald-500/30">
-                             <span>+ 10 XP</span>
-                          </div>
-                          {lastRoundMomentumDelta !== null && lastRoundMomentumDelta > 0 && (
-                            <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-2 rounded-2xl font-bold border border-amber-500/30">
-                              <span>+ {lastRoundMomentumDelta} <Sparkles className="w-4 h-4 inline" /></span>
-                            </div>
-                          )}
-                       </div>
-                    ) : (
-                       <div className="bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold px-5 py-2 rounded-xl text-center">
-                          Correct: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
-                       </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-              </>
+              <BattleActiveContent 
+                activeMatch={activeMatch}
+                roundSecondsLeft={roundSecondsLeft}
+                lastRoundResult={lastRoundResult}
+                selectedOptionIndex={selectedOptionIndex}
+                roundLocked={roundLocked}
+                answerSubmitting={answerSubmitting}
+                designPauseActive={designPauseActive}
+                onOptionSelect={(idx) => {
+                  if (!!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound) return;
+                  if (answerSubmitting || roundLocked) return;
+                  getAudioContext()?.resume().catch(() => {});
+                  playBattleTone('lock');
+                  setSelectedOptionIndex(idx);
+                  void submitRoundAnswer(idx);
+                }}
+                floatingMomentum={floatingMomentum}
+                lastRoundMomentumDelta={lastRoundMomentumDelta}
+                studentProfile={studentProfile}
+                quizBattleAvatar={quizBattleAvatar}
+              />
             )}
           </div>
 
-          {/* Footer Avatars row - Absolutely positioned to bottom so they never crop */}
-          <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-4 md:px-8 shrink-0 h-32 md:h-40 flex justify-between items-end pb-4 pointer-events-none z-30">
-             
-             {/* Left: Player Avatar fixed strictly to base, blinking/ears only */}
-             <div className="flex items-end gap-3 sm:gap-6 relative pointer-events-auto">
-                 <div className="relative w-28 h-28 md:w-36 md:h-36 overflow-hidden rounded-t-[40px]">
-                   <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-110 -mb-2" />
-                 </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-4 mb-4 max-w-[220px] md:max-w-[280px]">
-                   <div className="flex flex-col flex-1 min-w-0">
-                      <span className="text-white font-black text-lg truncate tracking-wide">{studentProfile?.name || 'Player'}</span>
-                      <span className="text-sm text-white/50 font-bold uppercase tracking-wider">Level {studentProfile?.level || 1}</span>
-                   </div>
-                   <div className="h-10 w-px bg-white/20" />
-                   <div className="flex flex-col items-center justify-center shrink-0 w-10 md:w-12">
-                      <motion.span 
-                        animate={scorePulseTarget === 'player' ? { scale: [1, 1.4, 1], color: ['#fff', '#34d399', '#fff'] } : {}}
-                        transition={{ duration: 0.5 }}
-                        className="text-2xl md:text-3xl font-black text-white leading-none"
-                      >
-                        {activeMatch.scoreFor}
-                      </motion.span>
-                      <span className="text-[9px] md:text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1 leading-none">Score</span>
-                   </div>
-                </div>
-             </div>
-
-             {/* Right: Opponent (Bot or Silhouette) */}
-             <div className="flex items-end gap-3 sm:gap-6 relative flex-row-reverse pointer-events-auto">
-                <div className="relative w-28 h-28 md:w-36 md:h-36 bg-[#1a2030] overflow-hidden rounded-t-[40px] flex items-end justify-center border-t-4 border-slate-700/50 shadow-inner">
-                   {activeMatch.mode === 'bot' ? (
-                     <Bot className="h-16 w-16 md:h-20 md:w-20 text-rose-400 mb-6 drop-shadow-xl" strokeWidth={1.5} />
-                   ) : (
-                     <Users className="h-16 w-16 md:h-20 md:w-20 text-slate-500 mb-6 drop-shadow-xl" strokeWidth={1.5} />
-                   )}
-                </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-4 mb-4 flex-row-reverse text-right max-w-[220px] md:max-w-[280px]">
-                   <div className="flex flex-col flex-1 min-w-0">
-                      <span className="text-white font-black text-lg truncate tracking-wide">{activeMatch.opponentName || 'Anonymous'}</span>
-                      <span className="text-sm text-rose-400 font-bold uppercase tracking-wider">{activeMatch.mode === 'bot' ? 'System Bot' : 'Challenger'}</span>
-                   </div>
-                   <div className="h-10 w-px bg-white/20" />
-                   <div className="flex flex-col items-center justify-center shrink-0 w-10 md:w-12">
-                      <motion.span 
-                        animate={scorePulseTarget === 'opponent' ? { scale: [1, 1.4, 1], color: ['#fff', '#fb7185', '#fff'] } : {}}
-                        transition={{ duration: 0.5 }}
-                        className="text-2xl md:text-3xl font-black text-white leading-none"
-                      >
-                        {activeMatch.scoreAgainst}
-                      </motion.span>
-                      <span className="text-[9px] md:text-[10px] text-rose-400 font-bold uppercase tracking-widest mt-1 leading-none">Score</span>
-                   </div>
-</div>
-      </div>
-
-      </div>
+          <BattleFooter 
+            studentProfile={studentProfile}
+            activeMatch={activeMatch}
+            scorePulseTarget={scorePulseTarget}
+            quizBattleAvatar={quizBattleAvatar}
+          />
 
       </div>
       </div>
@@ -2339,7 +2223,7 @@ const QuizBattlePage: React.FC = () => {
                       {/* Decorative Textbook Background */}
                       <div 
                         className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden" 
-                        style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff 39px, #ffffff 40px)' }}
+                        className="repeating-stripe-bg"
                       />
                       <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
                       
@@ -2392,7 +2276,7 @@ const QuizBattlePage: React.FC = () => {
                             <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
                               <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
                             </svg>
-                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100 font-nunito">
                               VS Player
                             </div>
                           </div>
@@ -2415,7 +2299,7 @@ const QuizBattlePage: React.FC = () => {
               />
               {/* Center VS */}
               <div className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1] animate-vs-pulse">
-                <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: "1.5px #666" }}>
+                <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
                   <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
                 </span>
               </div>
@@ -2429,7 +2313,7 @@ const QuizBattlePage: React.FC = () => {
                             </div>
                             
                             <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
-                              <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                              <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
                                 Queue or room-code match with another student.
                               </p>
                             </div>
@@ -2452,7 +2336,7 @@ const QuizBattlePage: React.FC = () => {
                             <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
                               <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
                             </svg>
-                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100 font-nunito">
                               VS Bot
                             </div>
                           </div>
@@ -2489,7 +2373,7 @@ const QuizBattlePage: React.FC = () => {
                             </div>
                             
                             <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
-                              <p className="text-[13px] font-bold text-white leading-[1.45]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                              <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
                                 Instant solo duel with selectable bot difficulty.
                               </p>
                             </div>
@@ -2559,13 +2443,13 @@ const QuizBattlePage: React.FC = () => {
                            <div className="absolute bottom-2 w-[110%] max-w-[280px] z-30 drop-shadow-2xl">
                                <div className="relative w-full h-[52px] flex justify-center items-center">
                                    {/* Left Cutout Flap */}
-                                   <div className="absolute -left-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%, 25% 50%, 0 0)'}}></div>
+                                   <div className="absolute -left-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0 clip-poly-left"></div>
                                    {/* Right Cutout Flap */}
-                                   <div className="absolute -right-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%, 75% 50%, 100% 0)'}}></div>
+                                   <div className="absolute -right-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0 clip-poly-right"></div>
                                    
                                    {/* Front Ribbon Face */}
                                    <div className="absolute inset-x-6 top-0 bottom-0 bg-[#b61515] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),_inset_0_-4px_4px_rgba(0,0,0,0.2)] z-10 flex flex-col items-center justify-center">
-                                       <h3 className="text-lg sm:text-xl font-black text-white tracking-widest leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>Hall of Fame</h3>
+                                       <h3 className="text-lg sm:text-xl font-black text-white tracking-widest leading-none drop-shadow-md font-nunito">Hall of Fame</h3>
                                        <span className="text-[9px] sm:text-[10px] font-bold text-white/90 tracking-widest mt-0.5">View Page &gt;</span>
                                    </div>
                                </div>
@@ -2577,7 +2461,7 @@ const QuizBattlePage: React.FC = () => {
                     <div className="relative w-full bg-[#3b3a82] dark:bg-[#2b2b5f] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_30px_rgba(59,58,130,0.3)]">
                       {/* Header */}
                       <div className="flex flex-row items-end justify-between px-5 pt-4 pb-2 relative z-10">
-                        <h3 className="text-[18px] font-black text-white tracking-wide leading-none drop-shadow-md" style={{ fontFamily: "'Nunito', sans-serif" }}>My Stats</h3>
+                        <h3 className="text-[18px] font-black text-white tracking-wide leading-none drop-shadow-md font-nunito">My Stats</h3>
                         <Button 
                           variant="link" 
                           className="text-white/80 hover:text-white p-0 h-auto font-semibold text-[13px] tracking-wide" 
@@ -3020,6 +2904,41 @@ const QuizBattlePage: React.FC = () => {
                           </div>
                           <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
                         </label>
+
+                        <motion.div
+                          initial={false}
+                          animate={{
+                            opacity: battleSoundEnabled ? 1 : 0.45,
+                            y: battleSoundEnabled ? 0 : -2,
+                          }}
+                          className={cn(
+                            'rounded-[16px] border bg-white/40 p-4 shadow-sm dark:bg-black/40',
+                            setupConfig.mode === 'online'
+                              ? 'border-[#8A3FD3]/20 dark:border-[#8A3FD3]/20'
+                              : 'border-[#1FA7E1]/20 dark:border-[#1FA7E1]/20'
+                          )}
+                        >
+                          <div className="mb-2 flex items-center justify-between">
+                            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700 dark:text-slate-200">SFX Volume</p>
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{Math.round(battleSoundVolume * 100)}%</p>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={Math.round(battleSoundVolume * 100)}
+                            disabled={!battleSoundEnabled}
+                            onChange={(event) => {
+                              const next = clampNumber(Number(event.target.value) / 100, 0, 1);
+                              setBattleSoundVolume(next);
+                            }}
+                            onMouseUp={() => playBattleTone('tick')}
+                            onTouchEnd={() => playBattleTone('tick')}
+                            className="h-2 w-full cursor-pointer accent-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Battle sound effects volume"
+                          />
+                        </motion.div>
                       </div>
 
                       {/* Action Bar (Pinned to Bottom of Column) */}
