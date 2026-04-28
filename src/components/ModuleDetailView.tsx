@@ -268,12 +268,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           }}
           onComplete={(score, totalXP) => {
             console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
-            // Ensure we have a meaningful XP reward - use totalXP if available and > 0, otherwise calculate from score
-            const xpReward = (totalXP && totalXP > 0) ? totalXP : Math.max(100, Math.round(score * 1.5));
-            console.log('[QuizComplete] Awarding XP:', xpReward);
-            onEarnXP?.(xpReward, `Scored ${score}% on "${selectedLesson.quiz.title}"`);
 
-            // Persist progress for Competency Matrix (Application)
+            // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {
               void (async () => {
                 try {
@@ -284,7 +280,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     selectedLesson.quiz.id,
                     score,
                     [],
-                    0
+                    0,
+                    totalXP
                   );
                   await recalculateAndUpdateModuleProgress(
                     userProfile.uid,

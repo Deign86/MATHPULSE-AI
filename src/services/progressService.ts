@@ -230,6 +230,50 @@ export const completeLesson = async (
   }
 };
 
+// Record a practice quiz attempt (no module context needed)
+export const recordPracticeQuiz = async (
+  userId: string,
+  quizId: string,
+  subjectId: string,
+  score: number,
+  answers: QuizAnswer[],
+  timeSpent: number,
+  xpAmount: number,
+): Promise<void> => {
+  try {
+    const progressRef = doc(db, 'progress', userId);
+    let progressSnap = await getDoc(progressRef);
+
+    if (!progressSnap.exists()) {
+      await initializeUserProgress(userId);
+      progressSnap = await getDoc(progressRef);
+    }
+
+    const progressData = progressSnap.data() as UserProgress;
+    const quizAttempt: QuizAttempt = {
+      quizId,
+      attemptNumber: (progressData.quizAttempts?.filter(q => q.quizId === quizId).length || 0) + 1,
+      score,
+      completedAt: new Date(),
+      timeSpent,
+      answers,
+    };
+
+    const isNewQuiz = !progressData.quizAttempts?.some(q => q.quizId === quizId);
+
+    await updateDoc(progressRef, {
+      quizAttempts: [...(progressData.quizAttempts || []), quizAttempt],
+      ...(isNewQuiz && { totalQuizzesCompleted: increment(1) }),
+      updatedAt: serverTimestamp(),
+    });
+
+    await awardXP(userId, xpAmount, 'practice_quiz', `Completed practice quiz: ${quizId} (Score: ${score}%)`);
+  } catch (error) {
+    console.error('Error recording practice quiz:', error);
+    throw error;
+  }
+};
+
 // Complete a quiz
 export const completeQuiz = async (
   userId: string,
@@ -238,7 +282,8 @@ export const completeQuiz = async (
   quizId: string,
   score: number,
   answers: QuizAnswer[],
-  timeSpent: number
+  timeSpent: number,
+  xpRewardOverride?: number
 ): Promise<void> => {
   try {
     const progressRef = doc(db, 'progress', userId);
@@ -261,8 +306,8 @@ export const completeQuiz = async (
       answers,
     };
 
-    // Calculate XP based on score
-    const xpReward = Math.floor((score / 100) * 100); // 0-100 XP based on score
+    // Calculate XP based on score, with optional override from caller
+    const xpReward = xpRewardOverride !== undefined ? xpRewardOverride : Math.floor((score / 100) * 100);
 
     // Update module progress
     if (!progressData.subjects) progressData.subjects = {};
