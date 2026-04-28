@@ -210,7 +210,6 @@ export interface QuizBattleSubmitAnswerResponse {
   completion?: {
     outcome: 'win' | 'loss' | 'draw';
     xpEarned: number;
-    xpBreakdown?: MatchXPBreakdown;
   };
   match: QuizBattleLiveMatchState;
 }

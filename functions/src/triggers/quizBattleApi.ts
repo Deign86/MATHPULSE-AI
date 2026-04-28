@@ -2495,8 +2495,14 @@ const mapMatchStateForStudent = (
     const outcome = getOutcomeFromMetadata(metadata, studentId, scoreFor, scoreAgainst);
     baseState.outcome = outcome;
     baseState.xpEarned = getXpFromMetadata(metadata, studentId, outcome);
-    if (isRecord(metadata.xpBreakdown)) {
-      baseState.xpBreakdown = metadata.xpBreakdown as unknown as MatchXPBreakdown;
+    const xpBreakdownByPlayer = isRecord(metadata.xpBreakdownByPlayer)
+      ? metadata.xpBreakdownByPlayer
+      : null;
+    const xpBreakdownForStudent = xpBreakdownByPlayer && isRecord(xpBreakdownByPlayer[studentId])
+      ? xpBreakdownByPlayer[studentId]
+      : metadata.xpBreakdown;
+    if (isRecord(xpBreakdownForStudent)) {
+      baseState.xpBreakdown = xpBreakdownForStudent as unknown as MatchXPBreakdown;
     }
   }
 
@@ -2895,14 +2901,15 @@ const finalizeCompletedMatch = async (
       const metrics = computeParticipantRoundMetrics(roundResults, isPlayerA, rounds, fallbackResponseMs);
 
       const totalPointsEarned = roundResults.reduce((sum, entry) => {
-        const scR = entry.scoreBreakdown;
-        if (isRecord(scR)) {
-          const sc = scR as Record<string, unknown>;
-          const studentPoints = Math.floor(asNumber(
-            isPlayerA ? sc.playerATotalPoints : sc.playerBTotalPoints,
-            asNumber(sc.totalPointsAwarded, 0)
-          ));
-          return sum + studentPoints;
+        const participantScoreBreakdown = isPlayerA
+          ? entry.playerAScoreBreakdown
+          : entry.playerBScoreBreakdown;
+
+        if (isRecord(participantScoreBreakdown)) {
+          const breakdown = participantScoreBreakdown as Record<string, unknown>;
+          if (breakdown.isCorrect === true || asNumber(breakdown.totalPointsAwarded, 0) > 0) {
+            return sum + Math.floor(asNumber(breakdown.totalPointsAwarded, 0));
+          }
         }
         return sum;
       }, 0);
@@ -4033,26 +4040,32 @@ const progressMatchTimerIfExpired = async (
       true,
       currentRound,
     );
-    roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
-      difficulty: roundDifficulty,
-      consecutiveCorrect: playerAStreak,
-      responseMs: playerAResponseMs,
-      roundStartedAtMs,
-      roundDeadlineAtMs: roundDeadlineForScoring,
-    });
+    const playerAScoringStreak = playerACorrect ? playerAStreak + 1 : 0;
+    if (playerACorrect) {
+      roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerAScoringStreak,
+        responseMs: playerAResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: roundDeadlineForScoring,
+      });
+    }
 
     const playerBStreak = computeConsecutiveCorrect(
       (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
       false,
       currentRound,
     );
-    roundResult.playerBScoreBreakdown = computeRoundScoreBreakdown({
-      difficulty: roundDifficulty,
-      consecutiveCorrect: playerBStreak,
-      responseMs: playerBResponseMs,
-      roundStartedAtMs,
-      roundDeadlineAtMs: roundDeadlineForScoring,
-    });
+    const playerBScoringStreak = playerBCorrect ? playerBStreak + 1 : 0;
+    if (playerBCorrect) {
+      roundResult.playerBScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerBScoringStreak,
+        responseMs: playerBResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: roundDeadlineForScoring,
+      });
+    }
 
     const isFinalRound = currentRound >= totalRounds;
     const updatePayload: Record<string, unknown> = {
@@ -5284,26 +5297,30 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       true,
       roundNumber,
     );
-    roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
-      difficulty: roundDifficulty,
-      consecutiveCorrect: playerAStreak,
-      responseMs: playerAResponseMs,
-      roundStartedAtMs,
-      roundDeadlineAtMs: deadlineMs,
-    });
+    if (playerACorrect) {
+      roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerAStreak + 1,
+        responseMs: playerAResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: deadlineMs,
+      });
+    }
 
     const playerBStreak = computeConsecutiveCorrect(
       (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
       false,
       roundNumber,
     );
-    roundResult.playerBScoreBreakdown = computeRoundScoreBreakdown({
-      difficulty: roundDifficulty,
-      consecutiveCorrect: playerBStreak,
-      responseMs: playerBResponseMs,
-      roundStartedAtMs,
-      roundDeadlineAtMs: deadlineMs,
-    });
+    if (playerBCorrect) {
+      roundResult.playerBScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerBStreak + 1,
+        responseMs: playerBResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: deadlineMs,
+      });
+    }
 
     const isFinalRound = roundNumber >= totalRounds;
     const updatePayload: Record<string, unknown> = {
