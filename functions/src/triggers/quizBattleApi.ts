@@ -73,7 +73,7 @@ type QueueStatus = "searching" | "matched" | "cancelled";
 type MatchStatus = "ready" | "in_progress" | "completed" | "cancelled";
 type RoomStatus = "waiting" | "ready" | "cancelled" | "expired";
 type RoundWinner = "playerA" | "playerB" | "draw";
-type MatchOutcome = "win" | "loss" | "draw";
+import { MatchOutcome } from '../scoring/scoringEngine';
 type HeartbeatScope = "queue" | "room" | "match";
 type LifecycleEventType = "round_started" | "answer_locked" | "round_result" | "match_completed";
 
@@ -132,7 +132,11 @@ interface StoredRoundResultRecord {
   playerAResponseMs: number;
   playerBResponseMs: number;
   resolvedAtMs: number;
+  playerAScoreBreakdown?: RoundScoreBreakdown;
+  playerBScoreBreakdown?: RoundScoreBreakdown;
 }
+
+import { RoundScoreBreakdown, MatchXPBreakdown } from '../scoring/scoringEngine';
 
 interface RoundResultRecord {
   roundNumber: number;
@@ -141,11 +145,13 @@ interface RoundResultRecord {
   studentSelectedIndex: number | null;
   studentCorrect: boolean;
   botSelectedIndex: number;
+  opponentSelectedIndex: number | null;
   botCorrect: boolean;
   winner: RoundWinner;
   playerAResponseMs: number;
   botResponseMs: number;
   resolvedAtMs: number;
+  scoreBreakdown?: RoundScoreBreakdown;
 }
 
 interface QuizBattleMatchStateResponse {
@@ -168,6 +174,7 @@ interface QuizBattleMatchStateResponse {
   roundResults: RoundResultRecord[];
   outcome?: MatchOutcome;
   xpEarned?: number;
+  xpBreakdown?: MatchXPBreakdown;
 }
 
 interface QuizBattleGenerationAuditResponse {
@@ -298,11 +305,13 @@ interface BattleQuestionCandidate {
   prompt: string;
   choices: string[];
   correctOptionIndex: number;
+  difficulty: "easy" | "medium" | "hard";
 }
 
 interface QuestionSetBundle {
   questions: BattleQuestionPublic[];
   answerKeys: number[];
+  difficulties: ('easy' | 'medium' | 'hard')[];
   source: "ai" | "bank";
   servedQuestionIds: string[];
   selector: QuestionPoolSelector;
@@ -641,9 +650,7 @@ const QUESTION_BANK: BattleQuestionTemplate[] = [
   },
 ];
 
-const clamp = (value: number, min: number, max: number): number => {
-  return Math.max(min, Math.min(max, value));
-};
+import { clamp } from '../utils/math';
 
 const randomInRange = (min: number, max: number): number => {
   if (max <= min) return min;
@@ -1015,11 +1022,16 @@ const shuffleChoicesPreservingCorrect = (
 const materializeQuestionSet = (
   candidates: BattleQuestionCandidate[],
   randomInt: (min: number, max: number) => number = randomInRange,
-): { questions: BattleQuestionPublic[]; answerKeys: number[] } => {
+): { questions: BattleQuestionPublic[]; answerKeys: number[]; difficulties: ('easy' | 'medium' | 'hard')[] } => {
   const answerKeys: number[] = [];
+  const difficulties: ('easy' | 'medium' | 'hard')[] = [];
   const questions = candidates.map((candidate, index) => {
     const shuffled = shuffleChoicesPreservingCorrect(candidate.choices, candidate.correctOptionIndex, randomInt);
     answerKeys.push(shuffled.correctOptionIndex);
+    const diff: 'easy' | 'medium' | 'hard' = (candidate.difficulty === 'easy' || candidate.difficulty === 'medium' || candidate.difficulty === 'hard')
+      ? candidate.difficulty
+      : 'medium';
+    difficulties.push(diff);
     return {
       roundNumber: index + 1,
       questionId: candidate.questionId,
@@ -1031,6 +1043,7 @@ const materializeQuestionSet = (
   return {
     questions,
     answerKeys,
+    difficulties,
   };
 };
 
@@ -1288,6 +1301,7 @@ const normalizeAiQuestionCandidate = (
     prompt: normalizedPrompt.slice(0, 260),
     choices,
     correctOptionIndex,
+    difficulty: "medium",
   };
 };
 
@@ -1749,6 +1763,14 @@ const xpForOutcome = (outcome: MatchOutcome): number => {
   return 35;
 };
 
+import {
+  DIFFICULTY_MULTIPLIERS,
+  XP_CAP_PER_BATTLE,
+  DAILY_BATTLE_XP_CAP,
+  computeRoundScoreBreakdown,
+  computeMatchXP,
+} from '../scoring/scoringEngine';
+
 const normalizeSourceType = (raw: unknown): BattleQuestionSourceType => {
   const value = asString(raw, "").toLowerCase();
   if (value === "premade" || value === "teacher-authored" || value === "reviewed-ai" || value === "imported") {
@@ -1885,6 +1907,7 @@ const toBattleCandidateFromCanonical = (question: CanonicalBattleQuestion): Batt
     prompt: question.stem,
     choices: question.choices,
     correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
+    difficulty: question.difficulty,
   };
 };
 
@@ -2074,6 +2097,7 @@ const buildStaticFallbackPool = (
     prompt: entry.prompt,
     choices: entry.choices,
     correctOptionIndex: entry.correctOptionIndex,
+    difficulty: entry.difficulty,
   }));
 };
 
@@ -2097,6 +2121,7 @@ const expandStaticFallbackCandidates = (
       prompt: `${source.prompt} (Variant ${variantNumber})`,
       choices: [...source.choices],
       correctOptionIndex: source.correctOptionIndex,
+      difficulty: source.difficulty,
     });
 
     cursor += 1;
@@ -2249,6 +2274,39 @@ const selectQuestionSet = async (params: {
   };
 };
 
+const getRoundDifficulties = (raw: unknown): ('easy' | 'medium' | 'hard')[] => {
+  if (!isRecord(raw)) return [];
+  const diffs = raw.difficulties;
+  if (!Array.isArray(diffs)) return [];
+  return diffs.map((entry) => {
+    const s = asString(entry, 'medium');
+    return (s === 'easy' || s === 'medium' || s === 'hard') ? s : 'medium';
+  });
+};
+
+const computeConsecutiveCorrect = (
+  roundResults: Record<string, unknown>[],
+  isPlayerA: boolean,
+  currentRound: number,
+): number => {
+  let streak = 0;
+  const sortedResults = [...roundResults]
+    .sort((a, b) => Math.floor(asNumber(a.roundNumber, 0)) - Math.floor(asNumber(b.roundNumber, 0)));
+  for (const entry of sortedResults) {
+    const rn = Math.floor(asNumber(entry.roundNumber, 0));
+    if (rn >= currentRound) break;
+    const correct = isPlayerA
+      ? asBoolean(entry.playerACorrect, false)
+      : asBoolean(entry.playerBCorrect, false);
+    if (correct) {
+      streak += 1;
+    } else {
+      streak = 0;
+    }
+  }
+  return streak;
+};
+
 const simulateBotRoundOutcome = (
   correctOptionIndex: number,
   optionsCount: number,
@@ -2323,11 +2381,17 @@ const mapStoredRoundResultForStudent = (
     studentSelectedIndex,
     studentCorrect,
     botSelectedIndex: opponentSelectedIndex !== null ? opponentSelectedIndex : -1,
+    opponentSelectedIndex,
     botCorrect: opponentCorrect,
     winner: normalizeRoundWinner(entry.winner),
     playerAResponseMs: studentResponseMs,
     botResponseMs: opponentResponseMs,
     resolvedAtMs: Math.floor(asNumber(entry.resolvedAtMs, Date.now())),
+    scoreBreakdown: isPlayerA && isRecord(entry.playerAScoreBreakdown)
+      ? (entry.playerAScoreBreakdown as unknown as RoundScoreBreakdown)
+      : !isPlayerA && isRecord(entry.playerBScoreBreakdown)
+        ? (entry.playerBScoreBreakdown as unknown as RoundScoreBreakdown)
+        : undefined,
   };
 };
 
@@ -2431,6 +2495,15 @@ const mapMatchStateForStudent = (
     const outcome = getOutcomeFromMetadata(metadata, studentId, scoreFor, scoreAgainst);
     baseState.outcome = outcome;
     baseState.xpEarned = getXpFromMetadata(metadata, studentId, outcome);
+    const xpBreakdownByPlayer = isRecord(metadata.xpBreakdownByPlayer)
+      ? metadata.xpBreakdownByPlayer
+      : null;
+    const xpBreakdownForStudent = xpBreakdownByPlayer && isRecord(xpBreakdownByPlayer[studentId])
+      ? xpBreakdownByPlayer[studentId]
+      : metadata.xpBreakdown;
+    if (isRecord(xpBreakdownForStudent)) {
+      baseState.xpBreakdown = xpBreakdownForStudent as unknown as MatchXPBreakdown;
+    }
   }
 
   return baseState;
@@ -2545,6 +2618,7 @@ const createOnlineMatchInTransaction = async (
   const {
     questions,
     answerKeys,
+    difficulties,
     source: questionSetSource,
     servedQuestionIds,
     selector,
@@ -2612,6 +2686,7 @@ const createOnlineMatchInTransaction = async (
 
   tx.set(matchRef.collection("server").doc("roundKeys"), {
     keys: answerKeys,
+    difficulties,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -2631,6 +2706,7 @@ const createBotMatchRecord = async (
   const {
     questions,
     answerKeys,
+    difficulties,
     source,
     servedQuestionIds,
     selector,
@@ -2690,6 +2766,7 @@ const createBotMatchRecord = async (
 
   batch.set(roundKeysRef, {
     keys: answerKeys,
+    difficulties,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -2814,16 +2891,44 @@ const finalizeCompletedMatch = async (
 
     const outcomeByPlayer: Record<string, MatchOutcome> = {};
     const xpByPlayer: Record<string, number> = {};
+    const xpBreakdownByPlayer: Record<string, MatchXPBreakdown> = {};
 
     for (const participantId of participants) {
       const isPlayerA = participantId === playerAId;
       const scoreFor = isPlayerA ? scoreA : scoreB;
       const scoreAgainst = isPlayerA ? scoreB : scoreA;
       const outcome = outcomeFromScores(scoreFor, scoreAgainst);
-      const xpEarned = xpForOutcome(outcome);
       const metrics = computeParticipantRoundMetrics(roundResults, isPlayerA, rounds, fallbackResponseMs);
 
+      const totalPointsEarned = roundResults.reduce((sum, entry) => {
+        const participantScoreBreakdown = isPlayerA
+          ? entry.playerAScoreBreakdown
+          : entry.playerBScoreBreakdown;
+
+        if (isRecord(participantScoreBreakdown)) {
+          const breakdown = participantScoreBreakdown as Record<string, unknown>;
+          if (breakdown.isCorrect === true || asNumber(breakdown.totalPointsAwarded, 0) > 0) {
+            return sum + Math.floor(asNumber(breakdown.totalPointsAwarded, 0));
+          }
+        }
+        return sum;
+      }, 0);
+
       const existingStats = participantStats[participantId];
+      const todayUTC = new Date().toISOString().slice(0, 10);
+      const battleXPEarnedDate = asString(existingStats.battleXPEarnedDate, '');
+      const battleXPEarnedToday = battleXPEarnedDate === todayUTC
+        ? asNumber(existingStats.battleXPEarnedToday, 0)
+        : 0;
+
+      const { xpBreakdown, actualXPAwarded } = computeMatchXP({
+        outcome,
+        totalPointsEarned,
+        battleXPEarnedToday,
+      });
+
+      const xpEarned = actualXPAwarded;
+
       const matchesPlayed = asNumber(existingStats.matchesPlayed, 0) + 1;
       const wins = asNumber(existingStats.wins, 0) + (outcome === "win" ? 1 : 0);
       const losses = asNumber(existingStats.losses, 0) + (outcome === "loss" ? 1 : 0);
@@ -2842,6 +2947,7 @@ const finalizeCompletedMatch = async (
         : metrics.averageResponseMs;
 
       const winRate = matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0;
+      const newBattleXPEarnedToday = battleXPEarnedToday + xpEarned;
       const leaderboardScore = asNumber(existingStats.leaderboardScore, 0) + xpEarned;
 
       const userData = participantUsers[participantId];
@@ -2875,6 +2981,8 @@ const finalizeCompletedMatch = async (
         averageResponseMs: metrics.averageResponseMs,
         bestStreak,
         xpEarned,
+        xpBreakdown,
+        totalPointsEarned,
         opponentName,
         opponentType: mode === "bot" ? "bot" : "student",
         createdAt: matchData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
@@ -2895,6 +3003,8 @@ const finalizeCompletedMatch = async (
         currentStreak,
         favoriteTopicId: asString(existingStats.favoriteTopicId, asString(matchData.topicId)),
         leaderboardScore,
+        battleXPEarnedToday: newBattleXPEarnedToday,
+        battleXPEarnedDate: todayUTC,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
 
@@ -2926,12 +3036,14 @@ const finalizeCompletedMatch = async (
 
       outcomeByPlayer[participantId] = outcome;
       xpByPlayer[participantId] = xpEarned;
+      xpBreakdownByPlayer[participantId] = xpBreakdown;
     }
 
     tx.update(matchRef, {
       "metadata.finalizedAt": admin.firestore.FieldValue.serverTimestamp(),
       "metadata.outcomeByPlayer": outcomeByPlayer,
       "metadata.xpByPlayer": xpByPlayer,
+      "metadata.xpBreakdownByPlayer": xpBreakdownByPlayer,
       "metadata.outcome": outcomeByPlayer[playerAId] || "draw",
       "metadata.xpEarned": xpByPlayer[playerAId] || xpForOutcome("draw"),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3270,6 +3382,7 @@ const persistAiGenerationSuccess = async (
 
     tx.set(roundKeysRef, {
       keys: generatedSet.answerKeys,
+      difficulties: generatedSet.answerKeys.map(() => 'medium' as const),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
@@ -3847,6 +3960,10 @@ const progressMatchTimerIfExpired = async (
     }
 
     const roundKeys = keysSnap.exists ? getRoundKeys(keysSnap.data()) : [];
+    const roundDifficulties = keysSnap.exists ? getRoundDifficulties(keysSnap.data()) : [];
+    const roundDifficulty: 'easy' | 'medium' | 'hard' = roundDifficulties.length > currentRound - 1
+      ? roundDifficulties[currentRound - 1]
+      : 'medium';
     const correctOptionIndex = roundKeys[currentRound - 1];
     if (typeof correctOptionIndex !== "number" || correctOptionIndex < 0) {
       return;
@@ -3914,6 +4031,41 @@ const progressMatchTimerIfExpired = async (
       playerBResponseMs,
       resolvedAtMs: Date.now(),
     };
+
+    const roundStartedAtMs = Math.floor(asNumber(matchData.roundStartedAtMs, Date.now()));
+    const roundDeadlineForScoring = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
+
+    const playerAStreak = computeConsecutiveCorrect(
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      true,
+      currentRound,
+    );
+    const playerAScoringStreak = playerACorrect ? playerAStreak + 1 : 0;
+    if (playerACorrect) {
+      roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerAScoringStreak,
+        responseMs: playerAResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: roundDeadlineForScoring,
+      });
+    }
+
+    const playerBStreak = computeConsecutiveCorrect(
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      false,
+      currentRound,
+    );
+    const playerBScoringStreak = playerBCorrect ? playerBStreak + 1 : 0;
+    if (playerBCorrect) {
+      roundResult.playerBScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerBScoringStreak,
+        responseMs: playerBResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: roundDeadlineForScoring,
+      });
+    }
 
     const isFinalRound = currentRound >= totalRounds;
     const updatePayload: Record<string, unknown> = {
@@ -4890,6 +5042,10 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     }
 
     const roundKeys = keysSnap.exists ? getRoundKeys(keysSnap.data()) : [];
+    const roundDifficulties = keysSnap.exists ? getRoundDifficulties(keysSnap.data()) : [];
+    const roundDifficulty: 'easy' | 'medium' | 'hard' = roundDifficulties.length > roundNumber - 1
+      ? roundDifficulties[roundNumber - 1]
+      : 'medium';
     const correctOptionIndex = roundKeys[roundNumber - 1];
     if (typeof correctOptionIndex !== "number" || correctOptionIndex < 0) {
       throw new functions.https.HttpsError("internal", "Round answer key missing.");
@@ -4966,6 +5122,21 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
         playerBResponseMs: botResponseMs,
         resolvedAtMs: Date.now(),
       };
+
+      const playerAStreak = computeConsecutiveCorrect(
+        (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+        true,
+        roundNumber,
+      );
+      const roundStartedAtMs = Math.floor(asNumber(matchData.roundStartedAtMs, Date.now()));
+      const deadlineMs = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
+      roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerAStreak,
+        responseMs: boundedResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: deadlineMs,
+      });
 
       const isFinalRound = roundNumber >= totalRounds;
       const updatePayload: Record<string, unknown> = {
@@ -5117,6 +5288,39 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       playerBResponseMs,
       resolvedAtMs: Date.now(),
     };
+
+    const roundStartedAtMs = Math.floor(asNumber(matchData.roundStartedAtMs, Date.now()));
+    const deadlineMs = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
+
+    const playerAStreak = computeConsecutiveCorrect(
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      true,
+      roundNumber,
+    );
+    if (playerACorrect) {
+      roundResult.playerAScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerAStreak + 1,
+        responseMs: playerAResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: deadlineMs,
+      });
+    }
+
+    const playerBStreak = computeConsecutiveCorrect(
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      false,
+      roundNumber,
+    );
+    if (playerBCorrect) {
+      roundResult.playerBScoreBreakdown = computeRoundScoreBreakdown({
+        difficulty: roundDifficulty,
+        consecutiveCorrect: playerBStreak + 1,
+        responseMs: playerBResponseMs,
+        roundStartedAtMs,
+        roundDeadlineAtMs: deadlineMs,
+      });
+    }
 
     const isFinalRound = roundNumber >= totalRounds;
     const updatePayload: Record<string, unknown> = {

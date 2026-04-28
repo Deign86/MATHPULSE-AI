@@ -82,6 +82,7 @@ export async function parseShsWorkbook(file: File, options?: ParseWorkbookOption
   try {
     emitProgress(options, { stage: 'reading', message: 'Reading workbook structure and raw sheets...' });
     workbook = await readWorkbookFromFile(file);
+    if (!workbook) throw new Error('Workbook read returned null');
 
     emitProgress(options, { stage: 'detecting-format', message: 'Detecting DepEd SHS workbook format...' });
     const detection = detectFormat(workbook);
@@ -108,12 +109,12 @@ export async function parseShsWorkbook(file: File, options?: ParseWorkbookOption
     ];
 
     const quarterSheets = quarterSheetNames
-      .map((name) => workbook.matrices[name])
+      .map((name) => workbook!.matrices[name])
       .filter((sheet): sheet is SheetMatrix => Boolean(sheet))
       .map((sheet) => extractQuarterSheet(sheet));
 
     const finalSheets = (detection.detectedSheets.finalSemestral || [])
-      .map((name) => workbook.matrices[name])
+      .map((name) => workbook!.matrices[name])
       .filter((sheet): sheet is SheetMatrix => Boolean(sheet))
       .map((sheet) => extractFinalSemestral(sheet));
 
@@ -121,7 +122,7 @@ export async function parseShsWorkbook(file: File, options?: ParseWorkbookOption
       ...(detection.detectedSheets.helper || []),
       ...(detection.detectedSheets.lookup || []),
     ]
-      .map((name) => workbook.matrices[name])
+      .map((name) => workbook!.matrices[name])
       .filter((sheet): sheet is SheetMatrix => Boolean(sheet));
 
     const references = extractReferenceSheets(referenceMatrices);
@@ -129,13 +130,13 @@ export async function parseShsWorkbook(file: File, options?: ParseWorkbookOption
     const tracker = new RangeTracker();
 
     detection.anchorMatches.forEach((match) => {
-      const matrix = workbook.matrices[match.sheetName];
+      const matrix = workbook!.matrices[match.sheetName];
       if (!matrix) return;
       markSheetRows(tracker, matrix, [match.row], `Anchor match: ${match.anchor}`);
     });
 
     [inputData.sheetName].forEach((sheetName) => {
-      const sheet = workbook.matrices[sheetName];
+      const sheet = workbook!.matrices[sheetName];
       if (!sheet) return;
 
       const metadataRows = Array.from({ length: Math.min(14, sheet.rowCount) }, (_, index) => sheet.startRow + index);
@@ -154,7 +155,7 @@ export async function parseShsWorkbook(file: File, options?: ParseWorkbookOption
     });
 
     quarterSheets.forEach((sheet) => {
-      const matrix = workbook.matrices[sheet.sheetName];
+      const matrix = workbook!.matrices[sheet.sheetName];
       if (!matrix) return;
 
       const learnerRows = sheet.learnerGrades.map((row) => row.sourceRow - 1);
@@ -175,7 +176,7 @@ export async function parseShsWorkbook(file: File, options?: ParseWorkbookOption
     });
 
     finalSheets.forEach((sheet) => {
-      const matrix = workbook.matrices[sheet.sheetName];
+      const matrix = workbook!.matrices[sheet.sheetName];
       if (!matrix) return;
 
       const learnerRows = sheet.learnerGrades.map((row) => row.sourceRow - 1);

@@ -4,6 +4,7 @@ import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, 
 import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
 import { saveQuizResults } from '../services/quizService';
+import { recordPracticeQuiz } from '../services/progressService';
 import ScientificCalculator from './ScientificCalculator';
 import MathAnswerInput from './MathAnswerInput';
 import SupplementalBanner from './SupplementalBanner';
@@ -431,6 +432,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           bloomLevel: q.bloomLevel || 'understand',
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
+    } else if (studentId) {
+      // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
+      recordPracticeQuiz(
+        studentId,
+        quiz.id,
+        quiz.subject,
+        percentage,
+        answerRecords.map(r => ({
+          questionId: r.questionId,
+          selectedAnswer: r.answer,
+          isCorrect: r.correct,
+        })),
+        timeSpent,
+      ).catch((err) => console.error('[WARN] Practice quiz persist failed:', err));
     }
 
     playSound('complete');

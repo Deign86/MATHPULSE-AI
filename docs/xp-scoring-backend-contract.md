@@ -1,8 +1,8 @@
 # XP & Scoring Backend Contract
 
 > **Document Type:** Backend Developer Handoff — Required Reading Before Touching Scoring or XP
-> **Last Updated:** 2026-04-26
-> **Status:** Phase 1 (Frontend label fix) complete. Phase 2 (this document) is PENDING backend implementation.
+> **Last Updated:** 2026-04-28
+> **Status:** Phase 2 — **COMPLETE**. Scoring engine v2 is live (performance XP, daily caps, scoreBreakdown).
 > **Related docs:**
 > - [`current_xp_system.md`](../current_xp_system.md) — Full XP system overview
 > - [`docs/quiz-systems-status-audit.md`](./quiz-systems-status-audit.md) — Architecture gaps and rollout plan
@@ -147,10 +147,10 @@ Currently, `difficulty` metadata exists in the question bank but is stripped bef
 
 ## Acceptance Criteria (Phase 2 Complete When)
 
-- [ ] `submitRoundAnswer` response includes `roundResult.scoreBreakdown` with all required fields
-- [ ] Match finalization uses performance XP formula (not flat outcome XP)
-- [ ] `xpBreakdown` is returned in match completion response
-- [ ] Daily battle XP cap of 500 is enforced server-side
-- [ ] `scoringVersion: 'v2'` is written to history records
-- [ ] `current_xp_system.md` "Score Multiplier" section updated to reflect real status
-- [ ] This document's status header updated to `Phase 2: Complete`
+- [x] `submitRoundAnswer` response includes `roundResult.scoreBreakdown` with all required fields
+- [x] Match finalization uses performance XP formula (not flat outcome XP)
+- [x] `xpBreakdown` is returned in match completion response
+- [x] Daily battle XP cap of 500 is enforced server-side
+- [x] `scoringVersion: 'v2'` is written to history records
+- [x] `current_xp_system.md` "Score Multiplier" section updated to reflect real status
+- [x] This document's status header updated to `Phase 2: Complete`

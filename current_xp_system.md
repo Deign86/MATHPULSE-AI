@@ -47,13 +47,30 @@ Students earn XP through five sources:
 ### 5. Quiz Battles
 **XP is awarded by match outcome, calculated server-side (Cloud Functions):**
 
-| Outcome | XP Awarded to Profile |
-|:---|:---|
-| Win | **80 XP** |
-| Draw | **55 XP** |
-| Loss | **35 XP** |
+| Outcome | Base XP | Performance XP | Max Per Match |
+|:---|:---|:---|:---|
+| Win | **60 XP** | +8% of round points earned | 140 XP |
+| Draw | **40 XP** | +8% of round points earned | 140 XP |
+| Loss | **20 XP** | +8% of round points earned | 140 XP |
 
 > Source: `functions/src/triggers/quizBattleApi.ts` finalization block.
+> **scoringVersion: 'v2'** — Performance-based formula activated 2026-04-28. Old flat XP (80/55/35) records remain via `scoringVersion: 'v1'` in history.
+
+### Per-Round Scoring Engine
+
+Each correct answer is scored with:
+- **basePoints: 100**
+- **difficultyMultiplier**: easy=1.0, medium=1.15, hard=1.30
+- **streakMultiplier**: min(1.72, 1.00 + 0.10 × (streak-1))
+- **speedBonus**: 0-20 pts based on response latency
+
+Formula: `round(basePoints × difficultyMultiplier × streakMultiplier + speedBonus)`
+
+### Daily XP Cap (Battles)
+- **500 XP/day** from Quiz Battles
+- Tracked on `studentBattleStats.battleXPEarnedToday` / `battleXPEarnedDate`
+- Resets at midnight UTC
+- Other XP sources (lessons, quizzes, achievements) are uncapped
 
 ---
 
@@ -96,9 +113,7 @@ Wrong answer → +0 pts, streak resets
 
 ## Daily XP Cap
 
-**There is currently no daily XP cap.** The `awardXP()` function in `gamificationService.ts` applies no per-day limit.
-
-> **Recommended future cap:** 500 XP/day from battles to prevent runaway progression. Backend developer should implement this when the scoring engine upgrade is scheduled.
+A **500 XP/day cap** is enforced server-side for Quiz Battles only. Tracking lives on `studentBattleStats.battleXPEarnedToday` / `battleXPEarnedDate`, resetting at midnight UTC. Other XP sources (lessons, quizzes, achievements) remain uncapped.
 
 ---
 
@@ -130,7 +145,7 @@ Level is determined by **Total (Lifetime) XP** using an exponential cumulative s
 
 | Gap | Location | Impact | Owner |
 |:---|:---|:---|:---|
-| Score multiplier is visual-only | `QuizBattlePage.tsx` | Multiplier feels disconnected from reward | Backend (Phase 2) |
-| No daily XP cap | `gamificationService.ts` | Potential runaway progression | Backend |
-| Module quiz can double-award XP | `ModuleDetailView.tsx` + `gamificationService.ts` | Profile XP inflation | Backend |
-| In-game counter ≠ awarded XP | `QuizBattlePage.tsx` | Resolved via label split (Phase 1 done) | ✅ Frontend done |
+| ~~Score multiplier is visual-only~~ | `QuizBattlePage.tsx` | ✅ Resolved via server scoring engine (v2) | ✅ Backend done (Phase 2) |
+| ~~No daily XP cap~~ | `gamificationService.ts` | ✅ 500 XP/day server-enforced for battles | ✅ Backend done |
+| ~~Module quiz can double-award XP~~ | `ModuleDetailView.tsx` + `gamificationService.ts` | ✅ Resolved: XP flows through `completeQuiz` / parent `onEarnXP`; `recordPracticeQuiz` is now persist-only | ✅ Completed (Phase 4) |
+| ~~In-game counter ≠ awarded XP~~ | `QuizBattlePage.tsx` | ✅ Resolved via label split (Phase 1) + real scoring (Phase 2) | ✅ Completed |
