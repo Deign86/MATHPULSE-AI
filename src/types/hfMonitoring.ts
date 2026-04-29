@@ -4,6 +4,10 @@ export interface HFMonitoringData {
   modelId: string;
   modelStatus: HFHealthStatus;
   avgResponseTimeMs: number;
+
+  embeddingModelId: string;
+  embeddingModelStatus: HFHealthStatus;
+
   inferenceBalance: number;
   totalPeriodCost: number;
   hubApiCallsUsed: number;
@@ -15,6 +19,10 @@ export interface HFMonitoringData {
   lastChecked: string;
   periodStart: string;
   periodEnd: string;
+
+  activeProfile: string;
+  runtimeOverridesActive: boolean;
+  resolvedModels: Record<string, string>;
 }
 
 export interface HFMonitoringResponse {
