@@ -196,7 +196,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
         {/* Soft core light effect at bottom */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150vw] h-[100vh] bg-[radial-gradient(ellipse_at_50%_100%,#7e22ce_10%,transparent_60%)] mix-blend-overlay"></div>
       </div>
-      <div className="absolute inset-0 bg-math-pattern opacity-[0.03] mix-blend-overlay pointer-events-none z-[-1]" style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%)' }}></div>
+      <div className="absolute inset-0 bg-math-pattern opacity-[0.03] mix-blend-overlay pointer-events-none z-[-1] leaderboard-mask"></div>
 
       {/* Constraints Wrapper */}
       <div className="relative z-10 w-full px-4 sm:px-8 py-4 md:py-6 flex flex-col items-center">

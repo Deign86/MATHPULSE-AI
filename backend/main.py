@@ -344,6 +344,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/refresh-cache": ADMIN_ONLY,
     "/api/testing/reset-data": ALL_APP_ROLES,
     "/api/ops/inference-metrics": ADMIN_ONLY,
+    "/api/hf/monitoring": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
     "/api/analytics/imported-class-overview": TEACHER_OR_ADMIN,
@@ -8343,6 +8344,11 @@ class InferenceMetricsResponse(BaseModel):
     metrics: Dict[str, Any]
 
 
+class HFMonitoringDataResponse(BaseModel):
+    success: bool
+    data: Dict[str, Any]
+
+
 class ImportGroundedFeedbackRequest(BaseModel):
     flow: str = Field(..., description="Flow identifier: quiz or lesson")
     status: str = Field(..., description="Event status: success, failed, or skipped")
@@ -10827,6 +10833,99 @@ async def get_inference_metrics(http_request: Request):
     metrics_snapshot = client.snapshot_metrics()
     metrics_snapshot["pro_enabled"] = bool(getattr(client, "pro_enabled", False))
     return InferenceMetricsResponse(success=True, metrics=metrics_snapshot)
+
+
+@app.get("/api/hf/monitoring", response_model=HFMonitoringDataResponse)
+async def get_hf_monitoring(http_request: Request):
+    """
+    Aggregates HF billing, model status, and latency probe.
+    Returns distilled data safe for frontend consumption.
+
+    Requires admin authentication.
+    """
+    user = get_current_user(http_request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    if not HF_TOKEN:
+        raise HTTPException(status_code=500, detail="HF_TOKEN not configured.")
+
+    model_id = os.getenv("HF_MODEL_ID", HF_MATH_MODEL_ID)
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+
+    result: Dict[str, Any] = {
+        "modelId": model_id,
+        "modelStatus": "Unknown",
+        "avgResponseTimeMs": 0,
+        "inferenceBalance": 0.0,
+        "totalPeriodCost": 0.0,
+        "hubApiCallsUsed": 0,
+        "hubApiCallsLimit": 2500,
+        "zeroGpuMinutesUsed": 0,
+        "zeroGpuMinutesLimit": 25,
+        "publicStorageUsedTB": 0.0,
+        "publicStorageLimitTB": 11.2,
+        "lastChecked": datetime.now(timezone.utc).isoformat(),
+        "periodStart": "",
+        "periodEnd": "",
+    }
+
+    try:
+        billing_url = "https://huggingface.co/api/billing/usage"
+        billing_resp = http_requests.get(billing_url, headers=headers, timeout=15)
+        if billing_resp.status_code == 200:
+            billing_data = billing_resp.json()
+            if "usage" in billing_data:
+                result["inferenceBalance"] = billing_data["usage"].get("inferenceCreditsBilled", 0.0)
+                result["totalPeriodCost"] = billing_data["usage"].get("cost", 0.0)
+            if "active_period" in billing_data:
+                result["periodStart"] = billing_data["active_period"].get("start", "")
+                result["periodEnd"] = billing_data["active_period"].get("end", "")
+            if "services" in billing_data:
+                services = billing_data["services"]
+                hfcompute = services.get("hfcompute", {})
+                result["zeroGpuMinutesUsed"] = hfcompute.get("usage", [0])[0] if isinstance(hfcompute.get("usage", []), list) else hfcompute.get("usage", 0)
+                result["zeroGpuMinutesLimit"] = hfcompute.get("limit", 25)
+                storage = services.get("storage", {})
+                result["publicStorageUsedTB"] = storage.get("usage", 0.0)
+                result["publicStorageLimitTB"] = storage.get("limit", 11.2)
+    except Exception as e:
+        logger.warning(f"HF billing API call failed: {e}")
+
+    try:
+        model_url = f"https://api-inference.huggingface.co/models/{model_id}"
+        model_resp = http_requests.get(model_url, headers=headers, timeout=15)
+        if model_resp.status_code == 200:
+            model_data = model_resp.json()
+            state = model_data.get("model加载状态", model_data.get("state", ""))
+            if state in {"LOADED", "LoadComplete"}:
+                result["modelStatus"] = "Operational"
+            elif state in {"LOADING", "loading"}:
+                result["modelStatus"] = "Loading"
+            elif state in {"FAILED", "error"}:
+                result["modelStatus"] = "Degraded"
+            else:
+                result["modelStatus"] = "Unknown"
+        elif model_resp.status_code == 503:
+            result["modelStatus"] = "Loading"
+        else:
+            result["modelStatus"] = "Unknown"
+    except Exception as e:
+        logger.warning(f"HF model status API call failed: {e}")
+        result["modelStatus"] = "Unknown"
+
+    try:
+        latency_start = time.time()
+        probe_payload = {"inputs": "Hello", "parameters": {"max_new_tokens": 1}}
+        probe_url = f"https://api-inference.huggingface.co/models/{model_id}"
+        probe_resp = http_requests.post(probe_url, headers=headers, json=probe_payload, timeout=30)
+        latency_ms = int((time.time() - latency_start) * 1000)
+        if probe_resp.status_code in {200, 206}:
+            result["avgResponseTimeMs"] = latency_ms
+    except Exception as e:
+        logger.warning(f"HF latency probe failed: {e}")
+
+    return HFMonitoringDataResponse(success=True, data=result)
 
 
 @app.get("/api/quiz/topics")
