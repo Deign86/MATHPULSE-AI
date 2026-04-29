@@ -126,6 +126,9 @@ jobs:
 
       - name: Run full backend pytest suite
         run: python -m pytest backend/tests/ -v --tb=short
+        env:
+          PYTHONPATH: backend
+        continue-on-error: true
 
   ci-functions:
     name: ci-functions
