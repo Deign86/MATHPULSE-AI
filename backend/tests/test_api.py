@@ -554,7 +554,7 @@ class TestHFChatTransport:
 
 class TestInferenceRouting:
     def test_chat_strict_model_lock_keeps_single_model_chain(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
         monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
         monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
@@ -568,15 +568,15 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert selected_model == "Qwen/Qwen3-32B"
         assert "chat_strict_model_only" in source
-        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
+        assert model_chain == ["Qwen/Qwen3-32B"]
 
     def test_chat_env_override_wins_under_qwen_only_lock(self, monkeypatch):
         monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
         monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/QwQ-32B")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -592,11 +592,11 @@ class TestInferenceRouting:
         assert model_chain == ["Qwen/Qwen3-32B"]
 
     def test_chat_temp_override_wins_under_qwen_only_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-235B-A22B")
         monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
         monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/QwQ-32B")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -614,7 +614,7 @@ class TestInferenceRouting:
     def test_chat_temp_override_does_not_change_non_chat_task_under_qwen_lock(self, monkeypatch):
         monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
         monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-235B-A22B")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -625,12 +625,12 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("verify_solution", selected_model)
 
-        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert selected_model == "Qwen/Qwen3-235B-A22B"
         assert "chat_temp_override_env" not in source
-        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
+        assert model_chain == ["Qwen/Qwen3-235B-A22B"]
 
     def test_chat_escalation_when_strict_lock_disabled(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "false")
         monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "false")
         monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
@@ -650,7 +650,7 @@ class TestInferenceRouting:
         assert source.startswith("chat_hard_escalation:")
 
     def test_async_chat_posts_only_qwen_when_strict_enabled(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
         monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
         monkeypatch.setenv("INFERENCE_HF_TIMEOUT_SEC", "15")
@@ -702,13 +702,13 @@ class TestInferenceRouting:
         assert "42" in result
         assert len(requests_seen) == 1
         sent_model = requests_seen[0]["payload"]["model"]
-        assert sent_model.startswith("Qwen/Qwen2.5-7B-Instruct")
+        assert sent_model.startswith("Qwen/Qwen3-32B")
         assert "Meta-Llama" not in sent_model
         assert "gemma" not in sent_model.lower()
 
     def test_qwen_only_lock_replaces_explicit_non_qwen_model(self, monkeypatch):
         monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-235B-A22B")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
 
         client = InferenceClient()
@@ -721,9 +721,9 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("verify_solution", selected_model)
 
-        assert selected_model == "Qwen/Qwen2.5-7B-Instruct"
+        assert selected_model == "Qwen/Qwen3-235B-A22B"
         assert "qwen_only" in source
-        assert model_chain == ["Qwen/Qwen2.5-7B-Instruct"]
+        assert model_chain == ["Qwen/Qwen3-235B-A22B"]
 
 
 # ─── Risk Prediction ──────────────────────────────────────────

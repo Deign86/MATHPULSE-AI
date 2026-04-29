@@ -26,6 +26,12 @@ if (mode === 'typecheck') {
 }
 
 if (mode === 'check') {
+  run(['-m', 'pytest', 'backend/tests/', '-v', '--tb=short']);
+  run(['-m', 'mypy', '--config-file', 'mypy.ini', 'backend/main.py', 'backend/analytics.py']);
+  process.exit(0);
+}
+
+if (mode === 'quick') {
   run(['-m', 'pytest', 'backend/tests/test_api.py', '-q']);
   run(['-m', 'mypy', '--config-file', 'mypy.ini', 'backend/main.py', 'backend/analytics.py']);
   process.exit(0);
