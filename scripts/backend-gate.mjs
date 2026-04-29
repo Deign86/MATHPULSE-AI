@@ -14,7 +14,8 @@ const resolvePython = () => {
 const python = resolvePython();
 
 const run = (args) => {
-  const result = spawnSync(python, args, { stdio: 'inherit', shell: false });
+  const env = { ...process.env, PYTHONPATH: 'backend' };
+  const result = spawnSync(python, args, { stdio: 'inherit', shell: false, env });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
