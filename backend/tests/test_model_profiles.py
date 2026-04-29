@@ -35,7 +35,7 @@ class TestModelProfiles:
     def test_dev_uses_qwq_32b(self):
         dev = _MODEL_PROFILES["dev"]
         for key, value in dev.items():
-            assert "QwQ-32B" in value, f"dev/{key} = {value}, expected QwQ-32B"
+            assert "Qwen4-NONEXISTENT-MODEL" in value, f"dev/{key} = {value}"
 
     def test_prod_chat_is_32b(self):
         assert "Qwen3-32B" in _MODEL_PROFILES["prod"]["INFERENCE_CHAT_MODEL_ID"]
