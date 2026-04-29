@@ -14,6 +14,7 @@ import { Toaster, toast } from 'sonner';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
+import { CURRICULUM_SUBJECT_META, type CurriculumModuleRuntime, type CurriculumQuarter, getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -92,6 +93,24 @@ const App = () => {
   }
   const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
   const [streak, setStreak] = useState(studentProfile?.streak || 0);
+
+  // Curriculum data for navigation
+  const activeGradeLevel = resolveLearnerGradeLevel(studentProfile?.grade);
+  const assignedSubjects = useMemo(() => {
+    const rawAssignments = (studentProfile as (StudentProfile & {
+      learnerCurriculumAssignments?: { subjects?: string[] };
+      assignedSubjects?: string[];
+      curriculumAssignedSubjects?: string[];
+    }) | null)?.learnerCurriculumAssignments?.subjects
+      ?? (studentProfile as any)?.assignedSubjects
+      ?? (studentProfile as any)?.curriculumAssignedSubjects
+      ?? [];
+    return Array.isArray(rawAssignments) ? rawAssignments : [];
+  }, [studentProfile]);
+  const curriculumRuntimeModules = useMemo(
+    () => getCurriculumModulesForLearner(activeGradeLevel, assignedSubjects),
+    [activeGradeLevel, assignedSubjects],
+  );
 
   // App-level Navigation State
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
@@ -948,13 +967,15 @@ const App = () => {
                 </button>
                 <button
                   onClick={() => setShowRewardsModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer w-[180px] xl:w-[200px] justify-between"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP to next level`}
                 >
-                  <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-violet-700">{currentXP} XP</span>
-                  <div className="w-12 h-1.5 bg-violet-100 rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${(progressXPInLevel / xpToNextLevel) * 100}%` }}>
-                    <div className="h-full bg-violet-500 rounded-full transition-all" />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
+                    <span className="text-xs font-display font-bold text-violet-700 whitespace-nowrap">{currentXP} XP</span>
+                  </div>
+                  <div className="h-1.5 flex-1 min-w-0 bg-violet-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-violet-500 rounded-full transition-all e-w" style={{ ['--w' as any]: `${Math.max(0, Math.min(100, (progressXPInLevel / xpToNextLevel) * 100))}%` }} />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
@@ -1078,6 +1099,7 @@ const App = () => {
                           <Suspense fallback={dashboardWidgetFallback}>
                             <div className="pb-4">
                               <LearningPath
+                                modules={curriculumRuntimeModules}
                                 onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)}
                                 atRiskSubjects={atRiskSubjects}
                                 priorityTopics={prioritizedFocusTopics}
