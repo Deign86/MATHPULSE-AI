@@ -40,7 +40,7 @@ describe('toChatPreviewText', () => {
     const input = 'a'.repeat(120);
     const output = toChatPreviewText(input);
 
-    expect(output).toHaveLength(80);
+    expect(output).toHaveLength(99);
     expect(output).toBe(input.slice(0, 80));
   });
 
