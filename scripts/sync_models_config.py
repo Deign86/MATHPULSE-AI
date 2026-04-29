@@ -11,4 +11,4 @@ if not SRC.exists():
 
 DST.parent.mkdir(parents=True, exist_ok=True)
 shutil.copy2(SRC, DST)
-print(f"Synced: {SRC} → {DST}")
+print(f"Synced: {SRC} -> {DST}")

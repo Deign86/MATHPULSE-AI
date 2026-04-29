@@ -97,9 +97,11 @@ function MetricCard({
 function StatusBadge({
   status,
   loading,
+  testId,
 }: {
   status: HFMonitoringData['modelStatus'];
   loading?: boolean;
+  testId?: string;
 }) {
   const map = {
     Operational: {
@@ -108,7 +110,7 @@ function StatusBadge({
       icon: CheckCircle,
     },
     Loading: {
-      label: 'Loading',
+      label: 'Starting up, please wait…',
       className: 'text-orange-600 bg-orange-50 border-orange-200',
       icon: Activity,
     },
@@ -131,7 +133,7 @@ function StatusBadge({
       className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${
         loading ? 'border-slate-200 bg-slate-50' : cfg.className
       }`}
-      data-testid="health-badge"
+      data-testid={testId || 'health-badge'}
     >
       {loading ? (
         <Activity size={16} className="text-slate-400" />
@@ -144,6 +146,12 @@ function StatusBadge({
     </div>
   );
 }
+
+const PROFILE_BADGE_COLORS: Record<string, string> = {
+  dev:    'text-blue-700 bg-blue-100 border-blue-300',
+  budget: 'text-yellow-700 bg-yellow-100 border-yellow-300',
+  prod:   'text-green-700 bg-green-100 border-green-300',
+};
 
 const AdminAIMonitoring: React.FC = () => {
   const [data, setData] = useState<HFMonitoringData | null>(null);
@@ -170,11 +178,8 @@ const AdminAIMonitoring: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const healthStatus = data ? resolveHealthStatus(data) : 'Loading';
-
   return (
     <div className="space-y-6">
-      {/* Header / Health Status */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -190,10 +195,10 @@ const AdminAIMonitoring: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end">
-            <span className="text-xs text-[#5a6578] font-medium">Active Provider</span>
+            <span className="text-xs text-[#5a6578] font-medium">Generation Model</span>
             <span className="text-sm font-bold text-[#0a1628] flex items-center gap-1.5">
               <Cpu size={14} className="text-sky-500" />
-              {loading ? '...' : (data?.modelId ?? 'Qwen/Qwen3-32B')}
+              {loading ? '...' : (data?.modelId ?? 'Qwen/QwQ-32B')}
             </span>
           </div>
           <StatusBadge
@@ -203,7 +208,6 @@ const AdminAIMonitoring: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Error Banner */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -216,6 +220,76 @@ const AdminAIMonitoring: React.FC = () => {
         </motion.div>
       )}
 
+      {/* Active Models Row — all three models */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+        data-testid="active-models-row"
+        className="grid grid-cols-1 md:grid-cols-3 gap-3"
+      >
+        {/* Generation Model — Swappable */}
+        <div data-testid="generation-model-card" className="model-status-card bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center gap-2 mb-3">
+            <Cpu size={16} className="text-sky-500" />
+            <span className="text-sm font-semibold text-[#0a1628]">AI Generation Model</span>
+          </div>
+          <span data-testid="generation-model-id" className="font-mono text-xs text-[#5a6578] block mb-2">
+            {loading ? '...' : (data?.modelId ?? 'Qwen/QwQ-32B')}
+          </span>
+          <StatusBadge status={data?.modelStatus ?? 'Unknown'} loading={loading} />
+          <span className="text-gray-400 text-xs block mt-2">
+            Switchable via Model Configuration
+          </span>
+        </div>
+
+        {/* Embedding Model — Fixed */}
+        <div data-testid="embedding-model-card" className="model-status-card bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center gap-2 mb-3">
+            <Database size={16} className="text-violet-500" />
+            <span className="text-sm font-semibold text-[#0a1628]">RAG Retrieval Model</span>
+          </div>
+          <span data-testid="embedding-model-id" className="font-mono text-xs text-[#5a6578] block mb-2">
+            {loading ? '...' : (data?.embeddingModelId ?? 'BAAI/bge-small-en-v1.5')}
+          </span>
+          <StatusBadge
+            status={data?.embeddingModelStatus ?? 'Unknown'}
+            loading={loading}
+            testId="embedding-health-badge"
+          />
+          <span className="text-gray-400 text-xs block mt-2">
+            Fixed — curriculum search index
+          </span>
+        </div>
+
+        {/* Active Profile */}
+        <div data-testid="active-profile-card" className="model-status-card bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity size={16} className="text-indigo-500" />
+            <span className="text-sm font-semibold text-[#0a1628]">Model Profile</span>
+          </div>
+          {data?.activeProfile && (
+            <span
+              data-testid="active-profile-badge"
+              className={`inline-flex px-3 py-1 rounded-full text-xs font-bold border ${PROFILE_BADGE_COLORS[data.activeProfile] ?? 'bg-gray-100 text-gray-700 border-gray-300'}`}
+            >
+              {data.activeProfile.toUpperCase()}
+            </span>
+          )}
+          {data?.runtimeOverridesActive && (
+            <span
+              data-testid="runtime-override-active-badge"
+              className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 border border-orange-300 ml-2"
+            >
+              Runtime Override Active
+            </span>
+          )}
+          <span className="text-gray-400 text-xs block mt-2">
+            Switch in Model Configuration
+          </span>
+        </div>
+      </motion.div>
+
       {/* Primary Metrics Grid — 4 cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
@@ -224,7 +298,7 @@ const AdminAIMonitoring: React.FC = () => {
           subvalue={loading ? undefined : `Total: $${(data?.totalPeriodCost ?? 0).toFixed(2)} this period`}
           icon={DollarSign}
           color="from-emerald-500 to-teal-600"
-          testId="metric-card"
+          testId="metric-inference-balance"
           loading={loading}
           testIdLabel="metric-label"
         />
@@ -233,11 +307,11 @@ const AdminAIMonitoring: React.FC = () => {
           value={
             loading
               ? '...'
-              : `${data?.hubApiCallsUsed ?? 0} of ${data?.hubApiCallsLimit?.toLocaleString() ?? '2,500'}`
+              : `${data?.hubApiCallsUsed ?? 0} of ${data?.hubApiCallsLimit?.toLocaleString() ?? '2,500'} used`
           }
           icon={Gauge}
           color="from-sky-500 to-blue-600"
-          testId="metric-card"
+          testId="metric-hub-api-calls"
           loading={loading}
           testIdLabel="metric-label"
         />
@@ -246,11 +320,11 @@ const AdminAIMonitoring: React.FC = () => {
           value={
             loading
               ? '...'
-              : `${data?.zeroGpuMinutesUsed ?? 0} of ${data?.zeroGpuMinutesLimit ?? 25} min`
+              : `${data?.zeroGpuMinutesUsed ?? 0} of ${data?.zeroGpuMinutesLimit ?? 25} minutes`
           }
           icon={Zap}
           color="from-violet-500 to-purple-600"
-          testId="metric-card"
+          testId="metric-zerogpu"
           loading={loading}
           testIdLabel="metric-label"
         />
@@ -266,7 +340,7 @@ const AdminAIMonitoring: React.FC = () => {
           }
           icon={Clock}
           color="from-orange-500 to-red-600"
-          testId="metric-card"
+          testId="metric-latency"
           loading={loading}
           testIdLabel="metric-label"
         />
@@ -306,7 +380,7 @@ const AdminAIMonitoring: React.FC = () => {
                 <Calendar size={18} className="text-sky-500" />
                 <span className="text-sm font-semibold text-[#0a1628]">Period Dates</span>
               </div>
-              <span className="text-xs font-medium text-sky-600">
+              <span className="text-xs font-medium text-sky-600" data-testid="metric-period">
                 {loading
                   ? '...'
                   : formatPeriodRange(data?.periodStart ?? '', data?.periodEnd ?? '')}
@@ -322,7 +396,7 @@ const AdminAIMonitoring: React.FC = () => {
                   <HardDrive size={18} className="text-orange-500" />
                   <span className="text-sm font-semibold text-[#0a1628]">Public Storage</span>
                 </div>
-                <span className="text-sm font-bold text-orange-600">
+                <span className="text-sm font-bold text-orange-600" data-testid="metric-storage">
                   {loading
                     ? '...'
                     : `${(data?.publicStorageUsedTB ?? 0).toFixed(2)} TB / ${(data?.publicStorageLimitTB ?? 11.2).toFixed(1)} TB`}
@@ -363,7 +437,6 @@ const AdminAIMonitoring: React.FC = () => {
           </div>
 
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Model Status */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
               <div className="flex items-center gap-2 mb-3">
                 <Cpu size={16} className="text-sky-500" />
@@ -372,37 +445,15 @@ const AdminAIMonitoring: React.FC = () => {
               {loading ? (
                 <Skeleton className="w-24 h-6 rounded" />
               ) : (
-                <div className="flex items-center gap-2">
-                  {healthStatus === 'Operational' && (
-                    <CheckCircle size={16} className="text-emerald-500" />
-                  )}
-                  {healthStatus === 'Loading' && (
-                    <Activity size={16} className="text-orange-500" />
-                  )}
-                  {healthStatus === 'Degraded' && (
-                    <AlertTriangle size={16} className="text-rose-500" />
-                  )}
-                  <span
-                    className={`text-lg font-bold ${
-                      healthStatus === 'Operational'
-                        ? 'text-emerald-600'
-                        : healthStatus === 'Loading'
-                          ? 'text-orange-600'
-                          : 'text-rose-600'
-                    }`}
-                  >
-                    {healthStatus === 'Operational' && 'Operational'}
-                    {healthStatus === 'Loading' && 'Starting up, please wait…'}
-                    {healthStatus === 'Degraded' && 'Degraded'}
-                  </span>
-                </div>
+                <StatusBadge
+                  status={data?.modelStatus ?? 'Unknown'}
+                />
               )}
               <p className="text-xs text-[#a0aec0] mt-2">
-                {loading ? '...' : data?.modelId ?? 'Qwen/Qwen3-32B'}
+                {loading ? '...' : data?.modelId ?? 'Qwen/QwQ-32B'}
               </p>
             </div>
 
-            {/* Last Refreshed */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
               <div className="flex items-center gap-2 mb-3">
                 <Clock size={16} className="text-violet-500" />
@@ -418,12 +469,11 @@ const AdminAIMonitoring: React.FC = () => {
                   {formatTimestamp(lastRefreshed)}
                 </p>
               )}
-              <p className="text-xs text-[#a0aec0] mt-2" data-testid="last-refreshed">
+              <p className="text-xs text-[#a0aec0] mt-2">
                 Last updated from Hugging Face
               </p>
             </div>
 
-            {/* Period Info */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 sm:col-span-2">
               <div className="flex items-center gap-2 mb-3">
                 <Database size={16} className="text-teal-500" />

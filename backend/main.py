@@ -64,7 +64,10 @@ import subprocess
 import requests as http_requests
 import httpx
 import uvicorn
-from services.inference_client import InferenceRequest, create_default_client
+from services.inference_client import (
+    InferenceRequest, create_default_client,
+    get_model_for_task, get_current_runtime_config,
+)
 from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
 from services.email_service import create_email_service_from_env, EmailMessagePayload
@@ -10850,13 +10853,34 @@ async def get_hf_monitoring(http_request: Request):
     if not HF_TOKEN:
         raise HTTPException(status_code=500, detail="HF_TOKEN not configured.")
 
-    model_id = os.getenv("HF_MODEL_ID", HF_MATH_MODEL_ID)
+    try:
+        generation_model_id = get_model_for_task("chat")
+    except Exception:
+        generation_model_id = "Qwen/QwQ-32B"
+
+    embedding_model_id = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+
+    runtime_config = get_current_runtime_config()
+
+    task_resolved: dict[str, str] = {}
+    for task in [
+        "chat", "verify_solution", "lesson_generation", "quiz_generation",
+        "learning_path", "daily_insight", "risk_classification", "risk_narrative",
+        "rag_lesson", "rag_problem", "rag_analysis_context",
+    ]:
+        try:
+            task_resolved[task] = get_model_for_task(task)
+        except Exception:
+            task_resolved[task] = generation_model_id
+
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
     result: Dict[str, Any] = {
-        "modelId": model_id,
+        "modelId": generation_model_id,
         "modelStatus": "Unknown",
         "avgResponseTimeMs": 0,
+        "embeddingModelId": embedding_model_id,
+        "embeddingModelStatus": "Unknown",
         "inferenceBalance": 0.0,
         "totalPeriodCost": 0.0,
         "hubApiCallsUsed": 0,
@@ -10868,6 +10892,9 @@ async def get_hf_monitoring(http_request: Request):
         "lastChecked": datetime.now(timezone.utc).isoformat(),
         "periodStart": "",
         "periodEnd": "",
+        "activeProfile": runtime_config.get("profile") or os.getenv("MODEL_PROFILE", "dev"),
+        "runtimeOverridesActive": len(runtime_config.get("overrides", {})) > 0,
+        "resolvedModels": task_resolved,
     }
 
     try:
@@ -10893,19 +10920,19 @@ async def get_hf_monitoring(http_request: Request):
         logger.warning(f"HF billing API call failed: {e}")
 
     try:
-        model_url = f"https://api-inference.huggingface.co/models/{model_id}"
+        model_url = f"https://api-inference.huggingface.co/models/{generation_model_id}"
         model_resp = http_requests.get(model_url, headers=headers, timeout=15)
         if model_resp.status_code == 200:
             model_data = model_resp.json()
-            state = model_data.get("model加载状态", model_data.get("state", ""))
-            if state in {"LOADED", "LoadComplete"}:
-                result["modelStatus"] = "Operational"
-            elif state in {"LOADING", "loading"}:
+            state = model_data.get("error", model_data.get("state", ""))
+            if state == "loading":
                 result["modelStatus"] = "Loading"
+            elif state in {"LOADED", "LoadComplete"}:
+                result["modelStatus"] = "Operational"
             elif state in {"FAILED", "error"}:
                 result["modelStatus"] = "Degraded"
             else:
-                result["modelStatus"] = "Unknown"
+                result["modelStatus"] = "Operational"
         elif model_resp.status_code == 503:
             result["modelStatus"] = "Loading"
         else:
@@ -10915,9 +10942,24 @@ async def get_hf_monitoring(http_request: Request):
         result["modelStatus"] = "Unknown"
 
     try:
+        emb_url = f"https://api-inference.huggingface.co/models/{embedding_model_id}"
+        emb_resp = http_requests.get(emb_url, headers=headers, timeout=5)
+        if emb_resp.status_code == 200:
+            emb_data = emb_resp.json()
+            if emb_data.get("error") == "loading":
+                result["embeddingModelStatus"] = "Loading"
+            else:
+                result["embeddingModelStatus"] = "Operational"
+        else:
+            result["embeddingModelStatus"] = "Degraded"
+    except Exception as e:
+        logger.warning(f"HF embedding model status probe failed: {e}")
+        result["embeddingModelStatus"] = "Degraded"
+
+    try:
         latency_start = time.time()
         probe_payload = {"inputs": "Hello", "parameters": {"max_new_tokens": 1}}
-        probe_url = f"https://api-inference.huggingface.co/models/{model_id}"
+        probe_url = f"https://api-inference.huggingface.co/models/{generation_model_id}"
         probe_resp = http_requests.post(probe_url, headers=headers, json=probe_payload, timeout=30)
         latency_ms = int((time.time() - latency_start) * 1000)
         if probe_resp.status_code in {200, 206}:

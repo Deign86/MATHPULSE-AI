@@ -158,6 +158,24 @@ export function ModelConfigPanel() {
           ))}
         </div>
       )}
+
+      {/* Embedding Model — Read-Only Info */}
+      <div data-testid="embedding-model-info" className="border-t pt-4 mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-1">RAG Retrieval Model</h3>
+        <p className="text-xs text-gray-500 mb-2">
+          Used for curriculum search (vector embeddings). Fixed — not switchable via profiles.
+          Change only by updating EMBEDDING_MODEL in the backend environment.
+        </p>
+        <div className="flex items-center gap-2">
+          <span
+            data-testid="embedding-model-display"
+            className="font-mono text-xs bg-gray-100 px-2 py-1 rounded"
+          >
+            BAAI/bge-small-en-v1.5
+          </span>
+          <span className="text-xs text-gray-400">Env: EMBEDDING_MODEL</span>
+        </div>
+      </div>
     </div>
   );
 }
