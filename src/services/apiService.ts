@@ -1253,7 +1253,7 @@ export async function warmupBackend(): Promise<boolean> {
  * Central API fetch with retry, timeout, and structured error handling.
  * All `apiService` methods funnel through this function.
  */
-async function apiFetch<T>(
+export async function apiFetch<T>(
   endpoint: string,
   options?: RequestInit,
   retryOpts: RetryFetchOptions = DEFAULT_RETRY_OPTS,

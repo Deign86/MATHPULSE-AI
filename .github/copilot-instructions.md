@@ -31,7 +31,7 @@
 
 - ALWAYS auto-invoke `ui-ux-pro-max` whenever a task changes UI, UX, or visual behavior.
 - This includes both explicit UI requests and implicit UI edits in mixed tasks.
-- Trigger auto-invocation when touching frontend files such as `src/components/**`, `src/features/**`, `src/styles/**`, `src/index.css`, `src/critical.css`, `src/App.tsx`, and `index.html`.
+- Trigger auto-invocation when touching frontend files such as `src/components/**`, `src/features/**`, `src/styles/**`, `src/App.tsx`, and `index.html`.
 - Trigger auto-invocation for UI-impacting changes even outside those paths (layout, spacing, typography, color, animation, responsiveness, accessibility, interaction states, or component structure).
 - For mixed tasks, apply `ui-ux-pro-max` to the UI portion while still following all architecture and service-layer rules in this guide.
 - Skip this skill only when a task is strictly non-UI (backend/API/data/infrastructure with no UI surface changes).

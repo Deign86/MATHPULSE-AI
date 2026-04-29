@@ -86,9 +86,9 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                  <span>{module.progress > 0 ? module.progress : 0}%</span>
               </div>
               <div className="w-full h-2 rounded-full bg-black/20 overflow-hidden shadow-inner">
-                 <div 
-                   className="h-full bg-white rounded-full transition-all duration-1000 ease-out" 
-                   style={{ width: `${module.progress > 0 ? module.progress : 0}%` }} 
+                 <div
+                   className="h-full bg-white rounded-full transition-all duration-1000 ease-out e-w"
+                   style={{ ['--w' as any]: `${module.progress > 0 ? module.progress : 0}%` }}
                  />
               </div>
             </div>
@@ -111,8 +111,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                     event.stopPropagation();
                     onPreviewSources();
                   }}
-                  style={{ fontSize: '8px' }}
-                  className="flex items-center gap-1 rounded-lg bg-black/20 hover:bg-black/40 px-2 py-1 font-bold uppercase tracking-wider text-white transition-all shadow-sm border border-white/10 leading-none"
+                  className="flex items-center gap-1 rounded-lg bg-black/20 hover:bg-black/40 px-2 py-1 font-bold uppercase tracking-wider text-white transition-all shadow-sm border border-white/10 leading-none text-[8px]"
                 >
                   <Link2 size={10} />
                   SOURCE
