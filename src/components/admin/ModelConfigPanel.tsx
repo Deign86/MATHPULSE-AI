@@ -1,5 +1,6 @@
 // src/components/admin/ModelConfigPanel.tsx
 import { useState, useEffect } from "react";
+import { apiFetch } from "../../services/apiService";
 
 interface ModelConfig {
   profile: string;
@@ -23,8 +24,7 @@ export function ModelConfigPanel() {
 
   const reload = () => {
     setLoading(true);
-    fetch("/api/admin/model-config", { credentials: "include" })
-      .then((r) => r.json())
+    apiFetch<ModelConfig>("/api/admin/model-config", { method: "GET" })
       .then(setConfig)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -36,14 +36,10 @@ export function ModelConfigPanel() {
     setSwitching(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/model-config/profile", {
+      const data = await apiFetch<{ applied: ModelConfig }>("/api/admin/model-config/profile", {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
       setConfig((prev) => prev
         ? { ...prev, profile, resolved: data.applied?.resolved ?? prev.resolved }
         : prev
@@ -57,7 +53,7 @@ export function ModelConfigPanel() {
 
   const handleReset = async () => {
     setSwitching(true);
-    await fetch("/api/admin/model-config/reset", { method: "DELETE", credentials: "include" });
+    await apiFetch("/api/admin/model-config/reset", { method: "DELETE" });
     reload();
     setSwitching(false);
   };
