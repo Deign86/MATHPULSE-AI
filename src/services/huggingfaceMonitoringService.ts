@@ -22,11 +22,11 @@ export async function probeModelLatency(modelId: string): Promise<number> {
 }
 
 export function mapHFStatusToHealth(
-  modelLoaded: boolean,
+  modelLoaded: number,
   errorRate: number,
-): 'Operational' | 'Loading' | 'Degraded' {
+): 'Operational' | 'Loading' | 'Critical' | 'Degraded' {
   if (!modelLoaded) return 'Loading';
-  if (errorRate > 0.2) return 'Degraded';
+  if (errorRate > 0.2) return 'Critical';
   return 'Operational';
 }
 
