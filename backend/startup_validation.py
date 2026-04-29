@@ -97,13 +97,13 @@ def validate_environment() -> None:
     logger.info(f"   ✓ INFERENCE_PROVIDER: {inference_provider}")
     
     # Check model IDs
-    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "Qwen/Qwen3-32B"
+    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "Qwen/QwQ-32B"
     logger.info(f"   ✓ Chat model configured: {chat_model}")
 
     chat_strict = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
     chat_hard_trigger = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
     enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
-    qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-32B").strip() or "Qwen/Qwen3-32B"
+    qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/QwQ-32B").strip() or "Qwen/QwQ-32B"
     logger.info(f"   ✓ INFERENCE_CHAT_STRICT_MODEL_ONLY: {chat_strict}")
     logger.info(f"   ✓ INFERENCE_CHAT_HARD_TRIGGER_ENABLED: {chat_hard_trigger}")
     logger.info(f"   ✓ INFERENCE_ENFORCE_QWEN_ONLY: {enforce_qwen_only}")
@@ -121,7 +121,38 @@ def validate_environment() -> None:
             "   ⚠ Chat hard trigger is enabled while strict chat lock is on; hard escalation will be bypassed"
         )
     
+    _validate_embedding_model()
+    
     logger.info("✅ Environment variables OK")
+
+
+EXPECTED_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+
+def _validate_embedding_model() -> None:
+    embedding_model = os.getenv("EMBEDDING_MODEL", "").strip()
+    if not embedding_model:
+        logger.warning(
+            "WARNING: EMBEDDING_MODEL env var is not set. "
+            f"Expected: {EXPECTED_EMBEDDING_MODEL}. "
+            "RAG retrieval will fail without an embedding model."
+        )
+    elif embedding_model != EXPECTED_EMBEDDING_MODEL:
+        logger.warning(
+            f"WARNING: EMBEDDING_MODEL is set to '{embedding_model}' — "
+            f"expected '{EXPECTED_EMBEDDING_MODEL}'. "
+            "Confirm this is intentional before deploying."
+        )
+    generation_model_ids = [
+        "Qwen/QwQ-32B", "Qwen/Qwen3-235B-A22B", "Qwen/Qwen3-32B",
+        "Qwen/Qwen3-14B", "Qwen/Qwen3-8B",
+    ]
+    if embedding_model in generation_model_ids:
+        logger.warning(
+            f"CRITICAL: EMBEDDING_MODEL is set to a generation model ('{embedding_model}'). "
+            "This will break RAG retrieval. Set it to 'BAAI/bge-small-en-v1.5'."
+        )
+    else:
+        logger.info(f"   EMBEDDING_MODEL: {embedding_model or 'not set'}")
 
 
 def validate_config_files() -> None:

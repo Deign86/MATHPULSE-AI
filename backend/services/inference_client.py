@@ -179,7 +179,7 @@ def get_model_for_task(task_type: str) -> str:
         override = (
             _RUNTIME_OVERRIDES.get("INFERENCE_QWEN_LOCK_MODEL")
             or os.getenv("INFERENCE_QWEN_LOCK_MODEL")
-            or "Qwen/Qwen3-32B"
+            or "Qwen/QwQ-32B"
         )
         return override
     task_key_map = {
