@@ -1,3 +1,4 @@
+// Preview text generation utilities
 import { normalizeChatMarkdownForRender } from './chatMessageFormatting';
 
 const DEFAULT_PREVIEW_MAX_LENGTH = 80;
