@@ -81,7 +81,7 @@ import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { cn } from './ui/utils';
 import { BattleTimerBar } from './battle/BattleTimerBar';
-import { BattleHeader } from './battle/BattleHeader';
+import { BattleHeader } from './battle/BattleHeader.tsx';
 import { BattleFooter } from './battle/BattleFooter';
 import { BattleActiveContent } from './battle/BattleActiveContent';
 
@@ -186,17 +186,21 @@ const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
   <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/10">
-    {[...Array(40)].map((_, i) => (
+    {useMemo(() => [...Array(40)].map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      duration: 0.6 + Math.random() * 0.4,
+      delay: Math.random() * 0.4,
+    })), [viewportHeight]).map((drop) => (
       <motion.div
-        key={i}
+        key={drop.id}
         className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full e-left-top"
-        style={{ ['--left' as any]: `${Math.random() * 100}%`, ['--top' as any]: '-10%' }}
+        style={{ ['--left' as any]: drop.left, ['--top' as any]: '-10%' }}
         animate={{ y: [0, viewportHeight * 1.2] }}
         transition={{
-          duration: 0.6 + Math.random() * 0.4,
-          repeat: Infinity,
+          duration: drop.duration,
           ease: 'linear',
-          delay: Math.random() * 2,
+          delay: drop.delay,
         }}
       />
     ))}
@@ -205,23 +209,31 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
 
 const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
   const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
+  const particles = useMemo(() => [...Array(60)].map((_, i) => ({
+    id: i,
+    left: `${20 + Math.random() * 60}%`,
+    xShift: (Math.random() - 0.5) * viewportWidth * 0.8,
+    spin: Math.random() * 720,
+    duration: 3 + Math.random() * 2,
+    delay: Math.random() * 0.35,
+  })), [viewportHeight, viewportWidth]);
+
   return (
     <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden">
-      {[...Array(60)].map((_, i) => (
+      {particles.map((particle) => (
         <motion.div
-          key={i}
+          key={particle.id}
           className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md e-left-top e-bg"
-          style={{ ['--left' as any]: `${20 + Math.random() * 60}%`, ['--bg' as any]: colors[i % colors.length] }}
+          style={{ ['--left' as any]: particle.left, ['--bg' as any]: colors[particle.id % colors.length] }}
           animate={{
             y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
-            x: [0, (Math.random() - 0.5) * viewportWidth * 0.8],
-            rotate: [0, Math.random() * 720],
+            x: [0, particle.xShift],
+            rotate: [0, particle.spin],
           }}
           transition={{
-            duration: 3 + Math.random() * 2,
-            repeat: Infinity,
+            duration: particle.duration,
             ease: "easeInOut",
-            delay: Math.random() * 1.5,
+            delay: particle.delay,
           }}
         />
       ))}
@@ -230,24 +242,32 @@ const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }>
 };
 
 const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
+  const sparks = useMemo(() => [...Array(30)].map((_, i) => ({
+    id: i,
+    xShift: (Math.random() - 0.5) * viewportWidth * 0.8,
+    yShift: (Math.random() - 0.5) * viewportHeight * 0.8,
+    scale: Math.random() * 1.5 + 0.5,
+    duration: 2 + Math.random() * 1.5,
+    delay: Math.random() * 0.35,
+  })), [viewportHeight, viewportWidth]);
+
   return (
     <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex items-center justify-center">
-      {[...Array(30)].map((_, i) => (
+      {sparks.map((spark) => (
         <motion.div
-          key={i}
+          key={spark.id}
           className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] e-left-top"
           style={{ ['--left' as any]: '50%', ['--top' as any]: '50%' }}
           animate={{
-            y: [(Math.random() - 0.5) * viewportHeight * 0.8],
-            x: [(Math.random() - 0.5) * viewportWidth * 0.8],
-            scale: [0, Math.random() * 1.5 + 0.5, 0],
+            y: [0, spark.yShift],
+            x: [0, spark.xShift],
+            scale: [0, spark.scale, 0],
             opacity: [0, 1, 0],
           }}
           transition={{
-            duration: 2 + Math.random() * 2,
-            repeat: Infinity,
+            duration: spark.duration,
             ease: "easeOut",
-            delay: Math.random() * 1,
+            delay: spark.delay,
           }}
         />
       ))}
@@ -469,15 +489,6 @@ const QuizBattlePage: React.FC = () => {
     return streak;
   }, [activeMatch?.roundResults]);
 
-  const opponentRoundStreak = useMemo(() => {
-    const rounds = activeMatch?.roundResults || [];
-    let streak = 0;
-    rounds.forEach((result) => {
-      streak = result.botCorrect ? streak + 1 : 0;
-    });
-    return streak;
-  }, [activeMatch?.roundResults]);
-
   const playerVisualMultiplier = useMemo(() => {
     const boost = Math.max(0, playerRoundStreak - 1) * 0.12;
     return Number((1 + Math.min(0.72, boost)).toFixed(2));
@@ -500,6 +511,15 @@ const QuizBattlePage: React.FC = () => {
     }
     return total;
   }, [activeMatch?.status, activeMatch?.xpEarned, activeMatch?.roundResults]);
+
+  const opponentRoundStreak = useMemo(() => {
+    const rounds = activeMatch?.roundResults || [];
+    let streak = 0;
+    rounds.forEach((result) => {
+      streak = result.botCorrect ? streak + 1 : 0;
+    });
+    return streak;
+  }, [activeMatch?.roundResults]);
 
   const opponentVisualMultiplier = useMemo(() => {
     const boost = Math.max(0, opponentRoundStreak - 1) * 0.1;
@@ -1343,7 +1363,7 @@ const QuizBattlePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!lastRoundResult || lastRoundMomentumDelta === null) {
+    if (!lastRoundResult?.studentCorrect || lastRoundMomentumDelta === null || lastRoundMomentumDelta <= 0) {
       setFloatingMomentum(null);
       return;
     }
@@ -1960,75 +1980,30 @@ const QuizBattlePage: React.FC = () => {
         <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 py-4">
           
           {/* Header Row */}
-          <header className="flex items-center justify-between shrink-0 h-16">
-            {/* Left: Branding & Bonuses */}
-            <div className="flex items-center gap-3 md:gap-5">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 ring-1 ring-primary/40 shadow-[0_0_15px_rgba(158,143,255,0.4)]">
-                <Swords className="h-6 w-6 text-primary" />
-              </div>
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-                🔥 {playerRoundStreak || 0} Streak
-              </div>
-              <motion.div
-                key={liveXpEarned}
-                animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
-                transition={{ duration: 0.35 }}
-                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 font-black text-sm tracking-wide shadow-[0_0_10px_rgba(139,92,246,0.2)]"
-              >
-                ✨ {playerVisualMultiplier.toFixed(2)}x
-              </motion.div>
-              <motion.div
-                key={liveXpEarned}
-                animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
-                transition={{ duration: 0.35 }}
-                className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)]"
-              >
-                <span className="text-sm leading-none">{liveXpEarned} pts</span>
-                <span className="text-[8px] leading-none text-emerald-500/70 uppercase tracking-widest font-black">Battle Score</span>
-              </motion.div>
-            </div>
-
-            {/* Right: Controls */}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
-                onClick={() => {
-                  if (typeof document === 'undefined') return;
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch((error) => {
-                      console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
-                    });
-                  } else {
-                    document.documentElement.requestFullscreen().catch((error) => {
-                      console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
-                    });
-                  }
-                }}
-                aria-label={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
-                title={isFullscreen ? 'Exit fullscreen mode' : 'Enter fullscreen mode'}
-              >
-                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className={cn(
-                  "h-12 w-12 rounded-full border-white/20 text-white",
-                  isDesignPauseAvailable
-                    ? "bg-black/20 hover:bg-white/10"
-                    : "bg-black/10 opacity-50 cursor-not-allowed",
-                )}
-                onClick={handleToggleDesignPause}
-                disabled={!isDesignPauseAvailable}
-                aria-label={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
-                title={isDesignPauseAvailable ? 'Toggle design pause' : 'Design pause unavailable'}
-              >
-                 <Menu className="h-5 w-5" />
-              </Button>
-            </div>
-          </header>
+          <BattleHeader
+            playerRoundStreak={playerRoundStreak}
+            playerVisualMultiplier={playerVisualMultiplier}
+            liveXpEarned={liveXpEarned}
+            activeMatch={activeMatch}
+            subjects={subjects}
+            battleSoundEnabled={battleSoundEnabled}
+            onToggleSound={() => setBattleSoundEnabled((previous) => !previous)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => {
+              if (typeof document === 'undefined') return;
+              if (document.fullscreenElement) {
+                document.exitFullscreen().catch((error) => {
+                  console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
+                });
+              } else {
+                document.documentElement.requestFullscreen().catch((error) => {
+                  console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
+                });
+              }
+            }}
+            isDesignPauseAvailable={isDesignPauseAvailable}
+            onTogglePause={handleToggleDesignPause}
+          />
 
           {/* Shrinking Timer Bar */}
           {activeMatch.status === 'in_progress' ? (

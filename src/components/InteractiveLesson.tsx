@@ -142,6 +142,23 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const title = lesson.title;
   const type = lesson.type;
 
+  if (!currentQuestion) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div className="w-full max-w-xl rounded-[32px] bg-white p-6 text-center shadow-2xl">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
+          <h2 className="text-2xl font-black text-[#0a1628] mb-2">Preparing checkpoint</h2>
+          <p className="text-sm text-[#5a6578] mb-5">
+            We are loading or rebuilding the quiz so the module can open safely.
+          </p>
+          <Button onClick={onBack} className="rounded-xl bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold">
+            Back to module
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Sound effects using Web Audio API for synthetic sounds
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'streak') => {
     try {

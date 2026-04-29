@@ -32,7 +32,12 @@ def validate_imports() -> None:
         logger.info("   ✓ FastAPI, Uvicorn, Pydantic OK")
         
         # Backend services (use ABSOLUTE imports like deployed code)
-        from services.inference_client import InferenceClient, create_default_client  # noqa
+        from services.inference_client import (
+            InferenceClient, create_default_client, is_sequential_model,
+            get_current_runtime_config, get_model_for_task, model_supports_thinking,
+            set_runtime_model_profile, set_runtime_model_override, reset_runtime_overrides,
+            _MODEL_PROFILES,
+        )  # noqa
         logger.info("   ✓ InferenceClient imports OK")
         
         from automation_engine import automation_engine  # noqa
@@ -103,6 +108,12 @@ def validate_environment() -> None:
     logger.info(f"   ✓ INFERENCE_CHAT_HARD_TRIGGER_ENABLED: {chat_hard_trigger}")
     logger.info(f"   ✓ INFERENCE_ENFORCE_QWEN_ONLY: {enforce_qwen_only}")
     logger.info(f"   ✓ INFERENCE_QWEN_LOCK_MODEL: {qwen_lock_model}")
+    model_profile = os.getenv("MODEL_PROFILE", "").strip().lower()
+    quiz_model = os.getenv("HF_QUIZ_MODEL_ID", "").strip()
+    rag_model = os.getenv("HF_RAG_MODEL_ID", "").strip()
+    logger.info(f"   ✓ MODEL_PROFILE: {model_profile or 'not set (using individual env vars)'}")
+    logger.info(f"   ✓ HF_QUIZ_MODEL_ID: {quiz_model or 'not set (using defaults)'}")
+    logger.info(f"   ✓ HF_RAG_MODEL_ID: {rag_model or 'not set (using defaults)'}")
     if not chat_strict:
         logger.warning("   ⚠ Chat strict model lock is disabled; chat may fallback to alternate models")
     if chat_strict and chat_hard_trigger:
@@ -154,7 +165,9 @@ def validate_config_files() -> None:
         )
 
     logger.info(f"   ✓ Using model config: {readable_model_config}")
-    
+
+    _validate_model_config_fields(readable_model_config)
+
     logger.info("✅ Configuration files OK")
 
 
@@ -256,6 +269,40 @@ def validate_inference_client_config() -> None:
             f"   {e}\n"
             f"   Check config/models.yaml and backend/config/models.yaml\n"
         ) from e
+
+
+def _validate_model_config_fields(config_path: str) -> None:
+    try:
+        import yaml
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+    except Exception as e:
+        raise StartupError(f"❌ Cannot parse {config_path} as YAML: {e}") from e
+
+    models = config.get("models", {})
+    if not isinstance(models, dict):
+        raise StartupError(f"❌ {config_path}: 'models' section missing or invalid")
+
+    if "rag_primary" not in models:
+        raise StartupError(f"❌ {config_path}: missing 'models.rag_primary' field")
+    rag_primary = models["rag_primary"]
+    if isinstance(rag_primary, dict):
+        logger.info(f"   ✓ rag_primary model: {rag_primary.get('id', 'UNSET')}")
+    else:
+        logger.warning(f"   ⚠ rag_primary is not a dict, may cause issues")
+
+    capabilities = models.get("model_capabilities")
+    if not isinstance(capabilities, dict):
+        raise StartupError(f"❌ {config_path}: missing 'models.model_capabilities' section")
+    logger.info(f"   ✓ model_capabilities: sequential_only={capabilities.get('sequential_only')}, supports_thinking={capabilities.get('supports_thinking')}")
+
+    tasks = config.get("routing", {}).get("task_model_map", {})
+    rag_tasks = {"rag_lesson", "rag_problem", "rag_analysis_context"}
+    missing_rag = rag_tasks - set(str(t).strip().lower() for t in tasks.keys())
+    if missing_rag:
+        raise StartupError(f"❌ {config_path}: missing RAG task mappings: {missing_rag}")
+
+    logger.info(f"   ✓ All RAG task mappings present")
 
 
 def run_all_validations() -> None:

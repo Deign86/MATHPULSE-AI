@@ -471,62 +471,62 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     const isPassing = percentage >= 70;
 
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-5 overflow-y-auto">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8"
+          className="bg-white rounded-[28px] shadow-2xl max-w-xl w-full p-6 sm:p-7"
         >
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6 sm:mb-7">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-4 ${
+              className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-3 ${
                 isPassing ? 'bg-gradient-to-br from-[#75D06A] to-[#6ED1CF]' : 'bg-gradient-to-br from-[#FFB356] to-[#FF8B8B]'
               }`}
             >
               {isPassing ? (
-                <Trophy size={48} className="text-white" />
+                <Trophy size={36} className="text-white" />
               ) : (
-                <Target size={48} className="text-white" />
+                <Target size={36} className="text-white" />
               )}
             </motion.div>
-            <h2 className="text-3xl font-bold font-display text-[#0a1628] mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold font-display text-[#0a1628] mb-2">
               {isPassing ? 'Great Job!' : 'Keep Practicing!'}
             </h2>
-            <p className="text-[#5a6578]">{quiz.title}</p>
+            <p className="text-sm sm:text-base text-[#5a6578]">{quiz.title}</p>
           </div>
 
           {/* Score */}
-          <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-6 mb-6">
+          <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-5 mb-5 sm:mb-6">
             <div className="text-center mb-4">
-              <div className="text-6xl font-bold text-[#1FA7E1] mb-2">{percentage}%</div>
+              <div className="text-5xl sm:text-6xl font-bold text-[#1FA7E1] mb-2">{percentage}%</div>
               <p className="text-[#5a6578]">Final Score</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl p-4 text-center">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-white rounded-xl p-3 sm:p-4 text-center">
                 <CheckCircle size={24} className="mx-auto mb-2 text-[#75D06A]" />
-                <p className="text-2xl font-bold text-[#0a1628]">{score}</p>
+                <p className="text-xl sm:text-2xl font-bold text-[#0a1628]">{score}</p>
                 <p className="text-xs text-[#5a6578]">Correct</p>
               </div>
-              <div className="bg-white rounded-xl p-4 text-center">
+              <div className="bg-white rounded-xl p-3 sm:p-4 text-center">
                 <XCircle size={24} className="mx-auto mb-2 text-[#FF8B8B]" />
-                <p className="text-2xl font-bold text-[#0a1628]">{questions.length - score}</p>
+                <p className="text-xl sm:text-2xl font-bold text-[#0a1628]">{questions.length - score}</p>
                 <p className="text-xs text-[#5a6578]">Incorrect</p>
               </div>
-              <div className="bg-white rounded-xl p-4 text-center">
+              <div className="bg-white rounded-xl p-3 sm:p-4 text-center">
                 <Zap size={24} className="mx-auto mb-2 text-rose-500" />
-                <p className="text-2xl font-bold text-[#0a1628]">+{totalXP}</p>
+                <p className="text-xl sm:text-2xl font-bold text-[#0a1628]">+{totalXP}</p>
                 <p className="text-xs text-[#5a6578]">XP Earned</p>
               </div>
             </div>
           </div>
 
           {/* Performance Badges */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5 sm:mb-6">
             {percentage >= 90 && (
               <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center gap-3">
                 <Star size={20} className="text-[#1FA7E1]" />
@@ -567,7 +567,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
           {/* Action Button */}
           <button
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white font-bold py-4 rounded-xl transition-all mt-4"
+            className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white font-bold py-3.5 rounded-xl transition-all mt-3 sm:mt-4"
           >
             Continue
           </button>
