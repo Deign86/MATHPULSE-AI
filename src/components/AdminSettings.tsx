@@ -24,6 +24,7 @@ import {
 } from './ui/select';
 import { Switch } from './ui/switch';
 import ConfirmModal from './ConfirmModal';
+import { ModelConfigPanel } from './admin/ModelConfigPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { DEFAULT_USER_SETTINGS, UserSettings } from '../types/models';
 import { getUserSettings, upsertUserSettings } from '../services/settingsService';
@@ -49,14 +50,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onDirtyChange }) => {
     [settings, savedSettings],
   );
 
-  const menuItems = [
-    { id: 'General', label: 'General', icon: Settings },
-    { id: 'Security', label: 'Security', icon: Shield },
-    { id: 'AI Features', label: 'AI Features', icon: Zap },
-    { id: 'Academic', label: 'Academic', icon: BookOpen },
-    { id: 'Notifications', label: 'Notifications', icon: Bell },
-    { id: 'Backup & Data', label: 'Backup & Data', icon: Database },
-  ];
+    const menuItems = [
+      { id: 'General', label: 'General', icon: Settings },
+      { id: 'Security', label: 'Security', icon: Shield },
+      { id: 'AI Features', label: 'AI Features', icon: Zap },
+      { id: 'Academic', label: 'Academic', icon: BookOpen },
+      { id: 'Notifications', label: 'Notifications', icon: Bell },
+      { id: 'Backup & Data', label: 'Backup & Data', icon: Database },
+      { id: 'Model Config', label: 'Model Configuration', icon: Zap },
+    ];
 
   useEffect(() => {
     const load = async () => {
@@ -378,43 +380,43 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onDirtyChange }) => {
                     </div>
                   )}
 
-                  {activeTab === 'Backup & Data' && (
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
-                        <div>
-                          <h4 className="text-sm font-bold text-[#0a1628]">Automatic Backups</h4>
-                          <p className="text-xs text-slate-500">Create scheduled backups of platform data</p>
-                        </div>
-                        <Switch
-                          checked={settings.adminPanel.autoBackupEnabled}
-                          onCheckedChange={(checked) => updateAdminPanel({ autoBackupEnabled: checked })}
-                          className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-[#0a1628]">Backup Frequency</label>
-                        <Select
-                          value={settings.adminPanel.backupFrequency}
-                          onValueChange={(value) =>
-                            updateAdminPanel({
-                              backupFrequency: value as 'daily' | 'weekly' | 'monthly',
-                            })
-                          }
-                        >
-                          <SelectTrigger className="w-full max-w-xs">
-                            <SelectValue placeholder="Select backup frequency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-8 pt-6 border-t border-[#dde3eb] flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-end">
+                   {activeTab === 'Backup & Data' && (
+                     <div className="space-y-5">
+                       <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                         <div>
+                           <h4 className="text-sm font-bold text-[#0a1628]">Automatic Backups</h4>
+                           <p className="text-xs text-slate-500">Create scheduled backups of platform data</p>
+                         </div>
+                         <Switch
+                           checked={settings.adminPanel.autoBackupEnabled}
+                           onCheckedChange={(checked) => updateAdminPanel({ autoBackupEnabled: checked })}
+                           className="data-[state=checked]:bg-sky-600 data-[state=unchecked]:bg-[#dde3eb]"
+                         />
+                       </div>
+                       <div className="space-y-1.5">
+                         <label className="text-sm font-medium text-[#0a1628]">Backup Frequency</label>
+                         <Select
+                           value={settings.adminPanel.backupFrequency}
+                           onValueChange={(value) =>
+                             updateAdminPanel({ backupFrequency: value as 'daily' | 'weekly' | 'monthly' })
+                           }
+                         >
+                           <SelectTrigger className="w-full max-w-xs">
+                             <SelectValue placeholder="Select backup frequency" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="daily">Daily</SelectItem>
+                             <SelectItem value="weekly">Weekly</SelectItem>
+                             <SelectItem value="monthly">Monthly</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     </div>
+                   )}
+                   {activeTab === 'Model Config' && (
+                     <ModelConfigPanel />
+                   )}
+                   <div className="mt-8 pt-6 border-t border-[#dde3eb] flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-end">
                     {isDirty ? (
                       <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                         You have unsaved changes.

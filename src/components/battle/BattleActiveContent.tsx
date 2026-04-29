@@ -41,7 +41,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
         </div>
 
         <AnimatePresence>
-          {floatingMomentum && (
+          {floatingMomentum && floatingMomentum.tone === 'positive' && (
             <motion.div
               key={floatingMomentum.id}
               initial={{ opacity: 0, y: 14, scale: 0.92 }}
@@ -169,7 +169,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
 
       {/* Result Pop-up Overlay */}
       <AnimatePresence>
-        {lastRoundResult && (
+        {lastRoundResult?.studentCorrect && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
