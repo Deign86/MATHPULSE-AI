@@ -267,7 +267,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 <div className="flex items-center gap-1.5">
                   {ragLesson?.activeModel && (
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                      {ragLesson.activeModel.includes("235B") ? "Qwen3-235B" : "QwQ-32B"}
+                      {ragLesson.activeModel.split("/").pop()}
                     </span>
                   )}
                   {ragLesson && ragLesson.retrievalBand === 'high' && (

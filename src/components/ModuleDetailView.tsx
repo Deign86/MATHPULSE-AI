@@ -25,6 +25,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const [quizQuestions, setQuizQuestions] = useState<Record<string, Question[]>>({});
   const [loadingQuizId, setLoadingQuizId] = useState<string | null>(null);
   const [activeModel, setActiveModel] = useState<string>("Qwen/Qwen3-235B-A22B");
+  const [isSequentialModel, setIsSequentialModel] = useState<boolean>(true);
 
   const moduleLevel = useMemo(() => {
     const candidate = Number(module.id.split('-').pop());
@@ -56,7 +57,10 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   useEffect(() => {
     getRagHealth()
-      .then((h) => setActiveModel(h.activeModel ?? "Qwen/Qwen3-235B-A22B"))
+      .then((h) => {
+        setActiveModel(h.activeModel ?? "Qwen/Qwen3-235B-A22B");
+        setIsSequentialModel(h.isSequentialModel ?? true);
+      })
       .catch(() => {});
   }, []);
 
@@ -142,7 +146,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
     try {
       let results;
-      const isSequential = activeModel.includes("235B");
+      const isSequential = isSequentialModel;
 
       if (isSequential) {
         results = [];
@@ -269,7 +273,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       );
     } else {
       if (loadingQuizId && loadingQuizId === selectedLesson.quiz.id) {
-        const isSequential = activeModel.includes("235B");
+        const isSequential = isSequentialModel;
         return (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f0f0f0] gap-4">
             <div className="w-12 h-12 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
