@@ -64,6 +64,7 @@
             "zod": "^4.3.6"
       },
       "devDependencies": {
+            "@playwright/test": "^1.59.1",
             "@testing-library/jest-dom": "^6.9.1",
             "@types/canvas-confetti": "^1.9.0",
             "@types/node": "^20.10.0",
@@ -93,9 +94,12 @@
             "test": "vitest run --passWithNoTests",
             "test:watch": "vitest",
             "typecheck:backend": "node scripts/backend-gate.mjs typecheck",
-"check:backend": "node scripts/backend-gate.mjs check"
-  },
-  "overrides": {
-    "protobufjs": ">=7.5.5"
-  }
+            "check:backend": "node scripts/backend-gate.mjs check",
+"sync:models": "python scripts/sync_models_config.py",
+    "predev": "npm run sync:models && npm run check:backend",
+    "test:e2e": "npx playwright test"
+      },
+      "overrides": {
+            "protobufjs": ">=7.5.5"
+      }
 }

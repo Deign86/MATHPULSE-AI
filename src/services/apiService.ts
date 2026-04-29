@@ -617,6 +617,14 @@ export interface InferenceMetricsResponse {
   };
 }
 
+export interface ModelConfigResponse {
+  profile: string;
+  overrides: Record<string, string>;
+  resolved: Record<string, string>;
+  availableProfiles?: string[];
+  profileDescriptions?: Record<string, string>;
+}
+
 export interface ImportGroundedFeedbackRequest {
   flow: 'quiz' | 'lesson';
   status: 'success' | 'failed' | 'skipped';
@@ -961,7 +969,7 @@ export interface RagAnalysisContextResponse { curriculumContext: string; }
 export interface RagHealthResponse {
   status: "ok" | "degraded"; chunkCount: number;
   subjects: Record<string, number>; lastIngested: string | null;
-  activeModel: string; warning?: string;
+  activeModel: string; isSequentialModel?: boolean; warning?: string;
 }
 
 // ─── RAG API Functions ──────────────────────────────────────
@@ -2510,6 +2518,33 @@ export const apiService = {
   getInferenceMetrics: async (): Promise<InferenceMetricsResponse> => {
     return apiFetch<InferenceMetricsResponse>('/api/ops/inference-metrics', {
       method: 'GET',
+    });
+  },
+
+  // Model config endpoints
+  getModelConfig: async (): Promise<ModelConfigResponse> => {
+    return apiFetch<ModelConfigResponse>('/api/admin/model-config', {
+      method: 'GET',
+    });
+  },
+
+  setModelProfile: async (profile: string): Promise<{ success: boolean; applied: ModelConfigResponse }> => {
+    return apiFetch('/api/admin/model-config/profile', {
+      method: 'POST',
+      body: JSON.stringify({ profile }),
+    });
+  },
+
+  setModelOverride: async (key: string, value: string): Promise<{ success: boolean; applied: ModelConfigResponse }> => {
+    return apiFetch('/api/admin/model-config/override', {
+      method: 'POST',
+      body: JSON.stringify({ key, value }),
+    });
+  },
+
+  resetModelConfig: async (): Promise<{ success: boolean; current: ModelConfigResponse }> => {
+    return apiFetch('/api/admin/model-config/reset', {
+      method: 'DELETE',
     });
   },
 };

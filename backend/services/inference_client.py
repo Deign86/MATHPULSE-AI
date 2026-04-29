@@ -17,6 +17,188 @@ from .logging_utils import configure_structured_logging, log_model_call
 LOGGER = configure_structured_logging("mathpulse.inference")
 TEMP_CHAT_MODEL_OVERRIDE_ENV = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
 
+# ── Model Profiles ────────────────────────────────────────────────────────────
+# A profile sets multiple env defaults in one shot.
+# Individual env vars (INFERENCE_MODEL_ID, HF_QUIZ_MODEL_ID, etc.) still override.
+# Usage: MODEL_PROFILE=dev  or  MODEL_PROFILE=prod  or  MODEL_PROFILE=budget
+# Profiles can also be applied at runtime via the admin panel without restart.
+
+_MODEL_PROFILES: dict[str, dict[str, str]] = {
+    "dev": {
+        "INFERENCE_MODEL_ID": "Qwen/QwQ-32B",
+        "INFERENCE_CHAT_MODEL_ID": "Qwen/QwQ-32B",
+        "HF_QUIZ_MODEL_ID": "Qwen/QwQ-32B",
+        "HF_RAG_MODEL_ID": "Qwen/QwQ-32B",
+        "INFERENCE_QWEN_LOCK_MODEL": "Qwen/QwQ-32B",
+    },
+    "prod": {
+        "INFERENCE_MODEL_ID": "Qwen/Qwen3-235B-A22B",
+        "INFERENCE_CHAT_MODEL_ID": "Qwen/Qwen3-32B",
+        "HF_QUIZ_MODEL_ID": "Qwen/Qwen3-235B-A22B",
+        "HF_RAG_MODEL_ID": "Qwen/Qwen3-235B-A22B",
+        "INFERENCE_QWEN_LOCK_MODEL": "Qwen/Qwen3-235B-A22B",
+    },
+    "budget": {
+        "INFERENCE_MODEL_ID": "Qwen/Qwen3-32B",
+        "INFERENCE_CHAT_MODEL_ID": "Qwen/Qwen3-32B",
+        "HF_QUIZ_MODEL_ID": "Qwen/Qwen3-32B",
+        "HF_RAG_MODEL_ID": "Qwen/Qwen3-32B",
+        "INFERENCE_QWEN_LOCK_MODEL": "Qwen/Qwen3-32B",
+    },
+}
+
+# ── Runtime Override Store ────────────────────────────────────────────────────
+# Mutated at runtime by the admin panel via /api/admin/model-config.
+# Priority: above env vars, below INFERENCE_ENFORCE_QWEN_ONLY.
+# Persisted to Firestore so backend cold-restarts restore the last admin-set config.
+
+_RUNTIME_OVERRIDES: dict[str, str] = {}
+_RUNTIME_PROFILE: str = ""
+
+_FS_COLLECTION = "system_config"
+_FS_DOC = "active_model_config"
+
+
+def _save_runtime_config_to_firestore() -> None:
+    try:
+        from firebase_admin import firestore as fs
+
+        db = fs.client()
+        db.collection(_FS_COLLECTION).document(_FS_DOC).set(
+            {
+                "profile": _RUNTIME_PROFILE,
+                "overrides": _RUNTIME_OVERRIDES,
+                "updatedAt": fs.SERVER_TIMESTAMP,
+            }
+        )
+    except Exception as e:
+        LOGGER.warning("Could not persist model config to Firestore: %s", e)
+
+
+def _load_runtime_config_from_firestore() -> None:
+    try:
+        from firebase_admin import firestore as fs
+
+        db = fs.client()
+        doc = db.collection(_FS_COLLECTION).document(_FS_DOC).get()
+        if not doc.exists:
+            return
+        data = doc.to_dict() or {}
+        profile = str(data.get("profile", "")).strip().lower()
+        overrides = data.get("overrides", {})
+        if profile and profile in _MODEL_PROFILES:
+            global _RUNTIME_PROFILE
+            _RUNTIME_PROFILE = profile
+            _RUNTIME_OVERRIDES.clear()
+            _RUNTIME_OVERRIDES.update(_MODEL_PROFILES[profile])
+        if isinstance(overrides, dict):
+            for key, value in overrides.items():
+                _RUNTIME_OVERRIDES[str(key)] = str(value)
+        LOGGER.info("Restored runtime model config from Firestore: profile=%s", profile)
+    except Exception as e:
+        LOGGER.warning("Could not restore model config from Firestore: %s", e)
+
+
+def _apply_model_profile() -> None:
+    profile_name = os.getenv("MODEL_PROFILE", "").strip().lower()
+    if not profile_name:
+        return
+    profile = _MODEL_PROFILES.get(profile_name)
+    if profile is None:
+        LOGGER.warning("MODEL_PROFILE='%s' is not a known profile.", profile_name)
+        return
+    for key, value in profile.items():
+        if not os.environ.get(key):
+            os.environ[key] = value
+    LOGGER.info("Startup model profile applied: %s", profile_name)
+
+
+_apply_model_profile()
+_load_runtime_config_from_firestore()
+
+
+def set_runtime_model_profile(profile_name: str) -> None:
+    """Apply a named profile at runtime without restarting the process."""
+    global _RUNTIME_PROFILE, _RUNTIME_OVERRIDES
+    normalized = profile_name.strip().lower()
+    profile = _MODEL_PROFILES.get(normalized)
+    if not profile:
+        raise ValueError(
+            f"Unknown profile: '{profile_name}'. Valid values: {list(_MODEL_PROFILES.keys())}"
+        )
+    _RUNTIME_PROFILE = normalized
+    _RUNTIME_OVERRIDES.clear()
+    _RUNTIME_OVERRIDES.update(profile)
+    LOGGER.info("Runtime model profile switched to: %s", profile_name)
+    _save_runtime_config_to_firestore()
+
+
+def set_runtime_model_override(key: str, value: str) -> None:
+    """Set a single model env key at runtime."""
+    _RUNTIME_OVERRIDES[key] = value
+    LOGGER.info("Runtime model override set: %s = %s", key, value)
+    _save_runtime_config_to_firestore()
+
+
+def reset_runtime_overrides() -> None:
+    """Clear all runtime overrides."""
+    global _RUNTIME_PROFILE
+    _RUNTIME_OVERRIDES.clear()
+    _RUNTIME_PROFILE = ""
+    LOGGER.info("Runtime model overrides cleared.")
+    _save_runtime_config_to_firestore()
+
+
+def get_current_runtime_config() -> dict:
+    resolved: dict[str, str] = {}
+    for key in {
+        "INFERENCE_MODEL_ID", "INFERENCE_CHAT_MODEL_ID",
+        "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_QWEN_LOCK_MODEL",
+    }:
+        resolved[key] = _resolve_key(key)
+    return {
+        "profile": _RUNTIME_PROFILE,
+        "overrides": dict(_RUNTIME_OVERRIDES),
+        "resolved": resolved,
+    }
+
+
+def _resolve_key(key: str) -> str:
+    if value := _RUNTIME_OVERRIDES.get(key):
+        return value
+    if _RUNTIME_PROFILE and _RUNTIME_PROFILE in _MODEL_PROFILES:
+        if value := _MODEL_PROFILES[_RUNTIME_PROFILE].get(key):
+            return value
+    return os.getenv(key, "")
+
+
+def get_model_for_task(task_type: str) -> str:
+    task = (task_type or "default").strip().lower()
+    enforce_qwen = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
+    if enforce_qwen:
+        override = (
+            _RUNTIME_OVERRIDES.get("INFERENCE_QWEN_LOCK_MODEL")
+            or os.getenv("INFERENCE_QWEN_LOCK_MODEL")
+            or "Qwen/Qwen3-32B"
+        )
+        return override
+    task_key_map = {
+        "chat": "INFERENCE_CHAT_MODEL_ID",
+        "quiz_generation": "HF_QUIZ_MODEL_ID",
+        "rag_lesson": "HF_RAG_MODEL_ID",
+        "rag_problem": "HF_RAG_MODEL_ID",
+        "rag_analysis_context": "HF_RAG_MODEL_ID",
+    }
+    if env_key := task_key_map.get(task):
+        if resolved := _resolve_key(env_key):
+            return resolved
+    return _resolve_key("INFERENCE_MODEL_ID") or "Qwen/Qwen3-32B"
+
+
+def model_supports_thinking(model_id: str = "") -> bool:
+    mid = (model_id or os.getenv("INFERENCE_MODEL_ID") or "").strip()
+    return "Qwen3" in mid or "qwq" in mid.lower()
+
 
 def _normalize_local_space_url(raw_url: str) -> str:
     """Accept either hf.space host or huggingface.co/spaces URL for local_space provider."""
@@ -72,11 +254,11 @@ class InferenceClient:
                 config_path = path
                 with path.open("r", encoding="utf-8") as fh:
                     config = yaml.safe_load(fh) or {}
-                LOGGER.info(f"✅ Loaded config from {config_path}")
+                LOGGER.info(f"??? Loaded config from {config_path}")
                 break
         
         if not config_path:
-            LOGGER.warning(f"⚠️  Config file not found. Checked: {[str(p) for p in config_paths]}")
+            LOGGER.warning(f"??????  Config file not found. Checked: {[str(p) for p in config_paths]}")
             LOGGER.warning(f"    CWD: {Path.cwd()}")
             LOGGER.warning(f"    Using hardcoded defaults")
 
@@ -255,7 +437,7 @@ class InferenceClient:
             for task_key in list(self.task_model_map.keys()):
                 self.task_model_map[task_key] = env_model_id
             LOGGER.info(
-                f"🔄 INFERENCE_MODEL_ID env var override applied: {env_model_id}"
+                f"???? INFERENCE_MODEL_ID env var override applied: {env_model_id}"
             )
             LOGGER.info(
                 f"   Task model mappings changed from: {original_map}"
@@ -274,14 +456,14 @@ class InferenceClient:
                 task_key: [] for task_key in self.task_model_map.keys()
             }
             self.chat_hard_trigger_enabled = False
-            LOGGER.info(f"🔒 INFERENCE_ENFORCE_QWEN_ONLY enabled: locking all inference tasks to {self.qwen_lock_model}")
+            LOGGER.info(f"???? INFERENCE_ENFORCE_QWEN_ONLY enabled: locking all inference tasks to {self.qwen_lock_model}")
             LOGGER.info(f"   Cleared fallback models and hard-escalation path")
             LOGGER.info(f"   Task model mappings forced from: {qwen_map_before}")
 
         # Log configuration loaded for debugging
         config_status = "from file" if config_path else "hardcoded defaults (no config file found)"
         effective_chat_model_for_logs = self.chat_model_override or self.task_model_map.get("chat", self.default_model)
-        LOGGER.info(f"✅ InferenceClient initialized {config_status}{env_override_note}")
+        LOGGER.info(f"??? InferenceClient initialized {config_status}{env_override_note}")
         LOGGER.info(f"   Default model: {self.default_model}")
         LOGGER.info(f"   Chat model: {effective_chat_model_for_logs}")
         LOGGER.info(f"   Chat temp override ({TEMP_CHAT_MODEL_OVERRIDE_ENV}): {self.chat_model_temp_override or 'disabled'}")
@@ -353,9 +535,9 @@ class InferenceClient:
                                 self._metrics[k] = v
                             elif isinstance(v, dict) and isinstance(self._metrics[k], dict):
                                 self._metrics[k].update(v)
-                LOGGER.info("✅ Persistent inference metrics loaded from Firestore")
+                LOGGER.info("??? Persistent inference metrics loaded from Firestore")
         except Exception as e:
-            LOGGER.warning(f"⚠️ Failed to load persistent metrics: {e}")
+            LOGGER.warning(f"?????? Failed to load persistent metrics: {e}")
 
     def _persist_metrics(self, force: bool = False) -> None:
         if not self.firestore:
@@ -374,7 +556,7 @@ class InferenceClient:
             # Use set with merge=True to be safe
             doc_ref.set(snapshot, merge=True)
         except Exception as e:
-            LOGGER.warning(f"⚠️ Failed to persist metrics: {e}")
+            LOGGER.warning(f"?????? Failed to persist metrics: {e}")
 
     def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
         self._bump_metric("requests_total", 1)
@@ -421,7 +603,7 @@ class InferenceClient:
         
         # Log model selection for debugging - confirm which model will actually be used
         LOGGER.info(
-            f"🎯 request_tag={request_tag} task={effective_task} source={model_selection_source} "
+            f"???? request_tag={request_tag} task={effective_task} source={model_selection_source} "
             f"selected_model={model_base} (primary) provider_chain={provider_chain}"
         )
         LOGGER.info(f"   fallback_chain={model_chain[1:] if len(model_chain) > 1 else 'none'}")
@@ -444,13 +626,13 @@ class InferenceClient:
                 try:
                     result = self._generate_with_provider(request_for_model, provider, fallback_depth)
                     if fallback_depth > 0:
-                        LOGGER.info(f"✅ Fallback succeeded at depth={fallback_depth} model={model_name} provider={provider}")
+                        LOGGER.info(f"??? Fallback succeeded at depth={fallback_depth} model={model_name} provider={provider}")
                     return result
                 except Exception as exc:
                     last_error = exc
                     fallback_hint = f" (depth {fallback_depth})" if fallback_depth > 0 else ""
                     LOGGER.warning(
-                        f"⚠️  Attempt failed{fallback_hint}: task={request_for_model.task_type} "
+                        f"??????  Attempt failed{fallback_hint}: task={request_for_model.task_type} "
                         f"provider={provider} model={model_name} error={exc.__class__.__name__}: {str(exc)[:100]}"
                     )
 
@@ -491,7 +673,7 @@ class InferenceClient:
             lock_base = _base_model(effective_qwen_lock_model)
             if selected_base != lock_base:
                 LOGGER.warning(
-                    f"⚠️ Qwen-only lock replaced requested model {selected_model} with {effective_qwen_lock_model}"
+                    f"?????? Qwen-only lock replaced requested model {selected_model} with {effective_qwen_lock_model}"
                 )
             selected_model = effective_qwen_lock_model
             model_selection_source = f"{model_selection_source}:qwen_only"
@@ -871,7 +1053,7 @@ class InferenceClient:
         # Log which model is actually being used
         model_base = target_model.split(":")[0] if ":" in target_model else target_model
         LOGGER.debug(
-            f"📌 Calling HF inference: task={req.task_type} model={model_base} "
+            f"???? Calling HF inference: task={req.task_type} model={model_base} "
             f"route={route} depth={fallback_depth}"
         )
 
@@ -919,7 +1101,7 @@ class InferenceClient:
         
         # Log successful inference with actual model and response time
         LOGGER.info(
-            f"✅ HF inference success: task={req.task_type} model={model_base} "
+            f"??? HF inference success: task={req.task_type} model={model_base} "
             f"latency={latency_ms:.0f}ms tokens_out={len(text.split())}"
         )
         
@@ -1142,6 +1324,15 @@ def create_default_client(firestore_client: Optional[Any] = None) -> InferenceCl
     return InferenceClient(firestore_client=firestore_client)
 
 
-def is_sequential_model() -> bool:
-    model_id = os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B")
-    return "235B" in model_id
+def is_sequential_model(model_id: str = "") -> bool:
+    mid = (model_id or os.getenv("INFERENCE_MODEL_ID") or "").strip()
+    if not mid:
+        return False
+    if "235B" in mid:
+        return True
+    if _RUNTIME_OVERRIDES:
+        lock = _RUNTIME_OVERRIDES.get("INFERENCE_QWEN_LOCK_MODEL", "")
+        chat = _RUNTIME_OVERRIDES.get("INFERENCE_CHAT_MODEL_ID", "")
+        if "235B" in lock or "235B" in chat:
+            return True
+    return False
