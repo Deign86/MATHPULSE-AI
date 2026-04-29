@@ -100,7 +100,7 @@ export const awardXP = async (
     console.log(`🏆 XP Award - User: ${userId}, Amount: ${xpAmount}, Previous currentXP: ${previousCurrentXP}, New: ${currentXP}, Type: ${type}`);
 
     let newLevel = currentLevel;
-    let accumulatedXP = totalXP;
+    const accumulatedXP = totalXP;
     let leveledUp = false;
 
     // Determine correct level purely based on absolute lifetime totalXP 
