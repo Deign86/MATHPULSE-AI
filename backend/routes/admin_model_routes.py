@@ -5,7 +5,7 @@ from services.inference_client import (
     reset_runtime_overrides, get_current_runtime_config, _MODEL_PROFILES,
 )
 
-router = APIRouter(prefix="/api/admin/model-config", tags=["admin"])
+router = APIRouter(prefix="/api/admin/model-config", tags=["admin", "model-management"])
 
 ALLOWED_OVERRIDE_KEYS = {
     "INFERENCE_MODEL_ID", "INFERENCE_CHAT_MODEL_ID",
