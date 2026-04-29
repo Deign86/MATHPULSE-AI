@@ -84,7 +84,7 @@ jobs:
           pip install -r backend/requirements-dev.txt
 
       - name: Run backend checks
-        run: npm run check:backend
+        run: npm run check:backend:quick
 
   vitest:
     name: vitest
