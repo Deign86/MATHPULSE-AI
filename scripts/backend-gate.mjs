@@ -14,27 +14,26 @@ const resolvePython = () => {
 const python = resolvePython();
 
 const run = (args) => {
-  const env = { ...process.env, PYTHONPATH: 'backend' };
-  const result = spawnSync(python, args, { stdio: 'inherit', shell: false, env });
+  const result = spawnSync(python, args, { stdio: 'inherit', shell: false, cwd: 'backend', env: process.env });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
 };
 
 if (mode === 'typecheck') {
-  run(['-m', 'mypy', '--config-file', 'mypy.ini', 'backend/main.py', 'backend/analytics.py']);
+  run(['-m', 'mypy', '--config-file', '../mypy.ini', 'main.py', 'analytics.py']);
   process.exit(0);
 }
 
 if (mode === 'check') {
-  run(['-m', 'pytest', 'backend/tests/', '-v', '--tb=short']);
-  run(['-m', 'mypy', '--config-file', 'mypy.ini', 'backend/main.py', 'backend/analytics.py']);
+  run(['-m', 'pytest', 'tests/', '-v', '--tb=short']);
+  run(['-m', 'mypy', '--config-file', '../mypy.ini', 'main.py', 'analytics.py']);
   process.exit(0);
 }
 
 if (mode === 'quick') {
-  run(['-m', 'pytest', 'backend/tests/test_api.py', '-q']);
-  run(['-m', 'mypy', '--config-file', 'mypy.ini', 'backend/main.py', 'backend/analytics.py']);
+  run(['-m', 'pytest', 'tests/test_api.py', '-q']);
+  run(['-m', 'mypy', '--config-file', '../mypy.ini', 'main.py', 'analytics.py']);
   process.exit(0);
 }
 
