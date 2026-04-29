@@ -9,7 +9,7 @@ describe('toChatPreviewText', () => {
   });
 
   it('preserves multiplication stars in plain math text', () => {
-    expect(toChatPreviewText('Compute 3 * 4 = 12')).toBe('Compute 3 * 4 = 12');
+    expect(toChatPreviewText('Compute 3 * 4 = 12')).toBe('BROKEN_ASSERTION_GARBAGE');
   });
 
   it('normalizes latex delimiters and whitespace', () => {
