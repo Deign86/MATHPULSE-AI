@@ -15,6 +15,7 @@ from services.inference_client import (
     InferenceRequest,
     create_default_client,
     is_sequential_model,
+    get_model_for_task,
 )
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
@@ -143,6 +144,8 @@ class RagAnalysisContextRequest(BaseModel):
 
 @router.get("/health")
 async def rag_health():
+    active_model = get_model_for_task("rag_lesson")
+    is_seq = is_sequential_model(active_model)
     try:
         health = get_vectorstore_health()
         return {
@@ -150,7 +153,8 @@ async def rag_health():
             "chunkCount": health["chunkCount"],
             "subjects": health["subjects"],
             "lastIngested": datetime.now(timezone.utc).isoformat(),
-            "activeModel": os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B"),
+            "activeModel": active_model,
+            "isSequentialModel": is_seq,
         }
     except Exception as exc:
         return {
@@ -158,7 +162,8 @@ async def rag_health():
             "chunkCount": 0,
             "subjects": {},
             "lastIngested": None,
-            "activeModel": os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B"),
+            "activeModel": active_model,
+            "isSequentialModel": is_seq,
             "warning": str(exc),
         }
 
@@ -227,7 +232,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             }
             for row in chunks
         ],
-        "activeModel": os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B"),
+        "activeModel": get_model_for_task("rag_lesson"),
     }
     return result
 
