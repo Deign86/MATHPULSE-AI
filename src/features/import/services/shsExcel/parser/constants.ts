@@ -1,6 +1,6 @@
 import type { QuarterType } from './types';
 
-export const SHS_FORMAT: 'PH_SHS_OFFICIAL_CLASS_RECORD' = 'PH_SHS_OFFICIAL_CLASS_RECORD';
+export const SHS_FORMAT = 'PH_SHS_OFFICIAL_CLASS_RECORD' as const;
 
 export const DEFAULT_CONFIDENCE_THRESHOLD = 0.85;
 export const DETECTION_CONFIDENCE_THRESHOLD = 0.85;

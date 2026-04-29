@@ -668,7 +668,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         });
 
         const allStudents = await getStudentsByTeacher(teacherId);
-        let studentViews = allStudents.map((s) => {
+        const studentViews = allStudents.map((s) => {
           const sectionLookupKey = normalizeClassSectionId(s.classSectionId || s.classroomId);
           const resolvedClassName =
             classNameLookup.get(s.classroomId)

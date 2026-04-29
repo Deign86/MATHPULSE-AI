@@ -159,6 +159,14 @@ export default defineConfig({
             return 'vendor-radix';
           }
 
+          if (id.includes('recharts')) {
+            return 'vendor-charts';
+          }
+
+          if (id.includes('xlsx') || id.includes('xlsx/')) {
+            return 'vendor-xlsx';
+          }
+
           return undefined;
         },
       },
@@ -168,8 +176,13 @@ export default defineConfig({
     port: 3000,
     open: false,
     warmup: {
-      // Warm only frequent app-entry files to avoid startup overload.
-      clientFiles: ['./src/main.tsx', './src/App.tsx', './src/contexts/AuthContext.tsx'],
+      clientFiles: [
+        './src/main.tsx',
+        './src/App.tsx',
+        './src/contexts/AuthContext.tsx',
+        './src/contexts/ChatContext.tsx',
+        './src/components/DashboardAvatar.tsx',
+      ],
     },
   },
 });
