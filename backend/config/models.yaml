@@ -23,20 +23,20 @@ models:
     description: Embedding model for RAG retrieval — curriculum vectorstore ingestion and semantic search
     note: Not part of the generation pipeline. Read from EMBEDDING_MODEL env var only. Not swappable via admin panel.
 
-model_capabilities:
-  sequential_only:
-    - Qwen/Qwen3-235B-A22B
-    - Qwen/Qwen3-235B-A22B-FP8
-    - Qwen/Qwen3-235B-A22B-Instruct-2507
-    - Qwen/Qwen3-235B-A22B-Thinking-2507
-  supports_thinking:
-    - Qwen/Qwen3-235B-A22B
-    - Qwen/Qwen3-235B-A22B-FP8
-    - Qwen/Qwen3-235B-A22B-Instruct-2507
-    - Qwen/Qwen3-235B-A22B-Thinking-2507
-    - Qwen/Qwen3-32B
-    - Qwen/Qwen3-14B
-    - Qwen/Qwen3-8B
+  model_capabilities:
+    sequential_only:
+      - Qwen/Qwen3-235B-A22B
+      - Qwen/Qwen3-235B-A22B-FP8
+      - Qwen/Qwen3-235B-A22B-Instruct-2507
+      - Qwen/Qwen3-235B-A22B-Thinking-2507
+    supports_thinking:
+      - Qwen/Qwen3-235B-A22B
+      - Qwen/Qwen3-235B-A22B-FP8
+      - Qwen/Qwen3-235B-A22B-Instruct-2507
+      - Qwen/Qwen3-235B-A22B-Thinking-2507
+      - Qwen/Qwen3-32B
+      - Qwen/Qwen3-14B
+      - Qwen/Qwen3-8B
 
 routing:
   task_model_map:
