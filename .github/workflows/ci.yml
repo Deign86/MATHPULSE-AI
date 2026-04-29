@@ -34,6 +34,16 @@ on:
         required: false
         type: boolean
         default: true
+      run_vitest:
+        description: Run frontend unit/component tests
+        required: false
+        type: boolean
+        default: true
+      run_pytest:
+        description: Run backend pytest suite
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -75,6 +85,47 @@ jobs:
 
       - name: Run backend checks
         run: npm run check:backend
+
+  vitest:
+    name: vitest
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.requires_ci && inputs.run_vitest) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend unit tests
+        run: npx vitest run --passWithNoTests
+
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.requires_ci && inputs.run_pytest) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+
+      - name: Run full backend pytest suite
+        run: python -m pytest backend/tests/ -v --tb=short
 
   ci-functions:
     name: ci-functions
