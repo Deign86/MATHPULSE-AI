@@ -135,6 +135,7 @@ class TestGetModelForTask:
         model = get_model_for_task("chat")
         assert model == "custom/chat"
 
+    @patch.dict(os.environ, {"INFERENCE_ENFORCE_QWEN_ONLY": "true"})
     def test_enforce_qwen_overrides_task(self):
         set_runtime_model_profile("prod")
         model = get_model_for_task("rag_lesson")
