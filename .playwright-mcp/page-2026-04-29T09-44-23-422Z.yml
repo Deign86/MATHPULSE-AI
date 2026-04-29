@@ -1,6 +1,0 @@
-- status "Loading MathPulse AI..." [ref=e2]:
-  - generic [ref=e3]:
-    - img "Loading..." [ref=e5]
-    - generic [ref=e6]:
-      - heading "MathPulse AI" [level=2] [ref=e7]
-      - paragraph [ref=e10]: Loading MathPulse AI...
