@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, Star, Crown, User, BadgeCheck, Loader2 } from 'lucide-react';
+import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, Star, Crown, BadgeCheck, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getUserAchievements } from '../services/gamificationService';
 import { Achievement } from '../types/models';

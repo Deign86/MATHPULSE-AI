@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Search, Plus, Trash2 } from 'lucide-react';
+import { Send, Search, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useChatContext } from '../contexts/ChatContext';

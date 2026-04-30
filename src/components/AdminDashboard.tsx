@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked, Menu } from 'lucide-react';
-import { motion } from 'motion/react';
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';

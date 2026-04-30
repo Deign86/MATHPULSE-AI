@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Phone, MapPin, Calendar, BookOpen, Award, Users, Building, Globe, Save } from 'lucide-react';
+import { X, Mail, Phone, Calendar, BookOpen, Award, Users, Building, Globe, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';

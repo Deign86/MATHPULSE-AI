@@ -10,7 +10,7 @@ interface FloatingAITutorProps {
   onFullScreen: () => void;
 }
 
-const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFullScreen }) => {
+const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _constraintsRef, onFullScreen }) => {
   const { activeSessionId, setActiveSessionId, createNewSession, getActiveSession, sendMessage, isLoading } = useChatContext();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(() => {

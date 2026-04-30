@@ -14,7 +14,7 @@ import { Toaster, toast } from 'sonner';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
-import { CURRICULUM_SUBJECT_META, type CurriculumModuleRuntime, type CurriculumQuarter, getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
+import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &

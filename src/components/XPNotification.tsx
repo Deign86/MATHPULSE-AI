@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Star, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 

@@ -21,11 +21,11 @@ interface NotificationCenterProps {
   userRole?: 'student' | 'teacher' | 'admin';
 }
 
-const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole = 'student' }) => {
+const NotificationCenter: React.FC<NotificationCenterProps> = ({ userRole: _userRole = 'student' }) => {
   const { currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
 
   // Load notifications from Firebase
   useEffect(() => {

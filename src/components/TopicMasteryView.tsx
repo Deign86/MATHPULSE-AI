@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3, CheckCircle, AlertTriangle, EyeOff, Search,
-  ChevronUp, ChevronDown, Loader2, Info, XCircle,
+  ChevronUp, ChevronDown, Loader2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';

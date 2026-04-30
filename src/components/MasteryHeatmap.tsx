@@ -93,15 +93,6 @@ function getMasteryTextColor(mastery: number): string {
   return 'text-white';
 }
 
-function getMasteryBgHex(mastery: number): string {
-  if (mastery >= 85) return '#10B981';
-  if (mastery >= 70) return '#6EE7B7';
-  if (mastery >= 55) return '#FCD34D';
-  if (mastery >= 40) return '#FB923C';
-  if (mastery >= 20) return '#F87171';
-  return '#DC2626';
-}
-
 // ─── Component ──────────────────────────────────────────────
 
 const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide Subject Mastery' }) => {
