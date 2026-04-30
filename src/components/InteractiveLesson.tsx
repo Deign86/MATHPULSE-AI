@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, Check, ArrowRight, Volume2, RotateCcw, Trophy, Zap, Flag, HelpCircle,
-  Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler, 
-  Binary, Atom, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame,
-  Sparkles, PartyPopper, ThumbsUp, Dumbbell, BookOpen,
+import {
+  X, Check, ArrowRight, Trophy, Zap, HelpCircle,
+  Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler,
+  Binary, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame,
+  Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Progress } from './ui/progress';
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'fill-in-blank';
 
