@@ -1,7 +1,6 @@
 import React from 'react';
-import { ArrowLeft, BookOpen, Trophy, Clock, Play, CheckCircle, Lock, Star, Award, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BookOpen, Trophy, Play, CheckCircle, Star, Award, TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Button } from './ui/button';
 import { Subject, Module } from '../data/subjects';
 
 interface SubjectDetailViewProps {
