@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, Lock } from 'lucide-react';
+import { motion } from 'motion/react';
+import { X, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface DailyCheckInModalProps {

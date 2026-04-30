@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb, Calculator, Play, Volume2, Pause, ChevronRight, Award } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb, Calculator, Play, Award } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Lesson, Quiz } from '../data/subjects';
 import { generateRagLesson, type RagLessonResponse } from '../services/apiService';
@@ -131,8 +131,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onProgressUpdate,
 }) => {
   const [currentSection, setCurrentSection] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [_direction, setDirection] = useState(1);
+  const [_isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
 

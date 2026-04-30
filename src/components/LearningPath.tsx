@@ -23,8 +23,6 @@ const LearningPath: React.FC<LearningPathProps> = ({
   const { userProfile } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
   
-  const studentGrade = (userProfile as StudentProfile | null)?.grade;
-
   const normalizedRiskTopics = React.useMemo<DiagnosticTopicKey[]>(() => {
     const primary =
       priorityTopics.length > 0

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronDown, ChevronRight, ChevronUp, Loader2, Search,
-  AlertTriangle, Award, TrendingUp, TrendingDown, BarChart3,
+  AlertTriangle, Award, TrendingUp, BarChart3,
   User, BookOpen, Brain, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';

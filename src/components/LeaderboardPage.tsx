@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Trophy, Users, Flame, TrendingUp, TrendingDown, Crown, Medal, Eye, Search, Loader2, User, ChevronLeft, Bold, RefreshCw } from 'lucide-react';
+import { Trophy, Crown, Loader2, User, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Button } from './ui/button';
 import StudentProfileModal from './StudentProfileModal';
 import { useAuth } from '../contexts/AuthContext';
 import { getLeaderboard } from '../services/gamificationService';
@@ -38,7 +37,7 @@ interface LeaderboardPageProps {
 
 type TimeFilter = 'daily' | 'weekly' | 'all';
 
-const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onBack }) => {
+const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onBack: _onBack }) => {
   const { currentUser, userProfile } = useAuth();
   const studentProfile = userProfile as StudentProfile;
   const [activeView] = useState<'school' | 'section'>('section');
@@ -67,7 +66,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
         return;
       }
 
-      const leaderboardData: LeaderboardStudent[] = entries.map((entry, index) => ({
+      const leaderboardData: LeaderboardStudent[] = entries.map((entry) => ({
         id: entry.userId,
         uid: entry.userId,
         name: entry.name,

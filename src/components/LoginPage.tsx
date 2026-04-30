@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Eye, EyeOff, ArrowRight, Sparkles, Brain, TrendingUp, Users, Lock, Mail, Award, GraduationCap, ShieldCheck, BookOpen, Zap } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Sparkles, Brain, TrendingUp, Users, Lock, Mail, Award, GraduationCap, ShieldCheck, BookOpen } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole, type AuthServiceError } from '../services/authService';
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';

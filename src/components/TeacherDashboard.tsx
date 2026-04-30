@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { 
-  Users, BookOpen, TrendingUp, AlertTriangle, Calendar, MessageCircle, 
+import {
+  Users, TrendingUp, AlertTriangle, Calendar,
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
-  Play, FileText, Target, Zap, Award, Upload, FileSpreadsheet, 
+  FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database,
-  ChevronLeft, Eye, Download, Send, Edit3, Trash2, Save, Settings
+  ChevronLeft, Download, Send, Edit3, Save, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -17,7 +17,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from '../contexts/AuthContext';
 import {
   getClassroomsByTeacher,
-  getStudentsByClassroom,
   getStudentsByTeacher,
   subscribeToActivityFeed,
   updateStudentRisk,
@@ -26,8 +25,6 @@ import {
   assignClassSectionManager,
   getClassSectionOwnershipByTeacher,
   getTeacherDirectoryOptions,
-  addManagedStudentsBatch,
-  deleteManagedStudent,
   buildClassSectionId,
   normalizeGradeLevel,
   inferClassification,
@@ -36,7 +33,6 @@ import {
   resolveClassMetadata,
   type Classroom,
   type ManagedStudent,
-  type ClassActivity,
   type TeacherDirectoryOption,
 } from '../services/studentService';
 import {

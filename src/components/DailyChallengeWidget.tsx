@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, Calendar, Flame, CheckCircle, Zap, Swords } from 'lucide-react';
+import { Flame, CheckCircle, Zap, Swords } from 'lucide-react';
 import quizBattleBg from '../assets/quiz_battle_avatar.png';
 
 const challenges = [

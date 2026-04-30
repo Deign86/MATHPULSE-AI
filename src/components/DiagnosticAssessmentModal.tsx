@@ -7,7 +7,6 @@ import { Brain, CheckCircle, ChevronRight, AlertTriangle, Calculator, BarChart3,
 import { triggerDiagnosticCompleted, DiagnosticResult, IARWorkflowMode, DiagnosticQuestionResult } from '../services/automationService';
 import {
   IAR_BLUEPRINT_VERSION,
-  IAR_QUESTION_BLUEPRINT,
   IARTopicArea,
   IARQuestionBlueprint,
   classifyTopicScore,
@@ -127,7 +126,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
   const [topicSummaries, setTopicSummaries] = useState<Record<IARTopicArea, TopicScoreSummary> | null>(null);
   const [g12Readiness, setG12Readiness] = useState<G12ReadinessIndicators | null>(null);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>([]);
-  const [automationProcessing, setAutomationProcessing] = useState(false);
+  const [_automationProcessing, setAutomationProcessing] = useState(false);
 
   // Reset state when opened
   React.useEffect(() => {
@@ -312,7 +311,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       needsStrongerBusinessMath: topicSummariesComputed.BusinessMath.classification !== 'Mastered',
     };
 
-    const priorityTopics = (Object.keys(topicSummariesComputed) as IARTopicArea[])
+    const _priorityTopics = (Object.keys(topicSummariesComputed) as IARTopicArea[])
       .sort((left, right) => {
         const leftSummary = topicSummariesComputed[left];
         const rightSummary = topicSummariesComputed[right];

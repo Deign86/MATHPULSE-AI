@@ -1,6 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { BookOpen, AlertTriangle } from 'lucide-react';
-import { motion } from 'motion/react';
 
 const mockModules = [
   { id: 'gen-math', title: 'General Mathematics', icon: BookOpen, bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1, progress: 25, isAtRisk: true },
