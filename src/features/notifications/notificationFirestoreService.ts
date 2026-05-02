@@ -161,3 +161,23 @@ export const hasCheckedInToday = async (userId: string): Promise<boolean> => {
     return false;
   }
 };
+
+export const hasRemindedToday = async (userId: string): Promise<boolean> => {
+  try {
+    const now = new Date();
+    const start = startOfDay(now);
+
+    const q = query(
+      collection(db, 'notifications', userId, 'items'),
+      where('type', '==', 'streak_reminder'),
+      where('createdAt', '>=', start),
+      limit(1)
+    );
+
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.error('[notificationFirestoreService] Error checking reminder:', error);
+    return false;
+  }
+};

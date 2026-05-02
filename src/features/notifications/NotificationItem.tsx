@@ -33,6 +33,33 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   system_alert: AlertCircle,
 };
 
+const badgeForType = (type: string): string => {
+  switch (type) {
+    case 'achievement_unlocked':
+    case 'achievement':
+      return 'bg-rose-500/10 text-rose-600';
+    case 'xp_earned':
+      return 'bg-amber-500/10 text-amber-600';
+    case 'daily_checkin':
+    case 'checkin':
+      return 'bg-emerald-500/10 text-emerald-600';
+    case 'streak_milestone':
+    case 'streak_reminder':
+      return 'bg-orange-500/10 text-orange-600';
+    case 'teacher_announcement':
+      return 'bg-violet-500/10 text-violet-600';
+    case 'new_assignment':
+    case 'quiz_result':
+      return 'bg-sky-500/10 text-sky-600';
+    case 'level_up':
+      return 'bg-indigo-500/10 text-indigo-600';
+    case 'system_alert':
+      return 'bg-red-500/10 text-red-600';
+    default:
+      return 'bg-[#edf1f7] text-[#5a6578]';
+  }
+};
+
 interface NotificationItemProps {
   notification: Notification;
 }
@@ -40,6 +67,7 @@ interface NotificationItemProps {
 export const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => {
   const { markAsRead, deleteNotification } = useNotifications();
   const Icon = iconMap[notification.type] || Bell;
+  const badge = badgeForType(notification.type);
 
   const handleClick = () => {
     if (!notification.isRead) {
@@ -58,32 +86,32 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
-      className={`group w-full text-left p-4 border-b border-gray-700 cursor-pointer transition-colors ${
+      className={`group text-left p-4 border-b border-[#dde3eb] cursor-pointer transition-colors hover:bg-[#edf1f7]/50 ${
         notification.isRead
-          ? 'bg-gray-900 hover:bg-gray-800'
-          : 'bg-gray-800 border-l-2 border-purple-500'
+          ? ''
+          : 'bg-sky-50/40'
       }`}
     >
       <div className="flex gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gray-700 flex items-center justify-center flex-shrink-0">
-          <Icon size={18} className="text-purple-400" />
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${badge}`}>
+          <Icon size={18} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className="text-sm font-bold text-white line-clamp-1">{notification.title}</h4>
+            <h4 className="text-sm font-bold text-[#0a1628] line-clamp-1 font-body">{notification.title}</h4>
             {!notification.isRead && (
-              <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 mt-1.5" />
+              <span className="w-2 h-2 rounded-full bg-sky-600 flex-shrink-0 mt-1.5" />
             )}
           </div>
-          <p className="text-xs text-gray-400 mb-1 line-clamp-2">{notification.message}</p>
-          <p className="text-xs text-gray-500">{timeAgo}</p>
+          <p className="text-xs text-[#5a6578] mb-2 line-clamp-2 font-body">{notification.message}</p>
+          <p className="text-xs text-slate-500">{timeAgo}</p>
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             deleteNotification(notification.id);
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
           aria-label="Delete notification"
         >
           <Trash2 size={14} />
