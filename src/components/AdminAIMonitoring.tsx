@@ -18,10 +18,10 @@ import {
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
 import {
-  fetchHFMonitoringData,
+  fetchDeepSeekMonitoringData,
   resolveHealthStatus,
-} from '../services/huggingfaceMonitoringService';
-import type { HFMonitoringData } from '../types/hfMonitoring';
+} from '../services/deepseekMonitoringService';
+import type { DeepSeekMonitoringData } from '../types/hfMonitoring';
 
 function formatTimestamp(iso: string): string {
   if (!iso) return 'N/A';
@@ -99,7 +99,7 @@ function StatusBadge({
   loading,
   testId,
 }: {
-  status: HFMonitoringData['modelStatus'];
+  status: DeepSeekMonitoringData['modelStatus'];
   loading?: boolean;
   testId?: string;
 }) {
@@ -154,7 +154,7 @@ const PROFILE_BADGE_COLORS: Record<string, string> = {
 };
 
 const AdminAIMonitoring: React.FC = () => {
-  const [data, setData] = useState<HFMonitoringData | null>(null);
+  const [data, setData] = useState<DeepSeekMonitoringData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
@@ -163,11 +163,11 @@ const AdminAIMonitoring: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await fetchHFMonitoringData();
+      const result = await fetchDeepSeekMonitoringData();
       setData(result);
       setLastRefreshed(new Date().toISOString());
     } catch (err) {
-      console.error('Failed to load HF monitoring data', err);
+      console.error('Failed to load DeepSeek monitoring data', err);
       setError('Unable to load AI monitoring data. Please try again.');
     } finally {
       setLoading(false);
@@ -189,7 +189,7 @@ const AdminAIMonitoring: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-[#0a1628]">AI Platform Monitoring</h1>
           <p className="text-sm text-[#5a6578]">
-            Live Hugging Face inference health and usage metrics
+            Live DeepSeek AI inference health and usage metrics
           </p>
         </div>
 
@@ -198,7 +198,7 @@ const AdminAIMonitoring: React.FC = () => {
             <span className="text-xs text-[#5a6578] font-medium">Generation Model</span>
             <span className="text-sm font-bold text-[#0a1628] flex items-center gap-1.5">
               <Cpu size={14} className="text-sky-500" />
-              {loading ? '...' : (data?.modelId ?? 'Qwen/QwQ-32B')}
+{loading ? '...' : (data?.modelId ?? 'DeepSeek-chat')}
             </span>
           </div>
           <StatusBadge
@@ -235,7 +235,7 @@ const AdminAIMonitoring: React.FC = () => {
             <span className="text-sm font-semibold text-[#0a1628]">AI Generation Model</span>
           </div>
           <span data-testid="generation-model-id" className="font-mono text-xs text-[#5a6578] block mb-2">
-            {loading ? '...' : (data?.modelId ?? 'Qwen/QwQ-32B')}
+            {loading ? '...' : (data?.modelId ?? 'DeepSeek-chat')}
           </span>
           <StatusBadge status={data?.modelStatus ?? 'Unknown'} loading={loading} />
           <span className="text-gray-400 text-xs block mt-2">
@@ -420,7 +420,7 @@ const AdminAIMonitoring: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-[#0a1628]">System Status</h2>
-                <p className="text-xs text-[#5a6578]">Hugging Face model and API health</p>
+                <p className="text-xs text-[#5a6578]">DeepSeek model and API health</p>
               </div>
             </div>
             <Button
@@ -450,7 +450,7 @@ const AdminAIMonitoring: React.FC = () => {
                 />
               )}
               <p className="text-xs text-[#a0aec0] mt-2">
-                {loading ? '...' : data?.modelId ?? 'Qwen/QwQ-32B'}
+                {loading ? '...' : data?.modelId ?? 'DeepSeek-chat'}
               </p>
             </div>
 
@@ -470,7 +470,7 @@ const AdminAIMonitoring: React.FC = () => {
                 </p>
               )}
               <p className="text-xs text-[#a0aec0] mt-2">
-                Last updated from Hugging Face
+                Last updated from DeepSeek API
               </p>
             </div>
 

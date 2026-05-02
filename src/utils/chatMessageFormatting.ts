@@ -1,6 +1,6 @@
 const CODE_SEGMENT_PATTERN = /(```[\s\S]*?```|`[^`\n]+`)/g;
-const MATH_SEGMENT_PATTERN = /(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
-const BARE_TEX_PATTERN = /\\(?:boxed\{[^{}]+\}|frac\{[^{}]+\}\{[^{}]+\}|sqrt\{[^{}]+\}|(?:cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int)(?:_[a-zA-Z0-9]+|_\{[^{}]+\})?(?:\^[a-zA-Z0-9]+|\^\{[^{}]+\})?)/g;
+const MATH_SEGMENT_PATTERN = /(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\[(?![^[]*\]\()[^\]]+\]|(?<!\]\()\([^()\n]+\))/g;
+const BARE_TEX_PATTERN = /\\(?:checkmark|quad|qquad|therefore|because|implies|iff|lambda|sigma|omega|epsilon|rho|phi|psi|tau|infty|partial|nabla|sum|prod|int|boxed\{[^{}]+\}|frac\{[^{}]+\}\{[^{}]+\}|sqrt\{[^{}]+\}|[a-zA-Z]+(?:_[a-zA-Z0-9]+|_\{[^{}]+\})?(?:\^[a-zA-Z0-9]+|\^\{[^{}]+\})?|[∑∏∫∂∇∞]|(?:[∑∏∫]_(?:[a-zA-Z0-9]+|\{[^{}]+\})|\^[a-zA-Z0-9]+|\^\{[^{}]+\}))/g;
 const THINK_TAG_BLOCK_PATTERN = /<\s*think\b[^>]*>[\s\S]*?<\s*\/\s*think\s*>/gi;
 const THINK_TAG_PATTERN = /<\s*\/?\s*think\b[^>]*>/gi;
 const THINK_CLOSE_TAG_PATTERN = /<\s*\/\s*think\s*>/gi;
@@ -131,6 +131,54 @@ function wrapBareTexCommands(segment: string): string {
   return segment.replace(BARE_TEX_PATTERN, (expression) => `$${expression}$`);
 }
 
+function convertBracketMathToLatex(segment: string): string {
+  const MATH_INDICATORS = /[=\^{}\\_+\-*/<>]|x\d|y\d|a[12]|b[12]|c[12]|frac|sqrt|int|sum|prod|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|omega|lambda|sigma/;
+  const LOOKS_LIKE_URL = /^https?:\/\//;
+  
+  if (segment.startsWith('[') && segment.endsWith(']')) {
+    const content = segment.slice(1, -1).trim();
+    if (MATH_INDICATORS.test(content)) {
+      return `\\(${content}\\)`;
+    }
+    return segment;
+  }
+  if (segment.startsWith('(') && segment.endsWith(')')) {
+    const content = segment.slice(1, -1).trim();
+    if (LOOKS_LIKE_URL.test(content)) {
+      return segment;
+    }
+    if (MATH_INDICATORS.test(content)) {
+      return `\\(${content}\\)`;
+    }
+    return segment;
+  }
+  return segment;
+}
+
+function normalizeMultilineBrackets(input: string): string {
+  // Handle display math \[...\] by converting to \(...\) for KaTeX
+  let result = input.replace(/\\\[([\s\S]*?)\\\]/g, (match, content) => {
+    const normalized = content.replace(/\s+/g, ' ').trim();
+    return `\\(${normalized}\\)`;
+  });
+  
+  // Handle multiline [...] by converting newlines to spaces within brackets
+  // Must NOT match markdown links [text](url)
+  result = result.replace(/\[[\s\S]*?\]/g, (match) => {
+    // Skip markdown links [text](url)
+    if (match.includes('](')) return match;
+    // Skip if no math indicators - check both content and structure
+    const content = match.slice(1, -1);
+    const hasMathIndicators = /[=\^{}\\_+\-*/<>]/.test(content) || 
+      /[a-z]\d|[a-z]_[a-z]|\b(frac|sqrt|int|sum|prod|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|omega|lambda|sigma)\b/i.test(content);
+    if (!hasMathIndicators) return match;
+    // Normalize whitespace: newlines and multiple spaces to single space
+    return '[' + content.replace(/\s+/g, ' ').trim() + ']';
+  });
+  
+  return result;
+}
+
 /**
  * Normalize model output before markdown rendering so common raw TeX commands
  * (for example \boxed{3}) are rendered as math instead of plain text.
@@ -142,8 +190,9 @@ export function normalizeChatMarkdownForRender(input: string): string {
 
   const withoutThinkTags = formatAssistantResponseForStorage(input);
   const normalizedNewlines = withoutThinkTags.replace(/\r\n?/g, '\n');
+const normalizedBrackets = normalizeMultilineBrackets(normalizedNewlines);
 
-  const codeAwareSegments = normalizedNewlines.split(CODE_SEGMENT_PATTERN);
+  const codeAwareSegments = normalizedBrackets.split(CODE_SEGMENT_PATTERN);
 
   return codeAwareSegments
     .map((segment, index) => {
@@ -159,7 +208,12 @@ export function normalizeChatMarkdownForRender(input: string): string {
       const mathAwareSegments = unescaped.split(MATH_SEGMENT_PATTERN);
 
       return mathAwareSegments
-        .map((mathSegment, mathIndex) => (mathIndex % 2 === 1 ? mathSegment : wrapBareTexCommands(mathSegment)))
+        .map((mathSegment, mathIndex) => {
+          if (mathIndex % 2 === 1) {
+            return convertBracketMathToLatex(mathSegment);
+          }
+          return wrapBareTexCommands(mathSegment);
+        })
         .join('');
     })
     .join('');
