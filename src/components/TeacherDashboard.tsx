@@ -1439,7 +1439,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               />
             )}
             {activeView === 'notifications' && (
-              <TeacherNotificationsView userId={currentUser?.uid || ''} />
+              <TeacherNotificationsView />
             )}
             {activeView === 'calendar' && (
               <TeacherCalendarView />

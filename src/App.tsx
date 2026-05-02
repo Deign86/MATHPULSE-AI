@@ -11,6 +11,7 @@ import { getUserProgress } from './services/progressService.ts';
 import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
+import { NotificationProvider } from '@/features/notifications';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
@@ -29,6 +30,7 @@ const HeroBanner = lazy(() => import('./components/HeroBanner.tsx'));
 const RightSidebar = lazy(() => import('./components/RightSidebar.tsx'));
 const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
 const NotificationCenter = lazy(() => import('./components/NotificationCenter.tsx'));
+const NotificationBell = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationBell })));
 
 const SupplementalBanner = lazy(() => import('./components/SupplementalBanner.tsx'));
 const LearningPath = lazy(() => import('./components/LearningPath.tsx'));
@@ -801,6 +803,7 @@ const App = () => {
   // Show Teacher Dashboard
   if (userRole === 'teacher') {
     return (
+      <NotificationProvider>
       <>
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
           <TeacherDashboard 
@@ -833,18 +836,20 @@ const App = () => {
               onExportData={handleExportData}
               onClearCache={handleClearCache}
               onDeleteAccount={handleDeleteAccount}
-              onResetData={handleResetTestingData}
-            />
-          </Suspense>
-        )}
-        <Toaster position="top-right" richColors closeButton />
-      </>
+                onResetData={handleResetTestingData}
+             />
+           </Suspense>
+         )}
+         <Toaster position="top-right" richColors closeButton />
+       </>
+      </NotificationProvider>
     );
   }
 
   // Show Admin Dashboard
   if (userRole === 'admin') {
     return (
+      <NotificationProvider>
       <>
         <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
           <AdminDashboard 
@@ -880,13 +885,15 @@ const App = () => {
             />
           </Suspense>
         )}
-        <Toaster position="top-right" richColors closeButton />
-      </>
+         <Toaster position="top-right" richColors closeButton />
+       </>
+      </NotificationProvider>
     );
   }
 
   // Show Student Dashboard (existing code)
   return (
+    <NotificationProvider>
     <>
     <ChatProvider>
       <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
@@ -995,7 +1002,7 @@ const App = () => {
                 <Calculator size={20} className="group-hover:scale-110 transition-transform" />
               </button>
               <Suspense fallback={compactControlFallback}>
-                <NotificationCenter userRole={userRole} />
+                <NotificationBell />
               </Suspense>
               
               <button 
@@ -1302,6 +1309,7 @@ const App = () => {
     </ChatProvider>
     <Toaster position="top-right" richColors closeButton />
     </>
+    </NotificationProvider>
   );
 };
 

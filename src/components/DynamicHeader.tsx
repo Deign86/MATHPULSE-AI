@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import NotificationCenter from './NotificationCenter';
+import { NotificationBell } from '@/features/notifications';
 
 interface DynamicHeaderProps {
   title: string;
@@ -57,7 +57,7 @@ const DynamicHeader: React.FC<DynamicHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-        <NotificationCenter userRole={userRole} />
+        <NotificationBell />
         
         <button 
           onClick={onOpenProfile}
