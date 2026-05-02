@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import {
   AlertTriangle,
@@ -16,7 +16,6 @@ import { useNotifications } from '@/features/notifications';
 
 const TeacherNotificationsView: React.FC = () => {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
-  const [error, setError] = useState('');
 
   const formatRelativeTime = (date: Date): string => {
     const diffMs = Date.now() - date.getTime();
@@ -124,14 +123,8 @@ const TeacherNotificationsView: React.FC = () => {
               <p className="text-sm text-muted-foreground font-body">Teacher alerts and classroom updates will appear here.</p>
             </div>
           </div>
-        ) : (
+        )         : (
           <div>
-            {error && (
-              <div className="px-4 py-3 border-b border-border bg-destructive/5 text-destructive text-sm font-body">
-                {error}
-              </div>
-            )}
-
             {notifications.map((notification) => {
               const Icon = iconForType(notification.type);
               const badge = badgeForType(notification.type);
