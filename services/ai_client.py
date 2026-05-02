@@ -1,28 +1,6 @@
-"""DeepSeek AI client - delegates to backend.services.ai_client."""
-
-import sys
 import os
-
-# Get directory of this file and add parent to path
-_current_dir = os.path.dirname(os.path.abspath(__file__))
-_repo_root = os.path.dirname(_current_dir)
-_backend_path = os.path.join(_repo_root, "backend")
-
-if _backend_path not in sys.path:
-    sys.path.insert(0, _backend_path)
-
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
-
-from backend.services.ai_client import (
-    get_deepseek_client,
-    CHAT_MODEL,
-    REASONER_MODEL,
-    DEEPSEEK_BASE_URL,
-    APIError,
-    RateLimitError,
-    APITimeoutError,
-)
+from openai import OpenAI, APIError, RateLimitError, APITimeoutError
+from functools import lru_cache
 
 __all__ = [
     "get_deepseek_client",
@@ -33,3 +11,18 @@ __all__ = [
     "RateLimitError",
     "APITimeoutError",
 ]
+
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+CHAT_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+REASONER_MODEL = os.getenv("DEEPSEEK_REASONER_MODEL", "deepseek-reasoner")
+
+
+@lru_cache(maxsize=1)
+def get_deepseek_client() -> OpenAI:
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise ValueError("DEEPSEEK_API_KEY environment variable not set")
+    return OpenAI(
+        api_key=api_key,
+        base_url=DEEPSEEK_BASE_URL,
+    )
