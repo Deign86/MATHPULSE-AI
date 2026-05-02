@@ -1,11 +1,12 @@
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const mode = process.argv[2] || 'check';
 
 const resolvePython = () => {
-  const winVenv = '.venv/Scripts/python.exe';
-  const posixVenv = '.venv/bin/python';
+  const winVenv = resolve('.venv/Scripts/python.exe');
+  const posixVenv = resolve('.venv/bin/python');
   if (existsSync(winVenv)) return winVenv;
   if (existsSync(posixVenv)) return posixVenv;
   return 'python';
@@ -15,9 +16,7 @@ const python = resolvePython();
 
 const run = (args) => {
   const result = spawnSync(python, args, { stdio: 'inherit', shell: false, cwd: 'backend', env: process.env });
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
-  }
+  return result.status;
 };
 
 if (mode === 'typecheck') {
