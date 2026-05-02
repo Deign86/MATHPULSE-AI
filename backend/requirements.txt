@@ -1,5 +1,6 @@
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+openai>=1.0.0
 huggingface-hub>=0.31.0
 requests>=2.31.0
 pandas==2.2.3
