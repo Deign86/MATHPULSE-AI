@@ -3,12 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 
-// Mock useNavigate before importing NotificationItem
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-}));
-
 // Mock date-fns
 vi.mock('date-fns', () => ({
   formatDistanceToNow: vi.fn(() => '2 hours ago'),
@@ -104,7 +98,7 @@ describe('NotificationItem', () => {
     render(<NotificationItem notification={notification} />);
 
     fireEvent.click(screen.getByText('Daily Check-In Complete!'));
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+    expect(mockMarkAsRead).toHaveBeenCalledWith('notif-123');
   });
 
   it('calls deleteNotification when delete button clicked', () => {
