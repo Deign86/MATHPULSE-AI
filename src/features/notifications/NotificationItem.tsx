@@ -3,7 +3,6 @@
  * Single notification row.
  */
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Trophy,
@@ -39,7 +38,6 @@ interface NotificationItemProps {
 }
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => {
-  const navigate = useNavigate();
   const { markAsRead, deleteNotification } = useNotifications();
   const Icon = iconMap[notification.type] || Bell;
 
@@ -48,15 +46,18 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       markAsRead(notification.id);
     }
     if (notification.actionUrl) {
-      navigate(notification.actionUrl);
+      window.location.href = notification.actionUrl;
     }
   };
 
   const timeAgo = formatDistanceToNow(notification.createdAt, { addSuffix: true });
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
       className={`group w-full text-left p-4 border-b border-gray-700 cursor-pointer transition-colors ${
         notification.isRead
           ? 'bg-gray-900 hover:bg-gray-800'
@@ -88,6 +89,6 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
           <Trash2 size={14} />
         </button>
       </div>
-    </button>
+    </div>
   );
 };
