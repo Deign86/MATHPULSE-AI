@@ -405,13 +405,15 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
         handleDismiss();
       }}
     >
-      {/* Main Modal - Always Centered */}
+      {/* Main Modal - Optimized with WAAPI-backed animations */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className="bg-white rounded-2xl shadow-2xl max-w-[36rem] w-full flex flex-col max-h-[80vh] pointer-events-auto overflow-hidden relative z-[51]"
         onClick={(e) => e.stopPropagation()}
+        style={{ willChange: 'transform, opacity' }}
       >
         {/* Header */}
           <div className="px-5 py-3 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0">
@@ -443,14 +445,16 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   <Calculator size={16} />
                 </button>
 
-                {/* Calculator Tooltip overlay */}
+                {/* Calculator Tooltip overlay - Optimized with WAAPI-backed animations */}
                 <AnimatePresence>
                   {isOpen && step === 'test' && showCalcTooltip && !showCalculator && (
                     <motion.div
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
                       className="absolute right-0 top-full mt-3 w-[260px] bg-[#0a1628] text-white border border-[#2a3648] rounded-2xl p-4 shadow-2xl z-50 pointer-events-none"
+                      style={{ willChange: 'transform, opacity' }}
                     >
                       <div className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-sky-500/20 flex items-center justify-center flex-shrink-0">
@@ -481,7 +485,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
             </div>
           </div>
 
-          {/* Content */}
+          {/* Content - Optimized with WAAPI-backed animations */}
         <div className="p-5 overflow-y-auto">
           <AnimatePresence mode="wait">
             {step === 'intro' && (
@@ -490,7 +494,9 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="text-center space-y-3"
+                style={{ willChange: 'transform, opacity' }}
               >
                 <div className="w-20 h-20 bg-sky-50 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Calculator size={36} className="text-sky-600" />
@@ -547,7 +553,9 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="space-y-6"
+                style={{ willChange: 'transform, opacity' }}
               >
                 <div className="flex items-center justify-between text-xs font-bold text-[#5a6578] mb-2">
                   <span>Question {currentQuestionIndex + 1} of {QUESTIONS.length}</span>
@@ -555,9 +563,11 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 </div>
                 <div className="h-1.5 bg-[#edf1f7] rounded-full overflow-hidden mb-6">
                   <motion.div 
-                    className="h-full bg-sky-600 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${completionPercent}%` }}
+                    className="h-full bg-sky-600 rounded-full origin-left"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: completionPercent / 100 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    style={{ willChange: 'transform' }}
                   />
                 </div>
 
@@ -638,7 +648,9 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 key="results"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="text-center space-y-4"
+                style={{ willChange: 'transform, opacity' }}
               >
                 <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
                   <CheckCircle size={40} className="text-teal-600" />
@@ -727,7 +739,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
         </div>
       </motion.div>
 
-      {/* Calculator Popup (Draggable, right-aligned originally) */}
+      {/* Calculator Popup - Optimized with WAAPI-backed animations */}
       <AnimatePresence>
         {showCalculator && (
           <motion.div
@@ -741,7 +753,8 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
               position: 'absolute',
               top: '50%',
               left: 'calc(50% + 290px)',
-              y: '-50%' 
+              y: '-50%',
+              willChange: 'transform, opacity'
             }}
             className="w-[320px] max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col pointer-events-auto overflow-hidden z-[60]"
             onClick={(e) => e.stopPropagation()}

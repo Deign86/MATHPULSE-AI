@@ -26,17 +26,21 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, message, show, onCo
           initial={{ opacity: 0, y: -50, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.9 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className="fixed top-8 left-1/2 -translate-x-1/2 z-50"
+          style={{ willChange: 'transform, opacity' }}
         >
           <div className="bg-gradient-to-r from-rose-400 via-orange-500 to-rose-500 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-rose-300 flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                 <Star size={20} className="text-white" fill="currentColor" />
               </div>
+              {/* Sparkles - Kept as Motion hybrid for infinite rotation that WAAPI can't cleanly support */}
               <motion.div
                 className="absolute -top-1 -right-1"
                 animate={{ rotate: [0, 360] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                style={{ willChange: 'transform' }}
               >
                 <Sparkles size={16} className="text-rose-200" />
               </motion.div>
