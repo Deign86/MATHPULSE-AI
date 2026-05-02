@@ -46,6 +46,15 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
   }
 
   const normalizedMarkdown = normalizeChatMarkdownForRender(children);
+  
+  // Debug: show what the normalized output looks like for math content
+  const hasMathBrackets = /\[.*[=\^_\-+*/].*\]/.test(children);
+  if (hasMathBrackets) {
+    const firstMatch = children.match(/\[.*[=\^_\-+*/].*\]/);
+    if (firstMatch) {
+      console.log('[DEBUG] Converting:', firstMatch[0].substring(0,50), '-> normalized contains \\(:', normalizedMarkdown.includes('\\('));
+    }
+  }
 
   return (
     <div className="chat-markdown">

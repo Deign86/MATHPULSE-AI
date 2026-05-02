@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import type { ChatCompletionOptions } from '../services/apiService.ts';
 import { useAuth } from './AuthContext.tsx';
 import { toChatPreviewText } from '../utils/chatPreview';
-import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming } from '../utils/chatMessageFormatting';
+import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming, normalizeChatMarkdownForRender } from '../utils/chatMessageFormatting';
 import { getScopeBoundaryResponse } from '../utils/mathScope';
 import { buildChatHintCacheKey, getHintCacheResponse, isHintPrompt, setHintCacheResponse } from '../utils/hintCache';
 
@@ -706,7 +706,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',
               text: m.role === 'assistant'
-                ? formatAssistantResponseForStorage(m.content)
+                ? normalizeChatMarkdownForRender(formatAssistantResponseForStorage(m.content))
                 : m.content,
               timestamp: m.timestamp instanceof Date
                 ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -1039,11 +1039,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const { response } = await apiServiceRef.chat(backendPrompt, history, (chunk: string) => {
           streamedText += chunk;
           if (showStreamingChunks) {
-            upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
+            upsertStreamingMessage(normalizeChatMarkdownForRender(formatAssistantResponseForStreaming(streamedText)));
           }
         }, completionOptions);
 
-        let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
+        let finalResponse = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(response || streamedText).trim());
         if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
           try {
             const continuation = await apiServiceRef.chatSafe(
@@ -1051,7 +1051,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               history,
               completionOptions,
             );
-            const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+            const repairedResponse = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(continuation.data.response).trim());
             finalResponse = mergeAnswerContinuation(finalResponse, repairedResponse);
           } catch (repairErr) {
             console.warn('Streaming completion repair failed:', repairErr);
@@ -1064,7 +1064,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
+              const repairedPlain = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(plainContinuation.data.response).trim());
               finalResponse = mergeAnswerContinuation(finalResponse, repairedPlain);
             } catch (plainRepairErr) {
               console.warn('Streaming plain continuation repair failed:', plainRepairErr);
@@ -1078,7 +1078,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
+              const regenerated = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(completeAttempt.data.response).trim());
               if (regenerated) {
                 finalResponse = pickHigherQualityAnswer(
                   trimmedUserText,
@@ -1108,7 +1108,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: finalResponse,
+          text: normalizeChatMarkdownForRender(finalResponse),
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);
@@ -1129,7 +1129,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         try {
           const service = apiServiceRef ?? (await loadApiService()).apiService;
           const { data } = await service.chatSafe(backendPrompt, history, completionOptions);
-          aiResponseText = formatAssistantResponseForStorage(data.response).trim();
+          aiResponseText = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(data.response).trim());
 
           if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
@@ -1138,7 +1138,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+              const repairedResponse = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(continuation.data.response).trim());
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedResponse);
             } catch (repairErr) {
               console.warn('Non-stream completion repair failed:', repairErr);
@@ -1152,7 +1152,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
+              const repairedPlain = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(plainContinuation.data.response).trim());
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedPlain);
             } catch (plainRepairErr) {
               console.warn('Non-stream plain continuation repair failed:', plainRepairErr);
@@ -1166,7 +1166,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
+              const regenerated = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(completeAttempt.data.response).trim());
               if (regenerated) {
                 aiResponseText = pickHigherQualityAnswer(
                   trimmedUserText,
@@ -1195,7 +1195,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          text: formatAssistantResponseForStorage(aiResponseText),
+          text: normalizeChatMarkdownForRender(formatAssistantResponseForStorage(aiResponseText)),
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);
