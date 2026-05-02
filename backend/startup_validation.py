@@ -137,6 +137,7 @@ def _validate_embedding_model() -> None:
             f"expected '{EXPECTED_EMBEDDING_MODEL}'. "
             "Confirm this is intentional before deploying."
         )
+    from services.ai_client import CHAT_MODEL, REASONER_MODEL  # noqa
     generation_model_ids = [
         CHAT_MODEL, REASONER_MODEL,
     ]
