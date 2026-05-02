@@ -36,6 +36,8 @@ export const NotificationBell: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors"
         aria-label="Notifications"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
       >
         <Bell size={20} />
         {unreadCount > 0 && (

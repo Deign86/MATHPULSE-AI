@@ -29,7 +29,6 @@ const Sidebar = lazy(() => import('./components/Sidebar.tsx'));
 const HeroBanner = lazy(() => import('./components/HeroBanner.tsx'));
 const RightSidebar = lazy(() => import('./components/RightSidebar.tsx'));
 const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
-const NotificationCenter = lazy(() => import('./components/NotificationCenter.tsx'));
 const NotificationBell = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationBell })));
 
 const SupplementalBanner = lazy(() => import('./components/SupplementalBanner.tsx'));

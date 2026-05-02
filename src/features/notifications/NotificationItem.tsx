@@ -55,9 +55,9 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
   const timeAgo = formatDistanceToNow(notification.createdAt, { addSuffix: true });
 
   return (
-    <div
+    <button
       onClick={handleClick}
-      className={`group p-4 border-b border-gray-700 cursor-pointer transition-colors ${
+      className={`group w-full text-left p-4 border-b border-gray-700 cursor-pointer transition-colors ${
         notification.isRead
           ? 'bg-gray-900 hover:bg-gray-800'
           : 'bg-gray-800 border-l-2 border-purple-500'
@@ -88,6 +88,6 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
           <Trash2 size={14} />
         </button>
       </div>
-    </div>
+    </button>
   );
 };

@@ -83,7 +83,7 @@ describe('notificationFirestoreService', () => {
 
   describe('createNotification', () => {
     it('creates a notification with correct data', async () => {
-      const mockDocRef = { id: 'notif-123' };
+      const mockDocRef = { id: 'notif-123' } as any;
       const docMock = vi.mocked(doc);
       docMock.mockReturnValue(mockDocRef);
       const setDocMock = vi.mocked(setDoc);
@@ -117,7 +117,7 @@ describe('notificationFirestoreService', () => {
     });
 
     it('creates notification without optional fields', async () => {
-      const mockDocRef = { id: 'notif-456' };
+      const mockDocRef = { id: 'notif-456' } as any;
       (doc as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockDocRef);
       (setDoc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
@@ -159,7 +159,7 @@ describe('notificationFirestoreService', () => {
         { id: 'notif-1', data: () => ({ userId: 'user-123', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
         { id: 'notif-2', data: () => ({ userId: 'user-123', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
       ];
-      const mockSnapshot = { docs: mockDocs };
+      const mockSnapshot = { docs: mockDocs } as any;
       const getDocsMock = vi.mocked(getDocs);
       getDocsMock.mockResolvedValue(mockSnapshot);
 
@@ -172,7 +172,8 @@ describe('notificationFirestoreService', () => {
     });
 
     it('returns empty array on error', async () => {
-      (getDocs as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Query failed'));
+      const getDocsMock2 = vi.mocked(getDocs);
+      getDocsMock2.mockRejectedValue(new Error('Query failed') as any);
 
       const result = await getUserNotifications('user-123');
 
@@ -203,7 +204,7 @@ describe('notificationFirestoreService', () => {
         { ref: 'ref-1', data: () => ({ isRead: false }) },
         { ref: 'ref-2', data: () => ({ isRead: false }) },
       ];
-      const mockSnapshot = { docs: mockDocs };
+      const mockSnapshot = { docs: mockDocs } as any;
       (getDocs as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(mockSnapshot);
       (updateDoc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
@@ -240,7 +241,7 @@ describe('notificationFirestoreService', () => {
 
   describe('hasCheckedInToday', () => {
     it('returns true if check-in exists for today', async () => {
-      const mockSnapshot = { empty: false, docs: [{ id: 'notif-1' }] };
+      const mockSnapshot = { empty: false, docs: [{ id: 'notif-1' }] } as any;
       (getDocs as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(mockSnapshot);
 
       const result = await hasCheckedInToday('user-123');
@@ -250,7 +251,7 @@ describe('notificationFirestoreService', () => {
     });
 
     it('returns false if no check-in exists for today', async () => {
-      const mockSnapshot = { empty: true, docs: [] };
+      const mockSnapshot = { empty: true, docs: [] } as any;
       (getDocs as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(mockSnapshot);
 
       const result = await hasCheckedInToday('user-123');
