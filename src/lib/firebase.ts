@@ -52,7 +52,7 @@ const firebaseConfig = {
 
 if (!firebaseConfig.apiKey) {
   console.error('[ERROR] Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
-} else {
+} else if (import.meta.env.DEV) {
   console.log('[DEBUG] Firebase config loaded:', {
     projectId: firebaseConfig.projectId,
     authDomain: firebaseConfig.authDomain,
@@ -62,7 +62,9 @@ if (!firebaseConfig.apiKey) {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-console.log('[DEBUG] Firebase app initialized:', app.name || 'default');
+if (import.meta.env.DEV) {
+  console.log('[DEBUG] Firebase app initialized:', app.name || 'default');
+}
 
 // Initialize Firebase services
 export const auth = getAuth(app);
