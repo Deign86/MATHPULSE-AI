@@ -1200,12 +1200,10 @@ def call_hf_chat_stream(
             emitted_any = False
             for chunk in stream:
                 for choice in chunk.choices:  # type: ignore[union-attr]
-                    if choice.delta and choice.delta.content:
+                    delta = getattr(choice, 'delta', None)
+                    if delta and delta.content:
                         emitted_any = True
-                        yield choice.delta.content
-                    elif choice.message and choice.message.content:  # type: ignore[union-attr]
-                        emitted_any = True
-                        yield choice.message.content  # type: ignore[union-attr]
+                        yield delta.content
 
             if emitted_any:
                 latency_ms = (time.perf_counter() - start) * 1000
