@@ -27,6 +27,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
 import { toast } from 'sonner';
 import { unlockAvatarItem } from '../services/gamificationService';
+import { notify } from '@/features/notifications';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { cacheKeys } from '../utils/cacheKeys';
 import {
@@ -126,6 +127,16 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     
     if (onEarnXP) {
       onEarnXP(reward?.amount || 0, `Daily Reward! +${reward?.amount || 0} XP`);
+    }
+
+    if (userProfile?.uid) {
+      notify({
+        userId: userProfile.uid,
+        type: 'daily_checkin',
+        title: 'Daily Check-In Complete! ✅',
+        message: `You earned ${reward?.amount || 'bonus'} XP and kept your streak alive!`,
+        metadata: { xpEarned: reward?.amount, streakDay: currentDay },
+      }).catch(console.error);
     }
 
     // Auto-close quickly without waiting for async operations
