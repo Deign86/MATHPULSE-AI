@@ -1,12 +1,12 @@
-export type HFHealthStatus = 'Operational' | 'Loading' | 'Degraded' | 'Unknown';
+export type AIHealthStatus = 'Operational' | 'Loading' | 'Degraded' | 'Unknown';
 
-export interface HFMonitoringData {
+export interface DeepSeekMonitoringData {
   modelId: string;
-  modelStatus: HFHealthStatus;
+  modelStatus: AIHealthStatus;
   avgResponseTimeMs: number;
 
   embeddingModelId: string;
-  embeddingModelStatus: HFHealthStatus;
+  embeddingModelStatus: AIHealthStatus;
 
   inferenceBalance: number;
   totalPeriodCost: number;
@@ -23,9 +23,16 @@ export interface HFMonitoringData {
   activeProfile: string;
   runtimeOverridesActive: boolean;
   resolvedModels: Record<string, string>;
+
+  provider: string;
+  apiBaseUrl: string;
 }
 
-export interface HFMonitoringResponse {
+export interface DeepSeekMonitoringResponse {
   success: boolean;
-  data: HFMonitoringData;
+  data: DeepSeekMonitoringData;
 }
+
+export type HFMonitoringData = DeepSeekMonitoringData;
+export type HFMonitoringResponse = DeepSeekMonitoringResponse;
+export type HFHealthStatus = AIHealthStatus;
