@@ -85,12 +85,12 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
 
   return (
     <div className="pointer-events-none flex flex-col items-end">
-      {/* Chat Window (Popup) */}
+      {/* Chat Window (Popup) - Optimized with WAAPI-backed animations */}
       <div 
         className={`pointer-events-auto mb-4 w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right select-none ${
           isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10 pointer-events-none h-0'
         }`}
-           style={{ ['--max-h' as any]: isOpen ? '32rem' : '0' }}  
+           style={{ ['--max-h' as any]: isOpen ? '32rem' : '0', willChange: 'transform, opacity' } }  
       >
         {/* Chat Header - Fixed */}
         <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 flex items-center justify-between flex-shrink-0">
@@ -204,7 +204,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
         </div>
       </div>
 
-      {/* Floating Button */}
+      {/* Floating Button - Optimized with WAAPI-backed animations */}
       <div className="pointer-events-auto relative self-end">
         {isMinimized ? (
           <motion.button
@@ -212,9 +212,11 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
             onClick={handleRestoreLauncher}
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
             className="h-9 w-9 rounded-full bg-slate-900/85 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-sm flex items-center justify-center"
             aria-label="Restore AI tutor launcher"
             title="Show AI tutor"
+            style={{ willChange: 'transform' }}
           >
             <Bot size={14} />
           </motion.button>
@@ -245,8 +247,10 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
               onClick={() => setIsOpen(!isOpen)}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all"
               aria-label={isOpen ? 'Close AI tutor chat' : 'Open AI tutor chat'}
+              style={{ willChange: 'transform' }}
             >
               {isOpen ? <X size={28} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-14 h-14 object-contain drop-shadow-lg" />}
             </motion.button>

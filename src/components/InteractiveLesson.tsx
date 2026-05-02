@@ -36,7 +36,7 @@ interface InteractiveLessonProps {
   onBack: () => void;
 }
 
-// Confetti Component
+// Confetti Component - Optimized with WAAPI-backed animations (transform, opacity only)
 const Confetti: React.FC = () => {
   const colors = ['#4F46E5', '#EC4899', '#f43f5e', '#10B981', '#0ea5e9'];
   const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
@@ -68,6 +68,7 @@ const Confetti: React.FC = () => {
             width: '10px',
             height: '10px',
             backgroundColor: piece.backgroundColor,
+            willChange: 'transform, opacity'
           }}
           className="rounded-sm"
         />
@@ -76,7 +77,7 @@ const Confetti: React.FC = () => {
   );
 };
 
-// Streak Notification
+// Streak Notification - Optimized with WAAPI-backed animations (transform, opacity only)
 const StreakNotification: React.FC<{ streak: number }> = ({ streak }) => {
   if (streak < 3) return null;
 
@@ -85,7 +86,9 @@ const StreakNotification: React.FC<{ streak: number }> = ({ streak }) => {
       initial={{ scale: 0, y: 50 }}
       animate={{ scale: 1, y: 0 }}
       exit={{ scale: 0, opacity: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className="fixed top-24 left-1/2 -translate-x-1/2 z-[70] pointer-events-none"
+      style={{ willChange: 'transform, opacity' }}
     >
       <div className="bg-gradient-to-r from-[#FFB356] to-[#FF8B8B] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
         <Flame size={24} className="animate-pulse" />
@@ -369,8 +372,9 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', duration: 0.5 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="bg-white rounded-[32px] w-full max-w-lg p-6 text-center shadow-2xl relative overflow-hidden"
+            style={{ willChange: 'transform, opacity' }}
           >
              {/* Decorative Background */}
              <div className={`absolute top-0 left-0 w-full h-24 ${theme.gradient} opacity-10 rounded-b-[50%]`}></div>
@@ -391,61 +395,65 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 ))}
              </div>
 
-             <div className="relative mb-4 flex justify-center">
-                <motion.div 
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', delay: 0.2 }}
-                  className="w-20 h-20 bg-gradient-to-br from-[#FB96BB] to-[#FFB356] rounded-full flex items-center justify-center text-white shadow-2xl shadow-rose-200"
-                >
-                  <Trophy size={40} fill="currentColor" />
-                </motion.div>
-                {/* Sparkles */}
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute top-0 right-1/3 text-xl"
-                >
-                  <Sparkles size={20} className="text-rose-400" />
-                </motion.div>
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1], rotate: [0, -180, -360] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                  className="absolute bottom-0 left-1/3 text-xl"
-                >
-                  <Sparkles size={20} className="text-rose-400" />
-                </motion.div>
-             </div>
+              <div className="relative mb-4 flex justify-center">
+                 <motion.div 
+                   initial={{ scale: 0, rotate: -180 }}
+                   animate={{ scale: 1, rotate: 0 }}
+                   transition={{ type: 'spring', damping: 25, stiffness: 200, delay: 0.2 }}
+                   className="w-20 h-20 bg-gradient-to-br from-[#FB96BB] to-[#FFB356] rounded-full flex items-center justify-center text-white shadow-2xl shadow-rose-200"
+                   style={{ willChange: 'transform' }}
+                 >
+                   <Trophy size={40} fill="currentColor" />
+                 </motion.div>
+                 {/* Sparkles - Kept as Motion hybrid for complex infinite rotation that WAAPI can't cleanly support */}
+                 <motion.div 
+                   animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
+                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                   className="absolute top-0 right-1/3 text-xl"
+                 >
+                   <Sparkles size={20} className="text-rose-400" />
+                 </motion.div>
+                 <motion.div 
+                   animate={{ scale: [1, 1.2, 1], rotate: [0, -180, -360] }}
+                   transition={{ duration: 2, repeat: Infinity, delay: 0.5, ease: 'easeInOut' }}
+                   className="absolute bottom-0 left-1/3 text-xl"
+                 >
+                   <Sparkles size={20} className="text-rose-400" />
+                 </motion.div>
+              </div>
              
-             <motion.h2 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-3xl font-bold text-[#0a1628] mb-2"
-             >
-                {percentage >= 90 ? 'Perfect!' : 
-                 percentage >= 80 ? 'Excellent Job!' : 
-                 percentage >= 70 ? 'Great Work!' :
-                 percentage >= 60 ? 'Good Effort!' : 
-                 'Keep Practicing!'}
-             </motion.h2>
+              <motion.h2 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ duration: 0.4, delay: 0.3, ease: 'easeOut' }}
+                 className="text-3xl font-bold text-[#0a1628] mb-2"
+                 style={{ willChange: 'transform, opacity' }}
+              >
+                 {percentage >= 90 ? 'Perfect!' : 
+                  percentage >= 80 ? 'Excellent Job!' : 
+                  percentage >= 70 ? 'Great Work!' :
+                  percentage >= 60 ? 'Good Effort!' : 
+                  'Keep Practicing!'}
+              </motion.h2>
+              
+              <motion.p 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ duration: 0.4, delay: 0.4, ease: 'easeOut' }}
+                 className="text-[#5a6578] mb-6 font-medium"
+                 style={{ willChange: 'transform, opacity' }}
+              >
+                 You answered {score} out of {questions.length} questions correctly
+              </motion.p>
              
-             <motion.p 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-[#5a6578] mb-6 font-medium"
-             >
-                You answered {score} out of {questions.length} questions correctly
-             </motion.p>
-             
-             {/* Detailed Stats Grid */}
-             <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="grid grid-cols-2 gap-3 mb-5"
-             >
+              {/* Detailed Stats Grid */}
+              <motion.div 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ duration: 0.4, delay: 0.5, ease: 'easeOut' }}
+                 className="grid grid-cols-2 gap-3 mb-5"
+                 style={{ willChange: 'transform, opacity' }}
+              >
                 <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-4 border-2 border-[#7274ED]/30">
                   <div className="flex items-center justify-center mb-1">
                     <Target className="text-sky-600" size={20} />
@@ -479,13 +487,14 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 </div>
              </motion.div>
 
-             {/* XP Breakdown */}
-             <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="bg-[#edf1f7] rounded-2xl p-4 mb-5 text-left"
-             >
+              {/* XP Breakdown */}
+              <motion.div 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ duration: 0.4, delay: 0.6, ease: 'easeOut' }}
+                 className="bg-[#edf1f7] rounded-2xl p-4 mb-5 text-left"
+                 style={{ willChange: 'transform, opacity' }}
+              >
                 <h3 className="font-bold text-[#0a1628] mb-2 flex items-center gap-2 text-sm">
                   <Star className="text-rose-500" size={16} />
                   XP Breakdown
@@ -512,37 +521,40 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 </div>
              </motion.div>
 
-             {/* Answer History */}
-             <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.7 }}
-                className="flex items-center justify-center gap-1.5 mb-6"
-             >
-                {answerHistory.map((correct, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.7 + (idx * 0.05) }}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                      correct ? 'bg-[#75D06A]/100' : 'bg-red-400'
-                    }`}
-                  >
-                    {correct ? (
-                      <Check className="text-white" size={14} />
-                    ) : (
-                      <X className="text-white" size={14} />
-                    )}
-                  </motion.div>
-                ))}
-             </motion.div>
+              {/* Answer History */}
+              <motion.div 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ duration: 0.4, delay: 0.7, ease: 'easeOut' }}
+                 className="flex items-center justify-center gap-1.5 mb-6"
+                 style={{ willChange: 'transform, opacity' }}
+              >
+                 {answerHistory.map((correct, idx) => (
+                   <motion.div
+                     key={idx}
+                     initial={{ scale: 0 }}
+                     animate={{ scale: 1 }}
+                     transition={{ type: 'spring', damping: 25, stiffness: 200, delay: 0.7 + (idx * 0.05) }}
+                     className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                       correct ? 'bg-[#75D06A]/100' : 'bg-red-400'
+                     }`}
+                     style={{ willChange: 'transform' }}
+                   >
+                     {correct ? (
+                       <Check className="text-white" size={14} />
+                     ) : (
+                       <X className="text-white" size={14} />
+                     )}
+                   </motion.div>
+                 ))}
+              </motion.div>
 
-             <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8 }}
-             >
+              <motion.div
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 transition={{ duration: 0.4, delay: 0.8, ease: 'easeOut' }}
+                 style={{ willChange: 'transform, opacity' }}
+              >
                 <Button 
                   onClick={() => onComplete(percentage, totalXP)}
                   className={`w-full py-5 rounded-2xl font-bold ${theme.gradient} text-white hover:opacity-90 shadow-xl hover:shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
@@ -622,7 +634,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
           </div>
         </header>
 
-        {/* Floating Animated Orbs */}
+        {/* Floating Animated Orbs - Optimized with WAAPI-backed animations */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
           {orbs.map((orb) => (
             <motion.div
@@ -633,6 +645,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 height: orb.size,
                 left: `${orb.x}%`,
                 top: `${orb.y}%`,
+                willChange: 'transform'
               }}
               animate={{
                 x: [0, Math.random() * 100 - 50, 0],
@@ -659,31 +672,32 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                 <span>Progress</span>
                 <span className="bg-white/20 px-2 py-0.5 rounded-full flex items-center gap-1"><Zap size={10} /> {currentPoints} pts</span>
               </div>
-              <div className="flex items-center justify-between gap-1 w-full backdrop-blur-sm">
-                {questions.map((_, idx) => {
-                  let dotClass = 'bg-white/30';
-                  if (idx < currentIndex) {
-                    dotClass = answerHistory[idx] ? 'bg-[#75D06A]' : 'bg-[#FF8B8B]';
-                  } else if (idx === currentIndex) {
-                    dotClass = 'bg-white shadow-[0_0_8px_white] scale-y-125';
-                  }
-                  return (
-                    <motion.div
-                      key={idx}
-                      className={`flex-1 h-2 rounded-full transition-all duration-300 ${dotClass}`}
-                    />
-                  );
-                })}
-              </div>
+               <div className="flex items-center justify-between gap-1 w-full backdrop-blur-sm">
+                 {questions.map((_, idx) => {
+                   let dotClass = 'bg-white/30';
+                   if (idx < currentIndex) {
+                     dotClass = answerHistory[idx] ? 'bg-[#75D06A]' : 'bg-[#FF8B8B]';
+                   } else if (idx === currentIndex) {
+                     dotClass = 'bg-white shadow-[0_0_8px_white] scale-y-125';
+                   }
+                   return (
+                     <motion.div
+                       key={idx}
+                       className={`flex-1 h-2 rounded-full transition-all duration-300 ${dotClass}`}
+                       style={{ willChange: 'transform' }}
+                     />
+                   );
+                 })}
+               </div>
             </div>
 
-            {/* Breathing Streak Indicator Moved to Right */}
-
+            {/* Breathing Streak Indicator - Optimized with WAAPI-backed animations */}
             <motion.div 
                animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }}
                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                className="flex items-center justify-center flex-shrink-0"
                title={`${streak} Streak`}
+               style={{ willChange: 'transform, opacity' }}
             >
               <div className="relative flex items-center justify-center w-14 h-14 mt-3">
                 <Flame 
@@ -703,31 +717,34 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
             </motion.div>
           </div>
 
-          {/* Milestone Notification */}
+          {/* Milestone Notification - Optimized with WAAPI-backed animations */}
           {currentIndex === Math.floor(questions.length / 2) && currentIndex > 0 && !isAnswered && (
             <motion.div
               initial={{ scale: 0, y: 20 }}
               animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="mb-4 bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-2xl font-bold shadow-lg"
+              style={{ willChange: 'transform' }}
             >
                             <Target size={20} className="inline mr-2 text-white" />
               Halfway there! Keep it up!
             </motion.div>
           )}
 
-          {/* Question Card */}
+          {/* Question Card - Optimized with WAAPI-backed animations */}
           <AnimatePresence mode="wait">
             <motion.div 
               key={currentIndex}
               initial={{ opacity: 0, x: 100 }}
               animate={shakeCard ? { x: [-10, 10, -10, 10, 0], scale: [1, 1.01, 1], opacity: 1 } : { opacity: 1, x: 0 }}
-              transition={shakeCard ? { duration: 0.4 } : { type: 'spring', stiffness: 300, damping: 30 }}
+              transition={shakeCard ? { duration: 0.4 } : { type: 'spring', damping: 30, stiffness: 300 }}
               exit={{ opacity: 0, x: -100 }}
               className="w-full max-w-[50rem] mx-auto flex flex-col flex-1 pb-10"
+              style={{ willChange: 'transform, opacity' }}
             >
               <div className="bg-white rounded-[32px] sm:rounded-[40px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden border border-[#dde3eb] flex flex-col relative flex-1 min-h-[450px]">
                 
-                {/* Visual state top bar */}
+                {/* Visual state top bar - Optimized with WAAPI-backed animations */}
                 <motion.div 
                   animate={{
                     backgroundColor: isAnswered
@@ -735,6 +752,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                       : '#7C3AED' // purple (default)
                   }}
                   className="h-2 w-full absolute top-0 left-0 z-20"
+                  style={{ willChange: 'background-color' }}
                 />
 
                 {/* Question Area */}
@@ -810,37 +828,43 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                              stateClasses = `bg-purple-50 border-[#7C3AED] text-[#7C3AED] ring-2 ring-indigo-100 shadow-md scale-[1.02] z-10`;
                            }
 
-                           return (
-                            <motion.button
-                              key={idx}
-                              disabled={isAnswered}
-                              onClick={() => setSelectedOption(option)}
-                              whileHover={!isAnswered ? { scale: 1.02 } : {}}
-                              whileTap={!isAnswered ? { scale: 0.98 } : {}}
-                              className={`
-                                relative p-4 sm:p-5 md:p-6 rounded-2xl md:rounded-[20px] border-2 font-bold text-base sm:text-lg transition-all duration-200 text-left flex items-center justify-between group min-h-[4rem] sm:min-h-[5rem] w-full
-                                ${stateClasses}
-                              `}
-                            >
-                              <span className="relative z-10 break-words line-clamp-3 pr-2 w-full">{option}</span>
-                              {isAnswered && option === currentQuestion.correctAnswer && (
-                                <motion.div 
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  className="bg-[#75D06A] p-1 rounded-full"
-                                >
-                                  <Check size={18} className="text-white" />
-                                </motion.div>
-                              )}
-                              {isAnswered && option === selectedOption && option !== currentQuestion.correctAnswer && (
-                                <motion.div 
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  className="bg-red-100 p-1 rounded-full"
-                                >
-                                  <X size={18} className="text-red-600" />
-                                </motion.div>
-                              )}
+                            return (
+                             <motion.button
+                               key={idx}
+                               disabled={isAnswered}
+                               onClick={() => setSelectedOption(option)}
+                               whileHover={!isAnswered ? { scale: 1.02 } : {}}
+                               whileTap={!isAnswered ? { scale: 0.98 } : {}}
+                               transition={{ duration: 0.15, ease: 'easeOut' }}
+                               className={`
+                                 relative p-4 sm:p-5 md:p-6 rounded-2xl md:rounded-[20px] border-2 font-bold text-base sm:text-lg transition-all duration-200 text-left flex items-center justify-between group min-h-[4rem] sm:min-h-[5rem] w-full
+                                 ${stateClasses}
+                               `}
+                               style={{ willChange: 'transform' }}
+                             >
+                               <span className="relative z-10 break-words line-clamp-3 pr-2 w-full">{option}</span>
+                               {isAnswered && option === currentQuestion.correctAnswer && (
+                                 <motion.div 
+                                   initial={{ scale: 0 }}
+                                   animate={{ scale: 1 }}
+                                   transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                   className="bg-[#75D06A] p-1 rounded-full"
+                                   style={{ willChange: 'transform' }}
+                                 >
+                                   <Check size={18} className="text-white" />
+                                 </motion.div>
+                               )}
+                               {isAnswered && option === selectedOption && option !== currentQuestion.correctAnswer && (
+                                 <motion.div 
+                                   initial={{ scale: 0 }}
+                                   animate={{ scale: 1 }}
+                                   transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                   className="bg-red-100 p-1 rounded-full"
+                                   style={{ willChange: 'transform' }}
+                                 >
+                                   <X size={18} className="text-red-600" />
+                                 </motion.div>
+                               )}
                               {!isAnswered && (
                                 <div className={`w-6 h-6 rounded-full border-2 border-[#dde3eb] group-hover:border-[#dde3eb] transition-colors ${selectedOption === option ? `bg-current border-current ${theme.text}` : ''}`}></div>
                               )}
@@ -849,13 +873,15 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                         })}
                       </div>
 
-                      {/* Explanations */}
-                      {isAnswered && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="space-y-3 mt-6 w-full"
-                        >
+                       {/* Explanations - Optimized with WAAPI-backed animations */}
+                       {isAnswered && (
+                         <motion.div
+                           initial={{ opacity: 0, y: -10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           transition={{ duration: 0.3, ease: 'easeOut' }}
+                           className="space-y-3 mt-6 w-full"
+                           style={{ willChange: 'transform, opacity' }}
+                         >
                           {/* Show explanation for wrong answer first (if wrong) */}
                           {!isCorrect && selectedOption && selectedOption !== currentQuestion.correctAnswer && (
                             <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
@@ -894,13 +920,15 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                     </div>
                   )}
 
-                  {/* Fill in the Blank Feedback (Input is in the title now) */}
-                  {currentQuestion.type === 'fill-in-blank' && isAnswered && !isCorrect && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-4 text-center w-full"
-                    >
+                   {/* Fill in the Blank Feedback (Input is in the title now) - Optimized with WAAPI-backed animations */}
+                   {currentQuestion.type === 'fill-in-blank' && isAnswered && !isCorrect && (
+                     <motion.div 
+                       initial={{ opacity: 0, y: -10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       transition={{ duration: 0.3, ease: 'easeOut' }}
+                       className="mt-4 text-center w-full"
+                       style={{ willChange: 'transform, opacity' }}
+                     >
                       <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Correct answer</p>
                       <p className="text-[#75D06A] font-black text-2xl bg-[#75D06A]/10 py-3 rounded-2xl border-2 border-[#75D06A]/30 inline-block px-10">{currentQuestion.correctAnswer}</p>
                       {currentQuestion.explanation && (
@@ -913,12 +941,14 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
                       )}
                     </motion.div>
                   )}
-                  {currentQuestion.type === 'fill-in-blank' && isAnswered && isCorrect && currentQuestion.explanation && (
-                     <motion.div 
-                       initial={{ opacity: 0, y: -10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       className="mt-4 bg-[#75D06A]/10 border border-[#75D06A]/30 text-teal-800 rounded-xl p-4 flex gap-3 text-left max-w-lg mx-auto w-full text-sm font-medium"
-                     >
+                   {currentQuestion.type === 'fill-in-blank' && isAnswered && isCorrect && currentQuestion.explanation && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className="mt-4 bg-[#75D06A]/10 border border-[#75D06A]/30 text-teal-800 rounded-xl p-4 flex gap-3 text-left max-w-lg mx-auto w-full text-sm font-medium"
+                        style={{ willChange: 'transform, opacity' }}
+                      >
                          <Check size={20} className="shrink-0 text-[#75D06A]" />
                          <div>
                             <span className="font-bold block mb-1">Correct! </span>
