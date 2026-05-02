@@ -149,7 +149,7 @@ Runtime note:
 
 3. **Configure environment variables**
 
-   Create a `.env.local` file in the project root:
+    Create a `.env.local` file in the project root:
    ```env
    # Firebase (required)
    VITE_FIREBASE_API_KEY=your_api_key
@@ -160,14 +160,19 @@ Runtime note:
    VITE_FIREBASE_APP_ID=your_app_id
 
    # Backend API (optional — defaults to hosted HF Spaces)
-   VITE_API_URL=https://deign86-mathpulse-api-v3test.hf.space
+    VITE_API_URL=https://deign86-mathpulse-api-v3test.hf.space
 
    # Import-grounded generation rollout flags (frontend)
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
    VITE_ENABLE_IMPORT_GROUNDED_LESSON=true
    VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
-   VITE_ENABLE_ASYNC_GENERATION=true
-   ```
+    VITE_ENABLE_ASYNC_GENERATION=true
+    ```
+
+    Deploying to Hugging Face Spaces:
+    - Add all `VITE_FIREBASE_*` values and `VITE_API_URL` as GitHub Actions secrets.
+    - The `deploy-hf.yml` workflow writes a `.env.production` at build time so Vite bakes in the correct config.
+    - Environment variables must be present during the build step for Static Spaces.
 
 4. **Start the frontend dev server**
    ```bash
