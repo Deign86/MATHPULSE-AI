@@ -29,7 +29,7 @@ admin_client = TestClient(app, headers={"Authorization": "Bearer admin-token"})
 
 _RESOLVED_KEYS = {
     "INFERENCE_MODEL_ID", "INFERENCE_CHAT_MODEL_ID",
-    "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_QWEN_LOCK_MODEL",
+    "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_LOCK_MODEL_ID",
 }
 _KNOWN_PROFILES = {"dev", "budget", "prod"}
 _BASE_CONFIG_KEYS = {"profile", "overrides", "resolved"}

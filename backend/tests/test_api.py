@@ -4,8 +4,7 @@ Comprehensive tests for all FastAPI endpoints.
 
 Tests cover:
   - Successful requests with valid data
-  - Input validation errors (422)
-  - HuggingFace API failures (502 fallback)
+  - AI inference API failures (502 fallback)
   - Timeout handling
   - Malformed response data
   - Error status-code mapping
@@ -85,8 +84,9 @@ mock_ae.ContentUpdatePayload = _ContentUpdatePayload
 mock_ae.AutomationResult = _AutomationResult
 sys.modules["automation_engine"] = mock_ae
 
-# Override HF_TOKEN so client init doesn't fail
+# Override tokens so client init doesn't fail
 os.environ["HF_TOKEN"] = "test-token-for-testing"
+os.environ["DEEPSEEK_API_KEY"] = "test-ds-key-for-testing"
 
 # analytics.py is importable directly (its heavy deps are guarded)
 import main as main_module  # noqa: E402
@@ -113,33 +113,22 @@ client = TestClient(app, headers={"Authorization": "Bearer test-auth-token"})
 # ─── Fixtures ──────────────────────────────────────────────────
 
 
-class FakeClassificationElement:
-    """Mimics huggingface_hub ZeroShotClassificationOutputElement."""
-
-    def __init__(self, label: str, score: float):
-        self.label = label
-        self.score = score
-
-
-def make_zsc_client(
-    classification: list | None = None,
+def make_deepseek_risk_mock(
+    risk_label: str = "low risk academically stable",
+    confidence: float = 0.85,
 ):
-    """Create a mock InferenceClient with predictable zero-shot outputs.
-
-    Used only for risk-prediction tests (the only endpoint still using
-    ``get_client()`` / ``InferenceClient``).
-    """
-    mock_client = MagicMock()
-
-    if classification is None:
-        classification = [
-            FakeClassificationElement("low risk academically stable", 0.85),
-            FakeClassificationElement("medium academic risk", 0.10),
-            FakeClassificationElement("high risk of failing", 0.05),
-        ]
-    mock_client.zero_shot_classification.return_value = classification
-
-    return mock_client
+    """Create a mock DeepSeek client for risk prediction tests."""
+    mock_ds = MagicMock()
+    mock_choice = MagicMock()
+    mock_choice.message.content = json.dumps({
+        "risk_label": risk_label,
+        "confidence": confidence,
+        "reasoning": "Mock risk assessment."
+    })
+    mock_ds.chat.completions.create.return_value = MagicMock(
+        choices=[mock_choice]
+    )
+    return mock_ds
 
 
 # ─── Health & Root ─────────────────────────────────────────────
@@ -521,43 +510,36 @@ class TestChatEndpoint:
         mock_stream_async.assert_not_called()
 
 
-class TestHFChatTransport:
-    @patch("main.http_requests.post")
-    def test_call_hf_chat_uses_router_chat_completions(self, mock_post):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [
-                {"message": {"content": "x = 2 or x = 3"}}
-            ]
-        }
-        mock_post.return_value = mock_response
-
-        result = main_module.call_hf_chat(
-            [{"role": "user", "content": "Solve x^2 - 5x + 6 = 0"}],
-            max_tokens=256,
-            temperature=0.2,
-            top_p=0.9,
+class TestChatTransport:
+    @patch("services.ai_client.get_deepseek_client")
+    def test_call_hf_chat_uses_deepseek_api(self, mock_ds_fn):
+        mock_ds = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "x = 2 or x = 3"
+        mock_ds.chat.completions.create.return_value = MagicMock(
+            choices=[mock_choice]
         )
+        mock_ds_fn.return_value = mock_ds
+
+        with patch.object(main_module, "get_inference_client") as mock_get_ic:
+            ic = MagicMock()
+            ic.generate_from_messages.return_value = "x = 2 or x = 3"
+            mock_get_ic.return_value = ic
+
+            result = main_module.call_hf_chat(
+                [{"role": "user", "content": "Solve x^2 - 5x + 6 = 0"}],
+                max_tokens=256,
+                temperature=0.2,
+                top_p=0.9,
+            )
 
         assert result
-        call_args = mock_post.call_args
-        endpoint = call_args.args[0]
-        payload = call_args.kwargs["json"]
-
-        assert endpoint == "https://router.huggingface.co/v1/chat/completions"
-        assert isinstance(payload["model"], str)
-        assert payload["model"]
-        assert payload["stream"] is False
-        assert isinstance(payload["messages"], list)
 
 
 class TestInferenceRouting:
     def test_chat_strict_model_lock_keeps_single_model_chain(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-chat")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -568,15 +550,15 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "Qwen/Qwen3-32B"
+        assert selected_model == "deepseek-chat"
         assert "chat_strict_model_only" in source
-        assert model_chain == ["Qwen/Qwen3-32B"]
+        assert model_chain == ["deepseek-chat"]
 
-    def test_chat_env_override_wins_under_qwen_only_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
+    def test_chat_env_override_wins_under_model_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-chat")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/QwQ-32B")
+        monkeypatch.setenv("INFERENCE_ENFORCE_LOCK_MODEL", "true")
+        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-reasoner")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -587,16 +569,16 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "Qwen/Qwen3-32B"
+        assert selected_model == "deepseek-chat"
         assert "chat_override_env" in source
-        assert model_chain == ["Qwen/Qwen3-32B"]
+        assert model_chain == ["deepseek-chat"]
 
-    def test_chat_temp_override_wins_under_qwen_only_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-235B-A22B")
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
+    def test_chat_temp_override_wins_under_model_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-reasoner")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "deepseek-chat")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/QwQ-32B")
+        monkeypatch.setenv("INFERENCE_ENFORCE_LOCK_MODEL", "true")
+        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-reasoner")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -607,14 +589,14 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "Qwen/Qwen3-32B"
+        assert selected_model == "deepseek-chat"
         assert "chat_temp_override_env" in source
-        assert model_chain == ["Qwen/Qwen3-32B"]
+        assert model_chain == ["deepseek-chat"]
 
-    def test_chat_temp_override_does_not_change_non_chat_task_under_qwen_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "Qwen/Qwen3-32B")
-        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-235B-A22B")
+    def test_chat_temp_override_does_not_change_non_chat_task_under_lock(self, monkeypatch):
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "deepseek-chat")
+        monkeypatch.setenv("INFERENCE_ENFORCE_LOCK_MODEL", "true")
+        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-reasoner")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -625,114 +607,18 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("verify_solution", selected_model)
 
-        assert selected_model == "Qwen/Qwen3-235B-A22B"
+        assert selected_model == "deepseek-reasoner"
         assert "chat_temp_override_env" not in source
-        assert model_chain == ["Qwen/Qwen3-235B-A22B"]
-
-    def test_chat_escalation_when_strict_lock_disabled(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
-        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "false")
-        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "false")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_PROMPT_CHARS", "256")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_HISTORY_CHARS", "256")
-
-        client = InferenceClient()
-        req = InferenceRequest(
-            messages=[{"role": "user", "content": "Show all steps and prove the result rigorously."}],
-            task_type="chat",
-        )
-
-        selected_model, source = client._resolve_primary_model(req)
-
-        assert selected_model == "meta-llama/Meta-Llama-3-70B-Instruct"
-        assert source.startswith("chat_hard_escalation:")
-
-    def test_async_chat_posts_only_qwen_when_strict_enabled(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "Qwen/Qwen3-32B")
-        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "true")
-        monkeypatch.setenv("INFERENCE_HF_TIMEOUT_SEC", "15")
-
-        routing_client = InferenceClient()
-        requests_seen: List[Dict[str, Any]] = []
-
-        class FakeAsyncResponse:
-            def __init__(self, status_code: int, payload: Dict[str, Any]):
-                self.status_code = status_code
-                self._payload = payload
-                self.text = json.dumps(payload)
-
-            def json(self) -> Dict[str, Any]:
-                return self._payload
-
-        class FakeAsyncHttpClient:
-            async def post(self, _url, *, headers=None, json=None, timeout=None):
-                requests_seen.append({
-                    "headers": headers,
-                    "payload": json,
-                    "timeout": timeout,
-                })
-                return FakeAsyncResponse(
-                    200,
-                    {"choices": [{"message": {"content": "Final answer: 42"}}]},
-                )
-
-        async def _run() -> str:
-            real_getenv = os.getenv
-
-            def _patched_getenv(key: str, default=None):
-                if key == "PYTEST_CURRENT_TEST":
-                    return ""
-                return real_getenv(key, default)
-
-            with patch.object(main_module, "get_inference_client", return_value=routing_client), patch.object(
-                main_module,
-                "_get_hf_async_http_client",
-                new=AsyncMock(return_value=FakeAsyncHttpClient()),
-            ), patch.object(main_module.os, "getenv", side_effect=_patched_getenv):
-                return await main_module.call_hf_chat_async(
-                    [{"role": "user", "content": "Solve x^2 - 5x + 6 = 0."}],
-                    task_type="chat",
-                )
-
-        result = asyncio.run(_run())
-
-        assert "42" in result
-        assert len(requests_seen) == 1
-        sent_model = requests_seen[0]["payload"]["model"]
-        assert sent_model.startswith("Qwen/Qwen3-32B")
-        assert "Meta-Llama" not in sent_model
-        assert "gemma" not in sent_model.lower()
-
-    def test_qwen_only_lock_replaces_explicit_non_qwen_model(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_ENFORCE_QWEN_ONLY", "true")
-        monkeypatch.setenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-235B-A22B")
-        monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
-
-        client = InferenceClient()
-        req = InferenceRequest(
-            messages=[{"role": "user", "content": "Solve this quickly."}],
-            model="meta-llama/Meta-Llama-3-70B-Instruct",
-            task_type="verify_solution",
-        )
-
-        selected_model, source = client._resolve_primary_model(req)
-        model_chain = client._model_chain_for_task("verify_solution", selected_model)
-
-        assert selected_model == "Qwen/Qwen3-235B-A22B"
-        assert "qwen_only" in source
-        assert model_chain == ["Qwen/Qwen3-235B-A22B"]
+        assert model_chain == ["deepseek-reasoner"]
 
 
 # ─── Risk Prediction ──────────────────────────────────────────
 
 
 class TestRiskPrediction:
-    @patch("main.get_client")
-    def test_predict_risk_success(self, mock_get):
-        mock_get.return_value = make_zsc_client()
+    @patch("main.get_deepseek_client")
+    def test_predict_risk_success(self, mock_ds_fn):
+        mock_ds_fn.return_value = make_deepseek_risk_mock()
         response = client.post("/api/predict-risk", json={
             "engagementScore": 80,
             "avgQuizScore": 75,
@@ -746,7 +632,7 @@ class TestRiskPrediction:
 
     def test_predict_risk_invalid_score_range(self):
         response = client.post("/api/predict-risk", json={
-            "engagementScore": 150,  # > 100
+            "engagementScore": 150,
             "avgQuizScore": 75,
             "attendance": 90,
             "assignmentCompletion": 85,
@@ -768,11 +654,11 @@ class TestRiskPrediction:
         })
         assert response.status_code == 422
 
-    @patch("main.get_client")
-    def test_predict_risk_hf_failure(self, mock_get):
-        hf = make_zsc_client()
-        hf.zero_shot_classification.side_effect = Exception("HF down")
-        mock_get.return_value = hf
+    @patch("main.get_deepseek_client")
+    def test_predict_risk_ai_failure(self, mock_ds_fn):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("AI down")
+        mock_ds_fn.return_value = mock_client
         response = client.post("/api/predict-risk", json={
             "engagementScore": 80,
             "avgQuizScore": 75,
@@ -781,9 +667,9 @@ class TestRiskPrediction:
         })
         assert response.status_code == 502
 
-    @patch("main.get_client")
-    def test_batch_risk_prediction(self, mock_get):
-        mock_get.return_value = make_zsc_client()
+    @patch("main.get_deepseek_client")
+    def test_batch_risk_prediction(self, mock_ds_fn):
+        mock_ds_fn.return_value = make_deepseek_risk_mock()
         response = client.post("/api/predict-risk/batch", json={
             "students": [
                 {"engagementScore": 80, "avgQuizScore": 75, "attendance": 90, "assignmentCompletion": 85},
@@ -821,8 +707,8 @@ class TestLearningPath:
         assert response.status_code == 422
 
     @patch("main.call_hf_chat")
-    def test_learning_path_hf_failure(self, mock_chat):
-        mock_chat.side_effect = Exception("HF down")
+    def test_learning_path_ai_failure(self, mock_chat):
+        mock_chat.side_effect = Exception("AI service down")
         response = client.post("/api/learning-path", json={
             "weaknesses": ["algebra"],
             "gradeLevel": "Grade 11",
