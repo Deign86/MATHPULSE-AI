@@ -1,6 +1,24 @@
-"""Shared service entrypoints."""
+"""Shared service entrypoints - delegates to backend.services."""
 
-from .inference_client import (
+import sys
+import os
+
+_repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_backend_path = os.path.join(_repo_root, "backend")
+if _backend_path not in sys.path:
+    sys.path.insert(0, _backend_path)
+
+from backend.services.ai_client import (
+    get_deepseek_client,
+    CHAT_MODEL,
+    REASONER_MODEL,
+    DEEPSEEK_BASE_URL,
+    APIError,
+    RateLimitError,
+    APITimeoutError,
+)
+
+from backend.services.inference_client import (
     create_default_client,
     InferenceRequest,
     InferenceClient,
@@ -14,16 +32,14 @@ from .inference_client import (
     _MODEL_PROFILES,
 )
 
-from .ai_client import (
-    get_deepseek_client,
-    CHAT_MODEL,
-    REASONER_MODEL,
-    APIError,
-    RateLimitError,
-    APITimeoutError,
-)
-
 __all__ = [
+    "get_deepseek_client",
+    "CHAT_MODEL",
+    "REASONER_MODEL",
+    "DEEPSEEK_BASE_URL",
+    "APIError",
+    "RateLimitError",
+    "APITimeoutError",
     "create_default_client",
     "InferenceRequest",
     "InferenceClient",
@@ -35,10 +51,4 @@ __all__ = [
     "reset_runtime_overrides",
     "model_supports_thinking",
     "_MODEL_PROFILES",
-    "get_deepseek_client",
-    "CHAT_MODEL",
-    "REASONER_MODEL",
-    "APIError",
-    "RateLimitError",
-    "APITimeoutError",
 ]
