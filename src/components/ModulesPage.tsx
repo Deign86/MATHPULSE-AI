@@ -116,7 +116,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         setCurrentDay(state.currentDay);
         setClaimedDays(state.claimedDays || []);
 
-        const today = new Date().toDateString();
+        const today = new Date().toISOString().split('T')[0];
         if (state.lastClaimDate !== today || forceShow) {
           setShowDailyCheckIn(true);
         }
@@ -156,7 +156,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       notify({
         userId: userProfile.uid,
         type: 'daily_checkin',
-        title: 'Daily Check-In Complete! ✅',
+        title: 'Daily Check-In Complete!',
         message: `You earned ${reward?.amount || 'bonus'} XP and kept your streak alive!`,
         metadata: { xpEarned: reward?.amount, streakDay: result.day },
       }).catch(console.error);
@@ -175,8 +175,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       // Auto-close quickly
       setTimeout(() => setShowDailyCheckIn(false), 800);
     } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
       console.error('Failed to claim daily reward:', error);
-      toast.error('Failed to claim daily reward. Please try again.');
+      if (msg.includes('Already claimed')) {
+        setClaimedDays((prev) => prev.includes(currentDay) ? prev : [...prev, currentDay]);
+        toast.info('You already claimed your reward today!');
+      } else {
+        toast.error('Failed to claim daily reward. Please try again.');
+      }
     } finally {
       setCheckInLoading(false);
     }
