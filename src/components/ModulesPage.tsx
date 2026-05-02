@@ -104,12 +104,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [currentDay, setCurrentDay] = useState(1);
   const [checkInLoading, setCheckInLoading] = useState(false);
 
-  // Load check-in state from Firestore on mount
+  // Load check-in state from Firestore on mount AND listen for notification navigations
   useEffect(() => {
     if (!userProfile?.uid) return;
 
     let cancelled = false;
-    const loadState = async () => {
+    const loadState = async (forceShow?: boolean) => {
       try {
         const state = await getDailyCheckInState(userProfile.uid);
         if (cancelled) return;
@@ -117,17 +117,27 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         setClaimedDays(state.claimedDays || []);
 
         const today = new Date().toDateString();
-        if (state.lastClaimDate !== today) {
-          const timer = setTimeout(() => setShowDailyCheckIn(true), 1000);
-          return () => clearTimeout(timer);
+        if (state.lastClaimDate !== today || forceShow) {
+          setShowDailyCheckIn(true);
         }
       } catch (error) {
         console.error('Failed to load check-in state:', error);
       }
     };
 
+    const handleNotificationNav = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.tab === 'Modules') {
+        loadState(true);
+      }
+    };
+
     loadState();
-    return () => { cancelled = true; };
+    window.addEventListener('mathpulse:navigate', handleNotificationNav);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('mathpulse:navigate', handleNotificationNav);
+    };
   }, [userProfile?.uid]);
 
   const handleClaimDailyReward = async (reward: any) => {
