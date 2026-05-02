@@ -1189,7 +1189,7 @@ def call_hf_chat_stream(
         try:
             stream = ds_client.chat.completions.create(
                 model=model_name,
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 stream=True,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -1199,17 +1199,15 @@ def call_hf_chat_stream(
 
             emitted_any = False
             for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta:
-                    delta = chunk.choices[0].delta
-                    chunk_content = delta.content
-                    if chunk_content:
-                        emitted_any = True
-                        yield chunk_content
-                elif chunk.choices and chunk.choices[0].message:
-                    chunk_content = chunk.choices[0].message.content
-                    if chunk_content:
-                        emitted_any = True
-                        yield chunk_content
+                delta = getattr(getattr(chunk, 'choices', [None])[0] if hasattr(chunk, 'choices') and chunk.choices else None, 'delta', None)
+                if delta is not None and hasattr(delta, 'content') and delta.content:  # type: ignore[union-attr]
+                    emitted_any = True
+                    yield delta.content
+                    continue
+                msg = getattr(getattr(chunk, 'choices', [None])[0] if hasattr(chunk, 'choices') and chunk.choices else None, 'message', None)
+                if msg is not None and hasattr(msg, 'content') and msg.content:  # type: ignore[union-attr]
+                    emitted_any = True
+                    yield msg.content
 
             if emitted_any:
                 latency_ms = (time.perf_counter() - start) * 1000
@@ -2895,11 +2893,11 @@ async def predict_risk(student_data: StudentRiskData, response: Response):
         for attempt in range(3):
             try:
                 api_response = await _run_hf_blocking(
-                    lambda: client.chat.completions.create(
-                        model=CHAT_MODEL,
+                    lambda model=CHAT_MODEL, prompt=risk_prompt: client.chat.completions.create(  # type: ignore[arg-type]
+                        model=model,
                         messages=[
                             {"role": "system", "content": "You are a student risk analyst. Respond with valid JSON only."},
-                            {"role": "user", "content": risk_prompt},
+                            {"role": "user", "content": prompt},
                         ],
                         response_format={"type": "json_object"},
                         max_tokens=256,
@@ -10468,7 +10466,7 @@ async def get_hf_monitoring(http_request: Request):
         client = get_deepseek_client()
         latency_start = time.time()
         probe_response = client.chat.completions.create(
-            model=CHAT_MODEL,
+            model=str(CHAT_MODEL),
             messages=[{"role": "user", "content": "Hi"}],
             max_tokens=1,
             temperature=0.0,
