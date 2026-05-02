@@ -27,7 +27,7 @@ export function useDailyCheckInReminder(userId: string | null): void {
         await notify({
           userId,
           type: 'streak_reminder' as NotificationType,
-          title: "Don't forget your daily check-in! 🔥",
+          title: "Don't forget your daily check-in!",
           message: 'Check in today to keep your streak alive and earn bonus XP.',
         });
       } catch (error) {
