@@ -82,20 +82,20 @@ const GradesPage = () => {
     .map((subject) => subject.name);
 
   // Compute subject metrics
-  const subjectPerformance = Object.entries(progress?.subjects || {})
+const subjectPerformance = Object.entries(progress?.subjects || {})
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
     .map(([subjectId, subjectData]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
       const subjectQuizzes = quizAttempts.filter(q => q.quizId?.startsWith(subjectId));
       const avg = subjectQuizzes.length > 0
-        ? Math.round(subjectQuizzes.reduce((sum, q) => sum + q.score, 0) / subjectQuizzes.length)
-        : Math.round(subjectData.progress); // Fallback to progress %
-        
+        ? Math.round(subjectQuizzes.reduce((sum: number, q: { score: number }) => sum + q.score, 0) / subjectQuizzes.length)
+        : Math.round(subjectData?.progress ?? 0); // Fallback to progress %
+      
       return {
         subject: info.label,
         average: avg,
-        quizzes: subjectQuizzes.length || subjectData.completedModules,
+        quizzes: subjectQuizzes.length || subjectData?.completedModules,
         color: info.color
       };
     });

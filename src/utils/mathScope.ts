@@ -60,6 +60,11 @@ const MATH_SCOPE_KEYWORDS = [
   'evaluate',
   'compute',
   'calculate',
+  'root',
+  'square root',
+  'cube root',
+  'nth root',
+  'sqrt',
 ] as const;
 
 const MATH_SCOPE_PATTERNS = [
@@ -67,6 +72,9 @@ const MATH_SCOPE_PATTERNS = [
   /\b(?:sin|cos|tan|cot|sec|csc|log|ln|sqrt)\s*\(?/,
   /\b(?:differentiate|integrate|derive|proof|prove)\b/,
   /\b(?:x|y|z)\s*[=+\-*/^]\s*[-+]?\d/,
+  /\b(?:square|cube|nth)?\s*root\b/i,
+  /\b(?:what is|what's)\s*(?:the\s+)?(?:square\s+)?root\b/i,
+  /\b\d+\s*\^\s*\d+/,
 ] as const;
 
 const CONTINUATION_FOLLOWUP_TOKENS = new Set([
