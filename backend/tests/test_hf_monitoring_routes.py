@@ -1,8 +1,6 @@
 """
 Route-level tests for /api/hf/monitoring endpoint.
-
-Follows the auth mock pattern from test_api.py.
-All external HF API calls mocked.
+Updated for DeepSeek AI monitoring.
 """
 
 import os
@@ -36,53 +34,22 @@ EXPECTED_MONITORING_FIELDS = {
     "publicStorageUsedTB", "publicStorageLimitTB",
     "lastChecked", "periodStart", "periodEnd",
     "activeProfile", "runtimeOverridesActive", "resolvedModels",
+    "provider", "apiBaseUrl",
 }
 
-
-def _build_mock_billing():
-    mock = Mock()
-    mock.status_code = 200
-    mock.json.return_value = {
-        "usage": {"inferenceCreditsBilled": 1.23, "cost": 4.56},
-        "active_period": {"start": "2026-01-01", "end": "2026-02-01"},
-        "services": {
-            "hfcompute": {"usage": [5], "limit": 25},
-            "storage": {"usage": 0.5, "limit": 11.2},
-        },
-    }
-    return mock
-
-
-def _build_mock_model_ok():
-    mock = Mock()
-    mock.status_code = 200
-    mock.json.return_value = {"state": "LoadComplete"}
-    return mock
-
-
-def _build_mock_emb_ok():
-    mock = Mock()
-    mock.status_code = 200
-    mock.json.return_value = {}
-    return mock
-
-
-def _build_mock_latency_ok():
-    mock = Mock()
-    mock.status_code = 200
-    return mock
+EXPECTED_FIELDS_AFTER_DS_REPLACEMENT = EXPECTED_MONITORING_FIELDS
 
 
 @pytest.fixture(autouse=True)
 def _mock_env():
-    with patch.object(main_module, "HF_TOKEN", "hf_test_token"):
+    with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-ds-monitoring-key"}):
         yield
 
 
 # ─── Auth Enforcement ────────────────────────────────────────
 
 
-class TestHFMonitoringAuth:
+class TestMonitoringAuth:
     def test_rejects_bad_token(self):
         main_module.firebase_auth.verify_id_token = MagicMock(side_effect=Exception("bad"))
         c = TestClient(app, headers={"Authorization": "Bearer bad-token"})
@@ -96,34 +63,26 @@ class TestHFMonitoringAuth:
 # ─── Response Shape ───────────────────────────────────────────
 
 
-class TestHFMonitoringResponseShape:
-    @patch("main.http_requests.get")
-    @patch("main.http_requests.post")
+class TestMonitoringResponseShape:
     @patch("main.time.time")
-    def test_success_response_contains_all_expected_fields(self, mock_time, mock_post, mock_get):
+    def test_success_response_contains_all_expected_fields(self, mock_time):
         mock_time.return_value = 1000.0
-        mock_get.side_effect = [
-            _build_mock_billing(),
-            _build_mock_model_ok(),
-            _build_mock_emb_ok(),
-        ]
-        mock_post.return_value = _build_mock_latency_ok()
 
         response = admin_client.get("/api/hf/monitoring")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         payload = data["data"]
-        for field in EXPECTED_MONITORING_FIELDS:
+        for field in EXPECTED_FIELDS_AFTER_DS_REPLACEMENT:
             assert field in payload, f"Missing field: {field}"
 
-    @patch("main.http_requests.get")
-    @patch("main.http_requests.post")
     @patch("main.time.time")
-    def test_all_billing_calls_fail_gracefully(self, mock_time, mock_post, mock_get):
+    @patch("services.ai_client.get_deepseek_client")
+    def test_all_probes_fail_gracefully(self, mock_ds_client_fn, mock_time):
         mock_time.return_value = 1000.0
-        mock_get.side_effect = Exception("network down")
-        mock_post.side_effect = Exception("network down")
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("network down")
+        mock_ds_client_fn.return_value = mock_client
 
         response = admin_client.get("/api/hf/monitoring")
         assert response.status_code == 200
@@ -134,48 +93,32 @@ class TestHFMonitoringResponseShape:
 # ─── Response Values ──────────────────────────────────────────
 
 
-class TestHFMonitoringResponseValues:
-    @patch("main.http_requests.get")
-    @patch("main.http_requests.post")
+class TestMonitoringResponseValues:
+    @patch("services.ai_client.get_deepseek_client")
     @patch("main.time.time")
-    def test_default_model_status_is_unknown_when_api_fails(self, mock_time, mock_post, mock_get):
+    def test_model_status_is_degraded_when_probe_fails(self, mock_time, mock_ds_client_fn):
         mock_time.return_value = 1000.0
-        mock_get.side_effect = Exception("billing down")
-        mock_post.side_effect = Exception("probe down")
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("probe down")
+        mock_ds_client_fn.return_value = mock_client
 
         response = admin_client.get("/api/hf/monitoring")
         data = response.json()
         assert data["success"] is True
-        assert data["data"]["modelStatus"] == "Unknown"
+        assert data["data"]["modelStatus"] == "Degraded"
 
-    @patch("main.http_requests.get")
-    @patch("main.http_requests.post")
     @patch("main.time.time")
-    def test_embedding_model_id_is_returned(self, mock_time, mock_post, mock_get):
+    def test_embedding_model_id_is_returned(self, mock_time):
         mock_time.return_value = 1000.0
-        mock_get.side_effect = [
-            _build_mock_billing(),
-            _build_mock_model_ok(),
-            _build_mock_emb_ok(),
-        ]
-        mock_post.return_value = _build_mock_latency_ok()
 
         response = admin_client.get("/api/hf/monitoring")
         data = response.json()
         assert data["success"] is True
         assert "bge-small" in data["data"]["embeddingModelId"].lower()
 
-    @patch("main.http_requests.get")
-    @patch("main.http_requests.post")
     @patch("main.time.time")
-    def test_resolved_models_contains_task_keys(self, mock_time, mock_post, mock_get):
+    def test_resolved_models_contains_task_keys(self, mock_time):
         mock_time.return_value = 1000.0
-        mock_get.side_effect = [
-            _build_mock_billing(),
-            _build_mock_model_ok(),
-            _build_mock_emb_ok(),
-        ]
-        mock_post.return_value = _build_mock_latency_ok()
 
         response = admin_client.get("/api/hf/monitoring")
         data = response.json()
@@ -185,19 +128,21 @@ class TestHFMonitoringResponseValues:
             assert task in resolved, f"Missing task: {task}"
             assert isinstance(resolved[task], str) and len(resolved[task]) > 0
 
-    @patch("main.http_requests.get")
-    @patch("main.http_requests.post")
     @patch("main.time.time")
-    def test_active_profile_returned(self, mock_time, mock_post, mock_get):
+    def test_active_profile_returned(self, mock_time):
         mock_time.return_value = 1000.0
-        mock_get.side_effect = [
-            _build_mock_billing(),
-            _build_mock_model_ok(),
-            _build_mock_emb_ok(),
-        ]
-        mock_post.return_value = _build_mock_latency_ok()
 
         response = admin_client.get("/api/hf/monitoring")
         data = response.json()
         assert data["success"] is True
         assert data["data"]["activeProfile"] in {"dev", "budget", "prod", ""}
+
+    @patch("main.time.time")
+    def test_provider_and_api_base_url_present(self, mock_time):
+        mock_time.return_value = 1000.0
+
+        response = admin_client.get("/api/hf/monitoring")
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["provider"] == "deepseek"
+        assert "api.deepseek.com" in data["data"]["apiBaseUrl"]

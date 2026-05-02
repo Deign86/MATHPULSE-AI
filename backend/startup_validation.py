@@ -54,8 +54,8 @@ def validate_imports() -> None:
             logger.warning("   ⚠ firebase_admin not available (OK if Firebase not needed)")
         
         # ML & inference
-        from huggingface_hub import InferenceClient as HFInferenceClient  # noqa
-        logger.info("   ✓ HuggingFace Hub imports OK")
+        from services.ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL  # noqa
+        logger.info("   ✓ DeepSeek AI client imports OK")
         
         logger.info("✅ All critical imports validated")
     except ImportError as e:
@@ -78,36 +78,31 @@ def validate_environment() -> None:
     """Verify required environment variables are set."""
     logger.info("🔍 Validating environment variables...")
     
-    # CRITICAL: HF_TOKEN for inference
-    hf_token = os.environ.get("HF_TOKEN")
-    api_key = os.environ.get("HUGGING_FACE_API_TOKEN")
-    legacy_api_key = os.environ.get("HUGGINGFACE_API_TOKEN")
-    if not hf_token and not api_key and not legacy_api_key:
+    # CRITICAL: DEEPSEEK_API_KEY for inference
+    ds_api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not ds_api_key:
         logger.warning(
-            "⚠  WARNING: HF_TOKEN is not set as an environment variable.\n"
-            "   On HF Spaces, this should be set as a SPACE SECRET.\n"
+            "⚠  WARNING: DEEPSEEK_API_KEY is not set as an environment variable.\n"
             "   AI inference will fail without this token.\n"
-            "   Use: python set-hf-secrets.py to set the secret."
+            "   Use: Set DEEPSEEK_API_KEY in your .env or space secrets."
         )
     else:
-        logger.info("   ✓ HF_TOKEN/HUGGING_FACE_API_TOKEN/HUGGINGFACE_API_TOKEN is set")
+        logger.info("   ✓ DEEPSEEK_API_KEY is set")
     
     # Check inference provider config
-    inference_provider = os.getenv("INFERENCE_PROVIDER", "hf_inference")
+    inference_provider = os.getenv("INFERENCE_PROVIDER", "deepseek")
     logger.info(f"   ✓ INFERENCE_PROVIDER: {inference_provider}")
     
     # Check model IDs
-    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "Qwen/QwQ-32B"
+    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "deepseek-chat"
     logger.info(f"   ✓ Chat model configured: {chat_model}")
 
     chat_strict = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
     chat_hard_trigger = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-    enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
-    qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/QwQ-32B").strip() or "Qwen/QwQ-32B"
-    logger.info(f"   ✓ INFERENCE_CHAT_STRICT_MODEL_ONLY: {chat_strict}")
-    logger.info(f"   ✓ INFERENCE_CHAT_HARD_TRIGGER_ENABLED: {chat_hard_trigger}")
-    logger.info(f"   ✓ INFERENCE_ENFORCE_QWEN_ONLY: {enforce_qwen_only}")
-    logger.info(f"   ✓ INFERENCE_QWEN_LOCK_MODEL: {qwen_lock_model}")
+    enforce_lock_model = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
+    lock_model_id = os.getenv("INFERENCE_LOCK_MODEL_ID", "deepseek-chat").strip() or "deepseek-chat"
+    logger.info(f"   ✓ INFERENCE_ENFORCE_LOCK_MODEL: {enforce_lock_model}")
+    logger.info(f"   ✓ INFERENCE_LOCK_MODEL_ID: {lock_model_id}")
     model_profile = os.getenv("MODEL_PROFILE", "").strip().lower()
     quiz_model = os.getenv("HF_QUIZ_MODEL_ID", "").strip()
     rag_model = os.getenv("HF_RAG_MODEL_ID", "").strip()
@@ -143,8 +138,7 @@ def _validate_embedding_model() -> None:
             "Confirm this is intentional before deploying."
         )
     generation_model_ids = [
-        "Qwen/QwQ-32B", "Qwen/Qwen3-235B-A22B", "Qwen/Qwen3-32B",
-        "Qwen/Qwen3-14B", "Qwen/Qwen3-8B",
+        CHAT_MODEL, REASONER_MODEL,
     ]
     if embedding_model in generation_model_ids:
         logger.warning(

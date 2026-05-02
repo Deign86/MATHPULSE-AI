@@ -139,12 +139,12 @@ class TestBuildLessonQuery:
 
 
 class TestIsSequentialModel:
-    def test_sequential_for_235b(self):
-        with patch.dict(os.environ, {"HF_MODEL_ID": "Qwen/Qwen3-235B-A22B"}):
+    def test_sequential_for_reasoner(self):
+        with patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-reasoner"}):
             from services.inference_client import is_sequential_model
             assert is_sequential_model() is True
 
-    def test_not_sequential_for_qwq(self):
-        with patch.dict(os.environ, {"HF_MODEL_ID": "Qwen/QwQ-32B"}):
+    def test_not_sequential_for_chat(self):
+        with patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-chat"}):
             from services.inference_client import is_sequential_model
             assert is_sequential_model() is False
