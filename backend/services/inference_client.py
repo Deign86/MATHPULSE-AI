@@ -96,6 +96,8 @@ def _load_runtime_config_from_firestore() -> None:
             for key, value in overrides.items():
                 _RUNTIME_OVERRIDES[str(key)] = str(value)
         LOGGER.info("Restored runtime model config from Firestore: profile=%s", profile)
+    except ImportError:
+        LOGGER.debug("Firebase not available (optional for DeepSeek-only)")
     except Exception as e:
         LOGGER.warning("Could not restore model config from Firestore: %s", e)
 
