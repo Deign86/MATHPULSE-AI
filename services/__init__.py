@@ -1,22 +1,6 @@
-"""Shared service entrypoints - delegates to backend.services."""
+"""Services package - re-exports from ai_client and inference_client."""
 
-import sys
-import os
-
-# Get directory of this file (services/) and add parent to path
-_services_dir = os.path.dirname(os.path.abspath(__file__))
-_repo_root = os.path.dirname(_services_dir)
-_backend_path = os.path.join(_repo_root, "backend")
-
-# Ensure backend is in path before services that require it
-if _backend_path not in sys.path:
-    sys.path.insert(0, _backend_path)
-
-# Also ensure repo root is in path
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
-
-from backend.services.ai_client import (
+from .ai_client import (
     get_deepseek_client,
     CHAT_MODEL,
     REASONER_MODEL,
@@ -26,7 +10,7 @@ from backend.services.ai_client import (
     APITimeoutError,
 )
 
-from backend.services.inference_client import (
+from .inference_client import (
     create_default_client,
     InferenceRequest,
     InferenceClient,
