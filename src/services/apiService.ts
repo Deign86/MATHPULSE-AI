@@ -39,6 +39,8 @@ export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
+console.log('[DEBUG] apiService API_URL:', API_URL);
+
 const parseEnvBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
   if (value == null || value.trim() === '') return defaultValue;
   return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
