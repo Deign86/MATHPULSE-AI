@@ -73,6 +73,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
     if (!notification.isRead) {
       markAsRead(notification.id);
     }
+    if (notification.type === 'streak_reminder' || notification.type === 'daily_checkin') {
+      window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+      return;
+    }
     if (notification.actionUrl) {
       window.location.href = notification.actionUrl;
     }

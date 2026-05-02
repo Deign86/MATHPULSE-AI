@@ -29,7 +29,6 @@ export function useDailyCheckInReminder(userId: string | null): void {
           type: 'streak_reminder' as NotificationType,
           title: "Don't forget your daily check-in! 🔥",
           message: 'Check in today to keep your streak alive and earn bonus XP.',
-          actionUrl: '/dashboard',
         });
       } catch (error) {
         console.error('[useDailyCheckInReminder] Error:', error);

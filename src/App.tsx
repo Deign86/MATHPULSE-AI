@@ -780,6 +780,19 @@ const App = () => {
     }
   }, [isLoggedIn, userRole, isLearningPathLocked, pendingDeepDiagnosticCount]);
 
+  // Listen for notification-driven navigation events
+  useEffect(() => {
+    const handleNotificationNavigate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.tab && isLoggedIn) {
+        handleStudentNavigation(detail.tab);
+      }
+    };
+
+    window.addEventListener('mathpulse:navigate', handleNotificationNavigate);
+    return () => window.removeEventListener('mathpulse:navigate', handleNotificationNavigate);
+  }, [isLoggedIn]);
+
   if (loading) {
     return <AppLoadingScreen />;
   }
