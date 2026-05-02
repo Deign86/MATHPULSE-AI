@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Enforce global/default Hugging Face Space model environment variables.
 
-This script keeps backend routing pinned to the intended provider and model by
+This script keeps backend routing pinned to DeepSeek API by
 setting INFERENCE_MODEL_ID, INFERENCE_CHAT_MODEL_ID, INFERENCE_PROVIDER, and
 chat strict-mode routing flags.
 """
@@ -15,13 +15,13 @@ import sys
 from huggingface_hub import HfApi
 
 DEFAULT_SPACE_ID = "Deign86/mathpulse-api-v3test"
-DEFAULT_CHAT_MODEL = "Qwen/Qwen3-32B"
-DEFAULT_GLOBAL_MODEL = "Qwen/Qwen3-32B"
-DEFAULT_PROVIDER = "hf_inference"
+DEFAULT_CHAT_MODEL = "deepseek-chat"
+DEFAULT_GLOBAL_MODEL = "deepseek-chat"
+DEFAULT_PROVIDER = "deepseek"
 DEFAULT_CHAT_STRICT_MODEL_ONLY = "true"
 DEFAULT_CHAT_HARD_TRIGGER_ENABLED = "false"
-DEFAULT_ENFORCE_QWEN_ONLY = "true"
-DEFAULT_QWEN_LOCK_MODEL = "Qwen/Qwen3-32B"
+DEFAULT_ENFORCE_LOCK_MODEL = "true"
+DEFAULT_LOCK_MODEL_ID = "deepseek-chat"
 GLOBAL_MODEL_KEY = "INFERENCE_MODEL_ID"
 TEMP_CHAT_MODEL_KEY = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
 
@@ -44,14 +44,14 @@ def parse_args() -> argparse.Namespace:
         help="Value for INFERENCE_CHAT_HARD_TRIGGER_ENABLED (true/false)",
     )
     parser.add_argument(
-        "--enforce-qwen-only",
-        default=DEFAULT_ENFORCE_QWEN_ONLY,
-        help="Value for INFERENCE_ENFORCE_QWEN_ONLY (true/false)",
+        "--enforce-lock-model",
+        default=DEFAULT_ENFORCE_LOCK_MODEL,
+        help="Value for INFERENCE_ENFORCE_LOCK_MODEL (true/false)",
     )
     parser.add_argument(
-        "--qwen-lock-model",
-        default=DEFAULT_QWEN_LOCK_MODEL,
-        help="Value for INFERENCE_QWEN_LOCK_MODEL",
+        "--lock-model-id",
+        default=DEFAULT_LOCK_MODEL_ID,
+        help="Value for INFERENCE_LOCK_MODEL_ID",
     )
     parser.add_argument(
         "--global-model-key",
@@ -129,14 +129,14 @@ def main() -> int:
         _set_variable(
             api,
             repo_id=space_id,
-            key="INFERENCE_ENFORCE_QWEN_ONLY",
-            value=args.enforce_qwen_only.strip().lower(),
+            key="INFERENCE_ENFORCE_LOCK_MODEL",
+            value=args.enforce_lock_model.strip().lower(),
         )
         _set_variable(
             api,
             repo_id=space_id,
-            key="INFERENCE_QWEN_LOCK_MODEL",
-            value=args.qwen_lock_model.strip(),
+            key="INFERENCE_LOCK_MODEL_ID",
+            value=args.lock_model_id.strip(),
         )
         _set_variable(
             api,
