@@ -27,7 +27,7 @@ import random
 import secrets
 import string
 from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
+from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast, cast
 from collections import Counter, defaultdict
 from threading import Lock
 
@@ -1199,15 +1199,13 @@ def call_hf_chat_stream(
 
             emitted_any = False
             for chunk in stream:
-                delta = getattr(getattr(chunk, 'choices', [None])[0] if hasattr(chunk, 'choices') and chunk.choices else None, 'delta', None)
-                if delta is not None and hasattr(delta, 'content') and delta.content:  # type: ignore[union-attr]
-                    emitted_any = True
-                    yield delta.content
-                    continue
-                msg = getattr(getattr(chunk, 'choices', [None])[0] if hasattr(chunk, 'choices') and chunk.choices else None, 'message', None)
-                if msg is not None and hasattr(msg, 'content') and msg.content:  # type: ignore[union-attr]
-                    emitted_any = True
-                    yield msg.content
+                for choice in chunk.choices:  # type: ignore[union-attr]
+                    if choice.delta and choice.delta.content:
+                        emitted_any = True
+                        yield choice.delta.content
+                    elif choice.message and choice.message.content:  # type: ignore[union-attr]
+                        emitted_any = True
+                        yield choice.message.content  # type: ignore[union-attr]
 
             if emitted_any:
                 latency_ms = (time.perf_counter() - start) * 1000
