@@ -75,6 +75,9 @@ ui-debug.log
 kaggle_llm_api_job/
 kaggle_merge_job/
 datasets/vectorstore/
+# EXCEPT the ChromaDB sqlite file (needed for RAG at runtime)
+!datasets/vectorstore/chroma.sqlite3
+!datasets/vectorstore/ingest_summary.json
 
 # Curriculum binaries are hosted on HF storage, not in git
 datasets/curriculum/*.pdf
