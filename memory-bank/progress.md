@@ -5,11 +5,11 @@
 ### Core Features
 | Feature | Status | Notes |
 |---------|--------|-------|
-| **Diagnostic System (new)** | ✅ Complete | RAG-grounded 15-item test, Firestore-backed, DeepSeek-generated |
+| **RAG Lessons** | ✅ Complete | Vectorstore loaded in HF Space: 243 chunks, 6 subjects |
+| Diagnostic System (new) | ✅ Complete | RAG-grounded 15-item test, Firestore-backed, DeepSeek-generated |
 | IAR Workflow (legacy) | ✅ Complete | Being replaced by new diagnostic system |
 | AI Chat (L.O.L.I.) | ✅ Complete | Streaming with self-consistency verification |
 | Quiz Generation | ✅ Complete | Bloom's Taxonomy prompt engineering |
-| RAG Lessons | ✅ Complete | ChromaDB: 533 chunks, BAAI/bge-base-en-v1.5 |
 | Quiz Battle | ✅ Complete | 29 Firebase Functions for matchmaking + gameplay |
 | Risk Classification | ✅ Complete | BART-large-mnli zero-shot classification |
 | Gamification | ✅ Complete | XP, streaks, achievements, leaderboards, avatar shop |
@@ -17,31 +17,37 @@
 | Daily AI Insights | ✅ Complete | Classroom analytics generation |
 | Notification System | ✅ Complete | In-app bell + Firestore + Firebase Cloud Messaging |
 
-### New Diagnostic System Files
-| File | Lines | Purpose |
-|------|-------|---------|
-| `backend/routes/diagnostic.py` | 458 | FastAPI router: generate + submit + risk analysis |
-| `src/services/diagnosticService.ts` | 144 | Frontend API client |
-| `src/components/assessment/InitialAssessmentModal.tsx` | 160 | Intro modal (Start/Skip) |
-| `src/pages/AssessmentPage.tsx` | 245 | Question-by-question test page |
+### RAG Lesson Pipeline
+| Component | Status | Notes |
+|-----------|--------|-------|
+| PDF Ingestion | ✅ Complete | 7 PDFs → 243 chunks, BAAI/bge-base-en-v1.5 (768d) |
+| ChromaDB Index | ✅ Complete | `curriculum_chunks` collection, exact-match by `storage_path` |
+| Firebase Storage | ✅ Complete | 7 PDFs uploaded, vectorstore uploaded (135MB) |
+| Backend API | ✅ Complete | `POST /api/rag/lesson` with 7-section output |
+| Frontend Integration | ✅ Complete | `lessonService.ts` + `useLessonContent.ts` + `LessonViewer.tsx` |
+| HF Spaces Deploy | ✅ Complete | Vectorstore downloads on startup from Firebase Storage, 243 chunks loaded |
 
 ### Infrastructure
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Frontend Build | ✅ Complete | tsc --noEmit passes, ESLint passes |
-| Backend API | ✅ Complete | 2 new endpoints registered, ROLE_POLICIES set |
+| Backend API | ✅ Complete | RAG endpoints registered, Firebase Storage integration |
 | Firebase Functions | ✅ Complete | Node.js 22 runtime |
 | CI Pipeline | ✅ Complete | vitest, pytest, functions build |
-| Auto-Deploy | ✅ Complete | deploy-hf.yml on push to main |
+| HF Spaces Deploy | ✅ Complete | Deploy workflow green after vectorstore exclusion |
 
 ## Recent Completions
-- **2026-05-03 16:41**: Diagnostic system rebuild — 4 new files + 2 modified, tsc + ESLint clean
-- **2026-05-03**: Memory Bank deep re-scan — 209 frontend + 28 backend files catalogued
-- **2026-04-29**: UI fixes — Battle header, XP pill, modules lesson cards
-- **2026-04-24**: Curriculum ingest — 533 ChromaDB chunks from 5 PDFs
+- **2026-05-03 23:06:48**: ✅ Bug fix COMPLETED — HF Space vectorstore load (chunkCount: 243, 6 subjects). All root causes resolved and verified via /api/rag/health.
+- **2026-05-03 21:49:42**: 🐛 Bug fix completed — startup vectorstore download + env wiring for HF Space
+- **2026-05-03 21:35:10**: ✅ Deploy fix merged — excluded vectorstore from HF Spaces deploy, guardrail added
+
+## Known Issues
+- None blocking. RAG vectorstore is now fully loaded in HF Space.
 
 ## Next Steps
-1. E2E test the diagnostic flow (generate → answer → submit → Firestore verify)
-2. Verify RAG context retrieval works in production (ChromaDB health)
-3. Test edge cases: skip flow, re-login after completion, ChromaDB cold start
-4. Wire downstream systems (lesson generator, quiz generator, AI tutor) to `diagnosticResults/{userId}`
+1. ~~Ship startup vectorstore download + env wiring to HF Space~~ ✅ DONE
+2. ~~Verify `/api/rag/health` shows non-zero chunks~~ ✅ DONE (243 chunks)
+3. Test `/api/rag/lesson` with auth
+4. Test frontend lesson rendering (7 sections)
+5. E2E test the diagnostic flow (generate → answer → submit → Firestore verify)
+6. Wire downstream systems (lesson generator, quiz generator, AI tutor) to `diagnosticResults/{userId}`
