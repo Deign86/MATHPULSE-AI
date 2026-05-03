@@ -201,11 +201,24 @@ const normalizedBrackets = normalizeMultilineBrackets(normalizedNewlines);
         return segment;
       }
 
-      const unescaped = segment
-        .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int)\b|[()[\]{}])/g, '\\')
-        .replace(/\\n/g, '\n');
+          // Convert escaped newline sequences ("\\n") into real newlines
+          // within non-code segments so model-emitted "\\n" is rendered as a
+          // line break in the final markdown.
+          const withNewlines = segment.replace(/\\n/g, '\n');
 
-      const mathAwareSegments = unescaped.split(MATH_SEGMENT_PATTERN);
+          const unescaped = withNewlines
+            .replace(/\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int)\b|[()[\]{}])/g, '\\');
+
+          // If a backslash was accidentally placed before a dollar sign that
+          // immediately precedes a TeX command (for example "\$\\boxed"),
+          // remove that backslash so the $ delimiter is recognized as math.
+            const fixedDollar = unescaped.replace(/\\\$(?=\\)/g, '$');
+
+            // Also unescape any remaining backslash-escaped dollar signs so inline
+            // math delimiters aren't prevented from being recognized.
+            const fixedDollar2 = fixedDollar.replace(/\\\$/g, '$');
+
+          const mathAwareSegments = fixedDollar2.split(MATH_SEGMENT_PATTERN);
 
       return mathAwareSegments
         .map((mathSegment, mathIndex) => {
