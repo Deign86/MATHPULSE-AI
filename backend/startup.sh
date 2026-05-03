@@ -1,15 +1,6 @@
 #!/bin/sh
 set -eu
 
-echo "=========================================="
-echo "MathPulse AI Startup"
-echo "=========================================="
-echo "VECTORSTORE_DIR=${VECTORSTORE_DIR}"
-echo "CURRICULUM_VECTORSTORE_DIR=${CURRICULUM_VECTORSTORE_DIR}"
-echo "FIREBASE_SERVICE_ACCOUNT_JSON set: $(if [ -n "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ]; then echo YES; else echo NO; fi)"
-echo "FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-not set}"
-echo "=========================================="
-
 if [ -d "/data" ]; then
     : "${CURRICULUM_DIR:=/data/curriculum}"
     : "${VECTORSTORE_DIR:=/data/vectorstore}"
@@ -21,6 +12,15 @@ fi
 export CURRICULUM_DIR
 export VECTORSTORE_DIR
 export CURRICULUM_VECTORSTORE_DIR="${VECTORSTORE_DIR}"
+
+echo "=========================================="
+echo "MathPulse AI Startup"
+echo "=========================================="
+echo "VECTORSTORE_DIR=${VECTORSTORE_DIR}"
+echo "CURRICULUM_VECTORSTORE_DIR=${CURRICULUM_VECTORSTORE_DIR}"
+echo "FIREBASE_SERVICE_ACCOUNT_JSON set: $(if [ -n "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ]; then echo YES; else echo NO; fi)"
+echo "FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-not set}"
+echo "=========================================="
 
 echo "Resolved VECTORSTORE_DIR=${VECTORSTORE_DIR}"
 echo "Resolved CURRICULUM_VECTORSTORE_DIR=${CURRICULUM_VECTORSTORE_DIR}"
