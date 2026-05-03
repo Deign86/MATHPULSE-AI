@@ -5,134 +5,168 @@
 | Item | Convention | Example |
 |------|------------|---------|
 | Components | PascalCase `.tsx` | `QuizMaker.tsx`, `DiagnosticAssessmentModal.tsx` |
-| Hooks | camelCase `use*.ts` | `useAuth.ts`, `useChatSession.ts` |
+| Pages | PascalCase `*Page.tsx` in `components/` | `AIChatPage.tsx`, `GradesPage.tsx` |
+| Hooks | camelCase `use*.ts` | `useAuth.ts`, `useDailyCheckInReminder.ts` |
 | Services | camelCase `*Service.ts` | `apiService.ts`, `quizBattleService.ts` |
-| Stores | camelCase `*Store.ts` | `useAuthStore.ts`, `useUIStore.ts` |
-| Types/Interfaces | PascalCase | `User`, `StudentProfile`, `AIQuizQuestion` |
+| Types/Interfaces | PascalCase | `User`, `StudentProfile`, `QuizQuestionGenerated` |
 | API routes | kebab-case | `/api/chat/stream`, `/api/predict-risk/batch` |
-| Firebase collections | snake_case | `user_progress`, `quiz_results`, `chat_sessions` |
+| Firebase collections | camelCase | `diagnosticResults`, `quizResults`, `studentProgress` |
+| Backend Python files | snake_case | `curriculum_rag.py`, `vectorstore_loader.py` |
+
+## Folder Structure
+
+```
+MATHPULSE-AI/
+├── src/
+│   ├── components/          # All components, pages, UI primitives
+│   │   ├── ui/              # 50 shadcn/ui components
+│   │   ├── battle/          # 4 quiz battle components
+│   │   ├── assessment/      # NEW: diagnostic assessment components
+│   │   └── admin/           # 1 admin component
+│   ├── contexts/            # 2 contexts (AuthContext, ChatContext)
+│   ├── services/            # 24 service files
+│   ├── lib/                 # 3 core lib files (firebase, queryClient, diagnosticTopics)
+│   ├── types/               # 3 type files (models.ts = 708 lines, main)
+│   ├── utils/               # 9 utility files
+│   ├── data/                # 7 data files (curriculum, subjects, IAR blueprint)
+│   └── features/            # 2 feature modules (notifications, import)
+├── backend/
+│   ├── main.py              # Monolithic FastAPI app (11,466 lines)
+│   ├── analytics.py         # ML-powered analytics (1,777 lines)
+│   ├── automation_engine.py # Event-driven automation (573 lines)
+│   ├── routes/              # 2 route modules (rag, admin_model)
+│   ├── rag/                 # 2 RAG module files
+│   ├── services/            # 8 service files
+│   └── scripts/             # 2 curriculum ingestion scripts
+├── functions/
+│   └── src/
+│       ├── index.ts         # 29 Cloud Function exports
+│       ├── triggers/        # 7 Firestore trigger handlers
+│       ├── automations/     # 8 automation modules
+│       ├── scoring/         # Scoring engine + tests
+│       └── services/        # Backend API + cache services
+├── datasets/
+│   ├── curriculum/          # PDF source files
+│   ├── vectorstore/         # ChromaDB persistent DB (533 chunks)
+│   └── eval/                # Model evaluation problem banks
+├── config/                  # Runtime config (models.yaml, change-scope-map.json)
+├── docs/                    # 10 handoff/spec/audit documents
+└── .github/workflows/       # 5 CI/CD workflows
+```
 
 ## Component Patterns
 
-### Lazy-loaded pages
-All page components are lazy-loaded in App.tsx:
-```typescript
-const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
-const AIChatPage = lazy(() => import('@/pages/AIChatPage'));
+### Page-as-Component Pattern
+Pages live as PascalCase files in `src/components/` (no `pages/` directory):
+```
+components/LoginPage.tsx
+components/AIChatPage.tsx
+components/GradesPage.tsx
+components/LeaderboardPage.tsx
+components/QuizBattlePage.tsx
+components/QuizMaker.tsx          # Teacher quiz creation wizard
+components/TeacherDashboard.tsx    # Teacher workspace (3,443 lines)
+components/AdminDashboard.tsx      # Admin control panel
 ```
 
-### Context providers wrap App
+### Lazy Loading
+All page components are lazy-loaded in `App.tsx`:
 ```typescript
-<AuthProvider>
-  <NotificationProvider>
-    <QueryClientProvider>
-      <App />
-    </QueryClientProvider>
-  </NotificationProvider>
-</AuthProvider>
+const LoginPage = lazy(() => import('./components/LoginPage.tsx'));
+const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.tsx'));
 ```
 
-### Service layer abstraction
-All API calls go through `apiService.ts`. Never call `fetch` directly in components.
+### Service Layer Abstraction
+All API calls go through `apiService.ts`. Never call `fetch` directly in components. Firebase calls go through domain service files.
 
 ## State Management Patterns
 
-### Zustand for global UI state
-```typescript
-const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-}));
+| Type | Library | Usage |
+|------|---------|-------|
+| Global UI | React Context | AuthContext, ChatContext, NotificationContext |
+| Server state | TanStack Query | API data caching via `queryClient.ts` |
+| Form state | React Hook Form + Zod | QuizMaker, Settings, Profile forms |
+| Real-time | Firestore onSnapshot | Quiz Battle, notifications |
+| Cache | LRU + Redis (optional) | Deterministic response cache in backend |
+
+## API Communication Patterns
+
+### Frontend → Backend
+```
+components → apiService.ts → apiFetch<T>() → FastAPI backend
+                                  ↓
+                          Firebase ID token
+                          (Bearer header)
+                                  ↓
+                          authService.ts
+                          (token acquisition)
 ```
 
-### TanStack Query for server state
+### API Fetch Wrapper (`apiService.ts`)
 ```typescript
-const { data, isLoading } = useQuery({
-  queryKey: ['students', classId],
-  queryFn: () => studentService.getManagedStudents(classId),
-});
+export async function apiFetch<T>(
+  endpoint: string,
+  options?: RequestInit,
+  retryOpts: RetryFetchOptions = DEFAULT_RETRY_OPTS,
+): Promise<T>
 ```
+Features: auto token injection, 401 retry with refresh, exponential backoff, timeout handling
 
-### React Context for auth/chat/notifications
-```typescript
-const { user, signInWithEmail } = useAuth();
-const { sessions, createSession } = useChat();
+### Backend Auth Middleware
+```
+Request → AuthMiddleware → verify Firebase ID token → resolve role from Firestore
+       → RequestMiddleware → request ID, logging, 120s timeout
+       → Route handler
 ```
 
 ## IAR Workflow Pattern
 
-### State transitions
+### State Machine
 ```
-not_started
-  → in_progress (student starts diagnostic)
-    → completed (all questions answered)
-      → placed (learning path assigned)
-    → skipped_unassessed (teacher skipped)
-    → deep_diagnostic_required (at-risk topics found)
-      → deep_diagnostic_in_progress
-        → placed
+not_started → in_progress → completed → placed
+           ↘ skipped_unassessed
+           ↘ deep_diagnostic_required → deep_diagnostic_in_progress → placed
 ```
 
-### Trigger chain
-1. Student completes diagnostic
-2. `onDiagnosticComplete` Firestore trigger fires
-3. Calls `/api/predict-risk` for risk classification
-4. Based on risk level, either `placed` directly or `deep_diagnostic_required`
-5. Learning path generated via `/api/learning-path`
+### Trigger Chain
+1. Student completes diagnostic → frontend writes to Firestore
+2. `onDiagnosticComplete` Cloud Function fires
+3. Risk classification, badge updates, learning path generation
+4. Optional: deep diagnostic assignment for at-risk topics
 
 ## Quiz Battle Pattern
 
-### Matchmaking flow
-1. `quizBattleJoinQueue` writes to Realtime Database
-2. Background sweep function matches players by tier
-3. Match document created, players notified
-4. Gameplay: submit answers, heartbeat every 30s
-5. Match timeout after 5 minutes of inactivity
+### Match Lifecycle
+```
+joinQueue → matched → ready → in_progress → completed/cancelled
+```
+Server-authoritative match state via `quizBattleResolvePublicMatchmakingSweep`.
 
-### Answer verification
-Server-side validation — client cannot submit directly.
+Events: `round_started`, `answer_locked`, `round_result`, `match_completed`
 
 ## RAG Pattern
 
-### Vector store setup
-```python
-# Load curriculum documents → chunk → embed → store in ChromaDB
+### Retrieval Flow
+```
+query → SentenceTransformer embed → ChromaDB cosine search → top_k chunks → build prompt → DeepSeek generate
 ```
 
-### Retrieval + Generation
-1. Retrieve relevant curriculum context (similarity search)
-2. Build prompt with context + student profile
-3. Call deepseek-reasoner (prod profile) or deepseek-chat (dev/budget)
-4. Return grounded lesson/problem
+### Vector Store Specs
+- **DB:** ChromaDB PersistentClient
+- **Collection:** `curriculum_chunks` (cosine distance)
+- **Embedding:** `BAAI/bge-base-en-v1.5` (backend), `BAAI/bge-small-en-v1.5` (frontend ref)
+- **Chunks:** 533 total (General Math 124, Business Math 128, Org Management 151, Stats 130)
 
-## Error Handling Patterns
+## Firestore Schema Patterns
 
-### API errors
-```typescript
-try {
-  await apiService.chat(message);
-} catch (error) {
-  toast.error(error.message);
-}
-```
-
-### Stream errors
-Watchdog timers (idle: 90s, total: 900s) auto-terminate stuck streams.
-
-## Firebase Security Rules
-
-- Users can only read/write their own data
-- Teachers can read/write their students' data
-- Admins have elevated permissions checked via custom claims
-
-## CI/CD Pattern
-
-### Feature branch → PR → Code Review → Merge → Auto-Deploy
-1. Developer creates branch from `main`
-2. Push triggers `ci.yml` (tests)
-3. PR triggers `ai-change-audit.yml` (review routing)
-4. Merge to `main` triggers `deploy-hf.yml`
-5. Backend Docker rebuilt, frontend static rebuilt, both pushed to HF Spaces
+| Collection | Document Pattern | Access |
+|------------|-----------------|--------|
+| `users/{uid}` | User profiles with role, grade, gamification | Auth + own docs |
+| `diagnosticResults/{uid}` | Diagnostic results + risk profiles | Read own, write functions |
+| `diagnosticResults/{uid}/attempts/{diagId}` | Individual attempt data | Write functions |
+| `studentProgress/{uid}/stats/main` | Learning path, XP, streaks | Read own, write functions |
+| `progress/{uid}` | Lesson/quiz completion tracking | Read/write own |
+| `quizResults` | Quiz submissions | Write frontend, read functions |
 
 ## Testing Patterns
 
@@ -141,40 +175,13 @@ Watchdog timers (idle: 90s, total: 900s) auto-terminate stuck streams.
 | Frontend unit | Vitest | `src/**/*.test.ts(x)` |
 | Backend unit | pytest | `backend/tests/` |
 | E2E | Playwright | `e2e/*.spec.ts` |
-| Functions | npm test | `functions/` |
+| Functions | node --test | `functions/src/**/*.test.ts` |
 
-## Type Patterns
-
-### API response types
-```typescript
-interface ApiResponse<T> {
-  data: T;
-  error?: string;
-}
-```
-
-### Firestore document types
-```typescript
-interface StudentProgress {
-  odID: string;
-  userI: string;
-  xp: number;
-  level: number;
-  streak: number;
-}
-```
-
-## Feature Flag Pattern
-
-Environment variables with `VITE_` prefix for frontend, `ENABLE_*` for backend.
-
-## Git Branch Naming
+## Branch Naming
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| feature | `feat/short-description` | `feat/add-quiz-battle-rematch` |
+| feature | `feat/short-description` | `feat/rag-pipeline-and-modules` |
 | fix | `fix/short-description` | `fix/chat-stream-timeout` |
-| ui | `ui/short-description` | `ui/dashboard-card-redesign` |
-| docs | `docs/short-description` | `docs/update-api-endpoints` |
-| chore | `chore/short-description` | `chore/upgrade-react-19` |
-| bug | `bug/short-description` | `bug/iar-workflow-stuck` |
+| chore | `chore/short-description` | `chore/repo-standardization` |
+| feature (alt) | `feature/short-description` | `feature/comprehensive-diagnostic-rag-system` |
