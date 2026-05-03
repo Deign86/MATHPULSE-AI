@@ -215,6 +215,14 @@ export interface Lesson {
   locked: boolean;
   videoUrl?: string;
   description?: string;
+  subjectId?: string;
+  subject?: string;
+  quarter?: number;
+  competencyCode?: string;
+  learningCompetency?: string;
+  storagePath?: string;
+  sourceFile?: string;
+  lessonId?: string;
 }
 
 export interface Quiz {
