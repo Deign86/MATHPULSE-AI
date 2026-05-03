@@ -6,7 +6,7 @@ if [ -d "/data" ]; then
     : "${VECTORSTORE_DIR:=/data/vectorstore}"
 else
     : "${CURRICULUM_DIR:=/app/datasets/curriculum}"
-    : "${VECTORSTORE_DIR:/app/datasets/vectorstore}"
+    : "${VECTORSTORE_DIR:=/app/datasets/vectorstore}"
 fi
 
 export CURRICULUM_DIR
@@ -24,6 +24,14 @@ if [ -f "${_ingest_script}" ]; then
     fi
 else
     echo "INFO: Curriculum ingestion script not found at ${_ingest_script}; skipping (curriculum is optional)"
+fi
+
+_download_script="/app/scripts/download_vectorstore_from_firebase.py"
+if [ -f "${_download_script}" ]; then
+    echo "INFO: Downloading vectorstore from Firebase Storage..."
+    python "${_download_script}" && echo "INFO: Vectorstore download completed" || echo "WARNING: Vectorstore download failed, continuing anyway"
+else
+    echo "INFO: Vectorstore download script not found at ${_download_script}; skipping (vectorstore is optional)"
 fi
 
 exec uvicorn main:app --host 0.0.0.0 --port 7860 --workers 1
