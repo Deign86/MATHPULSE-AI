@@ -1913,6 +1913,9 @@ const AnalyticsView: React.FC<{
           </div>
 
           <div className="space-y-3 max-h-[700px] overflow-y-auto">
+            {/* PERF: visibleStudents.map() with motion.div + whileHover — potentially 50-200+ items.
+                Most expensive single list in the app: motion.div per student + whileHover handler per node.
+                No virtualization; no React.memo. Consider react-window/react-virtuoso if count exceeds 100. */}
             {visibleStudents.map((student) => (
               <motion.div
                 key={buildStudentViewKey(student)}

@@ -25,6 +25,8 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
 
   return (
+    // PERF: motion.div with whileHover — rendered inside modules.map() in ModulesPage.tsx.
+    // whileHover creates dynamic animation handlers on every mount; component is NOT React.memo'd.
     <motion.div
       role="button"
       tabIndex={0}
