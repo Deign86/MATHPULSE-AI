@@ -17,6 +17,7 @@ _FIREBASE_INITIALIZED = False
 
 def _init_firebase_storage() -> Tuple[any, any]:
     global _FIREBASE_INITIALIZED
+
     if _FIREBASE_INITIALIZED:
         try:
             from firebase_admin import storage as fb_storage
@@ -24,6 +25,7 @@ def _init_firebase_storage() -> Tuple[any, any]:
             return fb_storage, bucket
         except Exception as e:
             logger.warning("Firebase storage unavailable: %s", e)
+            _FIREBASE_INITIALIZED = False
             return None, None
 
     try:
@@ -35,8 +37,12 @@ def _init_firebase_storage() -> Tuple[any, any]:
 
     if firebase_admin._apps:
         _FIREBASE_INITIALIZED = True
-        bucket = storage.bucket()
-        return storage, bucket
+        try:
+            bucket = storage.bucket()
+            return storage, bucket
+        except Exception as e:
+            logger.warning("Firebase storage bucket unavailable: %s", e)
+            return None, None
 
     sa_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
     sa_file = os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE")
