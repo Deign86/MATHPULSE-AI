@@ -132,7 +132,6 @@ from analytics import (
     CalibrateDifficultyRequest,
     CalibrateDifficultyResponse,
     AdaptiveQuizRequest as AdaptiveQuizSelectRequest,
-    AdaptiveQuizResponse,
     StudentSummaryResponse,
     ClassInsightsRequest,
     ClassInsightsResponse,
@@ -3038,7 +3037,7 @@ async def predict_risk_batch(request: BatchRiskRequest):
 
 
 @app.post("/api/learning-path", response_model=LearningPathResponse)
-async def generate_learning_path(request: LearningPathRequest, response: Response):
+async def generate_ai_learning_path(request: LearningPathRequest, response: Response):
     """Generate AI-powered personalized learning path"""
     try:
         cache_key = deterministic_response_cache.build_cache_key(
@@ -11078,7 +11077,7 @@ async def calibrate_quiz_difficulty(request: CalibrateDifficultyRequest):
         raise HTTPException(status_code=500, detail=f"Calibration error: {str(e)}")
 
 
-@app.post("/api/quiz/adaptive-select", response_model=AdaptiveQuizResponse)
+@app.post("/api/quiz/adaptive-select")
 async def adaptive_quiz_selection(request: AdaptiveQuizSelectRequest):
     """
     Select questions adaptively based on student ability level using IRT.
@@ -12865,7 +12864,7 @@ class AdaptiveQuizItem(BaseModel):
     curriculum_reference: str
 
 
-class AdaptiveQuizResponse(BaseModel):
+class DiagnosticQuizResponse(BaseModel):
     quiz_id: str
     topic_id: str
     mastery_target_after: str
@@ -12953,7 +12952,7 @@ def _calibrate_quiz_params(mastery_level: str, prev_score: Optional[float]) -> d
     return {"count": count, "distribution": distribution}
 
 
-@app.post("/api/quiz/adaptive", response_model=AdaptiveQuizResponse)
+@app.post("/api/quiz/adaptive")
 async def generate_adaptive_quiz(request: AdaptiveQuizRequest):
     """
     Generate an adaptive practice quiz calibrated to the student's mastery level.
@@ -13051,7 +13050,7 @@ Return ONLY this strict JSON array:
                 curriculum_reference=qi.get("curriculum_reference", "DepEd SHS"),
             ))
         
-        return AdaptiveQuizResponse(
+        return DiagnosticQuizResponse(
             quiz_id=quiz_id,
             topic_id=request.topic_id,
             mastery_target_after="mastered" if mastery == "developing" else "developing" if mastery == "beginning" else "mastered",
@@ -13066,27 +13065,27 @@ Return ONLY this strict JSON array:
 
 # ─── Learning Path Endpoint ────────────────────────────────────
 
-class LearningPathRequest(BaseModel):
+class DiagnosticLearningPathRequest(BaseModel):
     student_id: str
     strand: str = Field(default="STEM")
     grade_level: str = Field(default="Grade 11")
 
 
-class LearningPathTopic(BaseModel):
+class DiagnosticLearningPathTopic(BaseModel):
     topic_id: str
     title: str
     mastery_level: str
     estimated_minutes: int
 
 
-class AdaptiveLearningPathResponse(BaseModel):
+class DiagnosticLearningPathResponse(BaseModel):
     student_id: str
-    topics: List[LearningPathTopic]
+    topics: List[DiagnosticLearningPathTopic]
     total_estimated_hours: float
 
 
-@app.post("/api/learning/path", response_model=AdaptiveLearningPathResponse)
-async def generate_learning_path(request: LearningPathRequest):
+@app.post("/api/learning/path", response_model=DiagnosticLearningPathResponse)
+async def generate_learning_path(request: DiagnosticLearningPathRequest):
     """
     Generate personalized learning path based on student's diagnostic results.
     """
@@ -13094,13 +13093,13 @@ async def generate_learning_path(request: LearningPathRequest):
         if not HAS_FIREBASE_ADMIN or not firebase_firestore:
             topics = []
             for tid, info in DEPD_TOPIC_REGISTRY.items():
-                topics.append(LearningPathTopic(
+                topics.append(DiagnosticLearningPathTopic(
                     topic_id=tid,
                     title=info["title"],
                     mastery_level="beginning",
                     estimated_minutes=20,
                 ))
-            return LearningPathResponse(
+            return DiagnosticLearningPathResponse(
                 student_id=request.student_id,
                 topics=topics[:10],
                 total_estimated_hours=3.3,
@@ -13118,9 +13117,9 @@ async def generate_learning_path(request: LearningPathRequest):
         if suggested_path:
             for tid in suggested_path[:10]:
                 info = DEPD_TOPIC_REGISTRY.get(tid, {})
-                path_topics.append(LearningPathTopic(
+                path_topics.append(DiagnosticLearningPathTopic(
                     topic_id=tid,
-                    title=info.get("title", tid),
+                    title=info.get("title") or tid,
                     mastery_level="beginning",
                     estimated_minutes=20,
                 ))
@@ -13128,7 +13127,7 @@ async def generate_learning_path(request: LearningPathRequest):
             strand_topics = DEPD_ED_COMPETENCY_DOMAINS.get(request.strand, {}).get(request.grade_level, [])
             for i, t in enumerate(strand_topics[:10]):
                 tid = f"NA-{(i+1):02d}-01"
-                path_topics.append(LearningPathTopic(
+                path_topics.append(DiagnosticLearningPathTopic(
                     topic_id=tid,
                     title=t,
                     mastery_level="beginning",
@@ -13137,7 +13136,7 @@ async def generate_learning_path(request: LearningPathRequest):
         
         total_minutes = sum(t.estimated_minutes for t in path_topics)
         
-        return LearningPathResponse(
+        return DiagnosticLearningPathResponse(
             student_id=request.student_id,
             topics=path_topics,
             total_estimated_hours=round(total_minutes / 60, 1),
