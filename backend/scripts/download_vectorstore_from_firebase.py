@@ -17,7 +17,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from backend.rag.firebase_storage_loader import _init_firebase_storage
 
 REMOTE_PREFIX = "vectorstore/"
-LOCAL_DEST_DIR = Path("/app/datasets/vectorstore")
+
+
+def _resolve_dest_dir() -> Path:
+    raw = os.getenv("CURRICULUM_VECTORSTORE_DIR") or os.getenv("VECTORSTORE_DIR")
+    if raw:
+        return Path(raw)
+    return Path("/app/datasets/vectorstore")
 
 
 def download_vectorstore(dest_dir: Path, prefix: str = REMOTE_PREFIX):
@@ -59,4 +65,6 @@ def download_vectorstore(dest_dir: Path, prefix: str = REMOTE_PREFIX):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    download_vectorstore(LOCAL_DEST_DIR, REMOTE_PREFIX)
+    dest_dir = _resolve_dest_dir()
+    logger.info("Using vectorstore destination: %s", dest_dir)
+    download_vectorstore(dest_dir, REMOTE_PREFIX)
