@@ -79,6 +79,7 @@ from services.user_provisioning_service import (
 )
 from routes.rag_routes import router as rag_router
 from routes.admin_model_routes import router as admin_model_router
+from routes.diagnostic import router as diagnostic_router
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -335,6 +336,8 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import-grounded/access-audit": TEACHER_OR_ADMIN,
     "/api/quiz/student-competency": TEACHER_OR_ADMIN,
     "/api/calculator/evaluate": ALL_APP_ROLES,
+    "/api/diagnostic/generate": ALL_APP_ROLES,
+    "/api/diagnostic/submit": ALL_APP_ROLES,
     "/api/student/competency-analysis": TEACHER_OR_ADMIN,
     "/api/risk/train-model": ADMIN_ONLY,
     "/api/predict-risk/enhanced": TEACHER_OR_ADMIN,
@@ -1007,6 +1010,7 @@ app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
 app.include_router(rag_router)
 app.include_router(admin_model_router)
+app.include_router(diagnostic_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
