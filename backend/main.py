@@ -13079,13 +13079,13 @@ class LearningPathTopic(BaseModel):
     estimated_minutes: int
 
 
-class LearningPathResponse(BaseModel):
+class AdaptiveLearningPathResponse(BaseModel):
     student_id: str
     topics: List[LearningPathTopic]
     total_estimated_hours: float
 
 
-@app.post("/api/learning/path", response_model=LearningPathResponse)
+@app.post("/api/learning/path", response_model=AdaptiveLearningPathResponse)
 async def generate_learning_path(request: LearningPathRequest):
     """
     Generate personalized learning path based on student's diagnostic results.
