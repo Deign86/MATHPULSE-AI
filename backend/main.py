@@ -1822,33 +1822,45 @@ async def root():
 # ─── AI Chat Tutor ─────────────────────────────────────────────
 
 
-MATH_TUTOR_SYSTEM_PROMPT = """You are L.O.L.I. (Learning Optimizer with Layered Intelligence), 
-an expert AI math tutor for Grade 11-12 Filipino students.
+MATH_TUTOR_SYSTEM_PROMPT = """You are Pulse, MathPulse AI's friendly math tutor for Filipino Senior High School
+students. You help students understand and solve problems in General Mathematics,
+Business Mathematics, Statistics & Probability, and Finite Mathematics, all aligned
+with the DepEd Strengthened SHS Curriculum and SDO Navotas learning modules.
 
-**Problem-Solving Protocol:**
-1. Read the problem carefully and restate it in your own words to confirm understanding.
-2. Identify key information, formulas, theorems, and what you need to find.
-3. Solve step by step using Chain-of-Thought reasoning with explicit calculations.
-4. Show ALL steps and equation manipulations clearly with intermediate results.
-5. Verify your answer by substituting back into the original problem (for equations/algebra).
-6. Double-check your arithmetic and final answer before presenting.
-7. Put your final answer inside \\boxed{}
+YOUR BEHAVIOR RULES:
+1. PERSONALIZE every response. Address the student by first name occasionally.
+2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
+3. If the student is struggling on a critical gap topic, gently steer them back to
+   prerequisite concepts before moving forward.
+4. Use the SDO Navotas step-by-step method for ALL solutions:
+   "Given → Formula → Substitute → Compute → Conclude"
+5. Always format math using LaTeX:
+   - Inline: \\( expression \\)
+   - Block/display: \\[ expression \\]
+   Never use dollar signs ($) — they break the KaTeX renderer.
+6. Use Filipino-friendly English. Mix in occasional Tagalog phrases
+   (e.g., "Kaya mo yan!", "Subukan natin...") to keep the tone warm.
+7. When a student answers a "try_it" problem, evaluate their answer:
+   - If correct: Celebrate briefly, explain WHY it's correct, then offer a harder challenge.
+   - If wrong: Say "Good try! Let's check your steps..." then walk through the error.
+8. Keep responses concise (max 300 words per message). Use bullet points for steps.
+9. If a student asks about a topic outside their current lesson, help but
+   note: "This is from [topic]. We'll cover this soon in your learning path!"
+10. NEVER generate quiz items with answers visible to the student.
+11. When you detect the student consistently making the same mistake,
+    note it clearly: "I noticed you keep forgetting to convert % to decimal first — let's fix that!"
 
-**Rules for Mathematical Accuracy:**
-- ALWAYS show complete working. Never skip steps or combine multiple operations.
-- Use clear mathematical notation (x², √, π, ≈, ∴, →, =)
-- Show intermediate calculations explicitly (e.g., "3 × 4 = 12, then 12 + 5 = 17")
-- Reveal your thinking process — explain WHY each step follows from the previous
-- For word problems: Define variables clearly, show equation setup, solve step-by-step, then verify
-- If verification fails, recalculate and identify the error before correcting
-- For physics/kinematics problems: Check units and verify magnitude of answers make sense
-- For functions/calculus: Always verify domain and range assumptions
-- Be encouraging but honest. If a problem is ambiguous, ask for clarification.
-- Respond in clear English suitable for Grade 11-12 students
-- If asked about any non-math topic, respond in a friendly tone and redirect to math support only.
-- If the user sends greetings or thanks, respond politely and invite a math-related question.
-- Never use external tools or functions — solve purely through mathematical reasoning
-- Never use external tools or functions — solve purely through mathematical reasoning"""
+RESPONSE FORMAT FOR MATH EXPLANATIONS:
+1. Quick concept recap (1-2 sentences)
+2. Formula (in LaTeX block)
+3. Step-by-step solution
+4. Final answer with units/peso sign
+5. One quick follow-up question to check understanding
+
+AWARENESS OF FULL CURRICULUM:
+You have complete knowledge of all topics in the MathPulse topic registry
+(NA-*, BM-*, SP-*, FM1-*, FM2-* topic codes). When a student asks "what's next?"
+refer to their suggested_learning_path from the diagnostic result."""
 
 
 _STREAM_COMPLETION_MODES: Set[str] = {"auto", "marker", "none"}
@@ -2063,7 +2075,46 @@ async def chat_tutor(request: ChatRequest):
         if boundary_response is not None:
             return ChatResponse(response=boundary_response)
 
-        messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
+        system_prompt = MATH_TUTOR_SYSTEM_PROMPT
+        
+        if request.userId and HAS_FIREBASE_ADMIN and firebase_firestore:
+            try:
+                db = firebase_firestore.client()
+                user_doc = db.collection("users").document(request.userId).get()
+                if user_doc.exists:
+                    user_data = user_doc.to_dict() or {}
+                    diag_id = user_data.get("latestDiagnosticTestId", "")
+                    if diag_id:
+                        diag_doc = db.collection("diagnosticResults").document(request.userId).collection("attempts").document(diag_id).get()
+                        if diag_doc.exists:
+                            diag_data = diag_doc.to_dict() or {}
+                            risk = diag_data.get("riskProfile", {})
+                            student_context = f"""
+STUDENT PROFILE:
+Name: {user_data.get('displayName', 'Student')}
+Strand: {diag_data.get('strand', 'STEM')}
+Weak Domains: {', '.join(risk.get('weak_domains', []))}
+Critical Gaps: {', '.join(risk.get('critical_gaps', []))}
+Overall Risk Level: {risk.get('overall_risk', 'unknown')}
+"""
+                            system_prompt = student_context + "\n" + system_prompt
+            except Exception as ctx_err:
+                logger.debug(f"Failed to inject student profile into chat: {ctx_err}")
+        
+        try:
+            curriculum_chunks = retrieve_curriculum_context(
+                query=request.message[:200],
+                top_k=2,
+            )
+            if curriculum_chunks:
+                rag_context = "RELEVANT CURRICULUM REFERENCE:\n"
+                for chunk in curriculum_chunks:
+                    rag_context += f"[{chunk.get('source_file', '')}] {chunk.get('content', '')[:400]}\n--\n"
+                system_prompt = rag_context + "\n\n" + system_prompt
+        except Exception as rag_err:
+            logger.debug(f"RAG context injection skipped: {rag_err}")
+        
+        messages = [{"role": "system", "content": system_prompt}]
 
         # Add conversation history
         for msg in request.history[-10:]:  # Keep last 10 messages for context window
@@ -8030,6 +8081,166 @@ class ImportGroundedAccessAuditResponse(BaseModel):
     warnings: List[str]
 
 
+# ─── Diagnostic Test Models ────────────────────────────────────
+
+class DiagnosticGenerateRequest(BaseModel):
+    strand: str = Field(..., description="Student strand: ABM, STEM, HUMSS, GAS, TVL")
+    gradeLevel: str = Field(..., description="Grade level: Grade 11 or Grade 12")
+    numQuestions: int = Field(default=15, ge=5, le=30, description="Number of questions to generate")
+
+
+class DiagnosticQuestion(BaseModel):
+    question_id: str
+    competency_code: str
+    domain: str
+    topic: str
+    difficulty: str
+    bloom_level: str
+    question_text: str
+    options: Dict[str, str]
+    correct_answer: str
+    solution_hint: str
+    curriculum_reference: str
+
+
+class DiagnosticGenerateResponse(BaseModel):
+    questions: List[DiagnosticQuestion]
+    test_id: str
+    metadata: Dict[str, Any]
+
+
+class DiagnosticSubmitRequest(BaseModel):
+    user_id: str
+    test_id: str
+    strand: str
+    grade_level: str
+    responses: List[Dict[str, Any]]
+
+
+class DiagnosticResult(BaseModel):
+    user_id: str
+    test_id: str
+    taken_at: datetime
+    strand: str
+    grade_level: str
+    total_items: int
+    total_score: int
+    percentage_score: float
+    responses: List[Dict[str, Any]]
+    domain_scores: Dict[str, Dict[str, Any]]
+    risk_profile: Dict[str, Any]
+
+
+class DiagnosticSubmitResponse(BaseModel):
+    success: bool
+    result: DiagnosticResult
+    risk_profile: Dict[str, Any]
+    domain_scores: Dict[str, Dict[str, Any]]
+    redirect_to: str
+
+
+class DiagnosticResultsResponse(BaseModel):
+    success: bool
+    results: List[DiagnosticResult]
+
+
+# ─── DepEd Curriculum Competency Domains ────────────────────────────
+
+DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
+    "ABM": {
+        "Grade 11": [
+            "Business Mathematics - Fractions, Decimals, Percent",
+            "Business Mathematics - Proportion",
+            "Business Mathematics - Markup and Margin",
+            "Business Mathematics - Trade Discounts and VAT",
+            "Business Mathematics - Commissions",
+            "Business Mathematics - Salaries and Wages",
+            "Business Mathematics - Mandatory Deductions",
+            "Business Mathematics - Employee Benefits",
+            "Business Mathematics - Overtime Pay",
+            "Business Mathematics - Simple Interest",
+            "Business Mathematics - Compound Interest",
+            "Business Mathematics - Loans and Credit",
+            "Business Mathematics - Data Presentation",
+        ],
+        "Grade 12": [
+            "Business Mathematics - Business Reports",
+            "Business Mathematics - Financial Analysis",
+            "Business Mathematics - Investment Decisions",
+            "Business Mathematics - Taxation",
+            "Business Mathematics - Asset Depreciation",
+        ],
+    },
+    "STEM": {
+        "Grade 11": [
+            "General Mathematics - Patterns and Sequences",
+            "General Mathematics - Functions",
+            "General Mathematics - Function Operations",
+            "General Mathematics - Inverse Functions",
+            "General Mathematics - Unit Conversions",
+            "General Mathematics - Geometry",
+            "General Mathematics - Trigonometry",
+            "Statistics - Data Organization",
+            "Statistics - Measures of Central Tendency",
+            "Statistics - Measures of Variability",
+            "Statistics - Random Variables",
+            "Statistics - Probability Distributions",
+            "Statistics - Normal Distribution",
+            "Statistics - Sampling",
+            "Statistics - Hypothesis Testing",
+        ],
+        "Grade 12": [
+            "General Mathematics - Financial Math",
+            "General Mathematics - Compound Interest",
+            "General Mathematics - Annuities",
+            "General Mathematics - Amortization",
+            "General Mathematics - Logical Propositions",
+            "Statistics - Confidence Intervals",
+            "Statistics - Correlation",
+            "Statistics - Regression",
+        ],
+    },
+    "HUMSS": {
+        "Grade 11": [
+            "General Mathematics - Patterns and Sequences",
+            "General Mathematics - Functions",
+            "General Mathematics - Statistics Basics",
+            "General Mathematics - Data Analysis",
+            "General Mathematics - Probability",
+        ],
+        "Grade 12": [
+            "General Mathematics - Financial Math",
+            "General Mathematics - Logical Reasoning",
+            "Statistics - Statistical Inference",
+        ],
+    },
+    "GAS": {
+        "Grade 11": [
+            "General Mathematics - Patterns and Sequences",
+            "General Mathematics - Functions",
+            "General Mathematics - Statistics Basics",
+        ],
+        "Grade 12": [
+            "General Mathematics - Financial Math",
+            "General Mathematics - Logical Reasoning",
+        ],
+    },
+    "TVL": {
+        "Grade 11": [
+            "Applied Mathematics - Number Sense",
+            "Applied Mathematics - Measurement",
+            "Applied Mathematics - Data Interpretation",
+            "Applied Mathematics - Problem Solving",
+        ],
+        "Grade 12": [
+            "Applied Mathematics - Business Math",
+            "Applied Mathematics - Consumer Math",
+            "Applied Mathematics - Technical Math",
+        ],
+    },
+}
+
+
 def _coerce_event_timestamp_utc(event: Dict[str, Any]) -> Optional[datetime]:
     created_at = event.get("createdAt")
     if isinstance(created_at, datetime):
@@ -11874,6 +12085,1066 @@ async def automation_content_updated(payload: ContentUpdatePayload):
     except Exception as e:
         logger.error(f"Automation content error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+
+# ─── Diagnostic Test Endpoints ─────────────────────────────────
+
+async def _generate_diagnostic_questions(
+    strand: str,
+    grade_level: str,
+    num_questions: int,
+) -> List[DiagnosticQuestion]:
+    """Generate diagnostic test questions using LLM based on DepEd curriculum with RAG."""
+    
+    topics = DEPD_ED_COMPETENCY_DOMAINS.get(strand, {}).get(grade_level, [])
+    if not topics:
+        topics = DEPD_ED_COMPETENCY_DOMAINS.get("STEM", {}).get("Grade 11", [])
+    
+    topic_list = "\n".join([f"- {t}" for t in topics[:10]])
+    
+    curriculum_chunks = retrieve_curriculum_context(
+        query=f"{topics[0] if topics else strand} examples problems {grade_level}",
+        subject="General Mathematics",
+        top_k=3,
+    )
+    
+    curriculum_context = ""
+    for chunk in curriculum_chunks:
+        source = chunk.get("source_file", "unknown")
+        content = chunk.get("content", "")[:500]
+        curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
+    
+    rag_instruction = ""
+    if curriculum_context:
+        rag_instruction = f"""CURRICULUM REFERENCE:
+{curriculum_context}
+
+Use these examples as reference. Do not copy directly."""
+    
+    prompt = f"""You are MathPulse AI's Diagnostic Test Generator. Generate {num_questions} multiple-choice questions for a Filipino Senior High School student (Strand: {strand}, Grade: {grade_level}).
+
+Based on these DepEd SHS curriculum competencies:
+{topic_list}
+
+{rag_instruction}
+
+Generate questions in this strict JSON format (no other text):
+[
+  {{
+    "question_id": "DX-<generate uuid>",
+    "competency_code": "TOPIC-SUBTOPIC-01",
+    "domain": "Domain Name",
+    "topic": "Specific Topic",
+    "difficulty": "easy|medium|hard",
+    "bloom_level": "remembering|understanding|applying|analyzing",
+    "question_text": "Question text in Filipino context",
+    "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+    "correct_answer": "A|B|C|D",
+    "solution_hint": "Brief solution hint (1-2 sentences)",
+    "curriculum_reference": "DepEd SHS [Strand] Q[X] - [Topic]"
+  }}
+]
+
+Distribution: 40% easy, 40% medium, 20% hard.
+Use Filipino real-life context (peso amounts, SSS/PhilHealth/BIR, local scenarios).
+Distractors must be plausible but clearly wrong.
+Return ONLY the JSON array, no other text."""
+
+    try:
+        messages = [
+            {"role": "system", "content": "You are a math question generator. Return ONLY valid JSON."},
+            {"role": "user", "content": prompt},
+        ]
+        response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="quiz")
+        
+        import re
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if json_match:
+            questions_data = json.loads(json_match.group())
+        else:
+            questions_data = json.loads(response)
+        
+        questions = []
+        for q in questions_data[:num_questions]:
+            questions.append(DiagnosticQuestion(**q))
+        
+        return questions
+    except Exception as e:
+        logger.error(f"Diagnostic question generation error: {e}")
+        raise
+
+
+async def _analyze_diagnostic_risk(
+    responses: List[Dict[str, Any]],
+    total_items: int,
+    total_score: int,
+) -> Dict[str, Any]:
+    """Analyze student performance and generate risk profile."""
+    domain_scores: Dict[str, Dict[str, Any]] = {}
+    domain_responses: Dict[str, List[Dict[str, Any]]] = {}
+    
+    for resp in responses:
+        domain = resp.get("domain", "Unknown")
+        if domain not in domain_responses:
+            domain_responses[domain] = []
+        domain_responses[domain].append(resp)
+    
+    for domain, resp_list in domain_responses.items():
+        correct = sum(1 for r in resp_list if r.get("is_correct", False))
+        total = len(resp_list)
+        pct = (correct / total * 100) if total > 0 else 0
+        
+        mastery = "mastered" if pct >= 80 else "developing" if pct >= 60 else "beginning"
+        domain_scores[domain] = {
+            "correct": correct,
+            "total": total,
+            "percentage": round(pct, 1),
+            "mastery_level": mastery,
+        }
+    
+    weak_domains = [
+        d for d, data in domain_scores.items()
+        if data["percentage"] < 60
+    ]
+    
+    critical_gaps = []
+    competency_attempts: Dict[str, List[bool]] = {}
+    for resp in responses:
+        comp_code = resp.get("competency_code", "")
+        if comp_code not in competency_attempts:
+            competency_attempts[comp_code] = []
+        competency_attempts[comp_code].append(resp.get("is_correct", False))
+    
+    for comp_code, results in competency_attempts.items():
+        correct_count = sum(1 for r in results if r)
+        if len(results) >= 2 and correct_count == 0:
+            critical_gaps.append(comp_code)
+    
+    overall_pct = (total_score / total_items * 100) if total_items > 0 else 0
+    
+    if overall_pct >= 75 and len(critical_gaps) == 0:
+        overall_risk = "low"
+    elif overall_pct >= 55 or len(critical_gaps) <= 2:
+        overall_risk = "moderate"
+    elif overall_pct >= 40 or len(critical_gaps) <= 4:
+        overall_risk = "high"
+    else:
+        overall_risk = "critical"
+    
+    intervention_messages = {
+        "low": "Great job! You have a solid foundation. Keep practicing to maintain your skills!",
+        "moderate": "You're making good progress. Focus on the topics where you need more practice.",
+        "high": "Don't worry! With focused practice on your weak areas, you'll improve quickly.",
+        "critical": "Let's work on this together. Start with the basics and build up your confidence.",
+    }
+    
+    suggested_path = weak_domains[:3] if weak_domains else list(domain_scores.keys())[:3]
+    
+    return {
+        "overall_risk": overall_risk,
+        "overall_score_percent": round(overall_pct, 1),
+        "domain_scores": domain_scores,
+        "weak_domains": weak_domains,
+        "critical_gaps": critical_gaps,
+        "recommended_intervention": intervention_messages[overall_risk],
+        "suggested_learning_path": suggested_path,
+    }
+
+
+def _save_diagnostic_to_firestore(result: DiagnosticResult) -> bool:
+    """Save diagnostic result to Firestore."""
+    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+        logger.warning("Firebase not available for diagnostic save")
+        return False
+    
+    try:
+        db = firebase_firestore.client()
+        doc_ref = db.collection("diagnosticResults").document(result.user_id).collection("attempts").document(result.test_id)
+        doc_ref.set({
+            "testId": result.test_id,
+            "takenAt": result.taken_at,
+            "strand": result.strand,
+            "gradeLevel": result.grade_level,
+            "totalItems": result.total_items,
+            "totalScore": result.total_score,
+            "percentageScore": result.percentage_score,
+            "responses": result.responses,
+            "domainScores": result.domain_scores,
+            "riskProfile": result.risk_profile,
+        })
+        
+        latest_ref = db.collection("users").document(result.user_id)
+        latest_ref.set({"latestDiagnosticTestId": result.test_id}, merge=True)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Firestore diagnostic save error: {e}")
+        return False
+
+
+@app.post("/api/diagnostic/generate", response_model=DiagnosticGenerateResponse)
+async def generate_diagnostic_test(request: DiagnosticGenerateRequest):
+    """
+    Generate a personalized diagnostic assessment for a student.
+    Questions are based on DepEd Strengthened SHS Curriculum.
+    """
+    try:
+        test_id = f"DX-{uuid.uuid4().hex[:12]}"
+        
+        questions = await _generate_diagnostic_questions(
+            request.strand,
+            request.gradeLevel,
+            request.numQuestions,
+        )
+        
+        stripped_questions = []
+        for q in questions:
+            stripped_questions.append(DiagnosticQuestion(
+                question_id=q.question_id,
+                competency_code=q.competency_code,
+                domain=q.domain,
+                topic=q.topic,
+                difficulty=q.difficulty,
+                bloom_level=q.bloom_level,
+                question_text=q.question_text,
+                options=q.options,
+                correct_answer=q.correct_answer,
+                solution_hint="",
+                curriculum_reference=q.curriculum_reference,
+            ))
+        
+        metadata = {
+            "strand": request.strand,
+            "grade_level": request.gradeLevel,
+            "num_questions": len(questions),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        return DiagnosticGenerateResponse(
+            questions=stripped_questions,
+            test_id=test_id,
+            metadata=metadata,
+        )
+    except Exception as e:
+        logger.error(f"Diagnostic generation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Diagnostic generation error: {str(e)}")
+
+
+@app.post("/api/diagnostic/submit", response_model=DiagnosticSubmitResponse)
+async def submit_diagnostic_test(request: DiagnosticSubmitRequest):
+    """
+    Submit diagnostic test responses, score them, and generate risk profile.
+    Results are saved to Firestore for use by other subsystems.
+    """
+    try:
+        total_items = len(request.responses)
+        total_score = 0
+        scored_responses = []
+        
+        for resp in request.responses:
+            is_correct = resp.get("student_answer", "") == resp.get("correct_answer", "")
+            if is_correct:
+                total_score += 1
+            scored_responses.append({
+                "question_id": resp.get("question_id"),
+                "competency_code": resp.get("competency_code"),
+                "domain": resp.get("domain"),
+                "topic": resp.get("topic"),
+                "difficulty": resp.get("difficulty"),
+                "bloom_level": resp.get("bloom_level"),
+                "student_answer": resp.get("student_answer"),
+                "correct_answer": resp.get("correct_answer"),
+                "is_correct": is_correct,
+                "time_spent_seconds": resp.get("time_spent_seconds", 0),
+            })
+        
+        risk_profile = await _analyze_diagnostic_risk(
+            scored_responses,
+            total_items,
+            total_score,
+        )
+        
+        domain_scores = risk_profile.get("domain_scores", {})
+        
+        result = DiagnosticResult(
+            user_id=request.user_id,
+            test_id=request.test_id,
+            taken_at=datetime.now(timezone.utc),
+            strand=request.strand,
+            grade_level=request.grade_level,
+            total_items=total_items,
+            total_score=total_score,
+            percentage_score=round(total_score / total_items * 100, 1),
+            responses=scored_responses,
+            domain_scores=domain_scores,
+            risk_profile=risk_profile,
+        )
+        
+        _save_diagnostic_to_firestore(result)
+        
+        return DiagnosticSubmitResponse(
+            success=True,
+            result=result,
+            risk_profile=risk_profile,
+            domain_scores=domain_scores,
+            redirect_to="/dashboard",
+        )
+    except Exception as e:
+        logger.error(f"Diagnostic submit error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Diagnostic submit error: {str(e)}")
+
+
+@app.get("/api/diagnostic/results/{user_id}", response_model=DiagnosticResultsResponse)
+async def get_diagnostic_results(user_id: str):
+    """
+    Fetch diagnostic test results for a student.
+    Returns all attempts with risk profiles.
+    """
+    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+        return DiagnosticResultsResponse(success=False, results=[])
+    
+    try:
+        db = firebase_firestore.client()
+        docs = db.collection("diagnosticResults").document(user_id).collection("attempts").stream()
+        
+        results = []
+        for doc in docs:
+            data = doc.to_dict()
+            if data:
+                results.append(DiagnosticResult(**data))
+        
+        results.sort(key=lambda x: x.taken_at, reverse=True)
+        
+        return DiagnosticResultsResponse(success=True, results=results)
+    except Exception as e:
+        logger.error(f"Diagnostic results fetch error: {e}")
+        return DiagnosticResultsResponse(success=False, results=[])
+
+
+# ─── DepEd Topic Registry for Lessons/Quizzes ─────────────────────────────
+
+DEPD_TOPIC_REGISTRY: Dict[str, Dict[str, str]] = {
+    "NA-WAGE-01": {"subject": "General Mathematics", "title": "Wages, Salaries, Overtime, Commissions, VAT", "quarter": "Q1"},
+    "NA-SEQ-01": {"subject": "General Mathematics", "title": "Arithmetic Sequences and Series", "quarter": "Q1"},
+    "NA-SEQ-02": {"subject": "General Mathematics", "title": "Geometric Sequences and Series", "quarter": "Q1"},
+    "NA-SEQ-03": {"subject": "General Mathematics", "title": "Sigma Notation, Financial Applications", "quarter": "Q1"},
+    "NA-FUNC-01": {"subject": "General Mathematics", "title": "Functions, Relations, Vertical Line Test", "quarter": "Q2"},
+    "NA-FUNC-02": {"subject": "General Mathematics", "title": "Evaluating Functions, Operations, Composition", "quarter": "Q2"},
+    "NA-FUNC-03": {"subject": "General Mathematics", "title": "One-to-One Functions, Inverse Functions", "quarter": "Q2"},
+    "NA-FUNC-04": {"subject": "General Mathematics", "title": "Piecewise Functions", "quarter": "Q2"},
+    "NA-EXP-01": {"subject": "General Mathematics", "title": "Exponential Functions, Equations, Inequalities", "quarter": "Q2"},
+    "NA-LOG-01": {"subject": "General Mathematics", "title": "Logarithmic Functions", "quarter": "Q2"},
+    "MG-TRIG-01": {"subject": "General Mathematics", "title": "Trigonometric Ratios, Right Triangles", "quarter": "Q3"},
+    "MG-TRIG-02": {"subject": "General Mathematics", "title": "Oblique Triangles, Heron's Formula", "quarter": "Q3"},
+    "MG-MEAS-01": {"subject": "General Mathematics", "title": "Unit Conversion, Surface Area, Volume", "quarter": "Q2"},
+    "DP-STAT-01": {"subject": "Statistics", "title": "Types of Data, Levels of Measurement", "quarter": "Q2"},
+    "DP-STAT-02": {"subject": "Statistics", "title": "Measures of Central Tendency and Variability", "quarter": "Q2"},
+    "DP-RV-01": {"subject": "Statistics", "title": "Random Variables (Discrete & Continuous)", "quarter": "Q3"},
+    "DP-RV-02": {"subject": "Statistics", "title": "Probability Distributions, Mean, Variance, SD", "quarter": "Q3"},
+    "DP-NORM-01": {"subject": "Statistics", "title": "Normal Distribution, Properties", "quarter": "Q3"},
+    "DP-NORM-02": {"subject": "Statistics", "title": "Z-Scores, Standard Normal Table", "quarter": "Q3"},
+    "DP-SAMP-01": {"subject": "Statistics", "title": "Sampling, Central Limit Theorem", "quarter": "Q3"},
+    "DP-SAMP-02": {"subject": "Statistics", "title": "Sampling Distribution of Sample Means", "quarter": "Q3"},
+    "NA-FIN-01": {"subject": "General Mathematics", "title": "Compound Interest, Maturity Value", "quarter": "Q4"},
+    "NA-FIN-02": {"subject": "General Mathematics", "title": "Simple and General Annuities", "quarter": "Q4"},
+    "NA-FIN-03": {"subject": "General Mathematics", "title": "Deferred Annuity, Fair Market Value", "quarter": "Q4"},
+    "NA-FIN-04": {"subject": "General Mathematics", "title": "Business and Consumer Loans, Amortization", "quarter": "Q4"},
+    "DP-HYP-01": {"subject": "Statistics", "title": "Hypothesis Testing: Null/Alternative, Types of Error", "quarter": "Q4"},
+    "DP-HYP-02": {"subject": "Statistics", "title": "Z-Test and T-Test", "quarter": "Q4"},
+    "DP-HYP-03": {"subject": "Statistics", "title": "Pearson r, Scatter Plots, Line of Best Fit", "quarter": "Q4"},
+    "NA-LOGIC-01": {"subject": "General Mathematics", "title": "Logical Propositions, Connectives, Truth Tables", "quarter": "Q4"},
+    "NA-LOGIC-02": {"subject": "General Mathematics", "title": "Conditional Propositions, Tautologies", "quarter": "Q4"},
+    "BM-FDP-01": {"subject": "Business Mathematics", "title": "Fractions, Decimals, Percent Conversions", "quarter": "Q1"},
+    "BM-FDP-02": {"subject": "Business Mathematics", "title": "Proportion: Direct, Inverse, Partitive", "quarter": "Q1"},
+    "BM-BUS-01": {"subject": "Business Mathematics", "title": "Markup, Margin, Trade Discounts, VAT", "quarter": "Q1"},
+    "BM-BUS-02": {"subject": "Business Mathematics", "title": "Profit, Loss, Break-even Point", "quarter": "Q1"},
+    "BM-COMM-01": {"subject": "Business Mathematics", "title": "Straight Commission, Salary Plus Commission", "quarter": "Q2"},
+    "BM-COMM-02": {"subject": "Business Mathematics", "title": "Commission on Cash and Installment Basis", "quarter": "Q2"},
+    "BM-COMM-03": {"subject": "Business Mathematics", "title": "Down Payment, Gross Balance", "quarter": "Q2"},
+    "BM-INT-01": {"subject": "Business Mathematics", "title": "Simple Interest, Compound Interest", "quarter": "Q2"},
+    "BM-INT-02": {"subject": "Business Mathematics", "title": "Solving Problems with Interest and Commission", "quarter": "Q2"},
+    "BM-SW-01": {"subject": "Business Mathematics", "title": "Salary vs. Wage, Income", "quarter": "Q2"},
+    "BM-SW-02": {"subject": "Business Mathematics", "title": "Employee Benefits: Taxable vs. Nontaxable", "quarter": "Q2"},
+    "BM-SW-03": {"subject": "Business Mathematics", "title": "Mandatory Deductions: SSS, PhilHealth, Pag-IBIG", "quarter": "Q2"},
+    "BM-SW-04": {"subject": "Business Mathematics", "title": "Overtime Pay Computation (Labor Code)", "quarter": "Q2"},
+    "BM-SW-05": {"subject": "Business Mathematics", "title": "E-Spreadsheet for Payroll", "quarter": "Q2"},
+    "BM-MORT-01": {"subject": "Business Mathematics", "title": "Mortgage, Amortization, Monthly Payment", "quarter": "Q2"},
+    "BM-DATA-01": {"subject": "Business Mathematics", "title": "Data Presentation: Tables, Bar, Line, Pie Charts", "quarter": "Q2"},
+    "BM-DATA-02": {"subject": "Business Mathematics", "title": "Analyzing Business Data with Excel", "quarter": "Q2"},
+    "SP-RV-01": {"subject": "Statistics & Probability", "title": "Random Variables, Discrete vs. Continuous", "quarter": "Q1"},
+    "SP-RV-02": {"subject": "Statistics & Probability", "title": "Probability Distribution, Mean, Variance, SD", "quarter": "Q1"},
+    "SP-NORM-01": {"subject": "Statistics & Probability", "title": "Normal Curve Properties", "quarter": "Q1"},
+    "SP-NORM-02": {"subject": "Statistics & Probability", "title": "Z-Scores, Standard Normal Table", "quarter": "Q1"},
+    "SP-NORM-03": {"subject": "Statistics & Probability", "title": "Applying Normal Distribution", "quarter": "Q1"},
+    "SP-SAMP-01": {"subject": "Statistics & Probability", "title": "Types of Random Sampling", "quarter": "Q2"},
+    "SP-SAMP-02": {"subject": "Statistics & Probability", "title": "Sampling Distribution of Sample Means", "quarter": "Q2"},
+    "SP-SAMP-03": {"subject": "Statistics & Probability", "title": "Central Limit Theorem", "quarter": "Q2"},
+    "SP-HYP-01": {"subject": "Statistics & Probability", "title": "Hypothesis Testing: H0 and Ha", "quarter": "Q2"},
+    "SP-HYP-02": {"subject": "Statistics & Probability", "title": "Level of Significance, Type I and II Errors", "quarter": "Q2"},
+    "SP-HYP-03": {"subject": "Statistics & Probability", "title": "Z-Test for Known Variance", "quarter": "Q2"},
+    "SP-HYP-04": {"subject": "Statistics & Probability", "title": "T-Test for Unknown Variance", "quarter": "Q2"},
+    "SP-HYP-05": {"subject": "Statistics & Probability", "title": "Z-Test and T-Test for Proportion", "quarter": "Q2"},
+    "SP-CORR-01": {"subject": "Statistics & Probability", "title": "Pearson r, Scatter Plots", "quarter": "Q2"},
+    "SP-CORR-02": {"subject": "Statistics & Probability", "title": "Line of Best Fit, Regression", "quarter": "Q2"},
+}
+
+
+# ─── Diagnostic-Integrated Lesson Generation ─────────────────────
+
+class DiagnosticLessonRequest(BaseModel):
+    student_id: str
+    topic_id: str
+    mastery_level: str = Field(default="beginning")
+    strand: str = Field(default="STEM")
+    grade_level: str = Field(default="Grade 11")
+
+
+class DiagnosticLessonSection(BaseModel):
+    type: str
+    title: Optional[str] = None
+    content: str
+    formula: Optional[str] = None
+    visual_hint: Optional[str] = None
+    problem: Optional[str] = None
+    solution_steps: Optional[List[Dict[str, Any]]] = None
+    final_answer: Optional[str] = None
+    prompt: Optional[str] = None
+    hint: Optional[str] = None
+    answer: Optional[str] = None
+
+
+class DiagnosticLessonResponse(BaseModel):
+    lesson_id: str
+    topic_id: str
+    subject: str
+    title: str
+    grade_level: str
+    strand: str
+    estimated_minutes: int
+    mastery_target: str
+    learning_objectives: List[str]
+    sections: List[DiagnosticLessonSection]
+    summary: str
+    real_life_connection: str
+    next_topic_id: Optional[str]
+    prerequisite_topic_ids: List[str]
+
+
+@app.post("/api/lesson/diagnostic", response_model=DiagnosticLessonResponse)
+async def generate_diagnostic_lesson(request: DiagnosticLessonRequest):
+    """
+    Generate personalized lesson based on diagnostic test results.
+    Adjusts content difficulty based on student's mastery level.
+    Uses RAG to inject DepEd curriculum content.
+    """
+    try:
+        topic_info = DEPD_TOPIC_REGISTRY.get(request.topic_id, {})
+        subject = topic_info.get("subject", "General Mathematics")
+        title = topic_info.get("title", request.topic_id)
+        
+        curriculum_chunks = retrieve_curriculum_context(
+            query=f"{title} {request.topic_id} examples problems exercises",
+            subject=subject,
+            top_k=4,
+        )
+        
+        curriculum_context = ""
+        for chunk in curriculum_chunks:
+            source = chunk.get("source_file", "unknown")
+            content = chunk.get("content", "")[:800]
+            curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
+        
+        mastery_adjustments = {
+            "beginning": "Use extra-simple language, 3 worked examples, more hints.",
+            "developing": "Standard pacing, 2 worked examples.",
+            "mastered": "Fast-track with 1 worked example and a challenge problem.",
+        }
+        
+        rag_instruction = ""
+        if curriculum_context:
+            rag_instruction = f"""REFERENCE CURRICULUM CONTENT (from DepEd modules):
+{curriculum_context}
+
+IMPORTANT: Base your lesson STRICTLY on the curriculum content above. Do not invent formulas or examples."""
+        
+        prompt = f"""Generate a complete lesson for topic {request.topic_id}: {title}.
+
+Student Context:
+- Strand: {request.strand}
+- Grade: {request.grade_level}
+- Mastery Level: {request.mastery_level} ({mastery_adjustments.get(request.mastery_level, '')})
+
+{rag_instruction}
+
+Use Filipino context (₱, local scenarios).
+Follow SDO Navotas step-by-step: "Given → Formula → Substitute → Compute → Conclude"
+
+Return ONLY this exact JSON (no other text):
+{{
+  "lesson_id": "LSN-{uuid.uuid4().hex[:8]}",
+  "topic_id": "{request.topic_id}",
+  "subject": "{subject}",
+  "title": "{title}",
+  "grade_level": "{request.grade_level}",
+  "strand": "{request.strand}",
+  "estimated_minutes": 20,
+  "mastery_target": "mastered",
+  "learning_objectives": ["By the end, you will be able to..."],
+  "sections": [
+    {{"type": "hook", "content": "Relatable Filipino intro (2-3 sentences)"}},
+    {{"type": "concept", "title": "...", "content": "Core explanation", "formula": "LaTeX or null", "visual_hint": "description or null"}},
+    {{"type": "worked_example", "title": "Example 1", "problem": "...", "solution_steps": [{{"step": 1, "explanation": "...", "math": "LaTeX or null"}}], "final_answer": "..."}},
+    {{"type": "try_it", "prompt": "Your turn!", "problem": "...", "hint": "Think about...", "answer": "...", "solution_steps": []}}
+  ],
+  "summary": "3-sentence recap",
+  "real_life_connection": "1 sentence to Filipino career",
+  "next_topic_id": "next topic ID or null",
+  "prerequisite_topic_ids": ["prereq topic IDs"]
+}}"""
+
+        messages = [
+            {"role": "system", "content": "You are a DepEd curriculum lesson designer. Return ONLY valid JSON."},
+            {"role": "user", "content": prompt},
+        ]
+        response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="lesson")
+        
+        import re
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            lesson_data = json.loads(json_match.group())
+        else:
+            lesson_data = json.loads(response)
+        
+        return DiagnosticLessonResponse(**lesson_data)
+    except Exception as e:
+        logger.error(f"Diagnostic lesson generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
+
+
+# ─── Consolidated Lesson Generator (reads from diagnostic) ─────────────
+
+class LessonsGenerateRequest(BaseModel):
+    student_id: str
+    topic_id: str
+    strand: str = Field(default="STEM")
+    grade_level: str = Field(default="Grade 11")
+
+
+@app.post("/api/lessons/generate", response_model=DiagnosticLessonResponse)
+async def generate_lesson_from_diagnostic(request: LessonsGenerateRequest):
+    """
+    Generate a personalized lesson by reading mastery_level from the
+    student's diagnostic results in Firestore. Falls back to 'beginning'
+    if no diagnostic data exists.
+    """
+    mastery_level = "beginning"
+    
+    if HAS_FIREBASE_ADMIN and firebase_firestore:
+        try:
+            db = firebase_firestore.client()
+            user_doc = db.collection("users").document(request.student_id).get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict() or {}
+                diag_id = user_data.get("latestDiagnosticTestId", "")
+                if diag_id:
+                    diag_doc = (
+                        db.collection("diagnosticResults")
+                        .document(request.student_id)
+                        .collection("attempts")
+                        .document(diag_id)
+                        .get()
+                    )
+                    if diag_doc.exists:
+                        diag_data = diag_doc.to_dict() or {}
+                        domain_scores = diag_data.get("domainScores", {})
+                        for domain, score_data in domain_scores.items():
+                            ml = score_data.get("mastery_level", "")
+                            if ml:
+                                mastery_level = ml
+                                break
+        except Exception as diag_err:
+            logger.debug(f"Could not read diagnostic mastery for lesson: {diag_err}")
+    
+    return await generate_diagnostic_lesson(
+        DiagnosticLessonRequest(
+            student_id=request.student_id,
+            topic_id=request.topic_id,
+            mastery_level=mastery_level,
+            strand=request.strand,
+            grade_level=request.grade_level,
+        )
+    )
+
+
+# ─── Progress Evaluation Endpoint ─────────────────────────────────
+
+class ProgressEvaluateRequest(BaseModel):
+    student_id: str
+    quiz_id: str
+    topic_id: str
+    mastery_level_before: str
+    items: List[Dict[str, Any]]
+    previous_attempts: int = Field(default=0)
+    current_streak_days: int = Field(default=0)
+
+
+class ProgressEvaluateResponse(BaseModel):
+    new_mastery_level: str
+    mastery_changed: bool
+    score_percent: float
+    xp_earned: int
+    xp_breakdown: Dict[str, int]
+    badges_unlocked: List[str]
+    performance_feedback: str
+    error_analysis: List[Dict[str, Any]]
+    next_action: str
+    next_topic_id: Optional[str]
+    motivational_message: str
+    teacher_flag: Optional[Dict[str, Any]]
+
+
+@app.post("/api/progress/evaluate", response_model=ProgressEvaluateResponse)
+async def evaluate_progress(request: ProgressEvaluateRequest):
+    """
+    Evaluate quiz performance, update mastery, award XP.
+    Called after every quiz submission.
+    """
+    try:
+        total_items = len(request.items)
+        correct_count = sum(1 for item in request.items if item.get("is_correct", False))
+        score_percent = (correct_count / total_items * 100) if total_items > 0 else 0
+        
+        mastery_changed = False
+        new_level = request.mastery_level_before
+        prev = request.mastery_level_before
+        
+        applying_level_correct = sum(
+            1 for item in request.items
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("applying", "analyzing", "evaluating")
+        )
+        analyzing_level_correct = sum(
+            1 for item in request.items
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("analyzing", "evaluating", "creating")
+        )
+        
+        if prev == "beginning" and score_percent >= 60 and applying_level_correct >= 2:
+            new_level = "developing"
+            mastery_changed = True
+        elif prev == "developing" and score_percent >= 80 and analyzing_level_correct >= 1:
+            new_level = "mastered"
+            mastery_changed = True
+        
+        xp_base = 0
+        xp_streak = 0
+        xp_mastery = 0
+        xp_other = 0
+        
+        for item in request.items:
+            diff = item.get("difficulty", "easy")
+            if item.get("is_correct", False):
+                if diff == "easy":
+                    xp_base += 5
+                elif diff == "medium":
+                    xp_base += 10
+                elif diff == "hard":
+                    xp_base += 20
+        
+        xp_streak = min(30, 5 * request.current_streak_days)
+        
+        if mastery_changed:
+            xp_mastery = 50
+        
+        if score_percent == 100 and request.previous_attempts == 0:
+            xp_other += 30
+        
+        if request.previous_attempts >= 1 and score_percent > 60:
+            xp_other += 15
+        
+        xp_total = xp_base + xp_streak + xp_mastery + xp_other
+        
+        error_analysis = []
+        for item in request.items:
+            if not item.get("is_correct", False):
+                error_analysis.append({
+                    "item_id": item.get("item_id", ""),
+                    "student_answer": item.get("student_answer", ""),
+                    "correct_answer": item.get("correct_answer", ""),
+                    "explanation": "Check your steps for this type of problem.",
+                })
+        
+        next_action = "continue_learning_path"
+        if score_percent < 40 and request.previous_attempts >= 3:
+            next_action = "teacher_flag"
+        elif score_percent < 60:
+            next_action = "retry_quiz"
+        
+        next_topics = list(DEPD_TOPIC_REGISTRY.keys())
+        current_idx = next_topics.index(request.topic_id) if request.topic_id in next_topics else 0
+        next_topic_id = next_topics[current_idx + 1] if current_idx + 1 < len(next_topics) else None
+        
+        messages = {
+            "low": "Keep practicing! You're building momentum.",
+            "moderate": "Good progress! Focus on your weak areas.",
+            "high": "You're improving! Stay consistent.",
+            "critical": "Don't give up! One step at a time.",
+        }
+        motivational = messages.get(new_level, messages["low"])
+        
+        if mastery_changed:
+            if new_level == "developing":
+                motivational = "Kaya mo yan! You're moving up!"
+            elif new_level == "mastered":
+                motivational = "Congratulations! Topic mastered!"
+        
+        teacher_flag = None
+        if score_percent < 40 and request.previous_attempts >= 3:
+            teacher_flag = {"reason": f"Score {score_percent}% after 3+ attempts", "severity": "high"}
+        
+        if HAS_FIREBASE_ADMIN and firebase_firestore:
+            try:
+                db = firebase_firestore.client()
+                topic_progress_ref = db.collection("studentProgress").document(request.student_id).collection("topics").document(request.topic_id)
+                topic_progress_ref.set({
+                    "mastery_level": new_level,
+                    "quiz_attempts": firebase_firestore.Increment(1),
+                    "best_score": max(score_percent, 0),
+                    "xp_earned": firebase_firestore.Increment(xp_total),
+                    "last_activity": firebase_firestore.SERVER_TIMESTAMP,
+                    "error_patterns": [e.get("explanation", "") for e in error_analysis],
+                    "teacher_flagged": teacher_flag is not None,
+                }, merge=True)
+                
+                stats_ref = db.collection("studentProgress").document(request.student_id).collection("stats").document("summary")
+                stats_ref.set({
+                    "total_xp": firebase_firestore.Increment(xp_total),
+                    "current_streak_days": request.current_streak_days,
+                    "topics_mastered": firebase_firestore.Increment(1) if mastery_changed else firebase_firestore.Increment(0),
+                }, merge=True)
+            except Exception as fs_err:
+                logger.warning(f"Firestore progress save failed: {fs_err}")
+        
+        return ProgressEvaluateResponse(
+            new_mastery_level=new_level,
+            mastery_changed=mastery_changed,
+            score_percent=round(score_percent, 1),
+            xp_earned=xp_total,
+            xp_breakdown={"base": xp_base, "mastery_bonus": xp_mastery, "streak_bonus": xp_streak, "other": xp_other},
+            badges_unlocked=[],
+            performance_feedback=f"You got {correct_count}/{total_items} correct.",
+            error_analysis=error_analysis,
+            next_action=next_action,
+            next_topic_id=next_topic_id,
+            motivational_message=motivational,
+            teacher_flag=teacher_flag,
+        )
+    except Exception as e:
+        logger.error(f"Progress evaluation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Progress evaluation error: {str(e)}")
+
+
+# ─── Adaptive Quiz Endpoint ─────────────────────────────────────
+
+class AdaptiveQuizRequest(BaseModel):
+    student_id: str
+    topic_id: str
+    recent_lesson_id: Optional[str] = None
+    strand: str = Field(default="STEM")
+
+
+class AdaptiveQuizItem(BaseModel):
+    item_id: str
+    type: str
+    bloom_level: str
+    difficulty: str
+    question: str
+    options: Optional[Dict[str, str]] = None
+    correct_answer: str
+    acceptable_range: Optional[List[float]] = None
+    solution_hint: str
+    competency_code: str
+    curriculum_reference: str
+
+
+class AdaptiveQuizResponse(BaseModel):
+    quiz_id: str
+    topic_id: str
+    mastery_target_after: str
+    items: List[AdaptiveQuizItem]
+    prev_score: Optional[float]
+    difficulty_distribution: Dict[str, int]
+
+
+async def _resolve_mastery_and_prev_score(
+    student_id: str,
+    topic_id: str,
+) -> tuple[str, Optional[float]]:
+    """Read mastery_level and prev_score from Firestore diagnostic and studentProgress."""
+    mastery = "beginning"
+    prev_score: Optional[float] = None
+    
+    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+        return mastery, prev_score
+    
+    try:
+        db = firebase_firestore.client()
+        
+        topic_progress_doc = (
+            db.collection("studentProgress")
+            .document(student_id)
+            .collection("topics")
+            .document(topic_id)
+            .get()
+        )
+        if topic_progress_doc.exists:
+            tp_data = topic_progress_doc.to_dict() or {}
+            tp_mastery = str(tp_data.get("mastery_level", "")).strip()
+            if tp_mastery in ("beginning", "developing", "mastered"):
+                mastery = tp_mastery
+            prev_score_raw = tp_data.get("best_score")
+            if isinstance(prev_score_raw, (int, float)):
+                prev_score = float(prev_score_raw)
+        
+        user_doc = db.collection("users").document(student_id).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict() or {}
+            diag_id = user_data.get("latestDiagnosticTestId", "")
+            if diag_id:
+                diag_doc = (
+                    db.collection("diagnosticResults")
+                    .document(student_id)
+                    .collection("attempts")
+                    .document(diag_id)
+                    .get()
+                )
+                if diag_doc.exists:
+                    diag_data = diag_doc.to_dict() or {}
+                    domain_scores = diag_data.get("domainScores", {})
+                    if not topic_progress_doc.exists:
+                        for domain, score_data in domain_scores.items():
+                            ml = score_data.get("mastery_level", "")
+                            if ml and ml in ("beginning", "developing", "mastered"):
+                                mastery = ml
+                                break
+    except Exception as e:
+        logger.debug(f"Could not resolve mastery/prev_score: {e}")
+    
+    return mastery, prev_score
+
+
+def _calibrate_quiz_params(mastery_level: str, prev_score: Optional[float]) -> dict:
+    """Return item count and difficulty distribution based on mastery and history."""
+    if mastery_level == "mastered":
+        count = 10
+        distribution = {"easy": 10, "medium": 40, "hard": 50}
+    elif mastery_level == "developing":
+        count = 8
+        distribution = {"easy": 30, "medium": 50, "hard": 20}
+    else:
+        count = 5
+        distribution = {"easy": 60, "medium": 40, "hard": 0}
+    
+    if prev_score is not None and prev_score < 50:
+        distribution = {
+            "easy": min(80, distribution["easy"] + 20),
+            "medium": distribution["medium"],
+            "hard": max(0, distribution["hard"] - 20),
+        }
+    
+    return {"count": count, "distribution": distribution}
+
+
+@app.post("/api/quiz/adaptive", response_model=AdaptiveQuizResponse)
+async def generate_adaptive_quiz(request: AdaptiveQuizRequest):
+    """
+    Generate an adaptive practice quiz calibrated to the student's mastery level.
+    Reads mastery_level and prev_score from Firestore, auto-calibrates difficulty.
+    """
+    try:
+        mastery, prev_score = await _resolve_mastery_and_prev_score(
+            request.student_id,
+            request.topic_id,
+        )
+        
+        params = _calibrate_quiz_params(mastery, prev_score)
+        count = params["count"]
+        distribution = params["distribution"]
+        topic_info = DEPD_TOPIC_REGISTRY.get(request.topic_id, {})
+        subject = topic_info.get("subject", "General Mathematics")
+        title = topic_info.get("title", request.topic_id)
+        
+        curriculum_chunks = retrieve_curriculum_context(
+            query=f"{title} {request.topic_id} practice problems exercises",
+            subject=subject,
+            top_k=3,
+        )
+        curriculum_context = ""
+        for chunk in curriculum_chunks:
+            source = chunk.get("source_file", "unknown")
+            content = chunk.get("content", "")[:500]
+            curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
+        
+        quiz_id = f"QZ-{uuid.uuid4().hex[:12]}"
+        
+        rag_instr = ""
+        if curriculum_context:
+            rag_instr = f"""REFERENCE CURRICULUM:
+{curriculum_context}
+
+Base questions on this content. Do not copy directly."""
+
+        items_json = json.dumps([])
+        
+        try:
+            quiz_prompt = f"""Generate {count} quiz items for topic "{title}" (ID: {request.topic_id}).
+
+Mastery Level: {mastery}
+Difficulty Distribution: Easy={distribution['easy']}%, Medium={distribution['medium']}%, Hard={distribution['hard']}%
+Item types: mix multiple_choice, fill_in_the_blank, and word_problem.
+
+{rag_instr}
+
+Use Filipino context.
+Return ONLY this strict JSON array:
+[
+  {{
+    "type": "multiple_choice|fill_in_the_blank|word_problem",
+    "bloom_level": "remembering|understanding|applying|analyzing",
+    "difficulty": "easy|medium|hard",
+    "question": "...",
+    "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+    "correct_answer": "B",
+    "acceptable_range": null,
+    "solution_hint": "Short hint",
+    "competency_code": "{request.topic_id}",
+    "curriculum_reference": "DepEd SHS"
+  }}
+]"""
+            messages = [
+                {"role": "system", "content": "You are a quiz generator. Return ONLY valid JSON."},
+                {"role": "user", "content": quiz_prompt},
+            ]
+            response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="quiz")
+            items_json = response
+        except Exception as llm_err:
+            logger.error(f"Adaptive quiz LLM error: {llm_err}")
+        
+        import re
+        json_match = re.search(r'\[.*\]', items_json, re.DOTALL)
+        if json_match:
+            raw_items = json.loads(json_match.group())
+        else:
+            raw_items = json.loads(items_json) if items_json.strip().startswith('[') else []
+        
+        items: List[AdaptiveQuizItem] = []
+        for i, qi in enumerate(raw_items[:count]):
+            items.append(AdaptiveQuizItem(
+                item_id=f"QI-{uuid.uuid4().hex[:8]}",
+                type=qi.get("type", "multiple_choice"),
+                bloom_level=qi.get("bloom_level", "understanding"),
+                difficulty=qi.get("difficulty", "medium"),
+                question=qi.get("question", ""),
+                options=qi.get("options"),
+                correct_answer=qi.get("correct_answer", ""),
+                acceptable_range=qi.get("acceptable_range"),
+                solution_hint=qi.get("solution_hint", ""),
+                competency_code=qi.get("competency_code", request.topic_id),
+                curriculum_reference=qi.get("curriculum_reference", "DepEd SHS"),
+            ))
+        
+        return AdaptiveQuizResponse(
+            quiz_id=quiz_id,
+            topic_id=request.topic_id,
+            mastery_target_after="mastered" if mastery == "developing" else "developing" if mastery == "beginning" else "mastered",
+            items=items,
+            prev_score=prev_score,
+            difficulty_distribution=distribution,
+        )
+    except Exception as e:
+        logger.error(f"Adaptive quiz generation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Adaptive quiz error: {str(e)}")
+
+
+# ─── Learning Path Endpoint ────────────────────────────────────
+
+class LearningPathRequest(BaseModel):
+    student_id: str
+    strand: str = Field(default="STEM")
+    grade_level: str = Field(default="Grade 11")
+
+
+class LearningPathTopic(BaseModel):
+    topic_id: str
+    title: str
+    mastery_level: str
+    estimated_minutes: int
+
+
+class LearningPathResponse(BaseModel):
+    student_id: str
+    topics: List[LearningPathTopic]
+    total_estimated_hours: float
+
+
+@app.post("/api/learning/path", response_model=LearningPathResponse)
+async def generate_learning_path(request: LearningPathRequest):
+    """
+    Generate personalized learning path based on student's diagnostic results.
+    """
+    try:
+        if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+            topics = []
+            for tid, info in DEPD_TOPIC_REGISTRY.items():
+                topics.append(LearningPathTopic(
+                    topic_id=tid,
+                    title=info["title"],
+                    mastery_level="beginning",
+                    estimated_minutes=20,
+                ))
+            return LearningPathResponse(
+                student_id=request.student_id,
+                topics=topics[:10],
+                total_estimated_hours=3.3,
+            )
+        
+        db = firebase_firestore.client()
+        doc = db.collection("diagnosticResults").document(request.student_id).collection("attempts").limit(1).get()
+        
+        suggested_path = []
+        if doc:
+            data = doc[0].to_dict() if doc else {}
+            suggested_path = data.get("riskProfile", {}).get("suggested_learning_path", [])
+        
+        path_topics = []
+        if suggested_path:
+            for tid in suggested_path[:10]:
+                info = DEPD_TOPIC_REGISTRY.get(tid, {})
+                path_topics.append(LearningPathTopic(
+                    topic_id=tid,
+                    title=info.get("title", tid),
+                    mastery_level="beginning",
+                    estimated_minutes=20,
+                ))
+        else:
+            strand_topics = DEPD_ED_COMPETENCY_DOMAINS.get(request.strand, {}).get(request.grade_level, [])
+            for i, t in enumerate(strand_topics[:10]):
+                tid = f"NA-{(i+1):02d}-01"
+                path_topics.append(LearningPathTopic(
+                    topic_id=tid,
+                    title=t,
+                    mastery_level="beginning",
+                    estimated_minutes=20,
+                ))
+        
+        total_minutes = sum(t.estimated_minutes for t in path_topics)
+        
+        return LearningPathResponse(
+            student_id=request.student_id,
+            topics=path_topics,
+            total_estimated_hours=round(total_minutes / 60, 1),
+        )
+    except Exception as e:
+        logger.error(f"Learning path generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Learning path error: {str(e)}")
 
 
 # ─── Main ──────────────────────────────────────────────────────
