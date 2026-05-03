@@ -1,6 +1,5 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { DiagnosticCompletionPayload } from './components/DiagnosticAssessmentModal.tsx';
 import AppLoadingScreen from './components/AppLoadingScreen.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
@@ -16,6 +15,8 @@ import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from '
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
+import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from './lib/firebase';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -50,7 +51,8 @@ const ProfileModal = lazy(() => import('./components/ProfileModal.tsx'));
 const ConfirmModal = lazy(() => import('./components/ConfirmModal.tsx'));
 const SettingsModal = lazy(() => import('./components/SettingsModal.tsx'));
 const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
-const DiagnosticAssessmentModal = lazy(() => import('./components/DiagnosticAssessmentModal.tsx'));
+const InitialAssessmentModal = lazy(() => import('./components/assessment/InitialAssessmentModal.tsx'));
+const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
 
 const App = () => {
   // Get authentication state from context
@@ -117,23 +119,12 @@ const App = () => {
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
 
   const handleStudentNavigation = (tab: string, moduleId?: string) => {
-    if (tab === 'Modules' && isLearningPathLocked) {
-      toast.info(
-        `Complete your deep diagnostic (${pendingDeepDiagnosticCount} outstanding) to unlock modules and regular practice.`,
-      );
-      setDiagnosticAssessmentType('followup_diagnostic');
-      setShowDiagnosticModal(true);
-      setActiveTab('Dashboard');
-      return;
-    }
-
     if (moduleId) {
       setTargetModuleId(moduleId);
-    } else if (tab === 'Modules' && activeTab !== 'Modules') { // Only clear if not navigating within modules itself or passing an explicit id doesn't happen
+    } else if (tab === 'Modules' && activeTab !== 'Modules') {
       setTargetModuleId(null);
     }
 
-    // Force-collapse Sidebar on Quiz Battle page, restore state upon leaving
     if (tab === 'Quiz Battle' && activeTab !== 'Quiz Battle') {
       setSidebarRevertState({ collapsed: isSidebarCollapsed });
       setIsSidebarCollapsed(true);
@@ -157,26 +148,17 @@ const App = () => {
   const [dismissedSupplementalSignature, setDismissedSupplementalSignature] = useState<string>('');
   const [dashboardShellDeferredReady, setDashboardShellDeferredReady] = useState(false);
 
-  // Diagnostic State
+  // Diagnostic / Assessment State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
-  const [diagnosticAssessmentType, setDiagnosticAssessmentType] = useState<'initial_assessment' | 'followup_diagnostic'>('initial_assessment');
-  const [hasTakenDiagnostic, setHasTakenDiagnostic] = useState(studentProfile?.hasTakenDiagnostic || false);
+  const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState<boolean | null>(null);
+  const [showAssessmentPage, setShowAssessmentPage] = useState(false);
+  const [assessmentTestId, setAssessmentTestId] = useState<string>('');
+  const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
   const [priorityTopics, setPriorityTopics] = useState<DiagnosticTopicKey[]>(
     (studentProfile?.priorityTopics || []) as DiagnosticTopicKey[],
   );
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0.00');
-  const [learningPathState, setLearningPathState] = useState<StudentProfile['learningPathState']>(
-    studentProfile?.learningPathState || 'unlocked',
-  );
-  const [iarAssessmentState, setIarAssessmentState] = useState<StudentProfile['iarAssessmentState']>(
-    studentProfile?.iarAssessmentState || 'not_started',
-  );
-  const [pendingDeepDiagnosticCount, setPendingDeepDiagnosticCount] = useState(0);
-  const iarWorkflowMode =
-    import.meta.env.VITE_IAR_WORKFLOW_MODE === 'iar_plus_diagnostic'
-      ? 'iar_plus_diagnostic'
-      : 'iar_only';
 
   // Load computed GPA from progress data
   useEffect(() => {
@@ -200,9 +182,6 @@ const App = () => {
       setStreak(studentProfile.streak || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
       setPriorityTopics((studentProfile.priorityTopics || []) as DiagnosticTopicKey[]);
-      setHasTakenDiagnostic(studentProfile.hasTakenDiagnostic || false);
-      setLearningPathState(studentProfile.learningPathState || 'unlocked');
-      setIarAssessmentState(studentProfile.iarAssessmentState || 'not_started');
       setProfileReady(true);
     } else if (userRole !== 'student') {
       setProfileReady(true);
@@ -254,49 +233,16 @@ const App = () => {
   }, [isLoggedIn, userRole]);
 
   useEffect(() => {
-    let cancelled = false;
+    if (isLoggedIn && userRole === 'student' && userProfile) {
+      updateStreak(userProfile.uid).then((newStreak) => {
+        setStreak(newStreak);
+      });
+    }
+  }, [isLoggedIn, userRole, userProfile]);
 
-    const loadPendingDiagnostics = async () => {
-      if (!isLoggedIn || userRole !== 'student') {
-        setPendingDeepDiagnosticCount(0);
-        return;
-      }
-
-      const lrn = (studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid;
-      if (!lrn || learningPathState !== 'locked_pending_deep_diagnostic') {
-        setPendingDeepDiagnosticCount(0);
-        return;
-      }
-
-      try {
-        const { getPendingDeepDiagnosticCount } = await import('./services/automationService.ts');
-        const count = await getPendingDeepDiagnosticCount(lrn);
-        if (!cancelled) {
-          setPendingDeepDiagnosticCount(count);
-        }
-      } catch (error) {
-        console.error('Error loading deep diagnostic assignments:', error);
-      }
-    };
-
-    void loadPendingDiagnostics();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn, userRole, userProfile?.uid, studentProfile?.lrn, learningPathState]);
-
-  const isLearningPathLocked =
-    userRole === 'student' &&
-    (learningPathState === 'locked_pending_deep_diagnostic' ||
-      iarAssessmentState === 'deep_diagnostic_required' ||
-      iarAssessmentState === 'deep_diagnostic_in_progress') &&
-    (pendingDeepDiagnosticCount > 0 ||
-      iarAssessmentState === 'deep_diagnostic_required' ||
-      iarAssessmentState === 'deep_diagnostic_in_progress');
-
-  const showInitialAssessmentCTA =
-    userRole === 'student' && iarAssessmentState === 'skipped_unassessed';
+  useEffect(() => {
+    setProfileOverrides({});
+  }, [userProfile?.uid]);
 
   const normalizedAtRiskTopics = useMemo<DiagnosticTopicKey[]>(() => {
     const seen = new Set<DiagnosticTopicKey>();
@@ -308,7 +254,6 @@ const App = () => {
         seen.add(entry);
         return true;
       });
-
     return normalized;
   }, [atRiskSubjects]);
 
@@ -323,9 +268,39 @@ const App = () => {
   }, [priorityTopics, normalizedAtRiskTopics]);
 
   const handleOpenInitialAssessment = () => {
-    setDiagnosticAssessmentType('initial_assessment');
     setShowDiagnosticModal(true);
   };
+
+  // Firestore-based diagnostic check on student login
+  useEffect(() => {
+    if (!isLoggedIn || userRole !== 'student' || !profileReady || !userProfile?.uid) return;
+
+    let cancelled = false;
+    const checkDiagnostic = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
+        if (cancelled) return;
+        if (!snap.exists() || snap.data()?.status === 'skipped') {
+          setHasCompletedDiagnostic(false);
+          const timer = setTimeout(() => {
+            if (!cancelled) setShowDiagnosticModal(true);
+          }, 1000);
+          return () => clearTimeout(timer);
+        } else if (snap.data()?.status === 'completed') {
+          setHasCompletedDiagnostic(true);
+          const data = snap.data();
+          if (data?.riskProfile) {
+            setAtRiskSubjects(data.riskProfile.weak_domains || []);
+            setPriorityTopics(data.riskProfile.critical_gaps || []);
+          }
+        }
+      } catch (err) {
+        console.error('[diagnostic] Firestore check failed:', err);
+      }
+    };
+    void checkDiagnostic();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, userRole, profileReady, userProfile?.uid]);
 
   // Update streak when user logs in (students only)
   useEffect(() => {
@@ -335,10 +310,6 @@ const App = () => {
       });
     }
   }, [isLoggedIn, userRole, userProfile]);
-
-  useEffect(() => {
-    setProfileOverrides({});
-  }, [userProfile?.uid]);
 
   const atRiskSignature = [...atRiskSubjects].sort().join('|');
   const supplementalDismissStorageKey = userProfile?.uid
@@ -409,111 +380,51 @@ const App = () => {
     applyRuntimeSettings(userSettings);
   }, [userSettings]);
 
-  // Trigger diagnostic on first student login
-  useEffect(() => {
-    if (isLoggedIn && userRole === 'student' && profileReady && !hasTakenDiagnostic) {
-      // Small delay for better UX
-      const timer = setTimeout(() => {
-        setDiagnosticAssessmentType('initial_assessment');
-        setShowDiagnosticModal(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoggedIn, userRole, profileReady, hasTakenDiagnostic]);
+  // Diagnostic modal handlers
+  const handleDiagnosticStart = (testId: string, questions: any[]) => {
+    setShowDiagnosticModal(false);
+    setAssessmentTestId(testId);
+    setAssessmentQuestions(questions);
+    setShowAssessmentPage(true);
+  };
 
-  const handleDiagnosticComplete = async (payload: DiagnosticCompletionPayload) => {
-    const lrn = (studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid;
+  const handleAssessmentComplete = async (result: {
+    overallRisk: string;
+    overallScorePercent: number;
+    intervention: string;
+    xpEarned: number;
+    badgeUnlocked: string;
+  }) => {
+    setShowAssessmentPage(false);
+    setHasCompletedDiagnostic(true);
+    setActiveTab('Dashboard');
 
-    if (payload.status === 'skipped') {
-      setAtRiskSubjects([]);
-      setPriorityTopics([]);
-      setHasTakenDiagnostic(true);
-      setLearningPathState('unlocked');
-      setIarAssessmentState('skipped_unassessed');
-
-      if (userProfile?.uid) {
-        try {
-          await updateUserProfile(userProfile.uid, {
-            hasTakenDiagnostic: true,
-            atRiskSubjects: [],
-            priorityTopics: [],
-            learningPathState: 'unlocked',
-            remediationState: 'not_required',
-            iarAssessmentState: 'skipped_unassessed',
-            recommendedNextTopicGroupId: 'g11-q1-functions-foundations',
-            recommendationRationale: 'Default Grade 11 Q1 path after explicit IAR skip.',
-            recommendedPace: 'normal',
-            startingQuarterG11: 'Q1',
-            currentCurriculumVersionSetId:
-              (studentProfile as StudentProfile | undefined)?.currentCurriculumVersionSetId ||
-              'g11-core-genmath-legacy-detail-strengthened-structure',
-          });
-
-          await createNotification(
-            userProfile.uid,
-            'reminder',
-            'IAR Skipped: You are on default path',
-            'You are currently marked as Unassessed and placed on Grade 11 Quarter 1 default flow. Take the Initial Assessment anytime for personalized placement.',
-          );
-        } catch (error) {
-          console.error('Failed to persist skipped IAR state:', error);
-        }
+    if (result.xpEarned > 0 && userProfile?.uid) {
+      try {
+        await awardXP(userProfile.uid, result.xpEarned, 'manual', 'Diagnostic assessment completed');
+        toast.success(`Assessment complete! +${result.xpEarned} XP earned. ${result.badgeUnlocked.replace('_', ' ')} badge unlocked!`);
+      } catch (err) {
+        toast.success('Assessment complete!');
       }
-
-      toast.message('Assessment skipped. Default Grade 11 Q1 path applied.', {
-        description: 'You can take the Initial Assessment later for personalized recommendations.',
-      });
-      setShowDiagnosticModal(false);
-      setActiveTab('Dashboard');
-      return;
+    } else {
+      toast.success('Assessment complete!');
     }
-
-    // Fresh diagnostic completion should always re-surface supplemental banner once.
-    resetSupplementalBannerDismissal();
-
-    const normalizedRiskTopics = (payload.atRiskSubjectIds || [])
-      .map((entry) => normalizeDiagnosticTopic(entry))
-      .filter((entry): entry is DiagnosticTopicKey => entry !== null);
-    const normalizedPriorityTopics = (payload.priorityTopics || [])
-      .map((entry) => normalizeDiagnosticTopic(entry))
-      .filter((entry): entry is DiagnosticTopicKey => entry !== null);
-
-    setAtRiskSubjects(normalizedRiskTopics.length > 0 ? normalizedRiskTopics : (payload.atRiskSubjectIds || []));
-    setPriorityTopics(normalizedPriorityTopics);
-    setHasTakenDiagnostic(true);
-    setIarAssessmentState('in_progress');
 
     if (userProfile?.uid) {
       try {
-        await updateUserProfile(userProfile.uid, {
-          hasTakenDiagnostic: true,
-          atRiskSubjects: normalizedRiskTopics,
-          priorityTopics: normalizedPriorityTopics,
-          topicScores: payload.topicScores,
-          iarTopicClassifications: payload.topicClassifications,
-          g12ReadinessIndicators: payload.g12ReadinessIndicators,
-          iarAssessmentState: 'in_progress',
-          iarQuestionSetVersion: payload.questionSetVersion,
-        });
-      } catch (error) {
-        console.error('Failed to persist completed IAR payload:', error);
+        const snap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data?.riskProfile) {
+            setAtRiskSubjects(data.riskProfile.weak_domains || []);
+            setPriorityTopics(data.riskProfile.critical_gaps || []);
+          }
+        }
+        resetSupplementalBannerDismissal();
+      } catch (err) {
+        console.error('[diagnostic] Failed to refresh risk data:', err);
       }
     }
-
-    if (diagnosticAssessmentType === 'followup_diagnostic') {
-      toast.success('Deep diagnostic submitted. Module unlock will update after assignment-state verification.');
-    }
-
-    if (diagnosticAssessmentType === 'initial_assessment' && lrn) {
-      if ((payload.atRiskSubjectIds || []).length > 0 && iarWorkflowMode === 'iar_plus_diagnostic') {
-        toast.info('Initial assessment submitted. Deep diagnostics for weak areas will run before full module unlock.');
-      } else {
-        toast.success('Initial assessment completed. Personalized path is now active.');
-      }
-    }
-
-    setShowDiagnosticModal(false);
-    setActiveTab('Dashboard');
   };
 
   const handleFullScreen = () => {
@@ -685,11 +596,9 @@ const App = () => {
       setTotalXP(0);
       setStreak(0);
       setAtRiskSubjects([]);
-      setHasTakenDiagnostic(false);
-      setLearningPathState('unlocked');
-      setIarAssessmentState('not_started');
+      setPriorityTopics([]);
+      setHasCompletedDiagnostic(null);
       setComputedGpa('0.00');
-      setPendingDeepDiagnosticCount(0);
       setActiveTab('Dashboard');
     }
 
@@ -778,7 +687,7 @@ const App = () => {
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isLoggedIn, userRole, isLearningPathLocked, pendingDeepDiagnosticCount]);
+  }, [isLoggedIn, userRole]);
 
   // Listen for notification-driven navigation events
   useEffect(() => {
@@ -1060,12 +969,12 @@ const App = () => {
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
                             onContinueLearning={() => handleStudentNavigation('Modules')}
-                            showAssessmentTooltip={showInitialAssessmentCTA}
+                            showAssessmentTooltip={false}
                             onOpenAssessment={handleOpenInitialAssessment}
                           />
                         </Suspense>
 
-                        {dashboardShellDeferredReady && hasTakenDiagnostic && normalizedAtRiskTopics.length > 0 && (
+                        {dashboardShellDeferredReady && hasCompletedDiagnostic && normalizedAtRiskTopics.length > 0 && (
                           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-400/40 dark:bg-amber-400/10">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
@@ -1302,17 +1211,32 @@ const App = () => {
             </Suspense>
           )}
 
-          {/* Diagnostic Assessment Modal */}
-          {showDiagnosticModal && (
+          {/* Initial Assessment Modal */}
+          {showDiagnosticModal && !showAssessmentPage && (
             <Suspense fallback={null}>
-              <DiagnosticAssessmentModal
+              <InitialAssessmentModal
                 isOpen={showDiagnosticModal}
                 onClose={() => setShowDiagnosticModal(false)}
-                onComplete={handleDiagnosticComplete}
-                lrn={(studentProfile as StudentProfile | undefined)?.lrn || userProfile?.uid}
-                gradeLevel={(studentProfile as StudentProfile)?.grade}
-                workflowMode={iarWorkflowMode}
-                assessmentType={diagnosticAssessmentType}
+                userId={userProfile?.uid || ''}
+                strand={studentProfile?.major || 'STEM'}
+                gradeLevel={studentProfile?.grade || 'Grade 11'}
+                onAssessmentStart={handleDiagnosticStart}
+              />
+            </Suspense>
+          )}
+
+          {/* Assessment Page (full-screen question-by-question) */}
+          {showAssessmentPage && (
+            <Suspense fallback={null}>
+              <AssessmentPage
+                testId={assessmentTestId}
+                questions={assessmentQuestions}
+                userName={firstName}
+                onComplete={handleAssessmentComplete}
+                onCancel={() => {
+                  setShowAssessmentPage(false);
+                  setActiveTab('Dashboard');
+                }}
               />
             </Suspense>
           )}
