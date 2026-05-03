@@ -124,7 +124,13 @@ jobs:
           }
           
           # Sync backend files into the Space repo
-          rsync -av --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' backend/ hf-space/
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='datasets/vectorstore' \
+            --exclude='datasets/vectorstore/**' \
+            backend/ hf-space/
 
           # Sync the backend Dockerfile to the Space root (HF Spaces use Dockerfile at repo root)
           cp backend/Dockerfile hf-space/Dockerfile
@@ -157,6 +163,12 @@ jobs:
           grep -q '^app_port: 7860$' hf-space/README.md
           grep -q '^pinned: false$' hf-space/README.md
           echo "Backend README.md Space metadata validation passed"
+          
+          # Guardrail: ensure vectorstore is not pushed to HF Spaces.
+          if [ -d "hf-space/datasets/vectorstore" ]; then
+            echo "❌ datasets/vectorstore should not be deployed to HF Spaces."
+            exit 1
+          fi
           
           # Commit and push
           cd hf-space
