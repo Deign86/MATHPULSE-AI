@@ -36,6 +36,8 @@ interface InteractiveLessonProps {
   onBack: () => void;
 }
 
+// PERF: 50 motion.div elements via .map() with Math.random() in initial/animate values.
+// Component is NOT wrapped in React.memo — parent re-renders recreate all 50 nodes.
 // Confetti Component - Optimized with WAAPI-backed animations (transform, opacity only)
 const Confetti: React.FC = () => {
   const colors = ['#4F46E5', '#EC4899', '#f43f5e', '#10B981', '#0ea5e9'];
@@ -637,6 +639,8 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
         {/* Floating Animated Orbs - Optimized with WAAPI-backed animations */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
           {orbs.map((orb) => (
+            // PERF: Math.random() in animate values — regenerates targets every render,
+            // causing Framer Motion to re-evaluate keyframes and restart animations.
             <motion.div
               key={orb.id}
               className={`absolute rounded-full blur-3xl ${orb.color}`}
