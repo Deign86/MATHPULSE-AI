@@ -104,6 +104,10 @@ export default defineConfig({
       'recharts',
       'zod',
       'react-hook-form',
+      'class-variance-authority',
+      '@radix-ui/react-slot',
+      'date-fns',
+      'clsx',
     ],
   },
   resolve: {
@@ -182,7 +186,21 @@ export default defineConfig({
         './src/contexts/AuthContext.tsx',
         './src/contexts/ChatContext.tsx',
         './src/components/DashboardAvatar.tsx',
+        './src/components/ui/utils.ts',
+        './src/types/models.ts',
+        './src/lib/firebase.ts',
+        './src/services/apiService.ts',
+        './src/data/subjects.ts',
+        './src/components/Sidebar.tsx',
+        './src/components/TeacherDashboard.tsx',
       ],
     },
+    fs: {
+      allow: ['.', './node_modules/.vite', './node_modules'],
+    },
+    hmr: {
+      overlay: false,
+    },
+    cacheDir: 'node_modules/.vite',
   },
 });

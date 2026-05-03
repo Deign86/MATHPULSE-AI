@@ -94,7 +94,7 @@
             "vitest": "^4.1.5"
       },
       "scripts": {
-            "dev": "vite",
+            "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite",
             "dev:open": "vite --open",
             "dev:debug:plugin-transform": "vite --debug plugin-transform",
             "dev:debug:transform": "vite --debug transform",

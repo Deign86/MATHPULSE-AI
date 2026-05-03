@@ -203,6 +203,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   }, []);
 
   // Background floating orbs logic
+  // PERF: Math.random() in useState initializer — values are deterministic after mount but
+  // component re-mounts (due to parent re-render) regenerate random values, causing new animation targets
   const [orbs, setOrbs] = useState(Array.from({ length: 15 }, (_, i) => ({
     id: i,
     size: Math.random() * 120 + 40,
@@ -598,6 +600,9 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
         className="bg-white/95 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] max-w-4xl w-full h-[95vh] sm:h-[90vh] md:h-[85vh] flex flex-col relative z-10 overflow-hidden"
       >
         {/* Animated Orbs INSIDE the quiz container */}
+        {/* PERF: motion.div inside .map() — each orb creates a Framer Motion animation node.
+            Math.random() in animate prop regenerates targets every render, causing continuous re-animation.
+            Extract random values to useMemo/useRef so they are stable across renders. */}
         <div className="absolute inset-0 pointer-events-none z-0">
           {orbs.map((orb) => (
             <motion.div
@@ -870,6 +875,10 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 overflow-y-auto">
+                {/* PERF: options.map() with motion.button + whileHover/whileTap per option (4-6 items).
+                    On quiz navigation (question change), all options animate via AnimatePresence mode="wait".
+                    whileHover/whileTap attach event listeners on each mount — fine for small lists but
+                    avoid extending this pattern to larger lists. */}
                 {currentQuestion.options.map((option, index) => {
                   const isSelected = selectedAnswer === index;
                   const isCorrect = index === currentQuestion.correctAnswer;

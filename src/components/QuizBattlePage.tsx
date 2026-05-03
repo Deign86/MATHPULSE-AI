@@ -184,6 +184,9 @@ const battleAnimations = `
 `;
 const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
+// PERF: RainStorm renders 40 motion.div elements — each a Framer Motion animation node.
+// Component is NOT wrapped in React.memo; parent re-renders recreate all 40 nodes.
+// Consider extracting to a separated, memoized component.
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
   <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/10">
     {useMemo(() => [...Array(40)].map((_, i) => ({
@@ -207,6 +210,8 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
   </div>
 );
 
+// PERF: ConfettiBurst renders 60 motion.div elements with Math.random() in animate x/y values.
+// Same pattern as RainStorm — no React.memo, parent re-renders recreate all 60 animation nodes.
 const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
   const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
   const particles = useMemo(() => [...Array(60)].map((_, i) => ({

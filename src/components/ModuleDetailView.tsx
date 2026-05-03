@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -85,6 +85,33 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }, [module.id, subjectId, userProgress?.subjects]);
 
   const [returningToLesson, setReturningToLesson] = useState<Lesson | null>(null);
+
+  const handleProgressUpdate = useCallback((percent: number) => {
+    if (userProfile?.uid && selectedLesson?.type === 'lesson') {
+      updateLessonProgressPercent(userProfile.uid, selectedLesson.lesson.id, percent);
+    }
+
+    setUserProgress((prev) => {
+      if (!prev) return prev;
+      const lessonId = selectedLesson?.type === 'lesson' ? selectedLesson.lesson.id : null;
+      if (!lessonId) return prev;
+      const existingPct = prev.lessons?.[lessonId]?.score;
+      const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
+      const nextPct = Math.max(safeExistingPct, Math.max(0, Math.min(100, percent)));
+      return {
+        ...prev,
+        lessons: {
+          ...(prev.lessons || {}),
+          [lessonId]: {
+            ...(prev.lessons?.[lessonId] || {}),
+            lessonId,
+            score: nextPct,
+          },
+        },
+        updatedAt: new Date(),
+      };
+    });
+  }, [userProfile?.uid, selectedLesson]);
 
   const completedLessonIds = useMemo(() => {
     const ids = dbModuleProgress?.lessonsCompleted ?? [];
@@ -194,33 +221,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               setSelectedLesson({ type: 'quiz', quiz: associatedQuiz });
             }
           }}
-          onProgressUpdate={(percent) => {
-            // This is lesson-scoped progress; no subject/module IDs needed.
-            if (userProfile?.uid) {
-              updateLessonProgressPercent(userProfile.uid, selectedLesson.lesson.id, percent);
-            }
-
-            // Optimistic UI update so the module lesson card rim reflects immediately.
-            setUserProgress((prev) => {
-              if (!prev) return prev;
-              const lessonId = selectedLesson.lesson.id;
-              const existingPct = prev.lessons?.[lessonId]?.score;
-              const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
-              const nextPct = Math.max(safeExistingPct, Math.max(0, Math.min(100, percent)));
-              return {
-                ...prev,
-                lessons: {
-                  ...(prev.lessons || {}),
-                  [lessonId]: {
-                    ...(prev.lessons?.[lessonId] || {}),
-                    lessonId,
-                    score: nextPct,
-                  },
-                },
-                updatedAt: new Date(),
-              };
-            });
-          }}
+          onProgressUpdate={handleProgressUpdate}
           onComplete={(score, totalXP, goToNext) => {
             // Standard lesson rewards are intentionally lower to keep pacing balanced.
             const xpAmount = STANDARD_LESSON_XP;
@@ -442,6 +443,9 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           </div>
 
           <div className="relative z-10 px-4 sm:px-6 md:px-8 py-5 md:py-6 space-y-5">
+                {/* PERF: lessons.map() with motion.div per lesson — stagger delay (index * 0.05) creates
+                    sequential mount animations. Known infinite-loop history per AGENTS.md gotchas.
+                    Wrap in useMemo or virtualize if lesson count grows >20. */}
                 {module.lessons.map((lesson, index) => {
                   const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
                   const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
