@@ -172,10 +172,11 @@ FastAPI (Python) — monolithic 11,466-line `main.py` on HuggingFace Spaces
 |----------|-------|
 | Collection | `curriculum_chunks` |
 | Distance | Cosine |
-| Total Chunks | 533 |
-| Subjects | General Math (124), Business Math (128), Org Management (151), Stats (130) |
-| Embedding Model | BAAI/bge-base-en-v1.5 |
-| Last Ingested | 2026-04-24 15:01:13 UTC |
+| Total Chunks | **243** (HF Space production) |
+| Subjects | General Mathematics (57), Finite Math 1 (2), Finite Math 2 (2), Business Math (58), Org & Management (62), Stats & Probability (62) |
+| Embedding Model | `BAAI/bge-small-en-v1.5` (384d) on HF Space |
+| HF Space storage | `/app/datasets/vectorstore/` (ephemeral; re-downloaded on each container start) |
+| Last Ingested | 2026-05-03 15:09:47 UTC (HF Space) |
 
 ## CI/CD
 
