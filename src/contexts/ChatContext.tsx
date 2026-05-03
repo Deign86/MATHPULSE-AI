@@ -706,7 +706,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',
               text: m.role === 'assistant'
-                ? normalizeChatMarkdownForRender(formatAssistantResponseForStorage(m.content))
+                ? formatAssistantResponseForStorage(m.content)
                 : m.content,
               timestamp: m.timestamp instanceof Date
                 ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -763,7 +763,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   const createNewSession = useCallback((firstMessage?: Message): string => {
-    const tempId = Date.now().toString();
+    const tempId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Date.now().toString();
     const now = new Date();
 
     const newSession: ChatSession = {
@@ -811,22 +813,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   }, [currentUser]);
 
   const addMessageToSession = useCallback((sessionId: string, message: Message) => {
-    const normalizedMessage = message.sender === 'ai'
-      ? {
-          ...message,
-          text: formatAssistantResponseForStorage(message.text),
-        }
-      : message;
-
     setSessions(prev =>
       prev.map(session => {
         if (session.id === sessionId) {
-          const updatedMessages = [...session.messages, normalizedMessage];
+          const updatedMessages = [...session.messages, message];
           return {
             ...session,
             messages: updatedMessages,
             messageCount: updatedMessages.length,
-            preview: toChatPreviewText(normalizedMessage.text) || session.preview,
+            preview: toChatPreviewText(message.text) || session.preview,
             updatedAt: new Date(),
             title: updatedMessages.length === 2 ? generateTitleFromMessages(updatedMessages) : session.title,
           };
@@ -850,8 +845,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const chatService = await loadChatService();
         await chatService.addMessageToSession(
           realId,
-          normalizedMessage.sender === 'user' ? 'user' : 'assistant',
-          normalizedMessage.text,
+          message.sender === 'user' ? 'user' : 'assistant',
+          message.text,
         );
       })
       .catch(err => console.error('Error persisting message:', err));
@@ -878,7 +873,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     // Add user message
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Date.now().toString(),
       sender: 'user',
       text: trimmedUserText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -925,7 +922,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText, { history });
       if (scopeBoundaryResponse) {
         const refusalMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
           text: scopeBoundaryResponse,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -938,7 +937,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const cachedHint = getHintCacheResponse(hintCacheKey);
         if (cachedHint) {
           const cachedHintMsg: Message = {
-            id: (Date.now() + 1).toString(),
+            id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+              ? crypto.randomUUID()
+              : (Date.now() + 1).toString(),
             sender: 'ai',
             text: cachedHint,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -955,7 +956,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       } catch (importError) {
         console.error('Failed to load API service for chat:', importError);
         const importFailureMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
           text: generateFallbackResponse(fallbackPrompt),
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -991,7 +994,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             if (chatSession.id !== sessionId) return chatSession;
 
             if (!streamMessageId) {
-              streamMessageId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              streamMessageId = `stream-${(typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Date.now().toString()}-${Math.random().toString(36).slice(2, 8)}`;
               const streamMsg: Message = {
                 id: streamMessageId,
                 sender: 'ai',
@@ -1039,11 +1042,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const { response } = await apiServiceRef.chat(backendPrompt, history, (chunk: string) => {
           streamedText += chunk;
           if (showStreamingChunks) {
-            upsertStreamingMessage(normalizeChatMarkdownForRender(formatAssistantResponseForStreaming(streamedText)));
+            upsertStreamingMessage(formatAssistantResponseForStreaming(streamedText));
           }
         }, completionOptions);
 
-        let finalResponse = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(response || streamedText).trim());
+        let finalResponse = formatAssistantResponseForStorage(response || streamedText).trim();
         if (shouldRunAnyRepairFlow && finalResponse && isAnswerIncomplete(finalResponse)) {
           try {
             const continuation = await apiServiceRef.chatSafe(
@@ -1051,7 +1054,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               history,
               completionOptions,
             );
-            const repairedResponse = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(continuation.data.response).trim());
+            const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
             finalResponse = mergeAnswerContinuation(finalResponse, repairedResponse);
           } catch (repairErr) {
             console.warn('Streaming completion repair failed:', repairErr);
@@ -1061,10 +1064,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             try {
               const plainContinuation = await apiServiceRef.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
-                history,
-                completionOptions,
-              );
-              const repairedPlain = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(plainContinuation.data.response).trim());
+history,
+              completionOptions,
+            );
+              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
               finalResponse = mergeAnswerContinuation(finalResponse, repairedPlain);
             } catch (plainRepairErr) {
               console.warn('Streaming plain continuation repair failed:', plainRepairErr);
@@ -1078,7 +1081,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const regenerated = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(completeAttempt.data.response).trim());
+              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
               if (regenerated) {
                 finalResponse = pickHigherQualityAnswer(
                   trimmedUserText,
@@ -1106,9 +1109,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         }
 
         const aiMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
-          text: normalizeChatMarkdownForRender(finalResponse),
+          text: finalResponse,
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);
@@ -1129,7 +1134,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         try {
           const service = apiServiceRef ?? (await loadApiService()).apiService;
           const { data } = await service.chatSafe(backendPrompt, history, completionOptions);
-          aiResponseText = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(data.response).trim());
+          aiResponseText = formatAssistantResponseForStorage(data.response).trim();
 
           if (shouldRunAnyRepairFlow && aiResponseText && isAnswerIncomplete(aiResponseText)) {
             try {
@@ -1138,7 +1143,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const repairedResponse = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(continuation.data.response).trim());
+const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedResponse);
             } catch (repairErr) {
               console.warn('Non-stream completion repair failed:', repairErr);
@@ -1152,7 +1157,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const repairedPlain = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(plainContinuation.data.response).trim());
+              const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedPlain);
             } catch (plainRepairErr) {
               console.warn('Non-stream plain continuation repair failed:', plainRepairErr);
@@ -1166,7 +1171,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const regenerated = normalizeChatMarkdownForRender(formatAssistantResponseForStorage(completeAttempt.data.response).trim());
+              const regenerated = formatAssistantResponseForStorage(completeAttempt.data.response).trim();
               if (regenerated) {
                 aiResponseText = pickHigherQualityAnswer(
                   trimmedUserText,
@@ -1193,9 +1198,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         maybeCacheHintResponse(aiResponseText);
 
         const aiMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
-          text: normalizeChatMarkdownForRender(formatAssistantResponseForStorage(aiResponseText)),
+          text: aiResponseText,
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);
