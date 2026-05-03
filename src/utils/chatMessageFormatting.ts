@@ -131,35 +131,40 @@ function wrapBareTexCommands(segment: string): string {
   return segment.replace(BARE_TEX_PATTERN, (expression) => `$${expression}$`);
 }
 
-function convertBracketMathToLatex(segment: string): string {
+function convertBracketMathToDelimitedMath(segment: string): string {
   const MATH_INDICATORS = /[=\^{}\\_+\-*/<>]|x\d|y\d|a[12]|b[12]|c[12]|frac|sqrt|int|sum|prod|lim|sin|cos|tan|log|ln|alpha|beta|gamma|delta|theta|pi|omega|lambda|sigma/;
   const LOOKS_LIKE_URL = /^https?:\/\//;
-  
-  if (segment.startsWith('[') && segment.endsWith(']')) {
-    const content = segment.slice(1, -1).trim();
+
+  const wrapInlineMath = (content: string) => `$${content}$`;
+  const wrapDisplayMath = (content: string) => `$$${content}$$`;
+
+  if ((segment.startsWith('\\[') && segment.endsWith('\\]')) || (segment.startsWith('[') && segment.endsWith(']'))) {
+    const content = segment.replace(/^\\?\[/, '').replace(/\\?\]$/, '').trim();
     if (MATH_INDICATORS.test(content)) {
-      return `\\(${content}\\)`;
+      return wrapDisplayMath(content);
     }
     return segment;
   }
-  if (segment.startsWith('(') && segment.endsWith(')')) {
-    const content = segment.slice(1, -1).trim();
+
+  if ((segment.startsWith('\\(') && segment.endsWith('\\)')) || (segment.startsWith('(') && segment.endsWith(')'))) {
+    const content = segment.replace(/^\\?\(/, '').replace(/\\?\)$/, '').trim();
     if (LOOKS_LIKE_URL.test(content)) {
       return segment;
     }
     if (MATH_INDICATORS.test(content)) {
-      return `\\(${content}\\)`;
+      return wrapInlineMath(content);
     }
     return segment;
   }
+
   return segment;
 }
 
 function normalizeMultilineBrackets(input: string): string {
-  // Handle display math \[...\] by converting to \(...\) for KaTeX
+  // Handle display math \[...\] by converting to $$...$$ so remark-math parses it.
   let result = input.replace(/\\\[([\s\S]*?)\\\]/g, (match, content) => {
     const normalized = content.replace(/\s+/g, ' ').trim();
-    return `\\(${normalized}\\)`;
+    return `$$${normalized}$$`;
   });
   
   // Handle multiline [...] by converting newlines to spaces within brackets
@@ -206,8 +211,9 @@ const normalizedBrackets = normalizeMultilineBrackets(normalizedNewlines);
           // line break in the final markdown.
           const withNewlines = segment.replace(/\\n/g, '\n');
 
+          // Unescape double-backslashes in LaTeX commands: \\ → \
           const unescaped = withNewlines
-            .replace(/\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int)\b|[()[\]{}])/g, '\\');
+            .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int|left|right|begin|end)\b)/g, '\\');
 
           // If a backslash was accidentally placed before a dollar sign that
           // immediately precedes a TeX command (for example "\$\\boxed"),
@@ -223,7 +229,7 @@ const normalizedBrackets = normalizeMultilineBrackets(normalizedNewlines);
       return mathAwareSegments
         .map((mathSegment, mathIndex) => {
           if (mathIndex % 2 === 1) {
-            return convertBracketMathToLatex(mathSegment);
+            return convertBracketMathToDelimitedMath(mathSegment);
           }
           return wrapBareTexCommands(mathSegment);
         })
