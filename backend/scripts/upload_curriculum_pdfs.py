@@ -22,54 +22,47 @@ PDF_METADATA: Dict[str, Dict[str, object]] = {
         "quarters": ["Q1", "Q2", "Q3", "Q4"],
         "storage_path": "curriculum/general_math/GENERAL-MATHEMATICS-1.pdf",
     },
-    "GENERAL-MATHEMATICS-1-4.pdf": {
-        "subject": "General Mathematics",
-        "type": "curriculum_guide",
-        "strand": ["STEM", "ABM", "HUMSS", "GAS", "TVL"],
-        "quarters": ["Q1", "Q2", "Q3", "Q4"],
-        "storage_path": "curriculum/general_math/GENERAL-MATHEMATICS-1-4.pdf",
-    },
-    "Finite-Mathematics-1-1-3.pdf": {
+    "Finite-Mathematics-1-1.pdf": {
         "subject": "Finite Mathematics 1",
         "type": "curriculum_guide",
         "strand": ["STEM", "ABM"],
         "quarters": ["Q1", "Q2"],
-        "storage_path": "curriculum/finite_math/Finite-Mathematics-1-1-3.pdf",
+        "storage_path": "curriculum/finite_math/Finite-Mathematics-1-1.pdf",
     },
-    "Finite-Mathematics-2-1-2.pdf": {
+    "Finite-Mathematics-2-1.pdf": {
         "subject": "Finite Mathematics 2",
         "type": "curriculum_guide",
         "strand": ["STEM", "ABM"],
         "quarters": ["Q1", "Q2"],
-        "storage_path": "curriculum/finite_math/Finite-Mathematics-2-1-2.pdf",
+        "storage_path": "curriculum/finite_math/Finite-Mathematics-2-1.pdf",
     },
-    "SDO_Navotas_Gen.Math_SHS_1stSem.FV-5.pdf": {
+    "SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf": {
         "subject": "General Mathematics",
         "type": "sdo_module",
         "strand": ["STEM", "ABM", "HUMSS", "GAS", "TVL"],
         "quarters": ["Q1", "Q2"],
-        "storage_path": "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV-5.pdf",
+        "storage_path": "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
     },
-    "SDO_Navotas_Bus.Math_SHS_1stSem.FV-6.pdf": {
+    "SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf": {
         "subject": "Business Mathematics",
         "type": "sdo_module",
         "strand": ["ABM"],
         "quarters": ["Q1", "Q2"],
-        "storage_path": "curriculum/business_math/SDO_Navotas_Bus.Math_SHS_1stSem.FV-6.pdf",
+        "storage_path": "curriculum/business_math/SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf",
     },
-    "SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV-7.pdf": {
+    "SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf": {
         "subject": "Organization and Management",
         "type": "sdo_module",
         "strand": ["ABM"],
         "quarters": ["Q1", "Q2"],
-        "storage_path": "curriculum/org_mgmt/SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV-7.pdf",
+        "storage_path": "curriculum/org_mgmt/SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf",
     },
-    "SDO_Navotas_STAT_PROB_SHS_1stSem_FV-8.pdf": {
+    "SDO_Navotas_STAT_PROB_SHS_1stSem_FV.pdf": {
         "subject": "Statistics and Probability",
         "type": "sdo_module",
         "strand": ["STEM", "ABM"],
         "quarters": ["Q1", "Q2"],
-        "storage_path": "curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem_FV-8.pdf",
+        "storage_path": "curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem_FV.pdf",
     },
 }
 
