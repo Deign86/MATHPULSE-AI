@@ -43,7 +43,11 @@ def retrieve_curriculum_context(
     _, collection, embedder = get_vectorstore_components()
     where = _to_where(subject, quarter, content_domain, chunk_type)
 
-    query_embedding = embedder.encode(query).tolist()
+    prefixed_query = f"Represent this sentence for searching relevant passages: {query}"
+    query_embedding = embedder.encode(
+        prefixed_query,
+        normalize_embeddings=True,
+    ).tolist()
     result = collection.query(
         query_embeddings=[query_embedding],
         n_results=max(1, top_k),

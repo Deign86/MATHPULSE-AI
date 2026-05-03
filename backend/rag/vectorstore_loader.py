@@ -34,7 +34,7 @@ def _resolve_vectorstore_dir() -> Path:
 
 def get_vectorstore_components(
     collection_name: str = "curriculum_chunks",
-    model_name: str = "BAAI/bge-small-en-v1.5",
+    model_name: str = "BAAI/bge-base-en-v1.5",
 ):
     global _VECTORSTORE_SINGLETON
     if _VECTORSTORE_SINGLETON is None:
@@ -43,7 +43,10 @@ def get_vectorstore_components(
                 vectorstore_dir = _resolve_vectorstore_dir()
                 vectorstore_dir.mkdir(parents=True, exist_ok=True)
                 client = chromadb.PersistentClient(path=str(vectorstore_dir))
-                collection = client.get_or_create_collection(name=collection_name)
+                collection = client.get_or_create_collection(
+                    name=collection_name,
+                    metadata={"hnsw:space": "cosine"},
+                )
                 embedder = SentenceTransformer(model_name)
                 _VECTORSTORE_SINGLETON = (client, collection, embedder)
     return _VECTORSTORE_SINGLETON
