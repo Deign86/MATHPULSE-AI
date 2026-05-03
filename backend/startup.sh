@@ -18,12 +18,10 @@ echo "MathPulse AI Startup"
 echo "=========================================="
 echo "VECTORSTORE_DIR=${VECTORSTORE_DIR}"
 echo "CURRICULUM_VECTORSTORE_DIR=${CURRICULUM_VECTORSTORE_DIR}"
+echo "CURRICULUM_SOURCE_REPO_ID set: $(if [ -n "${CURRICULUM_SOURCE_REPO_ID:-}" ]; then echo YES; else echo NO; fi)"
 echo "FIREBASE_SERVICE_ACCOUNT_JSON set: $(if [ -n "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ]; then echo YES; else echo NO; fi)"
 echo "FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-not set}"
 echo "=========================================="
-
-echo "Resolved VECTORSTORE_DIR=${VECTORSTORE_DIR}"
-echo "Resolved CURRICULUM_VECTORSTORE_DIR=${CURRICULUM_VECTORSTORE_DIR}"
 
 mkdir -p "${CURRICULUM_DIR}" "${VECTORSTORE_DIR}"
 
@@ -35,7 +33,11 @@ fi
 
 _ingest_script="/app/scripts/ingest_curriculum.py"
 if [ -f "${_ingest_script}" ]; then
-    if [ -n "${CURRICULUM_SOURCE_REPO_ID:-}" ] || find "${CURRICULUM_DIR}" -type f -name '*.pdf' -print -quit >/dev/null 2>&1; then
+    _has_pdfs=false
+    if [ -d "${CURRICULUM_DIR}" ] && find "${CURRICULUM_DIR}" -type f -name '*.pdf' -print -quit >/dev/null 2>&1; then
+        _has_pdfs=true
+    fi
+    if [ "${_has_pdfs}" = true ] || [ -n "${CURRICULUM_SOURCE_REPO_ID:-}" ]; then
         echo "INFO: Running curriculum ingestion (optional)..."
         python "${_ingest_script}" && echo "INFO: Curriculum ingestion completed" || echo "WARNING: Curriculum ingestion failed, continuing anyway"
     else
@@ -47,12 +49,15 @@ fi
 
 _vectorstore_download_script="/app/scripts/download_vectorstore_from_firebase.py"
 if [ -f "${_vectorstore_download_script}" ]; then
-echo "INFO: Vectorstore files present before download:"
+    echo "INFO: Vectorstore files present before download:"
     ls -la "${VECTORSTORE_DIR}/"
-    echo "INFO: Vectorstore download script path: ${_vectorstore_download_script}"
-    echo "INFO: CURRICULUM_VECTORSTORE_DIR at download time: ${CURRICULUM_VECTORSTORE_DIR}"
     echo "INFO: Downloading vectorstore from Firebase Storage..."
-    python "${_vectorstore_download_script}" || echo "WARNING: Vectorstore download failed, continuing anyway"
+    python "${_vectorstore_download_script}" && _result=0 || _result=1
+    if [ $_result -eq 0 ]; then
+        echo "INFO: Vectorstore download succeeded"
+    else
+        echo "WARNING: Vectorstore download failed, continuing anyway"
+    fi
     echo "INFO: Vectorstore files present after download:"
     ls -la "${VECTORSTORE_DIR}/"
     _vectorstore_summary_file="${VECTORSTORE_DIR}/ingest_summary.json"
