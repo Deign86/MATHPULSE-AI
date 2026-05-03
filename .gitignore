@@ -82,3 +82,6 @@ datasets/vectorstore/
 # Curriculum binaries are hosted on HF storage, not in git
 datasets/curriculum/*.pdf
 backend/datasets/curriculum/*.pdf
+
+# Memory bank — local agent notes only, never commit
+memory-bank/
