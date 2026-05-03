@@ -66,7 +66,9 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
-# Local automation + Kaggle outputs
+# Local curriculum PDF staging (not committed)
+.local/
+.local/**
 .automation_cache/
 .kaggle-kernels/
 **/_kaggle_outputs/
