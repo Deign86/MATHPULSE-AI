@@ -52,6 +52,9 @@ def download_vectorstore(dest_dir: Path, prefix: str = REMOTE_PREFIX):
         local_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
+            if local_path.exists() and blob.size is not None and local_path.stat().st_size == blob.size:
+                logger.info("Skipped (already up-to-date): %s", blob.name)
+                continue
             blob.download_to_filename(str(local_path))
             logger.info("Downloaded: %s (%d bytes)", blob.name, blob.size or 0)
             downloaded += 1
