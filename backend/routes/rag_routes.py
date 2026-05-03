@@ -24,6 +24,7 @@ from rag.curriculum_rag import (
     build_problem_generation_prompt,
     format_retrieved_chunks,
     retrieve_curriculum_context,
+    retrieve_lesson_pdf_context,
     summarize_retrieval_confidence,
 )
 from rag.vectorstore_loader import get_vectorstore_health, reset_vectorstore_singleton
@@ -126,6 +127,10 @@ class RagLessonRequest(BaseModel):
     moduleUnit: Optional[str] = None
     learnerLevel: Optional[str] = None
     userId: Optional[str] = None
+    moduleId: Optional[str] = None
+    lessonId: Optional[str] = None
+    competencyCode: Optional[str] = None
+    storagePath: Optional[str] = None
 
 
 class RagProblemRequest(BaseModel):
@@ -168,23 +173,94 @@ async def rag_health():
         }
 
 
+def _fetch_youtube_video(lesson_title: str, subject: str, competency: str, quarter: int) -> dict:
+    try:
+        from backend.services.youtube_service import get_video_for_lesson
+    except ImportError:
+        return {}
+    try:
+        video = get_video_for_lesson(lesson_title, subject, competency, quarter)
+        return video or {}
+    except Exception as e:
+        logger.warning("YouTube search failed: %s", e)
+        return {}
+
+
+def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
+    sections = lesson_data.get("sections", [])
+    section_types = {s.get("type") for s in sections}
+    required = ["introduction", "key_concepts", "video", "worked_examples", "important_notes", "try_it_yourself", "summary"]
+
+    default_content = {
+        "introduction": {"type": "introduction", "title": "Introduction", "content": f"Welcome to the lesson on {lesson_title}."},
+        "key_concepts": {"type": "key_concepts", "title": "Key Concepts", "content": "Below are the key concepts covered in this lesson.", "callouts": []},
+        "video": {"type": "video", "title": "Video Lesson", "content": "Watch this explanation to understand the concepts visually.", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},
+        "worked_examples": {"type": "worked_examples", "title": "Worked Examples", "examples": []},
+        "important_notes": {"type": "important_notes", "title": "Important Notes", "bulletPoints": []},
+        "try_it_yourself": {"type": "try_it_yourself", "title": "Try It Yourself", "practiceProblems": []},
+        "summary": {"type": "summary", "title": "Summary", "content": f"Great job completing the lesson on {lesson_title}!"},
+    }
+
+    filled = {}
+    for req_type in required:
+        for existing in sections:
+            if existing.get("type") == req_type:
+                filled[req_type] = existing
+                break
+        else:
+            filled[req_type] = default_content[req_type]
+
+    ordered = [filled[t] for t in required]
+
+    for i, section in enumerate(ordered):
+        s_type = section.get("type")
+        if s_type == "key_concepts" and not section.get("callouts"):
+            section["callouts"] = []
+        if s_type == "worked_examples" and not section.get("examples"):
+            section["examples"] = []
+        if s_type == "important_notes" and not section.get("bulletPoints"):
+            section["bulletPoints"] = []
+        if s_type == "try_it_yourself" and not section.get("practiceProblems"):
+            section["practiceProblems"] = []
+        ordered[i] = section
+
+    return {**lesson_data, "sections": ordered}
+
+
 @router.post("/lesson")
 async def rag_lesson(request: Request, payload: RagLessonRequest):
-    retrieval_query = build_lesson_query(
-        payload.topic,
-        payload.subject,
-        payload.quarter,
-        lesson_title=payload.lessonTitle,
-        competency=payload.learningCompetency,
-        module_unit=payload.moduleUnit,
-        learner_level=payload.learnerLevel,
-    )
-    chunks = retrieve_curriculum_context(
-        query=retrieval_query,
+    chunks, retrieval_mode = retrieve_lesson_pdf_context(
+        query=build_lesson_query(
+            payload.topic,
+            payload.subject,
+            payload.quarter,
+            lesson_title=payload.lessonTitle,
+            competency=payload.learningCompetency,
+            module_unit=payload.moduleUnit,
+            learner_level=payload.learnerLevel,
+        ),
         subject=payload.subject,
         quarter=payload.quarter,
-        top_k=5,
+        lesson_title=payload.lessonTitle,
+        competency=payload.learningCompetency,
+        module_id=payload.moduleId,
+        lesson_id=payload.lessonId,
+        competency_code=payload.competencyCode,
+        storage_path=payload.storagePath,
+        top_k=8,
     )
+
+    if not chunks:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "no_curriculum_context",
+                "message": f"No curriculum content found for lesson '{payload.lessonTitle}' ({payload.subject} Q{payload.quarter}). Please ensure the PDF has been ingested.",
+                "retrievalBand": "low",
+                "sources": [],
+            },
+        )
+
     prompt = build_lesson_prompt(
         lesson_title=payload.lessonTitle or payload.topic,
         competency=payload.learningCompetency or payload.topic,
@@ -194,47 +270,72 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         learner_level=payload.learnerLevel,
         module_unit=payload.moduleUnit,
         curriculum_chunks=chunks,
+        competency_code=payload.competencyCode,
     )
+
     raw_explanation = await _generate_text(
         prompt,
         task_type="lesson_generation",
         max_new_tokens=1800,
         enable_thinking=True,
     )
+
     parsed_lesson = _strip_thinking_and_parse(raw_explanation)
+    parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic)
+
+    if parsed_lesson.get("sections"):
+        video_section = next((s for s in parsed_lesson["sections"] if s.get("type") == "video"), None)
+        if video_section:
+            video_data = _fetch_youtube_video(
+                payload.lessonTitle or payload.topic,
+                payload.subject,
+                payload.learningCompetency or "",
+                payload.quarter,
+            )
+            if video_data:
+                video_section["videoId"] = video_data.get("videoId", "")
+                video_section["videoTitle"] = video_data.get("videoTitle", "")
+                video_section["videoChannel"] = video_data.get("videoChannel", "")
+                video_section["embedUrl"] = video_data.get("embedUrl", "")
+                video_section["thumbnailUrl"] = video_data.get("thumbnailUrl", "")
+
     retrieval_summary = summarize_retrieval_confidence(chunks)
 
     _log_rag_usage(
         request,
         event_type="lesson",
-        topic=retrieval_query,
+        topic=build_lesson_query(payload.topic, payload.subject, payload.quarter, lesson_title=payload.lessonTitle),
         subject=payload.subject,
         quarter=payload.quarter,
         chunks=chunks,
     )
 
-    result = {
+    needs_review = parsed_lesson.get("needsReview", False)
+    if retrieval_summary.get("band") == "low":
+        needs_review = True
+
+    return {
         **parsed_lesson,
         "retrievalConfidence": retrieval_summary.get("confidence", 0.0),
         "retrievalBand": retrieval_summary.get("band", "low"),
-        "retrievalQuery": retrieval_query,
-        "needsReview": parsed_lesson.get("needsReview", retrieval_summary.get("band", "low") == "low"),
+        "retrievalMode": retrieval_mode,
+        "needsReview": needs_review,
         "sources": [
             {
                 "subject": row.get("subject"),
                 "quarter": row.get("quarter"),
                 "source_file": row.get("source_file"),
+                "storage_path": row.get("storage_path"),
                 "page": row.get("page"),
                 "score": row.get("score"),
-                "content": row.get("content"),
                 "content_domain": row.get("content_domain"),
                 "chunk_type": row.get("chunk_type"),
+                "content": row.get("content"),
             }
             for row in chunks
         ],
         "activeModel": get_model_for_task("rag_lesson"),
     }
-    return result
 
 
 @router.post("/generate-problem")
