@@ -67,7 +67,19 @@ def download_vectorstore(dest_dir: Path, prefix: str = REMOTE_PREFIX):
 
 
 if __name__ == "__main__":
+    import firebase_admin
+    print("DEBUG: firebase_admin location:", firebase_admin.__file__)
+    print("DEBUG: firebase_admin apps:", firebase_admin._apps)
+    print("DEBUG: FIREBASE_SERVICE_ACCOUNT_JSON set:", bool(firebase_admin._GLOBAL_APP is None))
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     dest_dir = _resolve_dest_dir()
-    logger.info("Using vectorstore destination: %s", dest_dir)
-    download_vectorstore(dest_dir, REMOTE_PREFIX)
+    print(f"INFO: Using vectorstore destination: {dest_dir}")
+    print(f"INFO: CURRICULUM_VECTORSTORE_DIR env: {os.environ.get('CURRICULUM_VECTORSTORE_DIR', 'not set')}")
+    print(f"INFO: VECTORSTORE_DIR env: {os.environ.get('VECTORSTORE_DIR', 'not set')}")
+    print(f"INFO: FIREBASE_STORAGE_BUCKET env: {os.environ.get('FIREBASE_STORAGE_BUCKET', 'not set')}")
+    print(f"INFO: FIREBASE_SERVICE_ACCOUNT_JSON length: {len(os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON', ''))}")
+    result = download_vectorstore(dest_dir, REMOTE_PREFIX)
+    if result:
+        print("SUCCESS: Vectorstore download completed")
+    else:
+        print("FAILURE: Vectorstore download failed")
