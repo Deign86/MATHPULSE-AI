@@ -1,8 +1,23 @@
-import type { Module } from './subjects';
+import type { Module, Lesson } from './subjects';
+import { CURRICULUM_LESSONS } from './curriculum/types';
 
 export type GradeLevel = 'Grade 11' | 'Grade 12';
 export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
-export type CurriculumSubjectId = 'gen-math' | 'finite-math-1' | 'finite-math-2';
+export type CurriculumSubjectId =
+  | 'gen-math'
+  | 'finite-math-1'
+  | 'finite-math-2'
+  | 'business-math'
+  | 'stats-prob'
+  | 'org-mgmt';
+
+const COMPETENCY_TO_LESSON: Record<string, { lessonId: string; storagePath: string; sourceFile: string }> =
+  Object.fromEntries(
+    CURRICULUM_LESSONS.map((l) => [
+      l.competencyCode,
+      { lessonId: l.lessonId, storagePath: l.storagePath, sourceFile: l.sourceFile },
+    ])
+  );
 
 export interface CurriculumSourceMeta {
   id: string;
@@ -107,6 +122,24 @@ const SUBJECT_META: Record<CurriculumSubjectId, SubjectMeta> = {
     label: 'Finite Mathematics 2',
     color: '#0f766e',
     accent: '#14b8a6',
+  },
+  'business-math': {
+    id: 'business-math',
+    label: 'Business Mathematics',
+    color: '#166534',
+    accent: '#22c55e',
+  },
+  'stats-prob': {
+    id: 'stats-prob',
+    label: 'Statistics and Probability',
+    color: '#6b21a8',
+    accent: '#a855f7',
+  },
+  'org-mgmt': {
+    id: 'org-mgmt',
+    label: 'Organization and Management',
+    color: '#9f1239',
+    accent: '#f43f5e',
   },
 };
 
@@ -303,14 +336,26 @@ function adaptDescriptionForGrade(module: CurriculumModuleBlueprint, activeGrade
 
 function makeLessons(module: CurriculumModuleBlueprint, activeGradeLevel: GradeLevel) {
   const duration = activeGradeLevel === 'Grade 11' ? '22 min' : '18 min';
-  return module.competencies.map((competency, index) => ({
-    id: `${module.id}-l${index + 1}`,
-    title: competency.outcome,
-    duration,
-    completed: false,
-    locked: index > 0,
-    description: `${competency.code} · ${competency.outcome}`,
-  }));
+  return module.competencies.map((competency, index) => {
+    const curriculumMatch = COMPETENCY_TO_LESSON[competency.code];
+    return {
+      id: curriculumMatch?.lessonId ?? `${module.id}-l${index + 1}`,
+      title: competency.outcome,
+      duration,
+      completed: false,
+      locked: index > 0,
+      description: `${competency.code} · ${competency.outcome}`,
+      competencyCode: competency.code,
+      subjectId: module.subjectId as Lesson['subjectId'],
+      subject: module.subject,
+      quarter: parseInt(module.quarter.replace('Q', '')),
+      learningCompetency: competency.outcome,
+      ...(curriculumMatch && {
+        storagePath: curriculumMatch.storagePath,
+        sourceFile: curriculumMatch.sourceFile,
+      }),
+    };
+  });
 }
 
 function makeAssessments(module: CurriculumModuleBlueprint): CurriculumAssessmentMeta[] {
@@ -352,16 +397,26 @@ function normalizeGradeLevel(rawGrade?: string | null): GradeLevel {
 
 function normalizeSubjectAssignments(assignedSubjects: string[] | undefined): CurriculumSubjectId[] | null {
   if (!Array.isArray(assignedSubjects) || assignedSubjects.length === 0) return null;
-  const allowed = new Set<CurriculumSubjectId>(['gen-math', 'finite-math-1', 'finite-math-2']);
+  const allowed = new Set<CurriculumSubjectId>([
+    'gen-math',
+    'finite-math-1',
+    'finite-math-2',
+    'business-math',
+    'stats-prob',
+    'org-mgmt',
+  ]);
   const normalized = assignedSubjects
     .map((entry) => entry.trim().toLowerCase())
     .map((entry) => {
       if (entry === 'gen-math' || entry === 'general-mathematics' || entry === 'general mathematics') return 'gen-math';
       if (entry === 'finite-math-1' || entry === 'finite mathematics 1' || entry === 'fm1') return 'finite-math-1';
       if (entry === 'finite-math-2' || entry === 'finite mathematics 2' || entry === 'fm2') return 'finite-math-2';
+      if (entry === 'business-math' || entry === 'business mathematics' || entry === 'bm') return 'business-math';
+      if (entry === 'stats-prob' || entry === 'statistics and probability' || entry === 'statistics') return 'stats-prob';
+      if (entry === 'org-mgmt' || entry === 'organization and management' || entry === 'abm') return 'org-mgmt';
       return null;
     })
-    .filter((entry): entry is CurriculumSubjectId => Boolean(entry && allowed.has(entry)));
+    .filter((entry): entry is CurriculumSubjectId => entry !== null && allowed.has(entry));
 
   return normalized.length > 0 ? normalized : null;
 }
