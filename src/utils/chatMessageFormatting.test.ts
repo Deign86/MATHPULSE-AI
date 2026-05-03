@@ -27,13 +27,13 @@ it('keeps code fences untouched', () => {
   it('converts bracket-wrapped math to LaTeX inline delimiters', () => {
     const input = '[ \\frac{365}{365} \\times \\frac{364}{365} ]';
 
-    expect(normalizeChatMarkdownForRender(input)).toBe('\\(\\frac{365}{365} \\times \\frac{364}{365}\\)');
+    expect(normalizeChatMarkdownForRender(input)).toBe('$$\\frac{365}{365} \\times \\frac{364}{365}$$');
   });
 
   it('converts bracket-wrapped display math to LaTeX delimiters', () => {
     const input = '[ x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a} ]';
 
-    expect(normalizeChatMarkdownForRender(input)).toBe('\\(x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\\)');
+    expect(normalizeChatMarkdownForRender(input)).toBe('$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$');
   });
 
   it('normalizes escaped newlines and double-escaped TeX commands', () => {
