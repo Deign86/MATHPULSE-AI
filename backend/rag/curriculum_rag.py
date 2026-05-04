@@ -148,7 +148,12 @@ def retrieve_lesson_pdf_context(
     storage_path: str | None = None,
     top_k: int = 8,
 ) -> Tuple[list[dict], str]:
-    """Retrieve chunks by storage_path exact match + semantic ranking; fallback to general query."""
+    """Retrieve chunks by storage_path exact match + semantic ranking; fallback to general query.
+    
+    NOTE: Curriculum PDF chunks are often tagged with quarter=1 even when they cover all quarters.
+    We first try the exact quarter, then fallback to quarter=1, then no quarter filter.
+    """
+    # Try 1: Exact match with storage_path + quarter
     if storage_path:
         exact_chunks = retrieve_curriculum_context(
             query=topic,
@@ -160,12 +165,30 @@ def retrieve_lesson_pdf_context(
         if exact_chunks and any(c["score"] >= 0.65 for c in exact_chunks):
             return exact_chunks, "exact"
 
+    # Try 2: General query with exact quarter
     general_chunks = retrieve_curriculum_context(
         query=topic,
         subject=subject,
         quarter=quarter,
         top_k=top_k,
     )
+    
+    # Try 3: Fallback to quarter=1 (most curriculum PDFs are tagged Q1)
+    if not general_chunks and quarter != 1:
+        general_chunks = retrieve_curriculum_context(
+            query=topic,
+            subject=subject,
+            quarter=1,
+            top_k=top_k,
+        )
+    
+    # Try 4: Final fallback - no quarter filter at all
+    if not general_chunks:
+        general_chunks = retrieve_curriculum_context(
+            query=topic,
+            subject=subject,
+            top_k=top_k,
+        )
 
     if storage_path and exact_chunks:
         all_chunks = exact_chunks + general_chunks
