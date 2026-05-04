@@ -69,6 +69,107 @@ function clampNumberEnv(raw: string | undefined, fallback: number, min: number, 
   return Math.max(min, Math.min(max, Math.floor(parsed)));
 }
 
+// ── FastAPI Question Bank Integration ───────────────────────────────
+
+const FASTAPI_BACKEND_URL = process.env.BACKEND_URL || "https://deign86-mathpulse-api-v3test.hf.space";
+const QUIZ_BATTLE_INTERNAL_SECRET = process.env.QUIZ_BATTLE_INTERNAL_SECRET || "";
+
+interface FastAPIQuestion {
+  question: string;
+  choices: string[];
+  correct_answer: string;
+  explanation: string;
+  topic: string;
+  difficulty: "easy" | "medium" | "hard";
+  grade_level: number;
+  source_chunk_id: string;
+  variance_applied?: string[];
+}
+
+interface FastAPIGenerateResponse {
+  questions: FastAPIQuestion[];
+  session_id: string;
+}
+
+const fetchQuestionsFromFastAPI = async (
+  matchId: string,
+  playerIds: string[],
+  gradeLevel: number,
+  topic: string,
+  questionCount: number,
+): Promise<GeneratedAiQuestionSet | null> => {
+  if (!QUIZ_BATTLE_INTERNAL_SECRET) {
+    functions.logger.warn("[QUIZ_BATTLE] QUIZ_BATTLE_INTERNAL_SECRET not set, skipping FastAPI question fetch");
+    return null;
+  }
+
+  try {
+    const response = await axios.post<FASTAPIGenerateResponse>(
+      `${FASTAPI_BACKEND_URL}/api/quiz-battle/generate`,
+      {
+        grade_level: gradeLevel,
+        topic,
+        question_count: questionCount,
+        session_id: matchId,
+        player_ids: playerIds,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Service": QUIZ_BATTLE_INTERNAL_SECRET,
+        },
+        timeout: 30_000,
+      },
+    );
+
+    const data = response.data;
+    if (!data.questions || data.questions.length === 0) {
+      functions.logger.warn("[QUIZ_BATTLE] FastAPI returned empty questions");
+      return null;
+    }
+
+    // Convert FastAPI format to BattleQuestionPublic[]
+    const questions: BattleQuestionPublic[] = data.questions.map((q, idx) => ({
+      roundNumber: idx + 1,
+      questionId: `${q.source_chunk_id || "rag"}_${idx}`,
+      prompt: q.question,
+      choices: q.choices,
+    }));
+
+    // Extract answer keys from correct_answer field
+    const answerKeys = data.questions.map((q) => {
+      const letter = q.correct_answer;
+      return letter.charCodeAt(0) - "A".charCodeAt(0);
+    });
+
+    const questionFingerprints = questions.map((q) => computeQuestionFingerprint(q));
+
+    functions.logger.info("[QUIZ_BATTLE] FastAPI question fetch succeeded", {
+      matchId,
+      questionCount: questions.length,
+      topic,
+      gradeLevel,
+    });
+
+    return {
+      questions,
+      answerKeys,
+      questionSetId: `fastapi-${matchId}`,
+      questionFingerprints,
+      attempts: 1,
+      latencyMs: 0,
+      model: "fastapi-rag",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    functions.logger.warn("[QUIZ_BATTLE] FastAPI question fetch failed, falling back to AI generation", {
+      matchId,
+      error: message,
+    });
+    return null;
+  }
+};
+
 type QueueStatus = "searching" | "matched" | "cancelled";
 type MatchStatus = "ready" | "in_progress" | "completed" | "cancelled";
 type RoomStatus = "waiting" | "ready" | "cancelled" | "expired";
@@ -3422,7 +3523,35 @@ const ensureAiQuestionSetForLiveStart = async (
   const generationStartedAtMs = Date.now();
 
   try {
-    const generatedSet = await generateAiQuestionSet(setup);
+    // Try FastAPI question bank first
+    let generatedSet: GeneratedAiQuestionSet | null = null;
+
+    const matchSnap = await matchRef.get();
+    if (matchSnap.exists) {
+      const matchData = matchSnap.data() as Record<string, unknown>;
+      const playerAId = asString(matchData.playerAId);
+      const playerBId = asString(matchData.playerBId);
+      const playerIds = [playerAId, playerBId].filter((id): id is string => !!id);
+
+      const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
+      const gradeLevel = asNumber(metadata.playerAGradeLevel, 11);
+      const topic = setup.topicId || "general_mathematics";
+      const questionCount = setup.rounds;
+
+      generatedSet = await fetchQuestionsFromFastAPI(
+        matchRef.id,
+        playerIds,
+        gradeLevel,
+        topic,
+        questionCount,
+      );
+    }
+
+    // Fall back to AI generation if FastAPI fails or returns empty
+    if (!generatedSet) {
+      generatedSet = await generateAiQuestionSet(setup);
+    }
+
     const persisted = await persistAiGenerationSuccess(
       db,
       matchRef,
