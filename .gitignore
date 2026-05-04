@@ -83,5 +83,14 @@ datasets/vectorstore/
 datasets/curriculum/*.pdf
 backend/datasets/curriculum/*.pdf
 
+# Local curriculum PDFs (extracted for analysis, not committed)
+documents/
+
+# Secrets — service accounts, credentials, API keys (NEVER commit)
+.secrets/
+*.key
+*.pem
+service-account*.json
+
 # Memory bank — local agent notes only, never commit
 memory-bank/
