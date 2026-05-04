@@ -5,11 +5,8 @@ export type GradeLevel = 'Grade 11' | 'Grade 12';
 export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 export type CurriculumSubjectId =
   | 'gen-math'
-  | 'finite-math-1'
-  | 'finite-math-2'
   | 'business-math'
-  | 'stats-prob'
-  | 'org-mgmt';
+  | 'stats-prob';
 
 const COMPETENCY_TO_LESSON: Record<string, { lessonId: string; storagePath: string; sourceFile: string }> =
   Object.fromEntries(
@@ -88,16 +85,6 @@ const CURRICULUM_SOURCES: CurriculumSourceMeta[] = [
     url: 'https://www.deped.gov.ph/',
   },
   {
-    id: 'deped-strengthened-fm1',
-    title: 'DepEd Strengthened SHS Finite Mathematics 1 Guide',
-    url: 'https://www.deped.gov.ph/',
-  },
-  {
-    id: 'deped-strengthened-fm2',
-    title: 'DepEd Strengthened SHS Finite Mathematics 2 Guide',
-    url: 'https://www.deped.gov.ph/',
-  },
-  {
     id: 'deped-approved-exemplars',
     title: 'Approved SHS Lesson Exemplars and Activity Sheets',
     url: 'https://www.deped.gov.ph/',
@@ -111,18 +98,6 @@ const SUBJECT_META: Record<CurriculumSubjectId, SubjectMeta> = {
     color: '#1f4ea8',
     accent: '#3f7cff',
   },
-  'finite-math-1': {
-    id: 'finite-math-1',
-    label: 'Finite Mathematics 1',
-    color: '#8a3a0f',
-    accent: '#d97706',
-  },
-  'finite-math-2': {
-    id: 'finite-math-2',
-    label: 'Finite Mathematics 2',
-    color: '#0f766e',
-    accent: '#14b8a6',
-  },
   'business-math': {
     id: 'business-math',
     label: 'Business Mathematics',
@@ -135,17 +110,11 @@ const SUBJECT_META: Record<CurriculumSubjectId, SubjectMeta> = {
     color: '#6b21a8',
     accent: '#a855f7',
   },
-  'org-mgmt': {
-    id: 'org-mgmt',
-    label: 'Organization and Management',
-    color: '#9f1239',
-    accent: '#f43f5e',
-  },
 };
 
 const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE: Record<GradeLevel, CurriculumSubjectId[]> = {
-  'Grade 11': ['gen-math', 'finite-math-1', 'finite-math-2'],
-  'Grade 12': ['finite-math-1', 'finite-math-2'],
+  'Grade 11': ['gen-math'],
+  'Grade 12': [],
 };
 
 const COMPETENCY_VERBS_G11 = 'Foundational competency flow with guided examples, step-by-step vocabulary support, and scaffolded checkpoints.';
@@ -179,8 +148,8 @@ const b = (
   grade_level_availability,
   recommended_grade_level,
   sources: [
-    CURRICULUM_SOURCES[subjectId === 'gen-math' ? 0 : subjectId === 'finite-math-1' ? 1 : 2],
-    CURRICULUM_SOURCES[3],
+    CURRICULUM_SOURCES[0],
+    CURRICULUM_SOURCES[1],
   ],
 });
 
@@ -248,85 +217,8 @@ export const CURRICULUM_MODULE_BLUEPRINTS: CurriculumModuleBlueprint[] = [
     { code: 'GM11-PSF-3', outcome: 'Construct sound arguments supported by formal reasoning.' },
   ], 'Submits a logic audit that classifies validity and fallacies in real arguments.', 'Media literacy and policy argument review', ['Grade 11'], 'Grade 11'),
 
-  b('fm1-q1-symmetry-nature-art', 'finite-math-1', 'Q1', 'Symmetry in Nature and Art', 'Analyze reflective, rotational, and translational symmetry in natural and cultural patterns.', 'Patterns and Symmetry', 'FM1-Q1-SNA', [
-    { code: 'FM1-SNA-1', outcome: 'Identify and classify symmetry types in real and artistic objects.' },
-    { code: 'FM1-SNA-2', outcome: 'Explain the role of symmetry in design and communication.' },
-  ], 'Creates a symmetry-based design critique grounded in mathematical language.', 'Textile and local design patterns', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q1-geometric-transformations', 'finite-math-1', 'Q1', 'Geometric Transformations', 'Model geometric change through translation, reflection, rotation, and dilation.', 'Transformations', 'FM1-Q1-GT', [
-    { code: 'FM1-GT-1', outcome: 'Perform and describe geometric transformations in coordinate form.' },
-    { code: 'FM1-GT-2', outcome: 'Compose transformations to solve design and location problems.' },
-  ], 'Produces a transformation sequence with rule-based justification.', 'Mapping and graphics layouts', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q1-tessellations-frieze-patterns', 'finite-math-1', 'Q1', 'Tessellations and Frieze Patterns', 'Build repeatable tiling and frieze systems using transformation logic.', 'Transformations', 'FM1-Q1-TFP', [
-    { code: 'FM1-TFP-1', outcome: 'Construct valid tessellations with geometric constraints.' },
-    { code: 'FM1-TFP-2', outcome: 'Analyze frieze pattern structure and transformation rules.' },
-  ], 'Designs and documents a mathematically valid tiling pattern.', 'Architecture and floor planning', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q1-golden-ratio-fibonacci', 'finite-math-1', 'Q1', 'Golden Ratio and Fibonacci Sequence', 'Connect ratio growth patterns and Fibonacci behavior in visual and biological forms.', 'Patterns and Sequences', 'FM1-Q1-GRF', [
-    { code: 'FM1-GRF-1', outcome: 'Generate Fibonacci terms and model limiting ratio behavior.' },
-    { code: 'FM1-GRF-2', outcome: 'Critique claims of golden ratio usage in practical contexts.' },
-  ], 'Presents an evidence-based analysis of ratio claims in selected artifacts.', 'Visual composition and growth modeling', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q1-fractals', 'finite-math-1', 'Q1', 'Fractals', 'Investigate recursive structures and scale behavior in natural and digital systems.', 'Patterns and Recursion', 'FM1-Q1-FRA', [
-    { code: 'FM1-FRA-1', outcome: 'Describe fractal properties and recursive generation rules.' },
-    { code: 'FM1-FRA-2', outcome: 'Interpret scale and complexity in fractal-based contexts.' },
-  ], 'Constructs and explains a recursive pattern artifact.', 'Coastline modeling and visual computing', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q2-matrices-basic-operations', 'finite-math-1', 'Q2', 'Matrices and Basic Operations', 'Use matrices to represent and operate on structured numerical information.', 'Linear Systems', 'FM1-Q2-MBO', [
-    { code: 'FM1-MBO-1', outcome: 'Represent contextual data using matrix notation.' },
-    { code: 'FM1-MBO-2', outcome: 'Perform and interpret matrix operations in applications.' },
-  ], 'Builds a matrix-based model to summarize and compare structured data.', 'Inventory and scheduling models', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q2-row-operations-systems', 'finite-math-1', 'Q2', 'Elementary Row Operations and Systems of Equations', 'Solve systems using row operations and interpret solution sets in context.', 'Linear Systems', 'FM1-Q2-EROS', [
-    { code: 'FM1-EROS-1', outcome: 'Apply elementary row operations to transform augmented matrices.' },
-    { code: 'FM1-EROS-2', outcome: 'Interpret unique, infinite, and no-solution outcomes.' },
-  ], 'Submits a systems-solving workflow with contextual interpretation.', 'Resource allocation and production planning', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q2-determinants-cramers-rule', 'finite-math-1', 'Q2', 'Determinants and Cramer\'s Rule', 'Compute determinants and use Cramer\'s Rule when solution conditions are satisfied.', 'Linear Systems', 'FM1-Q2-DCR', [
-    { code: 'FM1-DCR-1', outcome: 'Compute determinants and explain determinant meaning.' },
-    { code: 'FM1-DCR-2', outcome: 'Apply Cramer\'s Rule and evaluate method appropriateness.' },
-  ], 'Creates a method comparison note for solving linear systems.', 'Engineering design constraints', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm1-q2-linear-programming', 'finite-math-1', 'Q2', 'Linear Programming', 'Optimize objective functions under practical linear constraints.', 'Optimization', 'FM1-Q2-LP', [
-    { code: 'FM1-LP-1', outcome: 'Model optimization problems with objective functions and constraints.' },
-    { code: 'FM1-LP-2', outcome: 'Determine and justify optimal feasible solutions.' },
-    { code: 'FM1-LP-3', outcome: 'Interpret optimization outcomes for decision-makers.' },
-  ], 'Delivers an optimization recommendation memo with feasible-region reasoning.', 'Production and staffing optimization', ['Grade 11', 'Grade 12'], 'Grade 12'),
-
-  b('fm2-q1-counting-principles', 'finite-math-2', 'Q1', 'Fundamental Principles of Counting', 'Apply counting rules to enumerate outcomes efficiently in structured tasks.', 'Combinatorics', 'FM2-Q1-FPC', [
-    { code: 'FM2-FPC-1', outcome: 'Use multiplication and addition principles in counting tasks.' },
-    { code: 'FM2-FPC-2', outcome: 'Model multi-stage counting with constraints.' },
-  ], 'Creates a counting strategy guide with justifications for each case.', 'Event planning and scheduling', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm2-q1-permutations-combinations', 'finite-math-2', 'Q1', 'Permutations and Combinations', 'Differentiate arrangement and selection problems and solve each appropriately.', 'Combinatorics', 'FM2-Q1-PC', [
-    { code: 'FM2-PC-1', outcome: 'Distinguish permutation vs combination problem structures.' },
-    { code: 'FM2-PC-2', outcome: 'Compute and interpret permutation and combination results.' },
-  ], 'Produces a problem classification and solution portfolio.', 'Selection committees and lineup design', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm2-q1-probability-events', 'finite-math-2', 'Q1', 'Probability of Events', 'Evaluate event likelihood using classical and empirical probability models.', 'Probability', 'FM2-Q1-PE', [
-    { code: 'FM2-PE-1', outcome: 'Compute simple and compound event probabilities.' },
-    { code: 'FM2-PE-2', outcome: 'Interpret probability results for practical uncertainty decisions.' },
-  ], 'Builds a probability briefing for decision scenarios under risk.', 'Quality checks and risk estimation', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm2-q1-conditional-independent-events', 'finite-math-2', 'Q1', 'Conditional Probability and Independent Events', 'Use conditional structures and independence tests in chained event analysis.', 'Probability', 'FM2-Q1-CPIE', [
-    { code: 'FM2-CPIE-1', outcome: 'Compute conditional probabilities using ratio and table methods.' },
-    { code: 'FM2-CPIE-2', outcome: 'Test and explain event independence in context.' },
-  ], 'Submits an uncertainty analysis showing dependency assumptions and consequences.', 'Medical screening and survey branching', ['Grade 11', 'Grade 12'], 'Grade 12'),
-  b('fm2-q2-divisibility-prime-factorization', 'finite-math-2', 'Q2', 'Divisibility and Prime Factorization', 'Apply divisibility tests and prime decomposition in integer reasoning.', 'Number Theory', 'FM2-Q2-DPF', [
-    { code: 'FM2-DPF-1', outcome: 'Apply divisibility rules and validate integer claims.' },
-    { code: 'FM2-DPF-2', outcome: 'Use prime factorization to solve integer structure problems.' },
-  ], 'Produces a number-structure explanation with verified factor methods.', 'Coding checks and numeric validation', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm2-q2-gcd-lcm-diophantine', 'finite-math-2', 'Q2', 'GCD, LCM, and Diophantine Equations', 'Solve integer relation tasks using gcd/lcm methods and linear Diophantine forms.', 'Number Theory', 'FM2-Q2-GLD', [
-    { code: 'FM2-GLD-1', outcome: 'Find gcd and lcm efficiently for contextual timing/allocation tasks.' },
-    { code: 'FM2-GLD-2', outcome: 'Solve and interpret linear Diophantine equations.' },
-  ], 'Creates a whole-number feasibility report for constrained scenarios.', 'Cycle synchronization and packaging', ['Grade 11', 'Grade 12'], 'Grade 12'),
-  b('fm2-q2-modular-arithmetic-applications', 'finite-math-2', 'Q2', 'Modular Arithmetic and Applications', 'Use modular systems to reason about cyclic structures and encoded operations.', 'Number Theory', 'FM2-Q2-MAA', [
-    { code: 'FM2-MAA-1', outcome: 'Perform modular operations and congruence checks.' },
-    { code: 'FM2-MAA-2', outcome: 'Apply modular reasoning to scheduling and encoding contexts.' },
-  ], 'Develops a modular arithmetic solution brief for cyclic problems.', 'Time systems and basic cryptography', ['Grade 11', 'Grade 12'], 'Grade 12'),
-  b('fm2-q2-graph-theory-basics', 'finite-math-2', 'Q2', 'Graph Theory Basics', 'Represent networks with graph models and analyze core graph properties.', 'Graph Theory', 'FM2-Q2-GTB', [
-    { code: 'FM2-GTB-1', outcome: 'Model practical networks using vertices and edges.' },
-    { code: 'FM2-GTB-2', outcome: 'Interpret graph degree, connectivity, and basic structures.' },
-  ], 'Builds a network representation and interprets key graph metrics.', 'Transportation and communication networks', ['Grade 11', 'Grade 12'], 'Grade 11'),
-  b('fm2-q2-eulerian-hamiltonian-paths-circuits', 'finite-math-2', 'Q2', 'Eulerian and Hamiltonian Paths and Circuits', 'Analyze traversal and route constraints in graph-based movement problems.', 'Graph Theory', 'FM2-Q2-EHPC', [
-    { code: 'FM2-EHPC-1', outcome: 'Determine Eulerian path/circuit feasibility conditions.' },
-    { code: 'FM2-EHPC-2', outcome: 'Evaluate Hamiltonian path/circuit opportunities in practical graphs.' },
-  ], 'Presents a traversal feasibility analysis for a route-planning task.', 'Service routing and logistics', ['Grade 11', 'Grade 12'], 'Grade 12'),
-  b('fm2-q2-spanning-trees-shortest-paths', 'finite-math-2', 'Q2', 'Spanning Trees and Shortest Paths', 'Optimize network connectivity and route length using standard graph algorithms.', 'Graph Theory and Optimization', 'FM2-Q2-STSP', [
-    { code: 'FM2-STSP-1', outcome: 'Construct spanning trees to minimize connection cost.' },
-    { code: 'FM2-STSP-2', outcome: 'Apply shortest-path reasoning for efficient routing decisions.' },
-    { code: 'FM2-STSP-3', outcome: 'Compare alternative network designs using mathematical criteria.' },
-  ], 'Submits an optimization recommendation for network deployment and routing.', 'Telecom rollout and delivery routing', ['Grade 11', 'Grade 12'], 'Grade 12'),
+  // NOTE: Finite Mathematics 1 & 2 modules removed because their source PDFs
+  // are curriculum guides with insufficient content for RAG lesson generation.
 ];
 
 function adaptDescriptionForGrade(module: CurriculumModuleBlueprint, activeGradeLevel: GradeLevel): string {
@@ -399,21 +291,15 @@ function normalizeSubjectAssignments(assignedSubjects: string[] | undefined): Cu
   if (!Array.isArray(assignedSubjects) || assignedSubjects.length === 0) return null;
   const allowed = new Set<CurriculumSubjectId>([
     'gen-math',
-    'finite-math-1',
-    'finite-math-2',
     'business-math',
     'stats-prob',
-    'org-mgmt',
   ]);
   const normalized = assignedSubjects
     .map((entry) => entry.trim().toLowerCase())
     .map((entry) => {
       if (entry === 'gen-math' || entry === 'general-mathematics' || entry === 'general mathematics') return 'gen-math';
-      if (entry === 'finite-math-1' || entry === 'finite mathematics 1' || entry === 'fm1') return 'finite-math-1';
-      if (entry === 'finite-math-2' || entry === 'finite mathematics 2' || entry === 'fm2') return 'finite-math-2';
       if (entry === 'business-math' || entry === 'business mathematics' || entry === 'bm') return 'business-math';
       if (entry === 'stats-prob' || entry === 'statistics and probability' || entry === 'statistics') return 'stats-prob';
-      if (entry === 'org-mgmt' || entry === 'organization and management' || entry === 'abm') return 'org-mgmt';
       return null;
     })
     .filter((entry): entry is CurriculumSubjectId => entry !== null && allowed.has(entry));
