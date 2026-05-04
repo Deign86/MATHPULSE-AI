@@ -318,6 +318,38 @@ service cloud.firestore {
       allow write: if false; // Backend-only
     }
 
+    // ── Assessments (student's own assessment data) ──
+    match /assessments/{uid} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /assessments/{uid}/attempts/{attemptId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Competency Profiles (student's competency tracking) ──
+    match /competencyProfiles/{uid} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Class Assessments (teacher view of class assessment summaries) ──
+    match /classAssessments/{classId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /classAssessments/{classId}/students/{uid} {
+      allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

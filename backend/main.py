@@ -86,6 +86,7 @@ from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
     build_lesson_query,
+    format_retrieved_chunks,
     retrieve_curriculum_context,
     summarize_retrieval_confidence,
 )
@@ -366,6 +367,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/admin/model-config/override": ADMIN_ONLY,
     "/api/admin/model-config/reset": ADMIN_ONLY,
     "/api/lessons/videos/search": ALL_APP_ROLES,
+    "/api/lesson/personalized": ALL_APP_ROLES,
     "/api/quiz-battle/generate": ALL_APP_ROLES,
     "/api/quiz-battle/ingest-pdf": TEACHER_OR_ADMIN,
     "/api/quiz-battle/bank-status": TEACHER_OR_ADMIN,
@@ -13158,6 +13160,124 @@ async def generate_learning_path(request: DiagnosticLearningPathRequest):
     except Exception as e:
         logger.error(f"Learning path generation error: {e}")
         raise HTTPException(status_code=500, detail=f"Learning path error: {str(e)}")
+
+
+# ─── Personalized Lesson Endpoint ──────────────────────────────
+
+class PersonalizedLessonRequest(BaseModel):
+    topic: str = Field(..., description="Lesson topic")
+    student_uid: str = Field(..., description="Student UID for profile lookup")
+    assessment_context: Optional[Dict[str, Any]] = Field(None, description="Optional assessment context")
+    subject: Optional[str] = Field(None, description="Subject area")
+    quarter: Optional[int] = Field(None, description="Quarter (1-4)")
+
+
+class PersonalizedLessonResponse(BaseModel):
+    topic: str
+    content: str
+    personalization_notes: str
+    sections: List[Dict[str, str]]
+    suggested_exercises: List[str]
+    difficulty_adjustment: str
+
+
+@app.post("/api/lesson/personalized", response_model=PersonalizedLessonResponse)
+async def generate_personalized_lesson(request: PersonalizedLessonRequest):
+    """
+    Generate a personalized lesson based on student's assessment profile.
+    Adapts content to address weaknesses and reinforce strengths.
+    """
+    try:
+        # Load student's competency profile if available
+        weaknesses = []
+        strengths = []
+        if firebase_firestore and request.student_uid:
+            try:
+                db = firebase_firestore.client()
+                profile_doc = db.collection("competencyProfiles").document(request.student_uid).get()
+                if profile_doc.exists:
+                    profile_data = profile_doc.to_dict()
+                    if profile_data and "competencies" in profile_data:
+                        for comp_id, comp_data in profile_data["competencies"].items():
+                            if comp_data.get("score", 0) < 50:
+                                weaknesses.append(comp_id)
+                            elif comp_data.get("score", 0) >= 80:
+                                strengths.append(comp_id)
+            except Exception as e:
+                logger.warning(f"Could not load competency profile: {e}")
+
+        # Retrieve curriculum context
+        context_chunks = retrieve_curriculum_context(
+            query=build_lesson_query(request.topic, request.subject or "General Mathematics"),
+            subject_filter=request.subject,
+            quarter_filter=request.quarter,
+            top_k=5,
+        )
+        context_text = format_retrieved_chunks(context_chunks)
+
+        # Build personalized prompt
+        prompt = f"""Generate a DepEd-aligned SHS mathematics lesson on: {request.topic}
+
+Student Assessment Profile:
+- Weaknesses to address: {', '.join(weaknesses) if weaknesses else 'None identified'}
+- Strengths to reinforce: {', '.join(strengths) if strengths else 'None identified'}
+
+Curriculum Context:
+{context_text}
+
+Instructions:
+1. Structure the lesson with: Introduction, Key Concepts, Examples, Practice Problems, Summary
+2. Include extra practice on these weak areas: {', '.join(weaknesses) if weaknesses else 'general topic areas'}
+3. Provide advanced challenges on these strong areas: {', '.join(strengths) if strengths else 'related advanced topics'}
+4. Use Filipino Senior High School appropriate language and context
+5. Reference specific DepEd MELC competencies where applicable
+
+Return as JSON with fields: topic, sections (array of title/content), suggested_exercises, personalization_notes"""
+
+        req = InferenceRequest(
+            messages=[
+                {"role": "system", "content": "You are a precise DepEd-aligned curriculum assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            task_type="rag_lesson",
+            max_new_tokens=1800,
+            temperature=0.2,
+            top_p=0.9,
+            enable_thinking=True,
+        )
+        response_text = get_inference_client().generate_from_messages(req)
+
+        # Parse JSON response
+        try:
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                lesson_data = json.loads(json_match.group())
+            else:
+                lesson_data = json.loads(response_text)
+
+            return PersonalizedLessonResponse(
+                topic=request.topic,
+                content=lesson_data.get("content", response_text),
+                personalization_notes=f"Personalized for weaknesses: {', '.join(weaknesses)}" if weaknesses else "General lesson",
+                sections=lesson_data.get("sections", []),
+                suggested_exercises=lesson_data.get("suggested_exercises", []),
+                difficulty_adjustment="supportive" if weaknesses else "standard",
+            )
+        except json.JSONDecodeError:
+            # Return raw text if JSON parsing fails
+            return PersonalizedLessonResponse(
+                topic=request.topic,
+                content=response_text,
+                personalization_notes="Raw response (JSON parsing failed)",
+                sections=[{"title": "Content", "content": response_text}],
+                suggested_exercises=[],
+                difficulty_adjustment="standard",
+            )
+
+    except Exception as e:
+        logger.error(f"Personalized lesson generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
 
 
 # ─── Main ──────────────────────────────────────────────────────

@@ -39,6 +39,8 @@ import {
   resolveLearnerGradeLevel,
 } from '../data/curriculumModules';
 import { getRagAnalysisContext } from '../services/apiService';
+import { getStudentCompetencyProfile } from '../services/assessmentService';
+import type { CompetencyProfileDoc } from '../types/assessment';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -96,6 +98,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const [learningPathContext, setLearningPathContext] = useState<string | null>(null);
   const [learningPathLoading, setLearningPathLoading] = useState(false);
+
+  // Competency profile state for personalized module filtering
+  const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
+  const [competencyProfileLoading, setCompetencyProfileLoading] = useState(false);
 
 
   // Daily Check-in State (Firestore-backed)
@@ -196,6 +202,22 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     }
   }, [initialModuleId, curriculumRuntimeModules]);
 
+  // Load competency profile for personalized module filtering
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    setCompetencyProfileLoading(true);
+    getStudentCompetencyProfile(userProfile.uid)
+      .then((profile) => {
+        setCompetencyProfile(profile);
+      })
+      .catch((err) => {
+        console.error('Failed to load competency profile:', err);
+      })
+      .finally(() => {
+        setCompetencyProfileLoading(false);
+      });
+  }, [userProfile?.uid]);
+
   const normalizedRiskTopics = useMemo<DiagnosticTopicKey[]>(() => {
     const primary =
       priorityTopics.length > 0
@@ -241,7 +263,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const filteredModules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return modulePool.filter((module) => {
+    const filtered = modulePool.filter((module) => {
       const titleMatch = !query || module.title.toLowerCase().includes(query);
       const descMatch = !query || module.description.toLowerCase().includes(query);
       const lessonMatch = !query || module.lessons.some((lesson) => lesson.title.toLowerCase().includes(query));
@@ -261,7 +283,39 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
       return (titleMatch || descMatch || lessonMatch || quizMatch || competencyMatch) && subjectMatch && quarterMatch && competencyGroupMatch;
     });
-  }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter]);
+
+    // Sort by competency profile if available
+    if (competencyProfile?.competencies) {
+      const weaknesses = new Set(
+        Object.entries(competencyProfile.competencies)
+          .filter(([, score]: [string, { score: number }]) => score.score < 50)
+          .map(([compId]) => compId)
+      );
+      const strengths = new Set(
+        Object.entries(competencyProfile.competencies)
+          .filter(([, score]: [string, { score: number }]) => score.score >= 80)
+          .map(([compId]) => compId)
+      );
+
+      return filtered.sort((a, b) => {
+        const aCompetencyIds = a.competencies.map(c => c.code);
+        const bCompetencyIds = b.competencies.map(c => c.code);
+
+        const aWeaknessMatch = aCompetencyIds.some(id => weaknesses.has(id)) ? 1 : 0;
+        const bWeaknessMatch = bCompetencyIds.some(id => weaknesses.has(id)) ? 1 : 0;
+        const aStrengthMatch = aCompetencyIds.some(id => strengths.has(id)) ? 1 : 0;
+        const bStrengthMatch = bCompetencyIds.some(id => strengths.has(id)) ? 1 : 0;
+
+        // Priority: weakness-targeted > strength (reinforcement) > general
+        const aScore = aWeaknessMatch * 2 + aStrengthMatch;
+        const bScore = bWeaknessMatch * 2 + bStrengthMatch;
+
+        return bScore - aScore;
+      });
+    }
+
+    return filtered;
+  }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter, competencyProfile]);
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
