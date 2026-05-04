@@ -23,13 +23,18 @@ def _mock_vectorstore_components(collection_mock, embedder_mock):
 class TestRetrieveCurriculumContext:
     def test_empty_collection_returns_empty_list(self):
         collection = MagicMock()
-        collection_get_result = collection.get.return_value
-        collection_get_result.__getitem__.return_value = []
+        collection.query.return_value = {
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
+        }
 
         embedder = MagicMock()
+        embedder.encode.return_value = MagicMock()
+        embedder.encode.return_value.tolist.return_value = [0.0] * 768
 
         with patch(
-            "rag.curriculum_rag.get_vectorstore_components",
+            "rag.vectorstore_loader.get_vectorstore_components",
             return_value=(MagicMock(), collection, embedder),
         ):
             result = retrieve_curriculum_context(
@@ -73,14 +78,12 @@ class TestBuildLessonPrompt:
             ],
         )
         assert "JSON" in prompt
-        assert "lessonTitle" in prompt
+        assert "Lesson title:" in prompt
         assert "needsReview" in prompt
-        ph_context_terms = [
-            "payroll", "VAT", "discounts", "loans", "Pag-IBIG", "school",
-        ]
-        assert any(term in prompt for term in ph_context_terms)
+        assert "DepEd-aligned" in prompt
+        assert "7 sections" in prompt
 
-    def test_contains_thinking_hint(self):
+    def test_contains_required_sections_in_prompt(self):
         prompt = build_lesson_prompt(
             lesson_title="Functions",
             competency="M11GM-Ia-1",
@@ -91,7 +94,10 @@ class TestBuildLessonPrompt:
             module_unit=None,
             curriculum_chunks=[],
         )
-        assert "Think step by step" in prompt
+        assert "introduction" in prompt
+        assert "key_concepts" in prompt
+        assert "worked_examples" in prompt
+        assert "try_it_yourself" in prompt
 
 
 class TestSummarizeRetrievalConfidence:

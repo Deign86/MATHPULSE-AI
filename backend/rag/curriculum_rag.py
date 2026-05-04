@@ -195,12 +195,12 @@ def format_retrieved_chunks(curriculum_chunks: list[dict]) -> str:
 
 def summarize_retrieval_confidence(curriculum_chunks: list[dict]) -> Dict[str, any]:
     if not curriculum_chunks:
-        return {"confidence": 0.0, "band": "low"}
+        return {"confidence": 0.0, "band": "low", "chunkCount": 0}
 
     top_scores = [float(c.get("score") or 0.0) for c in curriculum_chunks[:5]]
     score = sum(top_scores) / max(1, len(top_scores))
     band = "high" if score >= 0.72 else "medium" if score >= 0.5 else "low"
-    return {"confidence": round(score, 3), "band": band}
+    return {"confidence": round(score, 3), "band": band, "chunkCount": len(curriculum_chunks)}
 
 
 def organize_chunks_by_section(chunks: list[dict]) -> Dict[str, List[dict]]:
