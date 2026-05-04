@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -27,6 +28,7 @@ from rag.curriculum_rag import (
     retrieve_lesson_pdf_context,
     summarize_retrieval_confidence,
 )
+from rag.firebase_storage_loader import get_study_materials_from_chunks
 from rag.vectorstore_loader import get_vectorstore_health, reset_vectorstore_singleton
 
 try:
@@ -70,6 +72,57 @@ async def _generate_text(
     return _get_inference_client().generate_from_messages(request)
 
 
+_FLASHCARD_SYSTEM_PROMPT = """You are an educational flashcard generator for Filipino high school mathematics students (DepEd K-12 curriculum).
+Given a lesson text, generate exactly 10 flashcards in JSON format.
+Each flashcard has:
+- "front": a concise question, term, or problem prompt (max 20 words)
+- "back": the answer, definition, or solution (max 40 words)
+- "difficulty": one of "easy", "medium", or "hard"
+
+Distribute difficulty: 3 easy, 4 medium, 3 hard.
+Focus on key concepts, formulas, definitions, and problem-solving steps from the lesson.
+Return ONLY a valid JSON array. No markdown, no explanation."""
+
+
+async def _generate_flashcards(lesson_text: str, topic: str) -> List[dict]:
+    """Generate 10 flashcards from lesson content using DeepSeek AI."""
+    user_message = f"Topic: {topic}\n\nLesson content:\n{lesson_text}"
+    request = InferenceRequest(
+        messages=[
+            {"role": "system", "content": _FLASHCARD_SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        task_type="flashcard_generation",
+        max_new_tokens=800,
+        temperature=0.3,
+    )
+    try:
+        raw_response = await asyncio.to_thread(
+            _get_inference_client().generate_from_messages, request
+        )
+        # Strip markdown fences if present
+        cleaned = raw_response.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.splitlines()
+            cleaned = "".join(lines[1:-1])
+        parsed = json.loads(cleaned)
+        if not isinstance(parsed, list):
+            logger.warning("Flashcard response was not a list")
+            return []
+        validated = []
+        for card in parsed:
+            if isinstance(card, dict) and all(k in card for k in ("front", "back", "difficulty")):
+                validated.append({
+                    "front": str(card.get("front", "")),
+                    "back": str(card.get("back", "")),
+                    "difficulty": str(card.get("difficulty", "medium")),
+                })
+        return validated
+    except Exception as exc:
+        logger.warning("Flashcard generation failed: %s", exc)
+        return []
+
+
 def _log_rag_usage(
     request: Request,
     *,
@@ -101,6 +154,51 @@ def _log_rag_usage(
         firebase_firestore.client().collection("rag_usage").add(payload)
     except Exception as exc:
         logger.warning("rag_usage logging skipped: %s", exc)
+
+
+def _get_cached_generated_assets(lesson_id: str, topic_slug: str) -> Optional[dict]:
+    """Return cached study_materials + flashcards if they exist and are fresh (≤7 days)."""
+    if firebase_firestore is None:
+        return None
+    try:
+        doc_ref = firebase_firestore.client().collection("lessons").document(lesson_id).collection("generated_assets").document(topic_slug)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict()
+        generated_at = data.get("generated_at")
+        if generated_at is None:
+            return None
+        # Firestore.Timestamp → datetime comparison
+        try:
+            ts = generated_at.replace(tzinfo=datetime.now(timezone.utc).tzinfo) if hasattr(generated_at, "replace") else None
+        except Exception:
+            ts = None
+        if ts is None:
+            # Fallback: assume fresh if we can't parse
+            return {"study_materials": data.get("study_materials"), "flashcards": data.get("flashcards")}
+        age_seconds = (datetime.now(timezone.utc) - ts).total_seconds()
+        if age_seconds > 604800:  # 7 days
+            return None
+        return {"study_materials": data.get("study_materials"), "flashcards": data.get("flashcards")}
+    except Exception as exc:
+        logger.warning("cached_generated_assets lookup skipped: %s", exc)
+        return None
+
+
+def _save_generated_assets(lesson_id: str, topic_slug: str, study_materials: list, flashcards: list) -> None:
+    """Persist study_materials + flashcards to Firestore for future reuse."""
+    if firebase_firestore is None:
+        return
+    try:
+        doc_ref = firebase_firestore.client().collection("lessons").document(lesson_id).collection("generated_assets").document(topic_slug)
+        doc_ref.set({
+            "study_materials": study_materials,
+            "flashcards": flashcards,
+            "generated_at": firebase_firestore.SERVER_TIMESTAMP,
+        })
+    except Exception as exc:
+        logger.warning("cached_generated_assets save skipped: %s", exc)
 
 
 def _strip_thinking_and_parse(text: str) -> dict:
@@ -266,6 +364,12 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
 
 @router.post("/lesson")
 async def rag_lesson(request: Request, payload: RagLessonRequest):
+    # ── Step 0: Check Firestore cache ────────────────────────────────────────
+    topic_slug = f"{payload.subject}_{payload.quarter}_{payload.topic}"
+    cached_assets = _get_cached_generated_assets(payload.lessonId or payload.topic, topic_slug)
+    if cached_assets:
+        logger.info("Cache hit for generated_assets: lesson_id=%s, topic_slug=%s", payload.lessonId or payload.topic, topic_slug)
+
     # ── Step 1: Retrieve curriculum chunks ───────────────────────────────────
     try:
         chunks, retrieval_mode = retrieve_lesson_pdf_context(
@@ -310,6 +414,9 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
                 "sources": [],
             },
         )
+
+    # Extract study materials from retrieved chunks
+    study_materials = get_study_materials_from_chunks(chunks)
 
     # ── Step 2: Build prompt ─────────────────────────────────────────────────
     try:
@@ -369,18 +476,26 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             },
         )
 
-    # ── Step 5: Enrich with videos ───────────────────────────────────────────
+    # ── Step 5: Enrich with videos + generate flashcards concurrently ────────
+    flashcards = []
     if parsed_lesson.get("sections"):
         video_section = next((s for s in parsed_lesson["sections"] if s.get("type") == "video"), None)
         if video_section:
             try:
-                videos = _fetch_youtube_videos(
+                # Run video fetch and flashcard generation concurrently
+                video_task = asyncio.to_thread(
+                    _fetch_youtube_videos,
                     payload.lessonTitle or payload.topic,
                     payload.subject,
                     payload.learningCompetency or "",
                     payload.quarter,
-                    lesson_id=payload.lessonId,
+                    payload.lessonId,
                 )
+                flashcard_task = _generate_flashcards(
+                    json.dumps(parsed_lesson),
+                    payload.lessonTitle or payload.topic,
+                )
+                videos, flashcards = await asyncio.gather(video_task, flashcard_task)
                 if videos:
                     # Primary video for backwards compatibility
                     primary = videos[0]
@@ -392,7 +507,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
                     # New: full videos array for Smart Video Integration
                     video_section["videos"] = videos
             except Exception as exc:
-                logger.warning("YouTube enrichment skipped: %s", exc)
+                logger.warning("YouTube/flashcard enrichment skipped: %s", exc)
 
     # ── Step 6: Assemble response ────────────────────────────────────────────
     retrieval_summary = summarize_retrieval_confidence(chunks)
@@ -412,6 +527,21 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
     needs_review = parsed_lesson.get("needsReview", False)
     if retrieval_summary.get("band") == "low":
         needs_review = True
+
+    # Use cached assets if available, otherwise save newly generated ones
+    if cached_assets:
+        study_materials = cached_assets.get("study_materials") or study_materials
+        flashcards = cached_assets.get("flashcards") or flashcards
+    else:
+        try:
+            _save_generated_assets(
+                payload.lessonId or payload.topic,
+                topic_slug,
+                study_materials,
+                flashcards,
+            )
+        except Exception as exc:
+            logger.warning("Generated assets cache save skipped: %s", exc)
 
     return {
         **parsed_lesson,
@@ -434,6 +564,8 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             for row in chunks
         ],
         "activeModel": get_model_for_task("rag_lesson"),
+        "study_materials": study_materials,
+        "flashcards": flashcards,
     }
 
 
