@@ -152,6 +152,7 @@ const App = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
   const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
+  const [isInQuizMode, setIsInQuizMode] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [dismissedSupplementalSignature, setDismissedSupplementalSignature] = useState<string>('');
   const [dashboardShellDeferredReady, setDashboardShellDeferredReady] = useState(false);
@@ -1149,6 +1150,8 @@ const App = () => {
                       atRiskSubjects={atRiskSubjects}
                       priorityTopics={prioritizedFocusTopics}
                       initialModuleId={targetModuleId}
+                      isInQuizMode={isInQuizMode}
+                      setIsInQuizMode={setIsInQuizMode}
                     />
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (
@@ -1188,8 +1191,8 @@ const App = () => {
             </AnimatePresence>
           </main>
 
-          {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page */}
-          {activeTab !== 'AI Chat' && (
+          {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
+          {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
               <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
