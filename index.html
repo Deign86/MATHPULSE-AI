@@ -28,23 +28,24 @@
     </head>
 
     <body>
-      <div id="root">
-        <!-- Static pre-JS card loader: visible from first HTML paint, replaced by React on mount -->
-        <div id="pp-static-loader" role="status" aria-live="polite" aria-busy="true" aria-label="Loading MathPulse AI">
-          <div class="pp-card">
-            <div class="pp-avatar-shell">
-              <img src="/avatar/avatar_icon.png" alt="" />
-            </div>
-            <div class="pp-copy">
-              <h2 class="pp-title">MathPulse AI</h2>
-              <div class="pp-row">
-                <div class="pp-spinner"></div>
-                <p class="pp-msg">Loading MathPulse AI...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+       <div id="root">
+         <!-- Static pre-JS card loader: visible from first HTML paint, replaced by React on mount -->
+         <div id="pp-static-loader" role="status" aria-live="polite" aria-busy="true" aria-label="Loading MathPulse AI">
+           <div class="pp-card">
+             <div class="pp-avatar-shell">
+               <img src="/avatar/avatar_icon.png" alt="" />
+             </div>
+             <div class="pp-copy">
+               <h2 class="pp-title">MathPulse AI</h2>
+               <div class="pp-row">
+                 <div class="pp-spinner"></div>
+                 <p class="pp-msg">Loading MathPulse AI...</p>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
+       <div id="modal-root"></div>
       <script type="module" src="/src/main.tsx"></script>
     </body>
   </html>
