@@ -294,6 +294,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ── Video search cache (read for all authenticated users) ──
+    match /video_cache/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;  // Backend-only writes via firebase-admin
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

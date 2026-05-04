@@ -15,6 +15,7 @@ export interface RagLessonSection {
   videoChannel?: string;
   embedUrl?: string;
   thumbnailUrl?: string;
+  videos?: VideoResult[];
 }
 
 export interface RagLessonSource {
@@ -52,6 +53,29 @@ export interface RagLessonRequest {
   lessonId?: string;
   competencyCode?: string;
   storagePath?: string;
+}
+
+// ─── Video Search Types ───────────────────────────────────────
+
+export interface VideoResult {
+  videoId: string;
+  title: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  durationSeconds: number;
+}
+
+export interface VideoSearchRequest {
+  topic: string;
+  grade_level?: string;
+  subject?: string;
+  lesson_context?: string;
+  lesson_id?: string;
+}
+
+export interface VideoSearchResponse {
+  videos: VideoResult[];
+  cached: boolean;
 }
 
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -92,6 +116,13 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 export async function fetchRagLesson(payload: RagLessonRequest): Promise<RagLessonResponse> {
   return apiFetch<RagLessonResponse>('/api/rag/lesson', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function searchVideos(payload: VideoSearchRequest): Promise<VideoSearchResponse> {
+  return apiFetch<VideoSearchResponse>('/api/lessons/videos/search', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
