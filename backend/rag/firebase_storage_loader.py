@@ -112,31 +112,16 @@ def list_curriculum_blobs(prefix: str = "curriculum/") -> List[Dict[str, str]]:
     return result
 
 
+# NOTE: Curriculum guide PDFs (shaping papers) are stored in Firebase Storage
+# for system reference but are NOT included in RAG ingestion because they
+# contain only learning objectives and course descriptions — insufficient
+# content for lesson generation (typically <10 chunks each).
+#
+# Only SDO teaching modules (full lesson content with examples and problems)
+# are included in the RAG pipeline.
+
 PDF_METADATA: Dict[str, dict] = {
-    "curriculum/general_math/GENERAL-MATHEMATICS-1.pdf": {
-        "subject": "General Mathematics",
-        "subjectId": "gen-math",
-        "type": "curriculum_guide",
-        "content_domain": "general",
-        "quarter": 1,
-        "storage_path": "curriculum/general_math/GENERAL-MATHEMATICS-1.pdf",
-    },
-    "curriculum/finite_math/Finite-Mathematics-1-1.pdf": {
-        "subject": "Finite Mathematics 1",
-        "subjectId": "finite-math-1",
-        "type": "curriculum_guide",
-        "content_domain": "finite_math",
-        "quarter": 1,
-        "storage_path": "curriculum/finite_math/Finite-Mathematics-1-1.pdf",
-    },
-    "curriculum/finite_math/Finite-Mathematics-2-1.pdf": {
-        "subject": "Finite Mathematics 2",
-        "subjectId": "finite-math-2",
-        "type": "curriculum_guide",
-        "content_domain": "finite_math",
-        "quarter": 1,
-        "storage_path": "curriculum/finite_math/Finite-Mathematics-2-1.pdf",
-    },
+    # General Mathematics — SDO Navotas teaching module (100 pages, ~125k chars)
     "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf": {
         "subject": "General Mathematics",
         "subjectId": "gen-math",
@@ -145,6 +130,7 @@ PDF_METADATA: Dict[str, dict] = {
         "quarter": 1,
         "storage_path": "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
     },
+    # Business Mathematics — SDO Navotas teaching module (100 pages, ~145k chars)
     "curriculum/business_math/SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf": {
         "subject": "Business Mathematics",
         "subjectId": "business-math",
@@ -153,14 +139,7 @@ PDF_METADATA: Dict[str, dict] = {
         "quarter": 1,
         "storage_path": "curriculum/business_math/SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf",
     },
-    "curriculum/org_mgmt/SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf": {
-        "subject": "Organization and Management",
-        "subjectId": "org-mgmt",
-        "type": "sdo_module",
-        "content_domain": "org_management",
-        "quarter": 1,
-        "storage_path": "curriculum/org_mgmt/SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf",
-    },
+    # Statistics and Probability — SDO Navotas teaching module (100 pages, ~156k chars)
     "curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf": {
         "subject": "Statistics and Probability",
         "subjectId": "stats-prob",
