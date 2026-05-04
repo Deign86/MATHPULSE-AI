@@ -43,6 +43,8 @@ interface ModulesPageProps {
   atRiskSubjects?: string[];
   priorityTopics?: DiagnosticTopicKey[];
   initialModuleId?: string | null;
+  isInQuizMode?: boolean;
+  setIsInQuizMode?: (value: boolean) => void;
 }
 
 type ModulesTab = 'modules' | 'recommended' | 'practice';
@@ -54,6 +56,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   atRiskSubjects = [],
   priorityTopics = [],
   initialModuleId = null,
+  isInQuizMode = false,
+  setIsInQuizMode,
 }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
@@ -262,9 +266,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       onEarnXP(xpEarned, `Quiz Completed! +${xpEarned} XP`);
     }
     setSelectedQuiz(null);
+    if (setIsInQuizMode) setIsInQuizMode(false);
   };
 
   if (selectedQuiz) {
+    if (setIsInQuizMode) setIsInQuizMode(true);
     return (
       <QuizExperience
         quiz={selectedQuiz}
@@ -281,6 +287,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         module={selectedModule}
         onBack={() => setSelectedModule(null)}
         onEarnXP={onEarnXP}
+        isInQuizMode={isInQuizMode}
+        setIsInQuizMode={setIsInQuizMode}
       />
     );
   }

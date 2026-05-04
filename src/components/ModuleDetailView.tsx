@@ -14,6 +14,8 @@ interface ModuleDetailViewProps {
   module: Module;
   onBack: () => void;
   onEarnXP?: (xp: number, message: string) => void;
+  isInQuizMode?: boolean;
+  setIsInQuizMode?: (value: boolean) => void;
 }
 
 // Question banks per module/quiz topic
@@ -44,7 +46,7 @@ const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Quest
   return generated;
 };
 
-const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
+const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP, isInQuizMode = false, setIsInQuizMode }) => {
   const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
@@ -192,6 +194,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             if (associatedQuiz) {
               setReturningToLesson(selectedLesson.lesson);
               setSelectedLesson({ type: 'quiz', quiz: associatedQuiz });
+              if (setIsInQuizMode) setIsInQuizMode(true);
             }
           }}
           onProgressUpdate={(percent) => {
@@ -272,7 +275,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         />
       );
     } else {
-      // Show the quiz interface
+// Show the quiz interface
       const questions = getQuestionsForLesson(selectedLesson.quiz.id, 'quiz');
       return (
         <InteractiveLesson
@@ -292,6 +295,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             } else {
               setSelectedLesson(null);
             }
+            if (setIsInQuizMode) setIsInQuizMode(false);
           }}
           onComplete={(score, totalXP) => {
             console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
@@ -317,8 +321,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     module.lessons.length,
                     module.quizzes.length
                   );
+                  await subscribeToUserProgress(userProfile.uid, setUserProgress);
                 } catch (err) {
-                  console.error('[QuizComplete] Failed to persist progress:', err);
+                  console.warn('[Quiz] Progress persist failed:', err);
+                }
+
+                if (onEarnXP) {
+                  onEarnXP(totalXP ?? 0, `Quiz Complete! +${totalXP ?? 0} XP`);
                 }
               })();
             }
@@ -329,7 +338,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             } else {
               setSelectedLesson(null);
             }
-          }}
+            if (setIsInQuizMode) setIsInQuizMode(false);
+}}
         />
       );
     }
@@ -580,7 +590,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
                               <button
                                 type="button"
-                                onClick={() => !standaloneQuiz.locked && setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' })}
+                                onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
                                 className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
                                   standaloneQuiz.locked
                                     ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
@@ -619,7 +629,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       </div>
                       <button
                         type="button"
-                        onClick={() => !standaloneQuiz.locked && setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' })}
+                        onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
                         className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
                           standaloneQuiz.locked
                             ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
