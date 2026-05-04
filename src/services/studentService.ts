@@ -749,3 +749,100 @@ export function subscribeToStudents(
     callback(students);
   });
 }
+
+// ============================================================================
+// CROSS-ROLE STUDENT DATA (Phase 2: Connect Student Data to Teacher)
+// ============================================================================
+
+import {
+  getQuizResultsByTeacher,
+  getModuleProgressByTeacher,
+  getEngagementMetricsByTeacher,
+  getDiagnosticResultsByTeacher,
+  getAITutorUsageByTeacher,
+  getClassMasterySummary,
+  type StudentQuizResult,
+  type StudentModuleProgress,
+  type StudentEngagementMetrics,
+  type StudentDiagnosticResult,
+  type StudentAITutorUsage,
+  type ClassMasterySummary
+} from './studentDataService';
+
+/**
+ * Get quiz results for all students in a teacher's classes
+ */
+export async function getStudentQuizResults(teacherId: string): Promise<StudentQuizResult[]> {
+  try {
+    // Get teacher's classrooms first
+    const classrooms = await getClassroomsByTeacher(teacherId);
+    const classroomIds = classrooms.map(c => c.id);
+    
+    if (classroomIds.length === 0) return [];
+    
+    return await getQuizResultsByTeacher(teacherId, classroomIds);
+  } catch (error) {
+    console.error('[studentService] getStudentQuizResults error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get module progress for all students in a teacher's classes
+ */
+export async function getStudentModuleProgress(teacherId: string, subjectId?: string): Promise<StudentModuleProgress[]> {
+  try {
+    return await getModuleProgressByTeacher(teacherId, subjectId);
+  } catch (error) {
+    console.error('[studentService] getStudentModuleProgress error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get XP and engagement metrics for all students in a teacher's classes
+ */
+export async function getStudentEngagementMetrics(teacherId: string): Promise<StudentEngagementMetrics[]> {
+  try {
+    return await getEngagementMetricsByTeacher(teacherId);
+  } catch (error) {
+    console.error('[studentService] getStudentEngagementMetrics error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get diagnostic assessment results for all students in a teacher's classes
+ */
+export async function getStudentDiagnosticResults(teacherId: string): Promise<StudentDiagnosticResult[]> {
+  try {
+    return await getDiagnosticResultsByTeacher(teacherId);
+  } catch (error) {
+    console.error('[studentService] getStudentDiagnosticResults error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get AI tutor usage statistics for all students in a teacher's classes
+ */
+export async function getStudentAITutorUsage(teacherId: string): Promise<StudentAITutorUsage[]> {
+  try {
+    return await getAITutorUsageByTeacher(teacherId);
+  } catch (error) {
+    console.error('[studentService] getStudentAITutorUsage error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get class-wide mastery summary for a subject
+ */
+export async function getClassMasteryBySubject(teacherId: string, subjectId: string): Promise<ClassMasterySummary[]> {
+  try {
+    return await getClassMasterySummary(teacherId, subjectId);
+  } catch (error) {
+    console.error('[studentService] getClassMasteryBySubject error:', error);
+    return [];
+  }
+}
