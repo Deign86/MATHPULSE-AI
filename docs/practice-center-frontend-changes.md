@@ -37,3 +37,11 @@ This document outlines the React/Vite implementation tasks.
 ## 6. Implementation Notes for Frontend Dev
 - Wait for the API contracts from the backend developer (refer to `practice-center-backend-spec.md` for what to expect).
 - Mock the API responses in a `practiceMocks.ts` file initially so frontend development is unblocked.
+
+## 7. Current UI Alignment Work
+- The active lesson quiz shell is being compacted to mirror the Quiz Battle layout more closely.
+- Match the battle-style header hierarchy in `InteractiveLesson.tsx`: top-left HUD/progress, centered subject-topic chip, and top-right fullscreen/audio/menu controls.
+- Keep the question card and answer card visually separated; do not merge the prompt and choices into one surface.
+- Remove circular radio indicators from multiple-choice tiles so the options read as dense battle choices instead of form inputs.
+- Place Hint, Reveal, and Explain as subtle bottom action buttons with lightweight color accents.
+- Keep the progress bar as the existing segmented square/dot system; only relocate it into the battle-style HUD area.
