@@ -30,18 +30,6 @@ export interface RagLessonSource {
   content?: string;
 }
 
-export interface StudyMaterial {
-  title: string;
-  source_pdf_url: string;
-  topic_match: string;
-}
-
-export interface Flashcard {
-  front: string;
-  back: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-}
-
 export interface RagLessonResponse {
   sections: RagLessonSection[];
   retrievalConfidence: number;
@@ -50,8 +38,6 @@ export interface RagLessonResponse {
   needsReview: boolean;
   sources: RagLessonSource[];
   activeModel?: string;
-  study_materials?: StudyMaterial[];
-  flashcards?: Flashcard[];
 }
 
 export interface RagLessonRequest {
