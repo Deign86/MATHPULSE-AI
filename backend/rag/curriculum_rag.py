@@ -57,7 +57,7 @@ def retrieve_curriculum_context(
     storage_path: str | None = None,
     top_k: int = 8,
 ) -> list[dict]:
-    from backend.rag.vectorstore_loader import get_vectorstore_components
+    from rag.vectorstore_loader import get_vectorstore_components
 
     _, collection, embedder = get_vectorstore_components()
     where = _to_where(subject, quarter, content_domain, chunk_type, module_id, lesson_id, competency_code, storage_path)

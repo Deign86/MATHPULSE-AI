@@ -328,7 +328,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/quiz/preview": TEACHER_OR_ADMIN,
     "/api/lesson/generate": TEACHER_OR_ADMIN,
     "/api/lesson/generate-async": TEACHER_OR_ADMIN,
-    "/api/rag/lesson": TEACHER_OR_ADMIN,
+    "/api/rag/lesson": ALL_APP_ROLES,
     "/api/rag/generate-problem": TEACHER_OR_ADMIN,
     "/api/rag/analysis-context": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded": TEACHER_OR_ADMIN,
@@ -1000,6 +1000,8 @@ class RequestMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "detail": "Internal server error",
+                    "error": type(exc).__name__,
+                    "message": str(exc),
                     "requestId": request_id,
                 },
                 headers={"X-Request-ID": request_id},

@@ -979,7 +979,7 @@ export interface RagHealthResponse {
 // ─── RAG API Functions ──────────────────────────────────────
 
 export async function getRagHealth(): Promise<RagHealthResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -997,7 +997,7 @@ export async function getRagHealth(): Promise<RagHealthResponse> {
 }
 
 export async function generateRagLesson(payload: RagLessonRequest): Promise<RagLessonResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -1019,7 +1019,7 @@ export async function generateRagLesson(payload: RagLessonRequest): Promise<RagL
 }
 
 export async function generateRagProblem(payload: RagProblemRequest): Promise<RagProblemResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -1041,7 +1041,7 @@ export async function generateRagProblem(payload: RagProblemRequest): Promise<Ra
 }
 
 export async function getRagAnalysisContext(payload: RagAnalysisContextRequest): Promise<RagAnalysisContextResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
