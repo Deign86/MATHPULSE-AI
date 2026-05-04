@@ -94,3 +94,8 @@ service-account*.json
 
 # Memory bank — local agent notes only, never commit
 memory-bank/
+
+# Graphify — generated knowledge graph artifacts
+.graphify*
+graphify-out/
+.opencode/
