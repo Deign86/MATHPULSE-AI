@@ -104,7 +104,7 @@ const fetchQuestionsFromFastAPI = async (
   }
 
   try {
-    const response = await axios.post<FASTAPIGenerateResponse>(
+    const response = await axios.post<FastAPIGenerateResponse>(
       `${FASTAPI_BACKEND_URL}/api/quiz-battle/generate`,
       {
         grade_level: gradeLevel,
@@ -129,7 +129,7 @@ const fetchQuestionsFromFastAPI = async (
     }
 
     // Convert FastAPI format to BattleQuestionPublic[]
-    const questions: BattleQuestionPublic[] = data.questions.map((q, idx) => ({
+    const questions: BattleQuestionPublic[] = data.questions.map((q: FastAPIQuestion, idx: number) => ({
       roundNumber: idx + 1,
       questionId: `${q.source_chunk_id || "rag"}_${idx}`,
       prompt: q.question,
@@ -137,7 +137,7 @@ const fetchQuestionsFromFastAPI = async (
     }));
 
     // Extract answer keys from correct_answer field
-    const answerKeys = data.questions.map((q) => {
+    const answerKeys = data.questions.map((q: FastAPIQuestion) => {
       const letter = q.correct_answer;
       return letter.charCodeAt(0) - "A".charCodeAt(0);
     });

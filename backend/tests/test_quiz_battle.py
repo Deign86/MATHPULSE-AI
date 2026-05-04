@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 import sys
 from unittest.mock import MagicMock
 
+_original_firebase_admin = sys.modules.get("firebase_admin")
+
 firebase_mock = MagicMock()
 sys.modules["firebase_admin"] = firebase_mock
 sys.modules["firebase_admin.credentials"] = MagicMock()
@@ -20,6 +22,16 @@ sys.modules["google.cloud.firestore"] = MagicMock()
 from main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _cleanup_firebase_mock():
+    """Restore original firebase_admin module after all tests in this module."""
+    yield
+    if _original_firebase_admin is not None:
+        sys.modules["firebase_admin"] = _original_firebase_admin
+    elif "firebase_admin" in sys.modules:
+        del sys.modules["firebase_admin"]
 
 
 # ── PDF Ingestion Tests ──────────────────────────────────────────────
