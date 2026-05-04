@@ -78,7 +78,7 @@ export interface VideoSearchResponse {
   cached: boolean;
 }
 
-async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh: boolean = false): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string> || {}),
@@ -86,15 +86,24 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   const currentUser = auth.currentUser;
   if (currentUser) {
     try {
-      const idToken = await currentUser.getIdToken(false);
+      const idToken = await currentUser.getIdToken(forceRefresh);
       if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
-    } catch { /* non-critical */ }
+    } catch (err) {
+      console.error('[lessonService] Failed to get Firebase ID token:', err);
+      throw new Error('Authentication failed. Please sign in again.');
+    }
   }
 
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
   });
+
+  // Retry once with forced token refresh on 401
+  if (res.status === 401 && currentUser && !forceRefresh) {
+    console.log('[lessonService] Received 401, retrying with refreshed token...');
+    return apiFetch<T>(endpoint, options, true);
+  }
 
   if (!res.ok) {
     let errorBody: any;

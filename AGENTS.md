@@ -99,6 +99,13 @@ The project requires secrets in two places:
 ### Local (.env.local)
 Copied from `.env.example` — contains Firebase config, DeepSeek API keys, and HF token.
 
+### Local Secrets Directory (.secrets/)
+Sensitive credentials stored in `.secrets/` (gitignored). NEVER commit this directory.
+- **Firebase Service Account**: `.secrets/firebase-service-account.json`
+  - Used for Firebase Storage uploads, RAG ingestion pipeline, and backend auth
+  - Obtain from Firebase Console → Project Settings → Service Accounts → Generate new private key
+  - Backend loads this via `FIREBASE_SERVICE_ACCOUNT_FILE` env var or `FIREBASE_SERVICE_ACCOUNT_JSON` secret
+
 ### HF Space Secrets (deign86/mathpulse-api-v3test)
 Set via `huggingface_hub` Python library:
 ```python
