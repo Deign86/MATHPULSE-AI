@@ -533,12 +533,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                           </button>
 
                           <div className="flex flex-wrap gap-3 px-1">
-                            <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm" style={{ color: lessonAccentHex }}>
                               <BookOpen size={14} /> Study Materials
-                            </button>
-                            <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                              <Bookmark size={14} /> Flashcards
-                            </button>
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm" style={{ color: lessonAccentHex }}>
+                              <Bookmark size={14} /> Quiz
+                            </span>
                           </div>
 
                           {/* Practice Activities removed from ModuleDetailView rendering */}
