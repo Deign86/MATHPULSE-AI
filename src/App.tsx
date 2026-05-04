@@ -6,6 +6,7 @@ import { useAuth } from './contexts/AuthContext.tsx';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService.ts';
 import { createNotification } from './services/notificationService.ts';
 import { updateStreak, awardXP } from './services/gamificationService.ts';
+import { updateCompetencyProfile } from './services/assessmentService.ts';
 import { getUserProgress } from './services/progressService.ts';
 import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
@@ -278,20 +279,39 @@ const App = () => {
     let cancelled = false;
     const checkDiagnostic = async () => {
       try {
-        const snap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
+        // Check legacy diagnostic results
+        const legacySnap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
+        // Check new competency profile
+        const profileSnap = await getDoc(doc(db, 'competencyProfiles', userProfile.uid));
+
         if (cancelled) return;
-        if (!snap.exists() || snap.data()?.status === 'skipped') {
+
+        const hasLegacyComplete = legacySnap.exists() && legacySnap.data()?.status === 'completed';
+        const hasEnhancedComplete = profileSnap.exists() && profileSnap.data()?.overallScore > 0;
+
+        if (!hasLegacyComplete && !hasEnhancedComplete) {
           setHasCompletedDiagnostic(false);
           const timer = setTimeout(() => {
             if (!cancelled) setShowDiagnosticModal(true);
           }, 1000);
           return () => clearTimeout(timer);
-        } else if (snap.data()?.status === 'completed') {
+        } else {
           setHasCompletedDiagnostic(true);
-          const data = snap.data();
-          if (data?.riskProfile) {
-            setAtRiskSubjects(data.riskProfile.weak_domains || []);
-            setPriorityTopics(data.riskProfile.critical_gaps || []);
+          // Load risk data from legacy or enhanced
+          if (legacySnap.exists()) {
+            const data = legacySnap.data();
+            if (data?.riskProfile) {
+              setAtRiskSubjects(data.riskProfile.weak_domains || []);
+              setPriorityTopics(data.riskProfile.critical_gaps || []);
+            }
+          }
+          // Also load competency profile data if available
+          if (profileSnap.exists()) {
+            const profileData = profileSnap.data();
+            if (profileData?.primaryWeakness) {
+              // Merge with existing at-risk subjects
+              setAtRiskSubjects(prev => [...new Set([...prev, profileData.primaryWeakness])]);
+            }
           }
         }
       } catch (err) {
@@ -394,6 +414,14 @@ const App = () => {
     intervention: string;
     xpEarned: number;
     badgeUnlocked: string;
+    competencyScores?: Record<string, { score: number; correct: number; attempted: number }>;
+    proficiencyProfile?: {
+      strengths: string[];
+      weaknesses: string[];
+      borderline: string[];
+      suggestedStartingModule: string;
+      recommendedPace: 'support_intensive' | 'normal' | 'accelerated';
+    };
   }) => {
     setShowAssessmentPage(false);
     setHasCompletedDiagnostic(true);
@@ -408,6 +436,28 @@ const App = () => {
       }
     } else {
       toast.success('Assessment complete!');
+    }
+
+    // Save enhanced competency profile if available
+    if (userProfile?.uid && result.competencyScores && result.proficiencyProfile) {
+      try {
+        await updateCompetencyProfile(userProfile.uid, {
+          uid: userProfile.uid,
+          assessmentId: `assessment-${Date.now()}`,
+          completedAt: new Date(),
+          rawScore: result.overallScorePercent,
+          totalQuestions: Object.values(result.competencyScores).reduce((sum, s) => sum + s.attempted, 0),
+          correctAnswers: Object.values(result.competencyScores).reduce((sum, s) => sum + s.correct, 0),
+          timeSpentSeconds: 0,
+          competencyScores: result.competencyScores,
+          recommendations: result.proficiencyProfile.weaknesses.map(w => `Focus on ${w}`),
+          proficiencyProfile: result.proficiencyProfile,
+          assessmentType: 'initial',
+        });
+        console.log('[OK] Competency profile saved');
+      } catch (err) {
+        console.error('[WARN] Failed to save competency profile:', err);
+      }
     }
 
     if (userProfile?.uid) {
