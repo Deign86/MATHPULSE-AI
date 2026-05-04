@@ -3,7 +3,7 @@ import {
   Users, TrendingUp, AlertTriangle, Calendar,
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
-  Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database,
+  Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
   ChevronLeft, Download, Send, Edit3, Save, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -52,6 +52,7 @@ import type { CurriculumSource } from '../types/curriculum';
 import CurriculumSourceBadge from './CurriculumSourceBadge';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
+import QuestionBankPanel from './QuestionBankPanel';
 import TopicMasteryView from './TopicMasteryView';
 import StudentCompetencyTable from './StudentCompetencyTable';
 import ChatMarkdown from './ChatMarkdown';
@@ -79,7 +80,8 @@ type View =
   | 'competency'
   | 'notifications'
   | 'calendar'
-  | 'quiz_maker';
+  | 'quiz_maker'
+  | 'question_bank';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -1209,6 +1211,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 forceExpanded={isMobileViewport}
               />
               <NavItem
+                icon={BookOpen}
+                label="Question Bank"
+                active={activeView === 'question_bank'}
+                collapsed={sidebarCollapsed && !sidebarHovered}
+                onClick={() => setActiveView('question_bank')}
+                forceExpanded={isMobileViewport}
+              />
+              <NavItem
                 icon={Bell}
                 label="Notifications"
                 active={activeView === 'notifications'}
@@ -1275,6 +1285,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'notifications' && 'Notifications'}
                   {activeView === 'calendar' && 'Calendar'}
                   {activeView === 'quiz_maker' && 'AI Quiz Maker'}
+                  {activeView === 'question_bank' && 'Question Bank'}
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -1284,6 +1295,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
                   {activeView === 'import' && 'Upload class records and materials'}
                   {activeView === 'quiz_maker' && 'Create and manage AI-powered quizzes'}
+                  {activeView === 'question_bank' && 'Manage RAG-powered quiz question bank'}
                   {activeView === 'notifications' && 'View classroom alerts and updates'}
                   {activeView === 'calendar' && 'Check upcoming class events and schedule'}
                 </p>
@@ -1454,6 +1466,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             )}
             {activeView === 'quiz_maker' && (
               <QuizMaker onBack={() => setActiveView('dashboard')} />
+            )}
+            {activeView === 'question_bank' && (
+              <QuestionBankPanel />
             )}
           </AnimatePresence>
         </main>

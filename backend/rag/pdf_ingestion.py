@@ -263,14 +263,15 @@ async def ingest_pdf(
         status_doc = await status_ref.get()
         if status_doc.exists:
             logger.info(f"PDF {filename} already processed, skipping (use force_reingest=True to override)")
+            data = status_doc.to_dict() or {}
             return IngestionResult(
                 filename=filename,
                 processed=True,
-                question_count=0,
-                grade_level=grade_level,
-                topic=topic,
-                storage_path=storage_path,
-                timestamp=datetime.now(timezone.utc),
+                question_count=data.get("question_count", 0),
+                grade_level=data.get("grade_level", grade_level),
+                topic=data.get("topic", topic),
+                storage_path=data.get("storage_path", storage_path),
+                timestamp=data.get("timestamp", datetime.now(timezone.utc)),
             )
 
     # Step 2: Download PDF from Firebase Storage
