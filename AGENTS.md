@@ -52,10 +52,11 @@ Project root: C:\Users\Deign\Downloads\MATHPULSE-AI
 
 ```bash
 # Frontend
-npm run dev          # Vite dev server
-npm run build        # Production build to dist/
-npm run test         # Vitest (all tests)
-npm run lint         # ESLint
+npm run dev            # Vite dev server (triggers predev → sync:models + check:backend:dev)
+npm run build          # Production build to dist/
+npm run test           # Vitest (all tests)
+npm run lint           # ESLint
+npm run typecheck      # TypeScript type checking
 
 # Backend
 cd backend && pip install -r requirements.txt && uvicorn main:app --reload
@@ -66,3 +67,51 @@ cd functions && npm run build && npm test
 # Deploy
 python scripts/deploy-hf.py    # HuggingFace Spaces deployment
 ```
+
+## Project Structure
+
+```
+MATHPULSE-AI/
+├── src/                  # React frontend
+│   ├── components/       # UI components (PascalCase.tsx)
+│   ├── contexts/         # React Context providers
+│   ├── services/         # API service wrappers
+│   ├── stores/           # Zustand stores
+│   ├── data/             # Curriculum data & types
+│   ├── features/         # Feature modules (notifications, etc.)
+│   ├── utils/            # Utility functions
+│   └── lib/              # Firebase config, query client
+├── backend/              # FastAPI Python backend
+│   ├── main.py           # Entry point (ROLE_POLICIES at ~line 310)
+│   ├── routes/           # API route modules (rag_routes.py, etc.)
+│   ├── config/           # Model config YAML
+│   └── datasets/         # Vector store, curriculum PDFs
+├── functions/            # Firebase Cloud Functions (Node 22)
+├── scripts/              # Build/deploy scripts
+├── memory-bank/          # AI session memory (see rules above)
+└── .env.local            # Local secrets (gitignored)
+```
+
+## Environment Setup
+
+The project requires secrets in two places:
+
+### Local (.env.local)
+Copied from `.env.example` — contains Firebase config, DeepSeek API keys, and HF token.
+
+### HF Space Secrets (deign86/mathpulse-api-v3test)
+Set via `huggingface_hub` Python library:
+```python
+from huggingface_hub import HfApi
+api = HfApi()
+api.add_space_secret('deign86/mathpulse-api-v3test', 'KEY', 'value')
+api.restart_space('deign86/mathpulse-api-v3test')
+```
+**Required secrets:** `FIREBASE_SERVICE_ACCOUNT_JSON`, `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `INFERENCE_PROVIDER`
+
+## Gotchas
+
+- **`npm run dev` has a predev hook** — it runs `sync:models` (Python) and `check:backend:dev` (Node `backend-gate.mjs`) before Vite starts. Both must pass or dev server won't start.
+- **ROLE_POLICIES** in `backend/main.py:310` controls endpoint access. If students get 403 on an endpoint, check if it's mapped to `TEACHER_OR_ADMIN` instead of `ALL_APP_ROLES`.
+- **HF Space secrets** require a space restart via `api.restart_space()` after adding.
+- **ModuleDetailView infinite loop bug** — inline callback references in `ModuleDetailView.tsx` cause "Maximum update depth exceeded". Fix: wrap callbacks in `useCallback`.

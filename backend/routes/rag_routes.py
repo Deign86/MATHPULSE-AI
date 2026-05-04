@@ -229,7 +229,8 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
 
 @router.post("/lesson")
 async def rag_lesson(request: Request, payload: RagLessonRequest):
-    chunks, retrieval_mode = retrieve_lesson_pdf_context(
+    try:
+        chunks, retrieval_mode = retrieve_lesson_pdf_context(
         query=build_lesson_query(
             payload.topic,
             payload.subject,
@@ -336,6 +337,17 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         ],
         "activeModel": get_model_for_task("rag_lesson"),
     }
+    except Exception as exc:
+        import traceback
+        logger.error(f"RAG lesson error: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": type(exc).__name__,
+                "message": str(exc),
+                "traceback": traceback.format_exc(),
+            },
+        )
 
 
 @router.post("/generate-problem")

@@ -1,6 +1,6 @@
 import { auth } from '../lib/firebase';
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
 export interface RagLessonSection {
   type: 'introduction' | 'key_concepts' | 'video' | 'worked_examples' | 'important_notes' | 'try_it_yourself' | 'summary';
