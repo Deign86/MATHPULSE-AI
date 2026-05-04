@@ -173,17 +173,31 @@ async def rag_health():
         }
 
 
-def _fetch_youtube_video(lesson_title: str, subject: str, competency: str, quarter: int) -> dict:
+def _fetch_youtube_videos(
+    lesson_title: str,
+    subject: str,
+    competency: str,
+    quarter: int,
+    lesson_id: Optional[str] = None,
+) -> List[Dict]:
+    """Fetch up to 3 relevant YouTube videos for a lesson."""
     try:
-        from backend.services.youtube_service import get_video_for_lesson
+        from services.youtube_service import get_video_search_results
     except ImportError:
-        return {}
+        return []
     try:
-        video = get_video_for_lesson(lesson_title, subject, competency, quarter)
-        return video or {}
+        result = get_video_search_results(
+            topic=lesson_title,
+            subject=subject,
+            lesson_context=competency,
+            grade_level=f"Grade {quarter + 10}",
+            lesson_id=lesson_id,
+            max_results=3,
+        )
+        return result.get("videos", [])
     except Exception as e:
-        logger.warning("YouTube search failed: %s", e)
-        return {}
+        logger.warning("YouTube video search failed: %s", e)
+        return []
 
 
 def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
@@ -332,23 +346,28 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             },
         )
 
-    # ── Step 5: Enrich with video ────────────────────────────────────────────
+    # ── Step 5: Enrich with videos ───────────────────────────────────────────
     if parsed_lesson.get("sections"):
         video_section = next((s for s in parsed_lesson["sections"] if s.get("type") == "video"), None)
         if video_section:
             try:
-                video_data = _fetch_youtube_video(
+                videos = _fetch_youtube_videos(
                     payload.lessonTitle or payload.topic,
                     payload.subject,
                     payload.learningCompetency or "",
                     payload.quarter,
+                    lesson_id=payload.lessonId,
                 )
-                if video_data:
-                    video_section["videoId"] = video_data.get("videoId", "")
-                    video_section["videoTitle"] = video_data.get("videoTitle", "")
-                    video_section["videoChannel"] = video_data.get("videoChannel", "")
-                    video_section["embedUrl"] = video_data.get("embedUrl", "")
-                    video_section["thumbnailUrl"] = video_data.get("thumbnailUrl", "")
+                if videos:
+                    # Primary video for backwards compatibility
+                    primary = videos[0]
+                    video_section["videoId"] = primary.get("videoId", "")
+                    video_section["videoTitle"] = primary.get("title", "")
+                    video_section["videoChannel"] = primary.get("channelTitle", "")
+                    video_section["embedUrl"] = f"https://www.youtube.com/embed/{primary.get('videoId', '')}"
+                    video_section["thumbnailUrl"] = primary.get("thumbnailUrl", "")
+                    # New: full videos array for Smart Video Integration
+                    video_section["videos"] = videos
             except Exception as exc:
                 logger.warning("YouTube enrichment skipped: %s", exc)
 

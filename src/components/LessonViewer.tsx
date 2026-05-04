@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
-  Calculator, Play, Award, RefreshCw, AlertTriangle, Eye, EyeOff,
+  Calculator, Award, RefreshCw, AlertTriangle, Eye, EyeOff,
 } from 'lucide-react';
+import { VideoLessonSection } from './notebook/VideoLessonSection';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Lesson, Quiz } from '../data/subjects';
@@ -84,11 +85,13 @@ function SectionRenderer({
   sectionIndex,
   onShowSolution,
   expandedIndex,
+  lesson,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
   onShowSolution: (idx: number) => void;
   expandedIndex: number | null;
+  lesson: LessonViewerProps['lesson'];
 }) {
   switch (section.type) {
     case 'introduction':
@@ -141,36 +144,10 @@ function SectionRenderer({
       return (
         <div className="space-y-4">
           <p className="text-slate-600 text-sm">{section.content}</p>
-          {section.embedUrl ? (
-            <div className="rounded-2xl overflow-hidden bg-slate-900">
-              <div className="aspect-video">
-                <iframe
-                  src={section.embedUrl}
-                  width="100%"
-                  height="100%"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={section.videoTitle || 'Lesson video'}
-                  className="border-0"
-                />
-              </div>
-              {section.videoTitle && (
-                <div className="px-4 py-3 bg-slate-800">
-                  <p className="text-slate-300 text-xs font-medium truncate">{section.videoTitle}</p>
-                  {section.videoChannel && (
-                    <p className="text-slate-500 text-xs">{section.videoChannel}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-slate-100 rounded-2xl aspect-video flex flex-col items-center justify-center gap-3">
-              <div className="w-14 h-14 bg-slate-200 rounded-full flex items-center justify-center">
-                <Play size={24} className="text-slate-400 ml-1" />
-              </div>
-              <p className="text-slate-400 text-sm">Video temporarily unavailable</p>
-            </div>
-          )}
+          <VideoLessonSection
+            videos={section.videos || []}
+            topic={lesson.title}
+          />
         </div>
       );
 
@@ -481,6 +458,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       setExpandedProblem(expandedProblem === idx ? null : idx)
                     }
                     expandedIndex={expandedProblem}
+                    lesson={lesson}
                   />
                 </div>
               </motion.div>
