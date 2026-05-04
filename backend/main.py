@@ -80,6 +80,7 @@ from services.user_provisioning_service import (
 from routes.rag_routes import router as rag_router
 from routes.admin_model_routes import router as admin_model_router
 from routes.diagnostic import router as diagnostic_router
+from routes.video_routes import router as video_router
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -363,6 +364,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/admin/model-config/profile": ADMIN_ONLY,
     "/api/admin/model-config/override": ADMIN_ONLY,
     "/api/admin/model-config/reset": ADMIN_ONLY,
+    "/api/lessons/videos/search": ALL_APP_ROLES,
 }
 
 if not os.getenv("DEEPSEEK_API_KEY"):
@@ -1013,6 +1015,7 @@ app.add_middleware(AuthMiddleware)
 app.include_router(rag_router)
 app.include_router(admin_model_router)
 app.include_router(diagnostic_router)
+app.include_router(video_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
