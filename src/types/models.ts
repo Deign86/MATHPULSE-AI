@@ -384,6 +384,7 @@ export interface QuizBattleSetupConfig {
   queueType: QuizBattleQueueType;
   botDifficulty: QuizBattleDifficulty;
   adaptiveBot: boolean;
+  gradeLevel?: number;
 }
 
 export interface QuizBattleQueueState {

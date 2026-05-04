@@ -81,6 +81,7 @@ from routes.rag_routes import router as rag_router
 from routes.admin_model_routes import router as admin_model_router
 from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
+from routes.quiz_battle import router as quiz_battle_router
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -365,6 +366,9 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/admin/model-config/override": ADMIN_ONLY,
     "/api/admin/model-config/reset": ADMIN_ONLY,
     "/api/lessons/videos/search": ALL_APP_ROLES,
+    "/api/quiz-battle/generate": ALL_APP_ROLES,
+    "/api/quiz-battle/ingest-pdf": TEACHER_OR_ADMIN,
+    "/api/quiz-battle/bank-status": TEACHER_OR_ADMIN,
 }
 
 if not os.getenv("DEEPSEEK_API_KEY"):
@@ -1016,6 +1020,7 @@ app.include_router(rag_router)
 app.include_router(admin_model_router)
 app.include_router(diagnostic_router)
 app.include_router(video_router)
+app.include_router(quiz_battle_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────

@@ -300,6 +300,24 @@ service cloud.firestore {
       allow write: if false;  // Backend-only writes via firebase-admin
     }
 
+    // ── Question bank (read for all authenticated users) ──
+    match /question_bank/{gradeLevel}/{topic}/{questionId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend-only via firebase-admin
+    }
+
+    // ── PDF processing status (read for teachers/admins) ──
+    match /pdf_processing_status/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend-only
+    }
+
+    // ── Quiz battle sessions (read for participants) ──
+    match /quiz_battle_sessions/{sessionId} {
+      allow read: if isSignedIn() && resource.data.player_ids.hasAny([request.auth.uid]);
+      allow write: if false; // Backend-only
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;
