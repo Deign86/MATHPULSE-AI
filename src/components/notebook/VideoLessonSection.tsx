@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, ExternalLink, AlertCircle } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { VideoResult } from '../../services/lessonService';
 
@@ -8,37 +8,15 @@ interface VideoLessonSectionProps {
   topic: string;
 }
 
-function EmptyState({ topic }: { topic: string }) {
-  const searchQuery = encodeURIComponent(`${topic} math tutorial DepEd Philippines`);
-  const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
-
+function LoadingSkeleton() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-slate-50 rounded-2xl border border-slate-200 p-6 text-center space-y-3"
-    >
-      <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
-        <AlertCircle className="text-slate-400" size={22} />
+    <div className="rounded-2xl overflow-hidden bg-slate-900 shadow-lg">
+      <div className="relative w-full aspect-video bg-slate-800 animate-pulse" />
+      <div className="px-4 py-3 bg-slate-800 space-y-2">
+        <div className="h-4 bg-slate-700 rounded w-3/4 animate-pulse" />
+        <div className="h-3 bg-slate-700 rounded w-1/2 animate-pulse" />
       </div>
-      <div>
-        <p className="text-slate-700 text-sm font-medium">
-          No video lessons found for this topic yet.
-        </p>
-        <p className="text-slate-400 text-xs mt-1">
-          Try searching on YouTube for related tutorials.
-        </p>
-      </div>
-      <a
-        href={youtubeSearchUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-rose-500 text-xs font-semibold hover:text-rose-600 transition-colors"
-      >
-        Search on YouTube
-        <ExternalLink size={12} />
-      </a>
-    </motion.div>
+    </div>
   );
 }
 
@@ -49,7 +27,7 @@ export const VideoLessonSection: React.FC<VideoLessonSectionProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   if (!videos || videos.length === 0) {
-    return <EmptyState topic={topic} />;
+    return <LoadingSkeleton />;
   }
 
   const mainVideo = videos[selectedIndex];
