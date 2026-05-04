@@ -206,14 +206,32 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
     required = ["introduction", "key_concepts", "video", "worked_examples", "important_notes", "try_it_yourself", "summary"]
 
     default_content = {
-        "introduction": {"type": "introduction", "title": "Introduction", "content": f"Welcome to the lesson on {lesson_title}."},
-        "key_concepts": {"type": "key_concepts", "title": "Key Concepts", "content": "Below are the key concepts covered in this lesson.", "callouts": []},
-        "video": {"type": "video", "title": "Video Lesson", "content": "Watch this explanation to understand the concepts visually.", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},
-        "worked_examples": {"type": "worked_examples", "title": "Worked Examples", "examples": []},
-        "important_notes": {"type": "important_notes", "title": "Important Notes", "bulletPoints": []},
-        "try_it_yourself": {"type": "try_it_yourself", "title": "Try It Yourself", "practiceProblems": []},
-        "summary": {"type": "summary", "title": "Summary", "content": f"Great job completing the lesson on {lesson_title}!"},
+        "introduction": {"type": "introduction", "title": "Introduction", "content": f"Welcome to the lesson on {lesson_title}. This topic builds foundational skills for your mathematics journey."},
+        "key_concepts": {"type": "key_concepts", "title": "Key Concepts", "content": f"The following key concepts are essential for mastering {lesson_title}:", "callouts": [{"type": "important", "text": "Review the curriculum PDF for detailed explanations of each concept."}]},
+        "video": {"type": "video", "title": "Video Lesson", "content": "Watch the video explanation below to understand the concepts visually.", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},
+        "worked_examples": {"type": "worked_examples", "title": "Worked Examples", "examples": [{"problem": f"Sample problem for {lesson_title}", "steps": ["Step 1: Identify the given information.", "Step 2: Apply the appropriate formula or method.", "Step 3: Solve step-by-step.", "Step 4: Verify your answer."], "answer": "Solution will vary based on specific problem parameters."}]},
+        "important_notes": {"type": "important_notes", "title": "Important Notes", "bulletPoints": [f"Always read problems carefully before solving {lesson_title} questions.", "Check your units and ensure consistency throughout calculations.", "Practice regularly to build fluency with these concepts."]},
+        "try_it_yourself": {"type": "try_it_yourself", "title": "Try It Yourself", "practiceProblems": [{"question": f"Practice applying {lesson_title} concepts. Solve a similar problem from your textbook or worksheets.", "solution": "Compare your solution with the worked examples above. If stuck, re-read the key concepts section or ask your teacher for guidance."}]},
+        "summary": {"type": "summary", "title": "Summary", "content": f"In this lesson on {lesson_title}, you explored key concepts, worked through examples, and practiced problem-solving techniques. Continue reviewing these materials and seek additional practice to strengthen your understanding."},
     }
+
+    def _is_section_blank(section: dict, s_type: str) -> bool:
+        """Check if a section has effectively no content."""
+        if not section:
+            return True
+        text_content = (section.get("content") or "").strip()
+        if s_type in ("introduction", "key_concepts", "video", "summary"):
+            return len(text_content) < 10
+        if s_type == "worked_examples":
+            examples = section.get("examples") or []
+            return not examples or all(not (ex.get("problem") or "").strip() for ex in examples)
+        if s_type == "important_notes":
+            bullets = section.get("bulletPoints") or []
+            return not bullets or all(not (b or "").strip() for b in bullets)
+        if s_type == "try_it_yourself":
+            problems = section.get("practiceProblems") or []
+            return not problems or all(not (p.get("question") or "").strip() for p in problems)
+        return False
 
     filled = {}
     for req_type in required:
@@ -222,6 +240,11 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
                 filled[req_type] = existing
                 break
         else:
+            filled[req_type] = default_content[req_type]
+
+    # Validate and replace blank sections with defaults
+    for req_type in required:
+        if _is_section_blank(filled[req_type], req_type):
             filled[req_type] = default_content[req_type]
 
     ordered = [filled[t] for t in required]
