@@ -97,18 +97,26 @@ function SectionRenderer({
     case 'introduction':
       return (
         <div className="space-y-4">
-          <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line">
-            {section.content}
-          </p>
+          {section.content?.trim() ? (
+            <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line">
+              {section.content}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm italic">Introduction content is being prepared. Please proceed to the next section or try refreshing the lesson.</p>
+          )}
         </div>
       );
 
     case 'key_concepts':
       return (
         <div className="space-y-4">
-          <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line mb-4">
-            {section.content}
-          </p>
+          {section.content?.trim() ? (
+            <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line mb-4">
+              {section.content}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm italic mb-4">Key concepts are being compiled. Review the curriculum sources below for reference material.</p>
+          )}
           {section.callouts && section.callouts.length > 0 && (
             <div className="space-y-2">
               {section.callouts.map((callout, i) => (
@@ -143,7 +151,11 @@ function SectionRenderer({
     case 'video':
       return (
         <div className="space-y-4">
-          <p className="text-slate-600 text-sm">{section.content}</p>
+          {section.content?.trim() ? (
+            <p className="text-slate-600 text-sm">{section.content}</p>
+          ) : (
+            <p className="text-slate-400 text-sm italic">Video explanation loading...</p>
+          )}
           <VideoLessonSection
             videos={section.videos || []}
             topic={lesson.title}
@@ -254,9 +266,13 @@ function SectionRenderer({
     case 'summary':
       return (
         <div className="space-y-3">
-          <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
-            {section.content}
-          </p>
+          {section.content?.trim() ? (
+            <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
+              {section.content}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm italic">Summary is being prepared. Review the lesson sections above to reinforce your understanding.</p>
+          )}
         </div>
       );
 
@@ -348,7 +364,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const currentSectionData = sections[currentSection] || {
     type: 'introduction',
     title: 'Loading...',
-    content: '',
+    content: 'Lesson content is loading. Please wait a moment.',
   };
 
   const handleNext = () => {
