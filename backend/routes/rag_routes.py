@@ -229,27 +229,39 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
 
 @router.post("/lesson")
 async def rag_lesson(request: Request, payload: RagLessonRequest):
+    # ── Step 1: Retrieve curriculum chunks ───────────────────────────────────
     try:
         chunks, retrieval_mode = retrieve_lesson_pdf_context(
-        query=build_lesson_query(
-            payload.topic,
-            payload.subject,
-            payload.quarter,
+            topic=build_lesson_query(
+                payload.topic,
+                payload.subject,
+                payload.quarter,
+                lesson_title=payload.lessonTitle,
+                competency=payload.learningCompetency,
+                module_unit=payload.moduleUnit,
+                learner_level=payload.learnerLevel,
+            ),
+            subject=payload.subject,
+            quarter=payload.quarter,
             lesson_title=payload.lessonTitle,
             competency=payload.learningCompetency,
-            module_unit=payload.moduleUnit,
-            learner_level=payload.learnerLevel,
-        ),
-        subject=payload.subject,
-        quarter=payload.quarter,
-        lesson_title=payload.lessonTitle,
-        competency=payload.learningCompetency,
-        module_id=payload.moduleId,
-        lesson_id=payload.lessonId,
-        competency_code=payload.competencyCode,
-        storage_path=payload.storagePath,
-        top_k=8,
-    )
+            module_id=payload.moduleId,
+            lesson_id=payload.lessonId,
+            competency_code=payload.competencyCode,
+            storage_path=payload.storagePath,
+            top_k=8,
+        )
+    except Exception as exc:
+        import traceback
+        logger.error(f"RAG retrieval error: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "retrieval_failed",
+                "message": f"Curriculum retrieval failed: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
 
     if not chunks:
         raise HTTPException(
@@ -262,54 +274,98 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             },
         )
 
-    prompt = build_lesson_prompt(
-        lesson_title=payload.lessonTitle or payload.topic,
-        competency=payload.learningCompetency or payload.topic,
-        grade_level="Grade 11-12",
-        subject=payload.subject,
-        quarter=payload.quarter,
-        learner_level=payload.learnerLevel,
-        module_unit=payload.moduleUnit,
-        curriculum_chunks=chunks,
-        competency_code=payload.competencyCode,
-    )
+    # ── Step 2: Build prompt ─────────────────────────────────────────────────
+    try:
+        prompt = build_lesson_prompt(
+            lesson_title=payload.lessonTitle or payload.topic,
+            competency=payload.learningCompetency or payload.topic,
+            grade_level="Grade 11-12",
+            subject=payload.subject,
+            quarter=payload.quarter,
+            learner_level=payload.learnerLevel,
+            module_unit=payload.moduleUnit,
+            curriculum_chunks=chunks,
+            competency_code=payload.competencyCode,
+        )
+    except Exception as exc:
+        logger.error(f"RAG prompt build error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "prompt_build_failed",
+                "message": f"Failed to build lesson prompt: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
 
-    raw_explanation = await _generate_text(
-        prompt,
-        task_type="lesson_generation",
-        max_new_tokens=1800,
-        enable_thinking=True,
-    )
+    # ── Step 3: AI inference ─────────────────────────────────────────────────
+    try:
+        raw_explanation = await _generate_text(
+            prompt,
+            task_type="rag_lesson",
+            max_new_tokens=1800,
+            enable_thinking=True,
+        )
+    except Exception as exc:
+        logger.error(f"RAG inference error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "inference_failed",
+                "message": f"AI model call failed: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
 
-    parsed_lesson = _strip_thinking_and_parse(raw_explanation)
-    parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic)
+    # ── Step 4: Parse & validate response ────────────────────────────────────
+    try:
+        parsed_lesson = _strip_thinking_and_parse(raw_explanation)
+        parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic)
+    except Exception as exc:
+        logger.error(f"RAG parse error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "parse_failed",
+                "message": f"Failed to parse AI response: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
 
+    # ── Step 5: Enrich with video ────────────────────────────────────────────
     if parsed_lesson.get("sections"):
         video_section = next((s for s in parsed_lesson["sections"] if s.get("type") == "video"), None)
         if video_section:
-            video_data = _fetch_youtube_video(
-                payload.lessonTitle or payload.topic,
-                payload.subject,
-                payload.learningCompetency or "",
-                payload.quarter,
-            )
-            if video_data:
-                video_section["videoId"] = video_data.get("videoId", "")
-                video_section["videoTitle"] = video_data.get("videoTitle", "")
-                video_section["videoChannel"] = video_data.get("videoChannel", "")
-                video_section["embedUrl"] = video_data.get("embedUrl", "")
-                video_section["thumbnailUrl"] = video_data.get("thumbnailUrl", "")
+            try:
+                video_data = _fetch_youtube_video(
+                    payload.lessonTitle or payload.topic,
+                    payload.subject,
+                    payload.learningCompetency or "",
+                    payload.quarter,
+                )
+                if video_data:
+                    video_section["videoId"] = video_data.get("videoId", "")
+                    video_section["videoTitle"] = video_data.get("videoTitle", "")
+                    video_section["videoChannel"] = video_data.get("videoChannel", "")
+                    video_section["embedUrl"] = video_data.get("embedUrl", "")
+                    video_section["thumbnailUrl"] = video_data.get("thumbnailUrl", "")
+            except Exception as exc:
+                logger.warning("YouTube enrichment skipped: %s", exc)
 
+    # ── Step 6: Assemble response ────────────────────────────────────────────
     retrieval_summary = summarize_retrieval_confidence(chunks)
 
-    _log_rag_usage(
-        request,
-        event_type="lesson",
-        topic=build_lesson_query(payload.topic, payload.subject, payload.quarter, lesson_title=payload.lessonTitle),
-        subject=payload.subject,
-        quarter=payload.quarter,
-        chunks=chunks,
-    )
+    try:
+        _log_rag_usage(
+            request,
+            event_type="lesson",
+            topic=build_lesson_query(payload.topic, payload.subject, payload.quarter, lesson_title=payload.lessonTitle),
+            subject=payload.subject,
+            quarter=payload.quarter,
+            chunks=chunks,
+        )
+    except Exception as exc:
+        logger.warning("RAG usage logging skipped: %s", exc)
 
     needs_review = parsed_lesson.get("needsReview", False)
     if retrieval_summary.get("band") == "low":
@@ -337,17 +393,6 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         ],
         "activeModel": get_model_for_task("rag_lesson"),
     }
-    except Exception as exc:
-        import traceback
-        logger.error(f"RAG lesson error: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": type(exc).__name__,
-                "message": str(exc),
-                "traceback": traceback.format_exc(),
-            },
-        )
 
 
 @router.post("/generate-problem")
