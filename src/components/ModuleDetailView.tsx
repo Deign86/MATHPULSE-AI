@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import InteractiveLesson, { Question } from './InteractiveLesson';
 import LessonViewer from './LessonViewer';
-import StudyMaterialsModal from './lessons/StudyMaterialsModal';
-import FlashcardsModal from './lessons/FlashcardsModal';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
 import type { UserProgress } from '../types/models';
-import type { StudyMaterial, Flashcard, RagLessonResponse } from '../services/lessonService';
 
 interface ModuleDetailViewProps {
   module: Module;
@@ -88,36 +85,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }, [module.id, subjectId, userProgress?.subjects]);
 
   const [returningToLesson, setReturningToLesson] = useState<Lesson | null>(null);
-
-  // Study Materials & Flashcards modal state
-  const [studyMaterialsOpen, setStudyMaterialsOpen] = useState(false);
-  const [flashcardsOpen, setFlashcardsOpen] = useState(false);
-  const [selectedLessonMaterials, setSelectedLessonMaterials] = useState<StudyMaterial[]>([]);
-  const [selectedLessonFlashcards, setSelectedLessonFlashcards] = useState<Flashcard[]>([]);
-  const [lessonLoadingStates, setLessonLoadingStates] = useState<Record<string, boolean>>({});
-
-  // Retrieve cached RAG lesson data from sessionStorage (populated by useLessonContent in LessonViewer)
-  const getCachedLessonData = useCallback((lessonId: string): RagLessonResponse | null => {
-    try {
-      const cached = sessionStorage.getItem(`rag_lesson_${lessonId}`);
-      if (cached) return JSON.parse(cached);
-    } catch { /* ignore */ }
-    return null;
-  }, []);
-
-  const handleOpenStudyMaterials = useCallback((lesson: Lesson) => {
-    const cached = getCachedLessonData(lesson.id);
-    const materials = cached?.study_materials ?? [];
-    setSelectedLessonMaterials(materials);
-    setStudyMaterialsOpen(true);
-  }, [getCachedLessonData]);
-
-  const handleOpenFlashcards = useCallback((lesson: Lesson) => {
-    const cached = getCachedLessonData(lesson.id);
-    const cards = cached?.flashcards ?? [];
-    setSelectedLessonFlashcards(cards);
-    setFlashcardsOpen(true);
-  }, [getCachedLessonData]);
 
   const handleProgressUpdate = useCallback((percent: number) => {
     if (userProfile?.uid && selectedLesson?.type === 'lesson') {
@@ -566,54 +533,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                           </button>
 
                           <div className="flex flex-wrap gap-3 px-1">
-                            {(() => {
-                              const cachedLesson = getCachedLessonData(lesson.id);
-                              const isLoading = lessonLoadingStates[lesson.id] ?? false;
-                              const hasMaterials = (cachedLesson?.study_materials?.length ?? 0) > 0;
-                              const hasFlashcards = (cachedLesson?.flashcards?.length ?? 0) > 0;
-                              const hasCachedData = cachedLesson !== null;
-
-                              return (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenStudyMaterials(lesson)}
-                                    disabled={isLoading || (!hasCachedData && !isLoading)}
-                                    className={`inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition ${
-                                      isLoading
-                                        ? 'opacity-60 cursor-wait'
-                                        : hasMaterials
-                                        ? 'hover:-translate-y-0.5 cursor-pointer'
-                                        : hasCachedData
-                                        ? 'opacity-50 cursor-pointer hover:-translate-y-0.5'
-                                        : 'opacity-40 cursor-not-allowed'
-                                    }`}
-                                    style={{ color: lessonAccentHex }}
-                                  >
-                                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />}
-                                    Study Materials
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenFlashcards(lesson)}
-                                    disabled={isLoading || (!hasCachedData && !isLoading)}
-                                    className={`inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition ${
-                                      isLoading
-                                        ? 'opacity-60 cursor-wait'
-                                        : hasFlashcards
-                                        ? 'hover:-translate-y-0.5 cursor-pointer'
-                                        : hasCachedData
-                                        ? 'opacity-50 cursor-pointer hover:-translate-y-0.5'
-                                        : 'opacity-40 cursor-not-allowed'
-                                    }`}
-                                    style={{ color: lessonAccentHex }}
-                                  >
-                                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Bookmark size={14} />}
-                                    Flashcards
-                                  </button>
-                                </>
-                              );
-                            })()}
+                            <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                              <BookOpen size={14} /> Study Materials
+                            </button>
+                            <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                              <Bookmark size={14} /> Flashcards
+                            </button>
                           </div>
 
                           {/* Practice Activities removed from ModuleDetailView rendering */}
@@ -715,20 +640,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           </div>
         </div>
       </div>
-
-      {/* Study Materials & Flashcards Modals */}
-      <StudyMaterialsModal
-        open={studyMaterialsOpen}
-        onOpenChange={setStudyMaterialsOpen}
-        materials={selectedLessonMaterials}
-        isLoading={false}
-      />
-      <FlashcardsModal
-        open={flashcardsOpen}
-        onOpenChange={setFlashcardsOpen}
-        flashcards={selectedLessonFlashcards}
-        isLoading={false}
-      />
     </div>
   );
 };

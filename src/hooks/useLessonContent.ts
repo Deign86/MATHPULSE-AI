@@ -37,8 +37,6 @@ export interface UseLessonContentResult {
   needsReview: boolean;
   activeModel?: string;
   isOffline: boolean;
-  studyMaterials: RagLessonResponse['study_materials'];
-  flashcards: RagLessonResponse['flashcards'];
 }
 
 export function useLessonContent(
@@ -55,8 +53,6 @@ export function useLessonContent(
   const [needsReview, setNeedsReview] = useState(false);
   const [activeModel, setActiveModel] = useState<string | undefined>(undefined);
   const [isOffline, setIsOffline] = useState(false);
-  const [studyMaterials, setStudyMaterials] = useState<RagLessonResponse['study_materials']>([]);
-  const [flashcards, setFlashcards] = useState<RagLessonResponse['flashcards']>([]);
 
   const doFetch = useCallback(async () => {
     if (!enabled || !lessonId) return;
@@ -69,8 +65,6 @@ export function useLessonContent(
       setRetrievalConfidence(cached.retrievalConfidence);
       setNeedsReview(cached.needsReview);
       setActiveModel(cached.activeModel);
-      setStudyMaterials(cached.study_materials);
-      setFlashcards(cached.flashcards);
       setIsLoading(false);
       setError(null);
       setIsOffline(false);
@@ -97,8 +91,6 @@ export function useLessonContent(
       setRetrievalConfidence(data.retrievalConfidence);
       setNeedsReview(data.needsReview);
       setActiveModel(data.activeModel);
-      setStudyMaterials(data.study_materials);
-      setFlashcards(data.flashcards);
       setCachedLesson(lessonId, data);
       setError(null);
       setIsOffline(false);
@@ -149,8 +141,6 @@ export function useLessonContent(
     needsReview,
     activeModel,
     isOffline,
-    studyMaterials,
-    flashcards,
   };
 }
 

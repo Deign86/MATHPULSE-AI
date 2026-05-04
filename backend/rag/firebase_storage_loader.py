@@ -5,7 +5,6 @@ Downloads PDFs from Firebase Storage and extracts text for ChromaDB indexing.
 
 from __future__ import annotations
 
-import datetime
 import logging
 import os
 from pathlib import Path
@@ -150,71 +149,3 @@ PDF_METADATA: Dict[str, dict] = {
         "storage_path": "curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf",
     },
 }
-
-
-def generate_signed_download_url(storage_path: str, expiration_hours: int = 24) -> Optional[str]:
-    """Generate a signed download URL for a Firebase Storage blob.
-
-    Args:
-        storage_path: The path of the blob in Firebase Storage.
-        expiration_hours: Number of hours until the URL expires (default 24).
-
-    Returns:
-        Signed URL string, or None if Firebase Storage is unavailable.
-    """
-    _, bucket = _init_firebase_storage()
-    if bucket is None:
-        logger.warning("Firebase Storage not available, cannot generate signed URL")
-        return None
-
-    try:
-        blob = bucket.blob(storage_path)
-        signed_url = blob.generate_signed_url(
-            expiration=datetime.timedelta(hours=expiration_hours),
-            method="GET",
-        )
-        logger.info("Generated signed URL for %s (expires in %dh)", storage_path, expiration_hours)
-        return signed_url
-    except Exception as e:
-        logger.error("Failed to generate signed URL for %s: %s", storage_path, e)
-        return None
-
-
-def get_study_materials_from_chunks(chunks: list[dict]) -> list[dict]:
-    """Extract study materials from chunks, deduplicating by source PDF.
-
-    Args:
-        chunks: List of chunk dicts with optional `source_file`, `storage_path`,
-               and `content_domain` keys.
-
-    Returns:
-        List of dicts with keys: `title`, `source_pdf_url`, `topic_match`.
-    """
-    seen_sources: set[str] = set()
-    materials: list[dict] = []
-
-    for chunk in chunks:
-        source = chunk.get("source_file")
-        if not source or source in seen_sources:
-            continue
-        seen_sources.add(source)
-
-        # Look up PDF metadata by storage_path
-        metadata = PDF_METADATA.get(source)
-        if metadata:
-            title = metadata.get("subject", source)
-            topic_match = metadata.get("content_domain", chunk.get("content_domain", ""))
-        else:
-            title = source.split("/")[-1]
-            topic_match = chunk.get("content_domain", "")
-
-        storage_path = chunk.get("storage_path", source)
-        source_pdf_url = generate_signed_download_url(storage_path)
-
-        materials.append({
-            "title": title,
-            "source_pdf_url": source_pdf_url or "",
-            "topic_match": topic_match,
-        })
-
-    return materials
