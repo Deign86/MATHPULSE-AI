@@ -349,7 +349,6 @@ service cloud.firestore {
       allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
       allow write: if isAdmin();
     }
-
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;
