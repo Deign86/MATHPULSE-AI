@@ -19,13 +19,21 @@ interface ModuleFolderCardProps {
   onPreviewSources?: () => void;
   isAtRisk?: boolean;
   badgeLabel?: string;
+  /** Optional pre-computed availability - avoids N Firestore listeners when passed from parent */
+  precomputedAvailable?: boolean;
 }
 
-const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel }) => {
+const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
+  
+  // Only subscribe if parent didn't provide precomputed value (perf optimization)
+  const shouldSubscribe = precomputedAvailable === undefined;
   const { isSubjectAvailable } = useSubjectAvailability();
-  const subjectAvailable = isSubjectAvailable(module.subjectId);
+  const subjectAvailable = precomputedAvailable !== undefined 
+    ? precomputedAvailable 
+    : (shouldSubscribe ? isSubjectAvailable(module.subjectId) : true);
+    
   const isAvailable = (module.isAvailable !== false) && subjectAvailable;
 
   return (
