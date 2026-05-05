@@ -349,6 +349,12 @@ service cloud.firestore {
       allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
       allow write: if isAdmin();
     }
+    // ── Platform Config (admin-managed subject availability) ──
+    match /platformConfig/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;
