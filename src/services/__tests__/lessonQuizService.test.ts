@@ -1,20 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
 import { generateLessonQuiz, getQuestionCountForQuiz } from '../lessonQuizService';
 
-// Mock apiService for tests
+// Mock apiService for tests - returns correct question count
 vi.mock('./apiService', () => ({
-  apiFetch: vi.fn().mockResolvedValue({
-    questions: [
-      { id: 1, type: 'multiple-choice', question: 'Test Q1', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A', explanation: 'Test' },
-      { id: 2, type: 'true-false', question: 'Test Q2', options: ['True', 'False'], correctAnswer: 'True', explanation: 'Test' },
-      { id: 3, type: 'fill-in-blank', question: 'Test Q3', correctAnswer: '42', explanation: 'Test' },
-      { id: 4, type: 'multiple-choice', question: 'Test Q4', options: ['A', 'B', 'C', 'D'], correctAnswer: 'B', explanation: 'Test' },
-      { id: 5, type: 'true-false', question: 'Test Q5', options: ['True', 'False'], correctAnswer: 'False', explanation: 'Test' },
-      { id: 6, type: 'fill-in-blank', question: 'Test Q6', correctAnswer: '7', explanation: 'Test' },
-    ],
-    retrievalConfidence: { level: 'high' },
-    sourceChunks: 3,
-    generatedAt: new Date().toISOString(),
+  apiFetch: vi.fn().mockImplementation(async (url: string, options: { body?: { questionCount?: number } }) => {
+    const count = options?.body?.questionCount || 6;
+    const questions = Array.from({ length: count }, (_, i) => ({
+      id: i + 1,
+      type: i % 3 === 0 ? 'multiple-choice' : i % 3 === 1 ? 'true-false' : 'fill-in-blank',
+      question: `Test Q${i + 1}`,
+      options: i % 3 === 0 ? ['A', 'B', 'C', 'D'] : ['True', 'False'],
+      correctAnswer: i % 3 === 0 ? 'A' : 'True',
+      explanation: 'Test',
+    }));
+    return Promise.resolve({
+      questions,
+      retrievalConfidence: { level: 'high' },
+      sourceChunks: 3,
+      generatedAt: new Date().toISOString(),
+    });
   }),
 }));
 

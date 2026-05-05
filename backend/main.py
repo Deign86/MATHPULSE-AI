@@ -82,7 +82,6 @@ from routes.admin_model_routes import router as admin_model_router
 from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
 from routes.quiz_battle import router as quiz_battle_router
-from routes.quiz_generation_routes import router as quiz_generation_router
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -1024,7 +1023,6 @@ app.include_router(admin_model_router)
 app.include_router(diagnostic_router)
 app.include_router(video_router)
 app.include_router(quiz_battle_router)
-app.include_router(quiz_generation_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
