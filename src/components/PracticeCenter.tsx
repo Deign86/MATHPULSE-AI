@@ -230,9 +230,19 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
           className="px-4 py-2.5 bg-white border-2 border-[#dde3eb] rounded-xl text-sm font-bold text-[#0a1628] focus:border-indigo-600 focus:outline-none"
         >
           <option value="all">All Subjects</option>
-          {availableSubjects.map((subject) => (
-            <option key={subject.id} value={subject.title}>{subject.title}</option>
-          ))}
+          {availableSubjects.map((subject) => {
+            const isAvailable = subject.pdfAvailable !== false;
+            return (
+              <option
+                key={subject.id}
+                value={subject.title}
+                disabled={!isAvailable}
+                className={!isAvailable ? 'text-slate-400' : ''}
+              >
+                {subject.title}{!isAvailable ? ' 🔒 Coming Soon' : ''}
+              </option>
+            );
+          })}
         </select>
       </div>
 

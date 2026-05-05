@@ -47,6 +47,7 @@ export interface CurriculumModuleBlueprint {
   grade_level_availability: GradeLevel[];
   recommended_grade_level: GradeLevel;
   sources: CurriculumSourceMeta[];
+  isAvailable?: boolean;
 }
 
 export type CurriculumModuleRuntime = Module & {
@@ -69,6 +70,7 @@ export type CurriculumModuleRuntime = Module & {
   curriculum_aligned_label: string;
   module_sources: CurriculumSourceMeta[];
   module_assessments: CurriculumAssessmentMeta[];
+  isAvailable: boolean;
 };
 
 interface SubjectMeta {
@@ -340,6 +342,10 @@ export function getCurriculumModulesForLearner(
       const quizzes = makeQuizzes(module, assessments);
       const subjectMeta = SUBJECT_META[module.subjectId];
 
+      // Check if module has PDF-backed lessons for RAG availability
+      const hasPdfBackedLessons = lessons.some((lesson) => lesson.storagePath && lesson.storagePath.length > 0);
+      const isAvailable = module.isAvailable ?? hasPdfBackedLessons ?? true;
+
       return {
         id: module.id,
         title: module.moduleTitle,
@@ -369,6 +375,7 @@ export function getCurriculumModulesForLearner(
         curriculum_aligned_label: 'Curriculum-aligned',
         module_sources: module.sources,
         module_assessments: assessments,
+        isAvailable,
       };
     });
 }

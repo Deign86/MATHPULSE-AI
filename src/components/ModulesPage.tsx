@@ -402,7 +402,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             Curriculum Modules
           </h1>
           <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
-            MathPulse AI now loads modules directly from the DepEd Strengthened SHS curriculum guides for General Mathematics, Finite Mathematics 1, and Finite Mathematics 2. Content, competency flow, and assessments are automatically shown based on your learner grade level.
+            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
           </p>
           <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
             {curriculumContextLabel}
