@@ -28,7 +28,6 @@ An interactive, gamified math learning platform featuring AI-powered tutoring vi
 - **Personalized Learning Paths** — AI-generated study plans tailored to individual skill levels and weaknesses
 - **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
 - **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
-- **Practice Center** — Dedicated practice area for reinforcing concepts
 - **AI Chat Tutor** — On-demand math help via DeepSeek with smart streaming, continuation detection, and automatic completion repair
 - **Floating AI Tutor** — Always-accessible AI help widget available from any page
 - **Daily Check-In** — 7-day reward cycle with escalating XP (20 → 100 XP), Firestore-backed streak tracking
