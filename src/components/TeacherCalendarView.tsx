@@ -67,7 +67,52 @@ const parseDateTime = (dateStr: string, timeStr: string) => {
   return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0);
 };
 
-const TeacherCalendarView: React.FC = () => {
+interface TeacherCalendarViewProps {
+  classes?: { id: string; name: string; schedule: string }[];
+  teacherId?: string;
+}
+
+const DAY_PATTERNS = [
+  { names: ['sun', 'sunday'], day: 0 },
+  { names: ['mon', 'monday'], day: 1 },
+  { names: ['tue', 'tues', 'tuesday'], day: 2 },
+  { names: ['wed', 'wednesday'], day: 3 },
+  { names: ['thu', 'thurs', 'thursday'], day: 4 },
+  { names: ['fri', 'friday'], day: 5 },
+  { names: ['sat', 'saturday'], day: 6 },
+];
+
+function parseScheduleDays(schedule: string): number[] {
+  const lower = schedule.toLowerCase();
+  const days = new Set<number>();
+
+  if (lower.includes('daily') || lower.includes('everyday')) return [0, 1, 2, 3, 4, 5, 6];
+  if (lower.includes('weekends')) return [0, 6];
+  if (lower.includes('weekdays')) return [1, 2, 3, 4, 5];
+
+  const rangeMatch = lower.match(/(mon|tue|wed|thu|fri|sat|sun)[\s/-]*(mon|tue|wed|thu|fri|sat|sun)/);
+  if (rangeMatch) {
+    const startDay = DAY_PATTERNS.find(p => p.names.includes(rangeMatch[1]))?.day;
+    const endDay = DAY_PATTERNS.find(p => p.names.includes(rangeMatch[2]))?.day;
+    if (startDay !== undefined && endDay !== undefined) {
+      let current = startDay;
+      while (true) {
+        days.add(current);
+        if (current === endDay) break;
+        current = (current + 1) % 7;
+      }
+      return Array.from(days);
+    }
+  }
+
+  DAY_PATTERNS.forEach(({ names, day }) => {
+    if (names.some(n => lower.includes(n))) days.add(day);
+  });
+
+  return Array.from(days).sort((a, b) => a - b);
+}
+
+const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({ classes, teacherId }) => {
   const { currentUser } = useAuth();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -133,11 +178,39 @@ const TeacherCalendarView: React.FC = () => {
     return d;
   }, [month]);
 
+  const scheduleEvents = useMemo(() => {
+    if (!classes || classes.length === 0) return [];
+    const evs: CalendarEvent[] = [];
+    const start = startOfMonth(month);
+    const end = endOfMonth(month);
+    const current = new Date(start);
+
+    while (current <= end) {
+      const dayOfWeek = current.getDay();
+      classes.forEach((cls) => {
+        const days = parseScheduleDays(cls.schedule);
+        if (days.includes(dayOfWeek)) {
+          evs.push({
+            id: `schedule-${cls.id}-${toDateKey(current)}`,
+            userId: teacherId || '',
+            title: cls.name,
+            startTime: new Date(current),
+            createdAt: new Date(),
+          });
+        }
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    return evs;
+  }, [classes, month, teacherId]);
+
+  const allEvents = useMemo(() => [...events, ...scheduleEvents], [events, scheduleEvents]);
+
   const monthEvents = useMemo(() => {
-    return events
+    return allEvents
       .filter((e) => e.startTime >= monthStart && e.startTime <= monthEnd)
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-  }, [events, monthStart, monthEnd]);
+  }, [allEvents, monthStart, monthEnd]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
