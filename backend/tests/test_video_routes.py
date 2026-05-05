@@ -18,13 +18,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from main import app as _app_import
 import main as main_module
 
-if getattr(main_module, "firebase_auth", None) is None:
-    main_module.firebase_auth = MagicMock()
+# Use teacher role by default for consistent behavior
+main_module.firebase_auth = MagicMock()
 main_module.firebase_auth.verify_id_token = MagicMock(
     return_value={
-        "uid": "test-student-uid",
-        "email": "student@example.com",
-        "role": "student",
+        "uid": "test-teacher-uid",
+        "email": "teacher@example.com",
+        "role": "teacher",
     }
 )
 
