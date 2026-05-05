@@ -33,64 +33,83 @@ export interface UseSubjectAvailabilityResult {
  *   const { availability, isSubjectAvailable, loading } = useSubjectAvailability();
  *   const canAccess = isSubjectAvailable('pre-calc');
  */
+// Singleton store to share subscription across all hook instances (prevents N listeners)
+let _sharedConfig: PlatformSubjectsConfig | null = null;
+let _sharedLoading = true;
+let _sharedError: string | null = null;
+let _sharedUnsubscribers: Array<() => void> = [];
+
+function _broadcastToAll() {
+  // Force all hook instances to re-render with shared state
+  _sharedUnsubscribers.forEach(fn => fn());
+}
+
 export function useSubjectAvailability(): UseSubjectAvailabilityResult {
-  const [config, setConfig] = useState<PlatformSubjectsConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [localConfig, setLocalConfig] = useState<PlatformSubjectsConfig | null>(_sharedConfig);
+  const [loading, setLoading] = useState(_sharedLoading);
+  const [error, setError] = useState<string | null>(_sharedError);
 
   useEffect(() => {
-    let unsubscribed = false;
+    // Register this instance for broadcasts
+    const broadcaster = () => {
+      setLocalConfig(_sharedConfig);
+      setLoading(_sharedLoading);
+      setError(_sharedError);
+    };
+    _sharedUnsubscribers.push(broadcaster);
 
-    // Start with a one-shot fetch so we have data immediately
-    getSubjectAvailability()
-      .then((initialConfig) => {
-        if (!unsubscribed) {
-          setConfig(initialConfig);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!unsubscribed) {
+    // If no subscription exists yet, start one
+    if (!_sharedConfig && _sharedLoading) {
+      getSubjectAvailability()
+        .then((initialConfig) => {
+          _sharedConfig = initialConfig;
+          _sharedLoading = false;
+          _broadcastToAll();
+        })
+        .catch((err) => {
           console.error('[useSubjectAvailability] initial fetch error:', err);
-          setError('Failed to load subject availability');
-          setLoading(false);
-        }
-      });
+          _sharedError = 'Failed to load subject availability';
+          _sharedLoading = false;
+          _broadcastToAll();
+        });
 
-    // Then subscribe to real-time updates
-    const unsubscribe = subscribeToSubjectAvailability((liveConfig) => {
-      if (!unsubscribed) {
-        setConfig(liveConfig);
-        setLoading(false);
-        setError(null);
-      }
-    });
+      const unsubscribe = subscribeToSubjectAvailability((liveConfig) => {
+        _sharedConfig = liveConfig;
+        _sharedLoading = false;
+        _sharedError = null;
+        _broadcastToAll();
+      });
+      _sharedUnsubscribers.push(unsubscribe);
+    }
 
     return () => {
-      unsubscribed = true;
-      unsubscribe();
+      const idx = _sharedUnsubscribers.indexOf(broadcaster);
+      if (idx > -1) _sharedUnsubscribers.splice(idx, 1);
     };
   }, []);
 
   const isSubjectAvailable = useCallback(
     (subjectId: string): boolean => {
-      return config?.subjects[subjectId]?.available ?? true;
+      // Use shared config with fallback
+      const cfg = localConfig || _sharedConfig;
+      return cfg?.subjects[subjectId]?.available ?? true;
     },
-    [config],
+    [localConfig],
   );
 
   const getSubjectEntry = useCallback(
     (subjectId: string): SubjectAvailabilityEntry | undefined => {
-      return config?.subjects[subjectId];
+      const cfg = localConfig || _sharedConfig;
+      return cfg?.subjects[subjectId];
     },
-    [config],
+    [localConfig],
   );
 
   return {
-    availability: config?.subjects ?? {},
-    config,
-    loading,
-    error,
+    availability: (localConfig || _sharedConfig)?.subjects ?? {},
+    config: localConfig || _sharedConfig,
+    loading: loading || _sharedLoading,
+    error: error || _sharedError,
     isSubjectAvailable,
     getSubjectEntry,
   };
