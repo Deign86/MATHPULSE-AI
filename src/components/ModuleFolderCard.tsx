@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen, Clock, AlertTriangle, Link2, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 
 export const THEMES = [
   { bg: 'bg-[#9956DE]', tab: 'bg-[#8544c7]', shadow: 'shadow-[#9956DE]/30' },
@@ -23,7 +24,9 @@ interface ModuleFolderCardProps {
 const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
-  const isAvailable = module.isAvailable !== false;
+  const { isSubjectAvailable } = useSubjectAvailability();
+  const subjectAvailable = isSubjectAvailable(module.subjectId);
+  const isAvailable = (module.isAvailable !== false) && subjectAvailable;
 
   return (
     // PERF: motion.div with whileHover — rendered inside modules.map() in ModulesPage.tsx.
