@@ -97,8 +97,7 @@ app = main_module.app
 main_module._firebase_ready = True
 main_module._init_firebase_admin = lambda: None
 main_module.firebase_firestore = None
-if getattr(main_module, "firebase_auth", None) is None:
-    main_module.firebase_auth = MagicMock()
+main_module.firebase_auth = MagicMock()
 main_module.firebase_auth.verify_id_token = MagicMock(
     return_value={
         "uid": "test-teacher-uid",
@@ -1066,6 +1065,14 @@ class TestUploadClassRecordsGuardrails:
 
 class TestImportedOverviewAndTopicMastery:
     def test_imported_class_overview_returns_inferred_state_for_realistic_minimal_records(self):
+        # Ensure teacher role matches mock data
+        main_module.firebase_auth.verify_id_token = MagicMock(
+            return_value={
+                "uid": "test-teacher-uid",
+                "email": "teacher@example.com",
+                "role": "teacher",
+            }
+        )
         firestore = _FakeFirestoreModule(
             {
                 "normalizedClassRecords": [
@@ -1214,15 +1221,24 @@ class TestAsyncGenerationTasks:
         assert cancel_payload["status"] in {"cancelled", "cancelling"}
 
     def test_inference_metrics_requires_admin(self):
-        response = client.get("/api/ops/inference-metrics")
-        assert response.status_code == 403
+        # Test with a non-admin mock to verify role check works
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "teacher-uid",
+            "email": "teacher@example.com",
+            "role": "teacher",
+        }):
+            response = client.get("/api/ops/inference-metrics")
+            assert response.status_code == 403
 
-    @patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-        "uid": "admin-uid",
-        "email": "admin@example.com",
-        "role": "admin",
-    })
-    def test_inference_metrics_admin_success(self, _mock_verify):
+    def test_inference_metrics_admin_success(self):
+        # Set admin role directly to ensure it persists
+        main_module.firebase_auth.verify_id_token = MagicMock(
+            return_value={
+                "uid": "admin-uid",
+                "email": "admin@example.com",
+                "role": "admin",
+            }
+        )
         response = client.get("/api/ops/inference-metrics")
         assert response.status_code == 200
         payload = response.json()
@@ -1452,6 +1468,14 @@ class _FakeFirestoreModule:
 
 class TestRecentCourseMaterials:
     def test_recent_course_materials_respects_class_section_filter(self):
+        # Ensure teacher role matches mock data
+        main_module.firebase_auth.verify_id_token = MagicMock(
+            return_value={
+                "uid": "test-teacher-uid",
+                "email": "teacher@example.com",
+                "role": "teacher",
+            }
+        )
         now = int(time.time())
         firestore = _FakeFirestoreModule(
             {
@@ -1494,6 +1518,14 @@ class TestRecentCourseMaterials:
         assert all(item["classSectionId"] == "grade11_a" for item in data["materials"])
 
     def test_recent_course_materials_reports_retention_exclusions(self):
+        # Ensure teacher role matches mock data
+        main_module.firebase_auth.verify_id_token = MagicMock(
+            return_value={
+                "uid": "test-teacher-uid",
+                "email": "teacher@example.com",
+                "role": "teacher",
+            }
+        )
         now = int(time.time())
         firestore = _FakeFirestoreModule(
             {

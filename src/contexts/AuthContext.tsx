@@ -63,13 +63,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // If profile doesn't exist, auto-create it
         if (!profile && user.email) {
-          console.log('[WARN] AuthContext: Profile missing, auto-creating...');
           const role: UserRole = safeRequestedRole;
           const name = user.displayName || 'User';
           
           try {
             profile = await createUserProfile(user, role, { name });
-            console.log('[OK] AuthContext: Profile auto-created:', { role, name });
 
             // Fire automation for new student enrollment
             if (role === 'student') {

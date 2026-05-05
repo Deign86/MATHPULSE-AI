@@ -53,17 +53,13 @@ const firebaseConfig = {
 if (!firebaseConfig.apiKey) {
   console.error('[ERROR] Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
 } else if (import.meta.env.DEV) {
-  console.log('[DEBUG] Firebase config loaded:', {
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain,
-    storageBucket: firebaseConfig.storageBucket,
-  });
+  // Firebase config loaded in dev mode
 }
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 if (import.meta.env.DEV) {
-  console.log('[DEBUG] Firebase app initialized:', app.name || 'default');
+  // Firebase app initialized
 }
 
 // Initialize Firebase services
@@ -87,7 +83,6 @@ if (useFunctionsEmulator) {
     : 5001;
 
   connectFunctionsEmulator(cloudFunctions, emulatorHost, emulatorPort);
-  console.log(`[FIREBASE] Functions emulator enabled at ${emulatorHost}:${emulatorPort}`);
 }
 
 export const realtimeDb = databaseUrl ? getDatabase(app, databaseUrl) : null;

@@ -701,7 +701,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const firebaseSessions = await chatService.getUserChatSessions(currentUser.uid);
         const loadedSessions: ChatSession[] = await Promise.all(
           firebaseSessions.map(async (s) => {
-            const msgs = await chatService.getSessionMessages(s.id);
+            const msgs = await chatService.getSessionMessages(s.id, currentUser.uid);
             const messages: Message[] = msgs.map((m) => ({
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',

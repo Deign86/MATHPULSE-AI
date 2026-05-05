@@ -18,6 +18,7 @@ interface LessonViewerProps {
   lessonCompletionXP?: number;
   practiceQuiz?: Quiz | null;
   practiceQuizCompleted?: boolean;
+  practiceQuizScore?: number;
   initialSection?: number;
   onStartPractice?: () => void;
   onBack: () => void;
@@ -89,29 +90,45 @@ function SectionRenderer({
   onShowSolution,
   expandedIndex,
   lesson,
+  practiceQuiz,
+  practiceQuizCompleted,
+  practiceQuizScore,
+  onStartPractice,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
   onShowSolution: (idx: number) => void;
   expandedIndex: number | null;
   lesson: LessonViewerProps['lesson'];
+  practiceQuiz?: Quiz | null;
+  practiceQuizCompleted?: boolean;
+  practiceQuizScore?: number;
+  onStartPractice?: () => void;
 }) {
   switch (section.type) {
     case 'introduction':
       return (
         <div className="space-y-4">
-          <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line">
-            {section.content}
-          </p>
+          {section.content?.trim() ? (
+            <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line">
+              {section.content}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm italic">Introduction content is being prepared. Please proceed to the next section or try refreshing the lesson.</p>
+          )}
         </div>
       );
 
     case 'key_concepts':
       return (
         <div className="space-y-4">
-          <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line mb-4">
-            {section.content}
-          </p>
+          {section.content?.trim() ? (
+            <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line mb-4">
+              {section.content}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm italic mb-4">Key concepts are being compiled. Review the curriculum sources below for reference material.</p>
+          )}
           {section.callouts && section.callouts.length > 0 && (
             <div className="space-y-2">
               {section.callouts.map((callout, i) => (
@@ -146,7 +163,11 @@ function SectionRenderer({
     case 'video':
       return (
         <div className="space-y-4">
-          <p className="text-slate-600 text-sm">{section.content}</p>
+          {section.content?.trim() ? (
+            <p className="text-slate-600 text-sm">{section.content}</p>
+          ) : (
+            <p className="text-slate-400 text-sm italic">Video explanation loading...</p>
+          )}
           <VideoLessonSection
             videos={section.videos || []}
             topic={lesson.title}
@@ -207,45 +228,98 @@ function SectionRenderer({
 
     case 'try_it_yourself':
       return (
-        <div className="space-y-3">
-          {section.practiceProblems && section.practiceProblems.length > 0 ? (
-            section.practiceProblems.map((prob, i) => (
-              <div
-                key={i}
-                className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-5 border border-rose-100"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-slate-800 text-sm font-medium flex-1 leading-relaxed">
-                    {prob.question}
-                  </p>
+        <div className="space-y-4">
+          {/* Practice Quiz Button / Completion Badge */}
+          {practiceQuiz && (
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+              {practiceQuizCompleted ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                    <CheckCircle size={20} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-700">
+                      Quiz Complete
+                      {typeof practiceQuizScore === 'number' && (
+                        <span className="ml-2 text-emerald-600">
+                          {practiceQuizScore}%
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-emerald-600/80">
+                      Great job! You can now complete this lesson.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-rose-400 to-orange-400 rounded-xl flex items-center justify-center">
+                      <Zap size={20} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Practice Quiz</p>
+                      <p className="text-xs text-slate-500">
+                        {practiceQuiz.questions} questions · {practiceQuiz.duration}
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => onShowSolution(sectionIndex)}
-                    className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-rose-200 flex items-center justify-center hover:bg-rose-50 transition-colors"
-                    aria-label={expandedIndex === sectionIndex ? 'Hide solution' : 'Show solution'}
+                    onClick={onStartPractice}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
                   >
-                    {expandedIndex === sectionIndex ? (
-                      <EyeOff size={14} className="text-rose-500" />
-                    ) : (
-                      <Eye size={14} className="text-rose-500" />
-                    )}
+                    <ClipboardCheck size={16} />
+                    Start Practice Quiz
                   </button>
                 </div>
-                <AnimatePresence>
-                  {expandedIndex === sectionIndex && prob.solution && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
+              )}
+            </div>
+          )}
+
+          {/* Practice Problems */}
+          {section.practiceProblems && section.practiceProblems.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Worked Examples
+              </p>
+              {section.practiceProblems.map((prob, i) => (
+                <div
+                  key={i}
+                  className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-5 border border-rose-100"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-slate-800 text-sm font-medium flex-1 leading-relaxed">
+                      {prob.question}
+                    </p>
+                    <button
+                      onClick={() => onShowSolution(sectionIndex)}
+                      className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-rose-200 flex items-center justify-center hover:bg-rose-50 transition-colors"
+                      aria-label={expandedIndex === sectionIndex ? 'Hide solution' : 'Show solution'}
                     >
-                      <div className="mt-3 pt-3 border-t border-rose-200">
-                        <p className="text-slate-600 text-sm">{prob.solution}</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))
+                      {expandedIndex === sectionIndex ? (
+                        <EyeOff size={14} className="text-rose-500" />
+                      ) : (
+                        <Eye size={14} className="text-rose-500" />
+                      )}
+                    </button>
+                  </div>
+                  <AnimatePresence>
+                    {expandedIndex === sectionIndex && prob.solution && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3 pt-3 border-t border-rose-200">
+                          <p className="text-slate-600 text-sm">{prob.solution}</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="text-center py-8">
               <p className="text-slate-400 text-sm">No practice problems available for this lesson.</p>
@@ -257,9 +331,13 @@ function SectionRenderer({
     case 'summary':
       return (
         <div className="space-y-3">
-          <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
-            {section.content}
-          </p>
+          {section.content?.trim() ? (
+            <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
+              {section.content}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm italic">Summary is being prepared. Review the lesson sections above to reinforce your understanding.</p>
+          )}
         </div>
       );
 
@@ -361,6 +439,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   lessonCompletionXP = 10,
   practiceQuiz,
   practiceQuizCompleted = false,
+  practiceQuizScore,
   initialSection = 0,
   onStartPractice,
   onBack,
@@ -427,7 +506,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const currentSectionData = sections[currentSection] || {
     type: 'introduction',
     title: 'Loading...',
-    content: '',
+    content: 'Lesson content is loading. Please wait a moment.',
   };
 
   const handleNext = () => {

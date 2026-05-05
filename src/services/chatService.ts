@@ -147,11 +147,12 @@ export const addMessageToSession = async (
 };
 
 // Get session messages
-export const getSessionMessages = async (sessionId: string): Promise<ChatMessage[]> => {
+export const getSessionMessages = async (sessionId: string, userId: string): Promise<ChatMessage[]> => {
   try {
     const messagesQuery = query(
       collection(db, 'chatMessages'),
       where('sessionId', '==', sessionId),
+      where('userId', '==', userId),  // Filter by userId for security rules
       orderBy('timestamp', 'asc')
     );
 

@@ -14,6 +14,7 @@ export const SHS_MATH_SUBJECTS = [
     gradeLevel: 'Grade 11',
     semester: '1st Semester',
     color: 'from-blue-500 to-cyan-500',
+    pdfAvailable: true,
     topics: [
       // Patterns, Relations, and Functions
       { id: 'gen-math-001', name: 'Patterns and Real-Life Relationships', unit: 'Patterns, Relations, and Functions' },
@@ -48,6 +49,7 @@ export const SHS_MATH_SUBJECTS = [
     gradeLevel: 'Grade 11',
     semester: '2nd Semester',
     color: 'from-sky-500 to-cyan-500',
+    pdfAvailable: true,
     topics: [
       // Random Variables and Probability Distributions
       { id: 'stat-001', name: 'Random Variables', unit: 'Random Variables' },
@@ -75,6 +77,7 @@ export const SHS_MATH_SUBJECTS = [
     gradeLevel: 'Grade 12',
     semester: '1st Semester',
     color: 'from-orange-500 to-red-500',
+    pdfAvailable: false,
     topics: [
       // Analytic Geometry
       { id: 'pre-calc-001', name: 'Conic Sections - Parabola', unit: 'Analytic Geometry' },
@@ -104,6 +107,7 @@ export const SHS_MATH_SUBJECTS = [
     gradeLevel: 'Grade 12',
     semester: '2nd Semester',
     color: 'from-green-500 to-teal-500',
+    pdfAvailable: false,
     topics: [
       // Limits
       { id: 'calc-001', name: 'Limits of Functions', unit: 'Limits' },
@@ -176,10 +180,6 @@ export function getActiveSubjectIdsForGrade(rawGrade?: string | null): SubjectId
 
 export function getSubjectById(id: SubjectId) {
   return SHS_MATH_SUBJECTS.find(s => s.id === id);
-}
-
-export function getTopicsBySubject(subjectId: SubjectId) {
-  return getSubjectById(subjectId)?.topics ?? [];
 }
 
 export function getAllTopics(): { id: string; name: string; unit: string }[] {
@@ -262,6 +262,7 @@ export interface Subject {
   completedModules: number;
   rating?: number;
   reviewCount?: number;
+  pdfAvailable?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -283,6 +284,7 @@ export const subjects: Subject[] = [
     completedModules: 0,
     rating: 4.9,
     reviewCount: 204,
+    pdfAvailable: true,
     modules: [
       {
         id: 'gm-1',
@@ -367,6 +369,7 @@ export const subjects: Subject[] = [
     completedModules: 0,
     rating: 4.7,
     reviewCount: 192,
+    pdfAvailable: false,
     modules: [
       {
         id: 'pc-1',
@@ -446,6 +449,7 @@ export const subjects: Subject[] = [
     completedModules: 0,
     rating: 4.8,
     reviewCount: 160,
+    pdfAvailable: true,
     modules: [
       {
         id: 'sp-1',
@@ -538,6 +542,7 @@ export const subjects: Subject[] = [
     completedModules: 0,
     rating: 4.9,
     reviewCount: 216,
+    pdfAvailable: false,
     modules: [
       {
         id: 'bc-1',

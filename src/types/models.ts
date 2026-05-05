@@ -255,6 +255,8 @@ export interface LessonProgress {
   timeSpent: number; // in seconds
   score?: number;
   progressPercent?: number;
+  quizCompleted?: boolean;
+  quizScore?: number;
 }
 
 export interface QuizAttempt {
@@ -384,6 +386,7 @@ export interface QuizBattleSetupConfig {
   queueType: QuizBattleQueueType;
   botDifficulty: QuizBattleDifficulty;
   adaptiveBot: boolean;
+  gradeLevel?: number;
 }
 
 export interface QuizBattleQueueState {
@@ -444,15 +447,29 @@ export interface QuizBattleLeaderboardEntry {
 }
 
 // Notification Types
+export type NotificationType = 
+  | 'achievement' 
+  | 'message' 
+  | 'grade' 
+  | 'reminder' 
+  | 'risk_alert' 
+  | 'automation'
+  | 'teacher_message'    // From teacher to student
+  | 'system_announcement' // From admin to all
+  | 'quiz_assigned'
+  | 'assignment'        // Class assignment notification
+
 export interface Notification {
   id: string;
   userId: string;
-  type: 'achievement' | 'message' | 'grade' | 'reminder' | 'risk_alert' | 'automation';
+  type: NotificationType;
   title: string;
   message: string;
   read: boolean;
   actionUrl?: string;
   createdAt: Date;
+  senderId?: string;
+  senderRole?: string;
 }
 
 // Calendar Types

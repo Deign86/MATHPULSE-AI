@@ -11,6 +11,7 @@ import {
   Crown,
   History,
   Loader2,
+  Lock,
   Maximize,
   Menu,
   Minimize,
@@ -30,6 +31,7 @@ import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
+import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import {
   QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
@@ -412,6 +414,7 @@ const getAudioContext = () => {
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
+  const { isSubjectAvailable } = useSubjectAvailability();
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
@@ -2685,9 +2688,26 @@ const QuizBattlePage: React.FC = () => {
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                            {gradeScopedSubjects.map((entry) => (
-                              <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
-                            ))}
+                            {gradeScopedSubjects.map((entry) => {
+                              const isAvailable = isSubjectAvailable(entry.id);
+                              return (
+                                <SelectItem
+                                  key={entry.id}
+                                  value={entry.id}
+                                  className="rounded-lg"
+                                  disabled={!isAvailable}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    {entry.title}
+                                    {!isAvailable && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 ml-1">
+                                        <Lock size={10} /> Coming Soon
+                                      </span>
+                                    )}
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}

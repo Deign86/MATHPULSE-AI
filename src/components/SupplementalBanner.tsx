@@ -242,7 +242,7 @@ const ResultsBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, quizSco
                     : 'bg-sky-500 hover:bg-sky-600 text-white'
                 }`}
               >
-                Open Practice Center
+                Review Topics
                 <ChevronRight size={12} />
               </button>
             )}
