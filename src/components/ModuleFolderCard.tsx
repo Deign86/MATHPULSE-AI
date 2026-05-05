@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, AlertTriangle, Link2 } from 'lucide-react';
+import { BookOpen, Clock, AlertTriangle, Link2, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const THEMES = [
@@ -23,17 +23,18 @@ interface ModuleFolderCardProps {
 const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
+  const isAvailable = module.isAvailable !== false;
 
   return (
     // PERF: motion.div with whileHover — rendered inside modules.map() in ModulesPage.tsx.
     // whileHover creates dynamic animation handlers on every mount; component is NOT React.memo'd.
     <motion.div
-      role="button"
-      tabIndex={0}
-      whileHover={{ y: -8 }}
-      onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
-      className="relative text-left rounded-[1.4rem] overflow-visible min-h-[290px] bg-transparent group w-full"
+      role={isAvailable ? 'button' : 'img'}
+      tabIndex={isAvailable ? 0 : -1}
+      whileHover={isAvailable ? { y: -8 } : undefined}
+      onClick={isAvailable ? onClick : undefined}
+      onKeyDown={isAvailable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      className={`relative text-left rounded-[1.4rem] overflow-visible min-h-[290px] bg-transparent group w-full ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {/* FOLDER TAB */}
       <div 
@@ -125,6 +126,22 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
           {isAtRisk && (
             <div className="absolute -top-3 -right-2 bg-rose-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-rose-400 animate-pulse">
               <AlertTriangle size={12} strokeWidth={3} /> Review
+            </div>
+          )}
+
+          {!isAvailable && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.4rem] bg-black/60 backdrop-blur-[2px]">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
+                  <Lock size={28} className="text-white" />
+                </div>
+                <div className="text-center">
+                  <p className="text-white font-black text-sm tracking-wide">Content Unavailable</p>
+                  <p className="text-white/70 text-[11px] font-semibold mt-1 max-w-[180px]">
+                    Teaching module PDF not yet loaded. Check back soon.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>
