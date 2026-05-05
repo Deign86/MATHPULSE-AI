@@ -1,5 +1,29 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { generateLessonQuiz, getQuestionCountForQuiz } from '../lessonQuizService';
+
+// Mock Firebase to avoid API key errors in tests
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  auth: {},
+  storage: {},
+  cloudFunctions: {},
+}));
+
+vi.mock('./apiService', () => ({
+  apiFetch: vi.fn().mockResolvedValue({
+    questions: [
+      { id: 1, type: 'multiple-choice', question: 'Test Q1', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A', explanation: 'Test' },
+      { id: 2, type: 'true-false', question: 'Test Q2', options: ['True', 'False'], correctAnswer: 'True', explanation: 'Test' },
+      { id: 3, type: 'fill-in-blank', question: 'Test Q3', correctAnswer: '42', explanation: 'Test' },
+      { id: 4, type: 'multiple-choice', question: 'Test Q4', options: ['A', 'B', 'C', 'D'], correctAnswer: 'B', explanation: 'Test' },
+      { id: 5, type: 'true-false', question: 'Test Q5', options: ['True', 'False'], correctAnswer: 'False', explanation: 'Test' },
+      { id: 6, type: 'fill-in-blank', question: 'Test Q6', correctAnswer: '7', explanation: 'Test' },
+    ],
+    retrievalConfidence: { level: 'high' },
+    sourceChunks: 3,
+    generatedAt: new Date().toISOString(),
+  }),
+}));
 
 describe('lessonQuizService', () => {
   describe('generateLessonQuiz', () => {
