@@ -255,6 +255,8 @@ export interface LessonProgress {
   timeSpent: number; // in seconds
   score?: number;
   progressPercent?: number;
+  quizCompleted?: boolean;
+  quizScore?: number;
 }
 
 export interface QuizAttempt {
