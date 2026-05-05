@@ -53,9 +53,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Allow authenticated users to get leaderboard (read all students for rankings)
+    // Collection-level rule for leaderboard - must be before document-level rule
     match /users {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
     }
 
     match /users/{userId}/settings/{settingsId} {
