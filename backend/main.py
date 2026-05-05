@@ -82,6 +82,15 @@ from routes.admin_model_routes import router as admin_model_router
 from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
 from routes.quiz_battle import router as quiz_battle_router
+
+# Rate limiting (slowapi)
+try:
+    from middleware.rate_limiter import setup_rate_limiting
+    HAS_RATE_LIMITING = True
+except ImportError:
+    HAS_RATE_LIMITING = False
+    setup_rate_limiting = None
+
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -740,19 +749,11 @@ def require_student_self_or_staff(request: Request, student_id: str) -> Authenti
 
 
 def enforce_rate_limit(request: Request, bucket_name: str, limit: int, window_seconds: int) -> None:
-    user = getattr(request.state, "user", None)
-    actor_id = user.uid if user else ((request.client.host if request.client else "unknown"))
-    key = f"{bucket_name}:{actor_id}"
-    now = time.time()
-    start = now - window_seconds
-    hits = [ts for ts in _rate_limit_buckets.get(key, []) if ts >= start]
-    if len(hits) >= limit:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit exceeded for {bucket_name}. Try again later.",
-        )
-    hits.append(now)
-    _rate_limit_buckets[key] = hits
+    """DEPRECATED: Rate limiting is now handled by slowapi middleware.
+    This function is kept for backwards compatibility but does nothing.
+    The slowapi decorators handle all rate limiting per endpoint group.
+    """
+    pass
 
 
 def _utc_now_iso() -> str:
@@ -1018,6 +1019,11 @@ class RequestMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
+
+# Set up rate limiting with slowapi
+if HAS_RATE_LIMITING and setup_rate_limiting:
+    setup_rate_limiting(app)
+
 app.include_router(rag_router)
 app.include_router(admin_model_router)
 app.include_router(diagnostic_router)

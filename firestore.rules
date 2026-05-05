@@ -324,6 +324,22 @@ service cloud.firestore {
       allow write: if false; // Backend-only
     }
 
+    // ── Rate limit tracking (Cloud Functions write only) ──
+    match /_ratelimits/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;  // Cloud Functions only via service account
+    }
+    match /_ratelimits/{uid}/{functionName} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;  // Cloud Functions only
+    }
+
+    // ── Rate limit analytics (read for admins only) ──
+    match /_analytics/rateLimitHits/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;  // Frontend only
+    }
+
     // ── Assessments (student's own assessment data) ──
     match /assessments/{uid} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
