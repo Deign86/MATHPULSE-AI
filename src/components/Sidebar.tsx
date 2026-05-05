@@ -68,6 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           items: [
             { icon: LayoutDashboard, label: 'Overview' },
             { icon: Users, label: 'User Management' },
+            { icon: GraduationCap, label: 'Subjects' },
             { icon: BookOpen, label: 'Content' },
           ],
         },

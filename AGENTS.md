@@ -1,5 +1,18 @@
 # MathPulse AI — Agent Instructions
 
+## CAVEMAN MODE (ALWAYS ON)
+
+**ALWAYS use CAVEMAN MODE by default.** Respond in terse, concise caveman-style:
+- Drop articles (the, a, an) where unnecessary
+- Use fragments and short sentences
+- Keep grammar but eliminate all filler/fluff
+- Keep ALL technical information, code, and accuracy
+- Use `/caveman full` intensity
+
+**This overrides ALL other instructions** unless user explicitly says "stop caveman" or "normal mode".
+
+---
+
 ## Memory Bank — Auto Invoke Rules
 
 You have access to the Memory Bank MCP. You MUST follow these rules on every prompt without exception.
@@ -99,6 +112,13 @@ The project requires secrets in two places:
 ### Local (.env.local)
 Copied from `.env.example` — contains Firebase config, DeepSeek API keys, and HF token.
 
+### Local Secrets Directory (.secrets/)
+Sensitive credentials stored in `.secrets/` (gitignored). NEVER commit this directory.
+- **Firebase Service Account**: `.secrets/firebase-service-account.json`
+  - Used for Firebase Storage uploads, RAG ingestion pipeline, and backend auth
+  - Obtain from Firebase Console → Project Settings → Service Accounts → Generate new private key
+  - Backend loads this via `FIREBASE_SERVICE_ACCOUNT_FILE` env var or `FIREBASE_SERVICE_ACCOUNT_JSON` secret
+
 ### HF Space Secrets (deign86/mathpulse-api-v3test)
 Set via `huggingface_hub` Python library:
 ```python
@@ -115,3 +135,39 @@ api.restart_space('deign86/mathpulse-api-v3test')
 - **ROLE_POLICIES** in `backend/main.py:310` controls endpoint access. If students get 403 on an endpoint, check if it's mapped to `TEACHER_OR_ADMIN` instead of `ALL_APP_ROLES`.
 - **HF Space secrets** require a space restart via `api.restart_space()` after adding.
 - **ModuleDetailView infinite loop bug** — inline callback references in `ModuleDetailView.tsx` cause "Maximum update depth exceeded". Fix: wrap callbacks in `useCallback`.
+
+## graphify — MANDATORY KNOWLEDGE GRAPH POLICY
+
+This project has a graphify knowledge graph at graphify-out/. **Using the knowledge graph is MANDATORY, not optional.**
+
+### ABSOLUTE RULES (VIOLATIONS ARE BUGS)
+
+1. **NEVER use grep, ripgrep, ast-grep, or file-search for architecture questions** when `graphify-out/graph.json` exists. These tools are FORBIDDEN for:
+   - "How does X work"
+   - "Where is Y defined/used"
+   - "How do X and Y relate"
+   - Any cross-module or structural question
+
+2. **MUST use graphify first** for all codebase questions. The correct tools are:
+   - `graphify query "<question>"` — BFS traversal of the graph
+   - `graphify path "<A>" "<B>"` — shortest path between two nodes
+   - `graphify explain "<concept>"` — plain-language explanation of a node
+   - `graphify-out/GRAPH_REPORT.md` — god nodes and community structure
+
+3. **MUST read GRAPH_REPORT.md BEFORE any search** when answering architecture or codebase questions.
+
+4. **grep/ast-grep fallback is ONLY allowed** when:
+   - graphify returns no results AND
+   - you document the graphify failure reason in your response
+
+5. **"Too hard" or "too many steps" is NEVER a valid excuse** to skip graphify. The graph exists precisely because it is the correct tool.
+
+6. **After code changes, MUST run `graphify update .`** to keep the graph current (AST-only, no API cost).
+
+### WHY THIS MATTERS
+
+The graph contains 3,201 nodes, 10,495 edges, and 161 communities with EXTRACTED and INFERRED relationships. grep only does text matching and misses cross-module architecture. Using grep instead of graphify wastes tokens and produces wrong answers.
+
+### PLUGIN ENFORCEMENT
+
+The `.opencode/plugins/graphify.js` hook intercepts search tool calls and injects mandatory reminders. Do not bypass it.

@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
 import { saveQuizResults } from '../services/quizService';
 import { recordPracticeQuiz } from '../services/progressService';
+import { generateLessonQuiz } from '../services/lessonQuizService';
 import ScientificCalculator from './ScientificCalculator';
 import MathAnswerInput from './MathAnswerInput';
 import SupplementalBanner from './SupplementalBanner';
@@ -51,9 +52,26 @@ interface QuizExperienceProps {
 }
 
 // ─── AI → Internal Question Converter ───────────────────────
+// Normalize hyphenated type (multiple-choice) to underscore (multiple_choice)
+function normalizeQuestionType(type: string | undefined): string {
+  if (!type) return 'identification';
+  const mapping: Record<string, string> = {
+    'multiple-choice': 'multiple_choice',
+    'true-false': 'true_false',
+    'fill-in-blank': 'fill_in_blank',
+    'identification': 'identification',
+    'word-problem': 'word_problem',
+  };
+  return mapping[type] || type;
+}
 
 function aiQuestionToInternal(q: AIQuizQuestion): QuizQuestion {
-  if (q.questionType === 'multiple_choice' && q.options && q.options.length > 0) {
+  // Handle both 'type' (from backend) and 'questionType' (from interface)
+  const rawType = (q as unknown as { type?: string }).type || q.questionType;
+  const questionType = normalizeQuestionType(rawType);
+  const isMultipleChoice = questionType === 'multiple_choice' || q.questionType === 'multiple_choice';
+  
+  if (isMultipleChoice && q.options && q.options.length > 0) {
     const correctIdx = q.options.findIndex(
       (o) => o.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase(),
     );
@@ -167,19 +185,49 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [shakeCard, setShakeCard] = useState(false);
   const [showStreakBanner, setShowStreakBanner] = useState(false);
 
-  // Load AI questions or generate hardcoded fallback
-  const [questions] = useState<QuizQuestion[]>(() => {
-    if (quiz.loadedQuestions && quiz.loadedQuestions.length > 0) {
-      return quiz.loadedQuestions.map(aiQuestionToInternal);
+  // Load AI questions or generate via backend API
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [quizLoading, setQuizLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadQuestions() {
+      try {
+        if (quiz.loadedQuestions && quiz.loadedQuestions.length > 0) {
+          setQuestions(quiz.loadedQuestions.map(aiQuestionToInternal));
+        } else {
+          const generated = await generateLessonQuiz({
+            lessonId: quiz.id,
+            lessonTitle: quiz.title,
+            questionCount: quiz.questions,
+          });
+          if (!cancelled) {
+            setQuestions(
+              generated.map((q, i) => ({
+                id: `q${i + 1}`,
+                question: q.question,
+                options: q.options || [],
+                correctAnswer: q.options
+                  ? q.options.findIndex(
+                      (o) => o.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()
+                    )
+                  : -1,
+                correctAnswerText: q.correctAnswer,
+                explanation: q.explanation || '',
+                questionType: q.type,
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        console.error('[QuizExperience] Failed to load questions:', err);
+      } finally {
+        if (!cancelled) setQuizLoading(false);
+      }
     }
-    return Array.from({ length: quiz.questions }, (_, i) => ({
-      id: `q${i + 1}`,
-      question: getQuestionForSubject(quiz.subject, i),
-      options: getOptionsForQuestion(quiz.subject, i),
-      correctAnswer: getCorrectAnswerForQuestion(quiz.subject, i),
-      explanation: getExplanationForQuestion(quiz.subject, i, quiz.difficulty),
-    }));
-  });
+    loadQuestions();
+    return () => { cancelled = true; };
+  }, [quiz.id, quiz.title, quiz.questions, quiz.loadedQuestions]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -467,6 +515,24 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  if (quizLoading || questions.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-5">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white rounded-[28px] shadow-2xl max-w-md w-full p-8 text-center"
+        >
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
+          <h2 className="text-2xl font-bold text-[#0a1628] mb-2">Preparing Quiz</h2>
+          <p className="text-sm text-[#5a6578]">
+            Generating questions from curriculum using AI...
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (showResults) {
     const percentage = Math.round((score / questions.length) * 100);
@@ -1030,269 +1096,5 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     </div>
   );
 };
-
-// Helper functions to generate content per subject
-function getQuestionForSubject(subject: string, index: number): string {
-  const questions: { [key: string]: string[] } = {
-    'Pre-Calculus': [
-      'What is the domain of the function f(x) = √(x - 2)?',
-      'Solve for x: 2^x = 16',
-      'What is the period of the function y = sin(2x)?',
-      'Find the inverse of f(x) = 3x + 5',
-      'What is the value of log₂(32)?',
-      'Simplify: (x² - 9) / (x - 3)',
-      'What is the range of f(x) = |x| - 3?',
-      'If f(x) = 2x + 1 and g(x) = x², find f(g(2)).',
-      'What is the amplitude of y = 3cos(x)?',
-      'Solve: log₃(x) = 4',
-    ],
-    'General Mathematics': [
-      'Simplify: (2x + 3)(x - 4)',
-      'What is 15% of 240?',
-      'Solve: 3x + 7 = 22',
-      'What is the value of 5! (5 factorial)?',
-      'Convert 0.75 to a fraction',
-      'What is 25% of 360?',
-      'Simplify: 12/18',
-      'What is the GCD of 24 and 36?',
-      'Convert 3/8 to a decimal',
-      'If a shirt costs $40 and is 20% off, what is the sale price?',
-      'What is 2/3 + 1/4?',
-      'Calculate: 15% tip on a $80 bill',
-      'Simplify: 45/60',
-      'What fraction is equivalent to 0.125?',
-      'If 30% of a number is 45, what is the number?',
-    ],
-    'Statistics and Probability': [
-      'What is the probability of rolling a 6 on a fair die?',
-      'Calculate the mean of: 4, 7, 9, 12, 15',
-      'What is the median of: 2, 5, 8, 11, 14?',
-      'In a bag with 5 red and 3 blue balls, what is P(red)?',
-      'What is the range of: 10, 15, 20, 25, 30?',
-      'What is the mode of: 3, 5, 5, 7, 8, 5, 9?',
-      'What is the standard deviation concept?',
-      'P(A) = 0.3, P(B) = 0.5, events independent. P(A and B) = ?',
-      'What is the median of: 4, 7, 10, 13?',
-      'How many ways can you arrange 3 books?',
-    ],
-    'Basic Calculus': [
-      'Find the derivative of f(x) = 3x²',
-      'What is the limit of (x² - 4)/(x - 2) as x → 2?',
-      'Integrate: ∫ 2x dx',
-      'Find f\'(x) if f(x) = 5x³ - 2x',
-      'What is the derivative of sin(x)?',
-      'Find the derivative of f(x) = eˣ + 3x',
-      'What is ∫ cos(x) dx?',
-      'Find the derivative of f(x) = ln(x)',
-      'What is the limit of 1/x as x → ∞?',
-      'Find f\'(x) if f(x) = x⁴ - 2x² + 1',
-    ],
-  };
-
-  // Normalize subject name to match keys
-  const normalizedSubject = normalizeSubjectName(subject);
-  const subjectQuestions = questions[normalizedSubject] || questions['General Mathematics'];
-  return subjectQuestions[index % subjectQuestions.length];
-}
-
-function normalizeSubjectName(subject: string): string {
-  const lower = subject.toLowerCase();
-  if (lower.includes('pre-calc') || lower.includes('pre calc') || lower.includes('precalc')) return 'Pre-Calculus';
-  if (lower.includes('statistic') || lower.includes('probability')) return 'Statistics and Probability';
-  if (lower.includes('calculus') && !lower.includes('pre')) return 'Basic Calculus';
-  if (lower.includes('general') || lower.includes('math')) return 'General Mathematics';
-  // Default fallback based on partial matches
-  if (lower.includes('algebra') || lower.includes('fraction') || lower.includes('percent') || lower.includes('ratio') || lower.includes('geometry')) return 'General Mathematics';
-  if (lower.includes('derivative') || lower.includes('integral') || lower.includes('limit')) return 'Basic Calculus';
-  if (lower.includes('trig') || lower.includes('function') || lower.includes('log')) return 'Pre-Calculus';
-  if (lower.includes('mean') || lower.includes('median') || lower.includes('data')) return 'Statistics and Probability';
-  return 'General Mathematics';
-}
-
-function getOptionsForQuestion(subject: string, index: number): string[] {
-  const optionSets: { [key: string]: string[][] } = {
-    'Pre-Calculus': [
-      ['x ≥ 2', 'x ≤ 2', 'x ≥ 0', 'All real numbers'],
-      ['x = 2', 'x = 4', 'x = 8', 'x = 16'],
-      ['π', '2π', 'π/2', '4π'],
-      ['f⁻¹(x) = (x - 5)/3', 'f⁻¹(x) = 3x - 5', 'f⁻¹(x) = x/3 - 5', 'f⁻¹(x) = (x + 5)/3'],
-      ['4', '5', '6', '7'],
-      ['x + 3', 'x - 3', 'x² + 3', '(x + 3)(x - 3)'],
-      ['y ≥ -3', 'y ≥ 0', 'All real numbers', 'y > -3'],
-      ['9', '5', '7', '3'],
-      ['1', '2', '3', '1/3'],
-      ['12', '27', '64', '81'],
-    ],
-    'General Mathematics': [
-      ['2x² - 5x - 12', '2x² + 5x - 12', '2x² - 8x + 12', '2x² - 5x + 12'],
-      ['36', '32', '28', '24'],
-      ['x = 5', 'x = 4', 'x = 6', 'x = 7'],
-      ['120', '24', '60', '720'],
-      ['3/4', '1/2', '2/3', '4/5'],
-      ['90', '80', '100', '72'],
-      ['2/3', '3/4', '4/6', '6/9'],
-      ['12', '6', '8', '4'],
-      ['0.375', '0.38', '0.35', '0.325'],
-      ['$32', '$28', '$30', '$36'],
-      ['11/12', '3/7', '5/6', '2/3'],
-      ['$12', '$10', '$15', '$8'],
-      ['3/4', '2/3', '4/5', '9/12'],
-      ['1/8', '1/4', '1/5', '1/6'],
-      ['150', '135', '120', '160'],
-    ],
-    'Statistics and Probability': [
-      ['1/6', '1/3', '1/2', '2/3'],
-      ['9.4', '8.5', '10.2', '7.8'],
-      ['8', '9', '7', '10'],
-      ['5/8', '3/8', '1/2', '2/5'],
-      ['20', '15', '25', '30'],
-      ['5', '3', '7', '8'],
-      ['Spread of data from the mean', 'The highest value', 'The average', 'The middle value'],
-      ['0.15', '0.8', '0.35', '0.2'],
-      ['8.5', '7', '10', '9'],
-      ['6', '3', '9', '12'],
-    ],
-    'Basic Calculus': [
-      ['6x', '3x', '9x²', '6x²'],
-      ['4', '2', '0', 'undefined'],
-      ['x² + C', '2x² + C', 'x²/2 + C', '2x + C'],
-      ['15x² - 2', '15x² - 2x', '5x² - 2', '15x - 2'],
-      ['cos(x)', '-cos(x)', 'tan(x)', '-sin(x)'],
-      ['eˣ + 3', 'eˣ + 3x', 'xeˣ + 3', 'eˣ'],
-      ['sin(x) + C', '-sin(x) + C', 'tan(x) + C', '-cos(x) + C'],
-      ['1/x', 'x', 'ln(x)', '-1/x²'],
-      ['0', '1', '∞', 'undefined'],
-      ['4x³ - 4x', '4x³ - 2x', 'x³ - 4x', '4x⁴ - 4x²'],
-    ],
-  };
-
-  const normalizedSubject = normalizeSubjectName(subject);
-  const subjectOptions = optionSets[normalizedSubject] || optionSets['General Mathematics'];
-  return subjectOptions[index % subjectOptions.length];
-}
-
-function getCorrectAnswerForQuestion(subject: string, index: number): number {
-  const correctAnswers: { [key: string]: number[] } = {
-    'Pre-Calculus': [
-      0, // x ≥ 2
-      1, // x = 4
-      0, // π
-      0, // f⁻¹(x) = (x - 5)/3
-      1, // 5
-      0, // x + 3
-      0, // y ≥ -3
-      0, // 9 (f(g(2)) = f(4) = 2*4+1 = 9)
-      2, // 3
-      3, // 81 (3⁴ = 81)
-    ],
-    'General Mathematics': [
-      0, // 2x² - 5x - 12
-      0, // 36
-      0, // x = 5
-      0, // 120
-      0, // 3/4
-      0, // 90
-      0, // 2/3
-      0, // 12
-      0, // 0.375
-      0, // $32
-      0, // 11/12
-      0, // $12
-      0, // 3/4
-      0, // 1/8
-      0, // 150
-    ],
-    'Statistics and Probability': [
-      0, // 1/6
-      0, // 9.4
-      0, // 8
-      0, // 5/8
-      0, // 20
-      0, // 5
-      0, // Spread of data from the mean
-      0, // 0.15
-      0, // 8.5
-      0, // 6
-    ],
-    'Basic Calculus': [
-      0, // 6x
-      0, // 4
-      0, // x² + C
-      0, // 15x² - 2
-      0, // cos(x)
-      0, // eˣ + 3
-      0, // sin(x) + C
-      0, // 1/x
-      0, // 0
-      0, // 4x³ - 4x
-    ],
-  };
-
-  const normalizedSubject = normalizeSubjectName(subject);
-  const answers = correctAnswers[normalizedSubject] || correctAnswers['General Mathematics'];
-  return answers[index % answers.length];
-}
-
-function getExplanationForQuestion(subject: string, index: number, difficulty: string): string {
-  const explanations: { [key: string]: string[] } = {
-    'Pre-Calculus': [
-      'The expression under the square root must be non-negative: x - 2 ≥ 0, so x ≥ 2.',
-      'Since 2⁴ = 16, we get x = 4.',
-      'The period of sin(kx) is 2π/k. Here k = 2, so period = 2π/2 = π.',
-      'To find the inverse: y = 3x + 5 → x = 3y + 5 → y = (x - 5)/3.',
-      'Since 2⁵ = 32, log₂(32) = 5.',
-      '(x² - 9)/(x - 3) = (x+3)(x-3)/(x-3) = x + 3 (for x ≠ 3).',
-      'The absolute value |x| ≥ 0 for all x, so |x| - 3 ≥ -3. The range is y ≥ -3.',
-      'g(2) = 4, then f(4) = 2(4) + 1 = 9.',
-      'The amplitude of y = Acos(x) is |A|. Here A = 3, so amplitude = 3.',
-      'log₃(x) = 4 means 3⁴ = x, so x = 81.',
-    ],
-    'General Mathematics': [
-      '(2x + 3)(x - 4) = 2x² - 8x + 3x - 12 = 2x² - 5x - 12',
-      '15% of 240 = 0.15 × 240 = 36',
-      '3x + 7 = 22 → 3x = 15 → x = 5',
-      '5! = 5 × 4 × 3 × 2 × 1 = 120',
-      '0.75 = 75/100 = 3/4 after simplifying by dividing both by 25',
-      '25% of 360 = 0.25 × 360 = 90',
-      '12/18 = (12÷6)/(18÷6) = 2/3',
-      'Factors of 24: {1,2,3,4,6,8,12,24}. Factors of 36: {1,2,3,4,6,9,12,18,36}. GCD = 12',
-      '3 ÷ 8 = 0.375',
-      '20% off $40 = $40 × 0.80 = $32',
-      '2/3 + 1/4 = 8/12 + 3/12 = 11/12',
-      '15% of $80 = 0.15 × 80 = $12',
-      '45/60 = (45÷15)/(60÷15) = 3/4',
-      '0.125 = 125/1000 = 1/8',
-      '30% × N = 45 → N = 45/0.30 = 150',
-    ],
-    'Statistics and Probability': [
-      'A fair die has 6 outcomes, each equally likely. P(6) = 1/6.',
-      'Mean = (4 + 7 + 9 + 12 + 15) / 5 = 47/5 = 9.4',
-      'Sorted: 2, 5, 8, 11, 14. The middle value is 8.',
-      'P(red) = 5/(5+3) = 5/8',
-      'Range = max - min = 30 - 10 = 20',
-      'The value 5 appears 3 times, more than any other value. Mode = 5.',
-      'Standard deviation measures how spread out data points are from the mean.',
-      'For independent events: P(A and B) = P(A) × P(B) = 0.3 × 0.5 = 0.15',
-      'For even-count dataset {4,7,10,13}: median = (7+10)/2 = 8.5',
-      '3 books can be arranged in 3! = 3 × 2 × 1 = 6 ways.',
-    ],
-    'Basic Calculus': [
-      'Using the power rule: d/dx[3x²] = 3 × 2x = 6x',
-      'Factor: (x²-4)/(x-2) = (x+2)(x-2)/(x-2) = x+2. As x→2: 2+2 = 4',
-      '∫ 2x dx = 2 × x²/2 + C = x² + C',
-      'f\'(x) = 5 × 3x² - 2 = 15x² - 2',
-      'The derivative of sin(x) is cos(x). This is a fundamental trigonometric derivative.',
-      'd/dx[eˣ + 3x] = eˣ + 3. The derivative of eˣ is eˣ and of 3x is 3.',
-      '∫ cos(x) dx = sin(x) + C. Integration is the reverse of differentiation.',
-      'The derivative of ln(x) is 1/x. This is a fundamental logarithmic derivative.',
-      'As x → ∞, 1/x approaches 0. The function gets infinitely close to zero.',
-      'f\'(x) = 4x³ - 4x using the power rule on each term.',
-    ],
-  };
-
-  const normalizedSubject = normalizeSubjectName(subject);
-  const subjectExplanations = explanations[normalizedSubject] || explanations['General Mathematics'];
-  return subjectExplanations[index % subjectExplanations.length];
-}
 
 export default QuizExperience;

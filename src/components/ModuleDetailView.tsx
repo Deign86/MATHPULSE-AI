@@ -7,7 +7,8 @@ import InteractiveLesson, { Question } from './InteractiveLesson';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
-import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent, updateLessonQuizCompletion } from '../services/progressService';
+import { generateLessonQuiz, getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress } from '../types/models';
 
 interface ModuleDetailViewProps {
@@ -16,37 +17,34 @@ interface ModuleDetailViewProps {
   onEarnXP?: (xp: number, message: string) => void;
 }
 
-// Question banks per module/quiz topic
-const quizQuestionBanks: Record<string, Question[]> = {};
+// Async question loader with cache
+const quizQuestionCache: Record<string, Promise<Question[]> | Question[]> = {};
 
-// Get questions for a quiz based on its ID
-const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Question[] => {
-  // Return preloaded bank if available
-  if (quizQuestionBanks[quizId] && quizQuestionBanks[quizId].length) return quizQuestionBanks[quizId];
+const getQuestionsForLesson = async (lesson: Lesson, type: 'practice' | 'quiz'): Promise<Question[]> => {
+  const cacheKey = `${lesson.id}-${type}`;
+  if (quizQuestionCache[cacheKey]) {
+    return Promise.resolve(quizQuestionCache[cacheKey]);
+  }
 
-  // Fallback: generate lightweight sample questions so the UI is interactive
-  const count = type === 'quiz' ? 8 : 6;
-  const generated: Question[] = Array.from({ length: count }).map((_, i) => {
-    const a = i + 2;
-    const b = i + 3;
-    const correct = (a + b).toString();
-    return {
-      id: i + 1,
-      type: 'multiple-choice',
-      question: `Compute: ${a} + ${b}`,
-      options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
-      correctAnswer: correct,
-      explanation: `Add ${a} and ${b} to get ${correct}.`
-    };
+  const count = getQuestionCountForQuiz(type);
+  const promise = generateLessonQuiz({
+    lessonId: lesson.id,
+    lessonTitle: lesson.title,
+    subjectId: lesson.subjectId,
+    questionCount: count,
   });
 
-  quizQuestionBanks[quizId] = generated;
-  return generated;
+  quizQuestionCache[cacheKey] = promise;
+  const questions = await promise;
+  quizQuestionCache[cacheKey] = questions;
+  return questions;
 };
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
   const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
+  const [quizLoading, setQuizLoading] = useState(false);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
@@ -78,6 +76,34 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (!userProfile?.uid) return;
     return subscribeToUserProgress(userProfile.uid, setUserProgress);
   }, [userProfile?.uid]);
+
+  // Load quiz questions async when a quiz is selected
+  useEffect(() => {
+    if (selectedLesson?.type !== 'quiz') {
+      setQuizQuestions([]);
+      return;
+    }
+
+    const syntheticLesson: Lesson = {
+      id: selectedLesson.quiz.id,
+      title: selectedLesson.quiz.title,
+      duration: selectedLesson.quiz.duration,
+      completed: selectedLesson.quiz.completed,
+      locked: selectedLesson.quiz.locked,
+    };
+
+    setQuizLoading(true);
+    getQuestionsForLesson(syntheticLesson, 'quiz')
+      .then((questions) => {
+        setQuizQuestions(questions);
+      })
+      .catch((err) => {
+        console.error('[ModuleDetailView] Failed to load quiz questions:', err);
+      })
+      .finally(() => {
+        setQuizLoading(false);
+      });
+  }, [selectedLesson]);
 
   const dbModuleProgress = useMemo(() => {
     if (!subjectId) return null;
@@ -201,8 +227,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (selectedLesson.type === 'lesson') {
       const associatedQuiz = lessonActivityMap.get(selectedLesson.lesson.id)?.[0] ?? null;
 
-      // Show the actual lesson content viewer
-      const practiceQuizCompleted = associatedQuiz ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed) : false;
+      // Check lesson-level quiz completion (new) and module-level (existing)
+      const lessonQuizProgress = userProgress?.lessons?.[selectedLesson.lesson.id];
+      const practiceQuizCompleted = associatedQuiz
+        ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed || lessonQuizProgress?.quizCompleted === true)
+        : false;
+      const practiceQuizScore = lessonQuizProgress?.quizScore;
 
       return (
         <LessonViewer
@@ -210,6 +240,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           lessonCompletionXP={STANDARD_LESSON_XP}
           practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
+          practiceQuizScore={practiceQuizScore}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
           onBack={() => {
             setSelectedLesson(null);
@@ -225,7 +256,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           onComplete={(score, totalXP, goToNext) => {
             // Standard lesson rewards are intentionally lower to keep pacing balanced.
             const xpAmount = STANDARD_LESSON_XP;
-            console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
             onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
 
             // Persist progress for Competency Matrix (Concept Grasp)
@@ -274,7 +304,23 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       );
     } else {
       // Show the quiz interface
-      const questions = getQuestionsForLesson(selectedLesson.quiz.id, 'quiz');
+      if (quizLoading || quizQuestions.length === 0) {
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <div className="w-full max-w-xl rounded-[32px] bg-white p-6 text-center shadow-2xl">
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
+              <h2 className="text-2xl font-black text-[#0a1628] mb-2">Preparing Quiz</h2>
+              <p className="text-sm text-[#5a6578] mb-5">
+                Generating questions from curriculum using AI...
+              </p>
+              <Button onClick={() => setSelectedLesson(null)} className="rounded-xl bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold">
+                Back to Module
+              </Button>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <InteractiveLesson
           lesson={{
@@ -285,7 +331,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             completed: selectedLesson.quiz.completed,
             locked: selectedLesson.quiz.locked
           }}
-          questions={questions}
+          questions={quizQuestions}
           onBack={() => {
             if (returningToLesson) {
               setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
@@ -295,8 +341,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             }
           }}
           onComplete={(score, totalXP) => {
-            console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
-
             // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {
               void (async () => {
@@ -311,6 +355,15 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     0,
                     totalXP
                   );
+                  // Also update lesson-level quiz completion if returning from a lesson
+                  if (returningToLesson) {
+                    await updateLessonQuizCompletion(
+                      userProfile.uid,
+                      returningToLesson.id,
+                      score,
+                      true
+                    );
+                  }
                   await recalculateAndUpdateModuleProgress(
                     userProfile.uid,
                     subjectId,
@@ -533,12 +586,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                           </button>
 
                           <div className="flex flex-wrap gap-3 px-1">
-                            <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm" style={{ color: lessonAccentHex }}>
                               <BookOpen size={14} /> Study Materials
-                            </button>
-                            <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                              <Bookmark size={14} /> Flashcards
-                            </button>
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm" style={{ color: lessonAccentHex }}>
+                              <Bookmark size={14} /> Quiz
+                            </span>
                           </div>
 
                           {/* Practice Activities removed from ModuleDetailView rendering */}

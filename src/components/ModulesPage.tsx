@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BookOpen,
   Search,
-  Target,
   TrendingUp,
   Layers,
   AlertTriangle,
@@ -17,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import ModuleFolderCard from './ModuleFolderCard';
 import ModuleDetailView from './ModuleDetailView';
-import PracticeCenter from './PracticeCenter';
+
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
 import DailyCheckInModal from './DailyCheckInModal';
@@ -39,6 +38,9 @@ import {
   resolveLearnerGradeLevel,
 } from '../data/curriculumModules';
 import { getRagAnalysisContext } from '../services/apiService';
+import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
+import { getStudentCompetencyProfile } from '../services/assessmentService';
+import type { CompetencyProfileDoc } from '../types/assessment';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -47,7 +49,7 @@ interface ModulesPageProps {
   initialModuleId?: string | null;
 }
 
-type ModulesTab = 'modules' | 'recommended' | 'practice';
+type ModulesTab = 'modules' | 'recommended';
 
 const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
 
@@ -96,6 +98,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const [learningPathContext, setLearningPathContext] = useState<string | null>(null);
   const [learningPathLoading, setLearningPathLoading] = useState(false);
+
+  // Competency profile state for personalized module filtering
+  const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
+  const [competencyProfileLoading, setCompetencyProfileLoading] = useState(false);
 
 
   // Daily Check-in State (Firestore-backed)
@@ -196,6 +202,22 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     }
   }, [initialModuleId, curriculumRuntimeModules]);
 
+  // Load competency profile for personalized module filtering
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    setCompetencyProfileLoading(true);
+    getStudentCompetencyProfile(userProfile.uid)
+      .then((profile) => {
+        setCompetencyProfile(profile);
+      })
+      .catch((err) => {
+        console.error('Failed to load competency profile:', err);
+      })
+      .finally(() => {
+        setCompetencyProfileLoading(false);
+      });
+  }, [userProfile?.uid]);
+
   const normalizedRiskTopics = useMemo<DiagnosticTopicKey[]>(() => {
     const primary =
       priorityTopics.length > 0
@@ -241,7 +263,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const filteredModules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return modulePool.filter((module) => {
+    const filtered = modulePool.filter((module) => {
       const titleMatch = !query || module.title.toLowerCase().includes(query);
       const descMatch = !query || module.description.toLowerCase().includes(query);
       const lessonMatch = !query || module.lessons.some((lesson) => lesson.title.toLowerCase().includes(query));
@@ -261,7 +283,39 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
       return (titleMatch || descMatch || lessonMatch || quizMatch || competencyMatch) && subjectMatch && quarterMatch && competencyGroupMatch;
     });
-  }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter]);
+
+    // Sort by competency profile if available
+    if (competencyProfile?.competencies) {
+      const weaknesses = new Set(
+        Object.entries(competencyProfile.competencies)
+          .filter(([, score]: [string, { score: number }]) => score.score < 50)
+          .map(([compId]) => compId)
+      );
+      const strengths = new Set(
+        Object.entries(competencyProfile.competencies)
+          .filter(([, score]: [string, { score: number }]) => score.score >= 80)
+          .map(([compId]) => compId)
+      );
+
+      return filtered.sort((a, b) => {
+        const aCompetencyIds = a.competencies.map(c => c.code);
+        const bCompetencyIds = b.competencies.map(c => c.code);
+
+        const aWeaknessMatch = aCompetencyIds.some(id => weaknesses.has(id)) ? 1 : 0;
+        const bWeaknessMatch = bCompetencyIds.some(id => weaknesses.has(id)) ? 1 : 0;
+        const aStrengthMatch = aCompetencyIds.some(id => strengths.has(id)) ? 1 : 0;
+        const bStrengthMatch = bCompetencyIds.some(id => strengths.has(id)) ? 1 : 0;
+
+        // Priority: weakness-targeted > strength (reinforcement) > general
+        const aScore = aWeaknessMatch * 2 + aStrengthMatch;
+        const bScore = bWeaknessMatch * 2 + bStrengthMatch;
+
+        return bScore - aScore;
+      });
+    }
+
+    return filtered;
+  }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter, competencyProfile]);
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
@@ -348,7 +402,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             Curriculum Modules
           </h1>
           <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
-            MathPulse AI now loads modules directly from the DepEd Strengthened SHS curriculum guides for General Mathematics, Finite Mathematics 1, and Finite Mathematics 2. Content, competency flow, and assessments are automatically shown based on your learner grade level.
+            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
           </p>
           <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
             {curriculumContextLabel}
@@ -463,7 +517,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             {[
               { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
               { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
-              { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -508,14 +561,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Suggested Next</span>
               </>
             )}
-            {activeTab === 'practice' && (
-              <>
-                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center">
-                  <Target size={15} className="text-[#FFB356]" />
-                </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
-              </>
-            )}
+
           </div>
         </div>
       </div>
@@ -564,9 +610,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           transition={{ duration: 0.3 }}
           className="pb-8 mt-4"
         >
-          {activeTab === 'practice' ? (
-            <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
-          ) : activeTab === 'modules' ? (
+          {activeTab === 'modules' ? (
             <ModulesLibraryView
               modules={filteredModules}
               onSelectModule={setSelectedModule}

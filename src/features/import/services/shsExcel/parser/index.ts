@@ -36,10 +36,6 @@ function emitParseTelemetry(input: {
     console.warn(`${base} slow=true threshold=${SLOW_PARSE_WARN_MS}ms`);
     return;
   }
-
-  if (typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV)) {
-    console.info(base);
-  }
 }
 
 function emitProgress(options: ParseWorkbookOptions | undefined, event: { stage: 'idle' | 'reading' | 'detecting-format' | 'extracting' | 'normalizing' | 'validating' | 'complete' | 'failed'; message: string }) {

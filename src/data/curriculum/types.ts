@@ -101,42 +101,9 @@ export const CURRICULUM_LESSONS: CurriculumLesson[] = [
     storagePath: 'curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf',
     sourceFile: 'SDO_Navotas_STAT_PROB_SHS_1stSem_FV.pdf',
   },
-  {
-    lessonId: 'fm1-q1-fpc-1',
-    lessonTitle: 'Apply the fundamental counting principle in contextual problems.',
-    moduleId: 'fm1-q1-counting',
-    subjectId: 'finite-math-1',
-    subject: 'Finite Mathematics 1',
-    quarter: 1,
-    competencyCode: 'FM1-SHS11-Ia-1',
-    learningCompetency: 'Apply the fundamental counting principle in contextual problems.',
-    storagePath: 'curriculum/finite_math/Finite-Mathematics-1-1.pdf',
-    sourceFile: 'Finite-Mathematics-1-1.pdf',
-  },
-  {
-    lessonId: 'fm2-q1-matrices-1',
-    lessonTitle: 'Represent contextual data using matrix notation.',
-    moduleId: 'fm2-q1-matrices',
-    subjectId: 'finite-math-2',
-    subject: 'Finite Mathematics 2',
-    quarter: 1,
-    competencyCode: 'FM2-SHS11-Ia-1',
-    learningCompetency: 'Represent contextual data using matrix notation.',
-    storagePath: 'curriculum/finite_math/Finite-Mathematics-2-1.pdf',
-    sourceFile: 'Finite-Mathematics-2-1.pdf',
-  },
-  {
-    lessonId: 'org-mgmt-q1-1',
-    lessonTitle: 'Understand the fundamental concepts of organization and management.',
-    moduleId: 'org-mgmt-q1',
-    subjectId: 'org-mgmt',
-    subject: 'Organization and Management',
-    quarter: 1,
-    competencyCode: 'ABM_OM11-Ia-1',
-    learningCompetency: 'Understand the fundamental concepts of organization and management.',
-    storagePath: 'curriculum/org_mgmt/SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf',
-    sourceFile: 'SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf',
-  },
+  // NOTE: Finite Mathematics 1 & 2 and Organization & Management removed
+  // because their source PDFs are curriculum guides with insufficient
+  // content for RAG lesson generation (<10 chunks each).
 ];
 
 export function getLessonById(lessonId: string): CurriculumLesson | undefined {
