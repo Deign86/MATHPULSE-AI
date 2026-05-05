@@ -147,6 +147,30 @@ function StatusBadge({
   );
 }
 
+function ProviderBadge({
+  provider,
+  loading,
+}: {
+  provider?: string;
+  loading?: boolean;
+}) {
+  if (loading) {
+    return <span className="text-xs text-gray-400">...</span>;
+  }
+  const isDeepSeek = provider === 'deepseek';
+  return (
+    <span
+      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold border ${
+        isDeepSeek
+          ? 'bg-sky-100 text-sky-700 border-sky-300'
+          : 'bg-yellow-100 text-yellow-700 border-yellow-300'
+      }`}
+    >
+      {isDeepSeek ? 'DeepSeek API · Paid' : 'Hugging Face · Free'}
+    </span>
+  );
+}
+
 const PROFILE_BADGE_COLORS: Record<string, string> = {
   dev:    'text-blue-700 bg-blue-100 border-blue-300',
   budget: 'text-yellow-700 bg-yellow-100 border-yellow-300',
@@ -189,7 +213,7 @@ const AdminAIMonitoring: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-[#0a1628]">AI Platform Monitoring</h1>
           <p className="text-sm text-[#5a6578]">
-            Live DeepSeek AI inference health and usage metrics
+            Live AI inference health and usage metrics — DeepSeek API (paid) + Hugging Face (free)
           </p>
         </div>
 
@@ -200,6 +224,7 @@ const AdminAIMonitoring: React.FC = () => {
               <Cpu size={14} className="text-sky-500" />
 {loading ? '...' : (data?.modelId ?? 'DeepSeek-chat')}
             </span>
+            <ProviderBadge provider={data?.provider} loading={loading} />
           </div>
           <StatusBadge
             status={data?.modelStatus ?? 'Unknown'}
@@ -238,6 +263,9 @@ const AdminAIMonitoring: React.FC = () => {
             {loading ? '...' : (data?.modelId ?? 'DeepSeek-chat')}
           </span>
           <StatusBadge status={data?.modelStatus ?? 'Unknown'} loading={loading} />
+          <div className="mt-2">
+            <ProviderBadge provider={data?.provider} loading={loading} />
+          </div>
           <span className="text-gray-400 text-xs block mt-2">
             Switchable via Model Configuration
           </span>
@@ -257,6 +285,9 @@ const AdminAIMonitoring: React.FC = () => {
             loading={loading}
             testId="embedding-health-badge"
           />
+          <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold border bg-yellow-100 text-yellow-700 border-yellow-300 mt-2">
+            Hugging Face · Free Tier
+          </span>
           <span className="text-gray-400 text-xs block mt-2">
             Fixed — curriculum search index
           </span>
@@ -290,60 +321,77 @@ const AdminAIMonitoring: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Primary Metrics Grid — 4 cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MetricCard
-          label="AI Usage Cost This Month"
-          value={loading ? '...' : `$${(data?.inferenceBalance ?? 0).toFixed(2)}`}
-          subvalue={loading ? undefined : `Total: $${(data?.totalPeriodCost ?? 0).toFixed(2)} this period`}
-          icon={DollarSign}
-          color="from-emerald-500 to-teal-600"
-          testId="metric-inference-balance"
-          loading={loading}
-          testIdLabel="metric-label"
-        />
-        <MetricCard
-          label="Platform API Calls"
-          value={
-            loading
-              ? '...'
-              : `${data?.hubApiCallsUsed ?? 0} of ${data?.hubApiCallsLimit?.toLocaleString() ?? '2,500'} used`
-          }
-          icon={Gauge}
-          color="from-sky-500 to-blue-600"
-          testId="metric-hub-api-calls"
-          loading={loading}
-          testIdLabel="metric-label"
-        />
-        <MetricCard
-          label="Free GPU Time Used"
-          value={
-            loading
-              ? '...'
-              : `${data?.zeroGpuMinutesUsed ?? 0} of ${data?.zeroGpuMinutesLimit ?? 25} minutes`
-          }
-          icon={Zap}
-          color="from-violet-500 to-purple-600"
-          testId="metric-zerogpu"
-          loading={loading}
-          testIdLabel="metric-label"
-        />
-        <MetricCard
-          label="Live Model Latency"
-          value={loading ? '...' : `${data?.avgResponseTimeMs ?? 0}ms`}
-          subvalue={
-            !loading && data
-              ? data.avgResponseTimeMs > 5000
-                ? 'Slow — model may be cold'
-                : 'Within normal range'
-              : undefined
-          }
-          icon={Clock}
-          color="from-orange-500 to-red-600"
-          testId="metric-latency"
-          loading={loading}
-          testIdLabel="metric-label"
-        />
+      {/* Primary Metrics Grid — split by provider */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Section A — DeepSeek API (Paid) */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+            🔵 DeepSeek API — Paid
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MetricCard
+              label="AI Usage Cost This Month"
+              value={loading ? '...' : `$${(data?.inferenceBalance ?? 0).toFixed(2)}`}
+              subvalue={loading ? undefined : `Total: $${(data?.totalPeriodCost ?? 0).toFixed(2)} this period`}
+              icon={DollarSign}
+              color="from-emerald-500 to-teal-600"
+              testId="metric-inference-balance"
+              loading={loading}
+              testIdLabel="metric-label"
+            />
+            <MetricCard
+              label="Live Model Latency"
+              value={loading ? '...' : `${data?.avgResponseTimeMs ?? 0}ms`}
+              subvalue={
+                !loading && data
+                  ? data.avgResponseTimeMs > 5000
+                    ? 'Slow — model may be cold'
+                    : 'Within normal range'
+                  : undefined
+              }
+              icon={Clock}
+              color="from-orange-500 to-red-600"
+              testId="metric-latency"
+              loading={loading}
+              testIdLabel="metric-label"
+            />
+          </div>
+        </div>
+
+        {/* Section B — Hugging Face (Free Tier) */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+            🟡 Hugging Face — Free Tier
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MetricCard
+              label="Platform API Calls"
+              value={
+                loading
+                  ? '...'
+                  : `${data?.hubApiCallsUsed ?? 0} of ${data?.hubApiCallsLimit?.toLocaleString() ?? '2,500'} used`
+              }
+              icon={Gauge}
+              color="from-sky-500 to-blue-600"
+              testId="metric-hub-api-calls"
+              loading={loading}
+              testIdLabel="metric-label"
+            />
+            <MetricCard
+              label="Free GPU Time Used"
+              value={
+                loading
+                  ? '...'
+                  : `${data?.zeroGpuMinutesUsed ?? 0} of ${data?.zeroGpuMinutesLimit ?? 25} minutes`
+              }
+              icon={Zap}
+              color="from-violet-500 to-purple-600"
+              testId="metric-zerogpu"
+              loading={loading}
+              testIdLabel="metric-label"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Secondary Metrics + Info Row */}
@@ -369,7 +417,10 @@ const AdminAIMonitoring: React.FC = () => {
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
               <div className="flex items-center gap-3">
                 <DollarSign size={18} className="text-emerald-500" />
-                <span className="text-sm font-semibold text-[#0a1628]">Period Cost</span>
+                <div>
+                  <span className="text-sm font-semibold text-[#0a1628] block">Period Cost</span>
+                  <span className="text-xs text-[#5a6578]">DeepSeek API cost</span>
+                </div>
               </div>
               <span className="text-sm font-bold text-emerald-600">
                 {loading ? '...' : `$${(data?.totalPeriodCost ?? 0).toFixed(2)}`}
@@ -389,7 +440,7 @@ const AdminAIMonitoring: React.FC = () => {
           </div>
 
           <div className="mt-6 pt-5 border-t border-[#dde3eb]">
-            <h3 className="text-sm font-semibold text-[#0a1628] mb-3">Storage</h3>
+            <h3 className="text-sm font-semibold text-[#0a1628] mb-1">Hugging Face Storage</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <div className="flex items-center gap-3">
@@ -452,6 +503,11 @@ const AdminAIMonitoring: React.FC = () => {
               <p className="text-xs text-[#a0aec0] mt-2">
                 {loading ? '...' : data?.modelId ?? 'DeepSeek-chat'}
               </p>
+              {!loading && data && (
+                <p className="text-xs text-[#5a6578] mt-1">
+                  Provider: {data.provider === 'deepseek' ? 'DeepSeek API (Paid)' : 'Hugging Face API (Free)'}
+                </p>
+              )}
             </div>
 
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -470,7 +526,7 @@ const AdminAIMonitoring: React.FC = () => {
                 </p>
               )}
               <p className="text-xs text-[#a0aec0] mt-2">
-                Last updated from DeepSeek API
+                Last updated from {data?.provider === 'deepseek' ? 'DeepSeek API' : 'Hugging Face API'}
               </p>
             </div>
 
@@ -488,7 +544,7 @@ const AdminAIMonitoring: React.FC = () => {
                 </p>
               )}
               <p className="text-xs text-[#a0aec0] mt-2">
-                Hub API — resets every 5 minutes
+                Hugging Face Hub API — resets every 5 minutes
               </p>
             </div>
           </div>
