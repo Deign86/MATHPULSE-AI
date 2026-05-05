@@ -38,6 +38,7 @@ import {
   resolveLearnerGradeLevel,
 } from '../data/curriculumModules';
 import { getRagAnalysisContext } from '../services/apiService';
+import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
 
