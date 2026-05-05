@@ -152,7 +152,7 @@ export const awardXP = async (
   }
 };
 
-// Get leaderboard (global student rankings)
+// Get leaderboard from dedicated leaderboard collection
 export const getLeaderboard = async (
   userId?: string,
   scopedOnly: boolean = false,
@@ -165,8 +165,7 @@ export const getLeaderboard = async (
     void timeRange;
 
     const leaderboardQuery = query(
-      collection(db, 'users'),
-      where('role', '==', 'student'),
+      collection(db, 'leaderboard'),
       orderBy('totalXP', 'desc'),
       limit(limitCount)
     );
@@ -207,8 +206,7 @@ export const subscribeToLeaderboard = (
   void timeRange;
 
   const leaderboardQuery = query(
-    collection(db, 'users'),
-    where('role', '==', 'student'),
+    collection(db, 'leaderboard'),
     orderBy('totalXP', 'desc'),
     limit(limitCount)
   );
