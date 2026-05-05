@@ -13208,9 +13208,9 @@ async def generate_personalized_lesson(request: PersonalizedLessonRequest):
 
         # Retrieve curriculum context
         context_chunks = retrieve_curriculum_context(
-            query=build_lesson_query(request.topic, request.subject or "General Mathematics"),
-            subject_filter=request.subject,
-            quarter_filter=request.quarter,
+            query=build_lesson_query(request.topic, request.subject or "General Mathematics", request.quarter or 1),
+            subject=request.subject,
+            quarter=request.quarter,
             top_k=5,
         )
         context_text = format_retrieved_chunks(context_chunks)
