@@ -31,6 +31,7 @@ import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
+import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import {
   QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
@@ -413,6 +414,7 @@ const getAudioContext = () => {
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
+  const { isSubjectAvailable } = useSubjectAvailability();
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
@@ -2687,7 +2689,7 @@ const QuizBattlePage: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
                             {gradeScopedSubjects.map((entry) => {
-                              const isAvailable = entry.pdfAvailable !== false;
+                              const isAvailable = isSubjectAvailable(entry.id);
                               return (
                                 <SelectItem
                                   key={entry.id}
