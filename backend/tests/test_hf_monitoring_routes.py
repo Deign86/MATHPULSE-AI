@@ -18,9 +18,9 @@ main_module.firebase_firestore = None
 if getattr(main_module, "firebase_auth", None) is None:
     main_module.firebase_auth = MagicMock()
 main_module.firebase_auth.verify_id_token = MagicMock(return_value={
-    "uid": "admin-uid",
-    "email": "admin@example.com",
-    "role": "admin",
+    "uid": "test-teacher-uid",
+    "email": "teacher@example.com", 
+    "role": "teacher",
 })
 
 admin_client = TestClient(app, headers={"Authorization": "Bearer admin-token"})
