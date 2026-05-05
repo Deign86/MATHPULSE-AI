@@ -256,7 +256,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           onComplete={(score, totalXP, goToNext) => {
             // Standard lesson rewards are intentionally lower to keep pacing balanced.
             const xpAmount = STANDARD_LESSON_XP;
-            console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
             onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
 
             // Persist progress for Competency Matrix (Concept Grasp)
@@ -342,8 +341,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             }
           }}
           onComplete={(score, totalXP) => {
-            console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
-
             // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {
               void (async () => {

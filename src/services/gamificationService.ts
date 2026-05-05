@@ -96,8 +96,6 @@ export const awardXP = async (
     const currentXP = previousCurrentXP + xpAmount;
     const totalXP = previousTotalXP + xpAmount;
     const currentLevel = userData.level || 1;
-    
-    console.log(`🏆 XP Award - User: ${userId}, Amount: ${xpAmount}, Previous currentXP: ${previousCurrentXP}, New: ${currentXP}, Type: ${type}`);
 
     let newLevel = currentLevel;
     const accumulatedXP = totalXP;
@@ -132,7 +130,6 @@ export const awardXP = async (
     };
     
     await updateDoc(userRef, updatePayload);
-    console.log(`💾 Firebase Update - currentXP: ${previousCurrentXP} -> ${currentXP}, totalXP: ${previousTotalXP} -> ${totalXP}, level: ${newLevel}`);
 
     // Log XP activity
     const activityRef = doc(collection(db, 'xpActivities'));

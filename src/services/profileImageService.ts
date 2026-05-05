@@ -200,13 +200,11 @@ export const uploadProfilePicture = async ({
     throw new Error('The signed-in user does not match the profile being edited.');
   }
 
-  console.log('[PROFILE UPLOAD] Starting image optimisation…');
   const optimizedBlob = await withTimeout(
     resizeProfilePictureToBlob(file, PROFILE_PICTURE_OUTPUT_SIZE),
     20_000,
     'Image processing',
   );
-  console.log('[PROFILE UPLOAD] Image optimised, uploading to Storage…');
 
   const storagePath = buildProfilePictureStoragePath(profileUid, file.name);
   const storageRef = ref(storage, storagePath);
@@ -225,7 +223,6 @@ export const uploadProfilePicture = async ({
     10_000,
     'Download URL retrieval',
   );
-  console.log('[PROFILE UPLOAD] Download URL obtained:', downloadURL);
 
   // Update Firebase Auth profile (non-blocking timeout guard)
   try {
@@ -234,7 +231,6 @@ export const uploadProfilePicture = async ({
       10_000,
       'Auth profile update',
     );
-    console.log('[PROFILE UPLOAD] Auth profile updated.');
   } catch (authErr) {
     // Auth profile update is best-effort – the URL is already in Storage.
     console.warn('[PROFILE UPLOAD] Auth profile update failed (non-fatal):', authErr);
@@ -244,13 +240,11 @@ export const uploadProfilePicture = async ({
   // cache that causes updateDoc to hang indefinitely.
   if (syncFirestore) {
     try {
-      console.log(`[PROFILE UPLOAD] Syncing to Firestore (REST) users/${profileUid}`);
       await withTimeout(
         syncPhotoToFirestoreREST(activeUser, profileUid, downloadURL),
         10_000,
         'Firestore profile sync',
       );
-      console.log('[PROFILE UPLOAD] Firestore REST sync successful!');
     } catch (e) {
       console.error('[PROFILE UPLOAD] Firestore REST sync failed:', e);
       console.warn(
