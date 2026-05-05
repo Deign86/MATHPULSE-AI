@@ -26,6 +26,7 @@ import {
   MAX_RETRIES,
   type RetryFetchOptions,
 } from './apiUtils';
+import { handleRateLimitError } from '../utils/rateLimitHandler';
 import { auth } from '../lib/firebase';
 import type { ClassSectionMetadata } from '../types/models';
 import type {
@@ -1318,6 +1319,17 @@ export async function apiFetch<T>(
     // Enrich the error log with endpoint context
     if (err instanceof ApiError) {
       logApiError(endpoint, method, `HTTP ${err.status}: ${err.responseBody.slice(0, 300)}`);
+      
+      // After logging the error and before throwing, check for rate limit
+      if (err.status === 429) {
+        await handleRateLimitError(
+          new Response(err.responseBody, { 
+            status: 429,
+            headers: { 'retry-after': '60' }
+          }),
+          endpoint
+        );
+      }
     } else if (err instanceof ApiTimeoutError) {
       logApiError(endpoint, method, `Timeout after ${err.timeoutMs}ms`);
     } else if (err instanceof ApiNetworkError) {
