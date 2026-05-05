@@ -53,9 +53,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Collection-level rule for leaderboard - must be before document-level rule
-    match /users {
+    // Leaderboard collection - publicly readable, written only by backend
+    match /leaderboard/{docId} {
       allow read: if isSignedIn();
+      allow write: if false;  // Backend/admin only via firebase-admin
     }
 
     match /users/{userId}/settings/{settingsId} {
