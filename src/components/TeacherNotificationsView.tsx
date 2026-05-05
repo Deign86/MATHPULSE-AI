@@ -10,11 +10,17 @@ import {
   Loader2,
   MessageSquare,
   Trophy,
+  Zap,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNotifications } from '@/features/notifications';
 
-const TeacherNotificationsView: React.FC = () => {
+interface TeacherNotificationsViewProps {
+  liveActivity?: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
+  atRiskStudents?: { name: string; riskLevel: string; weakestTopic: string }[];
+}
+
+const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liveActivity, atRiskStudents }) => {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
 
   const formatRelativeTime = (date: Date): string => {
@@ -125,6 +131,37 @@ const TeacherNotificationsView: React.FC = () => {
           </div>
         )         : (
           <div>
+            {liveActivity && liveActivity.length > 0 && (
+              <div>
+                {liveActivity.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="w-full text-left px-4 py-4 border-b border-border transition-colors hover:bg-accent/40"
+                  >
+                    <div className="flex gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        activity.type === 'success' ? 'bg-[#75D06A]/15 text-[#4D9F46]' :
+                        activity.type === 'warning' ? 'bg-[#F08386]/15 text-[#C65E63]' :
+                        'bg-[#9956DE]/15 text-[#9956DE]'
+                      }`}>
+                        <Zap size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-body font-bold text-foreground line-clamp-1">{activity.student} — {activity.action}</h4>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground font-body leading-relaxed line-clamp-2">Topic: {activity.topic}</p>
+                          </div>
+                          <div className="text-xs text-muted-foreground font-body flex-shrink-0">{activity.time}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {notifications.map((notification) => {
               const Icon = iconForType(notification.type);
               const badge = badgeForType(notification.type);
