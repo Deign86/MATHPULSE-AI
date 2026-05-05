@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
   Calculator, Award, RefreshCw, AlertTriangle, Eye, EyeOff, PlayCircle, NotebookPen,
-  Clock, Key, ClipboardCheck, Target
+  Clock, Key, ClipboardCheck, Target, Zap
 } from 'lucide-react';
 import { VideoLessonSection } from './notebook/VideoLessonSection';
 import { motion, AnimatePresence } from 'motion/react';
