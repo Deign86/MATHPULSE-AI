@@ -312,6 +312,30 @@ service cloud.firestore {
       allow write: if false; // Backend-only
     }
 
+    // ── PDF processing jobs (admin read/write) ──
+    match /pdf_processing_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── Dynamic modules (authenticated read, backend-only write) ──
+    match /dynamic_modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── Dynamic lessons (authenticated read, backend-only write) ──
+    match /dynamic_lessons/{lessonId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── RAG chunks (authenticated read, backend-only write) ──
+    match /rag_chunks/{chunkId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // ── Quiz battle sessions (read for participants) ──
     match /quiz_battle_sessions/{sessionId} {
       allow read: if isSignedIn() && resource.data.player_ids.hasAny([request.auth.uid]);
@@ -353,6 +377,30 @@ service cloud.firestore {
     match /platformConfig/{docId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
+    }
+
+    // ── PDF Processing Jobs (admin read/write) ──
+    match /pdf_processing_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── Dynamic Modules (auth read, backend-only write) ──
+    match /dynamic_modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── Dynamic Lessons (auth read, backend-only write) ──
+    match /dynamic_lessons/{lessonId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── RAG Chunks (auth read, backend-only write) ──
+    match /rag_chunks/{chunkId} {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     // Deny-by-default for unknown collections.

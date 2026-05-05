@@ -63,6 +63,11 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                 {badgeLabel || 'Locked'}
               </span>
             )}
+            {module.sourceType === 'dynamic' && (
+              <span className="px-2.5 py-1 rounded-full bg-cyan-500/80 text-white/90 text-[10px] font-black uppercase tracking-wider backdrop-blur-sm">
+                AI
+              </span>
+            )}
           </div>
 
           <h3 className="text-2xl md:text-[22px] font-display font-black text-white leading-[1.1] mb-2 drop-shadow-sm pr-4 line-clamp-2">

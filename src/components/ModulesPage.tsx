@@ -30,6 +30,8 @@ import { getDailyCheckInState, claimDailyCheckIn } from '../services/dailyCheckI
 import { notify } from '@/features/notifications';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { cacheKeys } from '../utils/cacheKeys';
+import { useDynamicModules } from '../hooks/useDynamicModules';
+import type { DynamicModule } from '../services/dynamicModuleService';
 import {
   CURRICULUM_SUBJECT_META,
   type CurriculumModuleRuntime,
@@ -88,9 +90,25 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     () => getCurriculumModulesForLearner(activeGradeLevel, assignedSubjects),
     [activeGradeLevel, assignedSubjects],
   );
+
+  // ── Dynamic modules (real-time from Firestore) ──
+  const { dynamicModules, loading: dynamicModulesLoading } = useDynamicModules(
+    subjectFilter !== 'all' ? subjectFilter : undefined,
+  );
+
+  // ── Merge static + dynamic modules ──
+  const allModules = useMemo<CurriculumModuleRuntime[]>(() => {
+    const merged: CurriculumModuleRuntime[] = [...curriculumRuntimeModules];
+    dynamicModules.forEach((dm) => {
+      if (!merged.some((m) => m.id === dm.id)) {
+        merged.push(dm as CurriculumModuleRuntime);
+      }
+    });
+    return merged;
+  }, [curriculumRuntimeModules, dynamicModules]);
   
-  const initialModule = initialModuleId 
-    ? curriculumRuntimeModules.find(m => m.id === initialModuleId) || null
+  const initialModule = initialModuleId
+    ? allModules.find(m => m.id === initialModuleId) || null
     : null;
 
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
@@ -196,10 +214,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   // Handle navigation from initialModuleId when component is already mounted
   useEffect(() => {
     if (initialModuleId) {
-      const foundMod = curriculumRuntimeModules.find(m => m.id === initialModuleId);
+      const foundMod = allModules.find(m => m.id === initialModuleId);
       if (foundMod) setSelectedModule(foundMod);
     }
-  }, [initialModuleId, curriculumRuntimeModules]);
+  }, [initialModuleId, allModules]);
 
   // Load competency profile for personalized module filtering
   useEffect(() => {
@@ -239,7 +257,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     queryFn: async () => {
-      const base = curriculumRuntimeModules;
+      const base = allModules;
       if (normalizedRiskTopics.length === 0) return base;
 
       const ranking = new Map<string, number>(
@@ -550,6 +568,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   <Layers size={15} strokeWidth={2.5} />
                 </div>
                 <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">DepEd Strengthened SHS Modules</span>
+                {dynamicModulesLoading && (
+                  <div className="w-4 h-4 rounded-full border-2 border-indigo-300 border-t-indigo-600 animate-spin flex-shrink-0" aria-label="Loading dynamic modules" />
+                )}
               </>
             )}
             {activeTab === 'recommended' && (

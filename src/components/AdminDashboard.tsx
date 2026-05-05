@@ -10,6 +10,7 @@ import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import AdminAIMonitoring from './AdminAIMonitoring';
 import AdminSubjects from './admin/AdminSubjects';
+import PDFUploadManager from './admin/PDFUploadManager';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
 import {
@@ -219,6 +220,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 {activeTab === 'AI Monitoring' && 'AI Monitoring'}
                 {activeTab === 'Settings' && 'Settings'}
                 {activeTab === 'Subjects' && 'Subjects'}
+                {activeTab === 'PDF Upload' && 'PDF Upload'}
               </h1>
               <p className="text-xs text-[#5a6578] font-body">
                 {activeTab === 'Overview' && 'System Overview & Management'}
@@ -229,6 +231,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 {activeTab === 'AI Monitoring' && 'Platform AI usage and system health'}
                 {activeTab === 'Settings' && 'Configure platform settings'}
                 {activeTab === 'Subjects' && 'Manage subjects and module availability'}
+                {activeTab === 'PDF Upload' && 'Upload and process curriculum PDFs'}
               </p>
             </div>
           </div>
@@ -467,6 +470,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           {activeTab === 'AI Monitoring' && <AdminAIMonitoring />}
           {activeTab === 'Settings' && <AdminSettings onDirtyChange={setSettingsDirty} />}
           {activeTab === 'Subjects' && <AdminSubjects />}
+          {activeTab === 'PDF Upload' && <PDFUploadManager />}
         </main>
       </div>
 

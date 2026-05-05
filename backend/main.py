@@ -78,6 +78,7 @@ from services.user_provisioning_service import (
     UserProvisioningService,
 )
 from routes.rag_routes import router as rag_router
+from routes.pdf_pipeline import router as pdf_pipeline_router
 from routes.admin_model_routes import router as admin_model_router
 from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
@@ -1025,6 +1026,7 @@ app.include_router(diagnostic_router)
 app.include_router(video_router)
 app.include_router(quiz_battle_router)
 app.include_router(quiz_generation_router)
+app.include_router(pdf_pipeline_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────

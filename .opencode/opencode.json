@@ -1,3 +1,51 @@
 {
-  "$schema": "https://opencode.ai/config.json"
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/gpt-4.1",
+  "small_model": "opencode/gpt-4.1-nano",
+  "share": "disabled",
+  "plugin": [
+    "opencode-minimax-easy-vision",
+    "opencode-power-pack@git+https://github.com/waybarrios/opencode-power-pack.git",
+    "oh-my-openagent@latest"
+  ],
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true,
+      "headers": {
+        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+      }
+    },
+    "chromedevtools": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
+    },
+    "vercel": {
+      "type": "remote",
+      "url": "https://mcp.vercel.com",
+      "enabled": true,
+      "oauth": {}
+    },
+    "memory-bank": {
+      "type": "local",
+      "command": ["npx", "-y", "@neko0721/memory-bank-mcp"],
+      "enabled": true
+    },
+    "openrouter_image": {
+      "type": "local",
+      "command": ["npx", "-y", "openrouter-image-mcp"],
+      "environment": {
+        "OPENROUTER_API_KEY": "{env:OPENROUTER_API_KEY}",
+        "OPENROUTER_MODEL": "nvidia/nemotron-nano-12b-vl:free"
+      },
+      "enabled": false
+    }
+  },
+  "instructions": [
+    "When images are pasted or screenshots are provided, analyze them thoroughly WITHOUT being asked",
+    "Extract and describe console errors, UI issues, and visual bugs from screenshots",
+    "For error screenshots: note error type, message, line numbers, and stack traces if visible",
+    "Always automatically respond to pasted images - do not wait for the user to ask for analysis"
+  ]
 }

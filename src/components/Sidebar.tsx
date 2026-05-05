@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, FileUp } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
 import { cn } from './ui/utils';
@@ -69,6 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             { icon: LayoutDashboard, label: 'Overview' },
             { icon: Users, label: 'User Management' },
             { icon: GraduationCap, label: 'Subjects' },
+            { icon: FileUp, label: 'PDF Upload' },
             { icon: BookOpen, label: 'Content' },
           ],
         },

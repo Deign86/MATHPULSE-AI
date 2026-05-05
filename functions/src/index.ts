@@ -43,6 +43,7 @@ export { onDiagnosticComplete } from "./triggers/onDiagnosticComplete";
 export { onQuizSubmitted } from "./triggers/onQuizSubmitted";
 export { onAttendanceUpdate } from "./triggers/onAttendanceUpdate";
 export { onContentUpdated } from "./triggers/onContentUpdated";
+export { pdfPipelineTrigger } from "./triggers/pdfPipelineTrigger";
 export {
   onStudentProfileUpdated,
   runInactivityReassessmentSweep,
