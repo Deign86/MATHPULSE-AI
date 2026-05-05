@@ -454,7 +454,6 @@ const App = () => {
           proficiencyProfile: result.proficiencyProfile,
           assessmentType: 'initial',
         });
-        console.log('[OK] Competency profile saved');
       } catch (err) {
         console.error('[WARN] Failed to save competency profile:', err);
       }

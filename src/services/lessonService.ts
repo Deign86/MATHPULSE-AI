@@ -101,7 +101,6 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh
 
   // Retry once with forced token refresh on 401
   if (res.status === 401 && currentUser && !forceRefresh) {
-    console.log('[lessonService] Received 401, retrying with refreshed token...');
     return apiFetch<T>(endpoint, options, true);
   }
 

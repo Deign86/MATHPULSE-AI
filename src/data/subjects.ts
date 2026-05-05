@@ -182,10 +182,6 @@ export function getSubjectById(id: SubjectId) {
   return SHS_MATH_SUBJECTS.find(s => s.id === id);
 }
 
-export function getTopicsBySubject(subjectId: SubjectId) {
-  return getSubjectById(subjectId)?.topics ?? [];
-}
-
 export function getAllTopics(): { id: string; name: string; unit: string }[] {
   return SHS_MATH_SUBJECTS.flatMap(s => [...s.topics]);
 }
