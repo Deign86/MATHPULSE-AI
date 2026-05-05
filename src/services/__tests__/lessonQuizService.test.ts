@@ -1,14 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { generateLessonQuiz, getQuestionCountForQuiz } from '../lessonQuizService';
 
-// Mock Firebase to avoid API key errors in tests
-vi.mock('../lib/firebase', () => ({
-  db: {},
-  auth: {},
-  storage: {},
-  cloudFunctions: {},
-}));
-
+// Mock apiService for tests
 vi.mock('./apiService', () => ({
   apiFetch: vi.fn().mockResolvedValue({
     questions: [
