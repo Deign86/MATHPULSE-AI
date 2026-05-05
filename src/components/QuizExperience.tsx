@@ -52,9 +52,26 @@ interface QuizExperienceProps {
 }
 
 // ─── AI → Internal Question Converter ───────────────────────
+// Normalize hyphenated type (multiple-choice) to underscore (multiple_choice)
+function normalizeQuestionType(type: string | undefined): string {
+  if (!type) return 'identification';
+  const mapping: Record<string, string> = {
+    'multiple-choice': 'multiple_choice',
+    'true-false': 'true_false',
+    'fill-in-blank': 'fill_in_blank',
+    'identification': 'identification',
+    'word-problem': 'word_problem',
+  };
+  return mapping[type] || type;
+}
 
 function aiQuestionToInternal(q: AIQuizQuestion): QuizQuestion {
-  if (q.questionType === 'multiple_choice' && q.options && q.options.length > 0) {
+  const questionType = normalizeQuestionType(q.type || q.questionType);
+  // Also handle legacy underscore format  
+  const legacyType = q.questionType || questionType;
+  
+  if (questionType === 'multiple_choice' || legacyType === 'multiple_choice') {
+    if (q.options && q.options.length > 0) {
     const correctIdx = q.options.findIndex(
       (o) => o.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase(),
     );
