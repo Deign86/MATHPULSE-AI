@@ -66,12 +66,12 @@ function normalizeQuestionType(type: string | undefined): string {
 }
 
 function aiQuestionToInternal(q: AIQuizQuestion): QuizQuestion {
-  const questionType = normalizeQuestionType(q.type || q.questionType);
-  // Also handle legacy underscore format  
-  const legacyType = q.questionType || questionType;
+  // Handle both 'type' (from backend) and 'questionType' (from interface)
+  const rawType = (q as unknown as { type?: string }).type || q.questionType;
+  const questionType = normalizeQuestionType(rawType);
+  const isMultipleChoice = questionType === 'multiple_choice' || q.questionType === 'multiple_choice';
   
-  if (questionType === 'multiple_choice' || legacyType === 'multiple_choice') {
-    if (q.options && q.options.length > 0) {
+  if (isMultipleChoice && q.options && q.options.length > 0) {
     const correctIdx = q.options.findIndex(
       (o) => o.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase(),
     );

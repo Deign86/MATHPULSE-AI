@@ -53,6 +53,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Allow authenticated users to get leaderboard (read all students for rankings)
+    match /users {
+      allow read: if request.auth != null;
+    }
+
     match /users/{userId}/settings/{settingsId} {
       allow read: if isSelf(userId) || isAdmin();
       allow create, update: if isSelf(userId) || isAdmin();
