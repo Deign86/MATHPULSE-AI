@@ -30,6 +30,7 @@ const getQuestionsForLesson = async (lesson: Lesson, type: 'practice' | 'quiz'):
   const promise = generateLessonQuiz({
     lessonId: lesson.id,
     lessonTitle: lesson.title,
+    subjectId: lesson.subjectId,
     questionCount: count,
   });
 
