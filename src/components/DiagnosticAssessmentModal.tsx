@@ -351,7 +351,6 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
           workflowMode,
           assessmentType,
         );
-        console.log('[OK] Automation: diagnostic pipeline completed');
       } catch (err) {
         console.error('[WARN] Automation: diagnostic pipeline failed:', err);
       } finally {
