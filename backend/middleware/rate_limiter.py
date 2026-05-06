@@ -112,7 +112,7 @@ class MathPulseLimiter:
 rate_limiter = MathPulseLimiter()
 
 
-def setup_rate_limiting(app):
+def setup_rate_limiting(app) -> None:
     """
     Set up rate limiting for the FastAPI application.
     """
