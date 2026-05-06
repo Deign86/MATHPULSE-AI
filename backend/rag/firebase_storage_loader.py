@@ -121,7 +121,7 @@ def list_curriculum_blobs(prefix: str = "curriculum/") -> List[Dict[str, str]]:
 # are included in the RAG pipeline.
 
 PDF_METADATA: Dict[str, dict] = {
-    # General Mathematics — SDO Navotas teaching module (100 pages, ~125k chars)
+    # General Mathematics Q1 — SDO Navotas teaching module (100 pages, ~117k chars)
     "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf": {
         "subject": "General Mathematics",
         "subjectId": "gen-math",
@@ -130,22 +130,46 @@ PDF_METADATA: Dict[str, dict] = {
         "quarter": 1,
         "storage_path": "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
     },
-    # Business Mathematics — SDO Navotas teaching module (100 pages, ~145k chars)
-    "curriculum/business_math/SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf": {
-        "subject": "Business Mathematics",
-        "subjectId": "business-math",
+    # General Mathematics Q2 — Interest & Annuities modules (~27-35 pages each)
+    "curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
         "type": "sdo_module",
-        "content_domain": "business",
-        "quarter": 1,
-        "storage_path": "curriculum/business_math/SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf",
     },
-    # Statistics and Probability — SDO Navotas teaching module (100 pages, ~156k chars)
-    "curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf": {
+    "curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "sdo_module",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf",
+    },
+    "curriculum/general_math/genmath_q2_mod3_SolvingProblemsInvolvingSimpleandCompoundInterest_v2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "sdo_module",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/general_math/genmath_q2_mod3_SolvingProblemsInvolvingSimpleandCompoundInterest_v2.pdf",
+    },
+    "curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "sdo_module",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf",
+    },
+    # Statistics and Probability — Full textbook (331 pages, ~607k chars)
+    "curriculum/stat_prob/Full.pdf": {
         "subject": "Statistics and Probability",
         "subjectId": "stats-prob",
         "type": "sdo_module",
         "content_domain": "statistics",
         "quarter": 1,
-        "storage_path": "curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf",
+        "storage_path": "curriculum/stat_prob/Full.pdf",
     },
 }

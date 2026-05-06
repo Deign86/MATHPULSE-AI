@@ -253,7 +253,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     setSelectedLesson({ type: 'quiz', quiz: practiceQuiz });
   }, []);
 
-  const handleComplete = useCallback((score: number, totalXP: number, goToNext: boolean) => {
+  const handleComplete = useCallback((score?: number, totalXP?: number, goToNext?: boolean) => {
     const current = selectedLessonRef.current;
     if (current?.type !== 'lesson' || !current.lesson) return;
     const currentLesson = current.lesson;

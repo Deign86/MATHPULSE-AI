@@ -1,7 +1,7 @@
 import type { Module, Lesson } from './subjects';
 import { CURRICULUM_LESSONS } from './curriculum/types';
 
-export type GradeLevel = 'Grade 11' | 'Grade 12';
+export type GradeLevel = 'Grade 11'; // Serving Grade 11 only
 export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 export type CurriculumSubjectId =
   | 'gen-math'
@@ -116,11 +116,9 @@ const SUBJECT_META: Record<CurriculumSubjectId, SubjectMeta> = {
 
 const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE: Record<GradeLevel, CurriculumSubjectId[]> = {
   'Grade 11': ['gen-math'],
-  'Grade 12': [],
 };
 
 const COMPETENCY_VERBS_G11 = 'Foundational competency flow with guided examples, step-by-step vocabulary support, and scaffolded checkpoints.';
-const COMPETENCY_VERBS_G12 = 'Application-first flow with concise explanations, independent reasoning tasks, and decision-making scenarios.';
 
 const b = (
   id: string,
@@ -219,13 +217,11 @@ export const CURRICULUM_MODULE_BLUEPRINTS: CurriculumModuleBlueprint[] = [
     { code: 'GM11-PSF-3', outcome: 'Construct sound arguments supported by formal reasoning.' },
   ], 'Submits a logic audit that classifies validity and fallacies in real arguments.', 'Media literacy and policy argument review', ['Grade 11'], 'Grade 11'),
 
-  // NOTE: Finite Mathematics 1 & 2 modules removed because their source PDFs
-  // are curriculum guides with insufficient content for RAG lesson generation.
+  // NOTE: Grade 12 Basic Calculus removed - serving Grade 11 only
 ];
 
-function adaptDescriptionForGrade(module: CurriculumModuleBlueprint, activeGradeLevel: GradeLevel): string {
-  const gradeText = activeGradeLevel === 'Grade 11' ? COMPETENCY_VERBS_G11 : COMPETENCY_VERBS_G12;
-  return `${module.moduleDescription} ${gradeText}`;
+function adaptDescriptionForGrade(module: CurriculumModuleBlueprint, _activeGradeLevel: GradeLevel): string {
+  return `${module.moduleDescription} ${COMPETENCY_VERBS_G11}`;
 }
 
 function makeLessons(module: CurriculumModuleBlueprint, activeGradeLevel: GradeLevel) {
@@ -237,7 +233,7 @@ function makeLessons(module: CurriculumModuleBlueprint, activeGradeLevel: GradeL
       title: competency.outcome,
       duration,
       completed: false,
-      locked: index > 0,
+locked: false,
       description: `${competency.code} · ${competency.outcome}`,
       competencyCode: competency.code,
       subjectId: module.subjectId as Lesson['subjectId'],
@@ -284,8 +280,6 @@ function makeQuizzes(module: CurriculumModuleBlueprint, assessments: CurriculumA
 }
 
 function normalizeGradeLevel(rawGrade?: string | null): GradeLevel {
-  const normalized = rawGrade?.trim().toLowerCase();
-  if (normalized?.includes('12')) return 'Grade 12';
   return 'Grade 11';
 }
 
