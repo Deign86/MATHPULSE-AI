@@ -53,6 +53,37 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const onEarnXPRef = useRef(onEarnXP);
   useEffect(() => { onEarnXPRef.current = onEarnXP; }, [onEarnXP]);
 
+  // Restore previously selected lesson from sessionStorage (BUG 9c fix)
+  // On page refresh, this re-opens the lesson instead of showing the module overview
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`mathpulse_module_${module.id}_selectedLesson`);
+      if (saved) {
+        const { lessonId } = JSON.parse(saved);
+        const lesson = module.lessons.find(l => l.id === lessonId);
+        if (lesson) {
+          setSelectedLesson({ lesson, type: 'lesson' });
+        }
+      }
+    } catch { /* non-fatal — module overview shows by default */ }
+  // eslint-disable-next-line react-hooks/exhaustive-props -- intentionally runs once on mount only
+  }, []); // Empty deps = run once on mount
+
+  // Persist selected lesson to sessionStorage whenever it changes
+  useEffect(() => {
+    if (selectedLesson?.type === 'lesson' && selectedLesson.lesson) {
+      try {
+        sessionStorage.setItem(`mathpulse_module_${module.id}_selectedLesson`, JSON.stringify({
+          lessonId: selectedLesson.lesson.id,
+        }));
+      } catch { /* non-fatal */ }
+    } else if (selectedLesson === null) {
+      try {
+        sessionStorage.removeItem(`mathpulse_module_${module.id}_selectedLesson`);
+      } catch { /* non-fatal */ }
+    }
+  }, [selectedLesson, module.id]);
+
   const moduleLevel = useMemo(() => {
     const candidate = Number(module.id.split('-').pop());
     return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
@@ -368,6 +399,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           onProgressUpdate={handleProgressUpdate}
           onComplete={handleComplete}
           onTryItQuizComplete={handleTryItQuizComplete}
+          onContinueLearning={() => handleComplete(undefined, undefined, true)}
         />
       );
     } else {

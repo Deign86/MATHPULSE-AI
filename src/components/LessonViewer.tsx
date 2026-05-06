@@ -28,6 +28,8 @@ interface LessonViewerProps {
   onProgressUpdate?: (percent: number) => void;
   /** Fires when the inline Try It Yourself quiz is completed — use to persist to Firestore and award XP */
   onTryItQuizComplete?: (scorePercent: number) => void;
+  /** Fires when user clicks Continue Learning in the Try It Yourself quiz overlay — advances to next lesson */
+  onContinueLearning?: () => void;
 }
 
 function LoadingSkeleton() {
@@ -295,6 +297,7 @@ function SectionRenderer({
               console.log(`[TryItYourselfQuiz] Completed: ${score}/${total}`);
             }}
             onQuizComplete={onTryItQuizComplete}
+            onClose={onContinueLearning}
           />
         </div>
       );
@@ -417,6 +420,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onComplete,
   onProgressUpdate,
   onTryItQuizComplete,
+  onContinueLearning,
 }) => {
   const { userProfile } = useAuth();
   const [currentSection, setCurrentSection] = useState(0);
