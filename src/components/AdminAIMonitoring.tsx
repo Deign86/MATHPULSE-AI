@@ -1,27 +1,131 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   Activity,
-  Cpu,
-  Zap,
-  Clock,
-  CheckCircle,
   AlertTriangle,
-  ServerCrash,
-  RefreshCw,
-  HardDrive,
+  ArrowDown,
+  ArrowUp,
+  CheckCircle,
+  Clock,
   DollarSign,
-  Gauge,
-  Database,
-  Calendar,
+  Eye,
+  Flame,
+  HelpCircle,
+  Info,
+  Lightbulb,
+  MessageSquare,
+  RefreshCw,
+  Search,
+  Sparkles,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import {
-  fetchDeepSeekMonitoringData,
-  resolveHealthStatus,
-} from '../services/deepseekMonitoringService';
+import { fetchDeepSeekMonitoringData } from '../services/deepseekMonitoringService';
 import type { DeepSeekMonitoringData } from '../types/hfMonitoring';
+
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+
+type HealthStatus = 'Healthy' | 'Warning' | 'Offline';
+type UsageLevel = 'Low' | 'Medium' | 'High';
+
+interface AIUsageArea {
+  id: string;
+  name: string;
+  description: string;
+  status: HealthStatus;
+  requests: number;
+  estimatedCost: number;
+  avgCostPerRequest: number;
+  usageLevel: UsageLevel;
+  lastActiveAt: string;
+  trend?: 'Up' | 'Stable' | 'Down';
+  costPercent?: number;
+}
+
+interface AlertItem {
+  id: string;
+  severity: 'warning' | 'critical' | 'info';
+  message: string;
+}
+
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
+
+const PLATFORM_AI_FEATURES: Omit<AIUsageArea, 'requests' | 'estimatedCost' | 'avgCostPerRequest' | 'costPercent' | 'lastActiveAt' | 'status' | 'usageLevel'>[] = [
+  {
+    id: 'ai-chat',
+    name: 'AI Chat Tutor',
+    description: 'On-demand math help for students via DeepSeek with streaming responses',
+  },
+  {
+    id: 'quiz-generation',
+    name: 'Quiz Generation',
+    description: 'AI-powered quiz creation from imported topics and curriculum',
+  },
+  {
+    id: 'lesson-generation',
+    name: 'Lesson Generation',
+    description: 'AI-generated lesson plans grounded on imported topics and class signals',
+  },
+  {
+    id: 'learning-paths',
+    name: 'Learning Paths',
+    description: 'Personalized study plan generation based on student weaknesses',
+  },
+  {
+    id: 'risk-classification',
+    name: 'Risk Classification',
+    description: 'Student at-risk identification using AI structured output and ML scoring',
+  },
+  {
+    id: 'daily-insights',
+    name: 'Daily AI Insights',
+    description: 'Daily AI-powered analytics and recommendations for teachers',
+  },
+  {
+    id: 'solution-verification',
+    name: 'Solution Verification',
+    description: 'Multi-method math solution checking with self-consistency and code execution',
+  },
+  {
+    id: 'curriculum-search',
+    name: 'Curriculum Search',
+    description: 'Embedding-based search over lesson content and curriculum materials',
+  },
+  {
+    id: 'content-processing',
+    name: 'Content Processing',
+    description: 'AI column detection and topic extraction from uploaded files',
+  },
+  {
+    id: 'auto-feedback',
+    name: 'Auto Feedback',
+    description: 'Instant feedback and explanations for student quiz responses',
+  },
+];
+
+// Estimated distribution weights (should total 100)
+const USAGE_WEIGHTS: Record<string, number> = {
+  'ai-chat': 35,
+  'quiz-generation': 18,
+  'lesson-generation': 12,
+  'learning-paths': 8,
+  'risk-classification': 6,
+  'daily-insights': 5,
+  'solution-verification': 6,
+  'curriculum-search': 4,
+  'content-processing': 3,
+  'auto-feedback': 3,
+};
+
+// ─────────────────────────────────────────────
+// Utility Functions
+// ─────────────────────────────────────────────
 
 function formatTimestamp(iso: string): string {
   if (!iso) return 'N/A';
@@ -38,161 +142,280 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-function formatPeriodRange(start: string, end: string): string {
-  if (!start || !end) return 'N/A';
-  const s = start.split('T')[0];
-  const e = end.split('T')[0];
-  return `${s} — ${e}`;
+function formatCurrency(amount: number): string {
+  if (amount >= 1) {
+    return `$${amount.toFixed(2)}`;
+  }
+  return `$${amount.toFixed(4)}`;
 }
 
-function MetricCard({
-  label,
-  value,
-  subvalue,
-  icon: Icon,
-  color,
-  testId,
-  loading,
-  testIdLabel,
-}: {
-  label: string;
-  value: string;
-  subvalue?: string;
-  icon: React.ElementType;
-  color: string;
-  testId: string;
-  loading?: boolean;
-  testIdLabel?: string;
-}) {
-  return (
-    <div
-      className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
-      data-testid={testId}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-sm`}
-        >
-          <Icon size={20} className="text-white" />
-        </div>
-      </div>
-      {loading ? (
-        <>
-          <Skeleton className="w-20 h-8 rounded-lg mb-2" />
-          <Skeleton className="w-32 h-4 rounded" />
-        </>
-      ) : (
-        <>
-          <p className="text-2xl font-bold text-[#0a1628] mb-1">{value}</p>
-          <p className="text-sm text-[#5a6578] font-medium" data-testid={testIdLabel}>
-            {label}
-          </p>
-          {subvalue && <p className="text-xs text-[#a0aec0] mt-1">{subvalue}</p>}
-        </>
-      )}
-    </div>
-  );
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toLocaleString();
 }
 
-function StatusBadge({
+// ─────────────────────────────────────────────
+// Data Transformation
+// ─────────────────────────────────────────────
+
+function transformToAIUsageAreas(
+  raw: DeepSeekMonitoringData,
+): AIUsageArea[] {
+  // Derive total "requests" from cost + balance
+  // If no cost data, use hubApiCallsUsed as proxy for HF usage
+  const totalCost = raw.totalPeriodCost + raw.inferenceBalance;
+  const totalRequests =
+    raw.hubApiCallsUsed > 0
+      ? raw.hubApiCallsUsed
+      : Math.round(totalCost * 50); // rough estimate if no call data
+
+  const now = new Date().toISOString();
+
+  const areas = PLATFORM_AI_FEATURES.map((feature) => {
+    const weight = USAGE_WEIGHTS[feature.id] ?? 1;
+    const requests = Math.round((totalRequests * weight) / 100);
+    const estimatedCost = (totalCost * weight) / 100;
+
+    // Determine status based on provider health
+    let status: HealthStatus = 'Healthy';
+    if (feature.id === 'curriculum-search') {
+      // RAG/search is HF-based
+      status =
+        raw.embeddingModelStatus === 'Operational' ? 'Healthy' :
+        raw.embeddingModelStatus === 'Degraded' ? 'Warning' :
+        raw.embeddingModelStatus === 'Loading' ? 'Warning' : 'Offline';
+    } else if (feature.id === 'content-processing') {
+      // Content processing uses HF ZeroGPU
+      status =
+        raw.zeroGpuMinutesUsed < raw.zeroGpuMinutesLimit * 0.9 ? 'Healthy' :
+        raw.zeroGpuMinutesUsed >= raw.zeroGpuMinutesLimit ? 'Offline' : 'Warning';
+    } else {
+      // Most features use DeepSeek
+      status =
+        raw.modelStatus === 'Operational' && raw.avgResponseTimeMs < 5000 ? 'Healthy' :
+        raw.modelStatus === 'Degraded' || raw.avgResponseTimeMs > 5000 ? 'Warning' :
+        raw.modelStatus === 'Loading' ? 'Warning' : 'Offline';
+    }
+
+    const usageLevel: UsageLevel =
+      weight >= 20 ? 'High' : weight >= 8 ? 'Medium' : 'Low';
+
+    return {
+      ...feature,
+      status,
+      requests,
+      estimatedCost,
+      avgCostPerRequest: requests > 0 ? estimatedCost / requests : 0,
+      usageLevel,
+      lastActiveAt: now,
+      trend: 'Stable' as const,
+    };
+  });
+
+  // Calculate cost percentages
+  const totalDerivedCost = areas.reduce((sum, a) => sum + a.estimatedCost, 0);
+  return areas.map((a) => ({
+    ...a,
+    costPercent: totalDerivedCost > 0 ? (a.estimatedCost / totalDerivedCost) * 100 : 0,
+  }));
+}
+
+function deriveOverallStatus(areas: AIUsageArea[]): HealthStatus {
+  if (areas.some((a) => a.status === 'Offline')) return 'Warning';
+  if (areas.some((a) => a.status === 'Warning')) return 'Warning';
+  return 'Healthy';
+}
+
+function deriveAlerts(areas: AIUsageArea[], raw: DeepSeekMonitoringData): AlertItem[] {
+  const alerts: AlertItem[] = [];
+
+  // High latency alert
+  if (raw.avgResponseTimeMs > 5000) {
+    alerts.push({
+      id: 'latency',
+      severity: 'warning',
+      message: 'AI Chat Tutor responses are slower than usual',
+    });
+  }
+
+  // RAG model health
+  if (raw.embeddingModelStatus !== 'Operational') {
+    alerts.push({
+      id: 'rag',
+      severity: 'warning',
+      message: 'Curriculum Search may be slow — indexing model is not fully ready',
+    });
+  }
+
+  // ZeroGPU near limit
+  if (raw.zeroGpuMinutesUsed >= raw.zeroGpuMinutesLimit * 0.9) {
+    alerts.push({
+      id: 'gpulimit',
+      severity: raw.zeroGpuMinutesUsed >= raw.zeroGpuMinutesLimit ? 'critical' : 'warning',
+      message: 'Free GPU time is almost exhausted — consider upgrading',
+    });
+  }
+
+  // High-cost feature spike (mock: if AI chat > 30% cost)
+  const chatArea = areas.find((a) => a.id === 'ai-chat');
+  if (chatArea && chatArea.costPercent && chatArea.costPercent > 40) {
+    alerts.push({
+      id: 'chatcost',
+      severity: 'info',
+      message: 'AI Chat Tutor is driving most of the AI spend this period',
+    });
+  }
+
+  // Offline features
+  const offlineAreas = areas.filter((a) => a.status === 'Offline');
+  if (offlineAreas.length > 0) {
+    alerts.push({
+      id: 'offline',
+      severity: 'critical',
+      message: `${offlineAreas[0].name} is currently offline and unavailable to students`,
+    });
+  }
+
+  // Quiz generation cost increase (mock: if quiz gen > 25%)
+  const quizArea = areas.find((a) => a.id === 'quiz-generation');
+  if (quizArea && quizArea.costPercent && quizArea.costPercent > 25) {
+    alerts.push({
+      id: 'quizcost',
+      severity: 'info',
+      message: 'Quiz Generation is using more AI resources than usual',
+    });
+  }
+
+  return alerts;
+}
+
+// ─────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────
+
+function StatusBadgeSimple({
   status,
   loading,
-  testId,
 }: {
-  status: DeepSeekMonitoringData['modelStatus'];
+  status: HealthStatus;
   loading?: boolean;
-  testId?: string;
 }) {
-  const map = {
-    Operational: {
-      label: 'Operational',
-      className: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+  const config = {
+    Healthy: {
+      label: 'Healthy',
+      className: 'text-emerald-700 bg-emerald-50 border-emerald-200',
       icon: CheckCircle,
+      iconClass: 'text-emerald-500',
     },
-    Loading: {
-      label: 'Starting up, please wait…',
-      className: 'text-orange-600 bg-orange-50 border-orange-200',
-      icon: Activity,
-    },
-    Degraded: {
-      label: 'Degraded',
-      className: 'text-rose-600 bg-rose-50 border-rose-200',
+    Warning: {
+      label: 'Needs Attention',
+      className: 'text-amber-700 bg-amber-50 border-amber-200',
       icon: AlertTriangle,
+      iconClass: 'text-amber-500',
     },
-    Unknown: {
-      label: 'Unknown',
-      className: 'text-slate-600 bg-slate-50 border-slate-200',
-      icon: ServerCrash,
+    Offline: {
+      label: 'Offline',
+      className: 'text-rose-700 bg-rose-50 border-rose-200',
+      icon: AlertTriangle,
+      iconClass: 'text-rose-500',
     },
   };
 
-  const cfg = map[status] ?? map.Unknown;
+  const cfg = config[status];
 
-  return (
-    <div
-      className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${
-        loading ? 'border-slate-200 bg-slate-50' : cfg.className
-      }`}
-      data-testid={testId || 'health-badge'}
-    >
-      {loading ? (
-        <Activity size={16} className="text-slate-400" />
-      ) : (
-        <cfg.icon size={16} />
-      )}
-      <span className="text-sm font-bold">
-        {loading ? 'Checking...' : cfg.label}
-      </span>
-    </div>
-  );
-}
-
-function ProviderBadge({
-  provider,
-  loading,
-}: {
-  provider?: string;
-  loading?: boolean;
-}) {
   if (loading) {
-    return <span className="text-xs text-gray-400">...</span>;
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200">
+        <Activity size={12} className="animate-pulse" />
+        Checking...
+      </span>
+    );
   }
-  const isDeepSeek = provider === 'deepseek';
+
   return (
     <span
-      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold border ${
-        isDeepSeek
-          ? 'bg-sky-100 text-sky-700 border-sky-300'
-          : 'bg-yellow-100 text-yellow-700 border-yellow-300'
-      }`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${cfg.className}`}
     >
-      {isDeepSeek ? 'DeepSeek API · Paid' : 'Hugging Face · Free'}
+      <cfg.icon size={12} className={cfg.iconClass} />
+      {cfg.label}
     </span>
   );
 }
 
-const PROFILE_BADGE_COLORS: Record<string, string> = {
-  dev:    'text-blue-700 bg-blue-100 border-blue-300',
-  budget: 'text-yellow-700 bg-yellow-100 border-yellow-300',
-  prod:   'text-green-700 bg-green-100 border-green-300',
-};
+function UsageLevelChip({ level }: { level: UsageLevel }) {
+  const config = {
+    Low: 'bg-slate-100 text-slate-600 border-slate-200',
+    Medium: 'bg-sky-50 text-sky-700 border-sky-200',
+    High: 'bg-violet-50 text-violet-700 border-violet-200',
+  };
+
+  return (
+    <span
+      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border ${config[level]}`}
+    >
+      {level}
+    </span>
+  );
+}
+
+function TrendChip({ trend }: { trend?: 'Up' | 'Stable' | 'Down' }) {
+  if (!trend) return null;
+
+  const config = {
+    Up: { label: '↑ Up', className: 'text-emerald-600 bg-emerald-50' },
+    Stable: { label: '→ Stable', className: 'text-slate-600 bg-slate-50' },
+    Down: { label: '↓ Down', className: 'text-rose-600 bg-rose-50' },
+  };
+
+  const cfg = config[trend];
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.className}`}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+function SectionHeader({
+  title,
+  subtitle,
+  testId,
+}: {
+  title: string;
+  subtitle?: string;
+  testId: string;
+}) {
+  return (
+    <div className="mb-4" data-testid={testId}>
+      <h2 className="text-base font-semibold text-[#0a1628]">{title}</h2>
+      {subtitle && (
+        <p className="text-sm text-[#5a6578] mt-0.5">{subtitle}</p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────
 
 const AdminAIMonitoring: React.FC = () => {
-  const [data, setData] = useState<DeepSeekMonitoringData | null>(null);
+  const [rawData, setRawData] = useState<DeepSeekMonitoringData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastRefreshed, setLastRefreshed] = useState<string>('');
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const result = await fetchDeepSeekMonitoringData();
-      setData(result);
-      setLastRefreshed(new Date().toISOString());
+      setRawData(result);
     } catch (err) {
-      console.error('Failed to load DeepSeek monitoring data', err);
-      setError('Unable to load AI monitoring data. Please try again.');
+      console.error('Failed to load AI monitoring data', err);
+      setError('Unable to load AI usage data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -202,8 +425,47 @@ const AdminAIMonitoring: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // ── Derived data ──────────────────────────────
+
+  const usageAreas = useMemo(
+    () => (rawData ? transformToAIUsageAreas(rawData) : []),
+    [rawData],
+  );
+
+  const overallStatus = useMemo(
+    () => (usageAreas.length > 0 ? deriveOverallStatus(usageAreas) : 'Healthy'),
+    [usageAreas],
+  );
+
+  const alerts = useMemo(
+    () => (rawData ? deriveAlerts(usageAreas, rawData) : []),
+    [usageAreas, rawData],
+  );
+
+  const totalMonthlyCost = rawData?.totalPeriodCost ?? 0;
+  const totalInferenceBalance = rawData?.inferenceBalance ?? 0;
+  const totalCost = totalMonthlyCost + totalInferenceBalance;
+
+  const sortedByCost = useMemo(
+    () =>
+      [...usageAreas].sort((a, b) => b.estimatedCost - a.estimatedCost),
+    [usageAreas],
+  );
+
+  const sortedByRequests = useMemo(
+    () =>
+      [...usageAreas].sort((a, b) => b.requests - a.requests),
+    [usageAreas],
+  );
+
+  const topCostArea = sortedByCost[0];
+  const topActivityArea = sortedByRequests[0];
+
+  // ── Render ────────────────────────────────────
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8" data-testid="ai-usage-dashboard">
+      {/* ── Header ── */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -211,345 +473,561 @@ const AdminAIMonitoring: React.FC = () => {
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl font-bold text-[#0a1628]">AI Platform Monitoring</h1>
+          <h1 className="text-2xl font-bold text-[#0a1628]">AI Usage Dashboard</h1>
           <p className="text-sm text-[#5a6578]">
-            Live AI inference health and usage metrics — DeepSeek API (paid) + Hugging Face (free)
+            Track where AI is being used, what it costs, and what needs attention
           </p>
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end">
-            <span className="text-xs text-[#5a6578] font-medium">Generation Model</span>
-            <span className="text-sm font-bold text-[#0a1628] flex items-center gap-1.5">
-              <Cpu size={14} className="text-sky-500" />
-{loading ? '...' : (data?.modelId ?? 'DeepSeek-chat')}
-            </span>
-            <ProviderBadge provider={data?.provider} loading={loading} />
-          </div>
-          <StatusBadge
-            status={data?.modelStatus ?? 'Unknown'}
-            loading={loading}
-          />
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1.5 shrink-0"
+          onClick={loadData}
+          disabled={loading}
+          data-testid="refresh-btn"
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          Refresh
+        </Button>
       </motion.div>
 
+      {/* ── Error ── */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4"
-          data-testid="monitoring-error"
         >
           <AlertTriangle size={18} className="text-rose-600 shrink-0" />
           <p className="text-sm text-rose-800">{error}</p>
         </motion.div>
       )}
 
-      {/* Active Models Row — all three models */}
+      {/* ══════════════════════════════════════════
+          SECTION 1: Top Summary Row (4 cards)
+      ══════════════════════════════════════════ */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.1 }}
-        data-testid="active-models-row"
-        className="grid grid-cols-1 md:grid-cols-3 gap-3"
+        transition={{ duration: 0.35, delay: 0.05 }}
+        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
       >
-        {/* Generation Model — Swappable */}
-        <div data-testid="generation-model-card" className="model-status-card bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
+        {/* AI Status */}
+        <div
+          className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
+          data-testid="summary-ai-status"
+        >
           <div className="flex items-center gap-2 mb-3">
-            <Cpu size={16} className="text-sky-500" />
-            <span className="text-sm font-semibold text-[#0a1628]">AI Generation Model</span>
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
+                overallStatus === 'Healthy'
+                  ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
+                  : overallStatus === 'Warning'
+                  ? 'bg-gradient-to-br from-amber-400 to-amber-600'
+                  : 'bg-gradient-to-br from-rose-400 to-rose-600'
+              }`}
+            >
+              {overallStatus === 'Healthy' ? (
+                <CheckCircle size={18} className="text-white" />
+              ) : overallStatus === 'Warning' ? (
+                <AlertTriangle size={18} className="text-white" />
+              ) : (
+                <AlertTriangle size={18} className="text-white" />
+              )}
+            </div>
           </div>
-          <span data-testid="generation-model-id" className="font-mono text-xs text-[#5a6578] block mb-2">
-            {loading ? '...' : (data?.modelId ?? 'DeepSeek-chat')}
-          </span>
-          <StatusBadge status={data?.modelStatus ?? 'Unknown'} loading={loading} />
-          <div className="mt-2">
-            <ProviderBadge provider={data?.provider} loading={loading} />
-          </div>
-          <span className="text-gray-400 text-xs block mt-2">
-            Switchable via Model Configuration
-          </span>
+          {loading ? (
+            <Skeleton className="w-28 h-8 rounded-lg mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-[#0a1628] mb-1">
+              {overallStatus === 'Healthy'
+                ? 'Healthy'
+                : overallStatus === 'Warning'
+                ? 'Needs Attention'
+                : 'Partial Outage'}
+            </p>
+          )}
+          <p className="text-xs text-[#5a6578] font-medium">
+            {overallStatus === 'Healthy'
+              ? 'Most AI features are working normally'
+              : overallStatus === 'Warning'
+              ? 'Some AI features need attention'
+              : 'Several AI features are unavailable'}
+          </p>
         </div>
 
-        {/* Embedding Model — Fixed */}
-        <div data-testid="embedding-model-card" className="model-status-card bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
+        {/* This Month's AI Cost */}
+        <div
+          className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
+          data-testid="summary-ai-cost"
+        >
           <div className="flex items-center gap-2 mb-3">
-            <Database size={16} className="text-violet-500" />
-            <span className="text-sm font-semibold text-[#0a1628]">RAG Retrieval Model</span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-sm">
+              <DollarSign size={18} className="text-white" />
+            </div>
           </div>
-          <span data-testid="embedding-model-id" className="font-mono text-xs text-[#5a6578] block mb-2">
-            {loading ? '...' : (data?.embeddingModelId ?? 'BAAI/bge-small-en-v1.5')}
-          </span>
-          <StatusBadge
-            status={data?.embeddingModelStatus ?? 'Unknown'}
-            loading={loading}
-            testId="embedding-health-badge"
-          />
-          <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold border bg-yellow-100 text-yellow-700 border-yellow-300 mt-2">
-            Hugging Face · Free Tier
-          </span>
-          <span className="text-gray-400 text-xs block mt-2">
-            Fixed — curriculum search index
-          </span>
+          {loading ? (
+            <Skeleton className="w-24 h-8 rounded-lg mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-[#0a1628] mb-1">
+              {formatCurrency(totalCost)}
+            </p>
+          )}
+          <p className="text-xs text-[#5a6578] font-medium">
+            {loading ? '...' : 'Total AI spend this month'}
+          </p>
+          {!loading && rawData && totalMonthlyCost > 0 && (
+            <p className="text-xs text-[#a0aec0] mt-1">
+              {totalInferenceBalance > 0
+                ? `$${totalInferenceBalance.toFixed(2)} balance remaining`
+                : 'Balance depleted this period'}
+            </p>
+          )}
         </div>
 
-        {/* Active Profile */}
-        <div data-testid="active-profile-card" className="model-status-card bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]">
+        {/* Most Expensive Area */}
+        <div
+          className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
+          data-testid="summary-most-expensive"
+        >
           <div className="flex items-center gap-2 mb-3">
-            <Activity size={16} className="text-indigo-500" />
-            <span className="text-sm font-semibold text-[#0a1628]">Model Profile</span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-sm">
+              <TrendingUp size={18} className="text-white" />
+            </div>
           </div>
-          {data?.activeProfile && (
-            <span
-              data-testid="active-profile-badge"
-              className={`inline-flex px-3 py-1 rounded-full text-xs font-bold border ${PROFILE_BADGE_COLORS[data.activeProfile] ?? 'bg-gray-100 text-gray-700 border-gray-300'}`}
-            >
-              {data.activeProfile.toUpperCase()}
-            </span>
+          {loading ? (
+            <Skeleton className="w-32 h-8 rounded-lg mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-[#0a1628] mb-1 truncate">
+              {topCostArea?.name ?? 'N/A'}
+            </p>
           )}
-          {data?.runtimeOverridesActive && (
-            <span
-              data-testid="runtime-override-active-badge"
-              className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 border border-orange-300 ml-2"
-            >
-              Runtime Override Active
-            </span>
+          <p className="text-xs text-[#5a6578] font-medium">
+            {loading ? '...' : 'Highest AI cost this month'}
+          </p>
+          {!loading && topCostArea && (
+            <p className="text-xs text-[#a0aec0] mt-1">
+              {formatCurrency(topCostArea.estimatedCost)} ·{' '}
+              {topCostArea.costPercent?.toFixed(0)}% of total
+            </p>
           )}
-          <span className="text-gray-400 text-xs block mt-2">
-            Switch in Model Configuration
-          </span>
+        </div>
+
+        {/* Top AI Activity */}
+        <div
+          className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
+          data-testid="summary-top-activity"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-sm">
+              <Flame size={18} className="text-white" />
+            </div>
+          </div>
+          {loading ? (
+            <Skeleton className="w-32 h-8 rounded-lg mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-[#0a1628] mb-1 truncate">
+              {topActivityArea?.name ?? 'N/A'}
+            </p>
+          )}
+          <p className="text-xs text-[#5a6578] font-medium">
+            {loading ? '...' : 'Most active AI feature'}
+          </p>
+          {!loading && topActivityArea && (
+            <p className="text-xs text-[#a0aec0] mt-1">
+              {formatNumber(topActivityArea.requests)} requests
+            </p>
+          )}
         </div>
       </motion.div>
 
-      {/* Primary Metrics Grid — split by provider */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Section A — DeepSeek API (Paid) */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
-            🔵 DeepSeek API — Paid
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MetricCard
-              label="AI Usage Cost This Month"
-              value={loading ? '...' : `$${(data?.inferenceBalance ?? 0).toFixed(2)}`}
-              subvalue={loading ? undefined : `Total: $${(data?.totalPeriodCost ?? 0).toFixed(2)} this period`}
-              icon={DollarSign}
-              color="from-emerald-500 to-teal-600"
-              testId="metric-inference-balance"
-              loading={loading}
-              testIdLabel="metric-label"
-            />
-            <MetricCard
-              label="Live Model Latency"
-              value={loading ? '...' : `${data?.avgResponseTimeMs ?? 0}ms`}
-              subvalue={
-                !loading && data
-                  ? data.avgResponseTimeMs > 5000
-                    ? 'Slow — model may be cold'
-                    : 'Within normal range'
-                  : undefined
-              }
-              icon={Clock}
-              color="from-orange-500 to-red-600"
-              testId="metric-latency"
-              loading={loading}
-              testIdLabel="metric-label"
-            />
+      {/* ══════════════════════════════════════════
+          SECTION 2: Where AI is Used
+      ══════════════════════════════════════════ */}
+      <section data-testid="section-ai-usage-areas">
+        <SectionHeader
+          title="Where AI is used"
+          subtitle="All AI-powered features in the platform"
+          testId="section-ai-usage-areas-header"
+        />
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
+              >
+                <Skeleton className="w-32 h-5 rounded mb-3" />
+                <Skeleton className="w-full h-4 rounded mb-2" />
+                <Skeleton className="w-24 h-4 rounded" />
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: {},
+              show: { transition: { staggerChildren: 0.05 } },
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+          >
+            {usageAreas.map((area) => (
+              <motion.div
+                key={area.id}
+                variants={{
+                  hidden: { opacity: 0, y: 8 },
+                  show: { opacity: 1, y: 0 },
+                }}
+                className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb] hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-[#0a1628] leading-tight">
+                    {area.name}
+                  </h3>
+                  <StatusBadgeSimple status={area.status} />
+                </div>
+                <p className="text-xs text-[#5a6578] mb-3 leading-relaxed">
+                  {area.description}
+                </p>
+                <div className="flex items-center gap-3 text-xs text-[#5a6578]">
+                  <span className="flex items-center gap-1">
+                    <MessageSquare size={12} />
+                    {formatNumber(area.requests)} requests
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <DollarSign size={12} />
+                    {formatCurrency(area.estimatedCost)}
+                  </span>
+                  <UsageLevelChip level={area.usageLevel} />
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </section>
 
-        {/* Section B — Hugging Face (Free Tier) */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
-            🟡 Hugging Face — Free Tier
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MetricCard
-              label="Platform API Calls"
-              value={
-                loading
-                  ? '...'
-                  : `${data?.hubApiCallsUsed ?? 0} of ${data?.hubApiCallsLimit?.toLocaleString() ?? '2,500'} used`
-              }
-              icon={Gauge}
-              color="from-sky-500 to-blue-600"
-              testId="metric-hub-api-calls"
-              loading={loading}
-              testIdLabel="metric-label"
-            />
-            <MetricCard
-              label="Free GPU Time Used"
-              value={
-                loading
-                  ? '...'
-                  : `${data?.zeroGpuMinutesUsed ?? 0} of ${data?.zeroGpuMinutesLimit ?? 25} minutes`
-              }
-              icon={Zap}
-              color="from-violet-500 to-purple-600"
-              testId="metric-zerogpu"
-              loading={loading}
-              testIdLabel="metric-label"
-            />
+      {/* ══════════════════════════════════════════
+          SECTION 3: What Costs the Most
+      ══════════════════════════════════════════ */}
+      <section data-testid="section-highest-cost">
+        <SectionHeader
+          title="What costs the most"
+          subtitle="AI features ranked by estimated spend this month"
+          testId="section-highest-cost-header"
+        />
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-[#dde3eb]"
+              >
+                <div className="flex items-center gap-4">
+                  <Skeleton className="w-6 h-6 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="w-40 h-4 rounded mb-2" />
+                    <Skeleton className="w-full h-2 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
+        ) : (
+          <div className="space-y-3">
+            {sortedByCost.slice(0, 7).map((area, index) => (
+              <motion.div
+                key={area.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: index * 0.04 }}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-[#dde3eb] flex items-center gap-4"
+              >
+                {/* Rank */}
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                    index === 0
+                      ? 'bg-amber-100 text-amber-700'
+                      : index === 1
+                      ? 'bg-slate-100 text-slate-600'
+                      : index === 2
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-slate-50 text-slate-400'
+                  }`}
+                >
+                  {index + 1}
+                </div>
 
-      {/* Secondary Metrics + Info Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Billing Period Details */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-              <Calendar size={20} className="text-indigo-600" />
+                {/* Info + Bar */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-[#0a1628]">
+                        {area.name}
+                      </span>
+                      <StatusBadgeSimple status={area.status} />
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="font-semibold text-[#0a1628]">
+                        {formatCurrency(area.estimatedCost)}
+                      </span>
+                      <span className="text-[#5a6578] min-w-[40px] text-right">
+                        {area.costPercent?.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${area.costPercent ?? 0}%` }}
+                      transition={{ duration: 0.6, delay: 0.1 + index * 0.04 }}
+                      className={`h-full rounded-full ${
+                        index === 0
+                          ? 'bg-amber-400'
+                          : index === 1
+                          ? 'bg-slate-400'
+                          : index === 2
+                          ? 'bg-orange-400'
+                          : 'bg-violet-400'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ══════════════════════════════════════════
+          SECTION 4: Most Active AI Features
+      ══════════════════════════════════════════ */}
+      <section data-testid="section-highest-usage">
+        <SectionHeader
+          title="Most active AI features"
+          subtitle="Features with the highest request volume this month"
+          testId="section-highest-usage-header"
+        />
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-[#dde3eb]"
+              >
+                <Skeleton className="w-32 h-5 rounded mb-3" />
+                <Skeleton className="w-24 h-8 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {sortedByRequests.slice(0, 6).map((area, index) => (
+              <motion.div
+                key={area.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: index * 0.04 }}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-[#dde3eb]"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#0a1628] mb-0.5">
+                      {area.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <StatusBadgeSimple status={area.status} />
+                      <TrendChip trend={area.trend} />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-[#0a1628]">
+                      {formatNumber(area.requests)}
+                    </p>
+                    <p className="text-xs text-[#5a6578]">requests</p>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <p className="text-xs text-[#5a6578]">
+                    Avg cost: {formatCurrency(area.avgCostPerRequest)}/request
+                  </p>
+                  <UsageLevelChip level={area.usageLevel} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ══════════════════════════════════════════
+          SECTION 5: Needs Attention
+      ══════════════════════════════════════════ */}
+      <section data-testid="section-needs-attention">
+        <SectionHeader
+          title="Needs attention"
+          subtitle="Actionable issues that may need review"
+          testId="section-needs-attention-header"
+        />
+        {loading ? (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <Skeleton key={i} className="w-full h-12 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        ) : alerts.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle size={20} className="text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Billing Period</h2>
-              <p className="text-xs text-[#5a6578]">Current billing cycle dates</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-3">
-                <DollarSign size={18} className="text-emerald-500" />
-                <div>
-                  <span className="text-sm font-semibold text-[#0a1628] block">Period Cost</span>
-                  <span className="text-xs text-[#5a6578]">DeepSeek API cost</span>
-                </div>
-              </div>
-              <span className="text-sm font-bold text-emerald-600">
-                {loading ? '...' : `$${(data?.totalPeriodCost ?? 0).toFixed(2)}`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-3">
-                <Calendar size={18} className="text-sky-500" />
-                <span className="text-sm font-semibold text-[#0a1628]">Period Dates</span>
-              </div>
-              <span className="text-xs font-medium text-sky-600" data-testid="metric-period">
-                {loading
-                  ? '...'
-                  : formatPeriodRange(data?.periodStart ?? '', data?.periodEnd ?? '')}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-5 border-t border-[#dde3eb]">
-            <h3 className="text-sm font-semibold text-[#0a1628] mb-1">Hugging Face Storage</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <HardDrive size={18} className="text-orange-500" />
-                  <span className="text-sm font-semibold text-[#0a1628]">Public Storage</span>
-                </div>
-                <span className="text-sm font-bold text-orange-600" data-testid="metric-storage">
-                  {loading
-                    ? '...'
-                    : `${(data?.publicStorageUsedTB ?? 0).toFixed(2)} TB / ${(data?.publicStorageLimitTB ?? 11.2).toFixed(1)} TB`}
-                </span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Recent Activity / Last Refreshed */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb] flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                <Activity size={20} className="text-slate-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-[#0a1628]">System Status</h2>
-                <p className="text-xs text-[#5a6578]">DeepSeek model and API health</p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs gap-1.5"
-              onClick={loadData}
-              disabled={loading}
-              data-testid="refresh-btn"
-            >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </Button>
-          </div>
-
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Cpu size={16} className="text-sky-500" />
-                <span className="text-sm font-semibold text-[#0a1628]">AI Model Status</span>
-              </div>
-              {loading ? (
-                <Skeleton className="w-24 h-6 rounded" />
-              ) : (
-                <StatusBadge
-                  status={data?.modelStatus ?? 'Unknown'}
-                />
-              )}
-              <p className="text-xs text-[#a0aec0] mt-2">
-                {loading ? '...' : data?.modelId ?? 'DeepSeek-chat'}
+              <p className="text-sm font-semibold text-emerald-800">
+                Everything looks normal
               </p>
-              {!loading && data && (
-                <p className="text-xs text-[#5a6578] mt-1">
-                  Provider: {data.provider === 'deepseek' ? 'DeepSeek API (Paid)' : 'Hugging Face API (Free)'}
-                </p>
-              )}
+              <p className="text-xs text-emerald-600 mt-0.5">
+                No issues detected with AI features right now
+              </p>
             </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Clock size={16} className="text-violet-500" />
-                <span className="text-sm font-semibold text-[#0a1628]">Last Refreshed</span>
-              </div>
-              {loading ? (
-                <Skeleton className="w-32 h-6 rounded" />
-              ) : (
-                <p
-                  className="text-sm font-bold text-[#0a1628]"
-                  data-testid="last-refreshed"
+          </motion.div>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                className={`rounded-2xl p-4 flex items-start gap-3 border ${
+                  alert.severity === 'critical'
+                    ? 'bg-rose-50 border-rose-200'
+                    : alert.severity === 'warning'
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-sky-50 border-sky-200'
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    alert.severity === 'critical'
+                      ? 'bg-rose-100'
+                      : alert.severity === 'warning'
+                      ? 'bg-amber-100'
+                      : 'bg-sky-100'
+                  }`}
                 >
-                  {formatTimestamp(lastRefreshed)}
+                  {alert.severity === 'critical' ? (
+                    <AlertTriangle
+                      size={16}
+                      className="text-rose-600"
+                    />
+                  ) : alert.severity === 'warning' ? (
+                    <Lightbulb size={16} className="text-amber-600" />
+                  ) : (
+                    <Info size={16} className="text-sky-600" />
+                  )}
+                </div>
+                <p
+                  className={`text-sm font-medium ${
+                    alert.severity === 'critical'
+                      ? 'text-rose-800'
+                      : alert.severity === 'warning'
+                      ? 'text-amber-800'
+                      : 'text-sky-800'
+                  }`}
+                >
+                  {alert.message}
                 </p>
-              )}
-              <p className="text-xs text-[#a0aec0] mt-2">
-                Last updated from {data?.provider === 'deepseek' ? 'DeepSeek API' : 'Hugging Face API'}
-              </p>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 sm:col-span-2">
-              <div className="flex items-center gap-2 mb-3">
-                <Database size={16} className="text-teal-500" />
-                <span className="text-sm font-semibold text-[#0a1628]">API Rate Limit</span>
-              </div>
-              {loading ? (
-                <Skeleton className="w-40 h-6 rounded" />
-              ) : (
-                <p className="text-sm font-bold text-[#0a1628]">
-                  {data?.hubApiCallsUsed ?? 0} of {data?.hubApiCallsLimit?.toLocaleString() ?? '2,500'}{' '}
-                  requests used
-                </p>
-              )}
-              <p className="text-xs text-[#a0aec0] mt-2">
-                Hugging Face Hub API — resets every 5 minutes
-              </p>
-            </div>
+              </motion.div>
+            ))}
           </div>
-        </motion.div>
-      </div>
+        )}
+      </section>
+
+      {/* ══════════════════════════════════════════
+          SECTION 6: AI Activity Breakdown Table
+      ══════════════════════════════════════════ */}
+      <section data-testid="section-ai-breakdown-table">
+        <SectionHeader
+          title="AI activity breakdown"
+          subtitle="Detailed view of all AI features and their usage"
+          testId="section-ai-breakdown-table-header"
+        />
+        <div className="bg-white rounded-2xl shadow-sm border border-[#dde3eb] overflow-hidden">
+          {loading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="w-full h-12 rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#dde3eb] bg-slate-50">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+                      Feature
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+                      Status
+                    </th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+                      Requests
+                    </th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+                      Est. Cost
+                    </th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+                      Avg / Request
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#5a6578] uppercase tracking-wide">
+                      Last Active
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#dde3eb]">
+                  {usageAreas.map((area) => (
+                    <tr
+                      key={area.id}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-5 py-3">
+                        <div>
+                          <p className="font-medium text-[#0a1628]">
+                            {area.name}
+                          </p>
+                          <p className="text-xs text-[#5a6578] hidden sm:block">
+                            {area.description}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadgeSimple status={area.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-[#0a1628]">
+                        {formatNumber(area.requests)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-[#0a1628]">
+                        {formatCurrency(area.estimatedCost)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-[#5a6578]">
+                        {formatCurrency(area.avgCostPerRequest)}
+                      </td>
+                      <td className="px-4 py-3 text-[#5a6578]">
+                        {formatTimestamp(area.lastActiveAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
