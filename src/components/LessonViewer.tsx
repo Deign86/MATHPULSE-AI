@@ -12,7 +12,7 @@ import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
 import { useLessonContent } from '../hooks/useLessonContent';
 import type { LucideIcon } from 'lucide-react';
-import type { RagLessonSection } from '../services/lessonService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LessonViewerProps {
   lesson: Lesson & { subjectId?: string; lessonId?: string; competencyCode?: string };
@@ -417,6 +417,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onProgressUpdate,
   onTryItQuizComplete,
 }) => {
+  const { userProfile } = useAuth();
   const [currentSection, setCurrentSection] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -698,7 +699,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                          />
                     </div>
 
-                    {sources.length > 0 && (
+                    {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
                       <details className="rounded-xl border border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-3 text-xs text-slate-500 shadow-sm">
                         <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
                           {sources.length} source{sources.length > 1 ? 's' : ''} used
