@@ -4,6 +4,7 @@ import { apiFetch } from './apiService';
 interface LessonQuizParams {
   lessonId: string;
   lessonTitle: string;
+  topic?: string; // specific lesson topic (e.g., "Simple Interest"), overrides lessonTitle for RAG retrieval
   subjectId?: string;
   competencyCode?: string;
   questionCount?: number;
@@ -84,7 +85,7 @@ const FALLBACK_QUESTIONS: Question[] = [
  * become available for quiz generation — no code changes needed.
  */
 export async function generateLessonQuiz(params: LessonQuizParams): Promise<Question[]> {
-  const { lessonTitle, subjectId, competencyCode, questionCount = 6 } = params;
+  const { lessonTitle, topic, subjectId, competencyCode, questionCount = 6 } = params;
 
   // Derive subject name from subjectId or use default
   const subjectName = _deriveSubjectName(subjectId) || 'General Mathematics';
@@ -97,7 +98,7 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        topic: lessonTitle,
+        topic: topic || lessonTitle,
         subject: subjectName,
         lessonTitle,
         questionCount,

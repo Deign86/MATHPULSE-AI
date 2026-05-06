@@ -54,6 +54,7 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
       const generatedQuestions = await generateLessonQuiz({
         lessonId: `${lessonId}-tryit-${Date.now()}`, // Unique ID for variance
         lessonTitle,
+        topic,
         subjectId,
         competencyCode,
         questionCount: 10,

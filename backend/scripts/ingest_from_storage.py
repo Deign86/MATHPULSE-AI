@@ -70,13 +70,14 @@ def _classify_lesson_section(content: str) -> str:
 
 def chunk_text_preserve_pages(text: str, page_starts: List[int], chunk_size: int = 500, overlap: int = 80) -> List[Dict[str, Any]]:
     """Split text into overlapping chunks, preserving page traceability."""
-    words = text.split()
+    # Filter out None/empty entries that can result from malformed PDF text extraction
+    words = [w for w in text.split() if w is not None and str(w).strip()]
     chunks = []
     i = 0
     chunk_idx = 0
     while i < len(words):
         chunk_words = words[i : i + chunk_size]
-        chunk_text = " ".join(chunk_words)
+        chunk_text = " ".join(str(w) for w in chunk_words)
         estimated_page = max(1, (i // chunk_size) + 1)
         content_domain, chunk_type = _classify_chunk(chunk_text)
 
@@ -218,12 +219,20 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
             logger.info("  Removed %d existing chunks", len(existing_ids))
 
         for chunk in chunks:
+            chunk_text = chunk.get("text", "")
+            if not isinstance(chunk_text, str) or not chunk_text.strip():
+                logger.warning("  Skipping empty/invalid chunk %s (type=%s, len=%d)", chunk.get("chunk_index"), type(chunk_text), len(chunk_text))
+                continue
             chunk_id = f"{doc_id}_chunk_{chunk['chunk_index']}"
-            embedding = embedder.encode(chunk["text"], normalize_embeddings=True).tolist()
+            try:
+                embedding = embedder.encode(chunk_text, normalize_embeddings=True).tolist()
+            except Exception as enc_err:
+                logger.warning("  Skipping unencodable chunk %s: %s", chunk.get("chunk_index"), enc_err)
+                continue
 
             collection.add(
                 embeddings=[embedding],
-                documents=[chunk["text"]],
+                documents=[chunk_text],
                 metadatas=[{
                     "document_id": doc_id,
                     "module_id": metadata.get("subjectId", ""),

@@ -41,6 +41,7 @@ import { getRagAnalysisContext } from '../services/apiService';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
+import { useCurriculum } from '../hooks/useCurriculum';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -65,6 +66,17 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const studentProfile = userProfile as StudentProfile | null;
   const studentGrade = studentProfile?.grade;
   const activeGradeLevel = resolveLearnerGradeLevel(studentGrade);
+
+  // Load curriculum (logs source - Firestore vs static)
+  const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum(activeGradeLevel);
+
+  // Log curriculum source on load
+  useEffect(() => {
+    if (!curriculumLoading) {
+      console.log('[ModulesPage] Curriculum ready');
+      refetchCurriculum();
+    }
+  }, [curriculumLoading, refetchCurriculum]);
   const [searchQuery, setSearchQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');

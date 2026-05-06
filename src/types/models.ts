@@ -687,7 +687,7 @@ export interface CurriculumVersionSet {
   label: string;
   program: CurriculumProgram;
   effectiveSchoolYear: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   isActive: boolean;
   sourceReferenceIds: string[];
   assumptions?: string[];
@@ -702,7 +702,7 @@ export interface CompetencyMapping {
 
 export interface CurriculumTopicGroupDescriptor {
   id: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   subjectId: string;
   subjectName: string;
   quarter: QuarterKey;
@@ -717,7 +717,7 @@ export interface CurriculumTopicGroupDescriptor {
 export interface CurriculumDescriptor {
   id: string;
   versionSetId: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   isCore: boolean;
   subjectName: string;
   totalHours: number;
@@ -740,7 +740,7 @@ export interface TopicDiagnosticPolicy {
 export interface DiagnosticPolicy {
   id: string;
   versionSetId: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   thresholds: {
     mastered: number;
     needsReview: number;
@@ -752,7 +752,7 @@ export interface DiagnosticPolicy {
 export interface LearnerMasterySnapshot {
   id?: string;
   userId: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   versionSetId: string;
   generatedAt: Date;
   byTopicGroup: Record<string, {

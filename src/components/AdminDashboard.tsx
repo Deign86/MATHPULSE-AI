@@ -3,7 +3,7 @@ import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, 
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';
-import AdminContent from './AdminContent';
+import AdminPdfUpload from './admin/AdminPdfUpload';
 import AdminAuditLog from './AdminAuditLog';
 import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
@@ -212,7 +212,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             <div>
               <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
                 {activeTab === 'Overview' && 'Admin Dashboard'}
-                {activeTab === 'Content' && 'Content'}
+                {activeTab === 'Content' && 'Content & RAG'}
                 {activeTab === 'Audit Log' && 'Audit Log'}
                 {activeTab === 'User Management' && 'User Management'}
                 {activeTab === 'Analytics' && 'Analytics'}
@@ -222,7 +222,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               </h1>
               <p className="text-xs text-[#5a6578] font-body">
                 {activeTab === 'Overview' && 'System Overview & Management'}
-                {activeTab === 'Content' && 'Manage platform content'}
+                {activeTab === 'Content' && 'Upload PDFs for AI-powered content'}
                 {activeTab === 'Audit Log' && 'Monitor system activity'}
                 {activeTab === 'User Management' && 'Manage all user accounts'}
                 {activeTab === 'Analytics' && 'Detailed performance metrics'}
@@ -455,7 +455,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
           </div>
           )}
-          {activeTab === 'Content' && <AdminContent />}
+          {activeTab === 'Content' && <AdminPdfUpload />}
           {activeTab === 'Audit Log' && <AdminAuditLog />}
           {activeTab === 'User Management' && (
             <AdminUserManagement
