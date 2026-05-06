@@ -37,8 +37,10 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [score, setScore] = useState(0);
-  const [answers, setAnswers] = useState<{ correct: boolean; userAnswer: string }[]>([]);
+  const [answers, setAnswers] = useState<({ correct: boolean; userAnswer: string } | undefined)[]>([]);
+
+  // Calculate score from current answers array
+  const score = answers.reduce((acc, curr) => acc + (curr?.correct ? 1 : 0), 0);
 
   // Generate quiz on mount
   useEffect(() => {
@@ -78,28 +80,35 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
     if (isAnswered) return;
 
     const currentQ = questions[currentIndex];
-    const correct = answer === currentQ.correctAnswer;
+    const correct = answer.toLowerCase().trim() === currentQ.correctAnswer.toLowerCase().trim();
 
     setSelectedAnswer(answer);
     setIsAnswered(true);
     setIsCorrect(correct);
 
-    if (correct) {
-      setScore(prev => prev + 1);
-    }
-
-    setAnswers(prev => [...prev, { correct, userAnswer: answer }]);
+    setAnswers(prev => {
+      const newAnswers = [...prev];
+      newAnswers[currentIndex] = { correct, userAnswer: answer };
+      return newAnswers;
+    });
   }, [currentIndex, isAnswered, questions]);
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setIsAnswered(false);
-      setIsCorrect(false);
+      const nextAnswer = answers[currentIndex + 1];
+      if (nextAnswer) {
+        setSelectedAnswer(nextAnswer.userAnswer);
+        setIsAnswered(true);
+        setIsCorrect(nextAnswer.correct);
+      } else {
+        setSelectedAnswer(null);
+        setIsAnswered(false);
+        setIsCorrect(false);
+      }
     } else {
       // Quiz complete
-      const finalScore = score + (isCorrect && !answers[currentIndex] ? 0 : 0);
+      const finalScore = answers.reduce((acc, curr) => acc + (curr?.correct ? 1 : 0), 0);
       const scorePercent = Math.round((finalScore / questions.length) * 100);
       onComplete?.(finalScore, questions.length);
       onQuizComplete?.(scorePercent);
@@ -215,6 +224,11 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
               <Brain size={12} /> Metacognitive
             </span>
           )}
+          {currentQ.type === 'true-false' && (
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full uppercase tracking-wide border border-slate-200">
+              True or False
+            </span>
+          )}
         </div>
 
         <p className="text-slate-800 text-base font-medium leading-relaxed mb-5">
@@ -223,7 +237,40 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
 
         {/* Options */}
         <div className="space-y-2">
-          {currentQ.options ? (
+          {currentQ.type === 'true-false' ? (
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleAnswer('True')}
+                disabled={isAnswered}
+                className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+                  isAnswered
+                    ? selectedAnswer === 'True'
+                      ? currentQ.correctAnswer === 'True'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-rose-500 text-white'
+                      : 'bg-slate-200 text-slate-400'
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                }`}
+              >
+                True
+              </button>
+              <button
+                onClick={() => handleAnswer('False')}
+                disabled={isAnswered}
+                className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+                  isAnswered
+                    ? selectedAnswer === 'False'
+                      ? currentQ.correctAnswer === 'False'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-rose-500 text-white'
+                      : 'bg-slate-200 text-slate-400'
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                }`}
+              >
+                False
+              </button>
+            </div>
+          ) : currentQ.options ? (
             currentQ.options.map((option: string, idx: number) => (
               <motion.button
                 key={idx}
