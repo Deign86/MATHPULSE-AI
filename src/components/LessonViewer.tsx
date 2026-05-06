@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
+import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
