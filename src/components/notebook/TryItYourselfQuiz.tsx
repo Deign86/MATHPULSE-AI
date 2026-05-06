@@ -13,6 +13,8 @@ interface TryItYourselfQuizProps {
   /** Fires when quiz is finished — pass to parent for Firestore persistence and XP award */
   onQuizComplete?: (scorePercent: number) => void;
   onClose?: () => void;
+  /** Fires when user clicks "Continue Learning" — parent handles navigation to next lesson */
+  onContinueLearning?: () => void;
 }
 
 /**
@@ -29,16 +31,18 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
   onComplete,
   onQuizComplete,
   onClose,
+  onContinueLearning,
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [answers, setAnswers] = useState<({ correct: boolean; userAnswer: string } | undefined)[]>([]);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [quizRestored, setQuizRestored] = useState(false);
 
   // Persist quiz state to sessionStorage for refresh recovery
   useEffect(() => {
@@ -57,8 +61,11 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
     }
   }, [answers, currentIndex, lessonId, questions]);
 
-  // Restore session on mount
+  // Restore session OR generate fresh quiz — single effect prevents double-generate
   useEffect(() => {
+    // Skip if we already restored a quiz this session (prevents double-generate on lessonId change)
+    if (quizRestored) return;
+
     try {
       const saved = sessionStorage.getItem(`quiz_${lessonId}`);
       if (saved) {
@@ -74,55 +81,48 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
             setIsAnswered(true);
             setIsCorrect(savedAnswer.correct);
           }
-          // If quiz was already completed before refresh, show completion overlay
           if (isCompleted) {
             setShowCompletion(true);
           }
+          setQuizRestored(true);
           return;
         }
       }
-} catch {
-        /* sessionStorage read/parse error — generate fresh quiz */
-      }
-      generateQuiz();
-  }, [lessonId]);
-
-  // Calculate score from current answers array
-  const score = answers.reduce((acc, curr) => acc + (curr?.correct ? 1 : 0), 0);
-
-  // Generate quiz on mount
-  useEffect(() => {
-    generateQuiz();
-  }, [lessonId]);
-
-  const generateQuiz = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { generateLessonQuiz } = await import('../../services/lessonQuizService');
-      const generatedQuestions = await generateLessonQuiz({
-        lessonId: `${lessonId}-tryit-${Date.now()}`, // Unique ID for variance
-        lessonTitle,
-        topic,
-        subjectId,
-        competencyCode,
-        questionCount: 10,
-      });
-
-      if (generatedQuestions.length === 0) {
-        setError('No questions available for this topic.');
-        return;
-      }
-
-      setQuestions(generatedQuestions);
-    } catch (err) {
-      console.error('[TryItYourselfQuiz] Generation failed:', err);
-      setError('Failed to generate quiz. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch {
+      /* sessionStorage read/parse error — fall through to generate */
     }
-  };
+
+    // No saved session — generate fresh quiz
+    const generateQuiz = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { generateLessonQuiz } = await import('../../services/lessonQuizService');
+        const generatedQuestions = await generateLessonQuiz({
+          lessonId,   // Use stable lessonId for topic extraction and variance
+          lessonTitle,
+          topic,
+          subjectId,
+          competencyCode,
+          questionCount: 10,
+        });
+
+        if (generatedQuestions.length === 0) {
+          setError('No questions available for this topic.');
+          return;
+        }
+
+        setQuestions(generatedQuestions);
+      } catch (err) {
+        console.error('[TryItYourselfQuiz] Generation failed:', err);
+        setError('Failed to generate quiz. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void generateQuiz();
+  }, [lessonId]); // Only re-run when lessonId changes (not on every render)
 
   const handleAnswer = useCallback((answer: string) => {
     if (isAnswered) return;
@@ -506,6 +506,7 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
               onClick={() => {
                 setShowCompletion(false);
                 onClose?.();
+                onContinueLearning?.();
               }}
               className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors"
             >
