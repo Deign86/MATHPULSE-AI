@@ -67,8 +67,8 @@ export type GradeLevel = 'Grade 11';
 
 export const GRADE_LEVELS: GradeLevel[] = ['Grade 11'];
 
-export const SUBJECTS_BY_GRADE: Record<GradeLevel, typeof SHS_MATH_SUBJECTS[number][]> = {
-  'Grade 11': SHS_MATH_SUBJECTS,
+export const SUBJECTS_BY_GRADE: Record<GradeLevel, (typeof SHS_MATH_SUBJECTS)[number][]> = {
+  'Grade 11': [...SHS_MATH_SUBJECTS],
 };
 
 export const ACTIVE_SUBJECT_IDS_BY_GRADE: Record<GradeLevel, SubjectId[]> = {

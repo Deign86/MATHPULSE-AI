@@ -69,8 +69,6 @@ useEffect(() => {
   const colorBySubjectId: Record<SubjectId, string> = {
     'gen-math': 'indigo',
     'stats-prob': 'violet',
-    'pre-calc': 'fuchsia',
-    'basic-calc': 'purple',
   };
   const colorClassBySubject: Record<string, { dot: string; bar: string }> = {
     indigo: { dot: 'bg-indigo-500', bar: 'bg-indigo-500' },

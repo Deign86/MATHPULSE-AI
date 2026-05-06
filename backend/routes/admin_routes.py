@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 import logging
 
-from backend.rag.firebase_storage_loader import _init_firebase_storage, PDF_METADATA
-from backend.scripts.ingest_from_storage import ingest_from_firebase_storage
+from rag.firebase_storage_loader import _init_firebase_storage, PDF_METADATA
+from scripts.ingest_from_storage import ingest_from_firebase_storage
 
 logger = logging.getLogger("mathpulse.admin")
 

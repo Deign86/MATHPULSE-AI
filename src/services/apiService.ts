@@ -2568,8 +2568,9 @@ export const apiService = {
     storageUrl?: string;
     error?: string;
   }> => {
-    const token = await getIdToken();
-    const response = await fetch(`${API_BASE_URL}/api/admin/upload-pdf`, {
+    const currentUser = auth.currentUser;
+    const token = currentUser ? await currentUser.getIdToken() : undefined;
+    const response = await fetch(`${API_URL}/api/admin/upload-pdf`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
@@ -2587,12 +2588,12 @@ export const apiService = {
     subjectId: string;
     error?: string;
   }> => {
-    const token = await getIdToken();
+    const reingestToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
     return apiFetch('/api/admin/reingest-pdf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(reingestToken ? { Authorization: `Bearer ${reingestToken}` } : {}),
       },
       body: JSON.stringify({ subjectId, storagePath }),
     });

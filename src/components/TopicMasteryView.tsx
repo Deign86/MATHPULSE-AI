@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
+import { ChevronDown, ChevronUp, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';

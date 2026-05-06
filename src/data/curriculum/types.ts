@@ -1,4 +1,4 @@
-export type GradeLevel = 'Grade 11'; // Grade 12 disabled
+export type GradeLevel = 'Grade 11' | 'Grade 12'; // Grade 12 for legacy template stubs only
 export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export interface CurriculumSourceMeta {
