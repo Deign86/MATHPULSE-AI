@@ -38,6 +38,50 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [answers, setAnswers] = useState<({ correct: boolean; userAnswer: string } | undefined)[]>([]);
+  const [showCompletion, setShowCompletion] = useState(false);
+
+  // Persist quiz state to sessionStorage for refresh recovery
+  useEffect(() => {
+    if (questions.length > 0 && answers.length > 0) {
+      try {
+        const isCompleted = answers.every(a => a !== undefined);
+        sessionStorage.setItem(`quiz_${lessonId}`, JSON.stringify({
+          answers,
+          currentIndex,
+          questions,
+          isCompleted,
+        }));
+      } catch {}
+    }
+  }, [answers, currentIndex, lessonId, questions]);
+
+  // Restore session on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`quiz_${lessonId}`);
+      if (saved) {
+        const { answers: savedAnswers, currentIndex: savedIndex, questions: savedQuestions, isCompleted } = JSON.parse(saved);
+        if (savedAnswers?.length && savedQuestions?.length) {
+          setAnswers(savedAnswers);
+          setCurrentIndex(savedIndex);
+          setQuestions(savedQuestions);
+          setLoading(false);
+          const savedAnswer = savedAnswers[savedIndex];
+          if (savedAnswer) {
+            setSelectedAnswer(savedAnswer.userAnswer);
+            setIsAnswered(true);
+            setIsCorrect(savedAnswer.correct);
+          }
+          // If quiz was already completed before refresh, show completion overlay
+          if (isCompleted) {
+            setShowCompletion(true);
+          }
+          return;
+        }
+      }
+    } catch {}
+    generateQuiz();
+  }, [lessonId]);
 
   // Calculate score from current answers array
   const score = answers.reduce((acc, curr) => acc + (curr?.correct ? 1 : 0), 0);
@@ -107,11 +151,12 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
         setIsCorrect(false);
       }
     } else {
-      // Quiz complete
+      // Quiz complete — show completion overlay
       const finalScore = answers.reduce((acc, curr) => acc + (curr?.correct ? 1 : 0), 0);
       const scorePercent = Math.round((finalScore / questions.length) * 100);
       onComplete?.(finalScore, questions.length);
       onQuizComplete?.(scorePercent);
+      setShowCompletion(true);
     }
   };
 
@@ -426,8 +471,8 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
         )}
       </div>
 
-      {/* Results overlay */}
-      {showFinish && (
+      {/* Results overlay — shown after user clicks Finish, dismissed via Continue Learning */}
+      {showCompletion && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -454,7 +499,10 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                setShowCompletion(false);
+                onClose?.();
+              }}
               className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors"
             >
               Continue Learning
