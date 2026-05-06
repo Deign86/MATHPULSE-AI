@@ -1021,8 +1021,8 @@ app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
 
 # Set up rate limiting with slowapi
-if HAS_RATE_LIMITING and setup_rate_limiting:
-    setup_rate_limiting(app)
+if HAS_RATE_LIMITING and setup_rate_limiting:  # type: ignore[truthy-function]
+    setup_rate_limiting(app)  # type: ignore[truthy-function]
 
 app.include_router(rag_router)
 app.include_router(admin_model_router)
