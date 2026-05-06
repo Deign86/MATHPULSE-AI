@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -112,14 +112,21 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   const [returningToLesson, setReturningToLesson] = useState<Lesson | null>(null);
 
+  // Stable refs to avoid inline callback recreation cycles
+  const selectedLessonRef = useRef(selectedLesson);
+  useEffect(() => {
+    selectedLessonRef.current = selectedLesson;
+  });
+
   const handleProgressUpdate = useCallback((percent: number) => {
-    if (userProfile?.uid && selectedLesson?.type === 'lesson') {
-      updateLessonProgressPercent(userProfile.uid, selectedLesson.lesson.id, percent);
+    const current = selectedLessonRef.current;
+    if (userProfile?.uid && current?.type === 'lesson') {
+      updateLessonProgressPercent(userProfile.uid, current.lesson.id, percent);
     }
 
     setUserProgress((prev) => {
       if (!prev) return prev;
-      const lessonId = selectedLesson?.type === 'lesson' ? selectedLesson.lesson.id : null;
+      const lessonId = current?.type === 'lesson' ? current.lesson.id : null;
       if (!lessonId) return prev;
       const existingPct = prev.lessons?.[lessonId]?.score;
       const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
@@ -137,7 +144,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         updatedAt: new Date(),
       };
     });
-  }, [userProfile?.uid, selectedLesson]);
+  }, [userProfile?.uid]);
 
   const completedLessonIds = useMemo(() => {
     const ids = dbModuleProgress?.lessonsCompleted ?? [];
@@ -222,84 +229,140 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return Math.max(1, Math.ceil(module.lessons.length / 2));
   }, [module.lessons.length]);
 
+  // Stable callbacks defined at top level (before any conditionals) to comply with Rules of Hooks
+  // NOTE: These are internal callbacks, distinct from the onBack/onEarnXP props passed to the component
+  const handleBack = useCallback(() => {
+    setSelectedLesson(null);
+    setReturningToLesson(null);
+  }, []);
+
+  const handleStartPractice = useCallback(() => {
+    const currentLesson = selectedLessonRef.current?.type === 'lesson' ? selectedLessonRef.current.lesson : null;
+    if (!currentLesson) return;
+    // Synthesize practice quiz the same way it's done in the render
+    const practiceQuiz: Quiz = {
+      id: `${currentLesson.id}-practice`,
+      title: `Practice Quiz: ${currentLesson.title}`,
+      questions: getQuestionCountForQuiz('practice'),
+      duration: currentLesson.duration,
+      completed: false,
+      locked: false,
+      type: 'practice' as const,
+    };
+    setReturningToLesson(currentLesson);
+    setSelectedLesson({ type: 'quiz', quiz: practiceQuiz });
+  }, []);
+
+  const handleComplete = useCallback((score: number, totalXP: number, goToNext: boolean) => {
+    const current = selectedLessonRef.current;
+    if (current?.type !== 'lesson' || !current.lesson) return;
+    const currentLesson = current.lesson;
+
+    // Standard lesson rewards are intentionally lower to keep pacing balanced.
+    const xpAmount = STANDARD_LESSON_XP;
+    onEarnXP?.(xpAmount, `Completed "${currentLesson.title}"`);
+
+    // Persist progress for Competency Matrix (Concept Grasp)
+    if (userProfile?.uid && subjectId) {
+      void (async () => {
+        try {
+          await completeLesson(
+            userProfile.uid,
+            subjectId,
+            module.id,
+            currentLesson.id,
+            0,
+            xpAmount
+          );
+          await recalculateAndUpdateModuleProgress(
+            userProfile.uid,
+            subjectId,
+            module.id,
+            module.lessons.length,
+            module.quizzes.length
+          );
+        } catch (err) {
+          console.error('[LessonComplete] Failed to persist progress:', err);
+        }
+      })();
+    }
+
+    // Figure out the next index based on current lesson inside module.lessons
+    if (goToNext) {
+      const currentIdx = module.lessons.findIndex(l => l.id === currentLesson.id);
+      if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
+        // Automatically move to the next lesson
+        setSelectedLesson({ type: 'lesson', lesson: module.lessons[currentIdx + 1] });
+      } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
+        // If it was the last lesson, move to the first quiz
+        setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
+      } else {
+        // Nothing left to go to
+        setSelectedLesson(null);
+      }
+    } else {
+      setSelectedLesson(null);
+    }
+  }, [subjectId, module.id, module.lessons.length, module.quizzes.length, onEarnXP]);
+
+  // Handle completion of the inline Try It Yourself quiz in LessonViewer
+  // Persists quiz completion to Firestore and awards XP based on score
+  const handleTryItQuizComplete = useCallback((scorePercent: number) => {
+    const current = selectedLessonRef.current;
+    if (current?.type !== 'lesson' || !current.lesson || !userProfile?.uid) return;
+
+    const lessonId = current.lesson.id;
+
+    // Persist quiz completion to Firestore (updates practiceQuizCompleted and quizScore)
+    void (async () => {
+      try {
+        await updateLessonQuizCompletion(userProfile.uid, lessonId, scorePercent, true);
+      } catch (err) {
+        console.error('[handleTryItQuizComplete] Failed to persist quiz completion:', err);
+      }
+    })();
+
+    // Award XP for the inline quiz (up to 100 XP based on score)
+    const xpReward = scorePercent; // scorePercent is already 0-100
+    onEarnXP?.(xpReward, `Practice quiz completed: ${Math.round(scorePercent)}%`);
+  }, [userProfile?.uid, onEarnXP]);
+
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
     if (selectedLesson.type === 'lesson') {
       const associatedQuiz = lessonActivityMap.get(selectedLesson.lesson.id)?.[0] ?? null;
 
-      // Check lesson-level quiz completion (new) and module-level (existing)
+      // Always have a practice quiz — synthesize from lesson if no module-level quiz
+      const practiceQuiz: Quiz = associatedQuiz ?? {
+        id: `${selectedLesson.lesson.id}-practice`,
+        title: `Practice Quiz: ${selectedLesson.lesson.title}`,
+        questions: getQuestionCountForQuiz('practice'),
+        duration: selectedLesson.lesson.duration,
+        completed: false,
+        locked: false,
+        type: 'practice' as const,
+      };
+
+      // Check lesson-level quiz completion
       const lessonQuizProgress = userProgress?.lessons?.[selectedLesson.lesson.id];
-      const practiceQuizCompleted = associatedQuiz
-        ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed || lessonQuizProgress?.quizCompleted === true)
-        : false;
+      const practiceQuizCompleted = completedQuizIds.has(practiceQuiz.id)
+        || practiceQuiz.completed
+        || lessonQuizProgress?.quizCompleted === true;
       const practiceQuizScore = lessonQuizProgress?.quizScore;
 
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
           lessonCompletionXP={STANDARD_LESSON_XP}
-          practiceQuiz={associatedQuiz}
+          practiceQuiz={practiceQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
           practiceQuizScore={practiceQuizScore}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
-          onBack={() => {
-            setSelectedLesson(null);
-            setReturningToLesson(null);
-          }}
-          onStartPractice={() => {
-            if (associatedQuiz) {
-              setReturningToLesson(selectedLesson.lesson);
-              setSelectedLesson({ type: 'quiz', quiz: associatedQuiz });
-            }
-          }}
+          onBack={handleBack}
+          onStartPractice={handleStartPractice}
           onProgressUpdate={handleProgressUpdate}
-          onComplete={(score, totalXP, goToNext) => {
-            // Standard lesson rewards are intentionally lower to keep pacing balanced.
-            const xpAmount = STANDARD_LESSON_XP;
-            onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
-
-            // Persist progress for Competency Matrix (Concept Grasp)
-            if (userProfile?.uid && subjectId) {
-              void (async () => {
-                try {
-                  await completeLesson(
-                    userProfile.uid,
-                    subjectId,
-                    module.id,
-                    selectedLesson.lesson.id,
-                    0,
-                    xpAmount
-                  );
-                  await recalculateAndUpdateModuleProgress(
-                    userProfile.uid,
-                    subjectId,
-                    module.id,
-                    module.lessons.length,
-                    module.quizzes.length
-                  );
-                } catch (err) {
-                  console.error('[LessonComplete] Failed to persist progress:', err);
-                }
-              })();
-            }
-
-            // Figure out the next index based on current lesson inside module.lessons
-            if (goToNext) {
-              const currentIdx = module.lessons.findIndex(l => l.id === selectedLesson.lesson.id);
-              if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
-                // Automatically move to the next lesson
-                setSelectedLesson({ type: 'lesson', lesson: module.lessons[currentIdx + 1] });
-              } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
-                // If it was the last lesson, move to the first quiz
-                setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
-              } else {
-                // Nothing left to go to
-                setSelectedLesson(null);
-              }
-            } else {
-              setSelectedLesson(null);
-            }
-          }}
+          onComplete={handleComplete}
+          onTryItQuizComplete={handleTryItQuizComplete}
         />
       );
     } else {

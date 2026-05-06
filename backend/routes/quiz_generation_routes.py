@@ -60,6 +60,7 @@ class QuizGenerationRequest(BaseModel):
     competencyCode: Optional[str] = Field(default=None)
     storagePath: Optional[str] = Field(default=None)
     userId: Optional[str] = Field(default=None)
+    varianceSeed: Optional[int] = Field(default=None, description="Random seed for variance across generations")
 
 
 class QuizQuestion(BaseModel):
@@ -88,24 +89,21 @@ def _build_quiz_generation_prompt(
     question_types: List[str],
     difficulty: str,
     retrieved_context: str,
+    variance_seed: Optional[int] = None,
 ) -> str:
-    """Build the DeepSeek prompt for quiz generation."""
+    """Build the DeepSeek prompt for quiz generation with variance."""
 
-    type_instructions = []
-    if "multiple-choice" in question_types:
-        type_instructions.append(
-            '- multiple-choice: 4 options (A/B/C/D format), exactly one correct answer'
-        )
-    if "true-false" in question_types:
-        type_instructions.append(
-            '- true-false: statement that is either True or False'
-        )
-    if "fill-in-blank" in question_types:
-        type_instructions.append(
-            '- fill-in-blank: question with a single numeric or short text answer'
-        )
+    # Build variance instruction based on seed
+    variance_instruction = ""
+    if variance_seed is not None:
+        variance_instruction = f"""
+8. VARIANCE REQUIREMENT: Use seed {variance_seed} to ensure variety. Generate DIFFERENT questions each time.
+   - Paraphrase concepts in fresh ways
+   - Use different numerical values and scenarios
+   - Vary question phrasing and structure
+   - Avoid repeating similar question patterns"""
 
-    return f"""You are a DepEd-aligned mathematics quiz generator for Filipino Senior High School students (Grades 11-12). 
+    return f"""You are a DepEd-aligned mathematics quiz generator for Filipino Senior High School students (Grades 11-12).
 
 Given the following curriculum context about "{topic}" from {subject}, generate {question_count} {difficulty}-difficulty quiz questions.
 
@@ -115,14 +113,20 @@ Given the following curriculum context about "{topic}" from {subject}, generate 
 ## Instructions
 1. Generate exactly {question_count} questions covering the topic above.
 2. Question types to use: {', '.join(question_types)}
-3. Distribution: roughly 50% multiple-choice, 30% true-false, 20% fill-in-blank (adjust for count).
+3. DISTRIBUTION (for {question_count} questions):
+   - 2 items: Recall and Basics (simple recall, definitions, fundamental facts)
+   - 4 items: Direct Application (real-world context with pesos, jeepney, sari-sari store, etc.)
+   - 3 items: Mixed/Interleaved Problems (combine concepts, multi-step reasoning)
+   - 1 item: Metacognitive/Reflective (explain reasoning, justify approach, identify errors)
 4. Difficulty: {difficulty} — appropriate for Grade 11-12 Filipino STEM students.
 5. Use Filipino-localized context where possible (pesos, jeepney, barangay, sari-sari store, etc.).
 6. Each question must be mathematically accurate and curriculum-aligned.
-7. Provide clear explanations for the correct answer.
+7. Provide clear explanations for the correct answer.{variance_instruction}
 
 ## Question Type Rules
-{chr(10).join(type_instructions)}
+- multiple-choice: 4 options (A/B/C/D format), exactly one correct answer
+- true-false: statement that is either True or False
+- fill-in-blank: question with a single numeric or short text answer
 
 ## Output Format
 Return ONLY a valid JSON array. No markdown, no extra text. Format:
@@ -150,11 +154,12 @@ Return ONLY a valid JSON array. No markdown, no extra text. Format:
   }}
 ]
 
-IMPORTANT: 
+IMPORTANT:
 - Return ONLY the JSON array, no other text
 - Ensure correctAnswer exactly matches one of the options (for MC/TF)
 - For fill-in-blank, correctAnswer is the exact text that fills the blank
-- Make questions feel fresh and varied — do not copy verbatim from the context"""
+- Generate FRESH, VARIED questions - no two questions should be identical or nearly identical
+- Questions should feel like they were created independently, not templated"""
 
 
 # ── Response Parser ────────────────────────────────────────────────────
@@ -294,17 +299,18 @@ async def generate_quiz(request: QuizGenerationRequest):
             question_types=request.questionTypes,
             difficulty=request.difficulty,
             retrieved_context=formatted_context,
+            variance_seed=request.varianceSeed,
         )
 
-        # 3. Call DeepSeek
+        # 3. Call DeepSeek with higher temperature for variance
         inference_request = InferenceRequest(
             messages=[
-                {"role": "system", "content": "You are a precise DepEd-aligned curriculum quiz generator."},
+                {"role": "system", "content": "You are a precise DepEd-aligned curriculum quiz generator. Generate FRESH, VARIED questions each time - do not repeat patterns."},
                 {"role": "user", "content": prompt},
             ],
             task_type="quiz_generation",
-            max_new_tokens=2000,
-            temperature=0.4,
+            max_new_tokens=3000,
+            temperature=0.7,  # Higher temp for variance
             top_p=0.9,
         )
 
@@ -313,8 +319,8 @@ async def generate_quiz(request: QuizGenerationRequest):
         # 4. Parse response
         questions = _parse_quiz_response(raw_response, request.questionCount)
 
-        # 5. Apply variance
-        seed = hash(f"{request.topic}:{request.subject}:{request.lessonTitle or ''}") % (2**32)
+        # 5. Apply variance (shuffle options) with user-based seed for consistency
+        seed = request.varianceSeed if request.varianceSeed else hash(f"{request.topic}:{request.subject}:{request.lessonTitle or ''}:{request.userId or 'anon'}") % (2**32)
         varied_questions = _apply_variance(questions, seed)
 
         # 6. Build response

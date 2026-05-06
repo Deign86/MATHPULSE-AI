@@ -5,6 +5,7 @@ import {
   Clock, Key, ClipboardCheck, Target, Zap
 } from 'lucide-react';
 import { VideoLessonSection } from './notebook/VideoLessonSection';
+import { TryItYourselfQuiz } from './notebook/TryItYourselfQuiz';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
@@ -24,6 +25,8 @@ interface LessonViewerProps {
   onBack: () => void;
   onComplete: (score?: number, totalXP?: number, goToNext?: boolean) => void;
   onProgressUpdate?: (percent: number) => void;
+  /** Fires when the inline Try It Yourself quiz is completed — use to persist to Firestore and award XP */
+  onTryItQuizComplete?: (scorePercent: number) => void;
 }
 
 function LoadingSkeleton() {
@@ -94,6 +97,8 @@ function SectionRenderer({
   practiceQuizCompleted,
   practiceQuizScore,
   onStartPractice,
+  lessonSpecificTopic,
+  onTryItQuizComplete,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -104,6 +109,8 @@ function SectionRenderer({
   practiceQuizCompleted?: boolean;
   practiceQuizScore?: number;
   onStartPractice?: () => void;
+  lessonSpecificTopic?: string | null;
+  onTryItQuizComplete?: (scorePercent: number) => void;
 }) {
   switch (section.type) {
     case 'introduction':
@@ -276,55 +283,18 @@ function SectionRenderer({
             </div>
           )}
 
-          {/* Practice Problems */}
-          {section.practiceProblems && section.practiceProblems.length > 0 ? (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Worked Examples
-              </p>
-              {section.practiceProblems.map((prob, i) => (
-                <div
-                  key={i}
-                  className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-5 border border-rose-100"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-slate-800 text-sm font-medium flex-1 leading-relaxed">
-                      {prob.question}
-                    </p>
-                    <button
-                      onClick={() => onShowSolution(sectionIndex)}
-                      className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-rose-200 flex items-center justify-center hover:bg-rose-50 transition-colors"
-                      aria-label={expandedIndex === sectionIndex ? 'Hide solution' : 'Show solution'}
-                    >
-                      {expandedIndex === sectionIndex ? (
-                        <EyeOff size={14} className="text-rose-500" />
-                      ) : (
-                        <Eye size={14} className="text-rose-500" />
-                      )}
-                    </button>
-                  </div>
-                  <AnimatePresence>
-                    {expandedIndex === sectionIndex && prob.solution && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-3 pt-3 border-t border-rose-200">
-                          <p className="text-slate-600 text-sm">{prob.solution}</p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-slate-400 text-sm">No practice problems available for this lesson.</p>
-            </div>
-          )}
+          {/* Inline 10-Item Try It Yourself Quiz */}
+          <TryItYourselfQuiz
+            lessonId={lesson.id?.toString() || 'unknown'}
+            lessonTitle={lesson.title}
+            topic={lessonSpecificTopic || section.title || lesson.title}
+            subjectId={lesson.subjectId}
+            competencyCode={lesson.competencyCode}
+            onComplete={(score, total) => {
+              console.log(`[TryItYourselfQuiz] Completed: ${score}/${total}`);
+            }}
+            onQuizComplete={onTryItQuizComplete}
+          />
         </div>
       );
 
@@ -445,6 +415,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onBack,
   onComplete,
   onProgressUpdate,
+  onTryItQuizComplete,
 }) => {
   const [currentSection, setCurrentSection] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -474,6 +445,28 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     activeModel,
     isOffline,
   } = useLessonContent(lesson.id, request, true);
+
+  // Extract specific lesson topic from RAG sections (e.g., "Simple Interest" from "Introduction to Simple Interest")
+  // This fixes the quiz topic bug where the generic competency name was used instead
+  const [lessonSpecificTopic, setLessonSpecificTopic] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sections.length > 0) {
+      const introSection = sections.find(s => s.type === 'introduction');
+      if (introSection?.title) {
+        const title = introSection.title;
+        // Strip common prefixes: "Introduction to X", "Introduction - X", "X: Introduction", "X Introduction"
+        const stripped = title
+          .replace(/^Introduction\s+(to|-|:|—)\s+/i, '')
+          .replace(/\s*[-:—]\s*Introduction$/i, '')
+          .replace(/\s+Introduction$/i, '')
+          .trim();
+        if (stripped && stripped.toLowerCase() !== 'introduction') {
+          setLessonSpecificTopic(stripped);
+        }
+      }
+    }
+  }, [sections]);
 
   const totalSections = sections.length || SECTION_TABS.length;
 
@@ -692,15 +685,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     className="space-y-6"
                   >
                     <div className="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-6 sm:p-8 shadow-sm border border-slate-100/50">
-                       <SectionRenderer
-                          section={currentSectionData}
-                          sectionIndex={currentSection}
-                          onShowSolution={(idx) =>
-                            setExpandedProblem(expandedProblem === idx ? null : idx)
-                          }
-                          expandedIndex={expandedProblem}
-                          lesson={lesson}
-                        />
+<SectionRenderer
+                           section={currentSectionData}
+                           sectionIndex={currentSection}
+                           onShowSolution={(idx) =>
+                             setExpandedProblem(expandedProblem === idx ? null : idx)
+                           }
+                           expandedIndex={expandedProblem}
+                           lesson={lesson}
+                           lessonSpecificTopic={lessonSpecificTopic}
+                           onTryItQuizComplete={onTryItQuizComplete}
+                         />
                     </div>
 
                     {sources.length > 0 && (

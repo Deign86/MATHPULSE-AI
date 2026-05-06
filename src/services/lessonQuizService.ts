@@ -89,6 +89,9 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
   // Derive subject name from subjectId or use default
   const subjectName = _deriveSubjectName(subjectId) || 'General Mathematics';
 
+  // Generate unique variance seed for this attempt
+  const varianceSeed = Math.floor(Math.random() * 1000000);
+
   try {
     const response = await apiFetch<QuizGenerationResponse>('/api/quiz/generate', {
       method: 'POST',
@@ -101,6 +104,7 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
         questionTypes: ['multiple-choice', 'true-false', 'fill-in-blank'],
         difficulty: 'medium',
         competencyCode,
+        varianceSeed,
       }),
     });
 
