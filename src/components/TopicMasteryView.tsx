@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  BarChart3, CheckCircle, AlertTriangle, EyeOff, Search,
-  ChevronUp, ChevronDown, Loader2,
-} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
 import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { cacheKeys } from '../utils/cacheKeys';
+import { useCurriculum } from '../hooks/useCurriculum';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -89,6 +86,17 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
     acc[subject.id] = subject.name;
     return acc;
   }, {});
+
+  // Load curriculum (logs source - Firestore vs static)
+  const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum();
+
+  // Log curriculum source on load
+  useEffect(() => {
+    if (!curriculumLoading) {
+      console.log('[TopicMasteryView] Curriculum ready');
+      refetchCurriculum();
+    }
+  }, [curriculumLoading, refetchCurriculum]);
 
   // Selection for bulk actions
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());

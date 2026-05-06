@@ -79,6 +79,8 @@ from services.user_provisioning_service import (
 )
 from routes.rag_routes import router as rag_router
 from routes.admin_model_routes import router as admin_model_router
+from routes.admin_routes import router as admin_pdf_router
+from routes.curriculum_routes import router as curriculum_router
 from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
 from routes.quiz_battle import router as quiz_battle_router
@@ -372,6 +374,8 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/automation/data-imported": ADMIN_ONLY,
     "/api/automation/content-updated": ADMIN_ONLY,
     "/api/admin/model-config": ADMIN_ONLY,
+    "/api/admin/upload-pdf": ADMIN_ONLY,
+    "/api/admin/reingest-pdf": ADMIN_ONLY,
     "/api/admin/model-config/profile": ADMIN_ONLY,
     "/api/admin/model-config/override": ADMIN_ONLY,
     "/api/admin/model-config/reset": ADMIN_ONLY,
@@ -1026,6 +1030,8 @@ if HAS_RATE_LIMITING and setup_rate_limiting:  # type: ignore[truthy-function]
 
 app.include_router(rag_router)
 app.include_router(admin_model_router)
+app.include_router(admin_pdf_router)
+app.include_router(curriculum_router)
 app.include_router(diagnostic_router)
 app.include_router(video_router)
 app.include_router(quiz_battle_router)

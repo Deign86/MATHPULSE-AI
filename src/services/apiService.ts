@@ -2559,6 +2559,53 @@ export const apiService = {
       method: 'DELETE',
     });
   },
+
+  // Admin PDF upload & reingest endpoints
+  uploadModulePdf: async (formData: FormData): Promise<{
+    success: boolean;
+    chunkCount?: number;
+    subjectId: string;
+    storageUrl?: string;
+    error?: string;
+  }> => {
+    const token = await getIdToken();
+    const response = await fetch(`${API_BASE_URL}/api/admin/upload-pdf`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `Upload failed (${response.status})`);
+    }
+    return response.json();
+  },
+
+  reingestModulePdf: async (subjectId: string, storagePath?: string): Promise<{
+    success: boolean;
+    chunkCount?: number;
+    subjectId: string;
+    error?: string;
+  }> => {
+    const token = await getIdToken();
+    return apiFetch('/api/admin/reingest-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ subjectId, storagePath }),
+    });
+  },
+
+  getRagHealth: async (): Promise<{
+    status: string;
+    chunkCount: number;
+    subjects: Record<string, number>;
+    lastIngested: string;
+  }> => {
+    return apiFetch('/api/rag/health', { method: 'GET' });
+  },
 };
 
 // Fetch a curriculum-grounded lesson explanation
@@ -2648,4 +2695,61 @@ export async function fetchAnalysisCurriculumContext(
   });
 
   return result.curriculumContext || '';
+}
+
+// ─── Curriculum API Functions ──────────────────────────────────────
+
+export interface CurriculumSubject {
+  id: string;
+  code: string;
+  name: string;
+  gradeLevel: string;
+  semester: string;
+  color: string;
+  pdfAvailable: boolean;
+  topics: Array<{ id: string; name: string; unit: string }>;
+}
+
+export interface CurriculumTopic {
+  id: string;
+  name: string;
+  unit: string;
+}
+
+/** Fetch all curriculum subjects, optionally filtered by grade level. */
+export async function getCurriculumSubjects(gradeLevel?: string): Promise<CurriculumSubject[]> {
+  const params = gradeLevel ? `?grade_level=${encodeURIComponent(gradeLevel)}` : '';
+  return apiFetch<CurriculumSubject[]>(`/api/curriculum/subjects${params}`);
+}
+
+/** Fetch a single subject by ID. */
+export async function getCurriculumSubject(subjectId: string): Promise<CurriculumSubject | null> {
+  try {
+    return await apiFetch<CurriculumSubject>(`/api/curriculum/subjects/${subjectId}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch all topics for a subject. */
+export async function getCurriculumTopics(subjectId: string): Promise<CurriculumTopic[]> {
+  try {
+    return await apiFetch<CurriculumTopic[]>(`/api/curriculum/subjects/${subjectId}/topics`);
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch a single topic. */
+export async function getCurriculumTopic(
+  subjectId: string,
+  topicId: string,
+): Promise<CurriculumTopic | null> {
+  try {
+    return await apiFetch<CurriculumTopic>(
+      `/api/curriculum/subjects/${subjectId}/topics/${topicId}`,
+    );
+  } catch {
+    return null;
+  }
 }

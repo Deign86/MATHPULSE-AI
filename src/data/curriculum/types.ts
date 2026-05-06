@@ -1,4 +1,4 @@
-export type GradeLevel = 'Grade 11' | 'Grade 12';
+export type GradeLevel = 'Grade 11'; // Grade 12 disabled
 export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export interface CurriculumSourceMeta {
@@ -100,6 +100,42 @@ export const CURRICULUM_LESSONS: CurriculumLesson[] = [
     learningCompetency: 'Define and describe random variables and their types.',
     storagePath: 'curriculum/stat_prob/SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf',
     sourceFile: 'SDO_Navotas_STAT_PROB_SHS_1stSem_FV.pdf',
+  },
+  {
+    lessonId: 'bc-q3-lf-1',
+    lessonTitle: 'Evaluate limits using limit theorems.',
+    moduleId: 'bc-q3-limits-of-functions',
+    subjectId: 'basic-calc',
+    subject: 'Basic Calculus',
+    quarter: 3,
+    competencyCode: 'BC12-LF-1',
+    learningCompetency: 'Evaluate limits using limit theorems.',
+    storagePath: 'curriculum/basic_calc/SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf',
+    sourceFile: 'SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf',
+  },
+  {
+    lessonId: 'bc-q3-d-1',
+    lessonTitle: 'Apply the limit definition of the derivative.',
+    moduleId: 'bc-q3-derivatives',
+    subjectId: 'basic-calc',
+    subject: 'Basic Calculus',
+    quarter: 3,
+    competencyCode: 'BC12-D-1',
+    learningCompetency: 'Apply the limit definition of the derivative.',
+    storagePath: 'curriculum/basic_calc/SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf',
+    sourceFile: 'SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf',
+  },
+  {
+    lessonId: 'bc-q3-i-1',
+    lessonTitle: 'Determine antiderivatives of functions.',
+    moduleId: 'bc-q3-integration',
+    subjectId: 'basic-calc',
+    subject: 'Basic Calculus',
+    quarter: 3,
+    competencyCode: 'BC12-I-1',
+    learningCompetency: 'Determine antiderivatives of functions.',
+    storagePath: 'curriculum/basic_calc/SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf',
+    sourceFile: 'SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf',
   },
   // NOTE: Finite Mathematics 1 & 2 and Organization & Management removed
   // because their source PDFs are curriculum guides with insufficient
