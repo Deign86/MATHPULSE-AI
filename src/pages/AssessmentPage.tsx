@@ -34,7 +34,15 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   const [step, setStep] = useState<Step>('testing');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [responses, setResponses] = useState<DiagnosticResponseItem[]>([]);
+  const [responses, setResponses] = useState<DiagnosticResponseItem[]>(() => {
+    // Restore saved responses on mount so refreshing mid-assessment doesn't lose progress
+    try {
+      const saved = sessionStorage.getItem('mathpulse_diagnostic_responses');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [timeSpent, setTimeSpent] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,9 +102,15 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
     setStep('submitting');
     setError(null);
 
+    // Backup responses before submit so a failure doesn't lose progress
+    try {
+      sessionStorage.setItem('mathpulse_diagnostic_responses', JSON.stringify(finalResponses));
+    } catch { /* non-fatal */ }
+
     try {
       const result = await submitDiagnostic(testId, finalResponses);
       sessionStorage.removeItem('mathpulse_diagnostic');
+      sessionStorage.removeItem('mathpulse_diagnostic_responses');
       setStep('results');
 
       setTimeout(() => {
@@ -109,9 +123,10 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         });
       }, 3000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Submission failed';
+      const message = err instanceof Error ? err.message : 'Submission failed. Your answers are saved locally.';
       setError(message);
-      setStep('testing');
+      // Keep responses in state — don't silently reset. Step is already 'testing'.
+      // The UI will show the error + the Next/Submit button is still active.
     }
   };
 

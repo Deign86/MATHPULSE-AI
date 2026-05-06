@@ -160,19 +160,26 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
                 {loading ? (
                   <>
                     <Loader2 size={16} className="animate-spin mr-2" />
-                    Loading...
+                    Crafting your assessment...
                   </>
                 ) : (
                   'Start Assessment'
                 )}
               </Button>
-              <button
-                onClick={handleSkip}
-                disabled={loading}
-                className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium disabled:opacity-40"
-              >
-                Skip for now &rarr;
-              </button>
+              {loading && (
+                <p className="text-[10px] text-slate-400 max-w-[18rem] mx-auto text-center leading-relaxed">
+                  This may take up to 90 seconds while AI generates your personalized test.
+                </p>
+              )}
+              {!loading && (
+                <button
+                  onClick={handleSkip}
+                  disabled={loading}
+                  className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium disabled:opacity-40"
+                >
+                  Skip for now &rarr;
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
