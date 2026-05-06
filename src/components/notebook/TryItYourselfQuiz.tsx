@@ -51,7 +51,9 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
           questions,
           isCompleted,
         }));
-      } catch {}
+      } catch {
+        /* sessionStorage write failure — non-fatal, quiz still works */
+      }
     }
   }, [answers, currentIndex, lessonId, questions]);
 
@@ -79,8 +81,10 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
           return;
         }
       }
-    } catch {}
-    generateQuiz();
+} catch {
+        /* sessionStorage read/parse error — generate fresh quiz */
+      }
+      generateQuiz();
   }, [lessonId]);
 
   // Calculate score from current answers array
