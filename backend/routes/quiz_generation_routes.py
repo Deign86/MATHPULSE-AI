@@ -282,6 +282,12 @@ async def generate_quiz(request: QuizGenerationRequest):
                 detail=f"No curriculum content found for topic '{request.topic}'. Please ensure PDFs are ingested.",
             )
 
+        # Shuffle retrieved chunks for variance BEFORE formatting prompt context
+        # This ensures different lessons → different curriculum context → different generated questions
+        seed = request.varianceSeed if request.varianceSeed else hash(f"{request.topic}:{request.subject}:{request.lessonTitle or ''}:{request.userId or 'anon'}") % (2**32)
+        rng = random.Random(seed)
+        rng.shuffle(chunks)  # In-place shuffle for deterministic variety per seed
+
         # Format retrieved chunks for the prompt
         formatted_context = "\n\n---\n\n".join(
             f"[Source: {chunk.get('metadata', {}).get('source_file', 'Unknown')}, Page {chunk.get('metadata', {}).get('page', 'N/A')}]\n{chunk.get('document', '')}"
