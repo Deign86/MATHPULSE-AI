@@ -3,6 +3,7 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    testTimeout: 30000,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["functions/**", "build/**", "dist/**", "node_modules/**"],
     setupFiles: ["@testing-library/jest-dom/vitest", "./src/test-setup.ts"],

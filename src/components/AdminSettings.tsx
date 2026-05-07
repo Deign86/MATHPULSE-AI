@@ -210,21 +210,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onDirtyChange }) => {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-[#0a1628]">Default Language</label>
-                        <Select
-                          value={settings.adminPanel.defaultLanguage}
-                          onValueChange={(value) => updateAdminPanel({ defaultLanguage: value })}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="English">English</SelectItem>
-                            <SelectItem value="Spanish">Spanish</SelectItem>
-                            <SelectItem value="French">French</SelectItem>
-                            <SelectItem value="German">German</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <label className="text-sm font-medium text-[#0a1628]">Language</label>
+                        <div className="p-3 bg-slate-100 rounded-lg text-sm font-medium text-slate-600 border border-slate-200">
+                          English (System-wide)
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          The system uses English for all interface text. This cannot be changed.
+                        </p>
                       </div>
 
                       <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center justify-between">

@@ -90,8 +90,11 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
   // Derive subject name from subjectId or use default
   const subjectName = _deriveSubjectName(subjectId) || 'General Mathematics';
 
-  // Generate unique variance seed for this attempt
-  const varianceSeed = Math.floor(Math.random() * 1000000);
+  // Derive deterministic seed per lesson for consistent retry behavior
+  // (Different lessons still get different questions via backend chunk shuffle)
+  const varianceSeed = params.lessonId
+    ? Math.abs(params.lessonId.split('').reduce((acc, c) => (Math.imul(31, acc) + c.charCodeAt(0)) | 0, 0)) % 1_000_000
+    : Math.floor(Math.random() * 1_000_000);
 
   try {
     const response = await apiFetch<QuizGenerationResponse>('/api/quiz/generate', {

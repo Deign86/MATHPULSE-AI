@@ -52,6 +52,41 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
+  // Store onEarnXP in a ref to avoid triggering callback recreation on parent re-renders
+  // This prevents the infinite render loop when parent passes a new onEarnXP function reference
+  const onEarnXPRef = useRef(onEarnXP);
+  useEffect(() => { onEarnXPRef.current = onEarnXP; }, [onEarnXP]);
+
+  // Restore previously selected lesson from sessionStorage (BUG 9c fix)
+  // On page refresh, this re-opens the lesson instead of showing the module overview
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`mathpulse_module_${module.id}_selectedLesson`);
+      if (saved) {
+        const { lessonId } = JSON.parse(saved);
+        const lesson = module.lessons.find(l => l.id === lessonId);
+        if (lesson) {
+          setSelectedLesson({ lesson, type: 'lesson' });
+        }
+      }
+    } catch { /* non-fatal — module overview shows by default */ }
+  }, []); // Empty deps = run once on mount
+
+  // Persist selected lesson to sessionStorage whenever it changes
+  useEffect(() => {
+    if (selectedLesson?.type === 'lesson' && selectedLesson.lesson) {
+      try {
+        sessionStorage.setItem(`mathpulse_module_${module.id}_selectedLesson`, JSON.stringify({
+          lessonId: selectedLesson.lesson.id,
+        }));
+      } catch { /* non-fatal */ }
+    } else if (selectedLesson === null) {
+      try {
+        sessionStorage.removeItem(`mathpulse_module_${module.id}_selectedLesson`);
+      } catch { /* non-fatal */ }
+    }
+  }, [selectedLesson, module.id]);
+
   const moduleLevel = useMemo(() => {
     const candidate = Number(module.id.split('-').pop());
     return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
@@ -171,6 +206,82 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return Math.max(1, Math.ceil(module.lessons.length / 2));
   }, [module.lessons.length]);
 
+  // Stable callbacks defined at top level (before any conditionals) to comply with Rules of Hooks
+  // NOTE: These are internal callbacks, distinct from the onBack/onEarnXP props passed to the component
+  const handleBack = useCallback(() => {
+    setSelectedLesson(null);
+    setReturningToLesson(null);
+  }, []);
+
+  const handleStartPractice = useCallback(() => {
+    const currentLesson = selectedLessonRef.current?.type === 'lesson' ? selectedLessonRef.current.lesson : null;
+    if (!currentLesson) return;
+    // Synthesize practice quiz the same way it's done in the render
+    const practiceQuiz: Quiz = {
+      id: `${currentLesson.id}-practice`,
+      title: `Practice Quiz: ${currentLesson.title}`,
+      questions: getQuestionCountForQuiz('practice'),
+      duration: currentLesson.duration,
+      completed: false,
+      locked: false,
+      type: 'practice' as const,
+    };
+    setReturningToLesson(currentLesson);
+    setSelectedLesson({ type: 'quiz', quiz: practiceQuiz });
+  }, []);
+
+  const handleComplete = useCallback((score?: number, totalXP?: number, goToNext?: boolean) => {
+    const current = selectedLessonRef.current;
+    if (current?.type !== 'lesson' || !current.lesson) return;
+    const currentLesson = current.lesson;
+
+    // Standard lesson rewards are intentionally lower to keep pacing balanced.
+    const xpAmount = STANDARD_LESSON_XP;
+    onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
+
+    // Persist progress for Competency Matrix (Concept Grasp)
+    if (userProfile?.uid && subjectId) {
+      void (async () => {
+        try {
+          await completeLesson(
+            userProfile.uid,
+            subjectId,
+            module.id,
+            currentLesson.id,
+            0,
+            xpAmount
+          );
+          await recalculateAndUpdateModuleProgress(
+            userProfile.uid,
+            subjectId,
+            module.id,
+            module.lessons.length,
+            module.quizzes.length
+          );
+        } catch (err) {
+          console.error('[LessonComplete] Failed to persist progress:', err);
+        }
+      })();
+    }
+
+    // Figure out the next index based on current lesson inside module.lessons
+    if (goToNext) {
+      const currentIdx = module.lessons.findIndex(l => l.id === currentLesson.id);
+      if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
+        // Automatically move to the next lesson
+        setSelectedLesson({ type: 'lesson', lesson: module.lessons[currentIdx + 1] });
+      } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
+        // If it was the last lesson, move to the first quiz
+        setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
+      } else {
+        // Nothing left to go to
+        setSelectedLesson(null);
+      }
+    } else {
+      setSelectedLesson(null);
+    }
+}, [subjectId, module.id, module.lessons.length, module.quizzes.length]);
+
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
     if (selectedLesson.type === 'lesson') {
@@ -186,92 +297,10 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
-          onBack={() => {
-            setSelectedLesson(null);
-            setReturningToLesson(null);
-          }}
-          onStartPractice={() => {
-            if (associatedQuiz) {
-              setReturningToLesson(selectedLesson.lesson);
-              setSelectedLesson({ type: 'quiz', quiz: associatedQuiz });
-              if (setIsInQuizMode) setIsInQuizMode(true);
-            }
-          }}
-          onProgressUpdate={(percent) => {
-            // This is lesson-scoped progress; no subject/module IDs needed.
-            if (userProfile?.uid) {
-              updateLessonProgressPercent(userProfile.uid, selectedLesson.lesson.id, percent);
-            }
-
-            // Optimistic UI update so the module lesson card rim reflects immediately.
-            setUserProgress((prev) => {
-              if (!prev) return prev;
-              const lessonId = selectedLesson.lesson.id;
-              const existingPct = prev.lessons?.[lessonId]?.score;
-              const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
-              const nextPct = Math.max(safeExistingPct, Math.max(0, Math.min(100, percent)));
-              return {
-                ...prev,
-                lessons: {
-                  ...(prev.lessons || {}),
-                  [lessonId]: {
-                    ...(prev.lessons?.[lessonId] || {}),
-                    lessonId,
-                    score: nextPct,
-                  },
-                },
-                updatedAt: new Date(),
-              };
-            });
-          }}
-          onComplete={(score, totalXP, goToNext) => {
-            // Standard lesson rewards are intentionally lower to keep pacing balanced.
-            const xpAmount = STANDARD_LESSON_XP;
-            console.log('[LessonComplete] XP Award:', xpAmount, 'for', selectedLesson.lesson.title);
-            onEarnXP?.(xpAmount, `Completed "${selectedLesson.lesson.title}"`);
-
-            // Persist progress for Competency Matrix (Concept Grasp)
-            if (userProfile?.uid && subjectId) {
-              void (async () => {
-                try {
-                  await completeLesson(
-                    userProfile.uid,
-                    subjectId,
-                    module.id,
-                    selectedLesson.lesson.id,
-                    0,
-                    xpAmount
-                  );
-                  await recalculateAndUpdateModuleProgress(
-                    userProfile.uid,
-                    subjectId,
-                    module.id,
-                    module.lessons.length,
-                    module.quizzes.length
-                  );
-                } catch (err) {
-                  console.error('[LessonComplete] Failed to persist progress:', err);
-                }
-              })();
-            }
-
-            // Figure out the next index based on current lesson inside module.lessons
-            if (goToNext) {
-              const currentIdx = module.lessons.findIndex(l => l.id === selectedLesson.lesson.id);
-              if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
-                // Automatically move to the next lesson
-                setSelectedLesson({ type: 'lesson', lesson: module.lessons[currentIdx + 1] });
-              } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
-                // If it was the last lesson, move to the first quiz
-                setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
-              } else {
-                // Nothing left to go to
-                setSelectedLesson(null);
-              }
-            } else {
-              setSelectedLesson(null);
-            }
-          }}
+          onBack={handleBack}
+          onStartPractice={handleStartPractice}
+          onProgressUpdate={handleProgressUpdate}
+          onComplete={handleComplete}
         />
       );
     } else {
