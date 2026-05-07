@@ -7,44 +7,49 @@ import InteractiveLesson, { Question } from './InteractiveLesson';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
-import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent, updateLessonQuizCompletion } from '../services/progressService';
-import { generateLessonQuiz, getQuestionCountForQuiz } from '../services/lessonQuizService';
+import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress } from '../types/models';
 
 interface ModuleDetailViewProps {
   module: Module;
   onBack: () => void;
   onEarnXP?: (xp: number, message: string) => void;
+  isInQuizMode?: boolean;
+  setIsInQuizMode?: (value: boolean) => void;
 }
 
-// Async question loader with cache
-const quizQuestionCache: Record<string, Promise<Question[]> | Question[]> = {};
+// Question banks per module/quiz topic
+const quizQuestionBanks: Record<string, Question[]> = {};
 
-const getQuestionsForLesson = async (lesson: Lesson, type: 'practice' | 'quiz'): Promise<Question[]> => {
-  const cacheKey = `${lesson.id}-${type}`;
-  if (quizQuestionCache[cacheKey]) {
-    return Promise.resolve(quizQuestionCache[cacheKey]);
-  }
+// Get questions for a quiz based on its ID
+const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Question[] => {
+  // Return preloaded bank if available
+  if (quizQuestionBanks[quizId] && quizQuestionBanks[quizId].length) return quizQuestionBanks[quizId];
 
-  const count = getQuestionCountForQuiz(type);
-  const promise = generateLessonQuiz({
-    lessonId: lesson.id,
-    lessonTitle: lesson.title,
-    subjectId: lesson.subjectId,
-    questionCount: count,
+  // Fallback: generate lightweight sample questions so the UI is interactive
+  const count = type === 'quiz' ? 8 : 6;
+  const generated: Question[] = Array.from({ length: count }).map((_, i) => {
+    const a = i + 2;
+    const b = i + 3;
+    const correct = (a + b).toString();
+    return {
+      id: i + 1,
+      type: 'multiple-choice',
+      question: `Compute: ${a} + ${b}`,
+      options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
+      correctAnswer: correct,
+      explanation: `Add ${a} and ${b} to get ${correct}.`
+    };
   });
 
-  quizQuestionCache[cacheKey] = promise;
-  const questions = await promise;
-  quizQuestionCache[cacheKey] = questions;
-  return questions;
+  quizQuestionBanks[quizId] = generated;
+  return generated;
 };
 
-const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP }) => {
+const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP, isInQuizMode = false, setIsInQuizMode }) => {
   const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
-  const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
-  const [quizLoading, setQuizLoading] = useState(false);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
@@ -52,6 +57,10 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   // This prevents the infinite render loop when parent passes a new onEarnXP function reference
   const onEarnXPRef = useRef(onEarnXP);
   useEffect(() => { onEarnXPRef.current = onEarnXP; }, [onEarnXP]);
+
+  // Keep selectedLesson in a ref so stable callbacks can read the latest value
+  const selectedLessonRef = useRef(selectedLesson);
+  useEffect(() => { selectedLessonRef.current = selectedLesson; }, [selectedLesson]);
 
   // Restore previously selected lesson from sessionStorage (BUG 9c fix)
   // On page refresh, this re-opens the lesson instead of showing the module overview
@@ -112,74 +121,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return subscribeToUserProgress(userProfile.uid, setUserProgress);
   }, [userProfile?.uid]);
 
-  // Load quiz questions async when a quiz is selected
-  useEffect(() => {
-    if (selectedLesson?.type !== 'quiz') {
-      setQuizQuestions([]);
-      return;
-    }
-
-    const syntheticLesson: Lesson = {
-      id: selectedLesson.quiz.id,
-      title: selectedLesson.quiz.title,
-      duration: selectedLesson.quiz.duration,
-      completed: selectedLesson.quiz.completed,
-      locked: selectedLesson.quiz.locked,
-    };
-
-    setQuizLoading(true);
-    getQuestionsForLesson(syntheticLesson, 'quiz')
-      .then((questions) => {
-        setQuizQuestions(questions);
-      })
-      .catch((err) => {
-        console.error('[ModuleDetailView] Failed to load quiz questions:', err);
-      })
-      .finally(() => {
-        setQuizLoading(false);
-      });
-  }, [selectedLesson]);
-
   const dbModuleProgress = useMemo(() => {
     if (!subjectId) return null;
     return userProgress?.subjects?.[subjectId]?.modulesProgress?.[module.id] ?? null;
   }, [module.id, subjectId, userProgress?.subjects]);
 
   const [returningToLesson, setReturningToLesson] = useState<Lesson | null>(null);
-
-  // Stable refs to avoid inline callback recreation cycles
-  const selectedLessonRef = useRef(selectedLesson);
-  useEffect(() => {
-    selectedLessonRef.current = selectedLesson;
-  });
-
-  const handleProgressUpdate = useCallback((percent: number) => {
-    const current = selectedLessonRef.current;
-    if (userProfile?.uid && current?.type === 'lesson') {
-      updateLessonProgressPercent(userProfile.uid, current.lesson.id, percent);
-    }
-
-    setUserProgress((prev) => {
-      if (!prev) return prev;
-      const lessonId = current?.type === 'lesson' ? current.lesson.id : null;
-      if (!lessonId) return prev;
-      const existingPct = prev.lessons?.[lessonId]?.score;
-      const safeExistingPct = typeof existingPct === 'number' && Number.isFinite(existingPct) ? existingPct : 0;
-      const nextPct = Math.max(safeExistingPct, Math.max(0, Math.min(100, percent)));
-      return {
-        ...prev,
-        lessons: {
-          ...(prev.lessons || {}),
-          [lessonId]: {
-            ...(prev.lessons?.[lessonId] || {}),
-            lessonId,
-            score: nextPct,
-          },
-        },
-        updatedAt: new Date(),
-      };
-    });
-  }, [userProfile?.uid]);
 
   const completedLessonIds = useMemo(() => {
     const ids = dbModuleProgress?.lessonsCompleted ?? [];
@@ -340,86 +287,43 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     }
   }, [subjectId, module.id, module.lessons.length, module.quizzes.length]);
 
-  // Handle completion of the inline Try It Yourself quiz in LessonViewer
-  // Persists quiz completion to Firestore and awards XP based on score
-  const handleTryItQuizComplete = useCallback((scorePercent: number) => {
-    const current = selectedLessonRef.current;
-    if (current?.type !== 'lesson' || !current.lesson || !userProfile?.uid) return;
-
-    const lessonId = current.lesson.id;
-
-    // Persist quiz completion to Firestore (updates practiceQuizCompleted and quizScore)
+  const handleProgressUpdate = useCallback((percent: number) => {
+    if (!userProfile?.uid || !selectedLessonRef.current || selectedLessonRef.current.type !== 'lesson') return;
+    const lessonId = selectedLessonRef.current.lesson.id;
+    // Persist partial lesson progress to Firestore
     void (async () => {
       try {
-        await updateLessonQuizCompletion(userProfile.uid, lessonId, scorePercent, true);
+        await updateLessonProgressPercent(userProfile.uid!, lessonId, percent);
       } catch (err) {
-        console.error('[handleTryItQuizComplete] Failed to persist quiz completion:', err);
+        console.warn('[ModuleDetailView] Failed to persist lesson progress:', err);
       }
     })();
-
-    // Award XP for the inline quiz (up to 100 XP based on score)
-    const xpReward = scorePercent; // scorePercent is already 0-100
-    onEarnXPRef.current?.(xpReward, `Practice quiz completed: ${Math.round(scorePercent)}%`);
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, module.id]);
 
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
     if (selectedLesson.type === 'lesson') {
       const associatedQuiz = lessonActivityMap.get(selectedLesson.lesson.id)?.[0] ?? null;
 
-      // Always have a practice quiz — synthesize from lesson if no module-level quiz
-      const practiceQuiz: Quiz = associatedQuiz ?? {
-        id: `${selectedLesson.lesson.id}-practice`,
-        title: `Practice Quiz: ${selectedLesson.lesson.title}`,
-        questions: getQuestionCountForQuiz('practice'),
-        duration: selectedLesson.lesson.duration,
-        completed: false,
-        locked: false,
-        type: 'practice' as const,
-      };
-
-      // Check lesson-level quiz completion
-      const lessonQuizProgress = userProgress?.lessons?.[selectedLesson.lesson.id];
-      const practiceQuizCompleted = completedQuizIds.has(practiceQuiz.id)
-        || practiceQuiz.completed
-        || lessonQuizProgress?.quizCompleted === true;
-      const practiceQuizScore = lessonQuizProgress?.quizScore;
+      // Show the actual lesson content viewer
+      const practiceQuizCompleted = associatedQuiz ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed) : false;
 
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
           lessonCompletionXP={STANDARD_LESSON_XP}
-          practiceQuiz={practiceQuiz}
+          practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
-          practiceQuizScore={practiceQuizScore}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
           onBack={handleBack}
           onStartPractice={handleStartPractice}
           onProgressUpdate={handleProgressUpdate}
           onComplete={handleComplete}
-          onTryItQuizComplete={handleTryItQuizComplete}
-          onContinueLearning={() => handleComplete(undefined, undefined, true)}
         />
       );
     } else {
       // Show the quiz interface
-      if (quizLoading || quizQuestions.length === 0) {
-        return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <div className="w-full max-w-xl rounded-[32px] bg-white p-6 text-center shadow-2xl">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
-              <h2 className="text-2xl font-black text-[#0a1628] mb-2">Preparing Quiz</h2>
-              <p className="text-sm text-[#5a6578] mb-5">
-                Generating questions from curriculum using AI...
-              </p>
-              <Button onClick={() => setSelectedLesson(null)} className="rounded-xl bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold">
-                Back to Module
-              </Button>
-            </div>
-          </div>
-        );
-      }
-
+      const questions = getQuestionsForLesson(selectedLesson.quiz.id, 'quiz');
       return (
         <InteractiveLesson
           lesson={{
@@ -430,7 +334,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             completed: selectedLesson.quiz.completed,
             locked: selectedLesson.quiz.locked
           }}
-          questions={quizQuestions}
+          questions={questions}
           onBack={() => {
             if (returningToLesson) {
               setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
@@ -438,8 +342,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             } else {
               setSelectedLesson(null);
             }
+            if (setIsInQuizMode) setIsInQuizMode(false);
           }}
           onComplete={(score, totalXP) => {
+            console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
+
             // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {
               void (async () => {
@@ -454,15 +361,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     0,
                     totalXP
                   );
-                  // Also update lesson-level quiz completion if returning from a lesson
-                  if (returningToLesson) {
-                    await updateLessonQuizCompletion(
-                      userProfile.uid,
-                      returningToLesson.id,
-                      score,
-                      true
-                    );
-                  }
                   await recalculateAndUpdateModuleProgress(
                     userProfile.uid,
                     subjectId,
@@ -470,8 +368,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     module.lessons.length,
                     module.quizzes.length
                   );
+                  await subscribeToUserProgress(userProfile.uid, setUserProgress);
                 } catch (err) {
-                  console.error('[QuizComplete] Failed to persist progress:', err);
+                  console.warn('[Quiz] Progress persist failed:', err);
+                }
+
+                if (onEarnXP) {
+                  onEarnXP(totalXP ?? 0, `Quiz Complete! +${totalXP ?? 0} XP`);
                 }
               })();
             }
@@ -482,6 +385,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             } else {
               setSelectedLesson(null);
             }
+            if (setIsInQuizMode) setIsInQuizMode(false);
           }}
         />
       );
@@ -511,7 +415,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <div className="absolute inset-0 bg-black/60 pointer-events-none z-0" />
         <div className="absolute inset-0 opacity-10 pointer-events-none module-detail-grid-pattern" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
-        
+
         <div className="relative p-5 sm:p-7 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
           <div className="flex-1 text-white">
             <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-5">
@@ -557,17 +461,17 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
           <div className="hidden lg:flex w-48 h-48 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md items-center justify-center transform rotate-[-3deg] shadow-2xl relative group hover:rotate-0 transition-all duration-500 shrink-0">
             <div className={`absolute inset-0 opacity-40 rounded-[2rem] ${module.progress === 100 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : module.accentColor}`} />
-            
+
             {moduleProgressPercent === 100 ? (
               <Trophy size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
             ) : (
               <BookOpen size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
             )}
-            
-            <motion.div animate={{y:[-5,5,-5], rotate:[-10,10,-10]}} transition={{duration:4, repeat:Infinity}} className="absolute top-6 left-6 text-emerald-300 z-20">
+
+            <motion.div animate={{ y: [-5, 5, -5], rotate: [-10, 10, -10] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-6 left-6 text-emerald-300 z-20">
               <Star size={20} fill="currentColor" />
             </motion.div>
-            <motion.div animate={{y:[5,-5,5], rotate:[10,-10,10]}} transition={{duration:3.5, repeat:Infinity}} className="absolute bottom-8 right-6 text-sky-300 z-20">
+            <motion.div animate={{ y: [5, -5, 5], rotate: [10, -10, 10] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute bottom-8 right-6 text-sky-300 z-20">
               <Hash size={24} />
             </motion.div>
           </div>
@@ -595,200 +499,197 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           </div>
 
           <div className="relative z-10 px-4 sm:px-6 md:px-8 py-5 md:py-6 space-y-5">
-                {/* PERF: lessons.map() with motion.div per lesson — stagger delay (index * 0.05) creates
-                    sequential mount animations. Known infinite-loop history per AGENTS.md gotchas.
-                    Wrap in useMemo or virtualize if lesson count grows >20. */}
-                {module.lessons.map((lesson, index) => {
-                  const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
-                  const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
-                  const lessonAccentHex = MODULE_PALETTE[index % MODULE_PALETTE.length];
+            {module.lessons.map((lesson, index) => {
+              const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
+              const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
+              const lessonAccentHex = MODULE_PALETTE[index % MODULE_PALETTE.length];
 
-                  return (
-                    <React.Fragment key={lesson.id}>
+              return (
+                <React.Fragment key={lesson.id}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`relative rounded-[1.5rem] border overflow-hidden group transition-all duration-500 mb-6 ${
+                      lesson.locked
+                        ? 'border-slate-200 opacity-65 saturate-50'
+                        : 'border-slate-200/80 hover:border-slate-300 hover:shadow-[0_16px_40px_-15px_rgba(0,0,0,0.12)] hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-[6px] z-20 bg-slate-100 overflow-hidden">
                       <motion.div
-                        initial={{ opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={`relative rounded-[1.5rem] border overflow-hidden group transition-all duration-500 mb-6 ${
-                          lesson.locked
-                            ? 'border-slate-200 opacity-65 saturate-50'
-                            : 'border-slate-200/80 hover:border-slate-300 hover:shadow-[0_16px_40px_-15px_rgba(0,0,0,0.12)] hover:-translate-y-0.5'
-                        }`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(2, lessonPct)}%` }}
+                        transition={{ duration: 1.2, ease: 'easeOut', delay: 0.1 + index * 0.05 }}
+                        className="h-full relative"
+                        style={{ backgroundColor: lessonAccentHex }}
                       >
-                        <div className="absolute top-0 left-0 right-0 h-[6px] z-20 bg-slate-100 overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.max(2, lessonPct)}%` }}
-                            transition={{ duration: 1.2, ease: 'easeOut', delay: 0.1 + index * 0.05 }}
-                            className="h-full relative"
-                            style={{ backgroundColor: lessonAccentHex }}
-                          >
-                            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=')] opacity-30 mix-blend-overlay" />
-                          </motion.div>
-                        </div>
-
-                        <div
-                          className="absolute inset-0 bg-white transition-opacity duration-500 group-hover:opacity-90"
-                          style={{
-                            backgroundImage: `linear-gradient(to right, ${lessonAccentHex}44 0%, ${lessonAccentHex}11 50%, white 100%)`
-                          }}
-                        />
-                        <div
-                          className="absolute inset-0 opacity-[0.2] pointer-events-none"
-                          style={{
-                            backgroundImage: `radial-gradient(circle at 2px 2px, ${lessonAccentHex} 1.5px, transparent 0)`,
-                            backgroundSize: '24px 24px'
-                          }}
-                        />
-                        <div className="absolute -top-12 -left-10 h-40 w-40 rounded-full blur-[32px] pointer-events-none transition-transform duration-700 group-hover:scale-[1.3] group-hover:translate-x-4" style={{ backgroundColor: `${lessonAccentHex}22` }} />
-                        <div className="absolute -bottom-8 right-8 h-32 w-32 rounded-full blur-2xl pointer-events-none transition-transform duration-700 group-hover:scale-125 group-hover:-translate-y-4" style={{ backgroundColor: `${lessonAccentHex}11` }} />
-
-                        <div className="absolute right-4 top-4 opacity-10 pointer-events-none transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 drop-shadow-sm" style={{ color: lessonAccentHex }}><Hash size={56} strokeWidth={1} /></div>
-                        <div className="absolute right-16 bottom-5 opacity-10 pointer-events-none transition-all duration-500 group-hover:-rotate-6 group-hover:-translate-y-2 drop-shadow-sm" style={{ color: lessonAccentHex }}><BookOpen size={40} strokeWidth={1} /></div>
-
-                        <div className="relative z-10 p-4 md:p-5 pt-6 space-y-4">
-                          <button
-                            type="button"
-                            onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
-                            className={`w-full text-left flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 transition shadow-sm ${
-                              lesson.locked
-                                ? 'cursor-not-allowed border border-slate-200 bg-white/70'
-                                : 'cursor-pointer bg-white hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div
-                                className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm ${
-                                  lesson.locked
-                                    ? 'bg-slate-100 text-slate-400'
-                                    : isCompleted
-                                    ? 'text-white'
-                                    : 'text-white'
-                                }`}
-                                style={!lesson.locked ? (isCompleted ? { backgroundColor: '#0ea5e9' } : { backgroundColor: lessonAccentHex }) : {}}
-                              >
-                                {lesson.locked ? <Lock size={18} /> : isCompleted ? <CheckCircle2 size={24} /> : <Play size={20} className="ml-0.5" />}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-[11px] md:text-[12px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
-                                  Lesson {index + 1}
-                                </p>
-                                <h3 className="font-bold text-[16px] md:text-[18px] text-[#0a1628] truncate">{lesson.title}</h3>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-end">
-                              <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs md:text-sm font-semibold bg-slate-100/80 px-3 py-1.5 rounded-xl">
-                                <Clock size={14} />
-                                {lesson.duration}
-                              </span>
-                            </div>
-                          </button>
-
-                          <div className="flex flex-wrap gap-3 px-1">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm" style={{ color: lessonAccentHex }}>
-                              <BookOpen size={14} /> Study Materials
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm" style={{ color: lessonAccentHex }}>
-                              <Bookmark size={14} /> Quiz
-                            </span>
-                          </div>
-
-                          {/* Practice Activities removed from ModuleDetailView rendering */}
-                        </div>
+                        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=')] opacity-30 mix-blend-overlay" />
                       </motion.div>
+                    </div>
 
-                      {standaloneQuiz && index === standaloneInsertIndex - 1 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 + index * 0.03 }}
-                          className="mt-8 mb-6"
-                        >
-                          <div className="flex items-center gap-4 mb-6">
-                            <div className="flex-1 h-px bg-slate-200" />
-                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest text-center">
-                              mid-module checkpoint
-                            </span>
-                            <div className="flex-1 h-px bg-slate-200" />
-                          </div>
+                    <div
+                      className="absolute inset-0 bg-white transition-opacity duration-500 group-hover:opacity-90"
+                      style={{
+                        backgroundImage: `linear-gradient(to right, ${lessonAccentHex}44 0%, ${lessonAccentHex}11 50%, white 100%)`
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 opacity-[0.2] pointer-events-none"
+                      style={{
+                        backgroundImage: `radial-gradient(circle at 2px 2px, ${lessonAccentHex} 1.5px, transparent 0)`,
+                        backgroundSize: '24px 24px'
+                      }}
+                    />
+                    <div className="absolute -top-12 -left-10 h-40 w-40 rounded-full blur-[32px] pointer-events-none transition-transform duration-700 group-hover:scale-[1.3] group-hover:translate-x-4" style={{ backgroundColor: `${lessonAccentHex}22` }} />
+                    <div className="absolute -bottom-8 right-8 h-32 w-32 rounded-full blur-2xl pointer-events-none transition-transform duration-700 group-hover:scale-125 group-hover:-translate-y-4" style={{ backgroundColor: `${lessonAccentHex}11` }} />
 
-                          <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
-                            <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
+                    <div className="absolute right-4 top-4 opacity-10 pointer-events-none transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 drop-shadow-sm" style={{ color: lessonAccentHex }}><Hash size={56} strokeWidth={1} /></div>
+                    <div className="absolute right-16 bottom-5 opacity-10 pointer-events-none transition-all duration-500 group-hover:-rotate-6 group-hover:-translate-y-2 drop-shadow-sm" style={{ color: lessonAccentHex }}><BookOpen size={40} strokeWidth={1} /></div>
 
-                            <div className="relative z-10 flex flex-wrap items-center gap-4 md:gap-5">
-                              <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
-                                <Target size={28} className="text-rose-400" />
-                              </div>
-
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">
-                                  Module Task G╟≤ General Quiz
-                                </p>
-                                <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">
-                                  {standaloneQuiz.title}
-                                </h3>
-                                <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
-                                  <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
-                                  <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
-                                  <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => !standaloneQuiz.locked && setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' })}
-                                className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
-                                  standaloneQuiz.locked
-                                    ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
-                                    : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
-                                    ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
-                                    : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
-                                }`}
-                              >
-                                {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-
-                {module.lessons.length === 0 && standaloneQuiz && (
-                  <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group">
-                    <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
-                    <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 md:gap-5">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
-                          <Target size={28} className="text-rose-400" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">Module Task G╟≤ General Quiz</p>
-                          <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">{standaloneQuiz.title}</h3>
-                          <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
-                            <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
-                            <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
-                            <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
-                          </p>
-                        </div>
-                      </div>
+                    <div className="relative z-10 p-4 md:p-5 pt-6 space-y-4">
                       <button
                         type="button"
-                        onClick={() => !standaloneQuiz.locked && setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' })}
-                        className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
-                          standaloneQuiz.locked
-                            ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
-                            : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
-                            ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
-                            : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                        onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
+                        className={`w-full text-left flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 transition shadow-sm ${
+                          lesson.locked
+                            ? 'cursor-not-allowed border border-slate-200 bg-white/70'
+                            : 'cursor-pointer bg-white hover:bg-slate-50'
                         }`}
                       >
-                        {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div
+                            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm ${
+                              lesson.locked
+                                ? 'bg-slate-100 text-slate-400'
+                                : isCompleted
+                                  ? 'text-white'
+                                  : 'text-white'
+                            }`}
+                            style={!lesson.locked ? (isCompleted ? { backgroundColor: '#0ea5e9' } : { backgroundColor: lessonAccentHex }) : {}}
+                          >
+                            {lesson.locked ? <Lock size={18} /> : isCompleted ? <CheckCircle2 size={24} /> : <Play size={20} className="ml-0.5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] md:text-[12px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
+                              Lesson {index + 1}
+                            </p>
+                            <h3 className="font-bold text-[16px] md:text-[18px] text-[#0a1628] truncate">{lesson.title}</h3>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs md:text-sm font-semibold bg-slate-100/80 px-3 py-1.5 rounded-xl">
+                            <Clock size={14} />
+                            {lesson.duration}
+                          </span>
+                        </div>
                       </button>
+
+                      <div className="flex flex-wrap gap-3 px-1">
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                          <BookOpen size={14} /> Study Materials
+                        </button>
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                          <Bookmark size={14} /> Quiz
+                        </button>
+                      </div>
+
+                      {/* Practice Activities removed from ModuleDetailView rendering */}
+                    </div>
+                  </motion.div>
+
+                  {standaloneQuiz && index === standaloneInsertIndex - 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 + index * 0.03 }}
+                      className="mt-8 mb-6"
+                    >
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest text-center">
+                          mid-module checkpoint
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200" />
+                      </div>
+
+                      <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
+                        <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
+
+                        <div className="relative z-10 flex flex-wrap items-center gap-4 md:gap-5">
+                          <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                            <Target size={28} className="text-rose-400" />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">
+                              COMPETENCY CHECK · General Quiz
+                            </p>
+                            <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">
+                              {standaloneQuiz.title}
+                            </h3>
+                            <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
+                              <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
+                              <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
+                              <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
+                            className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
+                              standaloneQuiz.locked
+                                ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                                : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
+                                  ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                                  : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                            }`}
+                          >
+                            {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {module.lessons.length === 0 && standaloneQuiz && (
+              <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group">
+                <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
+                <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 md:gap-5">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                      <Target size={28} className="text-rose-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">COMPETENCY CHECK · General Quiz</p>
+                      <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">{standaloneQuiz.title}</h3>
+                      <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
+                        <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
+                        <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
+                      </p>
                     </div>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
+                    className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
+                      standaloneQuiz.locked
+                        ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                        : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
+                          ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                          : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                    }`}
+                  >
+                    {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
