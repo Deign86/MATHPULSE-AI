@@ -136,3 +136,74 @@ api.restart_space('deign86/mathpulse-api-v3test')
 - **HF Space secrets** require a space restart via `api.restart_space()` after adding.
 - **ModuleDetailView infinite loop bug** — inline callback references in `ModuleDetailView.tsx` cause "Maximum update depth exceeded". Fix: wrap callbacks in `useCallback`.
 
+***
+
+## Layer 2: Code Intelligence MCPs
+
+Two knowledge graph engines are active as local MCP servers in OpenCode:
+
+- **Graphify** — codebase-level clustering, GRAPH_REPORT.md, doc/image coverage
+- **GitNexus** — symbol-level precision: blast radius, call chains, refactor safety
+
+### Graphify MCP Tools
+
+| Tool | Use for |
+|---|---|
+| `graphify_query_graph` | Natural-language query → relevant nodes/edges |
+| `graphify_get_node` | Single node details by label/ID |
+| `graphify_get_neighbors` | Direct neighbors of a node |
+| `graphify_get_community` | All members of a community |
+| `graphify_god_nodes` | Most-connected nodes (core abstractions) |
+| `graphify_graph_stats` | Graph summary stats |
+| `graphify_shortest_path` | Shortest path between two concepts |
+
+### GitNexus MCP Tools
+
+| Tool | Use for |
+|---|---|
+| `gitnexus_query` | Find execution flows by concept (ranked by relevance) |
+| `gitnexus_context` | Full symbol info: callers, callees, processes |
+| `gitnexus_impact` | Blast radius analysis before editing |
+| `gitnexus_rename` | Safe multi-file rename via call graph |
+| `gitnexus_detect_changes` | Map git diff → affected execution flows |
+| `gitnexus_cypher` | Raw Cypher query for complex graph traversal |
+| `gitnexus_api_impact` | API route impact analysis |
+| `gitnexus_route_map` | API route → handler → consumer mapping |
+| `gitnexus_shape_check` | API response shape vs consumer usage |
+| `gitnexus_list_repos` | List indexed repositories |
+| `gitnexus_group_list` / `gitnexus_group_sync` | Multi-repo group operations |
+| `gitnexus_community_clusters` | Functional area groupings |
+| `gitnexus_execution_flow` | Step-by-step call chain trace |
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+### Decision Guide
+
+| Question | Use |
+|---|---|
+| Why was this architecture decision made? | Graphify → `graphify_shortest_path` or GRAPH_REPORT.md |
+| What docs/images cover this concept? | Graphify → `graphify_query_graph` |
+| What breaks if I change this function? | GitNexus → `gitnexus_impact` |
+| What is the full call chain here? | GitNexus → `gitnexus_execution_flow` |
+| What files does this rename touch? | GitNexus → `gitnexus_rename` |
+| Find code related to a concept? | GitNexus → `gitnexus_query` (fastest) |
+| Understand module groupings? | GitNexus → `gitnexus_community_clusters` |
+
+Consult **both** `graphify-out/GRAPH_REPORT.md` and `CODEBASE_WIKI.md` for any
+task that modifies more than one file.
+
+### GitNexus Rules (MCP Tools)
+
+**MUST do before editing any symbol:**
+1. `gitnexus_impact({ target: "symbolName", direction: "upstream" })` → report blast radius + risk
+2. If risk = HIGH or CRITICAL, warn user before proceeding
+
+**MUST do before committing:**
+- `gitnexus_detect_changes()` → verify only expected symbols affected
+
+**NEVER:**
+- Edit without running `gitnexus_impact` first
+- Rename with find-and-replace — use `gitnexus_rename`
+- Commit with unexpected affected scopes
+
+
