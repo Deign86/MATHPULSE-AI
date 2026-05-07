@@ -129,10 +129,66 @@ api.restart_space('deign86/mathpulse-api-v3test')
 ```
 **Required secrets:** `FIREBASE_SERVICE_ACCOUNT_JSON`, `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `INFERENCE_PROVIDER`
 
-## Gotchas
+## Layer 2: Code Intelligence MCPs
 
-- **`npm run dev` has a predev hook** — it runs `sync:models` (Python) and `check:backend:dev` (Node `backend-gate.mjs`) before Vite starts. Both must pass or dev server won't start.
-- **ROLE_POLICIES** in `backend/main.py:310` controls endpoint access. If students get 403 on an endpoint, check if it's mapped to `TEACHER_OR_ADMIN` instead of `ALL_APP_ROLES`.
-- **HF Space secrets** require a space restart via `api.restart_space()` after adding.
-- **ModuleDetailView infinite loop bug** — inline callback references in `ModuleDetailView.tsx` cause "Maximum update depth exceeded". Fix: wrap callbacks in `useCallback`.
+Two knowledge graph engines are active as local MCP servers in OpenCode:
+
+- **Graphify** — codebase-level clustering, GRAPH_REPORT.md, doc/image coverage
+- **GitNexus** — symbol-level precision: blast radius, call chains, refactor safety
+
+### Graphify MCP Tools
+
+| Tool | Use for |
+|---|---|
+| `graphify_query_graph` | Natural-language query → relevant nodes/edges |
+| `graphify_get_node` | Single node details by label/ID |
+| `graphify_get_neighbors` | Direct neighbors of a node |
+| `graphify_get_community` | All members of a community |
+| `graphify_god_nodes` | Most-connected nodes (core abstractions) |
+| `graphify_graph_stats` | Graph summary stats |
+| `graphify_shortest_path` | Shortest path between two concepts |
+
+### GitNexus MCP Tools
+
+| Tool | Use for |
+|---|---|
+| `gitnexus_query` | Find execution flows by concept (ranked by relevance) |
+| `gitnexus_context` | Full symbol info: callers, callees, processes |
+| `gitnexus_impact` | Blast radius analysis before editing |
+| `gitnexus_rename` | Safe multi-file rename via call graph |
+| `gitnexus_detect_changes` | Map git diff → affected execution flows |
+| `gitnexus_cypher` | Raw Cypher query for complex graph traversal |
+| `gitnexus_api_impact` | API route impact analysis |
+| `gitnexus_route_map` | API route → handler → consumer mapping |
+| `gitnexus_shape_check` | API response shape vs consumer usage |
+| `gitnexus_list_repos` | List indexed repositories |
+| `gitnexus_group_list` / `gitnexus_group_sync` | Multi-repo group operations |
+
+### Index Freshness
+
+**GitNexus:** No auto-update. Re-index after code changes:
+```bash
+npx gitnexus analyze        # single repo
+```
+
+**Graphify:** Auto-indexes on file edits locally. Full rebuild:
+```bash
+npx graphify analyze
+```
+
+Run re-index before important tasks if significant changes since last session.
+
+### GitNexus Rules (MCP Tools)
+
+**MUST do before editing any symbol:**
+1. `gitnexus_impact({ target: "symbolName", direction: "upstream" })` → report blast radius + risk
+2. If risk = HIGH or CRITICAL, warn user before proceeding
+
+**MUST do before committing:**
+- `gitnexus_detect_changes()` → verify only expected symbols affected
+
+**NEVER:**
+- Edit without running `gitnexus_impact` first
+- Rename with find-and-replace — use `gitnexus_rename`
+- Commit with unexpected affected scopes
 

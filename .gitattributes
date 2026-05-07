@@ -1,0 +1,15 @@
+# Git attributes for this repo
+
+# Normalize line endings
+* text=auto
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.sqlite3 binary
+*.db binary
+*.joblib binary
