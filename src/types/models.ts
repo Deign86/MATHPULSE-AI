@@ -120,6 +120,16 @@ export interface StudentProfile extends User {
   recommendedNextTopicGroupId?: string;
   recommendationRationale?: string;
   recommendationReasonCode?: string;
+  // Assessment dismissal & completion tracking
+  assessmentDismissed?: boolean;
+  assessmentDismissedAt?: Date;
+  initialAssessmentCompleted?: boolean; // boolean flag (separate from initialAssessmentCompletedAt)
+  assessmentResults?: {
+    topicScores: Record<string, number>;
+    weakTopics: string[];
+    strongTopics: string[];
+  };
+  assessmentCompletedAt?: Date;
 }
 
 export interface TeacherProfile extends User {

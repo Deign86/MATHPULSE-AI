@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 
 const mascotAnimations = `
   @keyframes head-sway {
@@ -45,13 +46,60 @@ const mascotAnimations = `
   }
 `;
 
-const ModulesMascot: React.FC = () => {
+interface ModulesMascotProps {
+  assessmentDismissed?: boolean;
+  initialAssessmentCompleted?: boolean;
+}
+
+const ModulesMascot: React.FC<ModulesMascotProps> = ({
+  assessmentDismissed,
+  initialAssessmentCompleted,
+}) => {
   const imageClass = "absolute inset-0 w-full h-full object-contain";
+  const [showReminder, setShowReminder] = useState(false);
+
+  useEffect(() => {
+    const REMINDER_KEY = 'mathpulse_assessment_reminder_shown';
+    if (
+      assessmentDismissed &&
+      !initialAssessmentCompleted &&
+      !sessionStorage.getItem(REMINDER_KEY)
+    ) {
+      setShowReminder(true);
+    } else {
+      setShowReminder(false);
+    }
+  }, [assessmentDismissed, initialAssessmentCompleted]);
+
+  const handleReminderClick = () => {
+    sessionStorage.setItem('mathpulse_assessment_reminder_shown', 'true');
+    setShowReminder(false);
+    window.dispatchEvent(new CustomEvent('mathpulse:open-assessment'));
+  };
 
   return (
     <>
       <style>{mascotAnimations}</style>
       <div className="relative w-full h-[250px] flex items-end justify-center drop-shadow-sm select-none pointer-events-none">
+        {showReminder && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, x: 10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            className="absolute top-0 right-0 z-50 max-w-[180px] bg-white rounded-2xl shadow-lg border border-[#dde3eb] p-3 cursor-pointer pointer-events-auto"
+            onClick={handleReminderClick}
+          >
+            <p className="text-[11px] font-bold text-[#0a1628] leading-snug">
+              Psst! Complete your assessment for a personalized path! ✨
+            </p>
+            <div className="mt-1.5 flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
+              <span className="text-[10px] text-[#5a6578] font-medium">Tap to start</span>
+            </div>
+            {/* Speech bubble tail pointing to mascot */}
+            <div className="absolute -bottom-2 left-4 w-3 h-3 bg-white border-r border-b border-[#dde3eb] rotate-45" />
+          </motion.div>
+        )}
+
         {/* Base: Desk and Body */}
         <img
           src="/mascot/modules_avatar_body.png"

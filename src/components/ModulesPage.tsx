@@ -429,7 +429,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">
-          <ModulesMascot />
+          <ModulesMascot 
+            assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
+            initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
+          />
         </div>
       </div>
 
