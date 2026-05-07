@@ -1,51 +1,4 @@
 {
-  // Example (Standard Edition):
-  //
-  // "indexes": [
-  //   {
-  //     "collectionGroup": "widgets",
-  //     "queryScope": "COLLECTION",
-  //     "fields": [
-  //       { "fieldPath": "foo", "arrayConfig": "CONTAINS" },
-  //       { "fieldPath": "bar", "mode": "DESCENDING" }
-  //     ]
-  //   },
-  //
-  //  "fieldOverrides": [
-  //    {
-  //      "collectionGroup": "widgets",
-  //      "fieldPath": "baz",
-  //      "indexes": [
-  //        { "order": "ASCENDING", "queryScope": "COLLECTION" }
-  //      ]
-  //    },
-  //   ]
-  // ]
-  //
-  // Example (Enterprise Edition):
-  //
-  // "indexes": [
-  //   {
-  //     "collectionGroup": "reviews",
-  //     "queryScope": "COLLECTION_GROUP",
-  //     "apiScope": "MONGODB_COMPATIBLE_API",
-  //     "density": "DENSE",
-  //     "multikey": false,
-  //     "fields": [
-  //       { "fieldPath": "baz", "mode": "ASCENDING" }
-  //     ]
-  //   },
-  //   {
-  //     "collectionGroup": "items",
-  //     "queryScope": "COLLECTION_GROUP",
-  //     "apiScope": "MONGODB_COMPATIBLE_API",
-  //     "density": "SPARSE_ANY",
-  //     "multikey": true,
-  //     "fields": [
-  //       { "fieldPath": "baz", "mode": "ASCENDING" }
-  //     ]
-  //   },
-  // ]
   "indexes": [
     {
       "collectionGroup": "generatedQuizzes",
@@ -64,40 +17,6 @@
         { "fieldPath": "assignedAt", "order": "DESCENDING" }
       ]
     },
-     {
-       "collectionGroup": "notifications",
-       "queryScope": "COLLECTION",
-       "fields": [
-         { "fieldPath": "userId", "order": "ASCENDING" },
-         { "fieldPath": "createdAt", "order": "DESCENDING" }
-       ]
-     },
-     {
-       "collectionGroup": "notifications",
-       "queryScope": "COLLECTION",
-       "fields": [
-         { "fieldPath": "userId", "order": "ASCENDING" },
-         { "fieldPath": "read", "order": "ASCENDING" },
-         { "fieldPath": "createdAt", "order": "DESCENDING" }
-       ]
-     },
-     {
-       "collectionGroup": "items",
-       "queryScope": "COLLECTION",
-       "fields": [
-         { "fieldPath": "userId", "order": "ASCENDING" },
-         { "fieldPath": "createdAt", "order": "DESCENDING" }
-       ]
-     },
-     {
-       "collectionGroup": "items",
-       "queryScope": "COLLECTION",
-       "fields": [
-         { "fieldPath": "userId", "order": "ASCENDING" },
-         { "fieldPath": "type", "order": "ASCENDING" },
-         { "fieldPath": "createdAt", "order": "DESCENDING" }
-       ]
-     },
     {
       "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
@@ -116,55 +35,6 @@
       ]
     },
     {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "role", "order": "ASCENDING" },
-        { "fieldPath": "totalXP", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "role", "order": "ASCENDING" },
-        { "fieldPath": "totalXP", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "role", "order": "ASCENDING" },
-        { "fieldPath": "level", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "role", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "classSectionId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "role", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "chatMessages",
       "queryScope": "COLLECTION",
       "fields": [
@@ -173,81 +43,10 @@
       ]
     },
     {
-      "collectionGroup": "courseMaterials",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "teacherId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "courseMaterials",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "teacherId", "order": "ASCENDING" },
-        { "fieldPath": "classSectionId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "courseMaterials",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "teacherId", "order": "ASCENDING" },
-        { "fieldPath": "materialId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "courseMaterials",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "teacherId", "order": "ASCENDING" },
-        { "fieldPath": "classSectionId", "order": "ASCENDING" },
-        { "fieldPath": "materialId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "riskRefreshJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "teacherId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "riskRefreshJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "teacherId", "order": "ASCENDING" },
-        { "fieldPath": "classSectionId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "quizBattleHistory",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "studentId", "order": "ASCENDING" },
-        { "fieldPath": "endedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "quizBattleHistory",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "studentId", "order": "ASCENDING" },
-        { "fieldPath": "mode", "order": "ASCENDING" },
-        { "fieldPath": "endedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "quizBattleHistory",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "studentId", "order": "ASCENDING" },
-        { "fieldPath": "subjectId", "order": "ASCENDING" },
         { "fieldPath": "endedAt", "order": "DESCENDING" }
       ]
     },
@@ -258,20 +57,6 @@
         { "fieldPath": "studentId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "joinedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "studentBattleLeaderboard",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "leaderboardScore", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "leaderboard",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "totalXP", "order": "DESCENDING" }
       ]
     },
     {
@@ -288,22 +73,6 @@
       "fields": [
         { "fieldPath": "classSectionId", "order": "ASCENDING" },
         { "fieldPath": "teacherId", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "classrooms",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "classSectionId", "order": "ASCENDING" },
-        { "fieldPath": "ownerTeacherId", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "classrooms",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "classSectionId", "order": "ASCENDING" },
-        { "fieldPath": "managerId", "order": "ASCENDING" }
       ]
     }
   ],
