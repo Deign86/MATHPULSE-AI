@@ -21,9 +21,10 @@ interface ModuleFolderCardProps {
   badgeLabel?: string;
   /** Optional pre-computed availability - avoids N Firestore listeners when passed from parent */
   precomputedAvailable?: boolean;
+  isRecommended?: boolean;
 }
 
-const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable }) => {
+const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
   
@@ -84,6 +85,11 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             {module.content_domain && (
               <span className="rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-bold text-white/95">
                 {module.content_domain}
+              </span>
+            )}
+            {isRecommended && (
+              <span className="rounded-full border border-purple-200 bg-purple-100 px-2.5 py-1 text-[10px] font-bold text-purple-700 shadow-sm animate-pulse">
+                Recommended
               </span>
             )}
           </div>
