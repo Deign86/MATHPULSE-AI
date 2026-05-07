@@ -15,7 +15,7 @@ logger = logging.getLogger("mathpulse.ingest")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from backend.rag.firebase_storage_loader import (
+from rag.firebase_storage_loader import (
     PDF_METADATA,
     download_pdf_from_storage,
     list_curriculum_blobs,
