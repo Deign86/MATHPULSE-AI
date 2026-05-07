@@ -15,6 +15,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getPHTDateString } from '../data/rewardCatalog';
 
 // ============================================================================
 // TYPES - Cross-role data structures
@@ -56,7 +57,7 @@ export interface StudentEngagementMetrics {
   level: number;
   streak: number;
   lastActivityDate: Date | null;
-  dailyCheckInClaimed: boolean;
+  dailyRewardClaimed: boolean;
   weeklyXP: number;
   monthlyXP: number;
 }
@@ -361,7 +362,7 @@ export async function getEngagementMetricsByTeacher(
           level: 1,
           streak: 0,
           lastActivityDate: null,
-          dailyCheckInClaimed: false,
+          dailyRewardClaimed: false,
           weeklyXP: 0,
           monthlyXP: 0
         };
@@ -377,7 +378,7 @@ export async function getEngagementMetricsByTeacher(
         level: data.level || 1,
         streak: data.streak || 0,
         lastActivityDate: toDate(data.lastActivityDate),
-        dailyCheckInClaimed: !!data.lastActivityDate,
+        dailyRewardClaimed: data.lastClaimedDate === getPHTDateString(),
         weeklyXP: data.weeklyXP || 0,
         monthlyXP: data.monthlyXP || 0
       };

@@ -50,6 +50,14 @@ export interface StudentProfile extends User {
   streak: number;
   streakHistory?: string[]; // Array of YYYY-MM-DD strings
   ownedAvatarItems?: string[]; // Array of item IDs user has purchased
+  // Daily Rewards fields (denormalized for fast profile reads)
+  coins?: number;
+  hintTokens?: number;
+  streakShields?: number;
+  activeMultiplier?: {
+    multiplier: number;
+    expiresAt: string; // ISO timestamp
+  };
   atRiskSubjects: string[];
   hasTakenDiagnostic: boolean;
   iarAssessmentState?:
