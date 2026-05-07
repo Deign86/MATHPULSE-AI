@@ -68,6 +68,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Daily Rewards (users can only claim their own, must change lastClaimedDate) ──
+    match /users/{userId}/dailyRewards/{rewardId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+                    && request.resource.data.lastClaimedDate != resource.data.lastClaimedDate;
+      allow delete: if isAdmin();
+    }
+
     match /progress/{docId} {
       // Allow by document ID (docId == userId) or by userId field
       allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();

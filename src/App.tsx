@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AppLoadingScreen from './components/AppLoadingScreen.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
@@ -58,6 +59,8 @@ const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
 const App = () => {
   // Get authentication state from context
   const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const tabLoadingFallback = (
     <div className="flex min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
       Loading content...
@@ -119,6 +122,45 @@ const App = () => {
   // App-level Navigation State
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
 
+  // URL path mapping for tab navigation
+  const tabToPath: Record<string, string> = {
+    'Dashboard': '/',
+    'Modules': '/modules',
+    'AI Chat': '/chat',
+    'Assessment': '/assessment',
+    'Quiz Battle': '/battle',
+    'Leaderboard': '/leaderboard',
+    'Grades': '/grades',
+    'Avatar Studio': '/avatar',
+  };
+
+  const pathToTab: Record<string, string> = {
+    '/': 'Dashboard',
+    '/modules': 'Modules',
+    '/chat': 'AI Chat',
+    '/assessment': 'Assessment',
+    '/battle': 'Quiz Battle',
+    '/leaderboard': 'Leaderboard',
+    '/grades': 'Grades',
+    '/avatar': 'Avatar Studio',
+  };
+
+  // Sync activeTab from URL on mount and location change
+  useEffect(() => {
+    const tab = pathToTab[location.pathname] || 'Dashboard';
+    setActiveTab(tab);
+  }, [location.pathname]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = pathToTab[window.location.pathname] || 'Dashboard';
+      setActiveTab(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleStudentNavigation = (tab: string, moduleId?: string) => {
     if (moduleId) {
       setTargetModuleId(moduleId);
@@ -134,6 +176,11 @@ const App = () => {
     }
 
     setActiveTab(tab);
+    // Also update URL for deep-link support
+    const path = tabToPath[tab];
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
     setIsMobileSidebarOpen(false);
   };
 

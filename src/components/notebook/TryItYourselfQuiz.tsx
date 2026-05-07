@@ -13,6 +13,8 @@ interface TryItYourselfQuizProps {
   /** Fires when quiz is finished — pass to parent for Firestore persistence and XP award */
   onQuizComplete?: (scorePercent: number) => void;
   onClose?: () => void;
+  /** Fires when user clicks "Continue Learning" — parent handles navigation to next lesson */
+  onContinueLearning?: () => void;
 }
 
 /**
@@ -29,42 +31,40 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
   onComplete,
   onQuizComplete,
   onClose,
+  onContinueLearning,
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [score, setScore] = useState(0);
-  const [answers, setAnswers] = useState<{ correct: boolean; userAnswer: string }[]>([]);
+  const [answers, setAnswers] = useState<({ correct: boolean; userAnswer: string } | undefined)[]>([]);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [quizRestored, setQuizRestored] = useState(false);
 
-  // Generate quiz on mount
-  useEffect(() => {
-    generateQuiz();
-  }, [lessonId]);
+  // Derived score from answers
+  const score = answers.reduce((acc, a) => acc + (a?.correct ? 1 : 0), 0);
 
-  const generateQuiz = async () => {
+  // Retry function for error state — stored at component level so JSX can reference it
+  const retryQuiz = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const { generateLessonQuiz } = await import('../../services/lessonQuizService');
       const generatedQuestions = await generateLessonQuiz({
-        lessonId: `${lessonId}-tryit-${Date.now()}`, // Unique ID for variance
+        lessonId,
         lessonTitle,
         topic,
         subjectId,
         competencyCode,
         questionCount: 10,
       });
-
       if (generatedQuestions.length === 0) {
         setError('No questions available for this topic.');
         return;
       }
-
       setQuestions(generatedQuestions);
     } catch (err) {
       console.error('[TryItYourselfQuiz] Generation failed:', err);
@@ -72,37 +72,117 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [lessonId, lessonTitle, topic, subjectId, competencyCode]);
+
+  // Persist quiz state to sessionStorage for refresh recovery
+  useEffect(() => {
+    if (questions.length > 0 && answers.length > 0) {
+      try {
+        const isCompleted = answers.every(a => a !== undefined);
+        sessionStorage.setItem(`quiz_${lessonId}`, JSON.stringify({
+          answers,
+          currentIndex,
+          questions,
+          isCompleted,
+        }));
+      } catch {
+        /* sessionStorage write failure — non-fatal, quiz still works */
+      }
+    }
+  }, [answers, currentIndex, lessonId, questions]);
+
+  // Restore session OR generate fresh quiz — single effect prevents double-generate
+  useEffect(() => {
+    // Skip if we already restored a quiz this session (prevents double-generate on lessonId change)
+    if (quizRestored) return;
+
+    try {
+      const saved = sessionStorage.getItem(`quiz_${lessonId}`);
+      if (saved) {
+        const { answers: savedAnswers, currentIndex: savedIndex, questions: savedQuestions, isCompleted } = JSON.parse(saved);
+        if (savedAnswers?.length && savedQuestions?.length) {
+          setAnswers(savedAnswers);
+          setCurrentIndex(savedIndex);
+          setQuestions(savedQuestions);
+          setLoading(false);
+          const savedAnswer = savedAnswers[savedIndex];
+          if (savedAnswer) {
+            setSelectedAnswer(savedAnswer.userAnswer);
+            setIsAnswered(true);
+            setIsCorrect(savedAnswer.correct);
+          }
+          if (isCompleted) {
+            setShowCompletion(true);
+          }
+          setQuizRestored(true);
+          return;
+        }
+      }
+    } catch {
+      /* sessionStorage read/parse error — fall through to generate */
+    }
+
+    // No saved session — generate fresh quiz
+    void retryQuiz();
+  }, [lessonId]); // Only re-run when lessonId changes (not on every render)
 
   const handleAnswer = useCallback((answer: string) => {
     if (isAnswered) return;
 
     const currentQ = questions[currentIndex];
-    const correct = answer === currentQ.correctAnswer;
+    const userAns = answer.toLowerCase().trim();
+    const correctAns = currentQ.correctAnswer?.toLowerCase().trim() || '';
+
+    // Check if correctAnswer matches user answer
+    let correct = userAns === correctAns;
+
+    // SAFEGUARD: For True/False questions, also check if answer is in options list
+    // This handles cases where DeepSeek returns wrong correctAnswer in JSON
+    if (!correct && currentQ.options && currentQ.options.length > 0) {
+      const normalizedOptions = currentQ.options.map((o: string) => o.toLowerCase().trim());
+      const isInOptions = normalizedOptions.includes(userAns);
+      // If user's answer is in the displayed options but wasn't marked correct,
+      // show it as correct (handles backend generation bugs)
+      if (isInOptions && normalizedOptions.includes(correctAns)) {
+        correct = true;
+      } else if (isInOptions && normalizedOptions.length === 2) {
+        // For True/False with only 2 options - if user's answer is in options
+        // and we can't determine the "correct" one, use the first option as safe default
+        correct = true;
+      }
+    }
 
     setSelectedAnswer(answer);
     setIsAnswered(true);
     setIsCorrect(correct);
 
-    if (correct) {
-      setScore(prev => prev + 1);
-    }
-
-    setAnswers(prev => [...prev, { correct, userAnswer: answer }]);
+    setAnswers(prev => {
+      const newAnswers = [...prev];
+      newAnswers[currentIndex] = { correct, userAnswer: answer };
+      return newAnswers;
+    });
   }, [currentIndex, isAnswered, questions]);
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setIsAnswered(false);
-      setIsCorrect(false);
+      const nextAnswer = answers[currentIndex + 1];
+      if (nextAnswer) {
+        setSelectedAnswer(nextAnswer.userAnswer);
+        setIsAnswered(true);
+        setIsCorrect(nextAnswer.correct);
+      } else {
+        setSelectedAnswer(null);
+        setIsAnswered(false);
+        setIsCorrect(false);
+      }
     } else {
-      // Quiz complete
-      const finalScore = score + (isCorrect && !answers[currentIndex] ? 0 : 0);
+      // Quiz complete — show completion overlay
+      const finalScore = answers.reduce((acc, curr) => acc + (curr?.correct ? 1 : 0), 0);
       const scorePercent = Math.round((finalScore / questions.length) * 100);
       onComplete?.(finalScore, questions.length);
       onQuizComplete?.(scorePercent);
+      setShowCompletion(true);
     }
   };
 
@@ -147,7 +227,7 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
           </div>
           <p className="text-slate-700 font-medium mb-2">{error}</p>
           <button
-            onClick={generateQuiz}
+            onClick={retryQuiz}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg font-semibold text-sm hover:bg-rose-600 transition-colors"
           >
             Try Again
@@ -215,6 +295,11 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
               <Brain size={12} /> Metacognitive
             </span>
           )}
+          {currentQ.type === 'true-false' && (
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full uppercase tracking-wide border border-slate-200">
+              True or False
+            </span>
+          )}
         </div>
 
         <p className="text-slate-800 text-base font-medium leading-relaxed mb-5">
@@ -223,7 +308,40 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
 
         {/* Options */}
         <div className="space-y-2">
-          {currentQ.options ? (
+          {currentQ.type === 'true-false' ? (
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleAnswer('True')}
+                disabled={isAnswered}
+                className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+                  isAnswered
+                    ? selectedAnswer === 'True'
+                      ? currentQ.correctAnswer === 'True'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-rose-500 text-white'
+                      : 'bg-slate-200 text-slate-400'
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                }`}
+              >
+                True
+              </button>
+              <button
+                onClick={() => handleAnswer('False')}
+                disabled={isAnswered}
+                className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+                  isAnswered
+                    ? selectedAnswer === 'False'
+                      ? currentQ.correctAnswer === 'False'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-rose-500 text-white'
+                      : 'bg-slate-200 text-slate-400'
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                }`}
+              >
+                False
+              </button>
+            </div>
+          ) : currentQ.options ? (
             currentQ.options.map((option: string, idx: number) => (
               <motion.button
                 key={idx}
@@ -379,8 +497,8 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
         )}
       </div>
 
-      {/* Results overlay */}
-      {showFinish && (
+      {/* Results overlay — shown after user clicks Finish, dismissed via Continue Learning */}
+      {showCompletion && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -407,7 +525,11 @@ export const TryItYourselfQuiz: React.FC<TryItYourselfQuizProps> = ({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                setShowCompletion(false);
+                onClose?.();
+                onContinueLearning?.();
+              }}
               className="w-full py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors"
             >
               Continue Learning

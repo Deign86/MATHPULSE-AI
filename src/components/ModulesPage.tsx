@@ -28,7 +28,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
 import { toast } from 'sonner';
 import { unlockAvatarItem } from '../services/gamificationService';
-import { getDailyCheckInState, claimDailyCheckIn } from '../services/dailyCheckInService';
+import { useDailyReward } from '../hooks/useDailyReward';
+import { getDayOfWeek } from '../data/rewardCatalog';
 import { notify } from '@/features/notifications';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { cacheKeys } from '../utils/cacheKeys';
@@ -122,30 +123,30 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [competencyProfileLoading, setCompetencyProfileLoading] = useState(false);
 
 
-  // Daily Check-in State (Firestore-backed)
+  // Daily Rewards (new weekly shuffle system)
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
-  const [claimedDays, setClaimedDays] = useState<number[]>([]);
-  const [currentDay, setCurrentDay] = useState(1);
-  const [checkInLoading, setCheckInLoading] = useState(false);
 
-  // Load check-in state from Firestore on mount AND listen for notification navigations
+  const {
+    weekRewards,
+    todayReward,
+    canClaim,
+    isClaiming,
+    claimedDays,
+    currentStreak,
+    timeUntilReset,
+    claim,
+    lastClaimResult,
+  } = useDailyReward(userProfile?.uid ?? null);
+
+  // Show modal on mount if user can claim
   useEffect(() => {
     if (!userProfile?.uid) return;
 
     let cancelled = false;
     const loadState = async (forceShow?: boolean) => {
-      try {
-        const state = await getDailyCheckInState(userProfile.uid);
-        if (cancelled) return;
-        setCurrentDay(state.currentDay);
-        setClaimedDays(state.claimedDays || []);
-
-        const today = new Date().toISOString().split('T')[0];
-        if (state.lastClaimDate !== today || forceShow) {
-          setShowDailyCheckIn(true);
-        }
-      } catch (error) {
-        console.error('Failed to load check-in state:', error);
+      if (cancelled) return;
+      if (canClaim || forceShow) {
+        setShowDailyCheckIn(true);
       }
     };
 
@@ -156,59 +157,50 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       }
     };
 
-    loadState();
+    // Small delay to let hook initialise
+    const timer = setTimeout(() => loadState(), 500);
     window.addEventListener('mathpulse:navigate', handleNotificationNav);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       window.removeEventListener('mathpulse:navigate', handleNotificationNav);
     };
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, canClaim]);
 
-  const handleClaimDailyReward = async (reward: any) => {
-    if (!userProfile?.uid || checkInLoading) return;
-    setCheckInLoading(true);
+  const handleClaimDailyReward = async () => {
+    if (!userProfile?.uid) return;
 
     try {
-      const result = await claimDailyCheckIn(userProfile.uid);
-
-      // Update local state
-      const newClaimed = [...claimedDays, result.day];
-      setClaimedDays(newClaimed);
-      setCurrentDay(result.isLastDay ? 1 : result.day + 1);
+      await claim();
 
       // Fire notification
-      notify({
-        userId: userProfile.uid,
-        type: 'daily_checkin',
-        title: 'Daily Check-In Complete!',
-        message: `You earned ${reward?.amount || 'bonus'} XP and kept your streak alive!`,
-        metadata: { xpEarned: reward?.amount, streakDay: result.day },
-      }).catch(console.error);
+      if (lastClaimResult?.success) {
+        notify({
+          userId: userProfile.uid,
+          type: 'daily_checkin',
+          title: 'Daily Reward Claimed!',
+          message: `You earned ${lastClaimResult.reward.label} and kept your streak alive!`,
+          metadata: { rewardId: lastClaimResult.reward.id, streakDay: lastClaimResult.dayIndex + 1 },
+        }).catch(console.error);
 
-      // Avatar Rewards Unlock Logic (Run in background)
-      if (result.day === 3) {
-        unlockAvatarItem(userProfile.uid, 'acc_blue_cap')
-          .then(() => toast.success("✨ Blue Cap unlocked in Avatar Studio!"))
-          .catch(console.error);
-      } else if (result.day === 7) {
-        unlockAvatarItem(userProfile.uid, 'acc_crown')
-          .then(() => toast.success("👑 Golden Crown unlocked in Avatar Studio!"))
-          .catch(console.error);
+        // Avatar unlock for epic rewards
+        if (lastClaimResult.reward.rarity === 'epic') {
+          unlockAvatarItem(userProfile.uid, 'acc_crown')
+            .then(() => toast.success("👑 Epic reward unlocked!"))
+            .catch(console.error);
+        }
       }
 
-      // Auto-close quickly
-      setTimeout(() => setShowDailyCheckIn(false), 800);
+      // Auto-close
+      setTimeout(() => setShowDailyCheckIn(false), 1000);
     } catch (error) {
       const msg = error instanceof Error ? error.message : '';
       console.error('Failed to claim daily reward:', error);
       if (msg.includes('Already claimed')) {
-        setClaimedDays((prev) => prev.includes(currentDay) ? prev : [...prev, currentDay]);
         toast.info('You already claimed your reward today!');
       } else {
         toast.error('Failed to claim daily reward. Please try again.');
       }
-    } finally {
-      setCheckInLoading(false);
     }
   };
 
@@ -413,8 +405,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         isOpen={showDailyCheckIn}
         onClose={() => setShowDailyCheckIn(false)}
         onClaim={handleClaimDailyReward}
-        currentDay={currentDay}
+        weekRewards={weekRewards}
+        todayReward={todayReward}
+        canClaim={canClaim}
+        isClaiming={isClaiming}
         claimedDays={claimedDays}
+        currentDayIndex={getDayOfWeek()}
+        streakCount={currentStreak}
+        timeUntilReset={timeUntilReset}
       />
 
       {/* Hero Section */}
@@ -457,27 +455,31 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               <button
                 onClick={async () => {
                   if (!userProfile?.uid) return;
-                  const { getDoc, updateDoc } = await import('firebase/firestore');
+                  const { doc, setDoc } = await import('firebase/firestore');
                   const { db } = await import('../lib/firebase');
-                  const ref = getDoc as any;
                   try {
-                    const docRef = (await import('firebase/firestore')).doc(db, 'users', userProfile.uid, 'settings', 'dailyCheckIn');
-                    await updateDoc(docRef, {
-                      currentDay: 3,
-                      claimedDays: [1, 2],
-                      lastClaimDate: '',
-                    } as any);
-                    setCurrentDay(3);
-                    setClaimedDays([1, 2]);
+                    const docRef = doc(db, 'users', userProfile.uid, 'dailyRewards', userProfile.uid);
+                    await setDoc(docRef, {
+                      lastClaimedDate: '',
+                      lastClaimedWeekSeed: 0,
+                      claimedDays: [0, 1],
+                      currentStreak: 2,
+                      longestStreak: 2,
+                      totalClaimed: 2,
+                      coins: 0,
+                      hintTokens: 0,
+                      streakShields: 0,
+                      activeMultiplier: null,
+                    });
                     setShowDailyCheckIn(true);
-                    toast.success('Dev: Check-in reset to day 3, days 1-2 claimed');
+                    toast.success('Dev: Daily rewards reset (days 1-2 claimed)');
                   } catch (e) {
                     console.error(e);
                     toast.error('Dev reset failed');
                   }
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-1.5 rounded-lg hover:bg-amber-50"
-                title="Reset Daily Check-in (Dev Only)"
+                title="Reset Daily Rewards (Dev Only)"
               >
                 <RotateCcw size={14} />
               </button>

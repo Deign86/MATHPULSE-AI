@@ -889,8 +889,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       let apiTimeoutErrorCtor: ApiServiceModule['ApiTimeoutError'] | null = null;
 
       // Build history from current session messages
+      // We need to use the functional state update or the current 'sessions' might not have the userMsg yet,
+      // but since we just called addMessageToSession, 'sessions' hasn't updated in this closure.
+      // So we append the new message manually to the history.
       const session = sessions.find(s => s.id === sessionId);
-      const history = (session?.messages || []).map(m => ({
+      // The current 'sessions' state doesn't have the userMsg yet since addMessageToSession is async/state update.
+      // So we append the new message manually to the history.
+      const historyMessages = [...(session?.messages || []), userMsg];
+      const history = historyMessages.map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
         content: m.text,
       }));
