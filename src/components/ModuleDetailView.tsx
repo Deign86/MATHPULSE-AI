@@ -48,6 +48,41 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
+  // Store onEarnXP in a ref to avoid triggering callback recreation on parent re-renders
+  // This prevents the infinite render loop when parent passes a new onEarnXP function reference
+  const onEarnXPRef = useRef(onEarnXP);
+  useEffect(() => { onEarnXPRef.current = onEarnXP; }, [onEarnXP]);
+
+  // Restore previously selected lesson from sessionStorage (BUG 9c fix)
+  // On page refresh, this re-opens the lesson instead of showing the module overview
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`mathpulse_module_${module.id}_selectedLesson`);
+      if (saved) {
+        const { lessonId } = JSON.parse(saved);
+        const lesson = module.lessons.find(l => l.id === lessonId);
+        if (lesson) {
+          setSelectedLesson({ lesson, type: 'lesson' });
+        }
+      }
+    } catch { /* non-fatal — module overview shows by default */ }
+  }, []); // Empty deps = run once on mount
+
+  // Persist selected lesson to sessionStorage whenever it changes
+  useEffect(() => {
+    if (selectedLesson?.type === 'lesson' && selectedLesson.lesson) {
+      try {
+        sessionStorage.setItem(`mathpulse_module_${module.id}_selectedLesson`, JSON.stringify({
+          lessonId: selectedLesson.lesson.id,
+        }));
+      } catch { /* non-fatal */ }
+    } else if (selectedLesson === null) {
+      try {
+        sessionStorage.removeItem(`mathpulse_module_${module.id}_selectedLesson`);
+      } catch { /* non-fatal */ }
+    }
+  }, [selectedLesson, module.id]);
+
   const moduleLevel = useMemo(() => {
     const candidate = Number(module.id.split('-').pop());
     return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
@@ -260,7 +295,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
     // Standard lesson rewards are intentionally lower to keep pacing balanced.
     const xpAmount = STANDARD_LESSON_XP;
-    onEarnXP?.(xpAmount, `Completed "${currentLesson.title}"`);
+    onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
 
     // Persist progress for Competency Matrix (Concept Grasp)
     if (userProfile?.uid && subjectId) {
@@ -303,7 +338,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     } else {
       setSelectedLesson(null);
     }
-  }, [subjectId, module.id, module.lessons.length, module.quizzes.length, onEarnXP]);
+  }, [subjectId, module.id, module.lessons.length, module.quizzes.length]);
 
   // Handle completion of the inline Try It Yourself quiz in LessonViewer
   // Persists quiz completion to Firestore and awards XP based on score
@@ -324,8 +359,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
     // Award XP for the inline quiz (up to 100 XP based on score)
     const xpReward = scorePercent; // scorePercent is already 0-100
-    onEarnXP?.(xpReward, `Practice quiz completed: ${Math.round(scorePercent)}%`);
-  }, [userProfile?.uid, onEarnXP]);
+    onEarnXPRef.current?.(xpReward, `Practice quiz completed: ${Math.round(scorePercent)}%`);
+  }, [userProfile?.uid]);
 
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
@@ -363,6 +398,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           onProgressUpdate={handleProgressUpdate}
           onComplete={handleComplete}
           onTryItQuizComplete={handleTryItQuizComplete}
+          onContinueLearning={() => handleComplete(undefined, undefined, true)}
         />
       );
     } else {

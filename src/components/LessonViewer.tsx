@@ -10,9 +10,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
+import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
 import type { LucideIcon } from 'lucide-react';
-import type { RagLessonSection } from '../services/lessonService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LessonViewerProps {
   lesson: Lesson & { subjectId?: string; lessonId?: string; competencyCode?: string };
@@ -27,6 +28,8 @@ interface LessonViewerProps {
   onProgressUpdate?: (percent: number) => void;
   /** Fires when the inline Try It Yourself quiz is completed — use to persist to Firestore and award XP */
   onTryItQuizComplete?: (scorePercent: number) => void;
+  /** Fires when user clicks Continue Learning in the Try It Yourself quiz overlay — advances to next lesson */
+  onContinueLearning?: () => void;
 }
 
 function LoadingSkeleton() {
@@ -99,6 +102,7 @@ function SectionRenderer({
   onStartPractice,
   lessonSpecificTopic,
   onTryItQuizComplete,
+  onContinueLearning,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -111,6 +115,7 @@ function SectionRenderer({
   onStartPractice?: () => void;
   lessonSpecificTopic?: string | null;
   onTryItQuizComplete?: (scorePercent: number) => void;
+  onContinueLearning?: () => void;
 }) {
   switch (section.type) {
     case 'introduction':
@@ -294,6 +299,8 @@ function SectionRenderer({
               console.log(`[TryItYourselfQuiz] Completed: ${score}/${total}`);
             }}
             onQuizComplete={onTryItQuizComplete}
+            onClose={onContinueLearning}
+            onContinueLearning={onContinueLearning}
           />
         </div>
       );
@@ -416,7 +423,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onComplete,
   onProgressUpdate,
   onTryItQuizComplete,
+  onContinueLearning,
 }) => {
+  const { userProfile } = useAuth();
   const [currentSection, setCurrentSection] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -692,13 +701,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                              setExpandedProblem(expandedProblem === idx ? null : idx)
                            }
                            expandedIndex={expandedProblem}
-                           lesson={lesson}
-                           lessonSpecificTopic={lessonSpecificTopic}
-                           onTryItQuizComplete={onTryItQuizComplete}
+lesson={lesson}
+                            lessonSpecificTopic={lessonSpecificTopic}
+                            onTryItQuizComplete={onTryItQuizComplete}
+                            onContinueLearning={onContinueLearning}
                          />
                     </div>
 
-                    {sources.length > 0 && (
+                    {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
                       <details className="rounded-xl border border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-3 text-xs text-slate-500 shadow-sm">
                         <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
                           {sources.length} source{sources.length > 1 ? 's' : ''} used
