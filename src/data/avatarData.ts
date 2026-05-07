@@ -23,6 +23,8 @@ export const MOCK_INVENTORY: ShopItem[] = [
   // Exclusive Rewards
   { id: 'acc_blue_cap', name: 'Blue Cap', category: 'accessory', src: '/avatar/blue_cap.png', thumbnail: '/avatar/blue_cap_thumbnail.png', isReward: true },
   { id: 'acc_crown', name: 'Gold Crown', category: 'accessory', src: '/avatar/crown.png', thumbnail: '/avatar/crown_thumbnail.png', isReward: true },
+  { id: 'acc_mathsquad_badge', name: 'MathSquad Badge', category: 'accessory', src: '/avatar/mathsquad_badge.png', thumbnail: '/avatar/mathsquad_badge_thumbnail.png', isReward: true },
+  { id: 'acc_calc_crown', name: 'Calculus Crown', category: 'accessory', src: '/avatar/calc_crown.png', thumbnail: '/avatar/calc_crown_thumbnail.png', isReward: true },
 
 ];
 
