@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   Search,
+  Target,
   TrendingUp,
   Layers,
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import ModuleFolderCard from './ModuleFolderCard';
 import ModuleDetailView from './ModuleDetailView';
+import PracticeCenter from './PracticeCenter';
 
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
@@ -52,7 +54,7 @@ interface ModulesPageProps {
   setIsInQuizMode?: (value: boolean) => void;
 }
 
-type ModulesTab = 'modules' | 'recommended';
+type ModulesTab = 'modules' | 'recommended' | 'practice';
 
 const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
 
@@ -537,6 +539,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             {[
               { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
               { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
+              { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -579,6 +582,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   <Sparkles size={15} className="text-[#75D06A]" />
                 </div>
                 <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Suggested Next</span>
+              </>
+            )}
+            {activeTab === 'practice' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center">
+                  <Target size={15} className="text-[#FFB356]" />
+                </div>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
               </>
             )}
 
@@ -630,7 +641,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           transition={{ duration: 0.3 }}
           className="pb-8 mt-4"
         >
-          {activeTab === 'modules' ? (
+          {activeTab === 'practice' ? (
+            <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
+          ) : activeTab === 'modules' ? (
             <ModulesLibraryView
               modules={filteredModules}
               onSelectModule={setSelectedModule}
