@@ -651,6 +651,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0}
+              weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
             />
           ) : (
             <RecommendedModulesView
@@ -661,6 +662,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               isAtRisk={normalizedRiskTopics.length > 0}
               learningPathContext={learningPathContext}
               learningPathLoading={learningPathLoading}
+              weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
             />
           )}
         </motion.div>
@@ -746,7 +748,8 @@ const ModulesLibraryView: React.FC<{
   onSelectModule: (module: CurriculumModuleRuntime) => void;
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
-}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false }) => {
+  weakTopics?: string[];
+}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, weakTopics = [] }) => {
   return (
     <div className="pr-2 space-y-8">
       <div>
@@ -760,7 +763,14 @@ const ModulesLibraryView: React.FC<{
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {modules.map((module, index) => (
+            {modules.map((module, index) => {
+              const isRecommended = weakTopics.some(wt => 
+                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
+              );
+              return (
               <ModuleFolderCard
                 key={module.id}
                 module={module}
@@ -768,8 +778,9 @@ const ModulesLibraryView: React.FC<{
                 onClick={() => onSelectModule(module)}
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
+                isRecommended={isRecommended}
               />
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -785,7 +796,8 @@ const RecommendedModulesView: React.FC<{
   isAtRisk?: boolean;
   learningPathContext?: string | null;
   learningPathLoading?: boolean;
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false }) => {
+  weakTopics?: string[];
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false, weakTopics = [] }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
@@ -818,7 +830,14 @@ const RecommendedModulesView: React.FC<{
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {inProgress.slice(0, 4).map((module, index) => (
+            {inProgress.slice(0, 4).map((module, index) => {
+              const isRecommended = weakTopics.some(wt => 
+                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
+              );
+              return (
               <ModuleFolderCard
                 key={module.id}
                 module={module}
@@ -827,8 +846,9 @@ const RecommendedModulesView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="In Progress"
+                isRecommended={isRecommended}
               />
-            ))}
+            )})}
           </div>
         </div>
       )}
@@ -840,7 +860,14 @@ const RecommendedModulesView: React.FC<{
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {suggested.map((module, index) => (
+            {suggested.map((module, index) => {
+              const isRecommended = weakTopics.some(wt => 
+                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
+              );
+              return (
               <ModuleFolderCard
                 key={module.id}
                 module={module}
@@ -849,8 +876,9 @@ const RecommendedModulesView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
+                isRecommended={isRecommended}
               />
-            ))}
+            )})}
           </div>
         )}
       </div>
