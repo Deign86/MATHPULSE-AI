@@ -44,6 +44,36 @@ const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [quizRestored, setQuizRestored] = useState(false);
 
+  // Derived score from answers
+  const score = answers.reduce((acc, a) => acc + (a?.correct ? 1 : 0), 0);
+
+  // Retry function for error state — stored at component level so JSX can reference it
+  const retryQuiz = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { generateLessonQuiz } = await import('../../services/lessonQuizService');
+      const generatedQuestions = await generateLessonQuiz({
+        lessonId,
+        lessonTitle,
+        topic,
+        subjectId,
+        competencyCode,
+        questionCount: 10,
+      });
+      if (generatedQuestions.length === 0) {
+        setError('No questions available for this topic.');
+        return;
+      }
+      setQuestions(generatedQuestions);
+    } catch (err) {
+      console.error('[TryItYourselfQuiz] Generation failed:', err);
+      setError('Failed to generate quiz. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [lessonId, lessonTitle, topic, subjectId, competencyCode]);
+
   // Persist quiz state to sessionStorage for refresh recovery
   useEffect(() => {
     if (questions.length > 0 && answers.length > 0) {
@@ -93,35 +123,7 @@ const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     }
 
     // No saved session — generate fresh quiz
-    const generateQuiz = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { generateLessonQuiz } = await import('../../services/lessonQuizService');
-        const generatedQuestions = await generateLessonQuiz({
-          lessonId,   // Use stable lessonId for topic extraction and variance
-          lessonTitle,
-          topic,
-          subjectId,
-          competencyCode,
-          questionCount: 10,
-        });
-
-        if (generatedQuestions.length === 0) {
-          setError('No questions available for this topic.');
-          return;
-        }
-
-        setQuestions(generatedQuestions);
-      } catch (err) {
-        console.error('[TryItYourselfQuiz] Generation failed:', err);
-        setError('Failed to generate quiz. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void generateQuiz();
+    void retryQuiz();
   }, [lessonId]); // Only re-run when lessonId changes (not on every render)
 
   const handleAnswer = useCallback((answer: string) => {
@@ -205,7 +207,7 @@ const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
           </div>
           <p className="text-slate-700 font-medium mb-2">{error}</p>
           <button
-            onClick={generateQuiz}
+            onClick={retryQuiz}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg font-semibold text-sm hover:bg-rose-600 transition-colors"
           >
             Try Again

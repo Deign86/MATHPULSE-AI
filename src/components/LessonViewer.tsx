@@ -102,6 +102,7 @@ function SectionRenderer({
   onStartPractice,
   lessonSpecificTopic,
   onTryItQuizComplete,
+  onContinueLearning,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -114,6 +115,7 @@ function SectionRenderer({
   onStartPractice?: () => void;
   lessonSpecificTopic?: string | null;
   onTryItQuizComplete?: (scorePercent: number) => void;
+  onContinueLearning?: () => void;
 }) {
   switch (section.type) {
     case 'introduction':
@@ -298,6 +300,7 @@ function SectionRenderer({
             }}
             onQuizComplete={onTryItQuizComplete}
             onClose={onContinueLearning}
+            onContinueLearning={onContinueLearning}
           />
         </div>
       );
@@ -698,9 +701,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                              setExpandedProblem(expandedProblem === idx ? null : idx)
                            }
                            expandedIndex={expandedProblem}
-                           lesson={lesson}
-                           lessonSpecificTopic={lessonSpecificTopic}
-                           onTryItQuizComplete={onTryItQuizComplete}
+lesson={lesson}
+                            lessonSpecificTopic={lessonSpecificTopic}
+                            onTryItQuizComplete={onTryItQuizComplete}
+                            onContinueLearning={onContinueLearning}
                          />
                     </div>
 
