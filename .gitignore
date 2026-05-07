@@ -98,4 +98,12 @@ memory-bank/
 # Graphify — generated knowledge graph artifacts
 .graphify*
 graphify-out/
-.opencode/
+
+─── Graphify ───────────────────────────────────────────
+Local SHA256 cache — regenerates automatically on /graphify .
+graphify-out/cache/
+
+─── GitNexus ───────────────────────────────────────────
+Local KuzuDB binary index — regenerates on: npx gitnexus analyze
+.gitnexus/
+gitnexus.db

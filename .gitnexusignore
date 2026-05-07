@@ -1,0 +1,4 @@
+# GitNexus - KuzuDB binary index
+# Regenerates on: npx gitnexus analyze
+.gitnexus/
+gitnexus.db
