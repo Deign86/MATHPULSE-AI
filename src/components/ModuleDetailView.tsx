@@ -66,7 +66,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         }
       }
     } catch { /* non-fatal — module overview shows by default */ }
-  // eslint-disable-next-line react-hooks/exhaustive-props -- intentionally runs once on mount only
   }, []); // Empty deps = run once on mount
 
   // Persist selected lesson to sessionStorage whenever it changes
