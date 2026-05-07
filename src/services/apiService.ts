@@ -26,6 +26,7 @@ import {
   MAX_RETRIES,
   type RetryFetchOptions,
 } from './apiUtils';
+import { handleRateLimitError } from '../utils/rateLimitHandler';
 import { auth } from '../lib/firebase';
 import type { ClassSectionMetadata } from '../types/models';
 import type {
@@ -975,7 +976,7 @@ export interface RagHealthResponse {
 // ─── RAG API Functions ──────────────────────────────────────
 
 export async function getRagHealth(): Promise<RagHealthResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -993,7 +994,7 @@ export async function getRagHealth(): Promise<RagHealthResponse> {
 }
 
 export async function generateRagLesson(payload: RagLessonRequest): Promise<RagLessonResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -1015,7 +1016,7 @@ export async function generateRagLesson(payload: RagLessonRequest): Promise<RagL
 }
 
 export async function generateRagProblem(payload: RagProblemRequest): Promise<RagProblemResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -1037,7 +1038,7 @@ export async function generateRagProblem(payload: RagProblemRequest): Promise<Ra
 }
 
 export async function getRagAnalysisContext(payload: RagAnalysisContextRequest): Promise<RagAnalysisContextResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const currentUser = auth.currentUser;
   if (currentUser) {
@@ -1318,6 +1319,17 @@ export async function apiFetch<T>(
     // Enrich the error log with endpoint context
     if (err instanceof ApiError) {
       logApiError(endpoint, method, `HTTP ${err.status}: ${err.responseBody.slice(0, 300)}`);
+      
+      // After logging the error and before throwing, check for rate limit
+      if (err.status === 429) {
+        await handleRateLimitError(
+          new Response(err.responseBody, { 
+            status: 429,
+            headers: { 'retry-after': '60' }
+          }),
+          endpoint
+        );
+      }
     } else if (err instanceof ApiTimeoutError) {
       logApiError(endpoint, method, `Timeout after ${err.timeoutMs}ms`);
     } else if (err instanceof ApiNetworkError) {
@@ -2547,6 +2559,54 @@ export const apiService = {
       method: 'DELETE',
     });
   },
+
+  // Admin PDF upload & reingest endpoints
+  uploadModulePdf: async (formData: FormData): Promise<{
+    success: boolean;
+    chunkCount?: number;
+    subjectId: string;
+    storageUrl?: string;
+    error?: string;
+  }> => {
+    const currentUser = auth.currentUser;
+    const token = currentUser ? await currentUser.getIdToken() : undefined;
+    const response = await fetch(`${API_URL}/api/admin/upload-pdf`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `Upload failed (${response.status})`);
+    }
+    return response.json();
+  },
+
+  reingestModulePdf: async (subjectId: string, storagePath?: string): Promise<{
+    success: boolean;
+    chunkCount?: number;
+    subjectId: string;
+    error?: string;
+  }> => {
+    const reingestToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
+    return apiFetch('/api/admin/reingest-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(reingestToken ? { Authorization: `Bearer ${reingestToken}` } : {}),
+      },
+      body: JSON.stringify({ subjectId, storagePath }),
+    });
+  },
+
+  getRagHealth: async (): Promise<{
+    status: string;
+    chunkCount: number;
+    subjects: Record<string, number>;
+    lastIngested: string;
+  }> => {
+    return apiFetch('/api/rag/health', { method: 'GET' });
+  },
 };
 
 // Fetch a curriculum-grounded lesson explanation
@@ -2636,4 +2696,61 @@ export async function fetchAnalysisCurriculumContext(
   });
 
   return result.curriculumContext || '';
+}
+
+// ─── Curriculum API Functions ──────────────────────────────────────
+
+export interface CurriculumSubject {
+  id: string;
+  code: string;
+  name: string;
+  gradeLevel: string;
+  semester: string;
+  color: string;
+  pdfAvailable: boolean;
+  topics: Array<{ id: string; name: string; unit: string }>;
+}
+
+export interface CurriculumTopic {
+  id: string;
+  name: string;
+  unit: string;
+}
+
+/** Fetch all curriculum subjects, optionally filtered by grade level. */
+export async function getCurriculumSubjects(gradeLevel?: string): Promise<CurriculumSubject[]> {
+  const params = gradeLevel ? `?grade_level=${encodeURIComponent(gradeLevel)}` : '';
+  return apiFetch<CurriculumSubject[]>(`/api/curriculum/subjects${params}`);
+}
+
+/** Fetch a single subject by ID. */
+export async function getCurriculumSubject(subjectId: string): Promise<CurriculumSubject | null> {
+  try {
+    return await apiFetch<CurriculumSubject>(`/api/curriculum/subjects/${subjectId}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch all topics for a subject. */
+export async function getCurriculumTopics(subjectId: string): Promise<CurriculumTopic[]> {
+  try {
+    return await apiFetch<CurriculumTopic[]>(`/api/curriculum/subjects/${subjectId}/topics`);
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch a single topic. */
+export async function getCurriculumTopic(
+  subjectId: string,
+  topicId: string,
+): Promise<CurriculumTopic | null> {
+  try {
+    return await apiFetch<CurriculumTopic>(
+      `/api/curriculum/subjects/${subjectId}/topics/${topicId}`,
+    );
+  } catch {
+    return null;
+  }
 }

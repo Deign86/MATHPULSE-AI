@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/admin/model-config", tags=["admin"])
 
 ALLOWED_OVERRIDE_KEYS = {
     "INFERENCE_MODEL_ID", "INFERENCE_CHAT_MODEL_ID",
-    "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_QWEN_LOCK_MODEL",
+    "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_LOCK_MODEL_ID",
 }
 
 
@@ -37,9 +37,9 @@ def get_model_config(_admin=Depends(require_admin)):
         **get_current_runtime_config(),
         "availableProfiles": list(_MODEL_PROFILES.keys()),
         "profileDescriptions": {
-            "dev":    "QwQ-32B everywhere - free tier, no billing, parallel-safe",
-            "budget": "Qwen3-32B for all tasks - minimal cost",
-            "prod":   "Qwen3-235B-A22B for RAG/quiz, Qwen3-32B for chat - HF Pro required",
+            "dev":    "deepseek-chat everywhere - fast, $0.14/M input",
+            "budget": "deepseek-chat for all tasks - minimal cost",
+            "prod":   "deepseek-reasoner for RAG, deepseek-chat for chat - best quality",
         },
     }
 

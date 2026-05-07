@@ -30,6 +30,11 @@ if (mode === 'check') {
   process.exit(0);
 }
 
+if (mode === 'dev') {
+  run(['-m', 'mypy', '--config-file', '../mypy.ini', 'main.py', 'analytics.py']);
+  process.exit(0);
+}
+
 if (mode === 'quick') {
   run(['-m', 'pytest', 'tests/test_api.py', '-q']);
   run(['-m', 'mypy', '--config-file', '../mypy.ini', 'main.py', 'analytics.py']);

@@ -46,6 +46,7 @@ export { onContentUpdated } from "./triggers/onContentUpdated";
 export {
   onStudentProfileUpdated,
   runInactivityReassessmentSweep,
+  syncLeaderboardCollection,
 } from "./triggers/onStudentProfileUpdated";
 
 // ─── HTTP Callable Functions ─────────────────────────────────

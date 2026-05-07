@@ -1,22 +1,26 @@
 models:
   primary:
-    id: Qwen/QwQ-32B
-    description: Default free-tier generation model — chat, lightweight tasks, all fallbacks
+    id: deepseek-chat
+    description: Default DeepSeek chat model — all chat tasks, quizzes, lessons, reasoning
     max_new_tokens: 800
     temperature: 0.7
     top_p: 0.9
 
   rag_primary:
-    id: Qwen/Qwen3-235B-A22B
-    description: HF Pro RAG generation model — lesson and problem generation with extended reasoning
+    id: deepseek-reasoner
+    description: DeepSeek reasoner — extended reasoning for complex RAG tasks
     max_new_tokens: 1800
     temperature: 0.2
     top_p: 0.9
     enable_thinking_tasks:
       - rag_lesson
+      - verify_solution
+      - risk_narrative
     no_thinking_tasks:
-      - rag_problem
-      - rag_analysis_context
+      - chat
+      - quiz_generation
+      - learning_path
+      - daily_insight
 
   embedding:
     id: BAAI/bge-small-en-v1.5
@@ -25,77 +29,57 @@ models:
 
   model_capabilities:
     sequential_only:
-      - Qwen/Qwen3-235B-A22B
-      - Qwen/Qwen3-235B-A22B-FP8
-      - Qwen/Qwen3-235B-A22B-Instruct-2507
-      - Qwen/Qwen3-235B-A22B-Thinking-2507
+      - deepseek-reasoner
     supports_thinking:
-      - Qwen/Qwen3-235B-A22B
-      - Qwen/Qwen3-235B-A22B-FP8
-      - Qwen/Qwen3-235B-A22B-Instruct-2507
-      - Qwen/Qwen3-235B-A22B-Thinking-2507
-      - Qwen/Qwen3-32B
-      - Qwen/Qwen3-14B
-      - Qwen/Qwen3-8B
+      - deepseek-reasoner
 
 routing:
   task_model_map:
-    chat:                  Qwen/QwQ-32B
-    verify_solution:       Qwen/QwQ-32B
-    lesson_generation:     Qwen/QwQ-32B
-    quiz_generation:       Qwen/Qwen3-235B-A22B
-    learning_path:         Qwen/QwQ-32B
-    daily_insight:         Qwen/QwQ-32B
-    risk_classification:   Qwen/QwQ-32B
-    risk_narrative:        Qwen/QwQ-32B
-    rag_lesson:            Qwen/Qwen3-235B-A22B
-    rag_problem:           Qwen/Qwen3-235B-A22B
-    rag_analysis_context:  Qwen/QwQ-32B
+    chat:                  deepseek-chat
+    verify_solution:       deepseek-reasoner
+    lesson_generation:     deepseek-chat
+    quiz_generation:       deepseek-chat
+    learning_path:         deepseek-chat
+    daily_insight:         deepseek-chat
+    risk_classification:   deepseek-chat
+    risk_narrative:        deepseek-reasoner
+    rag_lesson:            deepseek-reasoner
+    rag_problem:           deepseek-chat
+    rag_analysis_context:  deepseek-chat
 
   task_fallback_model_map:
     chat:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     verify_solution:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     lesson_generation:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     quiz_generation:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     learning_path:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     daily_insight:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     risk_classification:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     risk_narrative:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     rag_lesson:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     rag_problem:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
     rag_analysis_context:
-      - Qwen/QwQ-32B
-      - Qwen/Qwen3-32B
+      - deepseek-chat
 
   task_provider_map:
-    chat:                  hf_inference
-    verify_solution:       hf_inference
-    lesson_generation:     hf_inference
-    quiz_generation:       hf_inference
-    learning_path:         hf_inference
-    daily_insight:         hf_inference
-    risk_classification:   hf_inference
-    risk_narrative:        hf_inference
-    rag_lesson:            hf_inference
-    rag_problem:           hf_inference
-    rag_analysis_context:  hf_inference
+    chat:                  deepseek
+    verify_solution:       deepseek
+    lesson_generation:     deepseek
+    quiz_generation:       deepseek
+    learning_path:         deepseek
+    daily_insight:         deepseek
+    risk_classification:   deepseek
+    risk_narrative:        deepseek
+    rag_lesson:            deepseek
+    rag_problem:           deepseek
+    rag_analysis_context:  deepseek

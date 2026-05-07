@@ -150,6 +150,31 @@ export const recalculateAndUpdateModuleProgress = async (
   return progress;
 };
 
+// Update lesson quiz completion status
+export const updateLessonQuizCompletion = async (
+  userId: string,
+  lessonId: string,
+  quizScore: number,
+  quizCompleted: boolean = true,
+): Promise<void> => {
+  try {
+    const progressRef = doc(db, 'progress', userId);
+    await setDoc(
+      progressRef,
+      {
+        [`lessons.${lessonId}.lessonId`]: lessonId,
+        [`lessons.${lessonId}.quizCompleted`]: quizCompleted,
+        [`lessons.${lessonId}.quizScore`]: quizScore,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (error) {
+    console.error('Error updating lesson quiz completion:', error);
+    throw error;
+  }
+};
+
 // Complete a lesson
 export const completeLesson = async (
   userId: string,
@@ -157,7 +182,9 @@ export const completeLesson = async (
   moduleId: string,
   lessonId: string,
   timeSpent: number,
-  xpReward: number = 50
+  xpReward: number = 50,
+  quizCompleted?: boolean,
+  quizScore?: number,
 ): Promise<void> => {
   try {
     const progressRef = doc(db, 'progress', userId);
@@ -176,6 +203,8 @@ export const completeLesson = async (
       completed: true,
       completedAt: new Date(),
       timeSpent,
+      ...(quizCompleted !== undefined && { quizCompleted }),
+      ...(quizScore !== undefined && { quizScore }),
     };
 
     // Update subject and module progress

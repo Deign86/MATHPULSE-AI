@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
 import { UserProgress, type StudentProfile } from '../types/models';
 import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { useCurriculum } from '../hooks/useCurriculum';
 
 const GradesPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -13,12 +14,23 @@ const GradesPage = () => {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<UserProgress | null>(null);
 
-  // Safely cast userProfile to StudentProfile to access grade
-  const studentGrade = (userProfile as StudentProfile | null)?.grade;
-  
-  // Get active subjects for the user's grade
-  const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
-  const allowedSubjectSet = new Set(allowedSubjectIds);
+// Safely cast userProfile to StudentProfile to access grade
+const studentGrade = (userProfile as StudentProfile | null)?.grade;
+
+// Get active subjects for the user's grade
+const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
+const allowedSubjectSet = new Set(allowedSubjectIds);
+
+// Load curriculum (logs source - Firestore vs static)
+const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum(studentGrade);
+
+// Log curriculum source on load
+useEffect(() => {
+  if (!curriculumLoading) {
+    console.log('[GradesPage] Curriculum ready');
+    refetchCurriculum();
+  }
+}, [curriculumLoading, refetchCurriculum]);
 
   const formatDateOnly = (value: Date | string | number | null | undefined) => {
     if (value === null || value === undefined) return 'N/A';
@@ -57,8 +69,6 @@ const GradesPage = () => {
   const colorBySubjectId: Record<SubjectId, string> = {
     'gen-math': 'indigo',
     'stats-prob': 'violet',
-    'pre-calc': 'fuchsia',
-    'basic-calc': 'purple',
   };
   const colorClassBySubject: Record<string, { dot: string; bar: string }> = {
     indigo: { dot: 'bg-indigo-500', bar: 'bg-indigo-500' },
@@ -82,20 +92,20 @@ const GradesPage = () => {
     .map((subject) => subject.name);
 
   // Compute subject metrics
-  const subjectPerformance = Object.entries(progress?.subjects || {})
+const subjectPerformance = Object.entries(progress?.subjects || {})
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
     .map(([subjectId, subjectData]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
       const subjectQuizzes = quizAttempts.filter(q => q.quizId?.startsWith(subjectId));
       const avg = subjectQuizzes.length > 0
-        ? Math.round(subjectQuizzes.reduce((sum, q) => sum + q.score, 0) / subjectQuizzes.length)
-        : Math.round(subjectData.progress); // Fallback to progress %
-        
+        ? Math.round(subjectQuizzes.reduce((sum: number, q: { score: number }) => sum + q.score, 0) / subjectQuizzes.length)
+        : Math.round(subjectData?.progress ?? 0); // Fallback to progress %
+      
       return {
         subject: info.label,
         average: avg,
-        quizzes: subjectQuizzes.length || subjectData.completedModules,
+        quizzes: subjectQuizzes.length || subjectData?.completedModules,
         color: info.color
       };
     });

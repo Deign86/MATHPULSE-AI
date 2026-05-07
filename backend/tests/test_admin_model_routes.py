@@ -17,19 +17,18 @@ from services.inference_client import reset_runtime_overrides
 main_module._firebase_ready = True
 main_module._init_firebase_admin = lambda: None
 main_module.firebase_firestore = None
-if getattr(main_module, "firebase_auth", None) is None:
-    main_module.firebase_auth = MagicMock()
+main_module.firebase_auth = MagicMock()
 main_module.firebase_auth.verify_id_token = MagicMock(return_value={
-    "uid": "admin-uid",
-    "email": "admin@example.com",
-    "role": "admin",
+    "uid": "test-teacher-uid",
+    "email": "teacher@example.com",
+    "role": "teacher",
 })
 
 admin_client = TestClient(app, headers={"Authorization": "Bearer admin-token"})
 
 _RESOLVED_KEYS = {
     "INFERENCE_MODEL_ID", "INFERENCE_CHAT_MODEL_ID",
-    "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_QWEN_LOCK_MODEL",
+    "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_LOCK_MODEL_ID",
 }
 _KNOWN_PROFILES = {"dev", "budget", "prod"}
 _BASE_CONFIG_KEYS = {"profile", "overrides", "resolved"}

@@ -64,23 +64,40 @@
         { "fieldPath": "assignedAt", "order": "DESCENDING" }
       ]
     },
-    {
-      "collectionGroup": "notifications",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "notifications",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "read", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
+     {
+       "collectionGroup": "notifications",
+       "queryScope": "COLLECTION",
+       "fields": [
+         { "fieldPath": "userId", "order": "ASCENDING" },
+         { "fieldPath": "createdAt", "order": "DESCENDING" }
+       ]
+     },
+     {
+       "collectionGroup": "notifications",
+       "queryScope": "COLLECTION",
+       "fields": [
+         { "fieldPath": "userId", "order": "ASCENDING" },
+         { "fieldPath": "read", "order": "ASCENDING" },
+         { "fieldPath": "createdAt", "order": "DESCENDING" }
+       ]
+     },
+     {
+       "collectionGroup": "items",
+       "queryScope": "COLLECTION",
+       "fields": [
+         { "fieldPath": "userId", "order": "ASCENDING" },
+         { "fieldPath": "createdAt", "order": "DESCENDING" }
+       ]
+     },
+     {
+       "collectionGroup": "items",
+       "queryScope": "COLLECTION",
+       "fields": [
+         { "fieldPath": "userId", "order": "ASCENDING" },
+         { "fieldPath": "type", "order": "ASCENDING" },
+         { "fieldPath": "createdAt", "order": "DESCENDING" }
+       ]
+     },
     {
       "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
@@ -248,6 +265,13 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "leaderboardScore", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leaderboard",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "totalXP", "order": "DESCENDING" }
       ]
     },
     {

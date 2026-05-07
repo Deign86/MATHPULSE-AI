@@ -1,5 +1,6 @@
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+openai>=1.0.0
 huggingface-hub>=0.31.0
 requests>=2.31.0
 pandas==2.2.3
@@ -21,3 +22,8 @@ redis[hiredis]>=5.0.0
 PyYAML>=6.0.0
 mypy>=1.20.0
 pytest>=9.0.0
+pytest-asyncio>=0.23.0
+google-api-python-client>=2.0.0
+pypdf>=4.0.0
+slowapi>=0.1.0
+limits>=3.0.0

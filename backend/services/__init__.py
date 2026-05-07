@@ -14,6 +14,15 @@ from .inference_client import (
     _MODEL_PROFILES,
 )
 
+from .ai_client import (
+    get_deepseek_client,
+    CHAT_MODEL,
+    REASONER_MODEL,
+    APIError,
+    RateLimitError,
+    APITimeoutError,
+)
+
 __all__ = [
     "create_default_client",
     "InferenceRequest",
@@ -26,4 +35,10 @@ __all__ = [
     "reset_runtime_overrides",
     "model_supports_thinking",
     "_MODEL_PROFILES",
+    "get_deepseek_client",
+    "CHAT_MODEL",
+    "REASONER_MODEL",
+    "APIError",
+    "RateLimitError",
+    "APITimeoutError",
 ]

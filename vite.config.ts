@@ -35,7 +35,7 @@ const createCssTimingProbePlugins = (): Plugin[] => {
         } finally {
           const transformDuration = performance.now() - transformStart;
           if (transformDuration >= CSS_PROBE_THRESHOLD_MS) {
-            console.log(`[css-probe][transformRequest] ${normalizeIdForLog(target)} ${transformDuration.toFixed(2)}ms`);
+            // Timing log only when CSS_PROBE_THRESHOLD_MS is exceeded
           }
         }
       }) as typeof server.transformRequest;
@@ -55,7 +55,7 @@ const createCssTimingProbePlugins = (): Plugin[] => {
         } finally {
           const transformDuration = performance.now() - transformStart;
           if (transformDuration >= CSS_PROBE_THRESHOLD_MS) {
-            console.log(`[css-probe][plugin-transform] ${normalizeIdForLog(id)} ${transformDuration.toFixed(2)}ms`);
+            // Timing log only when CSS_PROBE_THRESHOLD_MS is exceeded
           }
         }
       }) as typeof pluginContainer.transform;
@@ -71,7 +71,7 @@ const createCssTimingProbePlugins = (): Plugin[] => {
         res.on('finish', () => {
           const duration = performance.now() - requestStart;
           if (duration >= CSS_PROBE_THRESHOLD_MS) {
-            console.log(`[css-probe][request] ${url} ${duration.toFixed(2)}ms status=${res.statusCode}`);
+            // Timing log only when CSS_PROBE_THRESHOLD_MS is exceeded
           }
         });
 
@@ -80,7 +80,6 @@ const createCssTimingProbePlugins = (): Plugin[] => {
     },
   };
 
-  console.log(`[css-probe] enabled via ${CSS_PROBE_ENV}=1`);
   return [cssProbePlugin];
 };
 
@@ -104,6 +103,10 @@ export default defineConfig({
       'recharts',
       'zod',
       'react-hook-form',
+      'class-variance-authority',
+      '@radix-ui/react-slot',
+      'date-fns',
+      'clsx',
     ],
   },
   resolve: {
@@ -182,7 +185,21 @@ export default defineConfig({
         './src/contexts/AuthContext.tsx',
         './src/contexts/ChatContext.tsx',
         './src/components/DashboardAvatar.tsx',
+        './src/components/ui/utils.ts',
+        './src/types/models.ts',
+        './src/lib/firebase.ts',
+        './src/services/apiService.ts',
+        './src/data/subjects.ts',
+        './src/components/Sidebar.tsx',
+        './src/components/TeacherDashboard.tsx',
       ],
     },
+    fs: {
+      allow: ['.', './node_modules/.vite', './node_modules'],
+    },
+    hmr: {
+      overlay: false,
+    },
+    cacheDir: 'node_modules/.vite',
   },
 });
