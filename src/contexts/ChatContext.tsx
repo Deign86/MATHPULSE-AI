@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import type { ChatCompletionOptions } from '../services/apiService.ts';
 import { useAuth } from './AuthContext.tsx';
 import { toChatPreviewText } from '../utils/chatPreview';
-import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming } from '../utils/chatMessageFormatting';
+import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming, normalizeChatMarkdownForRender } from '../utils/chatMessageFormatting';
 import { getScopeBoundaryResponse } from '../utils/mathScope';
 import { buildChatHintCacheKey, getHintCacheResponse, isHintPrompt, setHintCacheResponse } from '../utils/hintCache';
 
@@ -701,7 +701,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const firebaseSessions = await chatService.getUserChatSessions(currentUser.uid);
         const loadedSessions: ChatSession[] = await Promise.all(
           firebaseSessions.map(async (s) => {
-            const msgs = await chatService.getSessionMessages(s.id);
+            const msgs = await chatService.getSessionMessages(s.id, currentUser.uid);
             const messages: Message[] = msgs.map((m) => ({
               id: m.id,
               sender: m.role === 'user' ? 'user' : 'ai',
@@ -763,7 +763,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   const createNewSession = useCallback((firstMessage?: Message): string => {
-    const tempId = Date.now().toString();
+    const tempId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Date.now().toString();
     const now = new Date();
 
     const newSession: ChatSession = {
@@ -811,22 +813,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   }, [currentUser]);
 
   const addMessageToSession = useCallback((sessionId: string, message: Message) => {
-    const normalizedMessage = message.sender === 'ai'
-      ? {
-          ...message,
-          text: formatAssistantResponseForStorage(message.text),
-        }
-      : message;
-
     setSessions(prev =>
       prev.map(session => {
         if (session.id === sessionId) {
-          const updatedMessages = [...session.messages, normalizedMessage];
+          const updatedMessages = [...session.messages, message];
           return {
             ...session,
             messages: updatedMessages,
             messageCount: updatedMessages.length,
-            preview: toChatPreviewText(normalizedMessage.text) || session.preview,
+            preview: toChatPreviewText(message.text) || session.preview,
             updatedAt: new Date(),
             title: updatedMessages.length === 2 ? generateTitleFromMessages(updatedMessages) : session.title,
           };
@@ -850,8 +845,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const chatService = await loadChatService();
         await chatService.addMessageToSession(
           realId,
-          normalizedMessage.sender === 'user' ? 'user' : 'assistant',
-          normalizedMessage.text,
+          message.sender === 'user' ? 'user' : 'assistant',
+          message.text,
         );
       })
       .catch(err => console.error('Error persisting message:', err));
@@ -878,7 +873,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     // Add user message
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Date.now().toString(),
       sender: 'user',
       text: trimmedUserText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -925,7 +922,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText, { history });
       if (scopeBoundaryResponse) {
         const refusalMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
           text: scopeBoundaryResponse,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -938,7 +937,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const cachedHint = getHintCacheResponse(hintCacheKey);
         if (cachedHint) {
           const cachedHintMsg: Message = {
-            id: (Date.now() + 1).toString(),
+            id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+              ? crypto.randomUUID()
+              : (Date.now() + 1).toString(),
             sender: 'ai',
             text: cachedHint,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -955,7 +956,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       } catch (importError) {
         console.error('Failed to load API service for chat:', importError);
         const importFailureMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
           text: generateFallbackResponse(fallbackPrompt),
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -991,7 +994,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             if (chatSession.id !== sessionId) return chatSession;
 
             if (!streamMessageId) {
-              streamMessageId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              streamMessageId = `stream-${(typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Date.now().toString()}-${Math.random().toString(36).slice(2, 8)}`;
               const streamMsg: Message = {
                 id: streamMessageId,
                 sender: 'ai',
@@ -1061,9 +1064,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             try {
               const plainContinuation = await apiServiceRef.chatSafe(
                 buildPlainContinuationPrompt(trimmedUserText, finalResponse, expectedEndMarker),
-                history,
-                completionOptions,
-              );
+history,
+              completionOptions,
+            );
               const repairedPlain = formatAssistantResponseForStorage(plainContinuation.data.response).trim();
               finalResponse = mergeAnswerContinuation(finalResponse, repairedPlain);
             } catch (plainRepairErr) {
@@ -1106,7 +1109,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         }
 
         const aiMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
           text: finalResponse,
           timestamp: aiTimestamp,
@@ -1138,7 +1143,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 history,
                 completionOptions,
               );
-              const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
+const repairedResponse = formatAssistantResponseForStorage(continuation.data.response).trim();
               aiResponseText = mergeAnswerContinuation(aiResponseText, repairedResponse);
             } catch (repairErr) {
               console.warn('Non-stream completion repair failed:', repairErr);
@@ -1193,9 +1198,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         maybeCacheHintResponse(aiResponseText);
 
         const aiMsg: Message = {
-          id: (Date.now() + 1).toString(),
+          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : (Date.now() + 1).toString(),
           sender: 'ai',
-          text: formatAssistantResponseForStorage(aiResponseText),
+          text: aiResponseText,
           timestamp: aiTimestamp,
         };
         addMessageToSession(sessionId, aiMsg);

@@ -16,8 +16,16 @@ Exit codes:
 import sys
 import os
 
-# Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add repo root to path (for services/ delegation) AND backend to path
+_repo_root = os.path.dirname(os.path.abspath(__file__))
+_parent = os.path.dirname(_repo_root)
+_backend = _repo_root
+
+# Add in order: parent first (so services/ can delegate), then backend (for when services/__init__.py tries to import)
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
+if _backend not in sys.path:
+    sys.path.insert(0, _backend)
 
 def main() -> int:
     """Run pre-deployment checks."""

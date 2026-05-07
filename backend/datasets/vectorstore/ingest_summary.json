@@ -1,0 +1,28 @@
+{
+  "lastIngested": "2026-04-24T15:01:13.181024+00:00",
+  "totalChunks": 533,
+  "chunksPerSubject": {
+    "general_math": 124,
+    "business_math": 128,
+    "org_management": 151,
+    "stat_prob": 130
+  },
+  "chunksPerQuarter": {
+    "1": 373,
+    "2": 85,
+    "4": 31,
+    "3": 44
+  },
+  "chunksPerDomain": {
+    "NA": 343,
+    "MG": 82,
+    "DP": 108
+  },
+  "sourceFiles": [
+    "GENERAL-MATHEMATICS-1.pdf",
+    "SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf",
+    "SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
+    "SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf",
+    "SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf"
+  ]
+}

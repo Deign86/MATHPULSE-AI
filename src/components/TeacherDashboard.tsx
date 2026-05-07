@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Users, TrendingUp, AlertTriangle, Calendar,
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
-  Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database,
+  Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
   ChevronLeft, Download, Send, Edit3, Save, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -52,6 +53,7 @@ import type { CurriculumSource } from '../types/curriculum';
 import CurriculumSourceBadge from './CurriculumSourceBadge';
 import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
+import QuestionBankPanel from './QuestionBankPanel';
 import TopicMasteryView from './TopicMasteryView';
 import StudentCompetencyTable from './StudentCompetencyTable';
 import ChatMarkdown from './ChatMarkdown';
@@ -79,7 +81,8 @@ type View =
   | 'competency'
   | 'notifications'
   | 'calendar'
-  | 'quiz_maker';
+  | 'quiz_maker'
+  | 'question_bank';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -559,6 +562,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const [teacherDirectory, setTeacherDirectory] = useState<TeacherDirectoryOption[]>([]);
   const [managerUpdating, setManagerUpdating] = useState(false);
+  const interventionCacheRef = useRef<Map<string, {
+    lessonPlan: LessonPlanResponse | null;
+    learningPath: string;
+    gradeDraft: string;
+    sectionDraft: string;
+  }>>(new Map());
 
   // Fetch classrooms and students from Firebase
   useEffect(() => {
@@ -1209,6 +1218,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 forceExpanded={isMobileViewport}
               />
               <NavItem
+                icon={BookOpen}
+                label="Question Bank"
+                active={activeView === 'question_bank'}
+                collapsed={sidebarCollapsed && !sidebarHovered}
+                onClick={() => setActiveView('question_bank')}
+                forceExpanded={isMobileViewport}
+              />
+              <NavItem
                 icon={Bell}
                 label="Notifications"
                 active={activeView === 'notifications'}
@@ -1275,6 +1292,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'notifications' && 'Notifications'}
                   {activeView === 'calendar' && 'Calendar'}
                   {activeView === 'quiz_maker' && 'AI Quiz Maker'}
+                  {activeView === 'question_bank' && 'Question Bank'}
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -1284,6 +1302,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
                   {activeView === 'import' && 'Upload class records and materials'}
                   {activeView === 'quiz_maker' && 'Create and manage AI-powered quizzes'}
+                  {activeView === 'question_bank' && 'Manage RAG-powered quiz question bank'}
                   {activeView === 'notifications' && 'View classroom alerts and updates'}
                   {activeView === 'calendar' && 'Check upcoming class events and schedule'}
                 </p>
@@ -1336,6 +1355,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 liveActivity={liveActivity}
                 onViewClass={handleViewClass}
                 onViewAllClasses={() => setActiveView('analytics')}
+                onViewActivityStudent={(name) => {
+                  const match = students.find(s => s.name === name);
+                  if (match) handleViewStudent(match);
+                }}
                 dailyInsight={dailyInsight}
                 insightLoading={insightLoading}
                 totalStudents={totalStudents}
@@ -1368,6 +1391,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 student={selectedStudent}
                 teacherId={currentUser?.uid || ''}
                 teacherName={teacherName}
+                initialCache={interventionCacheRef.current.get(selectedStudent.id)}
+                onCacheUpdate={(id, cache) => interventionCacheRef.current.set(id, cache)}
                 onStudentUpdated={(updatedStudent) => {
                   const previousStudentKey = selectedStudent ? buildStudentViewKey(selectedStudent) : null;
                   setSelectedStudent(updatedStudent);
@@ -1439,10 +1464,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               />
             )}
             {activeView === 'notifications' && (
-              <TeacherNotificationsView userId={currentUser?.uid || ''} />
+              <TeacherNotificationsView
+                liveActivity={liveActivity}
+                atRiskStudents={students
+                  .filter(s => s.riskLevel === 'high')
+                  .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
+              />
             )}
             {activeView === 'calendar' && (
-              <TeacherCalendarView />
+              <TeacherCalendarView classes={classes} teacherId={currentUser?.uid} />
             )}
             {activeView === 'edit_records' && (
               <EditRecordsView
@@ -1454,6 +1484,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             )}
             {activeView === 'quiz_maker' && (
               <QuizMaker onBack={() => setActiveView('dashboard')} />
+            )}
+            {activeView === 'question_bank' && (
+              <QuestionBankPanel />
             )}
           </AnimatePresence>
         </main>
@@ -1533,12 +1566,13 @@ const DashboardView: React.FC<{
   liveActivity: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
   onViewClass: (classItem: ClassView) => void;
   onViewAllClasses: () => void;
+  onViewActivityStudent?: (studentName: string) => void;
   dailyInsight: string;
   insightLoading: boolean;
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, dailyInsight, insightLoading, totalStudents, totalAtRisk, avgPerformance }) => {
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, totalStudents, totalAtRisk, avgPerformance }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -1575,10 +1609,12 @@ const DashboardView: React.FC<{
                 </div>
               }
             >
-              <div className="text-[#F1E4FF] text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
-                <ChatMarkdown>
-                  {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
-                </ChatMarkdown>
+              <div>
+                <div aria-live="polite" aria-atomic="true" className="text-[#F1E4FF] text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
+                  <ChatMarkdown>
+                    {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
+                  </ChatMarkdown>
+                </div>
               </div>
             </BoneSkeleton>
           </div>
@@ -1693,7 +1729,8 @@ const DashboardView: React.FC<{
             {liveActivity.map((activity) => (
               <div
                 key={activity.id}
-                className={`p-4 rounded-xl border-l-4 ${
+                onClick={() => onViewActivityStudent?.(activity.student)}
+                className={`p-4 rounded-xl border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
                   activity.type === 'success' ? 'bg-[#75D06A]/14 border-[#75D06A]' :
                   activity.type === 'warning' ? 'bg-[#F08386]/12 border-[#F08386]' :
                   'bg-[#9956DE]/12 border-[#9956DE]'
@@ -1714,6 +1751,42 @@ const DashboardView: React.FC<{
     </motion.div>
   );
 };
+
+const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentView; onViewStudent: (s: StudentView) => void }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    onClick={() => onViewStudent(student)}
+    className={`p-4 rounded-2xl border-2 cursor-pointer hover:shadow-md transition-all ${getRiskColor(student.riskLevel)}`}
+  >
+    <div className="flex items-center gap-3 mb-3">
+      <img
+        src={student.avatar}
+        alt={student.name}
+        className="w-12 h-12 rounded-xl object-cover border-2 border-current"
+      />
+      <div className="flex-1">
+        <h4 className="font-bold text-foreground">{student.name}</h4>
+        <p className="text-xs text-muted-foreground">{student.lastActive}</p>
+      </div>
+    </div>
+
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
+        <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
+      </div>
+      <div className="h-2 bg-card rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${student.avgScore}%` }}>
+        <div
+          className={`h-full rounded-full ${
+            student.riskLevel === 'high' ? 'bg-[#FF8B8B]' :
+            student.riskLevel === 'medium' ? 'bg-[#F08386]' :
+            'bg-[#75D06A]'
+          }`}
+        ></div>
+      </div>
+    </div>
+  </motion.div>
+));
 
 // Analytics View
 const AnalyticsView: React.FC<{
@@ -1851,7 +1924,7 @@ const AnalyticsView: React.FC<{
                 aria-label="Select section manager"
                 value={selectedManagerId || ''}
                 onChange={(event) => setSelectedManagerId(event.target.value)}
-                className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm"
+                className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#9956DE]/40 transition-colors"
               >
                 <option value="">Select teacher</option>
                 {teacherOptions.map((teacher) => (
@@ -1912,49 +1985,18 @@ const AnalyticsView: React.FC<{
             </div>
           </div>
 
-          <div className="space-y-3 max-h-[700px] overflow-y-auto">
-            {visibleStudents.map((student) => (
-              <motion.div
-                key={buildStudentViewKey(student)}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => onViewStudent(student)}
-                className={`p-4 rounded-2xl border-2 cursor-pointer hover:shadow-md transition-all ${getRiskColor(student.riskLevel)}`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <img
-                    src={student.avatar}
-                    alt={student.name}
-                    className="w-12 h-12 rounded-xl object-cover border-2 border-current"
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-bold text-foreground">{student.name}</h4>
-                    <p className="text-xs text-muted-foreground">{student.lastActive}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
-                    <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
-                  </div>
-                  <div className="h-2 bg-card rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${student.avgScore}%` }}>
-                    <div
-                      className={`h-full rounded-full ${
-                        student.riskLevel === 'high' ? 'bg-[#FF8B8B]' :
-                        student.riskLevel === 'medium' ? 'bg-[#F08386]' :
-                        'bg-[#75D06A]'
-                      }`}
-                    ></div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-            {visibleStudents.length === 0 && (
-              <div className="border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground">
-                No students match your search.
-              </div>
-            )}
-          </div>
+          {visibleStudents.length === 0 ? (
+            <div className="border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground">
+              No students match your search.
+            </div>
+          ) : (
+            <Virtuoso
+              style={{ height: '700px' }}
+              data={visibleStudents}
+              itemContent={(_, student) => <StudentCard student={student} onViewStudent={onViewStudent} />}
+              computeItemKey={(index, student) => buildStudentViewKey(student)}
+            />
+          )}
         </div>
 
         {/* Right Column - Charts */}
@@ -2043,7 +2085,9 @@ const InterventionView: React.FC<{
   teacherName: string;
   onStudentUpdated: (student: StudentView) => void;
   onBack: () => void;
-}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack }) => {
+  initialCache?: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string };
+  onCacheUpdate?: (studentId: string, cache: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string }) => void;
+}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack, initialCache, onCacheUpdate }) => {
   const normalizedRiskLevel = (student.riskLevel || 'low').toLowerCase() as 'high' | 'medium' | 'low';
   const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
   const analysisTone = isUrgentBarrier
@@ -2058,12 +2102,12 @@ const InterventionView: React.FC<{
         bullet: 'text-[#9956DE]',
       };
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
-  const [learningPath, setLearningPath] = useState<string>('');
+  const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
-  const [gradeDraft, setGradeDraft] = useState(student.grade || 'Grade 11');
-  const [sectionDraft, setSectionDraft] = useState(student.section || 'Section A');
+  const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || student.grade || 'Grade 11');
+  const [sectionDraft, setSectionDraft] = useState(initialCache?.sectionDraft || student.section || 'Section A');
   const [savingSection, setSavingSection] = useState(false);
-  const [lessonPlan, setLessonPlan] = useState<LessonPlanResponse | null>(null);
+  const [lessonPlan, setLessonPlan] = useState<LessonPlanResponse | null>(initialCache?.lessonPlan ?? null);
   const [lessonCurriculumSources, setLessonCurriculumSources] = useState<CurriculumSource[]>([]);
   const [analysisCurriculumContext, setAnalysisCurriculumContext] = useState('');
   const [lessonLoading, setLessonLoading] = useState(false);
@@ -2075,11 +2119,16 @@ const InterventionView: React.FC<{
   const [savedLessonPlanId, setSavedLessonPlanId] = useState<string | null>(null);
   const [savingLessonDraft, setSavingLessonDraft] = useState(false);
   const [publishingLesson, setPublishingLesson] = useState(false);
+  const [lessonTrigger, setLessonTrigger] = useState(0);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
     setSectionDraft(student.section || 'Section A');
   }, [student.grade, student.section]);
+
+  useEffect(() => {
+    onCacheUpdate?.(student.id, { lessonPlan, learningPath, gradeDraft, sectionDraft });
+  }, [lessonPlan, learningPath, gradeDraft, sectionDraft, student.id, onCacheUpdate]);
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -2285,7 +2334,11 @@ const InterventionView: React.FC<{
 
   useEffect(() => {
     void generateTargetedLessonPlan();
-  }, [generateTargetedLessonPlan]);
+  }, [lessonTrigger]);
+
+  useEffect(() => {
+    setLessonTrigger(n => n + 1);
+  }, [student.id]);
 
   useEffect(() => {
     setLessonSourceFilter('all');
@@ -2589,7 +2642,7 @@ const InterventionView: React.FC<{
               <p className="text-sm text-muted-foreground">Class records drive risk signals. Import-grounded lesson generation needs uploaded course materials for topic context.</p>
             </div>
             <Button
-              onClick={() => void generateTargetedLessonPlan()}
+              onClick={() => setLessonTrigger(n => n + 1)}
               disabled={lessonLoading}
               className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
             >

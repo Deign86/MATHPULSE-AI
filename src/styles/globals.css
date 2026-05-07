@@ -567,6 +567,23 @@ html.smart-dark [data-preserve-color='true'] {
 }
 
 /* =====================
+   LEADERBOARD SUNBURST ANIMATION
+   ===================== */
+
+@keyframes sunburst-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-sunburst-spin {
+  animation: sunburst-spin 30s linear infinite;
+}
+
+/* =====================
    CHAT MARKDOWN STYLES (from index.css)
    ===================== */
 

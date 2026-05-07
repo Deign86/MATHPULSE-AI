@@ -1144,7 +1144,6 @@ export const startQuizBattleMatch = async (
     if (match.mode === 'online') {
       try {
         const audit = await getQuizBattleGenerationAudit(matchId);
-        console.info('[QUIZ_BATTLE_GENERATION_AUDIT]', audit);
 
         if (QUIZ_BATTLE_STRICT_GENERATION_AUDIT && !audit.isAiSource) {
           throw new Error(

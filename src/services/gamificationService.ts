@@ -96,8 +96,6 @@ export const awardXP = async (
     const currentXP = previousCurrentXP + xpAmount;
     const totalXP = previousTotalXP + xpAmount;
     const currentLevel = userData.level || 1;
-    
-    console.log(`🏆 XP Award - User: ${userId}, Amount: ${xpAmount}, Previous currentXP: ${previousCurrentXP}, New: ${currentXP}, Type: ${type}`);
 
     let newLevel = currentLevel;
     const accumulatedXP = totalXP;
@@ -132,7 +130,6 @@ export const awardXP = async (
     };
     
     await updateDoc(userRef, updatePayload);
-    console.log(`💾 Firebase Update - currentXP: ${previousCurrentXP} -> ${currentXP}, totalXP: ${previousTotalXP} -> ${totalXP}, level: ${newLevel}`);
 
     // Log XP activity
     const activityRef = doc(collection(db, 'xpActivities'));
@@ -152,7 +149,7 @@ export const awardXP = async (
   }
 };
 
-// Get leaderboard (global student rankings)
+// Get leaderboard from dedicated leaderboard collection
 export const getLeaderboard = async (
   userId?: string,
   scopedOnly: boolean = false,
@@ -165,13 +162,17 @@ export const getLeaderboard = async (
     void timeRange;
 
     const leaderboardQuery = query(
-      collection(db, 'users'),
-      where('role', '==', 'student'),
+      collection(db, 'leaderboard'),
       orderBy('totalXP', 'desc'),
       limit(limitCount)
     );
 
     const snapshot = await getDocs(leaderboardQuery);
+    
+    if (snapshot.empty) {
+      return [];
+    }
+    
     return snapshot.docs.map((doc, index) => {
       const data = doc.data();
       return {
@@ -202,8 +203,7 @@ export const subscribeToLeaderboard = (
   void timeRange;
 
   const leaderboardQuery = query(
-    collection(db, 'users'),
-    where('role', '==', 'student'),
+    collection(db, 'leaderboard'),
     orderBy('totalXP', 'desc'),
     limit(limitCount)
   );

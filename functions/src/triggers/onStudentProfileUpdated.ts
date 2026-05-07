@@ -200,6 +200,24 @@ export const onStudentProfileUpdated = functions.firestore
       afterData,
     });
 
+    // Update leaderboard collection when XP changes
+    const beforeXP = beforeData.totalXP as number || 0;
+    const afterXP = afterData.totalXP as number || 0;
+    if (beforeXP !== afterXP || beforeData.name !== afterData.name || beforeData.level !== afterData.level) {
+      const leaderboardRef = db.collection("leaderboard").doc(userId);
+      await leaderboardRef.set({
+        name: afterData.name || 'Unknown',
+        photo: afterData.photo || '',
+        totalXP: afterXP,
+        level: afterData.level || 1,
+        weeklyXP: afterData.weeklyXP || 0,
+        monthlyXP: afterData.monthlyXP || 0,
+        role: afterData.role,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      functions.logger.info("[LEADERBOARD] Updated leaderboard for user", { userId, totalXP: afterXP });
+    }
+
     return null;
   });
 
@@ -219,6 +237,99 @@ export const runInactivityReassessmentSweep = functions.pubsub
       inactivityThresholdDays: summary.inactivityThresholdDays,
       scanLimit: summary.scanLimit,
     });
+
+    return null;
+  });
+
+// ─── Leaderboard Sync Functions ───────────────────────────────────────────────
+
+/**
+ * Sync a single user to the leaderboard collection
+ */
+async function syncUserToLeaderboard(
+  db: FirebaseFirestore.Firestore,
+  userId: string,
+  userData: Record<string, unknown>
+): Promise<void> {
+  const leaderboardRef = db.collection("leaderboard").doc(userId);
+  await leaderboardRef.set({
+    name: userData.name || "Unknown",
+    photo: userData.photo || "",
+    totalXP: userData.totalXP || 0,
+    level: userData.level || 1,
+    weeklyXP: userData.weeklyXP || 0,
+    monthlyXP: userData.monthlyXP || 0,
+    role: userData.role,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+}
+
+/**
+ * HTTPS callable function to sync all students to leaderboard
+ * Trigger: POST /syncLeaderboard or manual invocation
+ */
+export const syncLeaderboardCollection = functions.https.onCall(async (data, context) => {
+  if (!context.auth || (context.auth.uid !== data?.adminUid && !data?.force)) {
+    throw new functions.https.HttpsError("permission-denied", "Admin access required");
+  }
+
+  const db = admin.firestore();
+  const batch = db.batch();
+  let synced = 0;
+  let errors = 0;
+
+  const usersSnapshot = await db.collection("users").where("role", "==", "student").get();
+
+  for (const userDoc of usersSnapshot.docs) {
+    try {
+      const userData = userDoc.data();
+      const leaderboardRef = db.collection("leaderboard").doc(userDoc.id);
+      batch.set(leaderboardRef, {
+        name: userData.name || "Unknown",
+        photo: userData.photo || "",
+        totalXP: userData.totalXP || 0,
+        level: userData.level || 1,
+        weeklyXP: userData.weeklyXP || 0,
+        monthlyXP: userData.monthlyXP || 0,
+        role: userData.role,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      synced++;
+
+      // Commit in batches of 500
+      if (synced % 500 === 0) {
+        await batch.commit();
+        functions.logger.info(`[LEADERBOARD] Synced ${synced} users...`);
+      }
+    } catch (err) {
+      errors++;
+      functions.logger.error("[LEADERBOARD] Error syncing user", { userId: userDoc.id, error: err });
+    }
+  }
+
+  // Final commit
+  if (synced % 500 !== 0) {
+    await batch.commit();
+  }
+
+  functions.logger.info("[LEADERBOARD] Sync complete", { synced, errors });
+  return { success: true, synced, errors };
+});
+
+/**
+ * Firestore trigger: When a new student is created, add them to leaderboard
+ */
+export const onStudentCreated = functions.firestore
+  .document("users/{userId}")
+  .onCreate(async (snap, context) => {
+    const userId = context.params.userId;
+    const userData = snap.data();
+
+    if (userData.role !== "student") return null;
+
+    const db = admin.firestore();
+    await syncUserToLeaderboard(db, userId, userData);
+    functions.logger.info("[LEADERBOARD] Added new student to leaderboard", { userId });
 
     return null;
   });

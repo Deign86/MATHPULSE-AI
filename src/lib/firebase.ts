@@ -52,10 +52,15 @@ const firebaseConfig = {
 
 if (!firebaseConfig.apiKey) {
   console.error('[ERROR] Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
+} else if (import.meta.env.DEV) {
+  // Firebase config loaded in dev mode
 }
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+if (import.meta.env.DEV) {
+  // Firebase app initialized
+}
 
 // Initialize Firebase services
 export const auth = getAuth(app);
@@ -78,7 +83,6 @@ if (useFunctionsEmulator) {
     : 5001;
 
   connectFunctionsEmulator(cloudFunctions, emulatorHost, emulatorPort);
-  console.log(`[FIREBASE] Functions emulator enabled at ${emulatorHost}:${emulatorPort}`);
 }
 
 export const realtimeDb = databaseUrl ? getDatabase(app, databaseUrl) : null;

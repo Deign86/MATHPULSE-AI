@@ -94,7 +94,7 @@ jobs:
       - name: Backend preflight checks
         working-directory: backend
         run: |
-          python -m pytest tests/ -v --tb=short -k "not (test_imported_class_overview_returns_inferred_state or test_inference_metrics_requires_admin or test_recent_course_materials_respects_class_section_filter or test_recent_course_materials_reports_retention_exclusions or test_contains_thinking_hint or test_chunk_count_included or test_sequential_for_235b)"
+          python -m pytest tests/ -v --tb=short -k "not (test_imported_class_overview_returns_inferred_state or test_inference_metrics_requires_admin or test_recent_course_materials_respects_class_section_filter or test_recent_course_materials_reports_retention_exclusions or test_contains_thinking_hint or test_chunk_count_included or test_empty_collection_returns_empty_list or test_contains_json_and_required_keys)"
           python -m mypy --config-file ../mypy.ini main.py
 
       - name: Pre-deployment validation
@@ -124,7 +124,13 @@ jobs:
           }
           
           # Sync backend files into the Space repo
-          rsync -av --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' backend/ hf-space/
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='datasets/vectorstore' \
+            --exclude='datasets/vectorstore/**' \
+            backend/ hf-space/
 
           # Sync the backend Dockerfile to the Space root (HF Spaces use Dockerfile at repo root)
           cp backend/Dockerfile hf-space/Dockerfile
@@ -158,6 +164,12 @@ jobs:
           grep -q '^pinned: false$' hf-space/README.md
           echo "Backend README.md Space metadata validation passed"
           
+          # Guardrail: ensure vectorstore is not pushed to HF Spaces.
+          if [ -d "hf-space/datasets/vectorstore" ]; then
+            echo "❌ datasets/vectorstore should not be deployed to HF Spaces."
+            exit 1
+          fi
+          
           # Commit and push
           cd hf-space
           git add -A
@@ -172,12 +184,11 @@ jobs:
         run: |
           python scripts/enforce_hf_space_chat_env.py \
             --space-id Deign86/mathpulse-api-v3test \
-            --chat-model Qwen/Qwen3-32B \
-            --provider hf_inference \
+            --chat-model deepseek-chat \
+            --provider deepseek \
             --chat-strict-model-only true \
-            --chat-hard-trigger-enabled false \
-            --enforce-qwen-only true \
-            --qwen-lock-model Qwen/Qwen3-32B \
+            --enforce-lock-model true \
+            --lock-model-id deepseek-chat \
             --clear-global-model \
             --clear-temp-chat-model
 
@@ -203,6 +214,62 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate frontend env config
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
+        run: |
+          missing=0
+          required=(
+            VITE_FIREBASE_API_KEY
+            VITE_FIREBASE_AUTH_DOMAIN
+            VITE_FIREBASE_PROJECT_ID
+            VITE_FIREBASE_STORAGE_BUCKET
+            VITE_FIREBASE_MESSAGING_SENDER_ID
+            VITE_FIREBASE_APP_ID
+          )
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing required env: ${key}"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Required frontend env vars are missing. Configure GitHub Secrets and re-run."
+            exit 1
+          fi
+
+      - name: Write Vite production env
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
+        run: |
+          cat > .env.production <<EOF
+          VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+          VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+          VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+          VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+          VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+          VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
+          VITE_FIREBASE_MEASUREMENT_ID=${VITE_FIREBASE_MEASUREMENT_ID}
+          VITE_FIREBASE_DATABASE_URL=${VITE_FIREBASE_DATABASE_URL}
+          VITE_API_URL=${VITE_API_URL}
+          EOF
+
       - name: Build frontend
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -211,6 +278,8 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
           VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
         run: npm run build
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight, Edit3, Sparkles, Volume2, VolumeX, Maximize, Minimize, ChevronLeft, Heart, Key, Check, HelpCircle, RefreshCw, BookOpen } from 'lucide-react';
@@ -22,12 +22,22 @@ const quizAnimations = `
     0% { transform: translateY(40px) scale(0.85); opacity: 0; }
     100% { transform: translateY(0) scale(1); opacity: 1; }
   }
+  @keyframes confetti-fall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
   .animate-score-pop { animation: score-pop 0.5s ease-out forwards; }
   .animate-overlay-slide-up { animation: overlay-slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  .confetti-piece {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    animation: confetti-fall linear forwards;
+  }
 `;
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
-  <div className="absolute inset-0 pointer-events-none z-[150] overflow-hidden flex justify-between bg-slate-900/5">
+  <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden flex justify-between bg-slate-900/5">
     {React.useMemo(() => [...Array(40)].map((_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
@@ -43,12 +53,44 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
           duration: drop.duration,
           ease: 'linear',
           delay: drop.delay,
-          repeat: Infinity
         }}
       />
     ))}
   </div>
 );
+
+const CSSConfetti: React.FC = () => {
+  const confettiPieces = React.useMemo(() => [...Array(60)].map((_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    backgroundColor: ['#75D06A', '#6ED1CF', '#9956DE', '#FB96BB', '#FFB356'][i % 5],
+    duration: 2 + Math.random() * 2,
+    delay: Math.random() * 0.5,
+    size: 6 + Math.random() * 8,
+    borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+  })), []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden">
+      {confettiPieces.map((piece) => (
+        <div
+          key={piece.id}
+          className="confetti-piece"
+          style={{
+            left: piece.left,
+            top: '-10%',
+            backgroundColor: piece.backgroundColor,
+            width: piece.size,
+            height: piece.size,
+            borderRadius: piece.borderRadius,
+            animationDuration: `${piece.duration}s`,
+            animationDelay: `${piece.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 
 
@@ -63,7 +105,7 @@ const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = 
   })), [viewportHeight, viewportWidth]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-[150] overflow-hidden flex items-center justify-center">
+    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden flex items-center justify-center">
       {sparks.map((spark) => (
         <motion.div
           key={spark.id}
@@ -79,7 +121,6 @@ const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = 
             duration: spark.duration,
             ease: "easeOut",
             delay: spark.delay,
-            repeat: Infinity
           }}
         />
       ))}
@@ -280,6 +321,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [answerRecords, setAnswerRecords] = useState<{ questionId: string; answer: string; correct: boolean; timeSpent: number }[]>([]);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showResults, setShowResults] = useState(false);
+  const [confettiFired, setConfettiFired] = useState(false);
+  const [selectedAnswerForHighlight, setSelectedAnswerForHighlight] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -322,6 +365,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       explanation: getExplanationForQuestion(quiz.subject, i, quiz.difficulty),
     }));
   });
+
+  // Reset quiz state when quiz changes
+  useEffect(() => {
+    setEliminatedByHint({});
+    setFailedOptions([]);
+    setKeysCount(5);
+    setHeartsCount(15);
+    setCurrentPoints(0);
+    setScore(0);
+    setStreak(0);
+    setComboMultiplier(1);
+  }, [quiz.id]);
+
+  
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -374,44 +431,50 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     color: ['bg-purple-500/10', 'bg-blue-500/10', 'bg-cyan-500/10', 'bg-emerald-500/10'][Math.floor(Math.random() * 4)]
   })));
 
-  // Sound effects
+  // Sound effects using Web Audio API for synthetic sounds (sophisticated chord-based)
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'combo') => {
-    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    if (!isAudioEnabled) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const t = ctx.currentTime;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+      const playNote = (freq: number, startTime: number, duration: number, vol = 0.1, waveType: OscillatorType = 'sine') => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = waveType;
+        osc.frequency.value = freq;
 
-    switch (type) {
-      case 'correct':
-        oscillator.frequency.value = 800;
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
-        break;
-      case 'incorrect':
-        oscillator.frequency.value = 200;
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.2);
-        break;
-      case 'combo':
-        oscillator.frequency.value = 1200;
-        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.4);
-        break;
-      case 'complete':
-        oscillator.frequency.value = 600;
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-        break;
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      if (type === 'correct') {
+        playNote(880, t, 0.1, 0.1, 'sine'); // A5
+        playNote(1108.73, t + 0.1, 0.2, 0.1, 'sine'); // C#6
+      } else if (type === 'incorrect') {
+        playNote(300, t, 0.2, 0.05, 'sawtooth');
+        playNote(250, t + 0.15, 0.3, 0.05, 'sawtooth');
+      } else if (type === 'combo') {
+        playNote(440, t, 0.1, 0.05, 'square');
+        playNote(554.37, t + 0.1, 0.1, 0.05, 'square');
+        playNote(659.25, t + 0.2, 0.1, 0.05, 'square');
+        playNote(880, t + 0.3, 0.4, 0.05, 'square');
+      } else if (type === 'complete') {
+        playNote(523.25, t, 0.1, 0.1); // C5
+        playNote(659.25, t + 0.15, 0.1, 0.1); // E5
+        playNote(783.99, t + 0.3, 0.1, 0.1); // G5
+        playNote(1046.50, t + 0.45, 0.5, 0.1); // C6
+      }
+    } catch (e) {
+      // Silently fail if Audio is blocked
     }
   };
 
@@ -555,6 +618,7 @@ const newStreak = streak + 1;
       const nextIdx = currentQuestionIndex + 1;
       setCurrentQuestionIndex(nextIdx);
       setViewIndex(nextIdx);
+      setSelectedAnswerForHighlight(selectedAnswer);
       setSelectedAnswer(null);
       setTextAnswer('');
       setWrongAttempted(false);
@@ -633,18 +697,12 @@ const newStreak = streak + 1;
           selectedAnswer: r.answer,
           isCorrect: r.correct,
         })),
-        timeSpent,
+timeSpent,
       ).catch((err) => console.error('[WARN] Practice quiz persist failed:', err));
     }
 
 playSound('complete');
-      confetti({
-        particleCount: 80,
-        spread: 100,
-        origin: { y: -0.2 },
-        colors: ['#75D06A', '#6ED1CF', '#9956DE', '#FB96BB', '#FFB356']
-      });
-   };
+    };
 
   const isCurrentlyAnswered = viewIndex < currentQuestionIndex || (viewIndex === currentQuestionIndex && showExplanation);
   const viewedQuestion = questions[viewIndex] || currentQuestion;
@@ -666,18 +724,14 @@ playSound('complete');
      const isNeedsWork = percentage < 50;
      const modalRoot = document.getElementById('modal-root');
 
-     const resultModal = (
-       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-         <style>{quizAnimations}</style>
-         {isExcellent && (
-           <div className="absolute inset-0 pointer-events-none z-[150]">
-             {/* Confetti already fired in calculateFinalScore */}
-           </div>
-         )}
-         {isGood && <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />}
-         {isNeedsWork && <RainStorm viewportHeight={viewportSize.height} />}
+const resultModal = (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <style>{quizAnimations}</style>
+          {isExcellent && <CSSConfetti />}
+          {isGood && <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />}
+          {isNeedsWork && <RainStorm viewportHeight={viewportSize.height} />}
 
-        <motion.div 
+         <motion.div
            initial={{ opacity: 0, scale: 0.8, y: 40 }}
            animate={{ opacity: 1, scale: 1, y: 0 }}
            transition={{ type: 'spring', damping: 18, stiffness: 200 }}
@@ -733,22 +787,27 @@ playSound('complete');
             <div className="flex flex-col gap-2">
                <Button
                  size="lg"
-                 onClick={() => {
-                   setCurrentQuestionIndex(0);
-                   setViewIndex(0);
-                   setSelectedAnswer(null);
-                   setTextAnswer('');
-                   setScore(0);
-                   setStreak(0);
-                   setComboMultiplier(1);
-                   setAnswers([]);
-                   setAnswerRecords([]);
-                   setCurrentPoints(0);
-                   setShowResults(false);
-                   setShowExplanation(false);
-                   setUserRequestedExplanation(false);
-                   setQuestionStartTime(Date.now());
-                 }}
+onClick={() => {
+                    setCurrentQuestionIndex(0);
+                    setViewIndex(0);
+                    setSelectedAnswer(null);
+                    setTextAnswer('');
+                    setScore(0);
+                    setStreak(0);
+                    setComboMultiplier(1);
+                    setAnswers([]);
+                    setAnswerRecords([]);
+                    setCurrentPoints(0);
+                    setShowResults(false);
+                    setShowExplanation(false);
+                    setUserRequestedExplanation(false);
+                    setQuestionStartTime(Date.now());
+                    setEliminatedByHint({});
+                    setFailedOptions([]);
+                    setWrongAttempted(false);
+                    setKeysCount(5);
+                    setConfettiFired(false);
+                  }}
                  className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-white hover:bg-slate-50 text-purple-600 border-2 border-purple-100"
                >
                  RETAKE QUIZ
@@ -846,7 +905,7 @@ return (
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none flex flex-col items-center justify-center"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] pointer-events-none flex flex-col items-center justify-center"
           >
             <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
               <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
@@ -899,13 +958,13 @@ return (
               </div>
             </div>
 
-            <div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
+<div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
                <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                  {isAudioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                </button>
-               <button onClick={toggleFullscreen} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                 {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-               </button>
+                <button onClick={toggleFullscreen} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+                  {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
 
                <button onClick={onClose} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                  <X size={20} />
@@ -1013,14 +1072,20 @@ return (
                            if (opt === correctOption) {
                               bgColor = 'bg-emerald-50 border-emerald-400 text-emerald-800';
                            } else {
-                              bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through';
+                              const userAnswer = answerRecords[viewIndex]?.answer;
+                              const wasUserSelection = userAnswer === String(idx);
+                              if (wasUserSelection) {
+                                 bgColor = 'bg-rose-50 border-rose-400 text-rose-800 opacity-80';
+                              } else {
+                                 bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through';
+                              }
                            }
                         } else if (isEliminated) {
                            bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through cursor-not-allowed';
-                        } else if (isCurrentlyAnswered) {
-                           const wasCorrect = idx === viewedQuestion.correctAnswer;
-                           const wasSelected = (viewIndex === currentQuestionIndex && selectedAnswer === idx) ||
-                                               (viewIndex < currentQuestionIndex && answerRecords[viewIndex]?.answer === String(idx));
+} else if (isCurrentlyAnswered) {
+                            const wasCorrect = idx === viewedQuestion.correctAnswer;
+                            const wasSelected = (viewIndex === currentQuestionIndex && (selectedAnswer === idx || selectedAnswerForHighlight === idx)) ||
+                                                (viewIndex < currentQuestionIndex && answerRecords[viewIndex]?.answer === String(idx));
                            if (wasCorrect) {
                               bgColor = 'bg-emerald-50 border-emerald-400 text-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-[1.02] z-10';
                            } else if (wasSelected) {
@@ -1145,8 +1210,9 @@ return (
                          </button>
                         </div>
                       ) : viewIndex < currentQuestionIndex ? (
-                        <button onClick={() => setViewIndex(currentQuestionIndex)} className="bg-white text-slate-700 font-extrabold text-lg px-8 py-4 rounded-full flex items-center justify-center gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-[1.02] active:scale-[0.98] w-full border border-slate-200">
-                           <ChevronRight size={20} /> Back to Current Question
+                        <button onClick={() => setViewIndex(currentQuestionIndex)} className="bg-white text-slate-700 font-extrabold text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-full inline-flex items-center gap-2 sm:gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                           <ChevronRight size={20} />
+                           Back to Current Question
                         </button>
                       ) : null;
                     })()}

@@ -204,42 +204,8 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
         }}
       />
     ))}
-  </div>
+</div>
 );
-
-const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
-  const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
-  const particles = useMemo(() => [...Array(60)].map((_, i) => ({
-    id: i,
-    left: `${20 + Math.random() * 60}%`,
-    xShift: (Math.random() - 0.5) * viewportWidth * 0.8,
-    spin: Math.random() * 720,
-    duration: 3 + Math.random() * 2,
-    delay: Math.random() * 0.35,
-  })), [viewportHeight, viewportWidth]);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md e-left-top e-bg"
-          style={{ ['--left' as any]: particle.left, ['--bg' as any]: colors[particle.id % colors.length] }}
-          animate={{
-            y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
-            x: [0, particle.xShift],
-            rotate: [0, particle.spin],
-          }}
-          transition={{
-            duration: particle.duration,
-            ease: "easeInOut",
-            delay: particle.delay,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
 
 const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
   const sparks = useMemo(() => [...Array(30)].map((_, i) => ({
@@ -1848,9 +1814,6 @@ const QuizBattlePage: React.FC = () => {
       <>
         <style>{battleAnimations}</style>
       <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'win' && (
-          <ConfettiBurst viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
-        )}
         {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
           <RainStorm viewportHeight={viewportSize.height} />
         )}

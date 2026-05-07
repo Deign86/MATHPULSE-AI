@@ -27,7 +27,7 @@ import random
 import secrets
 import string
 from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
+from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast, cast
 from collections import Counter, defaultdict
 from threading import Lock
 
@@ -79,10 +79,25 @@ from services.user_provisioning_service import (
 )
 from routes.rag_routes import router as rag_router
 from routes.admin_model_routes import router as admin_model_router
+from routes.admin_routes import router as admin_pdf_router
+from routes.curriculum_routes import router as curriculum_router
+from routes.diagnostic import router as diagnostic_router
+from routes.video_routes import router as video_router
+from routes.quiz_battle import router as quiz_battle_router
+
+# Rate limiting (slowapi)
+try:
+    from middleware.rate_limiter import setup_rate_limiting
+    HAS_RATE_LIMITING = True
+except ImportError:
+    HAS_RATE_LIMITING = False
+    setup_rate_limiting = None
+
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
     build_lesson_query,
+    format_retrieved_chunks,
     retrieve_curriculum_context,
     summarize_retrieval_confidence,
 )
@@ -132,7 +147,6 @@ from analytics import (
     CalibrateDifficultyRequest,
     CalibrateDifficultyResponse,
     AdaptiveQuizRequest as AdaptiveQuizSelectRequest,
-    AdaptiveQuizResponse,
     StudentSummaryResponse,
     ClassInsightsRequest,
     ClassInsightsResponse,
@@ -189,19 +203,19 @@ def get_inference_client():
 HF_TOKEN = os.environ.get(
     "HF_TOKEN",
     os.environ.get("HUGGING_FACE_API_TOKEN", os.environ.get("HUGGINGFACE_API_TOKEN", "")),
-)
+)  # Kept for HF Space deployment / dataset push only; AI inference uses DEEPSEEK_API_KEY
 
 # Grade 11-12 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "Qwen/Qwen3-32B")
+HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "deepseek-chat")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
 
 # Dedicated quiz model override. When empty, routing.task_model_map decides quiz model.
 HF_QUIZ_MODEL_ID = (os.getenv("HF_QUIZ_MODEL_ID", "").strip() or None)
-HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "Qwen/Qwen3-32B")
+HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "deepseek-chat")
 
-RISK_MODEL = "facebook/bart-large-mnli"
+RISK_MODEL = CHAT_MODEL
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
 ENABLE_DEV_ENDPOINTS = os.getenv("ENABLE_DEV_ENDPOINTS", "false").strip().lower() in {"1", "true", "yes", "on"}
 UPLOAD_MAX_BYTES = int(os.getenv("UPLOAD_MAX_BYTES", str(5 * 1024 * 1024)))
@@ -323,12 +337,12 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
-    "/api/quiz/generate": TEACHER_OR_ADMIN,
-    "/api/quiz/generate-async": TEACHER_OR_ADMIN,
-    "/api/quiz/preview": TEACHER_OR_ADMIN,
+    "/api/quiz/generate": ALL_APP_ROLES,
+    "/api/quiz/generate-async": ALL_APP_ROLES,
+    "/api/quiz/preview": ALL_APP_ROLES,
     "/api/lesson/generate": TEACHER_OR_ADMIN,
     "/api/lesson/generate-async": TEACHER_OR_ADMIN,
-    "/api/rag/lesson": TEACHER_OR_ADMIN,
+    "/api/rag/lesson": ALL_APP_ROLES,
     "/api/rag/generate-problem": TEACHER_OR_ADMIN,
     "/api/rag/analysis-context": TEACHER_OR_ADMIN,
     "/api/feedback/import-grounded": TEACHER_OR_ADMIN,
@@ -336,6 +350,8 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import-grounded/access-audit": TEACHER_OR_ADMIN,
     "/api/quiz/student-competency": TEACHER_OR_ADMIN,
     "/api/calculator/evaluate": ALL_APP_ROLES,
+    "/api/diagnostic/generate": ALL_APP_ROLES,
+    "/api/diagnostic/submit": ALL_APP_ROLES,
     "/api/student/competency-analysis": TEACHER_OR_ADMIN,
     "/api/risk/train-model": ADMIN_ONLY,
     "/api/predict-risk/enhanced": TEACHER_OR_ADMIN,
@@ -358,15 +374,22 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/automation/data-imported": ADMIN_ONLY,
     "/api/automation/content-updated": ADMIN_ONLY,
     "/api/admin/model-config": ADMIN_ONLY,
+    "/api/admin/upload-pdf": ADMIN_ONLY,
+    "/api/admin/reingest-pdf": ADMIN_ONLY,
     "/api/admin/model-config/profile": ADMIN_ONLY,
     "/api/admin/model-config/override": ADMIN_ONLY,
     "/api/admin/model-config/reset": ADMIN_ONLY,
+    "/api/lessons/videos/search": ALL_APP_ROLES,
+    "/api/lesson/personalized": ALL_APP_ROLES,
+    "/api/quiz-battle/generate": ALL_APP_ROLES,
+    "/api/quiz-battle/ingest-pdf": TEACHER_OR_ADMIN,
+    "/api/quiz-battle/bank-status": TEACHER_OR_ADMIN,
 }
 
-if not HF_TOKEN:
+if not os.getenv("DEEPSEEK_API_KEY"):
     logger.warning(
-        "HF_TOKEN is not set. AI features will fail. "
-        "On HF Spaces this is injected automatically as a secret."
+        "DEEPSEEK_API_KEY is not set. AI features will fail. "
+        "Set the DEEPSEEK_API_KEY environment variable."
     )
 
 deterministic_response_cache = DeterministicResponseCache(
@@ -399,7 +422,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
 
-    active_model = os.getenv("HF_MODEL_ID", "Qwen/Qwen3-235B-A22B")
+    active_model = os.getenv("HF_MODEL_ID", "deepseek-chat")
     try:
         from rag.vectorstore_loader import get_vectorstore_health
         health = get_vectorstore_health()
@@ -422,7 +445,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.error("RAG vectorstore warm-up failed: %s", exc)
 
     logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
-    logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'hf_inference')}")
+    logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'deepseek')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(f"   - INFERENCE_CHAT_MODEL_ID: {os.getenv('INFERENCE_CHAT_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(
@@ -430,14 +453,10 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         f"{os.getenv('INFERENCE_CHAT_STRICT_MODEL_ONLY', 'true')}"
     )
     logger.info(
-        f"   - INFERENCE_CHAT_HARD_TRIGGER_ENABLED: "
-        f"{os.getenv('INFERENCE_CHAT_HARD_TRIGGER_ENABLED', 'false')}"
+        f"   - INFERENCE_ENFORCE_LOCK_MODEL: "
+        f"{os.getenv('INFERENCE_ENFORCE_LOCK_MODEL', 'true')}"
     )
-    logger.info(
-        f"   - INFERENCE_ENFORCE_QWEN_ONLY: "
-        f"{os.getenv('INFERENCE_ENFORCE_QWEN_ONLY', 'true')}"
-    )
-    logger.info(f"   - HF_TOKEN set: {'yes' if HF_TOKEN else 'no'}")
+    logger.info(f"   - DEEPSEEK_API_KEY set: {'yes' if os.getenv('DEEPSEEK_API_KEY') else 'no'}")
 
     try:
         yield
@@ -734,19 +753,11 @@ def require_student_self_or_staff(request: Request, student_id: str) -> Authenti
 
 
 def enforce_rate_limit(request: Request, bucket_name: str, limit: int, window_seconds: int) -> None:
-    user = getattr(request.state, "user", None)
-    actor_id = user.uid if user else ((request.client.host if request.client else "unknown"))
-    key = f"{bucket_name}:{actor_id}"
-    now = time.time()
-    start = now - window_seconds
-    hits = [ts for ts in _rate_limit_buckets.get(key, []) if ts >= start]
-    if len(hits) >= limit:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit exceeded for {bucket_name}. Try again later.",
-        )
-    hits.append(now)
-    _rate_limit_buckets[key] = hits
+    """DEPRECATED: Rate limiting is now handled by slowapi middleware.
+    This function is kept for backwards compatibility but does nothing.
+    The slowapi decorators handle all rate limiting per endpoint group.
+    """
+    pass
 
 
 def _utc_now_iso() -> str:
@@ -1002,6 +1013,8 @@ class RequestMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "detail": "Internal server error",
+                    "error": type(exc).__name__,
+                    "message": str(exc),
                     "requestId": request_id,
                 },
                 headers={"X-Request-ID": request_id},
@@ -1010,8 +1023,18 @@ class RequestMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
+
+# Set up rate limiting with slowapi
+if HAS_RATE_LIMITING and setup_rate_limiting:  # type: ignore[truthy-function]
+    setup_rate_limiting(app)  # type: ignore[truthy-function]
+
 app.include_router(rag_router)
 app.include_router(admin_model_router)
+app.include_router(admin_pdf_router)
+app.include_router(curriculum_router)
+app.include_router(diagnostic_router)
+app.include_router(video_router)
+app.include_router(quiz_battle_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -1053,41 +1076,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Hugging Face Clients ─────────────────────────────────────
+# ─── DeepSeek AI Clients ──────────────────────────────────────
 
-# InferenceClient is kept only for zero-shot classification (BART).
-from huggingface_hub import InferenceClient
+# Zero-shot classification replaced with DeepSeek chat-based classification.
+# BART risk model replaced with deepseek-chat structured output.
 
-_zsc_client: Optional[InferenceClient] = None
+from services.ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL, APIError, RateLimitError, APITimeoutError
+
+_zsc_client_initialized = False
 
 
-def get_client() -> InferenceClient:
-    """Get or initialize the HuggingFace InferenceClient (used for zero-shot classification only)."""
-    global _zsc_client
-    if _zsc_client is None:
-        if not HF_TOKEN:
+def _ensure_deepseek_available() -> None:
+    """Verify DeepSeek API key is configured."""
+    global _zsc_client_initialized
+    if not _zsc_client_initialized:
+        try:
+            get_deepseek_client()
+            logger.info("DeepSeek client initialized (for all AI tasks)")
+            _zsc_client_initialized = True
+        except ValueError:
             raise HTTPException(
                 status_code=500,
-                detail="HF_TOKEN not configured. Set the HF_TOKEN environment variable.",
+                detail="DEEPSEEK_API_KEY not configured. Set the DEEPSEEK_API_KEY environment variable.",
             )
-        for attempt in range(3):
-            try:
-                _zsc_client = InferenceClient(
-                    token=HF_TOKEN,
-                    timeout=60,
-                )
-                logger.info("HF InferenceClient initialized (for zero-shot classification)")
-                break
-            except Exception as e:
-                logger.warning(f"HF client init attempt {attempt + 1} failed: {e}")
-                if attempt == 2:
-                    raise HTTPException(
-                        status_code=503,
-                        detail="Failed to initialize AI model client after 3 attempts.",
-                    )
-                time.sleep(2 ** attempt)
-    assert _zsc_client is not None
-    return _zsc_client
 
 
 # ─── HF Serverless Chat Helper (requests-based) ───────────────
@@ -1121,7 +1132,7 @@ def _strip_repetition(text: str, min_chunk: int = 40) -> str:
 
 
 def _build_hf_inference_url(model_id: str) -> str:
-    return f"https://router.huggingface.co/hf-inference/models/{model_id}"
+    return f"https://api.deepseek.com"
 
 
 def _messages_to_inference_prompt(messages: List[Dict[str, str]]) -> str:
@@ -1179,7 +1190,7 @@ def call_hf_chat_stream(
     task_type: str = "chat",
     timeout: Optional[int] = None,
 ) -> Iterator[str]:
-    """Stream chat deltas from HF router as text chunks."""
+    """Stream chat deltas from DeepSeek API as text chunks."""
     client = get_inference_client()
     effective_task = (task_type or "chat").strip().lower()
 
@@ -1195,104 +1206,54 @@ def call_hf_chat_stream(
     selected_model, _ = client._resolve_primary_model(selection_req)
 
     model_chain = client._model_chain_for_task(effective_task, selected_model)
-    provider_chain = client._provider_chain_for_task(effective_task)
     timeout_sec = timeout or client.interactive_timeout_sec
     last_error: Optional[Exception] = None
 
+    ds_client = get_deepseek_client()
+
     for fallback_depth, model_name in enumerate(model_chain):
-        for provider in provider_chain:
-            if provider == "local_space":
-                last_error = RuntimeError("Streaming is not supported for local_space provider")
-                continue
+        start = time.perf_counter()
+        try:
+            stream = ds_client.chat.completions.create(
+                model=model_name,
+                messages=messages,  # type: ignore[arg-type]
+                stream=True,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                timeout=timeout_sec,
+            )
 
-            route = client._resolve_route_label(provider, effective_task)
-            stream_model = model_name if ":" in model_name else f"{model_name}:fastest"
-            headers = {
-                "Authorization": f"Bearer {client.hf_token}",
-                "Content-Type": "application/json",
-                "X-MathPulse-Task": effective_task,
-            }
-            if route == "pro-priority" and client.pro_route_header_name.strip():
-                headers[client.pro_route_header_name.strip()] = client.pro_route_header_value
-
-            payload: Dict[str, object] = {
-                "model": stream_model,
-                "messages": messages,
-                "stream": True,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "top_p": top_p,
-            }
-
-            start = time.perf_counter()
-            try:
-                with http_requests.post(
-                    client.hf_chat_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=timeout_sec,
-                    stream=True,
-                ) as response:
-                    if response.status_code != 200:
-                        raise RuntimeError(f"HF stream error {response.status_code}: {response.text}")
-
-                    emitted_any = False
-                    for raw_line in response.iter_lines(decode_unicode=True):
-                        if not raw_line:
-                            continue
-                        line = raw_line.strip()
-                        if not line.startswith("data:"):
-                            continue
-
-                        data_raw = line.split("data:", 1)[1].strip()
-                        if data_raw == "[DONE]":
-                            if emitted_any:
-                                latency_ms = (time.perf_counter() - start) * 1000
-                                logger.info(
-                                    "✅ HF stream success: task=%s model=%s latency=%sms",
-                                    effective_task,
-                                    model_name,
-                                    round(latency_ms, 0),
-                                )
-                                return
-                            continue
-
-                        try:
-                            payload_obj = json.loads(data_raw)
-                        except json.JSONDecodeError:
-                            continue
-
-                        choices = payload_obj.get("choices") or []
-                        if not choices:
-                            continue
-                        first = choices[0] if isinstance(choices[0], dict) else {}
-                        delta = first.get("delta") or {}
-                        chunk = delta.get("content")
-                        if not chunk:
-                            msg = first.get("message") or {}
-                            chunk = msg.get("content")
-                        if not chunk:
-                            continue
-
+            emitted_any = False
+            for chunk in stream:
+                for choice in chunk.choices:  # type: ignore[union-attr]
+                    delta = getattr(choice, 'delta', None)
+                    if delta and delta.content:
                         emitted_any = True
-                        yield str(chunk)
+                        yield delta.content
 
-                    if emitted_any:
-                        return
-                    raise RuntimeError("HF stream ended without content")
-
-            except Exception as exc:
-                last_error = exc
-                logger.warning(
-                    "⚠️ Stream attempt failed: task=%s provider=%s model=%s depth=%s error=%s",
+            if emitted_any:
+                latency_ms = (time.perf_counter() - start) * 1000
+                logger.info(
+                    "✅ DeepSeek stream success: task=%s model=%s latency=%sms",
                     effective_task,
-                    provider,
                     model_name,
-                    fallback_depth,
-                    str(exc)[:180],
+                    round(latency_ms, 0),
                 )
+                return
+            raise RuntimeError("Stream ended without content")
 
-    raise last_error or RuntimeError("Streaming failed with empty model/provider chain")
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "⚠️ Stream attempt failed: task=%s model=%s depth=%s error=%s",
+                effective_task,
+                model_name,
+                fallback_depth,
+                str(exc)[:180],
+            )
+
+    raise last_error or RuntimeError("Streaming failed with empty model chain")
 
 
 HF_BLOCKING_CALL_CONCURRENCY = max(1, int(os.getenv("HF_BLOCKING_CALL_CONCURRENCY", "16")))
@@ -1385,196 +1346,18 @@ async def call_hf_chat_async(
     task_type: str = "default",
     timeout: Optional[int] = None,
 ) -> str:
-    if os.getenv("PYTEST_CURRENT_TEST"):
-        return await _run_hf_blocking(
-            call_hf_chat,
-            messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            model=model,
-            task_type=task_type,
-            timeout=timeout,
-        )
-
-    client = get_inference_client()
-    effective_task = (task_type or "default").strip().lower()
-    request_tag = f"{effective_task}-async-{int(time.time() * 1000)}"
-
-    selection_req = InferenceRequest(
-        messages=messages,
-        model=model,
-        task_type=task_type,
-        request_tag=request_tag,
-        max_new_tokens=max_tokens,
+    """Async wrapper for DeepSeek chat completions."""
+    return await _run_hf_blocking(
+        call_hf_chat,
+        messages,
+        max_tokens=max_tokens,
         temperature=temperature,
         top_p=top_p,
         repetition_penalty=repetition_penalty,
-        timeout_sec=timeout,
+        model=model,
+        task_type=task_type,
+        timeout=timeout,
     )
-    selected_model, _ = client._resolve_primary_model(selection_req)
-    model_chain = client._model_chain_for_task(effective_task, selected_model)
-    provider_chain = client._provider_chain_for_task(effective_task)
-    last_error: Optional[Exception] = None
-    retryable_status = {408, 429, 500, 502, 503, 504}
-
-    for fallback_depth, model_name in enumerate(model_chain):
-        request_for_model = InferenceRequest(
-            messages=messages,
-            model=model_name,
-            task_type=task_type,
-            request_tag=request_tag,
-            max_new_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            timeout_sec=timeout,
-        )
-        for provider in provider_chain:
-            route = client._resolve_route_label(provider, effective_task)
-            if provider == "local_space":
-                try:
-                    text = await _run_hf_blocking(
-                        client._generate_with_provider,
-                        request_for_model,
-                        provider,
-                        fallback_depth,
-                    )
-                    return _strip_repetition(text)
-                except Exception as exc:
-                    last_error = exc
-                    logger.warning(
-                        "⚠️ Async local fallback failed: task=%s model=%s depth=%s error=%s",
-                        effective_task,
-                        model_name,
-                        fallback_depth,
-                        str(exc)[:180],
-                    )
-                    continue
-
-            stream_model = model_name if ":" in model_name else f"{model_name}:fastest"
-            timeout_sec = client._timeout_for(request_for_model, provider)
-            max_retries, backoff_sec = client._retry_profile(effective_task)
-            headers = {
-                "Authorization": f"Bearer {client.hf_token}",
-                "Content-Type": "application/json",
-                "X-MathPulse-Task": effective_task,
-            }
-            if route == "pro-priority" and client.pro_route_header_name.strip():
-                headers[client.pro_route_header_name.strip()] = client.pro_route_header_value
-
-            payload: Dict[str, object] = {
-                "model": stream_model,
-                "messages": messages,
-                "stream": False,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "top_p": top_p,
-            }
-
-            async_client = await _get_hf_async_http_client()
-            for attempt in range(1, max_retries + 1):
-                start = time.perf_counter()
-                client._record_attempt(
-                    task_type=effective_task,
-                    provider=provider,
-                    route=route,
-                    fallback_depth=fallback_depth,
-                )
-                try:
-                    response = await async_client.post(
-                        client.hf_chat_url,
-                        headers=headers,
-                        json=payload,
-                        timeout=_resolve_async_hf_timeout(timeout_sec),
-                    )
-                    latency_ms = (time.perf_counter() - start) * 1000
-                    client._bump_bucket("status_code_counts", str(response.status_code), 1)
-
-                    if response.status_code in retryable_status and attempt < max_retries:
-                        log_model_call(
-                            logger,
-                            provider=provider,
-                            model=model_name,
-                            endpoint=client.hf_chat_url,
-                            latency_ms=latency_ms,
-                            input_tokens=None,
-                            output_tokens=None,
-                            status="error",
-                            error_class="HTTPRetry",
-                            error_message=f"status={response.status_code}",
-                            task_type=effective_task,
-                            request_tag=request_tag,
-                            retry_attempt=attempt,
-                            fallback_depth=fallback_depth,
-                            route=route,
-                        )
-                        client._bump_metric("retries_total", 1)
-                        await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
-                        continue
-
-                    if response.status_code != 200:
-                        client._bump_metric("requests_error", 1)
-                        raise RuntimeError(
-                            f"HF inference error {response.status_code}: {response.text[:280]}"
-                        )
-
-                    data = response.json()
-                    text = client._extract_text(data)
-                    log_model_call(
-                        logger,
-                        provider=provider,
-                        model=model_name,
-                        endpoint=client.hf_chat_url,
-                        latency_ms=latency_ms,
-                        input_tokens=None,
-                        output_tokens=None,
-                        status="ok",
-                        task_type=effective_task,
-                        request_tag=request_tag,
-                        retry_attempt=attempt,
-                        fallback_depth=fallback_depth,
-                        route=route,
-                    )
-                    client._bump_metric("requests_ok", 1)
-                    return _strip_repetition(text)
-                except Exception as exc:
-                    latency_ms = (time.perf_counter() - start) * 1000
-                    last_error = exc
-                    if attempt < max_retries:
-                        log_model_call(
-                            logger,
-                            provider=provider,
-                            model=model_name,
-                            endpoint=client.hf_chat_url,
-                            latency_ms=latency_ms,
-                            input_tokens=None,
-                            output_tokens=None,
-                            status="error",
-                            error_class=exc.__class__.__name__,
-                            error_message=str(exc),
-                            task_type=effective_task,
-                            request_tag=request_tag,
-                            retry_attempt=attempt,
-                            fallback_depth=fallback_depth,
-                            route=route,
-                        )
-                        client._bump_metric("retries_total", 1)
-                        await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
-                        continue
-
-                    client._bump_metric("requests_error", 1)
-                    logger.warning(
-                        "⚠️ Async HF attempt failed: task=%s provider=%s model=%s depth=%s error=%s",
-                        effective_task,
-                        provider,
-                        model_name,
-                        fallback_depth,
-                        str(exc)[:180],
-                    )
-
-    raise last_error or RuntimeError("Inference failed with empty model/provider chain")
 
 
 async def call_hf_chat_stream_async(
@@ -1587,240 +1370,34 @@ async def call_hf_chat_stream_async(
     task_type: str = "chat",
     timeout: Optional[int] = None,
 ) -> AsyncIterator[str]:
-    if os.getenv("PYTEST_CURRENT_TEST"):
-        stream_iter = call_hf_chat_stream(
-            messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            model=model,
-            task_type=task_type,
-            timeout=timeout,
-        )
-        done = object()
-
-        def _next_chunk():
-            return next(stream_iter, done)
-
-        while True:
-            chunk = await _run_hf_blocking(_next_chunk)
-            if chunk is done:
-                return
-            if chunk:
-                yield str(chunk)
-
-    client = get_inference_client()
-    effective_task = (task_type or "chat").strip().lower()
-    request_tag = f"{effective_task}-stream-async-{int(time.time() * 1000)}"
-
-    selection_req = InferenceRequest(
-        messages=messages,
-        model=model,
-        task_type=task_type,
-        request_tag=request_tag,
-        max_new_tokens=max_tokens,
+    """Async streaming wrapper for DeepSeek chat completions."""
+    stream_iter = call_hf_chat_stream(
+        messages,
+        max_tokens=max_tokens,
         temperature=temperature,
         top_p=top_p,
-        timeout_sec=timeout,
+        model=model,
+        task_type=task_type,
+        timeout=timeout,
     )
-    selected_model, _ = client._resolve_primary_model(selection_req)
-    model_chain = client._model_chain_for_task(effective_task, selected_model)
-    provider_chain = client._provider_chain_for_task(effective_task)
-    last_error: Optional[Exception] = None
-    retryable_status = {408, 429, 500, 502, 503, 504}
+    done = object()
 
-    for fallback_depth, model_name in enumerate(model_chain):
-        request_for_model = InferenceRequest(
-            messages=messages,
-            model=model_name,
-            task_type=task_type,
-            request_tag=request_tag,
-            max_new_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            timeout_sec=timeout,
-        )
-        for provider in provider_chain:
-            if provider == "local_space":
-                last_error = RuntimeError("Streaming is not supported for local_space provider")
-                continue
+    def _next_chunk():
+        return next(stream_iter, done)
 
-            route = client._resolve_route_label(provider, effective_task)
-            stream_model = model_name if ":" in model_name else f"{model_name}:fastest"
-            timeout_sec = client._timeout_for(request_for_model, provider)
-            max_retries, backoff_sec = client._retry_profile(effective_task)
-
-            headers = {
-                "Authorization": f"Bearer {client.hf_token}",
-                "Content-Type": "application/json",
-                "X-MathPulse-Task": effective_task,
-            }
-            if route == "pro-priority" and client.pro_route_header_name.strip():
-                headers[client.pro_route_header_name.strip()] = client.pro_route_header_value
-
-            payload: Dict[str, object] = {
-                "model": stream_model,
-                "messages": messages,
-                "stream": True,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "top_p": top_p,
-            }
-
-            async_client = await _get_hf_async_http_client()
-            for attempt in range(1, max_retries + 1):
-                start = time.perf_counter()
-                client._record_attempt(
-                    task_type=effective_task,
-                    provider=provider,
-                    route=route,
-                    fallback_depth=fallback_depth,
-                )
-                try:
-                    async with async_client.stream(
-                        "POST",
-                        client.hf_chat_url,
-                        headers=headers,
-                        json=payload,
-                        timeout=_resolve_async_hf_timeout(timeout_sec),
-                    ) as response:
-                        client._bump_bucket("status_code_counts", str(response.status_code), 1)
-
-                        if response.status_code in retryable_status and attempt < max_retries:
-                            body = await response.aread()
-                            body_preview = body[:220].decode("utf-8", errors="replace")
-                            latency_ms = (time.perf_counter() - start) * 1000
-                            log_model_call(
-                                logger,
-                                provider=provider,
-                                model=model_name,
-                                endpoint=client.hf_chat_url,
-                                latency_ms=latency_ms,
-                                input_tokens=None,
-                                output_tokens=None,
-                                status="error",
-                                error_class="HTTPRetry",
-                                error_message=f"status={response.status_code} body={body_preview}",
-                                task_type=effective_task,
-                                request_tag=request_tag,
-                                retry_attempt=attempt,
-                                fallback_depth=fallback_depth,
-                                route=route,
-                            )
-                            client._bump_metric("retries_total", 1)
-                            await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
-                            continue
-
-                        if response.status_code != 200:
-                            body = await response.aread()
-                            body_preview = body[:280].decode("utf-8", errors="replace")
-                            client._bump_metric("requests_error", 1)
-                            raise RuntimeError(
-                                f"HF stream error {response.status_code}: {body_preview}"
-                            )
-
-                        emitted_any = False
-                        async for raw_line in response.aiter_lines():
-                            if not raw_line:
-                                continue
-                            line = raw_line.strip()
-                            if not line.startswith("data:"):
-                                continue
-
-                            data_raw = line.split("data:", 1)[1].strip()
-                            if data_raw == "[DONE]":
-                                continue
-
-                            try:
-                                payload_obj = json.loads(data_raw)
-                            except json.JSONDecodeError:
-                                continue
-
-                            choices = payload_obj.get("choices") or []
-                            if not choices:
-                                continue
-                            first = choices[0] if isinstance(choices[0], dict) else {}
-                            delta = first.get("delta") or {}
-                            chunk = delta.get("content")
-                            if not chunk:
-                                msg = first.get("message") or {}
-                                chunk = msg.get("content")
-                            if not chunk:
-                                continue
-
-                            emitted_any = True
-                            yield str(chunk)
-
-                        if emitted_any:
-                            latency_ms = (time.perf_counter() - start) * 1000
-                            log_model_call(
-                                logger,
-                                provider=provider,
-                                model=model_name,
-                                endpoint=client.hf_chat_url,
-                                latency_ms=latency_ms,
-                                input_tokens=None,
-                                output_tokens=None,
-                                status="ok",
-                                task_type=effective_task,
-                                request_tag=request_tag,
-                                retry_attempt=attempt,
-                                fallback_depth=fallback_depth,
-                                route=route,
-                            )
-                            client._bump_metric("requests_ok", 1)
-                            return
-
-                        raise RuntimeError("HF stream ended without content")
-                except Exception as exc:
-                    latency_ms = (time.perf_counter() - start) * 1000
-                    last_error = exc
-                    if attempt < max_retries:
-                        log_model_call(
-                            logger,
-                            provider=provider,
-                            model=model_name,
-                            endpoint=client.hf_chat_url,
-                            latency_ms=latency_ms,
-                            input_tokens=None,
-                            output_tokens=None,
-                            status="error",
-                            error_class=exc.__class__.__name__,
-                            error_message=str(exc),
-                            task_type=effective_task,
-                            request_tag=request_tag,
-                            retry_attempt=attempt,
-                            fallback_depth=fallback_depth,
-                            route=route,
-                        )
-                        client._bump_metric("retries_total", 1)
-                        await asyncio.sleep(_hf_retry_sleep_seconds(backoff_sec, attempt))
-                        continue
-
-                    client._bump_metric("requests_error", 1)
-                    logger.warning(
-                        "⚠️ Async stream attempt failed: task=%s provider=%s model=%s depth=%s error=%s",
-                        effective_task,
-                        provider,
-                        model_name,
-                        fallback_depth,
-                        str(exc)[:180],
-                    )
-
-    raise last_error or RuntimeError("Streaming failed with empty model/provider chain")
+    while True:
+        chunk = await _run_hf_blocking(_next_chunk)
+        if chunk is done:
+            return
+        if chunk:
+            yield str(chunk)
 
 
-def load_local_math_model(model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct"):
-    """Optional local loader for environments using Transformers instead of HF Inference API."""
-    from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore[import-not-found]
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype="auto",
-        device_map="auto",
+def load_local_math_model(model_name: str = "deepseek-chat"):
+    """Optional local loader — deprecated in favor of DeepSeek API."""
+    raise NotImplementedError(
+        "Local model loading is deprecated. Use DeepSeek API via DEEPSEEK_API_KEY env var."
     )
-    return tokenizer, model
 
 
 # ─── Math Tutor Prompt & Wrapper ──────────────────────────────
@@ -2071,7 +1648,15 @@ Your job is to:
 8) When there are multiple possible methods, briefly mention alternatives but pick one main method and follow it consistently.
 9) If the computation is long, summarize intermediate results so the student does not get lost.
 10) If the answer depends on approximations, specify whether the result is exact or rounded (and to how many decimal places).
-Speak in clear, concise English. Use short paragraphs and LaTeX-style math when helpful (e.g., x^2 + 3x + 2 = 0).
+
+IMPORTANT - LaTeX Math Formatting:
+- Inline math: use $...$ (e.g., $x^2 + y^2 = z^2$)
+- Display math: use $$...$$ (e.g., $$\\int_a^b f(x) , dx$$)
+- Never use \\( \\) or \\[ \\] delimiters - use $ and $$ instead
+- Never use square brackets like [equation] for math - use proper LaTeX
+- Always put math in complete sentences
+
+Speak in clear, concise English. Use short paragraphs.
 If the user question is not about math, politely and briefly redirect them to ask a math question.
 If the user sends a greeting or thanks, reply warmly, then invite a math question.
 
@@ -2264,33 +1849,45 @@ async def root():
 # ─── AI Chat Tutor ─────────────────────────────────────────────
 
 
-MATH_TUTOR_SYSTEM_PROMPT = """You are L.O.L.I. (Learning Optimizer with Layered Intelligence), 
-an expert AI math tutor for Grade 11-12 Filipino students.
+MATH_TUTOR_SYSTEM_PROMPT = """You are Pulse, MathPulse AI's friendly math tutor for Filipino Senior High School
+students. You help students understand and solve problems in General Mathematics,
+Business Mathematics, Statistics & Probability, and Finite Mathematics, all aligned
+with the DepEd Strengthened SHS Curriculum and SDO Navotas learning modules.
 
-**Problem-Solving Protocol:**
-1. Read the problem carefully and restate it in your own words to confirm understanding.
-2. Identify key information, formulas, theorems, and what you need to find.
-3. Solve step by step using Chain-of-Thought reasoning with explicit calculations.
-4. Show ALL steps and equation manipulations clearly with intermediate results.
-5. Verify your answer by substituting back into the original problem (for equations/algebra).
-6. Double-check your arithmetic and final answer before presenting.
-7. Put your final answer inside \\boxed{}
+YOUR BEHAVIOR RULES:
+1. PERSONALIZE every response. Address the student by first name occasionally.
+2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
+3. If the student is struggling on a critical gap topic, gently steer them back to
+   prerequisite concepts before moving forward.
+4. Use the SDO Navotas step-by-step method for ALL solutions:
+   "Given → Formula → Substitute → Compute → Conclude"
+5. Always format math using LaTeX:
+   - Inline: \\( expression \\)
+   - Block/display: \\[ expression \\]
+   Never use dollar signs ($) — they break the KaTeX renderer.
+6. Use Filipino-friendly English. Mix in occasional Tagalog phrases
+   (e.g., "Kaya mo yan!", "Subukan natin...") to keep the tone warm.
+7. When a student answers a "try_it" problem, evaluate their answer:
+   - If correct: Celebrate briefly, explain WHY it's correct, then offer a harder challenge.
+   - If wrong: Say "Good try! Let's check your steps..." then walk through the error.
+8. Keep responses concise (max 300 words per message). Use bullet points for steps.
+9. If a student asks about a topic outside their current lesson, help but
+   note: "This is from [topic]. We'll cover this soon in your learning path!"
+10. NEVER generate quiz items with answers visible to the student.
+11. When you detect the student consistently making the same mistake,
+    note it clearly: "I noticed you keep forgetting to convert % to decimal first — let's fix that!"
 
-**Rules for Mathematical Accuracy:**
-- ALWAYS show complete working. Never skip steps or combine multiple operations.
-- Use clear mathematical notation (x², √, π, ≈, ∴, →, =)
-- Show intermediate calculations explicitly (e.g., "3 × 4 = 12, then 12 + 5 = 17")
-- Reveal your thinking process — explain WHY each step follows from the previous
-- For word problems: Define variables clearly, show equation setup, solve step-by-step, then verify
-- If verification fails, recalculate and identify the error before correcting
-- For physics/kinematics problems: Check units and verify magnitude of answers make sense
-- For functions/calculus: Always verify domain and range assumptions
-- Be encouraging but honest. If a problem is ambiguous, ask for clarification.
-- Respond in clear English suitable for Grade 11-12 students
-- If asked about any non-math topic, respond in a friendly tone and redirect to math support only.
-- If the user sends greetings or thanks, respond politely and invite a math-related question.
-- Never use external tools or functions — solve purely through mathematical reasoning
-- Never use external tools or functions — solve purely through mathematical reasoning"""
+RESPONSE FORMAT FOR MATH EXPLANATIONS:
+1. Quick concept recap (1-2 sentences)
+2. Formula (in LaTeX block)
+3. Step-by-step solution
+4. Final answer with units/peso sign
+5. One quick follow-up question to check understanding
+
+AWARENESS OF FULL CURRICULUM:
+You have complete knowledge of all topics in the MathPulse topic registry
+(NA-*, BM-*, SP-*, FM1-*, FM2-* topic codes). When a student asks "what's next?"
+refer to their suggested_learning_path from the diagnostic result."""
 
 
 _STREAM_COMPLETION_MODES: Set[str] = {"auto", "marker", "none"}
@@ -2505,7 +2102,46 @@ async def chat_tutor(request: ChatRequest):
         if boundary_response is not None:
             return ChatResponse(response=boundary_response)
 
-        messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
+        system_prompt = MATH_TUTOR_SYSTEM_PROMPT
+        
+        if request.userId and HAS_FIREBASE_ADMIN and firebase_firestore:
+            try:
+                db = firebase_firestore.client()
+                user_doc = db.collection("users").document(request.userId).get()
+                if user_doc.exists:
+                    user_data = user_doc.to_dict() or {}
+                    diag_id = user_data.get("latestDiagnosticTestId", "")
+                    if diag_id:
+                        diag_doc = db.collection("diagnosticResults").document(request.userId).collection("attempts").document(diag_id).get()
+                        if diag_doc.exists:
+                            diag_data = diag_doc.to_dict() or {}
+                            risk = diag_data.get("riskProfile", {})
+                            student_context = f"""
+STUDENT PROFILE:
+Name: {user_data.get('displayName', 'Student')}
+Strand: {diag_data.get('strand', 'STEM')}
+Weak Domains: {', '.join(risk.get('weak_domains', []))}
+Critical Gaps: {', '.join(risk.get('critical_gaps', []))}
+Overall Risk Level: {risk.get('overall_risk', 'unknown')}
+"""
+                            system_prompt = student_context + "\n" + system_prompt
+            except Exception as ctx_err:
+                logger.debug(f"Failed to inject student profile into chat: {ctx_err}")
+        
+        try:
+            curriculum_chunks = retrieve_curriculum_context(
+                query=request.message[:200],
+                top_k=2,
+            )
+            if curriculum_chunks:
+                rag_context = "RELEVANT CURRICULUM REFERENCE:\n"
+                for chunk in curriculum_chunks:
+                    rag_context += f"[{chunk.get('source_file', '')}] {chunk.get('content', '')[:400]}\n--\n"
+                system_prompt = rag_context + "\n\n" + system_prompt
+        except Exception as rag_err:
+            logger.debug(f"RAG context injection skipped: {rag_err}")
+        
+        messages = [{"role": "system", "content": system_prompt}]
 
         # Add conversation history
         for msg in request.history[-10:]:  # Keep last 10 messages for context window
@@ -3212,7 +2848,7 @@ async def verify_solution(request: VerifySolutionRequest, response: Response):
         raise HTTPException(status_code=500, detail=f"Verification error: {str(e)}")
 
 
-# ─── Student Risk Classification (facebook/bart-large-mnli) ───
+# ─── Student Risk Classification (DeepSeek) ───
 
 
 RISK_LABELS = [
@@ -3314,67 +2950,79 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
 
 @app.post("/api/predict-risk", response_model=RiskPrediction)
 async def predict_risk(student_data: StudentRiskData, response: Response):
-    """Student risk prediction using facebook/bart-large-mnli zero-shot classification"""
+    """Student risk prediction using DeepSeek AI classification"""
     try:
         cache_key = deterministic_response_cache.build_cache_key(
             "predict_risk",
             student_data.model_dump(),
         )
         _set_cache_response_header(response, hit=False)
-        hf = get_client()
+        _ensure_deepseek_available()
 
-        text = (
+        client = get_deepseek_client()
+
+        risk_prompt = (
             f"Student academic performance summary: "
             f"Engagement score is {student_data.engagementScore:.0f}%. "
             f"Average quiz score is {student_data.avgQuizScore:.0f}%. "
-            f"Assignment completion rate is {student_data.assignmentCompletion:.0f}%."
+            f"Assignment completion rate is {student_data.assignmentCompletion:.0f}%.\n\n"
+            f"Classify this student into exactly one of these risk levels: {', '.join(RISK_LABELS)}. "
+            f"Respond with a JSON object containing: risk_label, confidence (0-1 float), reasoning (short sentence)."
         )
 
-        # Retry HF inference with backoff
-        result = None
+        # Retry DeepSeek inference with backoff
         last_err: Optional[Exception] = None
         for attempt in range(3):
             try:
-                result = await _run_hf_blocking(
-                    hf.zero_shot_classification,
-                    text=text,
-                    candidate_labels=RISK_LABELS,
-                    model=RISK_MODEL,
-                    multi_label=False,
+                api_response = await _run_hf_blocking(
+                    lambda model=CHAT_MODEL, prompt=risk_prompt: client.chat.completions.create(  # type: ignore[arg-type]
+                        model=model,
+                        messages=[
+                            {"role": "system", "content": "You are a student risk analyst. Respond with valid JSON only."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        response_format={"type": "json_object"},
+                        max_tokens=256,
+                        temperature=0.0,
+                    )
                 )
                 last_err = None
                 break
-            except Exception as hf_err:
-                last_err = hf_err
-                logger.warning(f"HF risk prediction attempt {attempt + 1} failed: {hf_err}")
+            except (APIError, RateLimitError, APITimeoutError, Exception) as api_err:
+                last_err = api_err
+                logger.warning(f"DeepSeek risk prediction attempt {attempt + 1} failed: {api_err}")
                 if attempt < 2:
                     await asyncio.sleep(2 ** attempt)
 
-        if last_err is not None or result is None:
-            logger.error(f"HF risk prediction failed after 3 attempts: {last_err}")
+        if last_err is not None:
+            logger.error(f"DeepSeek risk prediction failed after 3 attempts: {last_err}")
             raise HTTPException(
                 status_code=502,
                 detail="Risk prediction model is temporarily unavailable.",
             )
 
-        # result is list[ZeroShotClassificationOutputElement] sorted by score desc
-        top = result[0]
-        top_label = top.label
-        top_score = top.score
+        content = api_response.choices[0].message.content or "{}"
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            parsed = {"risk_label": "medium academic risk", "confidence": 0.5}
 
-        risk_level = RISK_MAPPING.get(top_label, "Medium")
+        risk_label = str(parsed.get("risk_label", "medium academic risk"))
+        confidence = float(parsed.get("confidence", 0.5))
+
+        risk_level = RISK_MAPPING.get(risk_label, "Medium")
         strict_risk_level = _to_strict_risk_level(risk_level)
         top_factors = _basic_risk_top_factors(student_data)
 
         result = RiskPrediction(
             riskLevel=risk_level,
-            confidence=round(float(top_score), 4),
+            confidence=round(confidence, 4),
             analysis={
-                "labels": [el.label for el in result],
-                "scores": [round(el.score, 4) for el in result],
+                "labels": [risk_label],
+                "scores": [round(confidence, 4)],
             },
             risk_level=strict_risk_level,
-            risk_score=round(float(top_score), 4),
+            risk_score=round(confidence, 4),
             top_factors=top_factors,
         )
         await deterministic_response_cache.set(
@@ -3417,7 +3065,7 @@ async def predict_risk_batch(request: BatchRiskRequest):
 
 
 @app.post("/api/learning-path", response_model=LearningPathResponse)
-async def generate_learning_path(request: LearningPathRequest, response: Response):
+async def generate_ai_learning_path(request: LearningPathRequest, response: Response):
     """Generate AI-powered personalized learning path"""
     try:
         cache_key = deterministic_response_cache.build_cache_key(
@@ -8460,6 +8108,166 @@ class ImportGroundedAccessAuditResponse(BaseModel):
     warnings: List[str]
 
 
+# ─── Diagnostic Test Models ────────────────────────────────────
+
+class DiagnosticGenerateRequest(BaseModel):
+    strand: str = Field(..., description="Student strand: ABM, STEM, HUMSS, GAS, TVL")
+    gradeLevel: str = Field(..., description="Grade level: Grade 11 or Grade 12")
+    numQuestions: int = Field(default=15, ge=5, le=30, description="Number of questions to generate")
+
+
+class DiagnosticQuestion(BaseModel):
+    question_id: str
+    competency_code: str
+    domain: str
+    topic: str
+    difficulty: str
+    bloom_level: str
+    question_text: str
+    options: Dict[str, str]
+    correct_answer: str
+    solution_hint: str
+    curriculum_reference: str
+
+
+class DiagnosticGenerateResponse(BaseModel):
+    questions: List[DiagnosticQuestion]
+    test_id: str
+    metadata: Dict[str, Any]
+
+
+class DiagnosticSubmitRequest(BaseModel):
+    user_id: str
+    test_id: str
+    strand: str
+    grade_level: str
+    responses: List[Dict[str, Any]]
+
+
+class DiagnosticResult(BaseModel):
+    user_id: str
+    test_id: str
+    taken_at: datetime
+    strand: str
+    grade_level: str
+    total_items: int
+    total_score: int
+    percentage_score: float
+    responses: List[Dict[str, Any]]
+    domain_scores: Dict[str, Dict[str, Any]]
+    risk_profile: Dict[str, Any]
+
+
+class DiagnosticSubmitResponse(BaseModel):
+    success: bool
+    result: DiagnosticResult
+    risk_profile: Dict[str, Any]
+    domain_scores: Dict[str, Dict[str, Any]]
+    redirect_to: str
+
+
+class DiagnosticResultsResponse(BaseModel):
+    success: bool
+    results: List[DiagnosticResult]
+
+
+# ─── DepEd Curriculum Competency Domains ────────────────────────────
+
+DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
+    "ABM": {
+        "Grade 11": [
+            "Business Mathematics - Fractions, Decimals, Percent",
+            "Business Mathematics - Proportion",
+            "Business Mathematics - Markup and Margin",
+            "Business Mathematics - Trade Discounts and VAT",
+            "Business Mathematics - Commissions",
+            "Business Mathematics - Salaries and Wages",
+            "Business Mathematics - Mandatory Deductions",
+            "Business Mathematics - Employee Benefits",
+            "Business Mathematics - Overtime Pay",
+            "Business Mathematics - Simple Interest",
+            "Business Mathematics - Compound Interest",
+            "Business Mathematics - Loans and Credit",
+            "Business Mathematics - Data Presentation",
+        ],
+        "Grade 12": [
+            "Business Mathematics - Business Reports",
+            "Business Mathematics - Financial Analysis",
+            "Business Mathematics - Investment Decisions",
+            "Business Mathematics - Taxation",
+            "Business Mathematics - Asset Depreciation",
+        ],
+    },
+    "STEM": {
+        "Grade 11": [
+            "General Mathematics - Patterns and Sequences",
+            "General Mathematics - Functions",
+            "General Mathematics - Function Operations",
+            "General Mathematics - Inverse Functions",
+            "General Mathematics - Unit Conversions",
+            "General Mathematics - Geometry",
+            "General Mathematics - Trigonometry",
+            "Statistics - Data Organization",
+            "Statistics - Measures of Central Tendency",
+            "Statistics - Measures of Variability",
+            "Statistics - Random Variables",
+            "Statistics - Probability Distributions",
+            "Statistics - Normal Distribution",
+            "Statistics - Sampling",
+            "Statistics - Hypothesis Testing",
+        ],
+        "Grade 12": [
+            "General Mathematics - Financial Math",
+            "General Mathematics - Compound Interest",
+            "General Mathematics - Annuities",
+            "General Mathematics - Amortization",
+            "General Mathematics - Logical Propositions",
+            "Statistics - Confidence Intervals",
+            "Statistics - Correlation",
+            "Statistics - Regression",
+        ],
+    },
+    "HUMSS": {
+        "Grade 11": [
+            "General Mathematics - Patterns and Sequences",
+            "General Mathematics - Functions",
+            "General Mathematics - Statistics Basics",
+            "General Mathematics - Data Analysis",
+            "General Mathematics - Probability",
+        ],
+        "Grade 12": [
+            "General Mathematics - Financial Math",
+            "General Mathematics - Logical Reasoning",
+            "Statistics - Statistical Inference",
+        ],
+    },
+    "GAS": {
+        "Grade 11": [
+            "General Mathematics - Patterns and Sequences",
+            "General Mathematics - Functions",
+            "General Mathematics - Statistics Basics",
+        ],
+        "Grade 12": [
+            "General Mathematics - Financial Math",
+            "General Mathematics - Logical Reasoning",
+        ],
+    },
+    "TVL": {
+        "Grade 11": [
+            "Applied Mathematics - Number Sense",
+            "Applied Mathematics - Measurement",
+            "Applied Mathematics - Data Interpretation",
+            "Applied Mathematics - Problem Solving",
+        ],
+        "Grade 12": [
+            "Applied Mathematics - Business Math",
+            "Applied Mathematics - Consumer Math",
+            "Applied Mathematics - Technical Math",
+        ],
+    },
+}
+
+
 def _coerce_event_timestamp_utc(event: Dict[str, Any]) -> Optional[datetime]:
     created_at = event.get("createdAt")
     if isinstance(created_at, datetime):
@@ -10841,7 +10649,7 @@ async def get_inference_metrics(http_request: Request):
 @app.get("/api/hf/monitoring", response_model=HFMonitoringDataResponse)
 async def get_hf_monitoring(http_request: Request):
     """
-    Aggregates HF billing, model status, and latency probe.
+    Aggregates DeepSeek AI status, model config, and latency probe.
     Returns distilled data safe for frontend consumption.
 
     Requires admin authentication.
@@ -10850,13 +10658,12 @@ async def get_hf_monitoring(http_request: Request):
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden for this role")
 
-    if not HF_TOKEN:
-        raise HTTPException(status_code=500, detail="HF_TOKEN not configured.")
+    _ensure_deepseek_available()
 
     try:
         generation_model_id = get_model_for_task("chat")
     except Exception:
-        generation_model_id = "Qwen/QwQ-32B"
+        generation_model_id = CHAT_MODEL
 
     embedding_model_id = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 
@@ -10873,14 +10680,12 @@ async def get_hf_monitoring(http_request: Request):
         except Exception:
             task_resolved[task] = generation_model_id
 
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-
     result: Dict[str, Any] = {
         "modelId": generation_model_id,
-        "modelStatus": "Unknown",
+        "modelStatus": "Operational",
         "avgResponseTimeMs": 0,
         "embeddingModelId": embedding_model_id,
-        "embeddingModelStatus": "Unknown",
+        "embeddingModelStatus": "Operational",
         "inferenceBalance": 0.0,
         "totalPeriodCost": 0.0,
         "hubApiCallsUsed": 0,
@@ -10895,77 +10700,25 @@ async def get_hf_monitoring(http_request: Request):
         "activeProfile": runtime_config.get("profile") or os.getenv("MODEL_PROFILE", "dev"),
         "runtimeOverridesActive": len(runtime_config.get("overrides", {})) > 0,
         "resolvedModels": task_resolved,
+        "provider": "deepseek",
+        "apiBaseUrl": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
     }
 
     try:
-        billing_url = "https://huggingface.co/api/billing/usage"
-        billing_resp = http_requests.get(billing_url, headers=headers, timeout=15)
-        if billing_resp.status_code == 200:
-            billing_data = billing_resp.json()
-            if "usage" in billing_data:
-                result["inferenceBalance"] = billing_data["usage"].get("inferenceCreditsBilled", 0.0)
-                result["totalPeriodCost"] = billing_data["usage"].get("cost", 0.0)
-            if "active_period" in billing_data:
-                result["periodStart"] = billing_data["active_period"].get("start", "")
-                result["periodEnd"] = billing_data["active_period"].get("end", "")
-            if "services" in billing_data:
-                services = billing_data["services"]
-                hfcompute = services.get("hfcompute", {})
-                result["zeroGpuMinutesUsed"] = hfcompute.get("usage", [0])[0] if isinstance(hfcompute.get("usage", []), list) else hfcompute.get("usage", 0)
-                result["zeroGpuMinutesLimit"] = hfcompute.get("limit", 25)
-                storage = services.get("storage", {})
-                result["publicStorageUsedTB"] = storage.get("usage", 0.0)
-                result["publicStorageLimitTB"] = storage.get("limit", 11.2)
-    except Exception as e:
-        logger.warning(f"HF billing API call failed: {e}")
-
-    try:
-        model_url = f"https://api-inference.huggingface.co/models/{generation_model_id}"
-        model_resp = http_requests.get(model_url, headers=headers, timeout=15)
-        if model_resp.status_code == 200:
-            model_data = model_resp.json()
-            state = model_data.get("error", model_data.get("state", ""))
-            if state == "loading":
-                result["modelStatus"] = "Loading"
-            elif state in {"LOADED", "LoadComplete"}:
-                result["modelStatus"] = "Operational"
-            elif state in {"FAILED", "error"}:
-                result["modelStatus"] = "Degraded"
-            else:
-                result["modelStatus"] = "Operational"
-        elif model_resp.status_code == 503:
-            result["modelStatus"] = "Loading"
-        else:
-            result["modelStatus"] = "Unknown"
-    except Exception as e:
-        logger.warning(f"HF model status API call failed: {e}")
-        result["modelStatus"] = "Unknown"
-
-    try:
-        emb_url = f"https://api-inference.huggingface.co/models/{embedding_model_id}"
-        emb_resp = http_requests.get(emb_url, headers=headers, timeout=5)
-        if emb_resp.status_code == 200:
-            emb_data = emb_resp.json()
-            if emb_data.get("error") == "loading":
-                result["embeddingModelStatus"] = "Loading"
-            else:
-                result["embeddingModelStatus"] = "Operational"
-        else:
-            result["embeddingModelStatus"] = "Degraded"
-    except Exception as e:
-        logger.warning(f"HF embedding model status probe failed: {e}")
-        result["embeddingModelStatus"] = "Degraded"
-
-    try:
+        client = get_deepseek_client()
         latency_start = time.time()
-        probe_payload = {"inputs": "Hello", "parameters": {"max_new_tokens": 1}}
-        probe_url = f"https://api-inference.huggingface.co/models/{generation_model_id}"
-        probe_resp = http_requests.post(probe_url, headers=headers, json=probe_payload, timeout=30)
+        probe_response = client.chat.completions.create(
+            model=str(CHAT_MODEL),
+            messages=[{"role": "user", "content": "Hi"}],
+            max_tokens=1,
+            temperature=0.0,
+        )
         latency_ms = int((time.time() - latency_start) * 1000)
-        if probe_resp.status_code in {200, 206}:
-            result["avgResponseTimeMs"] = latency_ms
+        result["avgResponseTimeMs"] = latency_ms
+        result["modelStatus"] = "Operational"
     except Exception as e:
-        logger.warning(f"HF latency probe failed: {e}")
+        logger.warning(f"DeepSeek latency probe failed: {e}")
+        result["modelStatus"] = "Degraded"
 
     return HFMonitoringDataResponse(success=True, data=result)
 
@@ -11352,7 +11105,7 @@ async def calibrate_quiz_difficulty(request: CalibrateDifficultyRequest):
         raise HTTPException(status_code=500, detail=f"Calibration error: {str(e)}")
 
 
-@app.post("/api/quiz/adaptive-select", response_model=AdaptiveQuizResponse)
+@app.post("/api/quiz/adaptive-select")
 async def adaptive_quiz_selection(request: AdaptiveQuizSelectRequest):
     """
     Select questions adaptively based on student ability level using IRT.
@@ -12359,6 +12112,1184 @@ async def automation_content_updated(payload: ContentUpdatePayload):
     except Exception as e:
         logger.error(f"Automation content error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+
+# ─── Diagnostic Test Endpoints ─────────────────────────────────
+
+async def _generate_diagnostic_questions(
+    strand: str,
+    grade_level: str,
+    num_questions: int,
+) -> List[DiagnosticQuestion]:
+    """Generate diagnostic test questions using LLM based on DepEd curriculum with RAG."""
+    
+    topics = DEPD_ED_COMPETENCY_DOMAINS.get(strand, {}).get(grade_level, [])
+    if not topics:
+        topics = DEPD_ED_COMPETENCY_DOMAINS.get("STEM", {}).get("Grade 11", [])
+    
+    topic_list = "\n".join([f"- {t}" for t in topics[:10]])
+    
+    curriculum_chunks = retrieve_curriculum_context(
+        query=f"{topics[0] if topics else strand} examples problems {grade_level}",
+        subject="General Mathematics",
+        top_k=3,
+    )
+    
+    curriculum_context = ""
+    for chunk in curriculum_chunks:
+        source = chunk.get("source_file", "unknown")
+        content = chunk.get("content", "")[:500]
+        curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
+    
+    rag_instruction = ""
+    if curriculum_context:
+        rag_instruction = f"""CURRICULUM REFERENCE:
+{curriculum_context}
+
+Use these examples as reference. Do not copy directly."""
+    
+    prompt = f"""You are MathPulse AI's Diagnostic Test Generator. Generate {num_questions} multiple-choice questions for a Filipino Senior High School student (Strand: {strand}, Grade: {grade_level}).
+
+Based on these DepEd SHS curriculum competencies:
+{topic_list}
+
+{rag_instruction}
+
+Generate questions in this strict JSON format (no other text):
+[
+  {{
+    "question_id": "DX-<generate uuid>",
+    "competency_code": "TOPIC-SUBTOPIC-01",
+    "domain": "Domain Name",
+    "topic": "Specific Topic",
+    "difficulty": "easy|medium|hard",
+    "bloom_level": "remembering|understanding|applying|analyzing",
+    "question_text": "Question text in Filipino context",
+    "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+    "correct_answer": "A|B|C|D",
+    "solution_hint": "Brief solution hint (1-2 sentences)",
+    "curriculum_reference": "DepEd SHS [Strand] Q[X] - [Topic]"
+  }}
+]
+
+Distribution: 40% easy, 40% medium, 20% hard.
+Use Filipino real-life context (peso amounts, SSS/PhilHealth/BIR, local scenarios).
+Distractors must be plausible but clearly wrong.
+Return ONLY the JSON array, no other text."""
+
+    try:
+        messages = [
+            {"role": "system", "content": "You are a math question generator. Return ONLY valid JSON."},
+            {"role": "user", "content": prompt},
+        ]
+        response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="quiz")
+        
+        import re
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if json_match:
+            questions_data = json.loads(json_match.group())
+        else:
+            questions_data = json.loads(response)
+        
+        questions = []
+        for q in questions_data[:num_questions]:
+            questions.append(DiagnosticQuestion(**q))
+        
+        return questions
+    except Exception as e:
+        logger.error(f"Diagnostic question generation error: {e}")
+        raise
+
+
+async def _analyze_diagnostic_risk(
+    responses: List[Dict[str, Any]],
+    total_items: int,
+    total_score: int,
+) -> Dict[str, Any]:
+    """Analyze student performance and generate risk profile."""
+    domain_scores: Dict[str, Dict[str, Any]] = {}
+    domain_responses: Dict[str, List[Dict[str, Any]]] = {}
+    
+    for resp in responses:
+        domain = resp.get("domain", "Unknown")
+        if domain not in domain_responses:
+            domain_responses[domain] = []
+        domain_responses[domain].append(resp)
+    
+    for domain, resp_list in domain_responses.items():
+        correct = sum(1 for r in resp_list if r.get("is_correct", False))
+        total = len(resp_list)
+        pct = (correct / total * 100) if total > 0 else 0
+        
+        mastery = "mastered" if pct >= 80 else "developing" if pct >= 60 else "beginning"
+        domain_scores[domain] = {
+            "correct": correct,
+            "total": total,
+            "percentage": round(pct, 1),
+            "mastery_level": mastery,
+        }
+    
+    weak_domains = [
+        d for d, data in domain_scores.items()
+        if data["percentage"] < 60
+    ]
+    
+    critical_gaps = []
+    competency_attempts: Dict[str, List[bool]] = {}
+    for resp in responses:
+        comp_code = resp.get("competency_code", "")
+        if comp_code not in competency_attempts:
+            competency_attempts[comp_code] = []
+        competency_attempts[comp_code].append(resp.get("is_correct", False))
+    
+    for comp_code, results in competency_attempts.items():
+        correct_count = sum(1 for r in results if r)
+        if len(results) >= 2 and correct_count == 0:
+            critical_gaps.append(comp_code)
+    
+    overall_pct = (total_score / total_items * 100) if total_items > 0 else 0
+    
+    if overall_pct >= 75 and len(critical_gaps) == 0:
+        overall_risk = "low"
+    elif overall_pct >= 55 or len(critical_gaps) <= 2:
+        overall_risk = "moderate"
+    elif overall_pct >= 40 or len(critical_gaps) <= 4:
+        overall_risk = "high"
+    else:
+        overall_risk = "critical"
+    
+    intervention_messages = {
+        "low": "Great job! You have a solid foundation. Keep practicing to maintain your skills!",
+        "moderate": "You're making good progress. Focus on the topics where you need more practice.",
+        "high": "Don't worry! With focused practice on your weak areas, you'll improve quickly.",
+        "critical": "Let's work on this together. Start with the basics and build up your confidence.",
+    }
+    
+    suggested_path = weak_domains[:3] if weak_domains else list(domain_scores.keys())[:3]
+    
+    return {
+        "overall_risk": overall_risk,
+        "overall_score_percent": round(overall_pct, 1),
+        "domain_scores": domain_scores,
+        "weak_domains": weak_domains,
+        "critical_gaps": critical_gaps,
+        "recommended_intervention": intervention_messages[overall_risk],
+        "suggested_learning_path": suggested_path,
+    }
+
+
+def _save_diagnostic_to_firestore(result: DiagnosticResult) -> bool:
+    """Save diagnostic result to Firestore."""
+    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+        logger.warning("Firebase not available for diagnostic save")
+        return False
+    
+    try:
+        db = firebase_firestore.client()
+        doc_ref = db.collection("diagnosticResults").document(result.user_id).collection("attempts").document(result.test_id)
+        doc_ref.set({
+            "testId": result.test_id,
+            "takenAt": result.taken_at,
+            "strand": result.strand,
+            "gradeLevel": result.grade_level,
+            "totalItems": result.total_items,
+            "totalScore": result.total_score,
+            "percentageScore": result.percentage_score,
+            "responses": result.responses,
+            "domainScores": result.domain_scores,
+            "riskProfile": result.risk_profile,
+        })
+        
+        latest_ref = db.collection("users").document(result.user_id)
+        latest_ref.set({"latestDiagnosticTestId": result.test_id}, merge=True)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Firestore diagnostic save error: {e}")
+        return False
+
+
+@app.post("/api/diagnostic/generate", response_model=DiagnosticGenerateResponse)
+async def generate_diagnostic_test(request: DiagnosticGenerateRequest):
+    """
+    Generate a personalized diagnostic assessment for a student.
+    Questions are based on DepEd Strengthened SHS Curriculum.
+    """
+    try:
+        test_id = f"DX-{uuid.uuid4().hex[:12]}"
+        
+        questions = await _generate_diagnostic_questions(
+            request.strand,
+            request.gradeLevel,
+            request.numQuestions,
+        )
+        
+        stripped_questions = []
+        for q in questions:
+            stripped_questions.append(DiagnosticQuestion(
+                question_id=q.question_id,
+                competency_code=q.competency_code,
+                domain=q.domain,
+                topic=q.topic,
+                difficulty=q.difficulty,
+                bloom_level=q.bloom_level,
+                question_text=q.question_text,
+                options=q.options,
+                correct_answer=q.correct_answer,
+                solution_hint="",
+                curriculum_reference=q.curriculum_reference,
+            ))
+        
+        metadata = {
+            "strand": request.strand,
+            "grade_level": request.gradeLevel,
+            "num_questions": len(questions),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        return DiagnosticGenerateResponse(
+            questions=stripped_questions,
+            test_id=test_id,
+            metadata=metadata,
+        )
+    except Exception as e:
+        logger.error(f"Diagnostic generation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Diagnostic generation error: {str(e)}")
+
+
+@app.post("/api/diagnostic/submit", response_model=DiagnosticSubmitResponse)
+async def submit_diagnostic_test(request: DiagnosticSubmitRequest):
+    """
+    Submit diagnostic test responses, score them, and generate risk profile.
+    Results are saved to Firestore for use by other subsystems.
+    """
+    try:
+        total_items = len(request.responses)
+        total_score = 0
+        scored_responses = []
+        
+        for resp in request.responses:
+            is_correct = resp.get("student_answer", "") == resp.get("correct_answer", "")
+            if is_correct:
+                total_score += 1
+            scored_responses.append({
+                "question_id": resp.get("question_id"),
+                "competency_code": resp.get("competency_code"),
+                "domain": resp.get("domain"),
+                "topic": resp.get("topic"),
+                "difficulty": resp.get("difficulty"),
+                "bloom_level": resp.get("bloom_level"),
+                "student_answer": resp.get("student_answer"),
+                "correct_answer": resp.get("correct_answer"),
+                "is_correct": is_correct,
+                "time_spent_seconds": resp.get("time_spent_seconds", 0),
+            })
+        
+        risk_profile = await _analyze_diagnostic_risk(
+            scored_responses,
+            total_items,
+            total_score,
+        )
+        
+        domain_scores = risk_profile.get("domain_scores", {})
+        
+        result = DiagnosticResult(
+            user_id=request.user_id,
+            test_id=request.test_id,
+            taken_at=datetime.now(timezone.utc),
+            strand=request.strand,
+            grade_level=request.grade_level,
+            total_items=total_items,
+            total_score=total_score,
+            percentage_score=round(total_score / total_items * 100, 1),
+            responses=scored_responses,
+            domain_scores=domain_scores,
+            risk_profile=risk_profile,
+        )
+        
+        _save_diagnostic_to_firestore(result)
+        
+        return DiagnosticSubmitResponse(
+            success=True,
+            result=result,
+            risk_profile=risk_profile,
+            domain_scores=domain_scores,
+            redirect_to="/dashboard",
+        )
+    except Exception as e:
+        logger.error(f"Diagnostic submit error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Diagnostic submit error: {str(e)}")
+
+
+@app.get("/api/diagnostic/results/{user_id}", response_model=DiagnosticResultsResponse)
+async def get_diagnostic_results(user_id: str):
+    """
+    Fetch diagnostic test results for a student.
+    Returns all attempts with risk profiles.
+    """
+    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+        return DiagnosticResultsResponse(success=False, results=[])
+    
+    try:
+        db = firebase_firestore.client()
+        docs = db.collection("diagnosticResults").document(user_id).collection("attempts").stream()
+        
+        results = []
+        for doc in docs:
+            data = doc.to_dict()
+            if data:
+                results.append(DiagnosticResult(**data))
+        
+        results.sort(key=lambda x: x.taken_at, reverse=True)
+        
+        return DiagnosticResultsResponse(success=True, results=results)
+    except Exception as e:
+        logger.error(f"Diagnostic results fetch error: {e}")
+        return DiagnosticResultsResponse(success=False, results=[])
+
+
+# ─── DepEd Topic Registry for Lessons/Quizzes ─────────────────────────────
+
+DEPD_TOPIC_REGISTRY: Dict[str, Dict[str, str]] = {
+    "NA-WAGE-01": {"subject": "General Mathematics", "title": "Wages, Salaries, Overtime, Commissions, VAT", "quarter": "Q1"},
+    "NA-SEQ-01": {"subject": "General Mathematics", "title": "Arithmetic Sequences and Series", "quarter": "Q1"},
+    "NA-SEQ-02": {"subject": "General Mathematics", "title": "Geometric Sequences and Series", "quarter": "Q1"},
+    "NA-SEQ-03": {"subject": "General Mathematics", "title": "Sigma Notation, Financial Applications", "quarter": "Q1"},
+    "NA-FUNC-01": {"subject": "General Mathematics", "title": "Functions, Relations, Vertical Line Test", "quarter": "Q2"},
+    "NA-FUNC-02": {"subject": "General Mathematics", "title": "Evaluating Functions, Operations, Composition", "quarter": "Q2"},
+    "NA-FUNC-03": {"subject": "General Mathematics", "title": "One-to-One Functions, Inverse Functions", "quarter": "Q2"},
+    "NA-FUNC-04": {"subject": "General Mathematics", "title": "Piecewise Functions", "quarter": "Q2"},
+    "NA-EXP-01": {"subject": "General Mathematics", "title": "Exponential Functions, Equations, Inequalities", "quarter": "Q2"},
+    "NA-LOG-01": {"subject": "General Mathematics", "title": "Logarithmic Functions", "quarter": "Q2"},
+    "MG-TRIG-01": {"subject": "General Mathematics", "title": "Trigonometric Ratios, Right Triangles", "quarter": "Q3"},
+    "MG-TRIG-02": {"subject": "General Mathematics", "title": "Oblique Triangles, Heron's Formula", "quarter": "Q3"},
+    "MG-MEAS-01": {"subject": "General Mathematics", "title": "Unit Conversion, Surface Area, Volume", "quarter": "Q2"},
+    "DP-STAT-01": {"subject": "Statistics", "title": "Types of Data, Levels of Measurement", "quarter": "Q2"},
+    "DP-STAT-02": {"subject": "Statistics", "title": "Measures of Central Tendency and Variability", "quarter": "Q2"},
+    "DP-RV-01": {"subject": "Statistics", "title": "Random Variables (Discrete & Continuous)", "quarter": "Q3"},
+    "DP-RV-02": {"subject": "Statistics", "title": "Probability Distributions, Mean, Variance, SD", "quarter": "Q3"},
+    "DP-NORM-01": {"subject": "Statistics", "title": "Normal Distribution, Properties", "quarter": "Q3"},
+    "DP-NORM-02": {"subject": "Statistics", "title": "Z-Scores, Standard Normal Table", "quarter": "Q3"},
+    "DP-SAMP-01": {"subject": "Statistics", "title": "Sampling, Central Limit Theorem", "quarter": "Q3"},
+    "DP-SAMP-02": {"subject": "Statistics", "title": "Sampling Distribution of Sample Means", "quarter": "Q3"},
+    "NA-FIN-01": {"subject": "General Mathematics", "title": "Compound Interest, Maturity Value", "quarter": "Q4"},
+    "NA-FIN-02": {"subject": "General Mathematics", "title": "Simple and General Annuities", "quarter": "Q4"},
+    "NA-FIN-03": {"subject": "General Mathematics", "title": "Deferred Annuity, Fair Market Value", "quarter": "Q4"},
+    "NA-FIN-04": {"subject": "General Mathematics", "title": "Business and Consumer Loans, Amortization", "quarter": "Q4"},
+    "DP-HYP-01": {"subject": "Statistics", "title": "Hypothesis Testing: Null/Alternative, Types of Error", "quarter": "Q4"},
+    "DP-HYP-02": {"subject": "Statistics", "title": "Z-Test and T-Test", "quarter": "Q4"},
+    "DP-HYP-03": {"subject": "Statistics", "title": "Pearson r, Scatter Plots, Line of Best Fit", "quarter": "Q4"},
+    "NA-LOGIC-01": {"subject": "General Mathematics", "title": "Logical Propositions, Connectives, Truth Tables", "quarter": "Q4"},
+    "NA-LOGIC-02": {"subject": "General Mathematics", "title": "Conditional Propositions, Tautologies", "quarter": "Q4"},
+    "BM-FDP-01": {"subject": "Business Mathematics", "title": "Fractions, Decimals, Percent Conversions", "quarter": "Q1"},
+    "BM-FDP-02": {"subject": "Business Mathematics", "title": "Proportion: Direct, Inverse, Partitive", "quarter": "Q1"},
+    "BM-BUS-01": {"subject": "Business Mathematics", "title": "Markup, Margin, Trade Discounts, VAT", "quarter": "Q1"},
+    "BM-BUS-02": {"subject": "Business Mathematics", "title": "Profit, Loss, Break-even Point", "quarter": "Q1"},
+    "BM-COMM-01": {"subject": "Business Mathematics", "title": "Straight Commission, Salary Plus Commission", "quarter": "Q2"},
+    "BM-COMM-02": {"subject": "Business Mathematics", "title": "Commission on Cash and Installment Basis", "quarter": "Q2"},
+    "BM-COMM-03": {"subject": "Business Mathematics", "title": "Down Payment, Gross Balance", "quarter": "Q2"},
+    "BM-INT-01": {"subject": "Business Mathematics", "title": "Simple Interest, Compound Interest", "quarter": "Q2"},
+    "BM-INT-02": {"subject": "Business Mathematics", "title": "Solving Problems with Interest and Commission", "quarter": "Q2"},
+    "BM-SW-01": {"subject": "Business Mathematics", "title": "Salary vs. Wage, Income", "quarter": "Q2"},
+    "BM-SW-02": {"subject": "Business Mathematics", "title": "Employee Benefits: Taxable vs. Nontaxable", "quarter": "Q2"},
+    "BM-SW-03": {"subject": "Business Mathematics", "title": "Mandatory Deductions: SSS, PhilHealth, Pag-IBIG", "quarter": "Q2"},
+    "BM-SW-04": {"subject": "Business Mathematics", "title": "Overtime Pay Computation (Labor Code)", "quarter": "Q2"},
+    "BM-SW-05": {"subject": "Business Mathematics", "title": "E-Spreadsheet for Payroll", "quarter": "Q2"},
+    "BM-MORT-01": {"subject": "Business Mathematics", "title": "Mortgage, Amortization, Monthly Payment", "quarter": "Q2"},
+    "BM-DATA-01": {"subject": "Business Mathematics", "title": "Data Presentation: Tables, Bar, Line, Pie Charts", "quarter": "Q2"},
+    "BM-DATA-02": {"subject": "Business Mathematics", "title": "Analyzing Business Data with Excel", "quarter": "Q2"},
+    "SP-RV-01": {"subject": "Statistics & Probability", "title": "Random Variables, Discrete vs. Continuous", "quarter": "Q1"},
+    "SP-RV-02": {"subject": "Statistics & Probability", "title": "Probability Distribution, Mean, Variance, SD", "quarter": "Q1"},
+    "SP-NORM-01": {"subject": "Statistics & Probability", "title": "Normal Curve Properties", "quarter": "Q1"},
+    "SP-NORM-02": {"subject": "Statistics & Probability", "title": "Z-Scores, Standard Normal Table", "quarter": "Q1"},
+    "SP-NORM-03": {"subject": "Statistics & Probability", "title": "Applying Normal Distribution", "quarter": "Q1"},
+    "SP-SAMP-01": {"subject": "Statistics & Probability", "title": "Types of Random Sampling", "quarter": "Q2"},
+    "SP-SAMP-02": {"subject": "Statistics & Probability", "title": "Sampling Distribution of Sample Means", "quarter": "Q2"},
+    "SP-SAMP-03": {"subject": "Statistics & Probability", "title": "Central Limit Theorem", "quarter": "Q2"},
+    "SP-HYP-01": {"subject": "Statistics & Probability", "title": "Hypothesis Testing: H0 and Ha", "quarter": "Q2"},
+    "SP-HYP-02": {"subject": "Statistics & Probability", "title": "Level of Significance, Type I and II Errors", "quarter": "Q2"},
+    "SP-HYP-03": {"subject": "Statistics & Probability", "title": "Z-Test for Known Variance", "quarter": "Q2"},
+    "SP-HYP-04": {"subject": "Statistics & Probability", "title": "T-Test for Unknown Variance", "quarter": "Q2"},
+    "SP-HYP-05": {"subject": "Statistics & Probability", "title": "Z-Test and T-Test for Proportion", "quarter": "Q2"},
+    "SP-CORR-01": {"subject": "Statistics & Probability", "title": "Pearson r, Scatter Plots", "quarter": "Q2"},
+    "SP-CORR-02": {"subject": "Statistics & Probability", "title": "Line of Best Fit, Regression", "quarter": "Q2"},
+}
+
+
+# ─── Diagnostic-Integrated Lesson Generation ─────────────────────
+
+class DiagnosticLessonRequest(BaseModel):
+    student_id: str
+    topic_id: str
+    mastery_level: str = Field(default="beginning")
+    strand: str = Field(default="STEM")
+    grade_level: str = Field(default="Grade 11")
+
+
+class DiagnosticLessonSection(BaseModel):
+    type: str
+    title: Optional[str] = None
+    content: str
+    formula: Optional[str] = None
+    visual_hint: Optional[str] = None
+    problem: Optional[str] = None
+    solution_steps: Optional[List[Dict[str, Any]]] = None
+    final_answer: Optional[str] = None
+    prompt: Optional[str] = None
+    hint: Optional[str] = None
+    answer: Optional[str] = None
+
+
+class DiagnosticLessonResponse(BaseModel):
+    lesson_id: str
+    topic_id: str
+    subject: str
+    title: str
+    grade_level: str
+    strand: str
+    estimated_minutes: int
+    mastery_target: str
+    learning_objectives: List[str]
+    sections: List[DiagnosticLessonSection]
+    summary: str
+    real_life_connection: str
+    next_topic_id: Optional[str]
+    prerequisite_topic_ids: List[str]
+
+
+@app.post("/api/lesson/diagnostic", response_model=DiagnosticLessonResponse)
+async def generate_diagnostic_lesson(request: DiagnosticLessonRequest):
+    """
+    Generate personalized lesson based on diagnostic test results.
+    Adjusts content difficulty based on student's mastery level.
+    Uses RAG to inject DepEd curriculum content.
+    """
+    try:
+        topic_info = DEPD_TOPIC_REGISTRY.get(request.topic_id, {})
+        subject = topic_info.get("subject", "General Mathematics")
+        title = topic_info.get("title", request.topic_id)
+        
+        curriculum_chunks = retrieve_curriculum_context(
+            query=f"{title} {request.topic_id} examples problems exercises",
+            subject=subject,
+            top_k=4,
+        )
+        
+        curriculum_context = ""
+        for chunk in curriculum_chunks:
+            source = chunk.get("source_file", "unknown")
+            content = chunk.get("content", "")[:800]
+            curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
+        
+        mastery_adjustments = {
+            "beginning": "Use extra-simple language, 3 worked examples, more hints.",
+            "developing": "Standard pacing, 2 worked examples.",
+            "mastered": "Fast-track with 1 worked example and a challenge problem.",
+        }
+        
+        rag_instruction = ""
+        if curriculum_context:
+            rag_instruction = f"""REFERENCE CURRICULUM CONTENT (from DepEd modules):
+{curriculum_context}
+
+IMPORTANT: Base your lesson STRICTLY on the curriculum content above. Do not invent formulas or examples."""
+        
+        prompt = f"""Generate a complete lesson for topic {request.topic_id}: {title}.
+
+Student Context:
+- Strand: {request.strand}
+- Grade: {request.grade_level}
+- Mastery Level: {request.mastery_level} ({mastery_adjustments.get(request.mastery_level, '')})
+
+{rag_instruction}
+
+Use Filipino context (₱, local scenarios).
+Follow SDO Navotas step-by-step: "Given → Formula → Substitute → Compute → Conclude"
+
+Return ONLY this exact JSON (no other text):
+{{
+  "lesson_id": "LSN-{uuid.uuid4().hex[:8]}",
+  "topic_id": "{request.topic_id}",
+  "subject": "{subject}",
+  "title": "{title}",
+  "grade_level": "{request.grade_level}",
+  "strand": "{request.strand}",
+  "estimated_minutes": 20,
+  "mastery_target": "mastered",
+  "learning_objectives": ["By the end, you will be able to..."],
+  "sections": [
+    {{"type": "hook", "content": "Relatable Filipino intro (2-3 sentences)"}},
+    {{"type": "concept", "title": "...", "content": "Core explanation", "formula": "LaTeX or null", "visual_hint": "description or null"}},
+    {{"type": "worked_example", "title": "Example 1", "problem": "...", "solution_steps": [{{"step": 1, "explanation": "...", "math": "LaTeX or null"}}], "final_answer": "..."}},
+    {{"type": "try_it", "prompt": "Your turn!", "problem": "...", "hint": "Think about...", "answer": "...", "solution_steps": []}}
+  ],
+  "summary": "3-sentence recap",
+  "real_life_connection": "1 sentence to Filipino career",
+  "next_topic_id": "next topic ID or null",
+  "prerequisite_topic_ids": ["prereq topic IDs"]
+}}"""
+
+        messages = [
+            {"role": "system", "content": "You are a DepEd curriculum lesson designer. Return ONLY valid JSON."},
+            {"role": "user", "content": prompt},
+        ]
+        response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="lesson")
+        
+        import re
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            lesson_data = json.loads(json_match.group())
+        else:
+            lesson_data = json.loads(response)
+        
+        return DiagnosticLessonResponse(**lesson_data)
+    except Exception as e:
+        logger.error(f"Diagnostic lesson generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
+
+
+# ─── Consolidated Lesson Generator (reads from diagnostic) ─────────────
+
+class LessonsGenerateRequest(BaseModel):
+    student_id: str
+    topic_id: str
+    strand: str = Field(default="STEM")
+    grade_level: str = Field(default="Grade 11")
+
+
+@app.post("/api/lessons/generate", response_model=DiagnosticLessonResponse)
+async def generate_lesson_from_diagnostic(request: LessonsGenerateRequest):
+    """
+    Generate a personalized lesson by reading mastery_level from the
+    student's diagnostic results in Firestore. Falls back to 'beginning'
+    if no diagnostic data exists.
+    """
+    mastery_level = "beginning"
+    
+    if HAS_FIREBASE_ADMIN and firebase_firestore:
+        try:
+            db = firebase_firestore.client()
+            user_doc = db.collection("users").document(request.student_id).get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict() or {}
+                diag_id = user_data.get("latestDiagnosticTestId", "")
+                if diag_id:
+                    diag_doc = (
+                        db.collection("diagnosticResults")
+                        .document(request.student_id)
+                        .collection("attempts")
+                        .document(diag_id)
+                        .get()
+                    )
+                    if diag_doc.exists:
+                        diag_data = diag_doc.to_dict() or {}
+                        domain_scores = diag_data.get("domainScores", {})
+                        for domain, score_data in domain_scores.items():
+                            ml = score_data.get("mastery_level", "")
+                            if ml:
+                                mastery_level = ml
+                                break
+        except Exception as diag_err:
+            logger.debug(f"Could not read diagnostic mastery for lesson: {diag_err}")
+    
+    return await generate_diagnostic_lesson(
+        DiagnosticLessonRequest(
+            student_id=request.student_id,
+            topic_id=request.topic_id,
+            mastery_level=mastery_level,
+            strand=request.strand,
+            grade_level=request.grade_level,
+        )
+    )
+
+
+# ─── Progress Evaluation Endpoint ─────────────────────────────────
+
+class ProgressEvaluateRequest(BaseModel):
+    student_id: str
+    quiz_id: str
+    topic_id: str
+    mastery_level_before: str
+    items: List[Dict[str, Any]]
+    previous_attempts: int = Field(default=0)
+    current_streak_days: int = Field(default=0)
+
+
+class ProgressEvaluateResponse(BaseModel):
+    new_mastery_level: str
+    mastery_changed: bool
+    score_percent: float
+    xp_earned: int
+    xp_breakdown: Dict[str, int]
+    badges_unlocked: List[str]
+    performance_feedback: str
+    error_analysis: List[Dict[str, Any]]
+    next_action: str
+    next_topic_id: Optional[str]
+    motivational_message: str
+    teacher_flag: Optional[Dict[str, Any]]
+
+
+@app.post("/api/progress/evaluate", response_model=ProgressEvaluateResponse)
+async def evaluate_progress(request: ProgressEvaluateRequest):
+    """
+    Evaluate quiz performance, update mastery, award XP.
+    Called after every quiz submission.
+    """
+    try:
+        total_items = len(request.items)
+        correct_count = sum(1 for item in request.items if item.get("is_correct", False))
+        score_percent = (correct_count / total_items * 100) if total_items > 0 else 0
+        
+        mastery_changed = False
+        new_level = request.mastery_level_before
+        prev = request.mastery_level_before
+        
+        applying_level_correct = sum(
+            1 for item in request.items
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("applying", "analyzing", "evaluating")
+        )
+        analyzing_level_correct = sum(
+            1 for item in request.items
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("analyzing", "evaluating", "creating")
+        )
+        
+        if prev == "beginning" and score_percent >= 60 and applying_level_correct >= 2:
+            new_level = "developing"
+            mastery_changed = True
+        elif prev == "developing" and score_percent >= 80 and analyzing_level_correct >= 1:
+            new_level = "mastered"
+            mastery_changed = True
+        
+        xp_base = 0
+        xp_streak = 0
+        xp_mastery = 0
+        xp_other = 0
+        
+        for item in request.items:
+            diff = item.get("difficulty", "easy")
+            if item.get("is_correct", False):
+                if diff == "easy":
+                    xp_base += 5
+                elif diff == "medium":
+                    xp_base += 10
+                elif diff == "hard":
+                    xp_base += 20
+        
+        xp_streak = min(30, 5 * request.current_streak_days)
+        
+        if mastery_changed:
+            xp_mastery = 50
+        
+        if score_percent == 100 and request.previous_attempts == 0:
+            xp_other += 30
+        
+        if request.previous_attempts >= 1 and score_percent > 60:
+            xp_other += 15
+        
+        xp_total = xp_base + xp_streak + xp_mastery + xp_other
+        
+        error_analysis = []
+        for item in request.items:
+            if not item.get("is_correct", False):
+                error_analysis.append({
+                    "item_id": item.get("item_id", ""),
+                    "student_answer": item.get("student_answer", ""),
+                    "correct_answer": item.get("correct_answer", ""),
+                    "explanation": "Check your steps for this type of problem.",
+                })
+        
+        next_action = "continue_learning_path"
+        if score_percent < 40 and request.previous_attempts >= 3:
+            next_action = "teacher_flag"
+        elif score_percent < 60:
+            next_action = "retry_quiz"
+        
+        next_topics = list(DEPD_TOPIC_REGISTRY.keys())
+        current_idx = next_topics.index(request.topic_id) if request.topic_id in next_topics else 0
+        next_topic_id = next_topics[current_idx + 1] if current_idx + 1 < len(next_topics) else None
+        
+        messages = {
+            "low": "Keep practicing! You're building momentum.",
+            "moderate": "Good progress! Focus on your weak areas.",
+            "high": "You're improving! Stay consistent.",
+            "critical": "Don't give up! One step at a time.",
+        }
+        motivational = messages.get(new_level, messages["low"])
+        
+        if mastery_changed:
+            if new_level == "developing":
+                motivational = "Kaya mo yan! You're moving up!"
+            elif new_level == "mastered":
+                motivational = "Congratulations! Topic mastered!"
+        
+        teacher_flag = None
+        if score_percent < 40 and request.previous_attempts >= 3:
+            teacher_flag = {"reason": f"Score {score_percent}% after 3+ attempts", "severity": "high"}
+        
+        if HAS_FIREBASE_ADMIN and firebase_firestore:
+            try:
+                db = firebase_firestore.client()
+                topic_progress_ref = db.collection("studentProgress").document(request.student_id).collection("topics").document(request.topic_id)
+                topic_progress_ref.set({
+                    "mastery_level": new_level,
+                    "quiz_attempts": firebase_firestore.Increment(1),
+                    "best_score": max(score_percent, 0),
+                    "xp_earned": firebase_firestore.Increment(xp_total),
+                    "last_activity": firebase_firestore.SERVER_TIMESTAMP,
+                    "error_patterns": [e.get("explanation", "") for e in error_analysis],
+                    "teacher_flagged": teacher_flag is not None,
+                }, merge=True)
+                
+                stats_ref = db.collection("studentProgress").document(request.student_id).collection("stats").document("summary")
+                stats_ref.set({
+                    "total_xp": firebase_firestore.Increment(xp_total),
+                    "current_streak_days": request.current_streak_days,
+                    "topics_mastered": firebase_firestore.Increment(1) if mastery_changed else firebase_firestore.Increment(0),
+                }, merge=True)
+            except Exception as fs_err:
+                logger.warning(f"Firestore progress save failed: {fs_err}")
+        
+        return ProgressEvaluateResponse(
+            new_mastery_level=new_level,
+            mastery_changed=mastery_changed,
+            score_percent=round(score_percent, 1),
+            xp_earned=xp_total,
+            xp_breakdown={"base": xp_base, "mastery_bonus": xp_mastery, "streak_bonus": xp_streak, "other": xp_other},
+            badges_unlocked=[],
+            performance_feedback=f"You got {correct_count}/{total_items} correct.",
+            error_analysis=error_analysis,
+            next_action=next_action,
+            next_topic_id=next_topic_id,
+            motivational_message=motivational,
+            teacher_flag=teacher_flag,
+        )
+    except Exception as e:
+        logger.error(f"Progress evaluation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Progress evaluation error: {str(e)}")
+
+
+# ─── Adaptive Quiz Endpoint ─────────────────────────────────────
+
+class AdaptiveQuizRequest(BaseModel):
+    student_id: str
+    topic_id: str
+    recent_lesson_id: Optional[str] = None
+    strand: str = Field(default="STEM")
+
+
+class AdaptiveQuizItem(BaseModel):
+    item_id: str
+    type: str
+    bloom_level: str
+    difficulty: str
+    question: str
+    options: Optional[Dict[str, str]] = None
+    correct_answer: str
+    acceptable_range: Optional[List[float]] = None
+    solution_hint: str
+    competency_code: str
+    curriculum_reference: str
+
+
+class DiagnosticQuizResponse(BaseModel):
+    quiz_id: str
+    topic_id: str
+    mastery_target_after: str
+    items: List[AdaptiveQuizItem]
+    prev_score: Optional[float]
+    difficulty_distribution: Dict[str, int]
+
+
+async def _resolve_mastery_and_prev_score(
+    student_id: str,
+    topic_id: str,
+) -> tuple[str, Optional[float]]:
+    """Read mastery_level and prev_score from Firestore diagnostic and studentProgress."""
+    mastery = "beginning"
+    prev_score: Optional[float] = None
+    
+    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+        return mastery, prev_score
+    
+    try:
+        db = firebase_firestore.client()
+        
+        topic_progress_doc = (
+            db.collection("studentProgress")
+            .document(student_id)
+            .collection("topics")
+            .document(topic_id)
+            .get()
+        )
+        if topic_progress_doc.exists:
+            tp_data = topic_progress_doc.to_dict() or {}
+            tp_mastery = str(tp_data.get("mastery_level", "")).strip()
+            if tp_mastery in ("beginning", "developing", "mastered"):
+                mastery = tp_mastery
+            prev_score_raw = tp_data.get("best_score")
+            if isinstance(prev_score_raw, (int, float)):
+                prev_score = float(prev_score_raw)
+        
+        user_doc = db.collection("users").document(student_id).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict() or {}
+            diag_id = user_data.get("latestDiagnosticTestId", "")
+            if diag_id:
+                diag_doc = (
+                    db.collection("diagnosticResults")
+                    .document(student_id)
+                    .collection("attempts")
+                    .document(diag_id)
+                    .get()
+                )
+                if diag_doc.exists:
+                    diag_data = diag_doc.to_dict() or {}
+                    domain_scores = diag_data.get("domainScores", {})
+                    if not topic_progress_doc.exists:
+                        for domain, score_data in domain_scores.items():
+                            ml = score_data.get("mastery_level", "")
+                            if ml and ml in ("beginning", "developing", "mastered"):
+                                mastery = ml
+                                break
+    except Exception as e:
+        logger.debug(f"Could not resolve mastery/prev_score: {e}")
+    
+    return mastery, prev_score
+
+
+def _calibrate_quiz_params(mastery_level: str, prev_score: Optional[float]) -> dict:
+    """Return item count and difficulty distribution based on mastery and history."""
+    if mastery_level == "mastered":
+        count = 10
+        distribution = {"easy": 10, "medium": 40, "hard": 50}
+    elif mastery_level == "developing":
+        count = 8
+        distribution = {"easy": 30, "medium": 50, "hard": 20}
+    else:
+        count = 5
+        distribution = {"easy": 60, "medium": 40, "hard": 0}
+    
+    if prev_score is not None and prev_score < 50:
+        distribution = {
+            "easy": min(80, distribution["easy"] + 20),
+            "medium": distribution["medium"],
+            "hard": max(0, distribution["hard"] - 20),
+        }
+    
+    return {"count": count, "distribution": distribution}
+
+
+@app.post("/api/quiz/adaptive")
+async def generate_adaptive_quiz(request: AdaptiveQuizRequest):
+    """
+    Generate an adaptive practice quiz calibrated to the student's mastery level.
+    Reads mastery_level and prev_score from Firestore, auto-calibrates difficulty.
+    """
+    try:
+        mastery, prev_score = await _resolve_mastery_and_prev_score(
+            request.student_id,
+            request.topic_id,
+        )
+        
+        params = _calibrate_quiz_params(mastery, prev_score)
+        count = params["count"]
+        distribution = params["distribution"]
+        topic_info = DEPD_TOPIC_REGISTRY.get(request.topic_id, {})
+        subject = topic_info.get("subject", "General Mathematics")
+        title = topic_info.get("title", request.topic_id)
+        
+        curriculum_chunks = retrieve_curriculum_context(
+            query=f"{title} {request.topic_id} practice problems exercises",
+            subject=subject,
+            top_k=3,
+        )
+        curriculum_context = ""
+        for chunk in curriculum_chunks:
+            source = chunk.get("source_file", "unknown")
+            content = chunk.get("content", "")[:500]
+            curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
+        
+        quiz_id = f"QZ-{uuid.uuid4().hex[:12]}"
+        
+        rag_instr = ""
+        if curriculum_context:
+            rag_instr = f"""REFERENCE CURRICULUM:
+{curriculum_context}
+
+Base questions on this content. Do not copy directly."""
+
+        items_json = json.dumps([])
+        
+        try:
+            quiz_prompt = f"""Generate {count} quiz items for topic "{title}" (ID: {request.topic_id}).
+
+Mastery Level: {mastery}
+Difficulty Distribution: Easy={distribution['easy']}%, Medium={distribution['medium']}%, Hard={distribution['hard']}%
+Item types: mix multiple_choice, fill_in_the_blank, and word_problem.
+
+{rag_instr}
+
+Use Filipino context.
+Return ONLY this strict JSON array:
+[
+  {{
+    "type": "multiple_choice|fill_in_the_blank|word_problem",
+    "bloom_level": "remembering|understanding|applying|analyzing",
+    "difficulty": "easy|medium|hard",
+    "question": "...",
+    "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+    "correct_answer": "B",
+    "acceptable_range": null,
+    "solution_hint": "Short hint",
+    "competency_code": "{request.topic_id}",
+    "curriculum_reference": "DepEd SHS"
+  }}
+]"""
+            messages = [
+                {"role": "system", "content": "You are a quiz generator. Return ONLY valid JSON."},
+                {"role": "user", "content": quiz_prompt},
+            ]
+            response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="quiz")
+            items_json = response
+        except Exception as llm_err:
+            logger.error(f"Adaptive quiz LLM error: {llm_err}")
+        
+        import re
+        json_match = re.search(r'\[.*\]', items_json, re.DOTALL)
+        if json_match:
+            raw_items = json.loads(json_match.group())
+        else:
+            raw_items = json.loads(items_json) if items_json.strip().startswith('[') else []
+        
+        items: List[AdaptiveQuizItem] = []
+        for i, qi in enumerate(raw_items[:count]):
+            items.append(AdaptiveQuizItem(
+                item_id=f"QI-{uuid.uuid4().hex[:8]}",
+                type=qi.get("type", "multiple_choice"),
+                bloom_level=qi.get("bloom_level", "understanding"),
+                difficulty=qi.get("difficulty", "medium"),
+                question=qi.get("question", ""),
+                options=qi.get("options"),
+                correct_answer=qi.get("correct_answer", ""),
+                acceptable_range=qi.get("acceptable_range"),
+                solution_hint=qi.get("solution_hint", ""),
+                competency_code=qi.get("competency_code", request.topic_id),
+                curriculum_reference=qi.get("curriculum_reference", "DepEd SHS"),
+            ))
+        
+        return DiagnosticQuizResponse(
+            quiz_id=quiz_id,
+            topic_id=request.topic_id,
+            mastery_target_after="mastered" if mastery == "developing" else "developing" if mastery == "beginning" else "mastered",
+            items=items,
+            prev_score=prev_score,
+            difficulty_distribution=distribution,
+        )
+    except Exception as e:
+        logger.error(f"Adaptive quiz generation error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Adaptive quiz error: {str(e)}")
+
+
+# ─── Learning Path Endpoint ────────────────────────────────────
+
+class DiagnosticLearningPathRequest(BaseModel):
+    student_id: str
+    strand: str = Field(default="STEM")
+    grade_level: str = Field(default="Grade 11")
+
+
+class DiagnosticLearningPathTopic(BaseModel):
+    topic_id: str
+    title: str
+    mastery_level: str
+    estimated_minutes: int
+
+
+class DiagnosticLearningPathResponse(BaseModel):
+    student_id: str
+    topics: List[DiagnosticLearningPathTopic]
+    total_estimated_hours: float
+
+
+@app.post("/api/learning/path", response_model=DiagnosticLearningPathResponse)
+async def generate_learning_path(request: DiagnosticLearningPathRequest):
+    """
+    Generate personalized learning path based on student's diagnostic results.
+    """
+    try:
+        if not HAS_FIREBASE_ADMIN or not firebase_firestore:
+            topics = []
+            for tid, info in DEPD_TOPIC_REGISTRY.items():
+                topics.append(DiagnosticLearningPathTopic(
+                    topic_id=tid,
+                    title=info["title"],
+                    mastery_level="beginning",
+                    estimated_minutes=20,
+                ))
+            return DiagnosticLearningPathResponse(
+                student_id=request.student_id,
+                topics=topics[:10],
+                total_estimated_hours=3.3,
+            )
+        
+        db = firebase_firestore.client()
+        doc = db.collection("diagnosticResults").document(request.student_id).collection("attempts").limit(1).get()
+        
+        suggested_path = []
+        if doc:
+            data = doc[0].to_dict() if doc else {}
+            suggested_path = data.get("riskProfile", {}).get("suggested_learning_path", [])
+        
+        path_topics = []
+        if suggested_path:
+            for tid in suggested_path[:10]:
+                info = DEPD_TOPIC_REGISTRY.get(tid, {})
+                path_topics.append(DiagnosticLearningPathTopic(
+                    topic_id=tid,
+                    title=info.get("title") or tid,
+                    mastery_level="beginning",
+                    estimated_minutes=20,
+                ))
+        else:
+            strand_topics = DEPD_ED_COMPETENCY_DOMAINS.get(request.strand, {}).get(request.grade_level, [])
+            for i, t in enumerate(strand_topics[:10]):
+                tid = f"NA-{(i+1):02d}-01"
+                path_topics.append(DiagnosticLearningPathTopic(
+                    topic_id=tid,
+                    title=t,
+                    mastery_level="beginning",
+                    estimated_minutes=20,
+                ))
+        
+        total_minutes = sum(t.estimated_minutes for t in path_topics)
+        
+        return DiagnosticLearningPathResponse(
+            student_id=request.student_id,
+            topics=path_topics,
+            total_estimated_hours=round(total_minutes / 60, 1),
+        )
+    except Exception as e:
+        logger.error(f"Learning path generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Learning path error: {str(e)}")
+
+
+# ─── Personalized Lesson Endpoint ──────────────────────────────
+
+class PersonalizedLessonRequest(BaseModel):
+    topic: str = Field(..., description="Lesson topic")
+    student_uid: str = Field(..., description="Student UID for profile lookup")
+    assessment_context: Optional[Dict[str, Any]] = Field(None, description="Optional assessment context")
+    subject: Optional[str] = Field(None, description="Subject area")
+    quarter: Optional[int] = Field(None, description="Quarter (1-4)")
+
+
+class PersonalizedLessonResponse(BaseModel):
+    topic: str
+    content: str
+    personalization_notes: str
+    sections: List[Dict[str, str]]
+    suggested_exercises: List[str]
+    difficulty_adjustment: str
+
+
+@app.post("/api/lesson/personalized", response_model=PersonalizedLessonResponse)
+async def generate_personalized_lesson(request: PersonalizedLessonRequest):
+    """
+    Generate a personalized lesson based on student's assessment profile.
+    Adapts content to address weaknesses and reinforce strengths.
+    """
+    try:
+        # Load student's competency profile if available
+        weaknesses = []
+        strengths = []
+        if firebase_firestore and request.student_uid:
+            try:
+                db = firebase_firestore.client()
+                profile_doc = db.collection("competencyProfiles").document(request.student_uid).get()
+                if profile_doc.exists:
+                    profile_data = profile_doc.to_dict()
+                    if profile_data and "competencies" in profile_data:
+                        for comp_id, comp_data in profile_data["competencies"].items():
+                            if comp_data.get("score", 0) < 50:
+                                weaknesses.append(comp_id)
+                            elif comp_data.get("score", 0) >= 80:
+                                strengths.append(comp_id)
+            except Exception as e:
+                logger.warning(f"Could not load competency profile: {e}")
+
+        # Retrieve curriculum context
+        context_chunks = retrieve_curriculum_context(
+            query=build_lesson_query(request.topic, request.subject or "General Mathematics", request.quarter or 1),
+            subject=request.subject,
+            quarter=request.quarter,
+            top_k=5,
+        )
+        context_text = format_retrieved_chunks(context_chunks)
+
+        # Build personalized prompt
+        prompt = f"""Generate a DepEd-aligned SHS mathematics lesson on: {request.topic}
+
+Student Assessment Profile:
+- Weaknesses to address: {', '.join(weaknesses) if weaknesses else 'None identified'}
+- Strengths to reinforce: {', '.join(strengths) if strengths else 'None identified'}
+
+Curriculum Context:
+{context_text}
+
+Instructions:
+1. Structure the lesson with: Introduction, Key Concepts, Examples, Practice Problems, Summary
+2. Include extra practice on these weak areas: {', '.join(weaknesses) if weaknesses else 'general topic areas'}
+3. Provide advanced challenges on these strong areas: {', '.join(strengths) if strengths else 'related advanced topics'}
+4. Use Filipino Senior High School appropriate language and context
+5. Reference specific DepEd MELC competencies where applicable
+
+Return as JSON with fields: topic, sections (array of title/content), suggested_exercises, personalization_notes"""
+
+        req = InferenceRequest(
+            messages=[
+                {"role": "system", "content": "You are a precise DepEd-aligned curriculum assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            task_type="rag_lesson",
+            max_new_tokens=1800,
+            temperature=0.2,
+            top_p=0.9,
+            enable_thinking=True,
+        )
+        response_text = get_inference_client().generate_from_messages(req)
+
+        # Parse JSON response
+        try:
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                lesson_data = json.loads(json_match.group())
+            else:
+                lesson_data = json.loads(response_text)
+
+            return PersonalizedLessonResponse(
+                topic=request.topic,
+                content=lesson_data.get("content", response_text),
+                personalization_notes=f"Personalized for weaknesses: {', '.join(weaknesses)}" if weaknesses else "General lesson",
+                sections=lesson_data.get("sections", []),
+                suggested_exercises=lesson_data.get("suggested_exercises", []),
+                difficulty_adjustment="supportive" if weaknesses else "standard",
+            )
+        except json.JSONDecodeError:
+            # Return raw text if JSON parsing fails
+            return PersonalizedLessonResponse(
+                topic=request.topic,
+                content=response_text,
+                personalization_notes="Raw response (JSON parsing failed)",
+                sections=[{"title": "Content", "content": response_text}],
+                suggested_exercises=[],
+                difficulty_adjustment="standard",
+            )
+
+    except Exception as e:
+        logger.error(f"Personalized lesson generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
 
 
 # ─── Main ──────────────────────────────────────────────────────

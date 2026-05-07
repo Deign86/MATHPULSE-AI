@@ -214,3 +214,169 @@ export const getUnreadCount = async (userId: string): Promise<number> => {
     return 0;
   }
 };
+
+// ============================================================================
+// CROSS-ROLE NOTIFICATIONS (Phase 4)
+// ============================================================================
+
+export type NotificationTarget = 
+  | { type: 'student'; lrn: string }
+  | { type: 'class'; classroomId: string; teacherId: string }
+  | { type: 'all' };
+
+/**
+ * Send notification to a single student (from teacher or admin)
+ */
+export const sendToStudent = async (
+  lrn: string,
+  type: 'achievement' | 'message' | 'grade' | 'reminder' | 'risk_alert' | 'automation' | 'teacher_message' | 'system_announcement' | 'quiz_assigned' | 'assignment',
+  title: string,
+  message: string,
+  actionUrl?: string,
+  senderId?: string,
+  senderRole?: string
+): Promise<Notification> => {
+  try {
+    const notificationRef = doc(collection(db, 'notifications'));
+    const notification: Notification = {
+      id: notificationRef.id,
+      userId: lrn,
+      type,
+      title,
+      message,
+      read: false,
+      ...(actionUrl ? { actionUrl } : {}),
+      createdAt: new Date(),
+    };
+
+    const notificationData: Record<string, unknown> = {
+      id: notification.id,
+      userId: notification.userId,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      read: false,
+      createdAt: serverTimestamp(),
+      link: actionUrl || null,
+      senderId: senderId || null,
+      senderRole: senderRole || null,
+    };
+
+    if (actionUrl) {
+      notificationData.actionUrl = actionUrl;
+    }
+
+    await setDoc(notificationRef, notificationData);
+    return notification;
+  } catch (error) {
+    console.error('Error sending notification to student:', error);
+    throw error;
+  }
+};
+
+/**
+ * Send notification to all students in a teacher's class
+ */
+export const sendToClass = async (
+  classroomId: string,
+  teacherId: string,
+  type: 'teacher_message' | 'reminder' | 'assignment',
+  title: string,
+  message: string,
+  actionUrl?: string
+): Promise<{ sent: number; failed: number }> => {
+  try {
+    // Get all students in the class
+    const studentsQuery = query(
+      collection(db, 'managedStudents'),
+      where('teacherId', '==', teacherId),
+      where('classroomId', '==', classroomId)
+    );
+    const studentsSnap = await getDocs(studentsQuery);
+    
+    const studentLRNs = studentsSnap.docs.map(d => d.id);
+    let sent = 0, failed = 0;
+
+    // Send to each student
+    const sendPromises = studentLRNs.map(async (lrn) => {
+      try {
+        await sendToStudent(lrn, type, title, message, actionUrl, teacherId, 'teacher');
+        sent++;
+      } catch {
+        failed++;
+      }
+    });
+
+    await Promise.all(sendPromises);
+    return { sent, failed };
+  } catch (error) {
+    console.error('Error sending notification to class:', error);
+    throw error;
+  }
+};
+
+/**
+ * Broadcast system-wide announcement (admin only)
+ */
+export const broadcastAll = async (
+  adminId: string,
+  title: string,
+  message: string,
+  actionUrl?: string
+): Promise<{ sent: number; failed: number }> => {
+  try {
+    // Get all users
+    const usersSnap = await getDocs(collection(db, 'users'));
+    let sent = 0, failed = 0;
+
+    // Filter to students and teachers
+    const targets = usersSnap.docs
+      .filter(d => {
+        const data = d.data();
+        return data.role === 'student' || data.role === 'teacher';
+      })
+      .map(d => d.id);
+
+    // Send to each user
+    const sendPromises = targets.map(async (uid) => {
+      try {
+        await sendToStudent(uid, 'system_announcement', title, message, actionUrl, adminId, 'admin');
+        sent++;
+      } catch {
+        failed++;
+      }
+    });
+
+    await Promise.all(sendPromises);
+    return { sent, failed };
+  } catch (error) {
+    console.error('Error broadcasting announcement:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get notifications for teacher from admin (admin messages)
+ */
+export const getTeacherNotifications = async (teacherId: string): Promise<Notification[]> => {
+  try {
+    const notificationsQuery = query(
+      collection(db, 'notifications'),
+      where('senderRole', '==', 'admin'),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
+
+    // Note: This reads all admin-sent notifications - in production, 
+    // you'd want to filter by recipient which requires additional logic
+    // For now, we'll return recent admin notifications
+    const snapshot = await getDocs(notificationsQuery);
+    
+    return snapshot.docs
+      .map(docSnap => mapNotificationDoc(docSnap))
+      .filter(n => n.userId === teacherId);
+  } catch (error) {
+    console.error('Error getting teacher notifications:', error);
+    return [];
+  }
+};

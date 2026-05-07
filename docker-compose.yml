@@ -33,6 +33,7 @@ services:
     volumes:
       - ./backend:/app/backend   # Hot reload for Python changes
 environment:
+- DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
 - HF_TOKEN=${HF_TOKEN:-}
 - CURRICULUM_SOURCE_REPO_ID=Deign86/mathpulse-api-v3test
     networks:

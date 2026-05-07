@@ -255,6 +255,8 @@ export interface LessonProgress {
   timeSpent: number; // in seconds
   score?: number;
   progressPercent?: number;
+  quizCompleted?: boolean;
+  quizScore?: number;
 }
 
 export interface QuizAttempt {
@@ -384,6 +386,7 @@ export interface QuizBattleSetupConfig {
   queueType: QuizBattleQueueType;
   botDifficulty: QuizBattleDifficulty;
   adaptiveBot: boolean;
+  gradeLevel?: number;
 }
 
 export interface QuizBattleQueueState {
@@ -444,15 +447,29 @@ export interface QuizBattleLeaderboardEntry {
 }
 
 // Notification Types
+export type NotificationType = 
+  | 'achievement' 
+  | 'message' 
+  | 'grade' 
+  | 'reminder' 
+  | 'risk_alert' 
+  | 'automation'
+  | 'teacher_message'    // From teacher to student
+  | 'system_announcement' // From admin to all
+  | 'quiz_assigned'
+  | 'assignment'        // Class assignment notification
+
 export interface Notification {
   id: string;
   userId: string;
-  type: 'achievement' | 'message' | 'grade' | 'reminder' | 'risk_alert' | 'automation';
+  type: NotificationType;
   title: string;
   message: string;
   read: boolean;
   actionUrl?: string;
   createdAt: Date;
+  senderId?: string;
+  senderRole?: string;
 }
 
 // Calendar Types
@@ -670,7 +687,7 @@ export interface CurriculumVersionSet {
   label: string;
   program: CurriculumProgram;
   effectiveSchoolYear: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   isActive: boolean;
   sourceReferenceIds: string[];
   assumptions?: string[];
@@ -685,7 +702,7 @@ export interface CompetencyMapping {
 
 export interface CurriculumTopicGroupDescriptor {
   id: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   subjectId: string;
   subjectName: string;
   quarter: QuarterKey;
@@ -700,7 +717,7 @@ export interface CurriculumTopicGroupDescriptor {
 export interface CurriculumDescriptor {
   id: string;
   versionSetId: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   isCore: boolean;
   subjectName: string;
   totalHours: number;
@@ -723,7 +740,7 @@ export interface TopicDiagnosticPolicy {
 export interface DiagnosticPolicy {
   id: string;
   versionSetId: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   thresholds: {
     mastered: number;
     needsReview: number;
@@ -735,7 +752,7 @@ export interface DiagnosticPolicy {
 export interface LearnerMasterySnapshot {
   id?: string;
   userId: string;
-  gradeLevel: 'Grade 11' | 'Grade 12';
+  gradeLevel: 'Grade 11';
   versionSetId: string;
   generatedAt: Date;
   byTopicGroup: Record<string, {

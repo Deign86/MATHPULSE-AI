@@ -10,8 +10,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    // Defensive role function - handles missing user documents
     function role() {
-      return isSignedIn() ? userDoc().data.role : null;
+      return isSignedIn() && userDoc() != null && userDoc().data.role != null 
+        ? userDoc().data.role 
+        : 'student';  // Default to student role for unauthenticated or missing role
     }
 
     function isAdmin() {
@@ -27,7 +30,7 @@ service cloud.firestore {
     }
 
     function isTeacherOrAdmin() {
-      return isTeacher() || isAdmin();
+      return isSignedIn() && (role() == 'teacher' || role() == 'admin');
     }
 
     function isSelf(userId) {
@@ -53,6 +56,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Leaderboard collection - publicly readable, written only by backend
+    match /leaderboard/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;  // Backend/admin only via firebase-admin
+    }
+
     match /users/{userId}/settings/{settingsId} {
       allow read: if isSelf(userId) || isAdmin();
       allow create, update: if isSelf(userId) || isAdmin();
@@ -60,45 +69,52 @@ service cloud.firestore {
     }
 
     match /progress/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      // Allow by document ID (docId == userId) or by userId field
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
     match /xpActivities/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
     match /achievements/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
     match /notifications/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
-      allow delete: if ownerByField('userId') || isAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+    }
+
+    // ── Notifications subcollection (new structure) ─────────────────
+    match /notifications/{userId}/items/{notificationId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
 
     match /tasks/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
-      allow delete: if ownerByField('userId') || isAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
     }
 
     match /chatSessions/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
-      allow delete: if ownerByField('userId') || isAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
     }
 
     match /chatMessages/{docId} {
-      allow read: if ownerByField('userId') || isTeacherOrAdmin();
-      allow create, update: if ownerByField('userId') || isTeacherOrAdmin();
-      allow delete: if ownerByField('userId') || isAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
     }
 
     match /friendRequests/{docId} {
@@ -191,14 +207,16 @@ service cloud.firestore {
     }
 
     match /diagnosticResults/{docId} {
-      allow read: if isTeacherOrAdmin() || ownerByField('studentId');
-      allow create, update: if isTeacherOrAdmin() || ownerByField('studentId');
+      // Temporarily permissive for debugging - allow students to read their own
+      allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
       allow delete: if isAdmin();
     }
 
     match /quizResults/{docId} {
-      allow read: if isTeacherOrAdmin() || ownerByField('studentId');
-      allow create, update: if isTeacherOrAdmin() || ownerByField('studentId');
+      // Allow students to read their own by document ID
+      allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
       allow delete: if isAdmin();
     }
 
@@ -246,12 +264,12 @@ service cloud.firestore {
     }
 
     match /quizBattleQueue/{docId} {
-      allow read: if ownerByField('studentId') || isTeacherOrAdmin();
-      allow create, update, delete: if ownerByField('studentId');
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('studentId')) || isTeacherOrAdmin();
+      allow create, update, delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('studentId'));
     }
 
     match /quizBattleHistory/{docId} {
-      allow read: if ownerByField('studentId') || isTeacherOrAdmin();
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('studentId')) || isTeacherOrAdmin();
       allow create, update, delete: if false;
     }
 
@@ -286,6 +304,83 @@ service cloud.firestore {
     match /progressionAuditLog/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
       allow create, update, delete: if false;
+    }
+
+    // ── Video search cache (read for all authenticated users) ──
+    match /video_cache/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;  // Backend-only writes via firebase-admin
+    }
+
+    // ── Question bank (read for all authenticated users) ──
+    match /question_bank/{gradeLevel}/{topic}/{questionId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend-only via firebase-admin
+    }
+
+    // ── PDF processing status (read for teachers/admins) ──
+    match /pdf_processing_status/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend-only
+    }
+
+    // ── Quiz battle sessions (read for participants) ──
+    match /quiz_battle_sessions/{sessionId} {
+      allow read: if isSignedIn() && resource.data.player_ids.hasAny([request.auth.uid]);
+      allow write: if false; // Backend-only
+    }
+
+    // ── Rate limit tracking (Cloud Functions write only) ──
+    match /_ratelimits/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;  // Cloud Functions only via service account
+    }
+    match /_ratelimits/{uid}/{functionName} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;  // Cloud Functions only
+    }
+
+    // ── Rate limit analytics (read for admins only) ──
+    match /_analytics/rateLimitHits/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;  // Frontend only
+    }
+
+    // ── Assessments (student's own assessment data) ──
+    match /assessments/{uid} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /assessments/{uid}/attempts/{attemptId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Competency Profiles (student's competency tracking) ──
+    match /competencyProfiles/{uid} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Class Assessments (teacher view of class assessment summaries) ──
+    match /classAssessments/{classId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /classAssessments/{classId}/students/{uid} {
+      allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
+      allow write: if isAdmin();
+    }
+    // ── Platform Config (admin-managed subject availability) ──
+    match /platformConfig/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     // Deny-by-default for unknown collections.

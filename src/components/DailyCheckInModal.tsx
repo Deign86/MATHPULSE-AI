@@ -23,9 +23,9 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   if (!isOpen) return null;
 
   const handleClaim = () => {
+    if (claimedDays.includes(currentDay)) return;
     setIsClaiming(true);
     
-    // Confetti effect
     confetti({
       particleCount: 100,
       spread: 70,

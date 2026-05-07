@@ -3,10 +3,12 @@ import { motion } from 'motion/react';
 import { 
   Search, Plus, CheckCircle, FileText, Trash2,
   Video, HelpCircle, Edit3,
-  BookOpen, Users, Loader2, RefreshCw
+  BookOpen, Users, Loader2, RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Switch } from './ui/switch';
 import ConfirmModal from './ConfirmModal';
 import {
   Dialog,
@@ -34,7 +36,17 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
-type ModuleFormData = Omit<ContentModule, 'id' | 'created'>;
+type ModuleFormData = Omit<ContentModule, 'id' | 'created'> & {
+  ragEnabled?: boolean;
+  ragDocumentUrl?: string;
+  ragChunkSize?: number;
+  ragChunkOverlap?: number;
+  ragEmbeddingModel?: string;
+  ragTopK?: number;
+  ragNamespace?: string;
+  ragIndexStatus?: 'pending' | 'indexed' | 'failed' | 'not_indexed';
+  ragLastIndexedAt?: string;
+};
 
 const AdminContent: React.FC = () => {
   const { userProfile } = useAuth();
@@ -49,6 +61,7 @@ const AdminContent: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pendingDeleteModule, setPendingDeleteModule] = useState<ContentModule | null>(null);
   const [editingModule, setEditingModule] = useState<ContentModule | null>(null);
+  const [ragSectionExpanded, setRagSectionExpanded] = useState(false);
   const [formData, setFormData] = useState<ModuleFormData>({
     title: '',
     subject: '',
@@ -56,6 +69,15 @@ const AdminContent: React.FC = () => {
     difficulty: 'Beginner',
     status: 'Draft',
     assigned: 0,
+    // RAG defaults
+    ragEnabled: false,
+    ragDocumentUrl: '',
+    ragChunkSize: 512,
+    ragChunkOverlap: 64,
+    ragEmbeddingModel: 'BAAI/bge-small-en-v1.5',
+    ragTopK: 5,
+    ragNamespace: '',
+    ragIndexStatus: 'not_indexed',
   });
 
   const loadModules = useCallback(async () => {
@@ -83,6 +105,15 @@ const AdminContent: React.FC = () => {
       difficulty: 'Beginner',
       status: 'Draft',
       assigned: 0,
+      // RAG defaults
+      ragEnabled: false,
+      ragDocumentUrl: '',
+      ragChunkSize: 512,
+      ragChunkOverlap: 64,
+      ragEmbeddingModel: 'BAAI/bge-small-en-v1.5',
+      ragTopK: 5,
+      ragNamespace: '',
+      ragIndexStatus: 'not_indexed',
     });
     setIsModalOpen(true);
   };
@@ -96,6 +127,15 @@ const AdminContent: React.FC = () => {
       difficulty: mod.difficulty,
       status: mod.status,
       assigned: mod.assigned,
+      // RAG fields
+      ragEnabled: mod.ragEnabled ?? false,
+      ragDocumentUrl: mod.ragDocumentUrl ?? '',
+      ragChunkSize: mod.ragChunkSize ?? 512,
+      ragChunkOverlap: mod.ragChunkOverlap ?? 64,
+      ragEmbeddingModel: mod.ragEmbeddingModel ?? 'BAAI/bge-small-en-v1.5',
+      ragTopK: mod.ragTopK ?? 5,
+      ragNamespace: mod.ragNamespace ?? '',
+      ragIndexStatus: mod.ragIndexStatus ?? 'not_indexed',
     });
     setIsModalOpen(true);
   };
@@ -474,6 +514,143 @@ const AdminContent: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            
+            {/* RAG Pipeline Configuration */}
+            <div className="border-t border-[#dde3eb] pt-4">
+              <button
+                type="button"
+                onClick={() => setRagSectionExpanded(!ragSectionExpanded)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <span className="text-sm font-medium text-[#0a1628]">RAG Pipeline Configuration</span>
+                <ChevronDown 
+                  className={`w-4 h-4 text-[#5a6578] transition-transform ${ragSectionExpanded ? 'rotate-180' : ''}`} 
+                />
+              </button>
+              
+              {ragSectionExpanded && (
+                <div className="mt-4 space-y-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  {/* Enable RAG */}
+                  <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Enable RAG</label>
+                    <div className="sm:col-span-3 flex items-center gap-2">
+                      <Switch
+                        checked={formData.ragEnabled ?? false}
+                        onCheckedChange={(checked) => setFormData({ ...formData, ragEnabled: checked })}
+                      />
+                      <span className="text-sm text-[#5a6578]">
+                        {formData.ragEnabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Document Source URL */}
+                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Document URL</label>
+                    <Input
+                      value={formData.ragDocumentUrl ?? ''}
+                      onChange={e => setFormData({ ...formData, ragDocumentUrl: e.target.value })}
+                      placeholder="https://... (Firebase Storage or public URL)"
+                      className="sm:col-span-3"
+                      disabled={!formData.ragEnabled}
+                    />
+                  </div>
+                  
+                  {/* Chunk Size */}
+                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Chunk Size</label>
+                    <Input
+                      type="number"
+                      value={formData.ragChunkSize ?? 512}
+                      onChange={e => setFormData({ ...formData, ragChunkSize: parseInt(e.target.value) || 512 })}
+                      min={128}
+                      max={2048}
+                      step={64}
+                      className="sm:col-span-3"
+                      disabled={!formData.ragEnabled}
+                    />
+                  </div>
+                  
+                  {/* Chunk Overlap */}
+                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Chunk Overlap</label>
+                    <Input
+                      type="number"
+                      value={formData.ragChunkOverlap ?? 64}
+                      onChange={e => setFormData({ ...formData, ragChunkOverlap: parseInt(e.target.value) || 64 })}
+                      min={0}
+                      max={512}
+                      step={32}
+                      className="sm:col-span-3"
+                      disabled={!formData.ragEnabled}
+                    />
+                  </div>
+                  
+                  {/* Embedding Model */}
+                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Embedding Model</label>
+                    <div className="sm:col-span-3">
+                      <Select 
+                        value={formData.ragEmbeddingModel ?? 'BAAI/bge-small-en-v1.5'} 
+                        onValueChange={v => setFormData({ ...formData, ragEmbeddingModel: v })}
+                        disabled={!formData.ragEnabled}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BAAI/bge-small-en-v1.5">BAAI/bge-small-en-v1.5</SelectItem>
+                          <SelectItem value="BAAI/bge-base-en-v1.5">BAAI/bge-base-en-v1.5</SelectItem>
+                          <SelectItem value="sentence-transformers/all-MiniLM-L6-v2">sentence-transformers/all-MiniLM-L6-v2</SelectItem>
+                          <SelectItem value="intfloat/multilingual-e5-small">intfloat/multilingual-e5-small</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Top-K Retrieval */}
+                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Top-K</label>
+                    <Input
+                      type="number"
+                      value={formData.ragTopK ?? 5}
+                      onChange={e => setFormData({ ...formData, ragTopK: parseInt(e.target.value) || 5 })}
+                      min={1}
+                      max={20}
+                      className="sm:col-span-3"
+                      disabled={!formData.ragEnabled}
+                    />
+                  </div>
+                  
+                  {/* Namespace */}
+                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Namespace</label>
+                    <Input
+                      value={formData.ragNamespace ?? ''}
+                      onChange={e => setFormData({ ...formData, ragNamespace: e.target.value })}
+                      placeholder="e.g. math-grade7-algebra"
+                      className="sm:col-span-3"
+                      disabled={!formData.ragEnabled}
+                    />
+                  </div>
+                  
+                  {/* Index Status (read-only, only show when editing) */}
+                  {editingModule && (
+                    <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+                      <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Index Status</label>
+                      <div className="sm:col-span-3">
+                        <span className={`inline-flex px-2 py-1 rounded text-xs font-bold ${
+                          formData.ragIndexStatus === 'indexed' ? 'bg-green-100 text-green-700' :
+                          formData.ragIndexStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          formData.ragIndexStatus === 'failed' ? 'bg-red-100 text-red-700' :
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                          {formData.ragIndexStatus ?? 'not_indexed'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

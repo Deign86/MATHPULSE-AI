@@ -66,14 +66,36 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
-# Local automation + Kaggle outputs
+# Local curriculum PDF staging (not committed)
+.local/
+.local/**
 .automation_cache/
 .kaggle-kernels/
 **/_kaggle_outputs/
 kaggle_llm_api_job/
 kaggle_merge_job/
 datasets/vectorstore/
+# EXCEPT the ChromaDB sqlite file (needed for RAG at runtime)
+!datasets/vectorstore/chroma.sqlite3
+!datasets/vectorstore/ingest_summary.json
 
 # Curriculum binaries are hosted on HF storage, not in git
 datasets/curriculum/*.pdf
 backend/datasets/curriculum/*.pdf
+
+# Local curriculum PDFs (extracted for analysis, not committed)
+documents/
+
+# Secrets — service accounts, credentials, API keys (NEVER commit)
+.secrets/
+*.key
+*.pem
+service-account*.json
+
+# Memory bank — local agent notes only, never commit
+memory-bank/
+
+# Graphify — generated knowledge graph artifacts
+.graphify*
+graphify-out/
+.opencode/

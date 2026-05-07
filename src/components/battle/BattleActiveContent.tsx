@@ -64,6 +64,20 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
         <p className="text-base sm:text-lg md:text-xl text-white font-extrabold leading-tight tracking-tight mt-1 min-h-[40px] flex items-center justify-center">
           {activeMatch.currentQuestion?.prompt}
         </p>
+
+        {/* Debug variance badges */}
+        {typeof window !== 'undefined' && window.location.search.includes('debug=true') && activeMatch.currentQuestion?.varianceApplied && (
+          <div className="flex flex-wrap gap-1 mt-2 justify-center">
+            {activeMatch.currentQuestion.varianceApplied.map((v: string) => (
+              <span
+                key={v}
+                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-200 border border-blue-400/30"
+              >
+                {v.replace(/_/g, ' ')}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Choices Grid */}

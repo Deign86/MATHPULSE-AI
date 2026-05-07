@@ -3,12 +3,13 @@ import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, 
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';
-import AdminContent from './AdminContent';
+import AdminPdfUpload from './admin/AdminPdfUpload';
 import AdminAuditLog from './AdminAuditLog';
 import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import AdminAIMonitoring from './AdminAIMonitoring';
+import AdminSubjects from './admin/AdminSubjects';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
 import {
@@ -211,21 +212,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             <div>
               <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight">
                 {activeTab === 'Overview' && 'Admin Dashboard'}
-                {activeTab === 'Content' && 'Content'}
+                {activeTab === 'Content' && 'Content & RAG'}
                 {activeTab === 'Audit Log' && 'Audit Log'}
                 {activeTab === 'User Management' && 'User Management'}
                 {activeTab === 'Analytics' && 'Analytics'}
                 {activeTab === 'AI Monitoring' && 'AI Monitoring'}
                 {activeTab === 'Settings' && 'Settings'}
+                {activeTab === 'Subjects' && 'Subjects'}
               </h1>
               <p className="text-xs text-[#5a6578] font-body">
                 {activeTab === 'Overview' && 'System Overview & Management'}
-                {activeTab === 'Content' && 'Manage platform content'}
+                {activeTab === 'Content' && 'Upload PDFs for AI-powered content'}
                 {activeTab === 'Audit Log' && 'Monitor system activity'}
                 {activeTab === 'User Management' && 'Manage all user accounts'}
                 {activeTab === 'Analytics' && 'Detailed performance metrics'}
                 {activeTab === 'AI Monitoring' && 'Platform AI usage and system health'}
                 {activeTab === 'Settings' && 'Configure platform settings'}
+                {activeTab === 'Subjects' && 'Manage subjects and module availability'}
               </p>
             </div>
           </div>
@@ -452,7 +455,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
           </div>
           )}
-          {activeTab === 'Content' && <AdminContent />}
+          {activeTab === 'Content' && <AdminPdfUpload />}
           {activeTab === 'Audit Log' && <AdminAuditLog />}
           {activeTab === 'User Management' && (
             <AdminUserManagement
@@ -463,6 +466,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           {activeTab === 'Analytics' && <AdminAnalytics />}
           {activeTab === 'AI Monitoring' && <AdminAIMonitoring />}
           {activeTab === 'Settings' && <AdminSettings onDirtyChange={setSettingsDirty} />}
+          {activeTab === 'Subjects' && <AdminSubjects />}
         </main>
       </div>
 

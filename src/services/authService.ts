@@ -132,9 +132,7 @@ export const signUpWithEmail = async (
 // Profile auto-creation is handled exclusively by AuthContext's onAuthStateChanged
 export const signInWithEmail = async (email: string, password: string): Promise<void> => {
   try {
-    console.log('[AUTH] Attempting sign in...', { email });
     await signInWithEmailAndPassword(auth, email, password);
-    console.log('[OK] Sign in successful, AuthContext will handle profile creation');
   } catch (error: unknown) {
     const firebaseError = error as { code?: string; message?: string };
     console.error('[ERROR] Error signing in:', {

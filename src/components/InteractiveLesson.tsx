@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Check, ArrowRight, Trophy, Zap, HelpCircle,
   Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler,
@@ -84,41 +84,108 @@ interface InteractiveLessonProps {
   onBack: () => void;
 }
 
-// Confetti Component - Optimized with WAAPI-backed animations (transform, opacity only)
-const Confetti: React.FC = () => {
-  const colors = ['#4F46E5', '#EC4899', '#f43f5e', '#10B981', '#0ea5e9'];
-  const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
+// RainStorm Component - Loss animation (CSS-based, plays once)
+const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => {
+  const drops = React.useMemo(() => [...Array(40)].map((_, i) => ({
     id: i,
-    left: Math.random() * 100,
-    animationDelay: Math.random() * 0.5,
-    backgroundColor: colors[Math.floor(Math.random() * colors.length)],
-    rotation: Math.random() * 360
-  }));
+    left: `${Math.random() * 100}%`,
+    duration: 0.6 + Math.random() * 0.4,
+    delay: Math.random() * 0.4,
+  })), [viewportHeight]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
-      {confettiPieces.map((piece) => (
+    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden flex justify-between">
+      {drops.map((drop) => (
         <motion.div
+          key={drop.id}
+          className="absolute w-0.5 h-16 bg-blue-400/40 rounded-full"
+          style={{ left: drop.left, top: '-10%' }}
+          animate={{ y: [0, viewportHeight * 1.2] }}
+          transition={{
+            duration: drop.duration,
+            ease: 'linear',
+            delay: drop.delay,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// DrawSparks Component - Draw animation (CSS-based, plays once)
+const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
+  const sparks = React.useMemo(() => [...Array(30)].map((_, i) => ({
+    id: i,
+    xShift: (Math.random() - 0.5) * viewportWidth * 0.8,
+    yShift: (Math.random() - 0.5) * viewportHeight * 0.8,
+    scale: Math.random() * 1.5 + 0.5,
+    duration: 2 + Math.random() * 1.5,
+    delay: Math.random() * 0.35,
+  })), [viewportHeight, viewportWidth]);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden flex items-center justify-center">
+      {sparks.map((spark) => (
+        <motion.div
+          key={spark.id}
+          className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.6)]"
+          style={{ left: '50%', top: '50%' }}
+          animate={{
+            y: [0, spark.yShift],
+            x: [0, spark.xShift],
+            scale: [0, spark.scale, 0],
+            opacity: [0, 1, 0],
+          }}
+          transition={{
+            duration: spark.duration,
+            ease: "easeOut",
+            delay: spark.delay,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// CSSConfetti Component - Excellent result animation
+const CSSConfetti: React.FC = () => {
+  const confettiPieces = React.useMemo(() => [...Array(60)].map((_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    backgroundColor: ['#75D06A', '#6ED1CF', '#9956DE', '#FB96BB', '#FFB356'][i % 5],
+    duration: 2 + Math.random() * 2,
+    delay: Math.random() * 0.5,
+    size: 6 + Math.random() * 8,
+    borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+  })), []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden">
+      <style>{`
+        @keyframes confetti-fall {
+          0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece {
+          animation-name: confetti-fall;
+          animation-timing-function: linear;
+          animation-fill-mode: forwards;
+        }
+      `}</style>
+      {confettiPieces.map((piece) => (
+        <div
           key={piece.id}
-          initial={{ y: -20, x: `${piece.left}vw`, opacity: 1, rotate: 0 }}
-          animate={{ 
-            y: '100vh', 
-            rotate: piece.rotation,
-            opacity: 0 
-          }}
-          transition={{ 
-            duration: 2 + Math.random() * 2, 
-            delay: piece.animationDelay,
-            ease: 'easeIn'
-          }}
+          className="confetti-piece absolute"
           style={{
-            position: 'absolute',
-            width: '10px',
-            height: '10px',
+            left: piece.left,
+            top: '-10%',
             backgroundColor: piece.backgroundColor,
-            willChange: 'transform, opacity'
+            width: piece.size,
+            height: piece.size,
+            borderRadius: piece.borderRadius,
+            animationDuration: `${piece.duration}s`,
+            animationDelay: `${piece.delay}s`,
           }}
-          className="rounded-sm"
         />
       ))}
     </div>
@@ -172,7 +239,11 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const [popupMessage, setPopupMessage] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [showStreakNotification, setShowStreakNotification] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [showRainStorm, setShowRainStorm] = useState(false);
+  const [showDrawSparks, setShowDrawSparks] = useState(false);
+  const [confettiFired, setConfettiFired] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [answerHistory, setAnswerHistory] = useState<boolean[]>([]);
   const [startTime] = useState(Date.now());
   const [streakBonusXP, setStreakBonusXP] = useState(0);
@@ -232,6 +303,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
 
   // Sound effects using Web Audio API for synthetic sounds
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'streak') => {
+    if (!isAudioEnabled) return;
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
@@ -243,11 +315,11 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
         const gain = ctx.createGain();
         osc.type = waveType;
         osc.frequency.value = freq;
-        
+
         gain.gain.setValueAtTime(0, startTime);
         gain.gain.linearRampToValueAtTime(vol, startTime + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        
+
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(startTime);
@@ -275,6 +347,15 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
       // Silently fail if Audio is blocked
     }
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportHeight(window.innerHeight);
+      setViewportWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (currentQuestion?.type === 'multiple-choice' && currentQuestion.options) {
@@ -507,10 +588,18 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   };
 
   const finishLesson = () => {
+    const percentage = Math.round((score / questions.length) * 100);
     setShowResult(true);
-    setShowConfetti(true);
+    if (percentage >= 80) {
+      // Confetti will be fired via useEffect when modal is shown
+    } else if (percentage >= 50) {
+      setShowDrawSparks(true);
+      setTimeout(() => setShowDrawSparks(false), 5000);
+    } else {
+      setShowRainStorm(true);
+      setTimeout(() => setShowRainStorm(false), 5000);
+    }
     playSound('complete');
-    setTimeout(() => setShowConfetti(false), 5000);
   };
 
   const theme = type === 'quiz' 
@@ -565,7 +654,9 @@ if (showResult) {
 
     const resultModal = (
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40">
-        {showConfetti && <Confetti />}
+        {showDrawSparks && <DrawSparks viewportHeight={viewportHeight} viewportWidth={viewportWidth} />}
+        {showRainStorm && <RainStorm viewportHeight={viewportHeight} />}
+        {isExcellent && <CSSConfetti />}
         <motion.div 
           initial={{ opacity: 0, scale: 0.8, y: 40 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -633,12 +724,13 @@ if (showResult) {
                    setCurrentPoints(0);
                    setAnswerHistory([]);
                    setIsAnswered(false);
-                   setIsCorrect(false);
-setShowResult(false);
+setIsCorrect(false);
+                    setShowResult(false);
                     setEliminatedByHint({});
-                   setRevealUsed({});
-                   setFailedOptions({});
-                 }}
+                    setRevealUsed({});
+                    setFailedOptions({});
+                    setConfettiFired(false);
+                  }}
                  className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-white hover:bg-slate-50 text-purple-600 border-2 border-purple-100"
                >
                  RETAKE QUIZ
@@ -660,7 +752,6 @@ setShowResult(false);
 
   return (
     <>
-      {showConfetti && <Confetti />}
       {/* Calculator via portal to escape z-index context */}
       {showCalculator && createPortal(
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="fixed right-6 top-1/2 -translate-y-1/2 z-[9999] w-64">
@@ -803,13 +894,13 @@ setShowResult(false);
               </div>
             </div>
 
-            <div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
-               <button onClick={toggleAudio} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+<div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
+               <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                  {isAudioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                </button>
-               <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                 {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-               </button>
+                <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+                  {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
                <button onClick={() => setShowMenu(true)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                  <Menu size={20} />
                </button>
@@ -951,6 +1042,8 @@ setShowResult(false);
                            isAllDisabled = true;
                            if (optionText === currentQuestion.correctAnswer) {
                               bgColor = 'bg-emerald-50 border-emerald-400 text-emerald-800';
+                           } else if (isFailed) {
+                              bgColor = 'bg-rose-50 border-rose-400 text-rose-800 opacity-80';
                            } else {
                               bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through';
                            }
@@ -1038,10 +1131,16 @@ setShowResult(false);
             <div className="relative z-10 flex flex-col gap-3">
               {/* Past question state */}
               {viewIndex < currentIndex ? (
-                <button onClick={toggleExplainPanel} className="bg-white text-slate-700 font-extrabold text-lg px-8 py-4 rounded-full flex items-center justify-center gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-[1.02] active:scale-[0.98] w-full border border-slate-200">
-                  <img src="/mascot/modules_avatar.png" className="w-6 h-6 drop-shadow-sm" alt="AI Explain" />
-                  Ask AI to Explain
-                </button>
+                <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+                  <button onClick={toggleExplainPanel} className="bg-white text-slate-700 font-extrabold text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-full flex items-center gap-2 sm:gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                    <img src="/mascot/modules_avatar.png" className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-sm" alt="AI Explain" />
+                    Ask AI to Explain
+                  </button>
+                  <button onClick={() => setViewIndex(currentIndex)} className="bg-white text-slate-700 font-extrabold text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-full flex items-center gap-2 sm:gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                    <ChevronRight size={20} className="sm:w-6 sm:h-6" />
+                    Back to Current Question
+                  </button>
+                </div>
               ) : (
                 <>
                   {/* Derive helper values */}

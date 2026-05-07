@@ -158,6 +158,16 @@ export interface ContentModule {
   status: 'Published' | 'Draft' | 'Archived';
   assigned: number;
   created: string;
+  // RAG pipeline configuration
+  ragEnabled?: boolean;
+  ragDocumentUrl?: string;
+  ragChunkSize?: number;
+  ragChunkOverlap?: number;
+  ragEmbeddingModel?: string;
+  ragTopK?: number;
+  ragNamespace?: string;
+  ragIndexStatus?: 'pending' | 'indexed' | 'failed' | 'not_indexed';
+  ragLastIndexedAt?: string;
 }
 
 export interface DashboardStats {
@@ -492,6 +502,16 @@ export async function getModules(): Promise<ContentModule[]> {
         created:
           (createdAt?.toDate?.()?.toLocaleDateString() ??
             ((data.created as string) || 'Unknown')),
+        // RAG fields
+        ragEnabled: data.ragEnabled as boolean | undefined,
+        ragDocumentUrl: data.ragDocumentUrl as string | undefined,
+        ragChunkSize: data.ragChunkSize as number | undefined,
+        ragChunkOverlap: data.ragChunkOverlap as number | undefined,
+        ragEmbeddingModel: data.ragEmbeddingModel as string | undefined,
+        ragTopK: data.ragTopK as number | undefined,
+        ragNamespace: data.ragNamespace as string | undefined,
+        ragIndexStatus: data.ragIndexStatus as ContentModule['ragIndexStatus'] | undefined,
+        ragLastIndexedAt: data.ragLastIndexedAt as string | undefined,
       };
     });
   } catch (err) {
