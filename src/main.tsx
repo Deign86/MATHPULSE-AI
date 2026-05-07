@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './styles/globals.css';
 // Ensure KaTeX styles are loaded globally so math rendering remains consistent
@@ -19,11 +20,13 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </QueryClientProvider>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
 
 registerBoneyardRegistry();
