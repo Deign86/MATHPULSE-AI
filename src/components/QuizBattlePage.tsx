@@ -11,7 +11,6 @@ import {
   Crown,
   History,
   Loader2,
-  Lock,
   Maximize,
   Menu,
   Minimize,
@@ -31,7 +30,6 @@ import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
-import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import {
   QuizBattleLeaderboardEntry,
   QuizBattleMatchSummary,
@@ -186,9 +184,6 @@ const battleAnimations = `
 `;
 const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
-// PERF: RainStorm renders 40 motion.div elements — each a Framer Motion animation node.
-// Component is NOT wrapped in React.memo; parent re-renders recreate all 40 nodes.
-// Consider extracting to a separated, memoized component.
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
   <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden flex justify-between bg-slate-900/10">
     {useMemo(() => [...Array(40)].map((_, i) => ({
@@ -209,44 +204,8 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
         }}
       />
     ))}
-  </div>
+</div>
 );
-
-// PERF: ConfettiBurst renders 60 motion.div elements with Math.random() in animate x/y values.
-// Same pattern as RainStorm — no React.memo, parent re-renders recreate all 60 animation nodes.
-const ConfettiBurst: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
-  const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f43f5e', '#f59e0b'];
-  const particles = useMemo(() => [...Array(60)].map((_, i) => ({
-    id: i,
-    left: `${20 + Math.random() * 60}%`,
-    xShift: (Math.random() - 0.5) * viewportWidth * 0.8,
-    spin: Math.random() * 720,
-    duration: 3 + Math.random() * 2,
-    delay: Math.random() * 0.35,
-  })), [viewportHeight, viewportWidth]);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none z-[50] overflow-hidden">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute bottom-[-10%] w-3 h-5 rounded-sm shadow-md e-left-top e-bg"
-          style={{ ['--left' as any]: particle.left, ['--bg' as any]: colors[particle.id % colors.length] }}
-          animate={{
-            y: [0, -viewportHeight * (0.6 + Math.random() * 0.4), viewportHeight * 0.5],
-            x: [0, particle.xShift],
-            rotate: [0, particle.spin],
-          }}
-          transition={{
-            duration: particle.duration,
-            ease: "easeInOut",
-            delay: particle.delay,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
 
 const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
   const sparks = useMemo(() => [...Array(30)].map((_, i) => ({
@@ -414,7 +373,6 @@ const getAudioContext = () => {
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
   const studentProfile = userProfile as StudentProfile | null;
-  const { isSubjectAvailable } = useSubjectAvailability();
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
@@ -1856,9 +1814,6 @@ const QuizBattlePage: React.FC = () => {
       <>
         <style>{battleAnimations}</style>
       <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'win' && (
-          <ConfettiBurst viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
-        )}
         {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
           <RainStorm viewportHeight={viewportSize.height} />
         )}
@@ -2688,26 +2643,9 @@ const QuizBattlePage: React.FC = () => {
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                            {gradeScopedSubjects.map((entry) => {
-                              const isAvailable = isSubjectAvailable(entry.id);
-                              return (
-                                <SelectItem
-                                  key={entry.id}
-                                  value={entry.id}
-                                  className="rounded-lg"
-                                  disabled={!isAvailable}
-                                >
-                                  <span className="flex items-center gap-2">
-                                    {entry.title}
-                                    {!isAvailable && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 ml-1">
-                                        <Lock size={10} /> Coming Soon
-                                      </span>
-                                    )}
-                                  </span>
-                                </SelectItem>
-                              );
-                            })}
+                            {gradeScopedSubjects.map((entry) => (
+                              <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}

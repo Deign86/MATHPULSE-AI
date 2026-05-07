@@ -86,15 +86,27 @@ export function getDayOfWeek(date?: Date): number {
   return (pht.getDay() + 6) % 7;
 }
 
-/** Next Monday 00:00 PHT as a JS Date. */
+/** Next Monday 00:00 PHT as a JS Date. Timezone-safe via epoch arithmetic. */
 export function getNextResetTime(date?: Date): Date {
-  const pht = getPHTDate(date);
-  const dayOfWeek = getDayOfWeek(pht);
-  const daysUntilMonday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
-  const nextMonday = new Date(pht);
-  nextMonday.setDate(pht.getDate() + daysUntilMonday);
-  nextMonday.setHours(0, 0, 0, 0);
-  return nextMonday;
+  const now = date ?? new Date();
+
+  // Work entirely in epoch milliseconds to avoid local-timezone effects.
+  // PHT = UTC+8, so we add 8 h to convert UTC epoch → PHT epoch.
+  const PHT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const phtEpoch = now.getTime() + PHT_OFFSET_MS;
+
+  // Day of week in PHT (JavaScript UTC day: 0 = Sunday)
+  const phtDay = new Date(phtEpoch).getUTCDay();
+  const dayIndex = (phtDay + 6) % 7; // 0 = Monday … 6 = Sunday
+
+  const daysUntilMonday = dayIndex === 0 ? 7 : 7 - dayIndex;
+
+  // Midnight PHT today (truncate to start of PHT day)
+  const todayMidnightPHT = phtEpoch - (phtEpoch % (24 * 60 * 60 * 1000));
+
+  // Next Monday 00:00 PHT in epoch ms, then convert back to UTC
+  const nextMondayPHT = todayMidnightPHT + daysUntilMonday * 24 * 60 * 60 * 1000;
+  return new Date(nextMondayPHT - PHT_OFFSET_MS);
 }
 
 // ── Master Reward Catalog (21 items) ────────────────────────────────────────
