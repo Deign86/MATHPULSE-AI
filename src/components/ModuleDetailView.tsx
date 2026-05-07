@@ -543,7 +543,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                               <BookOpen size={14} /> Study Materials
                             </button>
                             <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                              <Bookmark size={14} /> Flashcards
+                              <Bookmark size={14} /> Quiz
                             </button>
                           </div>
 
@@ -576,7 +576,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
                               <div className="flex-1 min-w-0">
                                 <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">
-                                  Module Task G╟≤ General Quiz
+                                  COMPETENCY CHECK · General Quiz
                                 </p>
                                 <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">
                                   {standaloneQuiz.title}
@@ -618,7 +618,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                           <Target size={28} className="text-rose-400" />
                         </div>
                         <div>
-                          <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">Module Task G╟≤ General Quiz</p>
+                          <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">COMPETENCY CHECK · General Quiz</p>
                           <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">{standaloneQuiz.title}</h3>
                           <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
                             <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>

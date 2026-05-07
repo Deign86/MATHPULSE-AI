@@ -5,7 +5,7 @@ import {
   Clock, Key, ClipboardCheck, Target, Zap
 } from 'lucide-react';
 import { VideoLessonSection } from './notebook/VideoLessonSection';
-import { TryItYourselfQuiz } from './notebook/TryItYourselfQuiz';
+
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
@@ -25,8 +25,6 @@ interface LessonViewerProps {
   onBack: () => void;
   onComplete: (score?: number, totalXP?: number, goToNext?: boolean) => void;
   onProgressUpdate?: (percent: number) => void;
-  /** Fires when the inline Try It Yourself quiz is completed — use to persist to Firestore and award XP */
-  onTryItQuizComplete?: (scorePercent: number) => void;
 }
 
 function LoadingSkeleton() {
@@ -98,7 +96,6 @@ function SectionRenderer({
   practiceQuizScore,
   onStartPractice,
   lessonSpecificTopic,
-  onTryItQuizComplete,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -110,7 +107,6 @@ function SectionRenderer({
   practiceQuizScore?: number;
   onStartPractice?: () => void;
   lessonSpecificTopic?: string | null;
-  onTryItQuizComplete?: (scorePercent: number) => void;
 }) {
   switch (section.type) {
     case 'introduction':
@@ -236,65 +232,48 @@ function SectionRenderer({
     case 'try_it_yourself':
       return (
         <div className="space-y-4">
-          {/* Practice Quiz Button / Completion Badge */}
-          {practiceQuiz && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-              {practiceQuizCompleted ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <CheckCircle size={20} className="text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-emerald-700">
-                      Quiz Complete
-                      {typeof practiceQuizScore === 'number' && (
-                        <span className="ml-2 text-emerald-600">
-                          {practiceQuizScore}%
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-emerald-600/80">
-                      Great job! You can now complete this lesson.
-                    </p>
-                  </div>
+          {/* Try It Yourself — Button Card */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-rose-400 to-orange-400 rounded-xl flex items-center justify-center shadow-sm">
+                  <Zap size={20} className="text-white" />
                 </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-rose-400 to-orange-400 rounded-xl flex items-center justify-center">
-                      <Zap size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">Practice Quiz</p>
-                      <p className="text-xs text-slate-500">
-                        {practiceQuiz.questions} questions · {practiceQuiz.duration}
-                      </p>
-                    </div>
+                <h3 className="text-base font-bold text-slate-800">Try It Yourself!</h3>
+              </div>
+              <p className="text-sm text-slate-600 mb-4 max-w-lg">
+                Test your understanding of this lesson with an interactive quiz. Answer questions, get instant feedback, and track your progress to reinforce what you've learned.
+              </p>
+              {practiceQuiz && (
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 rounded-xl p-4">
+                  <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                    <span className="inline-flex items-center gap-1"><NotebookPen size={12} /> {practiceQuiz.questions} questions</span>
+                    <span className="inline-flex items-center gap-1"><Clock size={12} /> {practiceQuiz.duration}</span>
+                    <span className="inline-flex items-center gap-1 text-amber-500"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
                   </div>
-                  <button
-                    onClick={onStartPractice}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
-                  >
-                    <ClipboardCheck size={16} />
-                    Start Practice Quiz
-                  </button>
+                  {practiceQuizCompleted ? (
+                    <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 rounded-xl">
+                      <CheckCircle size={16} className="text-emerald-600" />
+                      <span className="text-sm font-bold text-emerald-700">
+                        Quiz Complete
+                        {typeof practiceQuizScore === 'number' && (
+                          <span className="ml-1 text-emerald-600">{practiceQuizScore}%</span>
+                        )}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={onStartPractice}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
+                    >
+                      <ClipboardCheck size={16} />
+                      Start Quiz
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-          )}
-
-          {/* Inline 10-Item Try It Yourself Quiz */}
-          <TryItYourselfQuiz
-            lessonId={lesson.id?.toString() || 'unknown'}
-            lessonTitle={lesson.title}
-            topic={lessonSpecificTopic || section.title || lesson.title}
-            subjectId={lesson.subjectId}
-            competencyCode={lesson.competencyCode}
-            onComplete={(score, total) => {
-              console.log(`[TryItYourselfQuiz] Completed: ${score}/${total}`);
-            }}
-            onQuizComplete={onTryItQuizComplete}
-          />
+          </div>
         </div>
       );
 
@@ -415,7 +394,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onBack,
   onComplete,
   onProgressUpdate,
-  onTryItQuizComplete,
 }) => {
   const [currentSection, setCurrentSection] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -693,9 +671,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                            }
                            expandedIndex={expandedProblem}
                            lesson={lesson}
-                           lessonSpecificTopic={lessonSpecificTopic}
-                           onTryItQuizComplete={onTryItQuizComplete}
-                         />
+                            lessonSpecificTopic={lessonSpecificTopic}
+                          />
                     </div>
 
                     {sources.length > 0 && (
