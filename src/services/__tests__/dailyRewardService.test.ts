@@ -220,12 +220,14 @@ describe('canClaimToday', () => {
   });
 
   it('returns true when lastClaimedDate is yesterday', () => {
-    const state: DailyRewardState = { ...createEmptyState(), lastClaimedDate: '2026-05-06' };
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const state: DailyRewardState = { ...createEmptyState(), lastClaimedDate: getPHTDateString(yesterday) };
     expect(canClaimToday(state)).toBe(true);
   });
 
   it('returns false when already claimed today', () => {
-    const state: DailyRewardState = { ...createEmptyState(), lastClaimedDate: '2026-05-07' };
+    const state: DailyRewardState = { ...createEmptyState(), lastClaimedDate: getPHTDateString() };
     expect(canClaimToday(state)).toBe(false);
   });
 });
