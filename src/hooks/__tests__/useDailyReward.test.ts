@@ -65,7 +65,7 @@ describe('useDailyReward', () => {
       currentStreak: 3,
       longestStreak: 5,
       totalClaimed: 10,
-      coins: 100,
+      
       hintTokens: 5,
       streakShields: 2,
       activeMultiplier: null,
@@ -77,7 +77,6 @@ describe('useDailyReward', () => {
       expect(result.current.currentStreak).toBe(3);
     });
 
-    expect(result.current.coins).toBe(100);
     expect(result.current.hintTokens).toBe(5);
     expect(result.current.streakShields).toBe(2);
     expect(result.current.canClaim).toBe(true);
@@ -92,7 +91,6 @@ describe('useDailyReward', () => {
       currentStreak: 1,
       longestStreak: 1,
       totalClaimed: 1,
-      coins: 0,
       hintTokens: 0,
       streakShields: 0,
       activeMultiplier: null,
@@ -114,7 +112,6 @@ describe('useDailyReward', () => {
         currentStreak: 0,
         longestStreak: 0,
         totalClaimed: 0,
-        coins: 0,
         hintTokens: 0,
         streakShields: 0,
         activeMultiplier: null,
@@ -126,7 +123,6 @@ describe('useDailyReward', () => {
         currentStreak: 1,
         longestStreak: 1,
         totalClaimed: 1,
-        coins: 0,
         hintTokens: 0,
         streakShields: 0,
         activeMultiplier: null,
@@ -138,7 +134,6 @@ describe('useDailyReward', () => {
       dayIndex: 0,
       streakAfter: 1,
       longestStreakAfter: 1,
-      coinsAfter: 0,
       hintTokensAfter: 0,
       streakShieldsAfter: 0,
       streakPreserved: false,
@@ -168,7 +163,6 @@ describe('useDailyReward', () => {
       currentStreak: 0,
       longestStreak: 0,
       totalClaimed: 0,
-      coins: 0,
       hintTokens: 0,
       streakShields: 0,
       activeMultiplier: null,
@@ -180,7 +174,6 @@ describe('useDailyReward', () => {
       dayIndex: 0,
       streakAfter: 1,
       longestStreakAfter: 1,
-      coinsAfter: 0,
       hintTokensAfter: 0,
       streakShieldsAfter: 0,
       streakPreserved: false,
@@ -214,7 +207,6 @@ describe('useDailyReward', () => {
       currentStreak: 0,
       longestStreak: 0,
       totalClaimed: 0,
-      coins: 0,
       hintTokens: 0,
       streakShields: 0,
       activeMultiplier: null,
