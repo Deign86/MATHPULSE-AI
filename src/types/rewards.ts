@@ -4,7 +4,7 @@
  */
 
 export type RewardRarity = 'common' | 'rare' | 'epic';
-export type RewardType = 'xp' | 'coins' | 'streak_shield' | 'hint_token' | 'xp_multiplier' | 'badge_unlock';
+export type RewardType = 'xp' | 'streak_shield' | 'hint_token' | 'xp_multiplier' | 'badge_unlock';
 
 export interface RewardDefinition {
   id: string;
@@ -13,7 +13,7 @@ export interface RewardDefinition {
   description: string;
   icon: string; // emoji or icon name
   type: RewardType;
-  value: number | string; // XP amount, coin count, multiplier %, or badge ID
+  value: number | string; // XP amount, multiplier %, or badge ID
   rarity: RewardRarity;
   color: string; // Tailwind or hex color for card
 }
@@ -30,7 +30,6 @@ export interface DailyRewardState {
   currentStreak: number;
   longestStreak: number;
   totalClaimed: number;
-  coins: number;
   hintTokens: number;
   streakShields: number;
   activeMultiplier: ActiveMultiplier | null;
@@ -42,7 +41,6 @@ export interface ClaimResult {
   dayIndex: number;
   streakAfter: number;
   longestStreakAfter: number;
-  coinsAfter: number;
   hintTokensAfter: number;
   streakShieldsAfter: number;
   streakPreserved: boolean;

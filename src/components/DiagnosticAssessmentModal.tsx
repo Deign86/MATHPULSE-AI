@@ -530,7 +530,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 <div className="pt-3 space-y-2.5">
                   <Button 
                     onClick={handleStart}
-                    className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-sky-200 w-full max-w-[190px] mx-auto"
+                    className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-sky-200 w-full max-w-[280px] mx-auto"
                   >
                     {assessmentType === 'followup_diagnostic' ? 'Start Deep Diagnostic' : 'Start Assessment'}
                   </Button>
@@ -727,7 +727,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 <div className="pt-4">
                   <Button 
                     onClick={handleComplete}
-                    className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-3 rounded-xl text-base font-bold w-full"
+                    className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-3 rounded-xl text-sm font-bold w-full max-w-[320px] mx-auto"
                   >
                     Go to Dashboard
                   </Button>

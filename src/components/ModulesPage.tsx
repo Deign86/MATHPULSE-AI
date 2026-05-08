@@ -53,6 +53,8 @@ interface ModulesPageProps {
   initialModuleId?: string | null;
   isInQuizMode?: boolean;
   setIsInQuizMode?: (value: boolean) => void;
+  /** Whether the initial assessment has been completed — REVIEW badge suppressed until true */
+  hasCompletedDiagnostic?: boolean;
 }
 
 type ModulesTab = 'modules' | 'recommended' | 'practice';
@@ -66,6 +68,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   initialModuleId = null,
   isInQuizMode = false,
   setIsInQuizMode,
+  hasCompletedDiagnostic = false,
 }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
@@ -469,7 +472,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       currentStreak: 2,
                       longestStreak: 2,
                       totalClaimed: 2,
-                      coins: 0,
                       hintTokens: 0,
                       streakShields: 0,
                       activeMultiplier: null,
@@ -653,7 +655,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               modules={filteredModules}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
-              isAtRisk={normalizedRiskTopics.length > 0}
+              isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
             />
           ) : (
@@ -662,7 +664,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               fullPool={modulePool}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
-              isAtRisk={normalizedRiskTopics.length > 0}
+              isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
               learningPathContext={learningPathContext}
               learningPathLoading={learningPathLoading}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
