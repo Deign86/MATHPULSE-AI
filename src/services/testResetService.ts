@@ -148,6 +148,11 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   deletedDocs += await tryDeleteByField('chatSessions', 'userId', uid);
   deletedDocs += await tryDeleteByField('chatMessages', 'userId', uid);
 
+  // Delete legacy diagnostic results and competency profile so checkDiagnostic
+  // on next load sees no completed assessment and shows the modal.
+  await deleteDoc(doc(db, 'diagnosticResults', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+  await deleteDoc(doc(db, 'competencyProfiles', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+
   if (effectiveLrn !== uid) {
     deletedDocs += await tryDeleteByField('notifications', 'userId', effectiveLrn);
   }
