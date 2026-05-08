@@ -19,7 +19,7 @@ vi.mock('../../services/dailyRewardService', async () => {
     claimDailyReward: vi.fn(),
     getThisWeeksRewards: vi.fn(() => [
       { id: 'xp_50', day: 0, label: '+50 XP', description: 'Test', icon: '⚡', type: 'xp', value: 50, rarity: 'common', color: '#4ade80' },
-      { id: 'coins_25', day: 1, label: '25 Coins', description: 'Test', icon: '🪙', type: 'coins', value: 25, rarity: 'common', color: '#fbbf24' },
+      { id: 'hint_x2', day: 1, label: '2 Hints', description: 'Test', icon: '💡', type: 'hint_token', value: 2, rarity: 'common', color: '#a78bfa' },
       { id: 'hint_x3', day: 2, label: '3 Hints', description: 'Test', icon: '💡', type: 'hint_token', value: 3, rarity: 'common', color: '#a78bfa' },
       { id: 'xp_100', day: 3, label: '+100 XP', description: 'Test', icon: '🌟', type: 'xp', value: 100, rarity: 'rare', color: '#facc15' },
       { id: 'streak_shield', day: 4, label: 'Shield', description: 'Test', icon: '🛡️', type: 'streak_shield', value: 1, rarity: 'rare', color: '#60a5fa' },
