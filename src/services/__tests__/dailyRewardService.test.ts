@@ -260,7 +260,6 @@ function createEmptyState(): DailyRewardState {
     currentStreak: 0,
     longestStreak: 0,
     totalClaimed: 0,
-    coins: 0,
     hintTokens: 0,
     streakShields: 0,
     activeMultiplier: null,

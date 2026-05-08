@@ -1092,7 +1092,7 @@ const App = () => {
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
                             onContinueLearning={() => handleStudentNavigation('Modules')}
-                            showAssessmentTooltip={false}
+                            showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null && !assessmentDismissed}
                             onOpenAssessment={handleOpenInitialAssessment}
                           />
                         </Suspense>
@@ -1202,6 +1202,7 @@ const App = () => {
                       initialModuleId={targetModuleId}
                       isInQuizMode={isInQuizMode}
                       setIsInQuizMode={setIsInQuizMode}
+                      hasCompletedDiagnostic={hasCompletedDiagnostic ?? false}
                     />
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (

@@ -28,7 +28,6 @@ export interface UseDailyRewardResult {
   currentStreak: number;
   longestStreak: number;
   totalClaimed: number;
-  coins: number;
   hintTokens: number;
   streakShields: number;
   activeMultiplier: { multiplier: number; expiresAt: string } | null;
@@ -149,7 +148,6 @@ export function useDailyReward(userId: string | null): UseDailyRewardResult {
     currentStreak: state?.currentStreak ?? 0,
     longestStreak: state?.longestStreak ?? 0,
     totalClaimed: state?.totalClaimed ?? 0,
-    coins: state?.coins ?? 0,
     hintTokens: state?.hintTokens ?? 0,
     streakShields: state?.streakShields ?? 0,
     activeMultiplier,

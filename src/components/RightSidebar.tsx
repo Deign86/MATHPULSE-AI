@@ -40,7 +40,9 @@ const PodiumAvatar: React.FC<{
   userPhoto?: string;
   rankColor: { bg: string; border: string; badge: string; shadow: string };
 }> = ({ entry, rank, isYou, userPhoto, rankColor }) => {
-  const photoSrc = isYou ? (userPhoto || entry?.photo) : entry?.photo;
+  // Prefer the live leaderboard photo (auto-updates via Firestore subscription),
+  // fall back to userPhoto prop which carries the freshly uploaded PFP URL
+  const photoSrc = isYou ? (entry?.photo || userPhoto) : entry?.photo;
   const name = isYou ? 'You' : (entry?.name || '---');
   const xp = entry?.xp || 0;
 
@@ -109,6 +111,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   const [lbLoading, setLbLoading] = useState(true);
   const [lbError, setLbError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!currentUserId) {
@@ -124,6 +127,11 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         setLeaderboard(entries);
         setLbLoading(false);
         setLbError(null);
+        // Clear the fallback timeout now that data has arrived
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
       },
       currentUserId,
       false,
@@ -133,15 +141,19 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
     unsubscribeRef.current = unsubscribe;
 
-    const timeout = setTimeout(() => {
-      if (setLbLoading) {
-        setLbLoading(false);
-        setLbError('Leaderboard data unavailable');
-      }
-    }, 12000);
+    // Fallback timeout — only fires if Firestore subscription silently fails
+    // (e.g. permissions issue or collection doesn't exist). onSnapshot error
+    // handler also calls callback([]) so this is a secondary safety net.
+    timeoutRef.current = setTimeout(() => {
+      setLbLoading(false);
+      setLbError('Leaderboard data unavailable');
+    }, 15000);
 
     return () => {
-      clearTimeout(timeout);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;

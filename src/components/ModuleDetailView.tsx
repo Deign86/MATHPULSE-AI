@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -8,6 +9,7 @@ import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress } from '../types/models';
 
@@ -52,6 +54,28 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+  const [iarCompleted, setIarCompleted] = useState(false);
+
+  // Check if the Initial Assessment has been completed before showing REVIEW markers
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+
+    const checkIarStatus = async () => {
+      try {
+        const [legacySnap, profileSnap] = await Promise.all([
+          getDoc(doc(db, 'diagnosticResults', userProfile.uid)),
+          getDoc(doc(db, 'competencyProfiles', userProfile.uid)),
+        ]);
+        const legacyDone = legacySnap.exists() && legacySnap.data()?.status === 'completed';
+        const enhancedDone = profileSnap.exists() && (profileSnap.data()?.overallScore ?? 0) > 0;
+        setIarCompleted(legacyDone || enhancedDone);
+      } catch {
+        setIarCompleted(false);
+      }
+    };
+
+    checkIarStatus();
+  }, [userProfile?.uid]);
 
   // Store onEarnXP in a ref to avoid triggering callback recreation on parent re-renders
   // This prevents the infinite render loop when parent passes a new onEarnXP function reference
@@ -641,12 +665,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                             className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
                               standaloneQuiz.locked
                                 ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
-                                : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
+                                : (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
                                   ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
                                   : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
                             }`}
                           >
-                            {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+                            {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) ? 'REVIEW' : 'START'}
                           </button>
                         </div>
                       </div>
@@ -680,12 +704,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
                       standaloneQuiz.locked
                         ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
-                        : (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)
-                          ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
-                          : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
-                    }`}
-                  >
-                    {(completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed) ? 'REVIEW' : 'START'}
+: (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
+                              ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                              : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                          }`}
+                        >
+                          {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) ? 'REVIEW' : 'START'}
                   </button>
                 </div>
               </div>
