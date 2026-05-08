@@ -102,6 +102,32 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         </motion.div>
       )}
 
+      {/* Success Tooltip showing Assessment is Completed */}
+      {!showAssessmentTooltip && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, x: 10 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          transition={{ delay: 0.5, type: 'spring' }}
+          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 drop-shadow-lg"
+        >
+          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all hover:bg-teal-50 hover:-translate-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-teal-600">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <p className="text-xs lg:text-sm font-bold text-teal-900 leading-tight">
+                Assessment Complete!<br/>
+                <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">Your learning path is ready.</span>
+              </p>
+            </div>
+            {/* Speech bubble tail pointing right-down towards avatar */}
+            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 hover:bg-teal-50 transition-colors" />
+          </div>
+        </motion.div>
+      )}
+
       <div
         className="hidden md:block absolute right-0 lg:right-10 bottom-0 w-[150px] lg:w-[270px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}

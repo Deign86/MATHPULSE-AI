@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/button';
-import { Brain, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Brain, CheckCircle, AlertTriangle, Loader2, X } from 'lucide-react';
 import { generateDiagnostic, type DiagnosticQuestion } from '../../services/diagnosticService';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 interface InitialAssessmentModalProps {
@@ -13,6 +13,21 @@ interface InitialAssessmentModalProps {
   strand: string;
   gradeLevel: string;
   onAssessmentStart: (testId: string, questions: DiagnosticQuestion[]) => void;
+  onAssessmentComplete?: (result: {
+    overallRisk: string;
+    overallScorePercent: number;
+    intervention: string;
+    xpEarned: number;
+    badgeUnlocked: string;
+    competencyScores?: Record<string, { score: number; correct: number; attempted: number }>;
+    proficiencyProfile?: {
+      strengths: string[];
+      weaknesses: string[];
+      borderline: string[];
+      suggestedStartingModule: string;
+      recommendedPace: 'support_intensive' | 'normal' | 'accelerated';
+    };
+  }) => void;
 }
 
 const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
@@ -22,6 +37,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   strand,
   gradeLevel,
   onAssessmentStart,
+  onAssessmentComplete,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,17 +65,14 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
     }
   };
 
-  const handleSkip = async () => {
+  const handleDismiss = async () => {
     try {
-      await setDoc(doc(db, 'diagnosticResults', userId), {
-        userId,
-        status: 'skipped',
-        skippedAt: serverTimestamp(),
-        strand,
-        gradeLevel,
+      await updateDoc(doc(db, 'users', userId), {
+        assessmentDismissed: true,
+        assessmentDismissedAt: serverTimestamp(),
       });
     } catch (err) {
-      console.error('[diagnostic] Failed to save skip state:', err);
+      console.error('[diagnostic] Failed to save dismiss state:', err);
     }
     onClose();
   };
@@ -92,6 +105,13 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               <p className="text-[11px] text-[#5a6578]">Analyze your strengths & weaknesses</p>
             </div>
           </div>
+          <button
+            onClick={handleDismiss}
+            aria-label="Close assessment modal"
+            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-[#5a6578] hover:bg-[#dde3eb] hover:text-[#0a1628] transition-colors"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <div className="p-5 text-center space-y-3">
@@ -173,7 +193,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               )}
               {!loading && (
                 <button
-                  onClick={handleSkip}
+                  onClick={handleDismiss}
                   disabled={loading}
                   className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium disabled:opacity-40"
                 >
