@@ -17,7 +17,7 @@ import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from '
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
-import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 type ProfileSaveData = Partial<User> &
@@ -200,6 +200,8 @@ const App = () => {
   // Diagnostic / Assessment State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
   const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState<boolean | null>(null);
+  const [assessmentDismissed, setAssessmentDismissed] = useState(false);
+  const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
   const [showAssessmentPage, setShowAssessmentPage] = useState(false);
   const [assessmentTestId, setAssessmentTestId] = useState<string>('');
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
@@ -320,6 +322,12 @@ const App = () => {
     setShowDiagnosticModal(true);
   };
 
+  useEffect(() => {
+    const handler = () => setShowDiagnosticModal(true);
+    window.addEventListener('mathpulse:open-assessment', handler);
+    return () => window.removeEventListener('mathpulse:open-assessment', handler);
+  }, []);
+
   // Firestore-based diagnostic check on student login
   useEffect(() => {
     if (!isLoggedIn || userRole !== 'student' || !profileReady || !userProfile?.uid) return;
@@ -327,6 +335,9 @@ const App = () => {
     let cancelled = false;
     const checkDiagnostic = async () => {
       try {
+        setAssessmentDismissed(!!studentProfile?.assessmentDismissed);
+        setInitialAssessmentCompleted(!!studentProfile?.initialAssessmentCompleted);
+
         // Check legacy diagnostic results
         const legacySnap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
         // Check new competency profile
@@ -340,7 +351,9 @@ const App = () => {
         if (!hasLegacyComplete && !hasEnhancedComplete) {
           setHasCompletedDiagnostic(false);
           const timer = setTimeout(() => {
-            if (!cancelled) setShowDiagnosticModal(true);
+            if (!cancelled && !assessmentDismissed && !initialAssessmentCompleted) {
+              setShowDiagnosticModal(true);
+            }
           }, 1000);
           return () => clearTimeout(timer);
         } else {
@@ -521,6 +534,17 @@ const App = () => {
       } catch (err) {
         console.error('[diagnostic] Failed to refresh risk data:', err);
       }
+
+      try {
+        await updateDoc(doc(db, 'users', userProfile.uid), {
+          initialAssessmentCompleted: true,
+          assessmentDismissed: false,
+          assessmentCompletedAt: serverTimestamp(),
+        });
+        await awardXP(userProfile.uid, 50, 'initial_assessment', 'Initial assessment completed');
+      } catch (err) {
+        console.error('[App] Failed to persist assessment completion:', err);
+      }
     }
   };
 
@@ -695,6 +719,8 @@ const App = () => {
       setAtRiskSubjects([]);
       setPriorityTopics([]);
       setHasCompletedDiagnostic(null);
+      setAssessmentDismissed(false);
+      setInitialAssessmentCompleted(false);
       setComputedGpa('0.00');
       setActiveTab('Dashboard');
     }
@@ -1314,12 +1340,13 @@ const App = () => {
           {showDiagnosticModal && !showAssessmentPage && (
             <Suspense fallback={null}>
               <InitialAssessmentModal
-                isOpen={showDiagnosticModal}
+                isOpen={showDiagnosticModal && !showAssessmentPage}
                 onClose={() => setShowDiagnosticModal(false)}
                 userId={userProfile?.uid || ''}
                 strand={studentProfile?.major || 'STEM'}
                 gradeLevel={studentProfile?.grade || 'Grade 11'}
                 onAssessmentStart={handleDiagnosticStart}
+                onAssessmentComplete={handleAssessmentComplete}
               />
             </Suspense>
           )}
