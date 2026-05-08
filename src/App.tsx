@@ -351,7 +351,7 @@ const App = () => {
         if (!hasLegacyComplete && !hasEnhancedComplete) {
           setHasCompletedDiagnostic(false);
           const timer = setTimeout(() => {
-            if (!cancelled && !studentProfile?.assessmentDismissed && !studentProfile?.initialAssessmentCompleted) {
+            if (!cancelled && !assessmentDismissed && !initialAssessmentCompleted) {
               setShowDiagnosticModal(true);
             }
           }, 1000);
@@ -719,6 +719,8 @@ const App = () => {
       setAtRiskSubjects([]);
       setPriorityTopics([]);
       setHasCompletedDiagnostic(null);
+      setAssessmentDismissed(false);
+      setInitialAssessmentCompleted(false);
       setComputedGpa('0.00');
       setActiveTab('Dashboard');
     }
