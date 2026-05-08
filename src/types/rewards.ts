@@ -3,7 +3,7 @@
  * Type definitions for the Daily Rewards System.
  */
 
-export type RewardRarity = 'common' | 'rare' | 'epic';
+export type RewardRarity = 'common' | 'uncommon' | 'rare' | 'epic';
 export type RewardType = 'xp' | 'streak_shield' | 'hint_token' | 'xp_multiplier' | 'badge_unlock';
 
 export interface RewardDefinition {
