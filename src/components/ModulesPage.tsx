@@ -472,7 +472,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       currentStreak: 2,
                       longestStreak: 2,
                       totalClaimed: 2,
-                      coins: 0,
                       hintTokens: 0,
                       streakShields: 0,
                       activeMultiplier: null,
