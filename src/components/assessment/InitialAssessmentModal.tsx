@@ -65,7 +65,15 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
     }
   };
 
-  const handleDismiss = async () => {
+  const handleXClose = () => {
+    // X button: session-only close, do NOT persist to Firestore
+    // User will be reminded again on next session
+    onClose();
+  };
+
+  const handlePersistDismiss = async () => {
+    // "Skip for now": persist to Firestore so reminder shows on HeroBanner
+    // This persists across devices for the same account
     try {
       await updateDoc(doc(db, 'users', userId), {
         assessmentDismissed: true,
@@ -82,7 +90,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={(e) => e.stopPropagation()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -106,7 +114,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
             </div>
           </div>
           <button
-            onClick={handleDismiss}
+            onClick={handleXClose}
             aria-label="Close assessment modal"
             className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-[#5a6578] hover:bg-[#dde3eb] hover:text-[#0a1628] transition-colors"
           >
@@ -175,7 +183,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               <Button
                 onClick={handleStart}
                 disabled={loading}
-                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[190px] mx-auto"
+                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[320px] mx-auto"
               >
                 {loading ? (
                   <>
@@ -193,11 +201,11 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               )}
               {!loading && (
                 <button
-                  onClick={handleDismiss}
+                  onClick={handlePersistDismiss}
                   disabled={loading}
                   className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium disabled:opacity-40"
                 >
-                  Skip for now &rarr;
+                  Skip for now
                 </button>
               )}
             </div>

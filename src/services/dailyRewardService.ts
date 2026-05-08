@@ -42,7 +42,6 @@ const INITIAL_STATE: DailyRewardState = {
   currentStreak: 0,
   longestStreak: 0,
   totalClaimed: 0,
-  coins: 0,
   hintTokens: 0,
   streakShields: 0,
   activeMultiplier: null,
@@ -92,7 +91,7 @@ export async function getDailyRewardState(userId: string): Promise<DailyRewardSt
     const data = snap.data() as Partial<DailyRewardState>;
     const currentWeekSeed = getWeekSeed();
 
-    // If week changed, reset claimedDays but preserve streak/shields/coins/tokens
+    // If week changed, reset claimedDays but preserve streak/shields/tokens
     if (data.lastClaimedWeekSeed && data.lastClaimedWeekSeed !== currentWeekSeed) {
       return {
         ...(data as DailyRewardState),
@@ -212,11 +211,6 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
           xpAwarded = Math.floor(baseXP * multiplierApplied);
           break;
         }
-        case 'coins': {
-          const coinAmount = typeof reward.value === 'number' ? reward.value : parseInt(reward.value, 10) || 0;
-          state.coins += coinAmount;
-          break;
-        }
         case 'hint_token': {
           const hintAmount = typeof reward.value === 'number' ? reward.value : parseInt(reward.value, 10) || 0;
           state.hintTokens += hintAmount;
@@ -256,7 +250,6 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
       // ── Denormalise to user profile (same transaction) ───────────────────
       if (userSnap.exists()) {
         tx.update(userRef, {
-          coins: state.coins,
           hintTokens: state.hintTokens,
           streakShields: state.streakShields,
           activeMultiplier: state.activeMultiplier,
@@ -284,7 +277,6 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
         dayIndex,
         streakAfter: result.state.currentStreak,
         longestStreakAfter: result.state.longestStreak,
-        coinsAfter: result.state.coins,
         hintTokensAfter: result.state.hintTokens,
         streakShieldsAfter: result.state.streakShields,
         streakPreserved: false,
@@ -322,7 +314,6 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
       dayIndex,
       streakAfter: result.newStreak,
       longestStreakAfter: result.newLongestStreak,
-      coinsAfter: result.state.coins,
       hintTokensAfter: result.state.hintTokens,
       streakShieldsAfter: result.state.streakShields,
       streakPreserved: result.streakPreserved,
