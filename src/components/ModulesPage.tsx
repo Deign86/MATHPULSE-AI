@@ -22,6 +22,8 @@ import PracticeCenter from './PracticeCenter';
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
 import DailyCheckInModal from './DailyCheckInModal';
+import { LoginStreakRewardModal } from './LoginStreakRewardModal';
+import { useLoginStreakReward } from '../hooks/useLoginStreakReward';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { type Module } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -140,6 +142,22 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     claim,
     lastClaimResult,
   } = useDailyReward(userProfile?.uid ?? null);
+
+  // Login Streak Reward System (separate from daily check-in)
+  const {
+    state: streakState,
+    currentReward,
+    currentRewardLives,
+    canClaim: streakCanClaim,
+    isClaiming: streakIsClaiming,
+    showModal: showStreakModal,
+    dismissModal: dismissStreakModal,
+    claim: claimStreak,
+    todayPHT,
+  } = useLoginStreakReward(userProfile?.uid ?? null);
+
+  // Manual trigger for streak modal
+  const [showStreakModalManual, setShowStreakModalManual] = useState(false);
 
   // Show modal on mount if user can claim
   useEffect(() => {
@@ -418,6 +436,22 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         timeUntilReset={timeUntilReset}
       />
 
+      {/* Login Streak Reward Modal (parallel system) */}
+      <LoginStreakRewardModal
+        isOpen={showStreakModal || showStreakModalManual}
+        onClose={() => {
+          dismissStreakModal();
+          setShowStreakModalManual(false);
+        }}
+        state={streakState}
+        currentReward={currentReward}
+        currentRewardLives={currentRewardLives}
+        canClaim={streakCanClaim}
+        isClaiming={streakIsClaiming}
+        onClaim={claimStreak}
+        todayPHT={todayPHT}
+      />
+
       {/* Hero Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-6 gap-6">
         <div className="flex-1 max-w-3xl">
@@ -427,8 +461,19 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
             MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
           </p>
-          <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
-            {curriculumContextLabel}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
+              {curriculumContextLabel}
+            </div>
+            {/* Login Streak Trigger Button */}
+            <button
+              onClick={() => setShowStreakModalManual(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-900 hover:bg-orange-100 transition-colors"
+              title="View Login Streak Rewards"
+            >
+              <span className="text-lg">🔥</span>
+              <span>Login Streak</span>
+            </button>
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">
@@ -562,7 +607,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       layoutId="modulesTabBackground"
                       className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
+      />
+
                   )}
                   <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
                     <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />

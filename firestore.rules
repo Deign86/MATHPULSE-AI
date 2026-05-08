@@ -77,6 +77,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Login Streak Rewards (parallel system — fixed 7-day cycle) ──
+    match /users/{userId}/loginStreakRewards/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+                    && request.resource.data.lastClaimedDate != resource.data.lastClaimedDate;
+      allow delete: if isAdmin();
+    }
+
     match /progress/{docId} {
       // Allow by document ID (docId == userId) or by userId field
       allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();

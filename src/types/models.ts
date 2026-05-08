@@ -53,6 +53,7 @@ export interface StudentProfile extends User {
   // Daily Rewards fields (denormalized for fast profile reads)
   coins?: number;
   hintTokens?: number;
+  lives?: number; // Login Streak combo reward — accumulated, uncapped
   streakShields?: number;
   activeMultiplier?: {
     multiplier: number;
