@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   query,
@@ -110,6 +111,18 @@ async function tryDeleteByField(collectionName: string, field: string, value: st
   }
 }
 
+async function deleteSubcollectiondocs(
+  parentPath: string,
+  subcollectionName: string,
+): Promise<number> {
+  try {
+    const q = collection(db, parentPath, subcollectionName);
+    return await deleteByQuery(q);
+  } catch {
+    return 0;
+  }
+}
+
 async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ deletedDocs: number; updatedDocs: number }> {
   const effectiveLrn = lrn || uid;
   let deletedDocs = 0;
@@ -118,6 +131,7 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   await initializeUserProgress(uid);
   updatedDocs += 1;
 
+  // Reset users/{uid} with all assessment fields cleared
   await setDoc(
     doc(db, 'users', uid),
     {
@@ -138,6 +152,11 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
       initialAssessmentCompleted: false,
       assessmentResults: null,
       assessmentCompletedAt: null,
+      // Additional assessment fields to reset
+      diagnosticCompleted: false,
+      lastAssessmentDate: deleteField(),
+      assessmentAttemptCount: 0,
+      initialProficiencyLevel: deleteField(),
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -152,6 +171,11 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   // on next load sees no completed assessment and shows the modal.
   await deleteDoc(doc(db, 'diagnosticResults', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
   await deleteDoc(doc(db, 'competencyProfiles', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+
+  // Delete assessment subcollection documents
+  deletedDocs += await deleteSubcollectiondocs(`assessmentResults/${uid}`, 'attempts');
+  deletedDocs += await deleteSubcollectiondocs(`studentProgress/${uid}`, 'diagnostics');
+  deletedDocs += await deleteSubcollectiondocs(`assessmentQuestionHistory/${uid}`, 'questions');
 
   if (effectiveLrn !== uid) {
     deletedDocs += await tryDeleteByField('notifications', 'userId', effectiveLrn);

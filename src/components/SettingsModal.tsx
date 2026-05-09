@@ -1087,7 +1087,7 @@ aria-label="Close password update dialog"
         }}
         onConfirm={handleConfirmResetData}
         title="Reset Testing Data?"
-        message={`Reset ${(accountData.role || 'student')} testing data? This action is for QA/demo use and cannot be undone.`}
+        message={`Reset ${(accountData.role || 'student')} testing data? This will clear quizzes, diagnostic assessments, assessment history, XP, and learning progress. This action is for QA/demo use and cannot be undone.`}
         confirmText={isResetting ? 'Resetting...' : 'Reset Data'}
         cancelText="Cancel"
         type="warning"

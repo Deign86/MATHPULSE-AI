@@ -1087,13 +1087,14 @@ const App = () => {
                     <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-0">
                         <Suspense fallback={dashboardPanelFallback}>
-                          <HeroBanner 
-                            userName={firstName} 
+                          <HeroBanner
+                            userName={firstName}
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
                             onContinueLearning={() => handleStudentNavigation('Modules')}
                             showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null && !assessmentDismissed}
                             onOpenAssessment={handleOpenInitialAssessment}
+                            studentId={userProfile?.uid}
                           />
                         </Suspense>
 
