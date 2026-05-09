@@ -5,7 +5,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, Download, Send, Edit3, Save, Settings
+  ChevronLeft, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -1105,7 +1105,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             </div>
             {(!sidebarCollapsed || sidebarHovered) && (
               <div>
-                <h1 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
+                <h1 className="text-base font-semibold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
               </div>
             )}
           </div>
@@ -1140,7 +1140,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Overview</p>
+              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Overview</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1169,7 +1169,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Students</p>
+              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Students</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1198,7 +1198,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Tools</p>
+              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Tools</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1250,7 +1250,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           <motion.button
             whileHover={{ x: 2 }}
             whileTap={{ scale: 0.98 }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-semibold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
               sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
             }`}
             onClick={onOpenSettings}
@@ -1266,10 +1266,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </div>
       </motion.aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-3 sticky top-0 z-30">
+      {/* Main Content + Right Sidebar */}
+      <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               {isMobileViewport && (
@@ -1282,7 +1284,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </button>
               )}
               <div>
-                <h1 className="text-xl font-display font-bold text-foreground leading-tight">
+                <h1 className="text-xl font-display font-semibold text-foreground leading-tight">
                   {activeView === 'dashboard' && 'Teacher Dashboard'}
                   {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
                   {activeView === 'intervention' && 'Student Intervention'}
@@ -1312,60 +1314,52 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="hidden xl:flex items-center gap-2 ml-2">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
                     <Users size={13} className="text-[#9956DE]" />
-                    <span className="text-xs font-display font-bold text-[#9956DE]">{totalStudents} students</span>
+                    <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
                     <AlertTriangle size={13} className="text-[#F08386]" />
-                    <span className="text-xs font-display font-bold text-[#C65E63]">{totalAtRisk} at risk</span>
+                    <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
                     <TrendingUp size={13} className="text-[#75D06A]" />
-                    <span className="text-xs font-display font-bold text-[#4D9F46]">{avgPerformance}% avg</span>
+                    <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
                   </div>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={onOpenProfile}
-                className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
+                onClick={() => setActiveView('notifications')}
+                className="w-[38px] h-[38px] flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
+                aria-label="View notifications"
+                title="Notifications"
               >
-                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-[#9956DE]/45 bg-card flex items-center justify-center">
-                  <UserAvatar
-                    src={userProfile?.photo}
-                    name={teacherName}
-                    className="w-full h-full rounded-lg"
-                  />
-                </div>
-                <div className="hidden md:block min-w-0 text-left">
-                  <p className="text-sm font-semibold text-foreground leading-none group-hover:text-[#9956DE] transition-colors truncate">{teacherName}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-none">Teacher</p>
-                </div>
+                <Bell size={18} />
               </button>
             </div>
           </div>
         </header>
 
         {/* View Content */}
-        <main className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && (
-              <DashboardView
-                classes={classes}
-                liveActivity={liveActivity}
-                onViewClass={handleViewClass}
-                onViewAllClasses={() => setActiveView('analytics')}
-                onViewActivityStudent={(name) => {
-                  const match = students.find(s => s.name === name);
-                  if (match) handleViewStudent(match);
-                }}
-                dailyInsight={dailyInsight}
-                insightLoading={insightLoading}
-                totalStudents={totalStudents}
-                totalAtRisk={totalAtRisk}
-                avgPerformance={avgPerformance}
-              />
-            )}
+        <main className={`${activeView === 'dashboard' ? 'flex-1' : 'w-full'} overflow-y-auto`}>
+            <AnimatePresence mode="wait">
+              {activeView === 'dashboard' && (
+                <DashboardView
+                  classes={classes}
+                  liveActivity={liveActivity}
+                  onViewClass={handleViewClass}
+                  onViewAllClasses={() => setActiveView('analytics')}
+                  onViewActivityStudent={(name) => {
+                    const match = students.find(s => s.name === name);
+                    if (match) handleViewStudent(match);
+                  }}
+                  dailyInsight={dailyInsight}
+                  insightLoading={insightLoading}
+                  totalStudents={totalStudents}
+                  totalAtRisk={totalAtRisk}
+                  avgPerformance={avgPerformance}
+                />
+              )}
             {activeView === 'analytics' && effectiveAnalyticsClass && (
               <AnalyticsView
                 selectedClass={effectiveAnalyticsClass}
@@ -1489,7 +1483,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <QuestionBankPanel />
             )}
           </AnimatePresence>
-        </main>
+          </main>
+        </div>
+
+        {activeView === 'dashboard' && (
+          <DashboardRightSidebar onViewCalendar={() => setActiveView('calendar')} onOpenProfile={onOpenProfile} userProfile={userProfile} teacherName={teacherName} />
+        )}
       </div>
 
       {/* Logout Confirmation */}
@@ -1528,7 +1527,7 @@ const NavItem: React.FC<{
     }`}
   >
     <Icon size={18} strokeWidth={active ? 2.5 : 2} className="flex-shrink-0" />
-    {(!collapsed || forceExpanded) && <span className="font-body font-bold text-xs">{label}</span>}
+    {(!collapsed || forceExpanded) && <span className="font-body font-semibold text-xs">{label}</span>}
     {active && !collapsed && (
       <motion.div
         layoutId="sidebar-active-indicator"
@@ -1554,7 +1553,7 @@ const ToolsPlaceholderView: React.FC<{
       <div className="w-12 h-12 rounded-xl bg-[#9956DE]/20 text-[#9956DE] flex items-center justify-center mb-4">
         <Icon size={24} />
       </div>
-      <h2 className="text-2xl font-display font-bold text-foreground mb-2">{title}</h2>
+      <h2 className="text-2xl font-display font-semibold text-foreground mb-2">{title}</h2>
       <p className="text-sm text-muted-foreground font-body leading-relaxed">{description}</p>
     </div>
   </motion.div>
@@ -1581,171 +1580,144 @@ const DashboardView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 space-y-6"
+      className="p-6 space-y-4"
     >
-      {/* Daily AI Insight Banner -€” compact, not dominating */}
-      <div className="bg-gradient-to-r from-[#7274ED] to-[#9956DE] rounded-2xl p-5 text-white shadow-md">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-card/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <AlertTriangle size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-display font-bold mb-1">AI Insight</h2>
-            <BoneSkeleton
-              name="teacher-dashboard-ai-insight"
-              loading={insightLoading}
-              fixture={
-                <div className="space-y-2 pt-1">
-                  <Skeleton className="h-3.5 w-11/12 bg-white/25" />
-                  <Skeleton className="h-3.5 w-10/12 bg-white/20" />
-                  <Skeleton className="h-3.5 w-8/12 bg-white/15" />
-                </div>
-              }
-              fallback={
-                <div className="space-y-2 pt-1">
-                  <Skeleton className="h-3.5 w-11/12 bg-white/25" />
-                  <Skeleton className="h-3.5 w-10/12 bg-white/20" />
-                  <Skeleton className="h-3.5 w-8/12 bg-white/15" />
-                </div>
-              }
-            >
-              <div>
-                <div aria-live="polite" aria-atomic="true" className="text-[#F1E4FF] text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
-                  <ChatMarkdown>
-                    {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
-                  </ChatMarkdown>
-                </div>
-              </div>
-            </BoneSkeleton>
+      {/* AI Banner */}
+      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] flex items-center gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="relative flex-shrink-0">
+          <div className="absolute -inset-[5px] rounded-full border-2 border-[#a5b4fc] opacity-50 animate-pulse" />
+          <div className="w-[46px] h-[46px] rounded-full bg-[#eef2ff] border-2 border-[#c7d2fe] flex items-center justify-center text-[#4f46e5] text-xl relative overflow-hidden">
+            <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
           </div>
         </div>
-      </div>
-
-      {/* Quick Stats Row -€” moved from inside the banner for better visibility */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">Total Students</p>
-          <p className="text-2xl font-display font-bold text-foreground">{totalStudents}</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-[#9956DE]">{avgPerformance}%</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">Engagement Rate</p>
-          <p className="text-2xl font-display font-bold text-[#75D06A]">{engagementRate}%</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-[#FF8B8B]/35 shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">At Risk</p>
-          <p className="text-2xl font-display font-bold text-[#FF8B8B]">{totalAtRisk}</p>
-        </div>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* My Classes - 2 columns */}
-        <div className="xl:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold text-foreground">My Classes</h2>
-            <button
-              onClick={onViewAllClasses}
-              className="text-sm font-bold text-[#9956DE] hover:text-[#9956DE] flex items-center gap-1 group"
-            >
-              View All
-              <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </button>
+        <div className="flex-1">
+          <div className="text-[13.5px] font-semibold text-[#1e1b4b] flex items-center gap-2 mb-1">
+            <Sparkles size={14} className="text-[#818cf8]" />
+            MathPulse AI insight
+            <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
           </div>
-
-          <div className="space-y-4">
-            {classes.map((classItem) => (
-              <motion.div
-                key={classItem.id}
-                whileHover={{ scale: 1.01 }}
-                className={`bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer`}
-                onClick={() => onViewClass(classItem)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-display font-bold text-foreground">{classItem.name}</h3>
-                      <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(classItem.riskLevel)}`}>
-                        {classItem.riskLevel === 'high' ? 'High Risk' : classItem.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock size={14} />
-                      <span>{classItem.schedule}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[classItem.gradeLevel, classItem.classification, classItem.strand]
-                        .filter(Boolean)
-                        .map((badge) => (
-                          <span key={`${classItem.id}-${badge}`} className="px-2 py-0.5 rounded-md bg-[#9956DE]/12 border border-[#9956DE]/30 text-[#9956DE] text-[11px] font-semibold">
-                            {badge}
-                          </span>
-                        ))}
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Manager: {classItem.managerName || classItem.classMetadata?.managerName || 'Not assigned'}
-                    </p>
-                  </div>
-                  <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold px-6 py-2 rounded-xl">
-                    View Class
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Total Students</p>
-                    <p className="text-xl font-bold text-foreground">{classItem.studentCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">At Risk</p>
-                    <p className="text-xl font-bold text-[#FF8B8B]">{classItem.atRiskCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                    <p className="text-xl font-bold text-[#9956DE]">{classItem.avgScore}%</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live Classroom Pulse - 1 column */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-[#F08386]/20 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-[#F08386]" />
+          <BoneSkeleton
+            name="teacher-dashboard-ai-insight"
+            loading={insightLoading}
+            fixture={<Skeleton className="h-3.5 w-11/12 bg-slate-200" />}
+            fallback={<Skeleton className="h-3.5 w-11/12 bg-slate-200" />}
+          >
+            <div className="text-[12.5px] text-[#475569] leading-[1.55]">
+              <ChatMarkdown>
+                {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `I've noticed **${totalAtRisk} students (${riskPercentage}%)** are currently showing a high risk of falling behind in recent topics. Shall I draft an intervention plan?`}
+              </ChatMarkdown>
             </div>
-            <h2 className="text-xl font-display font-bold text-foreground">Live Classroom Pulse</h2>
-          </div>
+          </BoneSkeleton>
+        </div>
+        <div className="flex gap-2 flex-shrink-0">
+          <button className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
+          <button onClick={onViewAllClasses} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
+        </div>
+      </div>
 
-          <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3 max-h-[600px] overflow-y-auto">
-            {liveActivity.length === 0 && (
-              <p className="text-sm text-muted-foreground">No live classroom events yet. Activity appears here in real time.</p>
-            )}
-            {liveActivity.map((activity) => (
-              <div
-                key={activity.id}
-                onClick={() => onViewActivityStudent?.(activity.student)}
-                className={`p-4 rounded-xl border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
-                  activity.type === 'success' ? 'bg-[#75D06A]/14 border-[#75D06A]' :
-                  activity.type === 'warning' ? 'bg-[#F08386]/12 border-[#F08386]' :
-                  'bg-[#9956DE]/12 border-[#9956DE]'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <p className="font-bold text-foreground text-sm">{activity.student}</p>
-                  <span className="text-xs text-slate-500">{activity.time}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {activity.action} <span className="font-bold text-foreground">{activity.topic}</span>
-                </p>
-              </div>
-            ))}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">Total students</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
           </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{totalStudents}</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Added this year</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
+          </div>
+        </div>
+        
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">Class average</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Vs. last month</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">Engagement rate</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Activity size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Active participants</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate/100)*totalStudents)}</span>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">At risk</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertCircle size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Requires attention</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Classes Container */}
+      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="flex justify-between items-center mb-[14px]">
+          <h2 className="text-[15px] font-semibold text-[#1e293b]">My classes</h2>
+          <span onClick={onViewAllClasses} className="text-[12px] text-[#10b981] font-semibold cursor-pointer hover:underline">View all</span>
+        </div>
+
+        <div className="space-y-[9px]">
+          {classes.length === 0 && (
+            <p className="text-sm text-slate-500 text-center py-4">No classes imported yet.</p>
+          )}
+          {classes.map((classItem, idx) => {
+            const colors = [
+              { bg: 'bg-[#f3e8ff]', text: 'text-[#a855f7]', borderHover: 'hover:border-[#d8b4fe]', stripe: 'bg-[#a855f7]' },
+              { bg: 'bg-[#eff6ff]', text: 'text-[#3b82f6]', borderHover: 'hover:border-[#bfdbfe]', stripe: 'bg-[#3b82f6]' },
+              { bg: 'bg-[#f0fdf4]', text: 'text-[#22c55e]', borderHover: 'hover:border-[#bbf7d0]', stripe: 'bg-[#22c55e]' },
+              { bg: 'bg-[#fff7ed]', text: 'text-[#f97316]', borderHover: 'hover:border-[#fed7aa]', stripe: 'bg-[#f97316]' },
+              { bg: 'bg-[#fff1f2]', text: 'text-[#f43f5e]', borderHover: 'hover:border-[#fecdd3]', stripe: 'bg-[#f43f5e]' },
+            ];
+            const color = colors[idx % colors.length];
+
+            return (
+            <div
+              key={classItem.id}
+              onClick={() => onViewClass(classItem)}
+              className={`relative overflow-hidden flex items-center gap-3 p-[12px_13px] pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] transition-all group`}
+            >
+              <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${color.stripe}`} />
+              <div className={`w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
+                <BookOpen size={18} />
+              </div>
+              <div className="flex-1">
+                <div className="text-[12.5px] font-medium text-[#1e293b]">{classItem.name}</div>
+                <div className="text-[11px] text-[#94a3b8] mt-[1px]">{classItem.classification || 'High School'}</div>
+              </div>
+              <div className="text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
+              <div className="text-[12px] text-[#64748b] min-w-[85px]">{classItem.studentCount} students</div>
+              <span className={`text-[10px] font-semibold px-[9px] py-[3px] rounded-[6px] ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
+                {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
+              </span>
+              <MoreHorizontal size={16} className="text-[#cbd5e1] ml-auto hover:text-[#64748b]" />
+            </div>
+            );
+          })}
         </div>
       </div>
     </motion.div>
@@ -1765,15 +1737,15 @@ const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentVi
         className="w-12 h-12 rounded-xl object-cover border-2 border-current"
       />
       <div className="flex-1">
-        <h4 className="font-bold text-foreground">{student.name}</h4>
+        <h4 className="font-semibold text-foreground">{student.name}</h4>
         <p className="text-xs text-muted-foreground">{student.lastActive}</p>
       </div>
     </div>
 
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
-        <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
+        <span className="text-xs font-semibold text-muted-foreground">Avg Score</span>
+        <span className="text-xs font-semibold text-foreground">{student.avgScore}%</span>
       </div>
       <div className="h-2 bg-card rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${student.avgScore}%` }}>
         <div
@@ -1890,7 +1862,7 @@ const AnalyticsView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-semibold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Dashboard
@@ -1899,9 +1871,9 @@ const AnalyticsView: React.FC<{
       <div className="bg-card rounded-2xl border border-border p-5 shadow-sm mb-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
-            <h2 className="text-2xl font-display font-bold text-foreground">{selectedClass.name}</h2>
+            <h2 className="text-2xl font-display font-semibold text-foreground">{selectedClass.name}</h2>
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(selectedClass.riskLevel)}`}>
+              <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${getRiskBadge(selectedClass.riskLevel)}`}>
                 {selectedClass.riskLevel === 'high' ? 'High Risk Cohort' : selectedClass.riskLevel === 'medium' ? 'Medium Risk Cohort' : 'Low Risk Cohort'}
               </span>
               {classBadges.map((badge) => (
@@ -1948,19 +1920,19 @@ const AnalyticsView: React.FC<{
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-[#9956DE]">{selectedClass.avgScore}%</p>
+          <p className="text-2xl font-display font-semibold text-[#9956DE]">{selectedClass.avgScore}%</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Completion Rate</p>
-          <p className="text-2xl font-display font-bold text-[#75D06A]">{averageCompletion}%</p>
+          <p className="text-2xl font-display font-semibold text-[#75D06A]">{averageCompletion}%</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Participation</p>
-          <p className="text-2xl font-display font-bold text-[#9956DE]">{participationRate}%</p>
+          <p className="text-2xl font-display font-semibold text-[#9956DE]">{participationRate}%</p>
         </div>
         <div className="bg-card border border-[#FF8B8B]/35 rounded-xl p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Needs Attention</p>
-          <p className="text-2xl font-display font-bold text-[#FF8B8B]">{attentionStudents.length}</p>
+          <p className="text-2xl font-display font-semibold text-[#FF8B8B]">{attentionStudents.length}</p>
         </div>
       </div>
 
@@ -1969,7 +1941,7 @@ const AnalyticsView: React.FC<{
         {/* Left Column - Student List */}
         <div className="xl:col-span-2 bg-card rounded-2xl p-6 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-display font-bold text-foreground">Students ({visibleStudents.length})</h2>
+            <h2 className="text-lg font-display font-semibold text-foreground">Students ({visibleStudents.length})</h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <Input
@@ -2003,7 +1975,7 @@ const AnalyticsView: React.FC<{
         <div className="xl:col-span-3 space-y-6">
           {/* Risk Distribution */}
           <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-display font-bold text-foreground mb-5">Risk Distribution</h2>
+            <h2 className="text-lg font-display font-semibold text-foreground mb-5">Risk Distribution</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={riskDistribution}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -2021,7 +1993,7 @@ const AnalyticsView: React.FC<{
 
           {/* Topic Performance */}
           <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-display font-bold text-foreground mb-5">Topic Performance</h2>
+            <h2 className="text-lg font-display font-semibold text-foreground mb-5">Topic Performance</h2>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={topicPerformance}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -2035,7 +2007,7 @@ const AnalyticsView: React.FC<{
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-bold text-foreground mb-3">Top Performers</h3>
+              <h3 className="text-sm font-display font-semibold text-foreground mb-3">Top Performers</h3>
               <div className="space-y-2">
                 {topPerformers.slice(0, 4).map((student) => (
                   <button
@@ -2044,7 +2016,7 @@ const AnalyticsView: React.FC<{
                     className="w-full flex items-center justify-between rounded-lg border border-border px-3 py-2 hover:bg-[#9956DE]/12 transition-colors"
                   >
                     <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-[#75D06A]">{student.avgScore}%</span>
+                    <span className="text-xs font-semibold text-[#75D06A]">{student.avgScore}%</span>
                   </button>
                 ))}
                 {topPerformers.length === 0 && (
@@ -2054,7 +2026,7 @@ const AnalyticsView: React.FC<{
             </div>
 
             <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-bold text-foreground mb-3">Students Needing Attention</h3>
+              <h3 className="text-sm font-display font-semibold text-foreground mb-3">Students Needing Attention</h3>
               <div className="space-y-2">
                 {attentionStudents.slice(0, 4).map((student) => (
                   <button
@@ -2063,7 +2035,7 @@ const AnalyticsView: React.FC<{
                     className="w-full flex items-center justify-between rounded-lg border border-[#FF8B8B]/35 bg-[#FF8B8B]/14 px-3 py-2 hover:bg-[#FF8B8B]/20 transition-colors"
                   >
                     <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-[#FF8B8B]">{student.riskLevel.toUpperCase()}</span>
+                    <span className="text-xs font-semibold text-[#FF8B8B]">{student.riskLevel.toUpperCase()}</span>
                   </button>
                 ))}
                 {attentionStudents.length === 0 && (
@@ -2432,7 +2404,7 @@ const InterventionView: React.FC<{
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-bold mb-6 transition-colors group"
+        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-semibold mb-6 transition-colors group"
       >
         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
         Back to Analytics
@@ -2449,8 +2421,8 @@ const InterventionView: React.FC<{
             />
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-display font-bold text-foreground">{student.name}</h1>
-                <span className={`px-4 py-1.5 rounded-xl text-sm font-bold border-2 ${getRiskBadge(student.riskLevel)}`}>
+                <h1 className="text-3xl font-display font-semibold text-foreground">{student.name}</h1>
+                <span className={`px-4 py-1.5 rounded-xl text-sm font-semibold border-2 ${getRiskBadge(student.riskLevel)}`}>
                   {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
                 </span>
               </div>
@@ -2458,15 +2430,15 @@ const InterventionView: React.FC<{
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-muted rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                  <p className="text-2xl font-bold text-foreground">{student.avgScore}%</p>
+                  <p className="text-2xl font-semibold text-foreground">{student.avgScore}%</p>
                 </div>
                 <div className="bg-muted rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Last Active</p>
-                  <p className="text-sm font-bold text-foreground">{student.lastActive}</p>
+                  <p className="text-sm font-semibold text-foreground">{student.lastActive}</p>
                 </div>
                 <div className="bg-muted rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Weakest Topic</p>
-                  <p className="text-sm font-bold text-[#FF8B8B]">{student.weakestTopic}</p>
+                  <p className="text-sm font-semibold text-[#FF8B8B]">{student.weakestTopic}</p>
                 </div>
               </div>
 
@@ -2505,7 +2477,7 @@ const InterventionView: React.FC<{
               <AlertCircle size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-display font-bold text-foreground mb-2">
+              <h2 className="text-xl font-display font-semibold text-foreground mb-2">
                 {isUrgentBarrier ? 'AI Analysis - Learning Barriers' : 'AI Analysis - Learning Strengths & Next Steps'}
               </h2>
               {analysisCurriculumContext && (
@@ -2560,7 +2532,7 @@ const InterventionView: React.FC<{
 
         {/* AI-Generated Learning Path */}
         <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <h2 className="text-xl font-display font-bold text-foreground mb-6">AI-Generated Learning Path</h2>
+          <h2 className="text-xl font-display font-semibold text-foreground mb-6">AI-Generated Learning Path</h2>
 
           <BoneSkeleton
             name="teacher-intervention-learning-path"
@@ -2611,14 +2583,14 @@ const InterventionView: React.FC<{
                     <div className="bg-gradient-to-br from-[#9956DE]/12 to-[#6ED1CF]/18 border border-[#9956DE]/30 rounded-2xl p-5 hover:shadow-md transition-all">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <h3 className="font-display font-bold text-foreground mb-1">{step.title}</h3>
+                          <h3 className="font-display font-semibold text-foreground mb-1">{step.title}</h3>
                           <p className="text-sm text-muted-foreground">
                             {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
                             {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
                             {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                        <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${
                           step.type === 'video' ? 'bg-[#F08386]/20 text-[#C65E63]' :
                           step.type === 'quiz' ? 'bg-[#9956DE]/20 text-[#9956DE]' :
                           'bg-[#75D06A]/22 text-[#4D9F46]'
@@ -2638,7 +2610,7 @@ const InterventionView: React.FC<{
         <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-xl font-display font-bold text-foreground">Targeted Lesson Plan</h2>
+              <h2 className="text-xl font-display font-semibold text-foreground">Targeted Lesson Plan</h2>
               <p className="text-sm text-muted-foreground">Class records drive risk signals. Import-grounded lesson generation needs uploaded course materials for topic context.</p>
             </div>
             <Button
@@ -2736,7 +2708,7 @@ const InterventionView: React.FC<{
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Curriculum Grounding</p>
-                      <p className="text-sm font-bold text-foreground mt-1">Source-backed lesson basis</p>
+                      <p className="text-sm font-semibold text-foreground mt-1">Source-backed lesson basis</p>
                     </div>
                     {lessonPlan.curriculumGrounding && (
                       <span className={`px-3 py-1 rounded-full text-[11px] font-semibold border ${lessonPlan.curriculumGrounding.confidenceBand === 'high' ? 'bg-[#75D06A]/15 text-[#2E7D32] border-[#75D06A]/40' : lessonPlan.curriculumGrounding.confidenceBand === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-[#FF8B8B]/14 text-[#C65E63] border-[#FF8B8B]/35'}`}>
@@ -2763,15 +2735,15 @@ const InterventionView: React.FC<{
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       <div className="bg-muted/50 rounded-xl p-3">
                         <p className="text-muted-foreground font-semibold">Retrieval confidence</p>
-                        <p className="text-sm font-bold text-foreground mt-1">{Math.round((lessonPlan.curriculumGrounding.confidence || 0) * 100)}%</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{Math.round((lessonPlan.curriculumGrounding.confidence || 0) * 100)}%</p>
                       </div>
                       <div className="bg-muted/50 rounded-xl p-3">
                         <p className="text-muted-foreground font-semibold">Retrieved chunks</p>
-                        <p className="text-sm font-bold text-foreground mt-1">{lessonPlan.curriculumGrounding.retrievedChunks}</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{lessonPlan.curriculumGrounding.retrievedChunks}</p>
                       </div>
                       <div className="bg-muted/50 rounded-xl p-3">
                         <p className="text-muted-foreground font-semibold">Review state</p>
-                        <p className="text-sm font-bold text-foreground mt-1">{lessonPlan.needsReview ? 'Needs review' : 'Ready for review'}</p>
+                        <p className="text-sm font-semibold text-foreground mt-1">{lessonPlan.needsReview ? 'Needs review' : 'Ready for review'}</p>
                       </div>
                     </div>
                   )}
@@ -2824,7 +2796,7 @@ const InterventionView: React.FC<{
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-card border border-border rounded-xl p-3">
                     <p className="text-xs font-semibold text-muted-foreground">Source Legitimacy</p>
-                    <p className="text-sm font-bold text-foreground mt-1">
+                    <p className="text-sm font-semibold text-foreground mt-1">
                       {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -2836,7 +2808,7 @@ const InterventionView: React.FC<{
                   </div>
                   <div className="bg-card border border-border rounded-xl p-3">
                     <p className="text-xs font-semibold text-muted-foreground">Self Validation</p>
-                    <p className="text-sm font-bold text-foreground mt-1">
+                    <p className="text-sm font-semibold text-foreground mt-1">
                       {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
                     </p>
                     {lessonPlan.selfValidation.issues.length > 0 && (
@@ -2885,7 +2857,7 @@ const InterventionView: React.FC<{
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredLessonBlocks.map((block) => (
                     <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
-                      <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{block.title}</h3>
                       <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins {' \u2022 '} {block.strategy}</p>
                       <p className="text-sm text-foreground mt-2">{block.objective}</p>
                       <div className="mt-3">
@@ -2935,13 +2907,13 @@ const InterventionView: React.FC<{
           </BoneSkeleton>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
+            <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2">
               <Send size={20} />
               Schedule One-on-One Session
             </Button>
             <Button
               variant="outline"
-              className="border-2 border-[#9956DE] text-[#9956DE] hover:bg-[#9956DE]/12 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+              className="border-2 border-[#9956DE] text-[#9956DE] hover:bg-[#9956DE]/12 font-semibold py-4 rounded-xl flex items-center justify-center gap-2"
             >
               <Download size={20} />
               Export Printed Materials
@@ -3249,7 +3221,7 @@ const ImportView: React.FC<{
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
-          <h2 className="text-xl font-display font-bold text-foreground">Import Data</h2>
+          <h2 className="text-xl font-display font-semibold text-foreground">Import Data</h2>
           <p className="text-muted-foreground">Class records drive analytics and at-risk signals. Course materials provide topic grounding for AI lesson plans.</p>
           <div className="mt-2 flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
             <span className="px-2 py-1 rounded-md bg-muted border border-border">Class scope: {className || classSectionId || 'All classes'}</span>
@@ -3292,7 +3264,7 @@ const ImportView: React.FC<{
                   <FileSpreadsheet size={40} className="text-[#9956DE]" />
                 )}
               </div>
-              <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
+              <h3 className="text-xl font-display font-semibold text-foreground mb-2">Class Records</h3>
               <p className="text-muted-foreground mb-4">
                 {uploadingClassRecords ? (
                   <span className="inline-flex flex-col items-center gap-2">
@@ -3307,7 +3279,7 @@ const ImportView: React.FC<{
                   <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
                   <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
               </p>
-              <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-bold px-6 py-3 rounded-xl w-full transition-colors">
+              <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-semibold px-6 py-3 rounded-xl w-full transition-colors">
                 Click or drag & drop
               </Button>
             </div>
@@ -3337,7 +3309,7 @@ const ImportView: React.FC<{
                 <FileText size={40} className="text-[#F08386]" />
               )}
             </div>
-            <h3 className="text-xl font-display font-bold text-foreground mb-2">Course Materials</h3>
+            <h3 className="text-xl font-display font-semibold text-foreground mb-2">Course Materials</h3>
             <p className="text-muted-foreground mb-4">
               {uploadingCourseMaterials ? (
                 <span className="inline-flex flex-col items-center gap-2">
@@ -3351,7 +3323,7 @@ const ImportView: React.FC<{
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
             </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-semibold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
           </div>
@@ -3360,7 +3332,7 @@ const ImportView: React.FC<{
 
         {shsExcelResult && (
           <div className="bg-card border border-border rounded-2xl p-4">
-            <h3 className="text-base font-display font-bold text-foreground mb-2">Workbook Preview Summary</h3>
+            <h3 className="text-base font-display font-semibold text-foreground mb-2">Workbook Preview Summary</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
               <div className="bg-muted rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">School</p>
@@ -3384,26 +3356,26 @@ const ImportView: React.FC<{
 
         {/* Info Box */}
         <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-2xl p-6">
-          <h3 className="text-lg font-display font-bold text-[#7A44B3] mb-3">How AI Uses Your Data</h3>
+          <h3 className="text-lg font-display font-semibold text-[#7A44B3] mb-3">How AI Uses Your Data</h3>
           <div className="space-y-2 text-[#5E3388]/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span><strong className="text-[#7A44B3]">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -3419,7 +3391,7 @@ const ImportView: React.FC<{
         {uploadInterpretation && (
           <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-display font-bold text-foreground">Import Interpretation</h3>
+              <h3 className="text-lg font-display font-semibold text-foreground">Import Interpretation</h3>
               <span className="text-xs px-2 py-1 rounded bg-muted text-[#334155]">
                 Intent: {uploadInterpretation.datasetIntent || 'synthetic_student_records'}
               </span>
@@ -3429,23 +3401,23 @@ const ImportView: React.FC<{
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Scoring</p>
-                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.scoringColumns}</p>
+                  <p className="text-lg font-semibold text-foreground">{uploadInterpretation.summary.scoringColumns}</p>
                 </div>
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Display</p>
-                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
+                  <p className="text-lg font-semibold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
                 </div>
                 <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3">
                   <p className="text-xs text-[#CC8A37]">Storage-only</p>
-                  <p className="text-lg font-bold text-[#A56D29]">{uploadInterpretation.summary.storageOnlyColumns}</p>
+                  <p className="text-lg font-semibold text-[#A56D29]">{uploadInterpretation.summary.storageOnlyColumns}</p>
                 </div>
                 <div className="bg-[#F08386]/12 border border-[#F08386]/30 rounded-xl p-3">
                   <p className="text-xs text-[#C65E63]">Low confidence</p>
-                  <p className="text-lg font-bold text-[#A74B50]">{uploadInterpretation.summary.lowConfidenceColumns}</p>
+                  <p className="text-lg font-semibold text-[#A74B50]">{uploadInterpretation.summary.lowConfidenceColumns}</p>
                 </div>
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Domain warnings</p>
-                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.domainMismatchWarnings}</p>
+                  <p className="text-lg font-semibold text-foreground">{uploadInterpretation.summary.domainMismatchWarnings}</p>
                 </div>
               </div>
             )}
@@ -3474,7 +3446,7 @@ const ImportView: React.FC<{
 
         {/* Manage Imported Data */}
         <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-          <h3 className="text-lg font-display font-bold text-foreground mb-4">Manage Imported Data</h3>
+          <h3 className="text-lg font-display font-semibold text-foreground mb-4">Manage Imported Data</h3>
           <button 
             onClick={onEditRecords}
             className="w-full bg-[#00a86b] hover:bg-[#008f5d] text-white rounded-xl p-5 flex items-center justify-between transition-all shadow-sm hover:shadow-md group"
@@ -3484,7 +3456,7 @@ const ImportView: React.FC<{
                 <Edit3 size={24} className="text-white" />
               </div>
               <div className="text-left">
-                <h4 className="font-bold text-lg">Edit Class Records</h4>
+                <h4 className="font-semibold text-lg">Edit Class Records</h4>
                 <p className="text-white/90 text-sm">Review and correct AI-analyzed student data</p>
               </div>
             </div>
@@ -3604,7 +3576,7 @@ const EditRecordsView: React.FC<{
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">Edit Class Records</h1>
+            <h1 className="text-2xl font-display font-semibold text-foreground">Edit Class Records</h1>
             <p className="text-muted-foreground">Review and modify student data manually</p>
           </div>
         </div>
@@ -3634,14 +3606,14 @@ const EditRecordsView: React.FC<{
           <table className="w-full text-left border-collapse">
             <thead className="bg-background sticky top-0 z-10">
               <tr>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Student Name</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">LRN</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Grade</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Section</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Avg Score</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Risk Level</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Weakest Topic</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Actions</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Student Name</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">LRN</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Grade</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Section</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Avg Score</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Risk Level</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Weakest Topic</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -3688,13 +3660,13 @@ const EditRecordsView: React.FC<{
                       />
                     </td>
                     <td className="p-4">
-                      <span className={`font-bold ${
+                      <span className={`font-semibold ${
                         student.avgScore < 60 ? 'text-[#FF8B8B]' :
                         student.avgScore < 80 ? 'text-[#F08386]' : 'text-green-600'
                       }`}>{student.avgScore}%</span>
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${getRiskBadge(student.riskLevel)}`}>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getRiskBadge(student.riskLevel)}`}>
                         {student.riskLevel.toUpperCase()}
                       </span>
                     </td>
@@ -3712,6 +3684,182 @@ const EditRecordsView: React.FC<{
         </div>
       </div>
     </motion.div>
+  );
+};
+
+// Dashboard Right Sidebar Component
+const DashboardRightSidebar: React.FC<{
+  onViewCalendar?: () => void;
+  onOpenProfile?: () => void;
+  userProfile?: any;
+  teacherName: string;
+}> = ({ onViewCalendar, onOpenProfile, userProfile, teacherName }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<'pulse' | 'reminders'>('pulse');
+
+  const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+
+  const monthLabel = () => currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const goToPrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  const goToNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+
+  const getDaysArray = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days: (number | null)[] = [];
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.unshift(null);
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+
+    return days;
+  };
+
+  const isToday = (day: number | null) => {
+    if (!day) return false;
+    const today = new Date();
+    return day === today.getDate() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear();
+  };
+
+  const days = getDaysArray();
+  const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+  return (
+    <aside className="w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-hidden">
+      {/* Profile Section */}
+      <div className="p-[22px_16px_10px] border-b border-[#f1f5f9] flex flex-col items-center gap-[5px]">
+        <div className="w-[48px] h-[48px] rounded-full bg-[#e0e7ff] flex items-center justify-center text-[22px] text-[#4f46e5] shadow-[0_0_0_3px_#c7d2fe] flex-shrink-0">
+          <UserAvatar src={userProfile?.photo} name={teacherName} className="w-full h-full rounded-full" />
+        </div>
+        <div className="text-[13.5px] font-semibold text-[#1e293b] mt-1">{teacherName}</div>
+        <div className="text-[11px] text-[#94a3b8]">Teacher</div>
+        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#818cf8] hover:bg-[#6366f1] text-white rounded-full text-[11.5px] font-medium transition-colors">
+          Profile
+        </button>
+      </div>
+
+      {/* Calendar Section */}
+      <div className="p-[10px_16px] border-b border-[#f1f5f9]">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={goToPrevMonth}
+            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px]"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="text-[12px] font-semibold text-[#1e293b]">{monthLabel()}</span>
+          <button
+            onClick={goToNextMonth}
+            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px]"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-[2px] text-center mb-1">
+          {dayLabels.map((label) => (
+            <div key={label} className="text-[10px] font-semibold text-[#94a3b8] p-[2px_0_4px]">
+              {label}
+            </div>
+          ))}
+          {days.map((day, idx) => (
+            <div
+              key={`${currentDate.getMonth()}-${idx}`}
+              className={`text-[11px] leading-[22px] w-[22px] h-[22px] m-auto flex items-center justify-center rounded-full ${
+                day === null
+                  ? 'text-[#cbd5e1]'
+                  : isToday(day)
+                    ? 'bg-[#818cf8] text-white font-semibold'
+                    : 'text-[#475569]'
+              }`}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-[18px] p-[12px_16px_0] border-b border-[#f1f5f9] flex-shrink-0">
+        <button
+          onClick={() => setActiveTab('pulse')}
+          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
+            activeTab === 'pulse'
+              ? 'text-[#10b981] border-[#10b981]'
+              : 'text-[#94a3b8] border-transparent'
+          }`}
+        >
+          Live pulse
+        </button>
+        <button
+          onClick={() => setActiveTab('reminders')}
+          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
+            activeTab === 'reminders'
+              ? 'text-[#10b981] border-[#10b981]'
+              : 'text-[#94a3b8] border-transparent'
+          }`}
+        >
+          Reminders
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto p-[14px_16px]">
+        {activeTab === 'pulse' && (
+          <div className="flex flex-col items-center gap-3">
+            <svg className="w-[96px] h-[96px]" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#e2e8f0" strokeWidth="4"/>
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" strokeWidth="4"
+                strokeDasharray="78 100" strokeDashoffset="25" strokeLinecap="round"/>
+              <text x="18" y="16.5" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="7" fontWeight="600" fill="#1e293b">78%</text>
+              <text x="18" y="23" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="3.8" fill="#94a3b8" letterSpacing="0.3">ENGAGED</text>
+            </svg>
+            <div className="grid grid-cols-2 gap-[7px] w-full">
+              <div className="flex items-center gap-[6px] text-[11px] text-[#64748b]">
+                <div className="w-2 h-2 rounded-full bg-[#10b981] flex-shrink-0"></div>Engaged
+                <span className="ml-auto font-semibold text-[#1e293b]">78%</span>
+              </div>
+              <div className="flex items-center gap-[6px] text-[11px] text-[#64748b]">
+                <div className="w-2 h-2 rounded-full bg-[#e2e8f0] flex-shrink-0"></div>Inactive
+                <span className="ml-auto font-semibold text-[#1e293b]">22%</span>
+              </div>
+            </div>
+            <div className="bg-[#f8fafc] rounded-[11px] p-[11px_12px] text-center w-full mt-1">
+              <div className="text-[9px] font-semibold text-[#94a3b8] uppercase tracking-[0.07em] mb-[3px]">Current activity</div>
+              <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Quadratic equations quiz</div>
+              <div className="text-[11.5px] text-[#4f46e5] font-medium">10 / 12 students active</div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'reminders' && (
+          <div className="space-y-[8px]">
+            <div className="flex items-start gap-[10px] p-[10px_11px] border border-[#f1f5f9] rounded-[12px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
+              <div className="p-[7px] rounded-[8px] border border-[#f1f5f9] bg-white text-[14px] text-[#4f46e5] flex-shrink-0"><Bell size={14} /></div>
+              <div>
+                <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Eng – Vocabulary test</div>
+                <div className="text-[10.5px] text-[#94a3b8]">12 May 2026, Friday</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-[10px] p-[10px_11px] border border-[#f1f5f9] rounded-[12px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
+              <div className="p-[7px] rounded-[8px] border border-[#f1f5f9] bg-white text-[14px] text-[#10b981] flex-shrink-0"><BookOpen size={14} /></div>
+              <div>
+                <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Eng – Essay review</div>
+                <div className="text-[10.5px] text-[#94a3b8]">12 May 2026, Friday</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 };
 
