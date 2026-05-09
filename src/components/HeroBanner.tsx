@@ -1,5 +1,5 @@
 ﻿import React, { lazy, Suspense, useState } from 'react';
-import { Hand, ArrowRight, Zap, Brain, TrendingUp } from 'lucide-react';
+import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AvatarLayers } from './CompositeAvatar';
 import AssessmentResultsModal from './assessment/AssessmentResultsModal';
@@ -106,15 +106,16 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         </motion.div>
       )}
 
-      {/* Success Tooltip showing Assessment is Completed */}
+      {/* Success Tooltip showing Assessment is Completed — click to open results */}
       {!showAssessmentTooltip && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9, x: 10 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: 0.5, type: 'spring' }}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 drop-shadow-lg"
+          onClick={() => studentId && setShowResultsModal(true)}
+          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group"
         >
-          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all hover:bg-teal-50 hover:-translate-y-1">
+          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-1">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center shrink-0">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-teal-600">
@@ -123,32 +124,11 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
               </div>
               <p className="text-xs lg:text-sm font-bold text-teal-900 leading-tight">
                 Assessment Complete!<br/>
-                <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">Your learning path is ready.</span>
+                <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">View results &amp; history</span>
               </p>
             </div>
             {/* Speech bubble tail pointing right-down towards avatar */}
-            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 hover:bg-teal-50 transition-colors" />
-          </div>
-        </motion.div>
-      )}
-
-      {/* Results Chat Bubble — persistent after assessment completion */}
-      {!showAssessmentTooltip && studentId && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, x: 10 }}
-          animate={{ opacity: 1, scale: 1, x: 0 }}
-          transition={{ delay: 0.7, type: 'spring' }}
-          onClick={() => setShowResultsModal(true)}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-36 lg:bottom-44 z-30 cursor-pointer drop-shadow-lg group"
-        >
-          <div className="bg-gradient-to-r from-sky-500 to-teal-500 px-4 py-3 rounded-2xl rounded-br-sm relative transition-all group-hover:from-sky-600 group-hover:to-teal-600 group-hover:-translate-y-1">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={16} className="text-white" />
-              <p className="text-xs lg:text-sm font-bold text-white leading-tight">
-                View your latest<br/>assessment results!
-              </p>
-            </div>
-            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-teal-500 rotate-45 group-hover:bg-teal-600 transition-colors" />
+            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
           </div>
         </motion.div>
       )}
