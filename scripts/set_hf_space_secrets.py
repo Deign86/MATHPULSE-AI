@@ -13,10 +13,12 @@ import json
 import os
 import sys
 
+import requests
 from huggingface_hub import HfApi
 
 
 SPACE_ID = "Deign86/mathpulse-api-v3test"
+HF_API_BASE = "https://huggingface.co/api"
 
 HF_TOKEN = os.environ.get("HF_TOKEN") or os.environ.get("HF_PROXY_TOKEN")
 if not HF_TOKEN:
@@ -49,8 +51,22 @@ if not DEEPSEEK_API_KEY:
 
 print(f"Setting secrets for {SPACE_ID}...")
 
+
+def _delete_secret(key: str) -> None:
+    """Delete a secret using raw HF API (more reliable than huggingface_hub wrapper)."""
+    url = f"{HF_API_BASE}/spaces/{SPACE_ID}/secrets/{key}"
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+    resp = requests.delete(url, headers=headers)
+    if resp.status_code == 200:
+        print(f"  [CLEANUP] Deleted secret: {key}")
+    elif resp.status_code == 404:
+        print(f"  [CLEANUP] Secret not found (skip): {key}")
+    else:
+        print(f"  [CLEANUP] Delete secret {key}: {resp.status_code} {resp.text[:100]}")
+
+
 # Secrets (sensitive values - use add_space_secret)
-# NOTE: INFERENCE_PROVIDER is set as a VARIABLE, not a secret, to avoid collision
+# NOTE: INFERENCE_PROVIDER is a VARIABLE only — never set as secret to avoid collision
 secrets = {
     "FIREBASE_SERVICE_ACCOUNT_JSON": FIREBASE_SERVICE_ACCOUNT_JSON,
     "DEEPSEEK_API_KEY": DEEPSEEK_API_KEY,
@@ -58,23 +74,10 @@ secrets = {
 }
 
 for key, value in secrets.items():
-    try:
-        # Delete existing secret/variable first to avoid collision errors
-        try:
-            api.delete_space_secret(SPACE_ID, key)
-            print(f"  [CLEANUP] Deleted existing secret: {key}")
-        except Exception:
-            pass  # Secret didn't exist, that's fine
-        try:
-            api.delete_space_variable(SPACE_ID, key)
-            print(f"  [CLEANUP] Deleted existing variable: {key}")
-        except Exception:
-            pass  # Variable didn't exist, that's fine
-        api.add_space_secret(SPACE_ID, key, value)
-        print(f"  [OK] Set secret: {key}")
-    except Exception as e:
-        print(f"  [X] Failed to set {key}: {e}")
-        raise
+    # Clean up any existing secret/variable with same name FIRST
+    _delete_secret(key)
+    api.add_space_secret(SPACE_ID, key, value)
+    print(f"  [OK] Set secret: {key}")
 
 # Variables (non-sensitive config)
 variables = {
