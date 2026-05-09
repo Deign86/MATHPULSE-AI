@@ -20,6 +20,8 @@ from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL, get_deepseek_client
 from rag.curriculum_rag import retrieve_curriculum_context
+import firebase_admin
+from firebase_admin import firestore as fs
 
 logger = logging.getLogger("mathpulse.diagnostic")
 
@@ -386,7 +388,7 @@ async def _store_diagnostic_session(
         doc_ref.set({
             "testId": test_id,
             "userId": user_id,
-            "generatedAt": firestore_client.SERVER_TIMESTAMP,
+            "generatedAt": fs.SERVER_TIMESTAMP,
             "strand": strand,
             "gradeLevel": grade_level,
             "questions": questions,
@@ -435,8 +437,6 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
         raise HTTPException(status_code=500, detail="Assessment generation failed. Please try again.")
 
     try:
-        import firebase_admin
-        from firebase_admin import firestore as fs
         firestore_client = fs.client()
         stored = await _store_diagnostic_session(
             firestore_client,
@@ -620,7 +620,7 @@ async def _save_results(
         firestore_client.collection("diagnosticResults").document(user_id).set({
             "userId": user_id,
             "testId": test_id,
-            "takenAt": firestore_client.SERVER_TIMESTAMP,
+            "takenAt": fs.SERVER_TIMESTAMP,
             "strand": strand,
             "gradeLevel": grade_level,
             "status": "completed",
@@ -637,9 +637,9 @@ async def _save_results(
         firestore_client.collection("studentProgress").document(user_id).collection("stats").document("main").set({
             "learning_path": risk_profile.get("suggested_learning_path", []),
             "current_topic_index": 0,
-            "total_xp": firestore_client.Increment(50 + mastered_count * 10),
+            "total_xp": fs.Increment(50 + mastered_count * 10),
             "current_streak_days": 1,
-            "badges": firestore_client.ArrayUnion(["first_assessment"]),
+            "badges": fs.ArrayUnion(["first_assessment"]),
             "topics_mastered": mastered_count,
             "diagnostic_completed": True,
             "overall_risk": risk_profile.get("overall_risk", "moderate"),
@@ -647,7 +647,7 @@ async def _save_results(
 
         firestore_client.collection("diagnosticSessions").document(test_id).update({
             "status": "completed",
-            "completedAt": firestore_client.SERVER_TIMESTAMP,
+            "completedAt": fs.SERVER_TIMESTAMP,
         })
 
     except Exception as e:
@@ -662,8 +662,6 @@ async def submit_diagnostic(request: DiagnosticSubmitRequest, req: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
-        import firebase_admin
-        from firebase_admin import firestore as fs
         firestore_client = fs.client()
     except Exception as e:
         raise HTTPException(status_code=503, detail="Database unavailable")
