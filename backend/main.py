@@ -116,10 +116,12 @@ except Exception:
 try:
     from google.oauth2 import id_token as google_id_token  # type: ignore[import-not-found]
     from google.auth.transport import requests as google_auth_requests  # type: ignore[import-not-found]
+    from google.cloud.firestore import DELETE_FIELD  # type: ignore[import-not-found]
     HAS_GOOGLE_AUTH = True
 except Exception:
     google_id_token = None  # type: ignore[assignment]
     google_auth_requests = None  # type: ignore[assignment]
+    DELETE_FIELD = None  # type: ignore[assignment]
     HAS_GOOGLE_AUTH = False
 
 # Event-driven automation engine
@@ -11328,6 +11330,25 @@ def _testing_reset_try_set_doc(doc_ref: Any, payload: Dict[str, Any], label: str
         return 0
 
 
+def _testing_reset_try_delete_subcollection(
+    client: Any, parent_path: str, subcollection_name: str
+) -> int:
+    """Delete all documents in a subcollection. Returns count of deleted docs."""
+    try:
+        docs = list(client.collection(parent_path).document().parent.collection(subcollection_name).stream())
+        for doc_snapshot in docs:
+            doc_snapshot.reference.delete()
+        return len(docs)
+    except Exception as err:
+        logger.warning(
+            "Testing reset skipped delete for %s/%s: %s",
+            parent_path,
+            subcollection_name,
+            err,
+        )
+        return 0
+
+
 def _reset_student_testing_data_admin(
     client: Any,
     uid: str,
@@ -11354,24 +11375,38 @@ def _reset_student_testing_data_admin(
         merge=False,
     )
 
+    # Build users/{uid} payload with DELETE_FIELD for optional assessment fields
+    users_payload = {
+        "level": 1,
+        "currentXP": 0,
+        "totalXP": 0,
+        "streak": 0,
+        "streakHistory": [],
+        "atRiskSubjects": [],
+        "hasTakenDiagnostic": False,
+        "iarAssessmentState": "not_started",
+        "learningPathState": "unlocked",
+        "remediationState": "not_required",
+        "subjectBadges": {},
+        "riskClassifications": {},
+        "overallRisk": "Low",
+        "updatedAt": timestamp_value,
+    }
+    # Add assessment-specific fields using DELETE_FIELD to remove them
+    if DELETE_FIELD is not None:
+        users_payload["diagnosticCompleted"] = DELETE_FIELD
+        users_payload["lastAssessmentDate"] = DELETE_FIELD
+        users_payload["assessmentAttemptCount"] = DELETE_FIELD
+        users_payload["initialProficiencyLevel"] = DELETE_FIELD
+    else:
+        users_payload["diagnosticCompleted"] = False
+        users_payload["lastAssessmentDate"] = None
+        users_payload["assessmentAttemptCount"] = 0
+        users_payload["initialProficiencyLevel"] = None
+
     updated_docs += _testing_reset_try_set_doc(
         client.collection("users").document(uid),
-        {
-            "level": 1,
-            "currentXP": 0,
-            "totalXP": 0,
-            "streak": 0,
-            "streakHistory": [],
-            "atRiskSubjects": [],
-            "hasTakenDiagnostic": False,
-            "iarAssessmentState": "not_started",
-            "learningPathState": "unlocked",
-            "remediationState": "not_required",
-            "subjectBadges": {},
-            "riskClassifications": {},
-            "overallRisk": "Low",
-            "updatedAt": timestamp_value,
-        },
+        users_payload,
         f"users/{uid}",
         merge=True,
     )
@@ -11379,6 +11414,11 @@ def _reset_student_testing_data_admin(
     deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", uid)
     deleted_docs += _testing_reset_try_delete_by_field(client, "chatSessions", "userId", uid)
     deleted_docs += _testing_reset_try_delete_by_field(client, "chatMessages", "userId", uid)
+
+    # Delete assessment subcollection documents
+    deleted_docs += _testing_reset_try_delete_subcollection(client, f"assessmentResults/{uid}", "attempts")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, f"studentProgress/{uid}", "diagnostics")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, f"assessmentQuestionHistory/{uid}", "questions")
 
     if effective_lrn != uid:
         deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", effective_lrn)
