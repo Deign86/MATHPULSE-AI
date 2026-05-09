@@ -67,8 +67,44 @@ jobs:
               - 'tsconfig.json'
               - '.github/workflows/deploy-hf.yml'
 
+  setup-backend-secrets:
+    runs-on: ubuntu-latest
+    # Always run on workflow_dispatch to ensure secrets are synced (even if no backend files changed)
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.0
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Setup backend secrets
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          mkdir -p .secrets
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" ]; then
+            echo "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" | base64 -d > .secrets/firebase-service-account.json
+            echo "✅ Firebase service account written"
+          else
+            echo "⚠️  FIREBASE_SERVICE_ACCOUNT_JSON_B64 not set"
+          fi
+          export DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY"
+          pip install huggingface_hub requests --quiet
+          if [ -f ".secrets/firebase-service-account.json" ] && [ -n "$DEEPSEEK_API_KEY" ]; then
+            python scripts/set_hf_space_secrets.py
+          else
+            echo "⚠️  Skipping secrets setup (missing credentials)"
+          fi
+
   deploy-backend:
-    needs: detect-changes
+    needs: [detect-changes, setup-backend-secrets]
     runs-on: ubuntu-latest
     # Run when backend-related files changed, or on manual trigger.
     if: >
@@ -103,37 +139,6 @@ jobs:
           if [ $? -ne 0 ]; then
             echo "❌ Pre-deployment validation failed - blocking deployment"
             exit 1
-          fi
-
-      - name: Setup backend secrets
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: |
-          # Create .secrets directory
-          mkdir -p .secrets
-          
-          # Decode Firebase service account (base64 -> JSON file)
-          if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" ]; then
-            echo "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" | base64 -d > .secrets/firebase-service-account.json
-            echo "✅ Firebase service account written to .secrets/"
-          else
-            echo "⚠️  FIREBASE_SERVICE_ACCOUNT_JSON_B64 not set - will skip setting backend secrets"
-          fi
-          
-          # Export DEEPSEEK_API_KEY for the set_hf_space_secrets.py script
-          export DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY"
-          
-          # Install huggingface_hub if not already available
-          pip install huggingface_hub --quiet
-          
-          # Set all backend secrets on HF Spaces
-          if [ -f ".secrets/firebase-service-account.json" ] && [ -n "$DEEPSEEK_API_KEY" ]; then
-            python scripts/set_hf_space_secrets.py
-          else
-            echo "⚠️  Skipping HF Space secrets setup (missing FIREBASE_SERVICE_ACCOUNT_JSON_B64 or DEEPSEEK_API_KEY)"
-            echo "   To fix: add these as GitHub Actions secrets and re-run"
           fi
 
       - name: Push backend to HF Space
