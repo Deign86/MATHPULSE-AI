@@ -6,7 +6,7 @@ import { ChatProvider } from './contexts/ChatContext.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService.ts';
 import { createNotification } from './services/notificationService.ts';
-import { updateStreak, awardXP } from './services/gamificationService.ts';
+import { awardXP } from './services/gamificationService.ts';
 import { updateCompetencyProfile } from './services/assessmentService.ts';
 import { getUserProgress } from './services/progressService.ts';
 import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
@@ -99,7 +99,7 @@ const App = () => {
     sumRequiredForCurrentLevel += Math.floor(100 * Math.pow(1.5, i - 1));
   }
   const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
-  const [streak, setStreak] = useState(studentProfile?.streak || 0);
+  // (Streak derived from Daily Reward system via RightSidebar)
 
   // Curriculum data for navigation
   const activeGradeLevel = resolveLearnerGradeLevel(studentProfile?.grade);
@@ -230,7 +230,6 @@ const App = () => {
       setUserLevel(studentProfile.level || 1);
       setCurrentXP(studentProfile.currentXP || 0);
       setTotalXP(studentProfile.totalXP || 0);
-      setStreak(studentProfile.streak || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
       setPriorityTopics((studentProfile.priorityTopics || []) as DiagnosticTopicKey[]);
       setProfileReady(true);
@@ -282,14 +281,6 @@ const App = () => {
       }
     };
   }, [isLoggedIn, userRole]);
-
-  useEffect(() => {
-    if (isLoggedIn && userRole === 'student' && userProfile) {
-      updateStreak(userProfile.uid).then((newStreak) => {
-        setStreak(newStreak);
-      });
-    }
-  }, [isLoggedIn, userRole, userProfile]);
 
   useEffect(() => {
     setProfileOverrides({});
@@ -382,15 +373,6 @@ const App = () => {
     void checkDiagnostic();
     return () => { cancelled = true; };
   }, [isLoggedIn, userRole, profileReady, userProfile?.uid]);
-
-  // Update streak when user logs in (students only)
-  useEffect(() => {
-    if (isLoggedIn && userRole === 'student' && userProfile) {
-      updateStreak(userProfile.uid).then((newStreak) => {
-        setStreak(newStreak);
-      });
-    }
-  }, [isLoggedIn, userRole, userProfile]);
 
   const atRiskSignature = [...atRiskSubjects].sort().join('|');
   const supplementalDismissStorageKey = userProfile?.uid
@@ -715,7 +697,6 @@ const App = () => {
       setUserLevel(1);
       setCurrentXP(0);
       setTotalXP(0);
-      setStreak(0);
       setAtRiskSubjects([]);
       setPriorityTopics([]);
       setHasCompletedDiagnostic(null);
@@ -1031,7 +1012,7 @@ const App = () => {
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
                   <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-orange-700">{streak} day{streak !== 1 ? 's' : ''}</span>
+                  <span className="text-xs font-display font-bold text-orange-700">Daily Rewards</span>
                 </div>
               </div>
             </div>
@@ -1183,8 +1164,6 @@ const App = () => {
                               currentXP={progressXPInLevel}
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}
-                              streak={streak}
-                              streakHistory={studentProfile?.streakHistory || []}
                               userName={firstName}
                             />
                           </Suspense>
@@ -1274,7 +1253,6 @@ const App = () => {
                 currentXP={currentXP}
                 xpToNextLevel={xpToNextLevel}
                 totalXP={totalXP}
-                streak={streak}
               />
             </Suspense>
           )}

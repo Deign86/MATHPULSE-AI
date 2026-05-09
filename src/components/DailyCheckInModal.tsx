@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, Flame } from 'lucide-react';
+import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RewardDefinition } from '../types/rewards';
 
@@ -14,7 +14,6 @@ interface DailyCheckInModalProps {
   isClaiming: boolean;
   claimedDays: number[];
   currentDayIndex: number; // 0-6 (Mon-Sun)
-  streakCount: number;
   timeUntilReset: string;
 }
 
@@ -53,7 +52,6 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   isClaiming,
   claimedDays,
   currentDayIndex,
-  streakCount,
   timeUntilReset,
 }) => {
   const [localClaiming, setLocalClaiming] = useState(false);
@@ -65,9 +63,8 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
     setLocalClaiming(true);
 
     const isEpic = todayReward?.rarity === 'epic';
-    const isMilestone = streakCount > 0 && (streakCount + 1) % 7 === 0;
 
-    if (isEpic || isMilestone) {
+    if (isEpic) {
       confetti({
         particleCount: 150,
         spread: 80,
@@ -135,13 +132,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
 
         <div className="mt-6 mb-2 text-center w-full">
           <h3 className="text-xl font-bold text-slate-800 font-display mt-2">Welcome Back!</h3>
-          <p className="text-slate-500 font-medium text-xs mt-0.5">Claim your daily reward to keep the streak going.</p>
-          {streakCount > 0 && (
-            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600 border border-orange-200">
-              <Flame size={14} className="text-orange-500" />
-              <span>{streakCount} day streak</span>
-            </div>
-          )}
+          <p className="text-slate-500 font-medium text-xs mt-0.5">Claim your daily reward for today.</p>
         </div>
 
         {/* Rewards Grid */}
