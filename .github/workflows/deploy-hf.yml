@@ -105,6 +105,37 @@ jobs:
             exit 1
           fi
 
+      - name: Setup backend secrets
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          # Create .secrets directory
+          mkdir -p .secrets
+          
+          # Decode Firebase service account (base64 -> JSON file)
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" ]; then
+            echo "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" | base64 -d > .secrets/firebase-service-account.json
+            echo "✅ Firebase service account written to .secrets/"
+          else
+            echo "⚠️  FIREBASE_SERVICE_ACCOUNT_JSON_B64 not set - will skip setting backend secrets"
+          fi
+          
+          # Export DEEPSEEK_API_KEY for the set_hf_space_secrets.py script
+          export DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY"
+          
+          # Install huggingface_hub if not already available
+          pip install huggingface_hub --quiet
+          
+          # Set all backend secrets on HF Spaces
+          if [ -f ".secrets/firebase-service-account.json" ] && [ -n "$DEEPSEEK_API_KEY" ]; then
+            python scripts/set_hf_space_secrets.py
+          else
+            echo "⚠️  Skipping HF Space secrets setup (missing FIREBASE_SERVICE_ACCOUNT_JSON_B64 or DEEPSEEK_API_KEY)"
+            echo "   To fix: add these as GitHub Actions secrets and re-run"
+          fi
+
       - name: Push backend to HF Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
