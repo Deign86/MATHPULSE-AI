@@ -11365,6 +11365,38 @@ def _testing_reset_try_delete_doc(doc_ref: Any, label: str) -> int:
         return 0
 
 
+def _testing_reset_try_delete_subcollection(
+    client: Any,
+    parent_collection: str,
+    parent_doc_id: str,
+    subcollection_name: str,
+) -> int:
+    """Delete all documents in subcollection of a document."""
+    deleted_docs = 0
+    try:
+        docs = list(client.collection(parent_collection).document(parent_doc_id).collection(subcollection_name).stream())
+        if not docs:
+            return 0
+        batch = client.batch()
+        pending = 0
+        for doc_snapshot in docs:
+            batch.delete(doc_snapshot.reference)
+            deleted_docs += 1
+            pending += 1
+            if pending >= TESTING_RESET_BATCH_SIZE:
+                batch.commit()
+                batch = client.batch()
+                pending = 0
+        if pending > 0:
+            batch.commit()
+    except Exception as err:
+        logger.warning(
+            "Testing reset skipped subcollection delete for %s/%s/%s: %s",
+            parent_collection, parent_doc_id, subcollection_name, err,
+        )
+    return deleted_docs
+
+
 def _testing_reset_try_set_doc(doc_ref: Any, payload: Dict[str, Any], label: str, merge: bool = False) -> int:
     try:
         if merge:
@@ -11419,11 +11451,38 @@ def _reset_student_testing_data_admin(
             "subjectBadges": {},
             "riskClassifications": {},
             "overallRisk": "Low",
+            "assessmentDismissed": False,
+            "initialAssessmentCompleted": False,
+            "hasCompletedInitialAssessment": False,
+            "assessmentResults": None,
+            "assessmentCompletedAt": None,
+            "diagnosticCompleted": False,
             "updatedAt": timestamp_value,
         },
         f"users/{uid}",
         merge=True,
     )
+
+    # Delete field-type values that merge=True can't remove
+    try:
+        from google.cloud.firestore_v1 import DELETE_FIELD as _firestore_DELETE_FIELD
+        _delete_field = _firestore_DELETE_FIELD
+    except ImportError:
+        from google.cloud import firestore as _firestore_mod
+        _delete_field = _firestore_mod.DELETE_FIELD
+
+    try:
+        client.collection("users").document(uid).update({
+            "initialAssessmentCompletedAt": _delete_field,
+            "lastAssessmentDate": _delete_field,
+            "initialProficiencyLevel": _delete_field,
+            "iarQuestionSetVersion": _delete_field,
+            "iarTopicClassifications": _delete_field,
+            "topicScores": _delete_field,
+        })
+        updated_docs += 1
+    except Exception as err:
+        logger.warning("Testing reset skipped field deletes for users/%s: %s", uid, err)
 
     deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", uid)
     deleted_docs += _testing_reset_try_delete_by_field(client, "chatSessions", "userId", uid)
@@ -11431,6 +11490,33 @@ def _reset_student_testing_data_admin(
 
     if effective_lrn != uid:
         deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", effective_lrn)
+
+    # Delete assessment data using both uid and effective_lrn
+    deleted_docs += _testing_reset_try_delete_doc(
+        client.collection("diagnosticResults").document(uid), f"diagnosticResults/{uid}",
+    )
+    deleted_docs += _testing_reset_try_delete_doc(
+        client.collection("competencyProfiles").document(uid), f"competencyProfiles/{uid}",
+    )
+    deleted_docs += _testing_reset_try_delete_doc(
+        client.collection("assessments").document(uid), f"assessments/{uid}",
+    )
+
+    # Also try with effective_lrn if different
+    if effective_lrn != uid:
+        deleted_docs += _testing_reset_try_delete_doc(
+            client.collection("diagnosticResults").document(effective_lrn), f"diagnosticResults/{effective_lrn}",
+        )
+
+    # Delete assessment subcollections
+    deleted_docs += _testing_reset_try_delete_subcollection(client, "assessmentResults", uid, "attempts")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, "assessments", uid, "attempts")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, "studentProgress", uid, "diagnostics")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, "assessmentQuestionHistory", uid, "questions")
+
+    if effective_lrn != uid:
+        deleted_docs += _testing_reset_try_delete_subcollection(client, "assessmentResults", effective_lrn, "attempts")
+        deleted_docs += _testing_reset_try_delete_subcollection(client, "assessments", effective_lrn, "attempts")
 
     updated_docs += _testing_reset_try_set_doc(
         client.collection("achievements").document(uid),
