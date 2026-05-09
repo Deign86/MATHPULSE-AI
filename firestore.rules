@@ -237,6 +237,12 @@ service cloud.firestore {
       allow create: if isSignedIn();  // Backend creates via firebase-admin, also allow student-initiated
       allow update, delete: if false;  // Backend only
     }
+    // Assessment Results — students can read their own, backend writes
+    match /assessmentResults/{studentId}/attempts/{attemptId} {
+      allow read: if request.auth != null && request.auth.uid == studentId;
+      allow write: if request.auth != null;
+    }
+
 
     // ── Student Progress / Stats (written by backend after diagnostic) ──
     match /studentProgress/{userId} {
