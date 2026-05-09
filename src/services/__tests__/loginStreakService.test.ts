@@ -27,6 +27,11 @@ vi.mock('../../services/gamificationService', () => ({
   awardXP: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock getPHTDateString to return a stable date for deterministic tests
+vi.mock('../../data/rewardCatalog', () => ({
+  getPHTDateString: vi.fn(() => '2026-05-08'),
+}));
+
 // ── Import AFTER mocks ─────────────────────────────────────────────────────────
 
 import {
