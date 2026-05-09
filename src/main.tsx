@@ -9,8 +9,14 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import { registerBoneyardRegistry } from './bones/registry';
 import { queryClient } from './lib/queryClient.ts';
 
-if (import.meta.env.DEV) {
-  // Debug env vars available via browser console if needed
+// Suppress browser console.log/info in production builds (localhost:3000 dev shows them)
+if (!import.meta.env.DEV) {
+  // Preserve original for any emergency debugging needs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const _noop = (..._args: any[]) => {};
+  console.log = _noop;
+  console.info = _noop;
+  console.debug = _noop;
 }
 
 const rootElement = document.getElementById('root');
