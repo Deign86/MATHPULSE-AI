@@ -47,8 +47,6 @@ export interface StudentProfile extends User {
   level: number;
   currentXP: number;
   totalXP: number;
-  streak: number;
-  streakHistory?: string[]; // Array of YYYY-MM-DD strings
   ownedAvatarItems?: string[]; // Array of item IDs user has purchased
   // Daily Rewards fields (denormalized for fast profile reads)
   coins?: number;
