@@ -69,8 +69,7 @@ jobs:
 
   setup-backend-secrets:
     runs-on: ubuntu-latest
-    # Always run on workflow_dispatch to ensure secrets are synced (even if no backend files changed)
-    if: github.event_name == 'workflow_dispatch'
+    # Always run to ensure secrets are synced (even if no backend files changed)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.2.0
