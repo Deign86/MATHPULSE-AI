@@ -717,7 +717,6 @@ async def _save_results(
             "learning_path": risk_profile.get("suggested_learning_path", []),
             "current_topic_index": 0,
             "total_xp": fs.Increment(50 + mastered_count * 10),
-            "current_streak_days": 1,
             "badges": fs.ArrayUnion(["first_assessment"]),
             "topics_mastered": mastered_count,
             "diagnostic_completed": True,

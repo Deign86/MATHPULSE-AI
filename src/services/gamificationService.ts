@@ -17,64 +17,6 @@ import {
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
 
-// Update user streak
-export const updateStreak = async (userId: string): Promise<number> => {
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-
-    if (!userDoc.exists()) {
-      throw new Error('User not found');
-    }
-
-    const userData = userDoc.data();
-    const lastActivityDate = userData.lastActivityDate?.toDate();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let newStreak = userData.streak || 0;
-
-    if (!lastActivityDate) {
-      // First activity
-      newStreak = 1;
-    } else {
-      const lastActivity = new Date(lastActivityDate);
-      lastActivity.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) {
-        // Same day, keep streak
-        newStreak = userData.streak || 1;
-      } else if (diffDays === 1) {
-        // Consecutive day, increase streak
-        newStreak = (userData.streak || 0) + 1;
-        // Award streak bonus XP
-        const bonusXP = Math.min(newStreak * 5, 50); // Max 50 XP bonus
-        await awardXP(userId, bonusXP, 'streak_bonus', `${newStreak} day streak bonus!`);
-      } else {
-        // Streak broken
-        newStreak = 1;
-      }
-    }
-
-    // Generate local date string YYYY-MM-DD
-    const localNow = new Date();
-    const todayDateStr = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, '0')}-${String(localNow.getDate()).padStart(2, '0')}`;
-
-    await updateDoc(userRef, {
-      streak: newStreak,
-      streakHistory: arrayUnion(todayDateStr),
-      lastActivityDate: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    return newStreak;
-  } catch (error) {
-    console.error('Error updating streak:', error);
-    return 0;
-  }
-};
-
 // Award XP and handle level ups
 export const awardXP = async (
   userId: string,
@@ -324,9 +266,9 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
       },
       {
         id: 'week_streak',
-        condition: (userData.streak || 0) >= 7,
+        condition: (progressData.totalLessonsCompleted || 0) >= 7,
         title: 'Week Warrior',
-        description: 'Maintain a 7-day streak',
+        description: 'Complete lessons on 7 different days',
         icon: 'flame',
         xpReward: 300,
       },

@@ -12,7 +12,6 @@ interface StudentData {
   section: string;
   level: number;
   totalXP: number;
-  currentStreak: number;
   rank: { global: number; section: number; change: number };
   stats: { quizzesCompleted: number; averageScore: number; modulesCompleted: number; studyHours: number };
 }
@@ -99,13 +98,6 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                     <div className="bg-slate-100 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-200">
                       <p className="text-xs text-slate-500">Total XP</p>
                       <p className="text-xl font-bold">{student.totalXP}</p>
-                    </div>
-                    <div className="bg-slate-100 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-200">
-                      <p className="text-xs text-slate-500">Streak</p>
-                      <p className="text-xl font-bold flex items-center gap-1">
-                        <Flame size={16} className="text-orange-300" />
-                        {student.currentStreak}
-                      </p>
                     </div>
                   </div>
                 </div>

@@ -225,7 +225,6 @@ export const createUserProfile = async (
           level: 1,
           currentXP: 0,
           totalXP: 0,
-          streak: 0,
           atRiskSubjects: [] as string[],
           hasTakenDiagnostic: false,
           iarAssessmentState: 'not_started' as const,

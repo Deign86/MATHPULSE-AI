@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, CheckCircle, Zap, Swords } from 'lucide-react';
+import { CheckCircle, Zap, Swords } from 'lucide-react';
 import quizBattleBg from '../assets/quiz_battle_avatar.png';
 
 const challenges = [
@@ -16,15 +16,15 @@ const challenges = [
     avatarText: 'Waiting for you to join...'
   },
   {
-    id: 2,
-    title: 'Keep It Up!',
-    subtitle: 'Maintain your daily learning streak',
-    bgColor: 'bg-[#FF8B8B]',
-    orbColor: 'bg-[#E06A6A]',
-    icon: <Flame size={24} fill="currentColor" className="text-white" />,
-    buttonText: null,
-    actionType: null,
-    avatarText: 'You are doing great!'
+    "id": 2,
+    "title": "Topic Explorer",
+    "subtitle": "Dive into a new math topic today",
+    "bgColor": "bg-[#FF8B8B]",
+    "orbColor": "bg-[#E06A6A]",
+    "icon": <Zap size={24} className="text-white" />,
+    "buttonText": "Explore",
+    "actionType": "explore",
+    "avatarText": "Knowledge is power!"
   },
   {
     id: 3,
@@ -39,42 +39,13 @@ const challenges = [
   }
 ];
 
-// Generate the week days for the calendar correctly
-const generateWeekDays = (streakHistory: string[] = []) => {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const today = new Date();
-  const currentDayOfWeek = today.getDay();
-
-  const week = [];
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - currentDayOfWeek + i);
-
-    const isToday = i === currentDayOfWeek;
-
-    // Check if user was active on this local date
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    const hasDot = streakHistory.includes(dateStr);
-
-    week.push({
-      dayName: days[i],
-      dateNumber: date.getDate(),
-      isToday,
-      hasDot
-    });
-  }
-  return week;
-};
-
 interface DailyChallengeWidgetProps {
-  streakHistory?: string[];
   onNavigateToQuizBattle?: () => void;
   userPhoto?: string;
 }
 
-const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ streakHistory = [], onNavigateToQuizBattle, userPhoto }) => {
+const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ onNavigateToQuizBattle, userPhoto }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const weekDays = generateWeekDays(streakHistory);
 
   // Auto-swipe effect
   useEffect(() => {
@@ -88,8 +59,6 @@ const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ streakHisto
 
   return (
     <div className="bg-white rounded-[24px] p-4 shadow-sm border border-slate-100 flex flex-col gap-6 mt-4 relative overflow-hidden">
-      {/* Decorative external background blob just to add a slight pink/purple hue outside, as seen in the image's left side? */}
-
       {/* Swipeable Banner Section */}
       <div className="relative h-[185px] rounded-[-20px] rounded-2xl overflow-hidden cursor-pointer group">
         <AnimatePresence mode="wait">
@@ -166,38 +135,6 @@ const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ streakHisto
             </div>
           </motion.div>
         </AnimatePresence>
-      </div>
-
-      {/* Streak Calendar Section */}
-      <div>
-        <h4 className="font-display text-[15px] font-bold text-[#141b2d] mb-4 px-1">Your streak</h4>
-        <div className="flex justify-between items-center gap-1.5 px-0.5">
-          {weekDays.map((day, idx) => (
-            <div
-              key={idx}
-              className={`flex flex-col items-center pt-2 pb-3 w-[46px] h-[72px] rounded-[24px] border ${day.isToday
-                ? 'bg-[#12192b] text-white border-transparent shadow-[0_8px_16px_rgba(18,25,43,0.3)] transform -translate-y-1'
-                : 'bg-white text-slate-400 border-slate-200/80 hover:border-slate-300'
-                } transition-all duration-200 cursor-pointer`}
-            >
-              {/* Dot indicator matching the design exactly */}
-              <div className="h-1.5 flex items-center justify-center mb-1.5">
-                {day.hasDot ? (
-                  <div className={`w-[5px] h-[5px] rounded-full ${day.isToday ? 'bg-white' : 'bg-slate-300'}`} />
-                ) : (
-                  <div className={`text-[10px] ${day.isToday ? 'text-white/50' : 'text-slate-200'} font-bold`}>+</div>
-                )}
-              </div>
-
-              <span className={`text-[11px] font-bold mb-1 ${day.isToday ? 'text-slate-300' : 'text-slate-400/80'}`}>
-                {day.dayName}
-              </span>
-              <span className={`text-[15px] font-bold leading-none ${day.isToday ? 'text-white' : 'text-[#334155]'}`}>
-                {day.dateNumber}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

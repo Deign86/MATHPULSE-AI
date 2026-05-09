@@ -61,7 +61,6 @@ export const INITIAL_GAMIFICATION = {
   level: 1,
   currentXP: 0,
   totalXP: 0,
-  streak: 0,
   hasTakenDiagnostic: false,
   atRiskSubjects: [] as string[],
 };

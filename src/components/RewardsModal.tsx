@@ -20,7 +20,6 @@ interface RewardsModalProps {
   currentXP: number;
   xpToNextLevel: number;
   totalXP: number;
-  streak: number;
 }
 
 const RewardsModal: React.FC<RewardsModalProps> = ({
@@ -29,8 +28,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
   userLevel,
   currentXP,
   xpToNextLevel,
-  totalXP,
-  streak
+  totalXP
 }) => {
   if (!isOpen) return null;
 
@@ -142,7 +140,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
     { activity: 'Complete exercises', xp: 100 },
     { activity: 'Perfect quiz score', xp: 150 },
     { activity: 'Finish a quiz', xp: 75 },
-    { activity: 'Daily login streak', xp: 25 },
+    { activity: 'Daily check-in', xp: '20-100' },
   ];
 
   return (
@@ -190,9 +188,9 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
             <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
               <div className="flex items-center gap-2 mb-1">
                 <Flame size={18} className="text-[#FF8B8B]" />
-                <span className="text-xs font-medium text-white/90 font-body">Day Streak</span>
+                <span className="text-xs font-medium text-white/90 font-body">Daily Rewards</span>
               </div>
-              <p className="text-2xl font-bold">{streak} days</p>
+              <p className="text-2xl font-bold">Check-in</p>
             </div>
           </div>
 
