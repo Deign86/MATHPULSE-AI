@@ -2956,7 +2956,6 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
         f"engagementScore: {data.engagementScore:.1f}\n"
         f"avgQuizScore: {data.avgQuizScore:.1f}\n"
         f"assignmentCompletion: {data.assignmentCompletion:.1f}\n"
-        f"streak: {int(data.streak or 0)}\n"
         f"daysSinceLastActivity: {int(data.daysSinceLastActivity or 0)}\n"
         f"top_factors: {', '.join(result.top_factors)}"
     )
@@ -11380,8 +11379,6 @@ def _reset_student_testing_data_admin(
         "level": 1,
         "currentXP": 0,
         "totalXP": 0,
-        "streak": 0,
-        "streakHistory": [],
         "atRiskSubjects": [],
         "hasTakenDiagnostic": False,
         "iarAssessmentState": "not_started",
@@ -12783,7 +12780,6 @@ class ProgressEvaluateRequest(BaseModel):
     mastery_level_before: str
     items: List[Dict[str, Any]]
     previous_attempts: int = Field(default=0)
-    current_streak_days: int = Field(default=0)
 
 
 class ProgressEvaluateResponse(BaseModel):
@@ -12833,7 +12829,6 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
             mastery_changed = True
         
         xp_base = 0
-        xp_streak = 0
         xp_mastery = 0
         xp_other = 0
         
@@ -12847,8 +12842,6 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
                 elif diff == "hard":
                     xp_base += 20
         
-        xp_streak = min(30, 5 * request.current_streak_days)
-        
         if mastery_changed:
             xp_mastery = 50
         
@@ -12858,7 +12851,7 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
         if request.previous_attempts >= 1 and score_percent > 60:
             xp_other += 15
         
-        xp_total = xp_base + xp_streak + xp_mastery + xp_other
+        xp_total = xp_base + xp_mastery + xp_other
         
         error_analysis = []
         for item in request.items:
@@ -12915,7 +12908,6 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
                 stats_ref = db.collection("studentProgress").document(request.student_id).collection("stats").document("summary")
                 stats_ref.set({
                     "total_xp": firebase_firestore.Increment(xp_total),
-                    "current_streak_days": request.current_streak_days,
                     "topics_mastered": firebase_firestore.Increment(1) if mastery_changed else firebase_firestore.Increment(0),
                 }, merge=True)
             except Exception as fs_err:
@@ -12926,7 +12918,7 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
             mastery_changed=mastery_changed,
             score_percent=round(score_percent, 1),
             xp_earned=xp_total,
-            xp_breakdown={"base": xp_base, "mastery_bonus": xp_mastery, "streak_bonus": xp_streak, "other": xp_other},
+            xp_breakdown={"base": xp_base, "mastery_bonus": xp_mastery, "other": xp_other},
             badges_unlocked=[],
             performance_feedback=f"You got {correct_count}/{total_items} correct.",
             error_analysis=error_analysis,

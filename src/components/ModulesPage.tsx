@@ -22,8 +22,6 @@ import PracticeCenter from './PracticeCenter';
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
 import DailyCheckInModal from './DailyCheckInModal';
-import { LoginStreakRewardModal } from './LoginStreakRewardModal';
-import { useLoginStreakReward } from '../hooks/useLoginStreakReward';
 import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { type Module } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -137,27 +135,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     canClaim,
     isClaiming,
     claimedDays,
-    currentStreak,
     timeUntilReset,
     claim,
     lastClaimResult,
   } = useDailyReward(userProfile?.uid ?? null);
-
-  // Login Streak Reward System (separate from daily check-in)
-  const {
-    state: streakState,
-    currentReward,
-    currentRewardLives,
-    canClaim: streakCanClaim,
-    isClaiming: streakIsClaiming,
-    showModal: showStreakModal,
-    dismissModal: dismissStreakModal,
-    claim: claimStreak,
-    todayPHT,
-  } = useLoginStreakReward(userProfile?.uid ?? null);
-
-  // Manual trigger for streak modal
-  const [showStreakModalManual, setShowStreakModalManual] = useState(false);
 
   // Show modal on mount if user can claim
   useEffect(() => {
@@ -432,24 +413,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         isClaiming={isClaiming}
         claimedDays={claimedDays}
         currentDayIndex={getDayOfWeek()}
-        streakCount={currentStreak}
         timeUntilReset={timeUntilReset}
-      />
-
-      {/* Login Streak Reward Modal (parallel system) */}
-      <LoginStreakRewardModal
-        isOpen={showStreakModal || showStreakModalManual}
-        onClose={() => {
-          dismissStreakModal();
-          setShowStreakModalManual(false);
-        }}
-        state={streakState}
-        currentReward={currentReward}
-        currentRewardLives={currentRewardLives}
-        canClaim={streakCanClaim}
-        isClaiming={streakIsClaiming}
-        onClaim={claimStreak}
-        todayPHT={todayPHT}
       />
 
       {/* Hero Section */}
@@ -465,15 +429,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
               {curriculumContextLabel}
             </div>
-            {/* Login Streak Trigger Button */}
-            <button
-              onClick={() => setShowStreakModalManual(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-900 hover:bg-orange-100 transition-colors"
-              title="View Login Streak Rewards"
-            >
-              <span className="text-lg">🔥</span>
-              <span>Login Streak</span>
-            </button>
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">

@@ -13,7 +13,6 @@ interface LeaderboardStudent {
   avatar: string;
   level: number;
   totalXP: number;
-  currentStreak: number;
   section: string;
   rank: {
     global: number;
@@ -76,7 +75,6 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
             : (entry.photo || ''),
         level: entry.level,
         totalXP: entry.xp,
-        currentStreak: 0,
         section: myClassSection || 'Grade 11 - STEM A',
         rank: {
           global: entry.rank,

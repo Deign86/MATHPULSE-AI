@@ -185,7 +185,6 @@ class UserProvisioningService:
                     "level": 1,
                     "currentXP": 0,
                     "totalXP": 0,
-                    "streak": 0,
                     "atRiskSubjects": [],
                     "hasTakenDiagnostic": False,
                 }

@@ -17,8 +17,6 @@ interface RightSidebarProps {
   currentXP: number;
   overallXP?: number;
   xpToNextLevel: number;
-  streak: number;
-  streakHistory?: string[];
   onLogout?: () => void;
   onOpenProfile?: () => void;
   userName?: string;
@@ -103,8 +101,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   userPhoto,
   currentXP,
   xpToNextLevel,
-  streak,
-  streakHistory = [],
 }) => {
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -247,11 +243,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                 Review more lessons to earn more XP!
               </TooltipContent>
             </Tooltip>
-            <div className="w-px h-3 bg-white/35" />
-            <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
-              <Flame size={12} className="text-[#FF8B8B]" />
-              <span className="font-bold">{streak}d</span>
-            </div>
           </div>
 
           <div>
@@ -276,7 +267,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <DailyChallengeWidget streakHistory={streakHistory} onNavigateToQuizBattle={onNavigateToQuizBattle} userPhoto={userPhoto} />
+        <DailyChallengeWidget onNavigateToQuizBattle={onNavigateToQuizBattle} userPhoto={userPhoto} />
       </motion.div>
 
       <motion.div

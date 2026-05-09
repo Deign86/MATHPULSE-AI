@@ -138,8 +138,6 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
       level: 1,
       currentXP: 0,
       totalXP: 0,
-      streak: 0,
-      streakHistory: [],
       atRiskSubjects: [],
       hasTakenDiagnostic: false,
       iarAssessmentState: 'not_started',
