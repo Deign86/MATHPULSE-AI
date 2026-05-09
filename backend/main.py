@@ -531,6 +531,24 @@ def _init_firebase_admin() -> None:
         logger.warning("firebase-admin is not available; protected API endpoints will reject requests.")
         return
 
+    # Helper: load Firebase service account JSON from env var OR HF Spaces secret file
+    def _load_firebase_sa_json() -> Optional[str]:
+        # 1. Environment variable (standard deployment)
+        if FIREBASE_SERVICE_ACCOUNT_JSON:
+            return FIREBASE_SERVICE_ACCOUNT_JSON
+        # 2. HF Spaces secret mount path (secrets mounted as files at /secret/)
+        hf_space_secret_path = "/secret/FIREBASE_SERVICE_ACCOUNT_JSON"
+        if os.path.exists(hf_space_secret_path):
+            try:
+                with open(hf_space_secret_path, "r") as f:
+                    content = f.read().strip()
+                if content:
+                    logger.info(f"Loaded FIREBASE_SERVICE_ACCOUNT_JSON from HF Spaces secret file: {hf_space_secret_path}")
+                    return content
+            except Exception as e:
+                logger.warning(f"Failed to read HF Spaces secret file {hf_space_secret_path}: {e}")
+        return None
+
     try:
         if not firebase_admin._apps:  # type: ignore[attr-defined]
             init_options: Dict[str, Any] = {}
@@ -538,12 +556,17 @@ def _init_firebase_admin() -> None:
             if FIREBASE_AUTH_PROJECT_ID:
                 init_options["projectId"] = FIREBASE_AUTH_PROJECT_ID
 
-            if FIREBASE_SERVICE_ACCOUNT_JSON:
-                service_account_payload = json.loads(FIREBASE_SERVICE_ACCOUNT_JSON)
+            sa_json = _load_firebase_sa_json()
+            if sa_json:
+                service_account_payload = json.loads(sa_json)
                 credentials_obj = cast(Any, firebase_admin).credentials.Certificate(service_account_payload)
+                logger.info("Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT_JSON")
             elif FIREBASE_SERVICE_ACCOUNT_FILE:
                 credentials_obj = cast(Any, firebase_admin).credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_FILE)
+                logger.info("Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT_FILE")
 
+            # Only initialize if we have credentials or at minimum a project ID
+            # Without credentials, Firebase init succeeds but ALL Firestore calls will fail
             if credentials_obj and init_options:
                 firebase_admin.initialize_app(credentials_obj, options=init_options)  # type: ignore[union-attr]
             elif credentials_obj:
@@ -551,7 +574,15 @@ def _init_firebase_admin() -> None:
             elif init_options:
                 firebase_admin.initialize_app(options=init_options)  # type: ignore[union-attr]
             else:
-                firebase_admin.initialize_app()  # type: ignore[union-attr]
+                # No credentials AND no project ID — Firebase will NOT be usable
+                logger.error(
+                    "Firebase Admin SDK could not initialize: no credentials found. "
+                    "Set FIREBASE_SERVICE_ACCOUNT_JSON env var, FIREBASE_SERVICE_ACCOUNT_FILE path, "
+                    "or ensure HF Spaces secret is mounted at /secret/FIREBASE_SERVICE_ACCOUNT_JSON. "
+                    "Firestore operations will fail."
+                )
+                return
+
         _firebase_ready = True
         if FIREBASE_AUTH_PROJECT_ID:
             logger.info(f"Firebase Admin SDK initialized for API auth verification (projectId={FIREBASE_AUTH_PROJECT_ID})")
