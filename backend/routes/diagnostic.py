@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import traceback
 import uuid
 from collections import defaultdict
@@ -224,7 +225,33 @@ def _build_rag_context(strand: str) -> str:
     return "\n".join(rag_context_parts)
 
 
-def _build_system_prompt(strand: str, grade_level: str, rag_context: str) -> str:
+async def _get_previous_questions(
+    user_id: str,
+    firestore_client,
+    max_attempts: int = 3,
+) -> list[str]:
+    """Fetch question texts from the user's last N assessment attempts to avoid duplicates."""
+    try:
+        attempts_ref = (
+            firestore_client.collection("assessmentResults")
+            .document(user_id)
+            .collection("attempts")
+            .order_by("completedAt", direction=fs.Query.DESCENDING)
+            .limit(max_attempts)
+        )
+        docs = attempts_ref.stream()
+        previous_texts: list[str] = []
+        for doc in docs:
+            data = doc.to_dict()
+            answers = data.get("answers", [])
+            for a in answers:
+                previous_texts.append(a.get("questionText", ""))
+        return previous_texts
+    except Exception:
+        return []
+
+
+def _build_system_prompt(strand: str, grade_level: str, rag_context: str, variance_seed: int = 0, previous_questions: list[str] | None = None) -> str:
     strand_upper = strand.upper()
     coverage_text = _get_strand_coverage(strand_upper)
 
@@ -239,6 +266,26 @@ Do not invent formulas, definitions, or problem types not found in the
 reference material. If the reference material is insufficient for a topic,
 use only standard DepEd SHS competencies for that strand.
 """
+
+    previous_block = ""
+    if previous_questions:
+        previous_lines = [
+            "PREVIOUS QUESTIONS TO AVOID (DO NOT REPEAT):",
+            "The following questions were already asked to this student.",
+            "You MUST NOT reuse or rephrase any of these:",
+        ]
+        for i, q in enumerate(previous_questions[:20], 1):
+            previous_lines.append(f"{i}. {q}")
+        previous_block = "\n".join(previous_lines) + "\n\n"
+
+    variance_block = ""
+    if variance_seed > 0:
+        variance_block = (
+            f"VARIANCE SEED: {variance_seed}\n"
+            "To ensure unique questions, use this seed to generate DIFFERENT "
+            "numerical values, problem contexts, and variable names compared "
+            "to the standard template.\n\n"
+        )
 
     return f"""SYSTEM ROLE:
 You are MathPulse AI's Diagnostic Test Generator. Your job is to create a
@@ -269,7 +316,7 @@ Statistics:      SP-RV-01, SP-RV-02, SP-NORM-01, SP-NORM-02,
                  SP-SAMP-01, SP-SAMP-03, SP-HYP-01
 Finite Math:     FM1-MAT-01, FM2-PROB-01, FM2-PROB-02
 
-DIFFICULTY DISTRIBUTION (across all 15 questions):
+{previous_block}{variance_block}DIFFICULTY DISTRIBUTION (across all 15 questions):
   - Easy   (Bloom: remembering / understanding): 6 questions (40%)
   - Medium (Bloom: applying / analyzing):         6 questions (40%)
   - Hard   (Bloom: evaluating / creating):        3 questions (20%)
@@ -350,10 +397,40 @@ def _parse_questions_response(raw_response: str) -> List[Dict[str, Any]]:
     raise ValueError("Could not parse questions from AI response")
 
 
-async def _generate_questions(strand: str, grade_level: str) -> tuple[str, List[Dict[str, Any]]]:
+async def _generate_questions(
+    strand: str,
+    grade_level: str,
+    user_id: str = "",
+    firestore_client=None,
+) -> tuple[str, List[Dict[str, Any]]]:
     test_id = f"DX-{uuid.uuid4().hex[:12]}"
+    
+    # Generate variance seed based on user's attempt count and fetch previous questions
+    variance_seed = 0
+    previous_questions: list[str] = []
+    
+    if firestore_client and user_id:
+        try:
+            attempts_ref = (
+                firestore_client.collection("assessmentResults")
+                .document(user_id)
+                .collection("attempts")
+            )
+            attempts = attempts_ref.stream()
+            attempt_count = sum(1 for _ in attempts)
+            variance_seed = int(time.time()) % 10000 + attempt_count * 137
+            previous_questions = await _get_previous_questions(user_id, firestore_client)
+        except Exception:
+            pass
+    
     rag_context = _build_rag_context(strand)
-    system_prompt = _build_system_prompt(strand, grade_level, rag_context)
+    system_prompt = _build_system_prompt(
+        strand,
+        grade_level,
+        rag_context,
+        variance_seed=variance_seed,
+        previous_questions=previous_questions,
+    )
     user_message = f"Generate 15 diagnostic questions for a Grade 11 {strand} student."
 
     for attempt in range(2):
@@ -426,9 +503,12 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
+        firestore_client = fs.client()
         test_id, questions = await _generate_questions(
             request.strand,
             request.grade_level,
+            user_id=user.uid,
+            firestore_client=firestore_client,
         )
     except HTTPException:
         raise
@@ -437,7 +517,6 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
         raise HTTPException(status_code=500, detail="Assessment generation failed. Please try again.")
 
     try:
-        firestore_client = fs.client()
         stored = await _store_diagnostic_session(
             firestore_client,
             user.uid,
