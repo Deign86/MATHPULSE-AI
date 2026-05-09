@@ -5,7 +5,6 @@ This sets all required backend secrets:
 - FIREBASE_SERVICE_ACCOUNT_JSON (from .secrets/firebase-service-account.json)
 - DEEPSEEK_API_KEY
 - DEEPSEEK_BASE_URL
-- INFERENCE_PROVIDER
 """
 
 from __future__ import annotations
@@ -51,15 +50,26 @@ if not DEEPSEEK_API_KEY:
 print(f"Setting secrets for {SPACE_ID}...")
 
 # Secrets (sensitive values - use add_space_secret)
+# NOTE: INFERENCE_PROVIDER is set as a VARIABLE, not a secret, to avoid collision
 secrets = {
     "FIREBASE_SERVICE_ACCOUNT_JSON": FIREBASE_SERVICE_ACCOUNT_JSON,
     "DEEPSEEK_API_KEY": DEEPSEEK_API_KEY,
     "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
-    "INFERENCE_PROVIDER": "deepseek",
 }
 
 for key, value in secrets.items():
     try:
+        # Delete existing secret/variable first to avoid collision errors
+        try:
+            api.delete_space_secret(SPACE_ID, key)
+            print(f"  [CLEANUP] Deleted existing secret: {key}")
+        except Exception:
+            pass  # Secret didn't exist, that's fine
+        try:
+            api.delete_space_variable(SPACE_ID, key)
+            print(f"  [CLEANUP] Deleted existing variable: {key}")
+        except Exception:
+            pass  # Variable didn't exist, that's fine
         api.add_space_secret(SPACE_ID, key, value)
         print(f"  [OK] Set secret: {key}")
     except Exception as e:
@@ -68,7 +78,6 @@ for key, value in secrets.items():
 
 # Variables (non-sensitive config)
 variables = {
-    "HF_TOKEN": HF_TOKEN,
     "INFERENCE_INTERACTIVE_TIMEOUT_SEC": "120",
     "INFERENCE_MAX_NEW_TOKENS": "2048",
     "INFERENCE_CHAT_HARD_PROMPT_CHARS": "32000",
