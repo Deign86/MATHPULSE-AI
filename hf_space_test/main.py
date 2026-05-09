@@ -11518,6 +11518,15 @@ def _reset_student_testing_data_admin(
         deleted_docs += _testing_reset_try_delete_subcollection(client, "assessmentResults", effective_lrn, "attempts")
         deleted_docs += _testing_reset_try_delete_subcollection(client, "assessments", effective_lrn, "attempts")
 
+    # Delete additional student activity collections
+    deleted_docs += _testing_reset_try_delete_by_field(client, "xpActivities", "userId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "tasks", "studentId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "friendships", "userId1", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "friendships", "userId2", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "friendRequests", "fromUserId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "friendRequests", "toUserId", uid)
+    deleted_docs += _testing_reset_try_delete_by_field(client, "quizHistory", "userId", uid)
+
     updated_docs += _testing_reset_try_set_doc(
         client.collection("achievements").document(uid),
         {
