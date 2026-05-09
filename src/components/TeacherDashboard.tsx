@@ -5,7 +5,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -14,7 +14,7 @@ import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getClassroomsByTeacher,
@@ -1271,6 +1271,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
+          {activeView !== 'analytics' && (
           <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
@@ -1286,7 +1287,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <div>
                 <h1 className="text-xl font-display font-semibold text-foreground leading-tight">
                   {activeView === 'dashboard' && 'Teacher Dashboard'}
-                  {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
                   {activeView === 'intervention' && 'Student Intervention'}
                   {activeView === 'topic_mastery' && 'Topic Mastery'}
                   {activeView === 'competency' && 'Student Competency'}
@@ -1298,7 +1298,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                  {activeView === 'analytics' && 'Deep dive into class performance'}
                   {activeView === 'intervention' && selectedStudent?.name}
                   {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
@@ -1339,6 +1338,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             </div>
           </div>
         </header>
+        )}
 
         {/* View Content */}
         <main className={`${activeView === 'dashboard' ? 'flex-1' : 'w-full'} overflow-y-auto`}>
@@ -1371,6 +1371,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 teacherOptions={teacherDirectory}
                 managerUpdating={managerUpdating}
                 onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
               />
             )}
             {activeView === 'analytics' && !effectiveAnalyticsClass && (
@@ -1724,41 +1726,48 @@ const DashboardView: React.FC<{
   );
 };
 
-const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentView; onViewStudent: (s: StudentView) => void }) => (
-  <motion.div
-    whileHover={{ scale: 1.02 }}
-    onClick={() => onViewStudent(student)}
-    className={`p-4 rounded-2xl border-2 cursor-pointer hover:shadow-md transition-all ${getRiskColor(student.riskLevel)}`}
-  >
-    <div className="flex items-center gap-3 mb-3">
-      <img
-        src={student.avatar}
-        alt={student.name}
-        className="w-12 h-12 rounded-xl object-cover border-2 border-current"
-      />
-      <div className="flex-1">
-        <h4 className="font-semibold text-foreground">{student.name}</h4>
-        <p className="text-xs text-muted-foreground">{student.lastActive}</p>
-      </div>
-    </div>
+const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentView; onViewStudent: (s: StudentView) => void }) => {
+  const getTheme = () => {
+    if (student.riskLevel === 'high') {
+      return { borderLeft: 'border-l-rose-500', bgAvatar: 'bg-rose-50 text-rose-600 border-rose-100/50', badge: 'text-rose-600 bg-rose-50', progress: 'bg-rose-500' };
+    }
+    if (student.riskLevel === 'medium') {
+      return { borderLeft: 'border-l-amber-500', bgAvatar: 'bg-amber-50 text-amber-600 border-amber-100/50', badge: 'text-amber-600 bg-amber-50', progress: 'bg-amber-500' };
+    }
+    return { borderLeft: 'border-l-emerald-500', bgAvatar: 'bg-emerald-50 text-emerald-600 border-emerald-100/50', badge: 'text-emerald-600 bg-emerald-50', progress: 'bg-emerald-500' };
+  };
 
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-xs font-semibold text-muted-foreground">Avg Score</span>
-        <span className="text-xs font-semibold text-foreground">{student.avgScore}%</span>
+  const theme = getTheme();
+  
+  return (
+    <div
+      onClick={() => onViewStudent(student)}
+      className={`p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] ${theme.borderLeft} hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between`}
+    >
+      <div className="flex justify-between items-start mb-[10px]">
+        <div className="flex gap-[8px] items-center min-w-0 pr-2">
+          {student.avatar ? (
+            <img src={student.avatar} alt={student.name} className={`w-8 h-8 rounded-full border ${theme.bgAvatar.split(' ')[2]} object-cover shrink-0`} />
+          ) : (
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0 border ${theme.bgAvatar}`}>
+              {student.name.substring(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">{student.name}</p>
+            <p className="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+              <Clock className="w-[10px] h-[10px] shrink-0" /> {student.lastActive || 'recently'}
+            </p>
+          </div>
+        </div>
+        <span className={`font-semibold text-[11px] px-[6px] py-[2px] rounded-[14px] shrink-0 ${theme.badge}`}>{student.avgScore}%</span>
       </div>
-      <div className="h-2 bg-card rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${student.avgScore}%` }}>
-        <div
-          className={`h-full rounded-full ${
-            student.riskLevel === 'high' ? 'bg-[#FF8B8B]' :
-            student.riskLevel === 'medium' ? 'bg-[#F08386]' :
-            'bg-[#75D06A]'
-          }`}
-        ></div>
+      <div className="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+        <div className={`h-full rounded-full ${theme.progress}`} style={{ width: `${student.avgScore}%` }}></div>
       </div>
     </div>
-  </motion.div>
-));
+  );
+});
 
 // Analytics View
 const AnalyticsView: React.FC<{
@@ -1771,6 +1780,8 @@ const AnalyticsView: React.FC<{
   teacherOptions: TeacherDirectoryOption[];
   managerUpdating: boolean;
   onAssignManager: (manager: TeacherDirectoryOption) => void | Promise<void>;
+  onOpenNotifications: () => void;
+  onOpenProfile?: () => void;
 }> = ({
   selectedClass,
   students,
@@ -1781,9 +1792,13 @@ const AnalyticsView: React.FC<{
   teacherOptions,
   managerUpdating,
   onAssignManager,
+  onOpenNotifications,
+  onOpenProfile,
 }) => {
+  const { currentUser, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedManagerId, setSelectedManagerId] = useState('');
+  const [filterType, setFilterType] = useState('All');
 
   useEffect(() => {
     setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
@@ -1791,15 +1806,24 @@ const AnalyticsView: React.FC<{
 
   const visibleStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return students;
-    return students.filter((student) => {
-      return (
-        student.name.toLowerCase().includes(query)
-        || (student.lrn || '').toLowerCase().includes(query)
-        || (student.weakestTopic || '').toLowerCase().includes(query)
-      );
-    });
-  }, [searchTerm, students]);
+    let filtered = students;
+    if (query) {
+      filtered = filtered.filter((student) => {
+        return (
+          student.name.toLowerCase().includes(query)
+          || (student.lrn || '').toLowerCase().includes(query)
+          || (student.weakestTopic || '').toLowerCase().includes(query)
+        );
+      });
+    }
+
+    if (filterType === 'Good') {
+      filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+    } else if (filterType === 'Risk') {
+      filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+    }
+    return filtered;
+  }, [searchTerm, students, filterType]);
 
   const averageCompletion = useMemo(() => {
     if (students.length === 0) return 0;
@@ -1821,16 +1845,7 @@ const AnalyticsView: React.FC<{
   }, [students]);
 
   const attentionStudents = useMemo(() => {
-    return [...students]
-      .filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65)
-      .sort((a, b) => {
-        if (a.riskLevel !== b.riskLevel) {
-          const rank = { high: 3, medium: 2, low: 1 };
-          return rank[b.riskLevel] - rank[a.riskLevel];
-        }
-        return a.avgScore - b.avgScore;
-      })
-      .slice(0, 6);
+    return [...students].filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65);
   }, [students]);
 
   const selectedManager = useMemo(
@@ -1857,193 +1872,255 @@ const AnalyticsView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-[24px] xl:p-[32px] space-y-[24px] h-full overflow-y-auto"
     >
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-semibold mb-6 transition-colors group"
-      >
-        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Dashboard
-      </button>
+      {/* Top Navigation & Actions */}
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+            <ChevronLeft className="w-4 h-4" />
+            Back to Dashboard
+        </button>
 
-      <div className="bg-card rounded-2xl border border-border p-5 shadow-sm mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-display font-semibold text-foreground">{selectedClass.name}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${getRiskBadge(selectedClass.riskLevel)}`}>
-                {selectedClass.riskLevel === 'high' ? 'High Risk Cohort' : selectedClass.riskLevel === 'medium' ? 'Medium Risk Cohort' : 'Low Risk Cohort'}
-              </span>
-              {classBadges.map((badge) => (
-                <span key={badge} className="px-3 py-1 rounded-lg text-xs font-semibold border bg-[#9956DE]/12 border-[#9956DE]/30 text-[#9956DE]">
-                  {badge}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}
-            </p>
-          </div>
+        <div className="flex items-center gap-3">
+            {/* Notification Bell */}
+            <button onClick={onOpenNotifications} className="relative w-9 h-9 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]">
+                <Bell className="w-4 h-4" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+            </button>
 
-          <div className="min-w-[260px] bg-muted rounded-xl p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Section Manager</p>
-            <div className="flex gap-2">
-              <select
-                id="analytics-section-manager-select"
-                name="analytics-section-manager-select"
-                aria-label="Select section manager"
-                value={selectedManagerId || ''}
-                onChange={(event) => setSelectedManagerId(event.target.value)}
-                className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#9956DE]/40 transition-colors"
-              >
-                <option value="">Select teacher</option>
-                {teacherOptions.map((teacher) => (
-                  <option key={teacher.uid} value={teacher.uid}>
-                    {teacher.name} ({teacher.email})
-                  </option>
-                ))}
-              </select>
-              <Button
-                onClick={handleAssignManager}
-                disabled={!selectedManagerId || managerUpdating}
-                className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
-              >
-                {managerUpdating ? <Skeleton className="h-4 w-12 bg-white/35" /> : 'Assign'}
-              </Button>
+            {/* Profile Pill */}
+            <div onClick={onOpenProfile} className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors hover:scale-[1.02]">
+                <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                    <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.name || currentUser?.displayName || 'Teacher')}&background=random`} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-[13px] font-semibold text-[#1e293b]">{userProfile?.name || currentUser?.displayName || 'Test Teacher'}</span>
             </div>
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Class Average</p>
-          <p className="text-2xl font-display font-semibold text-[#9956DE]">{selectedClass.avgScore}%</p>
+      {/* Header Card */}
+      <header className="bg-gradient-to-r from-indigo-100/90 via-indigo-50/80 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[24px] lg:p-[32px] border border-indigo-50 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-[6px] h-full bg-[#6366f1] rounded-l-[18px]"></div>
+          
+          {/* Left Side Info */}
+          <div className="shrink-0">
+              <h1 className="text-[26px] font-semibold text-[#1e293b] mb-3 tracking-tight">{selectedClass.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                  {classBadges.map((badge, idx) => {
+                      if (idx === 0) return <span key={badge} className="px-3 py-1 bg-rose-50 text-rose-600 text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-rose-100/50">{badge}</span>;
+                      return <span key={badge} className="px-3 py-1 bg-purple-50 text-purple-600 text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-purple-100/50">{badge}</span>;
+                  })}
+              </div>
+              <p className="text-[13px] text-[#64748b]">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
+          </div>
+
+          {/* Right Side Section Manager */}
+          <div className="bg-[#f8fafc]/80 border border-[#f1f5f9] rounded-[18px] p-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] backdrop-blur-[12px] flex flex-col w-full md:w-auto shrink-0">
+              <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 ml-1">Section Manager</label>
+              <div className="flex items-center gap-3">
+                  <div className="relative w-full md:w-[320px]">
+                      <select
+                        value={selectedManagerId || ''}
+                        onChange={(e) => setSelectedManagerId(e.target.value)}
+                        className="appearance-none bg-white border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-lg pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] w-full shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer"
+                      >
+                          <option value="">Select teacher</option>
+                          {teacherOptions.map((teacher) => (
+                            <option key={teacher.uid} value={teacher.uid}>
+                              {teacher.name} ({teacher.email})
+                            </option>
+                          ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                  <button
+                    onClick={handleAssignManager}
+                    disabled={!selectedManagerId || managerUpdating}
+                    className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[13px] font-semibold rounded-full px-6 py-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50"
+                  >
+                      {managerUpdating ? 'Updating...' : 'Assign'}
+                  </button>
+              </div>
+          </div>
+      </header>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
+        <div className="bg-gradient-to-br from-indigo-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
+            <Target className="w-[16px] h-[16px] text-[#6366f1] group-hover:scale-110 transition-transform" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Class Average</span>
+          </div>
+          <div className="text-[26px] font-semibold text-[#4f46e5]">{selectedClass.avgScore}%</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Completion Rate</p>
-          <p className="text-2xl font-display font-semibold text-[#75D06A]">{averageCompletion}%</p>
+        <div className="bg-gradient-to-br from-emerald-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-emerald-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
+            <CheckCircle className="w-[16px] h-[16px] text-emerald-500 group-hover:scale-110 transition-transform" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Completion Rate</span>
+          </div>
+          <div className="text-[26px] font-semibold text-emerald-600">{averageCompletion}%</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Participation</p>
-          <p className="text-2xl font-display font-semibold text-[#9956DE]">{participationRate}%</p>
+        <div className="bg-gradient-to-br from-purple-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-purple-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
+            <Users className="w-[16px] h-[16px] text-purple-500 group-hover:scale-110 transition-transform" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Participation</span>
+          </div>
+          <div className="text-[26px] font-semibold text-purple-600">{participationRate}%</div>
         </div>
-        <div className="bg-card border border-[#FF8B8B]/35 rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Needs Attention</p>
-          <p className="text-2xl font-display font-semibold text-[#FF8B8B]">{attentionStudents.length}</p>
+        <div className="bg-gradient-to-br from-rose-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-rose-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
+            <AlertTriangle className="w-[16px] h-[16px] text-rose-500 group-hover:scale-110 transition-transform" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Needs Attention</span>
+          </div>
+          <div className="text-[26px] font-semibold text-rose-600">{attentionStudents.length} <span className="text-[13px] text-[#64748b]">students</span></div>
         </div>
       </div>
 
-      {/* Split View */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-[24px] h-auto xl:h-[600px]">
         {/* Left Column - Student List */}
-        <div className="xl:col-span-2 bg-card rounded-2xl p-6 shadow-sm border border-border">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-display font-semibold text-foreground">Students ({visibleStudents.length})</h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <Input
-                id="analytics-student-search"
-                name="analytics-student-search"
-                aria-label="Search students"
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-40 pl-9 pr-4 py-2 rounded-xl border-border text-sm"
-              />
+        <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
+            <div className="p-5 border-b border-[#f1f5f9] shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
+                </div>
+                <div className="flex items-center bg-white px-4 py-2 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
+                    <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#64748b]"
+                    />
+                </div>
+                <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+                    <button
+                      onClick={() => setFilterType('All')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
+                    >All Students</button>
+                    <button
+                      onClick={() => setFilterType('Good')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
+                    >Top Performers</button>
+                    <button
+                      onClick={() => setFilterType('Risk')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
+                    >Needs Attention</button>
+                </div>
             </div>
-          </div>
-
-          {visibleStudents.length === 0 ? (
-            <div className="border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground">
-              No students match your search.
+            <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col no-scrollbar">
+                <Virtuoso
+                  style={{ height: '100%' }}
+                  data={visibleStudents}
+                  className="no-scrollbar"
+                  itemContent={(_, student) => (
+                      <div className="py-[6px] px-[8px]">
+                          <StudentCard student={student} onViewStudent={onViewStudent} />
+                      </div>
+                  )}
+                  computeItemKey={(index, student) => buildStudentViewKey(student)}
+                />
             </div>
-          ) : (
-            <Virtuoso
-              style={{ height: '700px' }}
-              data={visibleStudents}
-              itemContent={(_, student) => <StudentCard student={student} onViewStudent={onViewStudent} />}
-              computeItemKey={(index, student) => buildStudentViewKey(student)}
-            />
-          )}
         </div>
 
-        {/* Right Column - Charts */}
-        <div className="xl:col-span-3 space-y-6">
-          {/* Risk Distribution */}
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-display font-semibold text-foreground mb-5">Risk Distribution</h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={riskDistribution}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                  {riskDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        {/* Right Column - Charts & Lists */}
+        <div className="xl:col-span-2 flex flex-col gap-[24px] h-full overflow-y-auto no-scrollbar pb-10 xl:pb-0">
+            {/* Top Row Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                {/* Visual Chart 1: Risk Distribution */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b]">Risk Distribution</h3>
+                        <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div className="relative w-full flex-1 min-h-[180px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={riskDistribution}>
+                                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
+                                    {riskDistribution.map((entry, index) => {
+                                        const mapping: Record<string, string> = { 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981' };
+                                        return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
+                                    })}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
 
-          {/* Topic Performance */}
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-display font-semibold text-foreground mb-5">Topic Performance</h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={topicPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
-                <Tooltip />
-                <Bar dataKey="score" fill="#9956DE" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-semibold text-foreground mb-3">Top Performers</h3>
-              <div className="space-y-2">
-                {topPerformers.slice(0, 4).map((student) => (
-                  <button
-                    key={`top-${buildStudentViewKey(student)}`}
-                    onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-border px-3 py-2 hover:bg-[#9956DE]/12 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-semibold text-[#75D06A]">{student.avgScore}%</span>
-                  </button>
-                ))}
-                {topPerformers.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No students available yet.</p>
-                )}
-              </div>
+                {/* Visual Chart 2: Topic Performance */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b]">Topic Performance</h3>
+                        <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div className="relative w-full flex-1 min-h-[180px] -ml-8">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={topicPerformance} layout="vertical" margin={{ top: 0, right: 10, left: 40, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
+                                <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
+                                <YAxis dataKey="topic" type="category" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 600 }} dx={-10} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={28}>
+                                    {topicPerformance.map((entry, index) => {
+                                        const colors = ['#6366f1', '#a855f7', '#10b981', '#f59e0b', '#ec4899'];
+                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                    })}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
             </div>
 
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-semibold text-foreground mb-3">Students Needing Attention</h3>
-              <div className="space-y-2">
-                {attentionStudents.slice(0, 4).map((student) => (
-                  <button
-                    key={`attention-${buildStudentViewKey(student)}`}
-                    onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-[#FF8B8B]/35 bg-[#FF8B8B]/14 px-3 py-2 hover:bg-[#FF8B8B]/20 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-semibold text-[#FF8B8B]">{student.riskLevel.toUpperCase()}</span>
-                  </button>
-                ))}
-                {attentionStudents.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No urgent students in this class right now.</p>
-                )}
-              </div>
+            {/* Bottom Row Lists */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                {/* Top Performers List */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-emerald-500" />
+                            Top Performers
+                        </h3>
+                    </div>
+                    <div className="space-y-[8px]">
+                        {topPerformers.map((student) => (
+                            <div key={`top-${student.id}`} onClick={() => onViewStudent(student)} className="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
+                                <span className="text-[13px] font-semibold text-emerald-600">{student.avgScore}%</span>
+                            </div>
+                        ))}
+                        {topPerformers.length === 0 && <p className="text-xs text-muted-foreground">No students available yet.</p>}
+                    </div>
+                </div>
+
+                {/* Needs Attention List */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-rose-500" />
+                            Needs Attention
+                        </h3>
+                    </div>
+                    <div className="space-y-[8px]">
+                        {attentionStudents.slice(0, 4).map((student) => {
+                            const isHigh = student.riskLevel === 'high';
+                            const theme = isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';
+                            return (
+                                <div key={`attn-${student.id}`} onClick={() => onViewStudent(student)} className={`flex justify-between items-center p-3 rounded-[14px] border group hover:scale-[1.02] transition-transform cursor-pointer ${theme}`}>
+                                    <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
+                                    <span className={`text-[11px] font-semibold bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${isHigh ? 'text-rose-600' : 'text-amber-600'}`}>
+                                        {isHigh ? 'HIGH RISK' : 'MEDIUM RISK'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                        {attentionStudents.length === 0 && <p className="text-xs text-muted-foreground">No urgent students.</p>}
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
       </div>
     </motion.div>
