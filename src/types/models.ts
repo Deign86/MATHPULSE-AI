@@ -334,9 +334,14 @@ export interface Achievement {
   id: string;
   title: string;
   description: string;
+  /** Lucide icon component or icon name string (for legacy compatibility) */
   icon: string;
   xpReward: number;
-  condition: string; // e.g., "complete_10_lessons"
+  condition: string; // e.g. "complete_10_lessons"
+  /** Icon color as Tailwind class, e.g. "text-yellow-500" */
+  iconColor?: string;
+  /** Achievement category */
+  category?: string;
   unlockedAt?: Date;
 }
 

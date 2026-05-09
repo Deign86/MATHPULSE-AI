@@ -138,6 +138,8 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
       level: 1,
       currentXP: 0,
       totalXP: 0,
+      streak: 0,
+      streakHistory: [],
       atRiskSubjects: [],
       hasTakenDiagnostic: false,
       iarAssessmentState: 'not_started',
@@ -148,13 +150,31 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
       overallRisk: 'Low',
       assessmentDismissed: false,
       initialAssessmentCompleted: false,
+      hasCompletedInitialAssessment: false,
       assessmentResults: null,
       assessmentCompletedAt: null,
+      initialAssessmentCompletedAt: deleteField(),
       // Additional assessment fields to reset
       diagnosticCompleted: false,
       lastAssessmentDate: deleteField(),
       assessmentAttemptCount: 0,
       initialProficiencyLevel: deleteField(),
+      iarQuestionSetVersion: deleteField(),
+      iarTopicClassifications: deleteField(),
+      topicScores: deleteField(),
+      priorityTopics: deleteField(),
+      recommendedPace: deleteField(),
+      g12ReadinessIndicators: deleteField(),
+      riskFlags: deleteField(),
+      iarMode: deleteField(),
+      lastAssessmentType: deleteField(),
+      startingQuarterG11: deleteField(),
+      recommendedNextTopicGroupId: deleteField(),
+      recommendationRationale: deleteField(),
+      recommendationReasonCode: deleteField(),
+      grade12TransitionGate: deleteField(),
+      currentCurriculumVersionSetId: deleteField(),
+      unlockCriteriaVersion: deleteField(),
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -169,14 +189,17 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   // on next load sees no completed assessment and shows the modal.
   await deleteDoc(doc(db, 'diagnosticResults', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
   await deleteDoc(doc(db, 'competencyProfiles', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+  await deleteDoc(doc(db, 'assessments', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
 
   // Delete assessment subcollection documents
   deletedDocs += await deleteSubcollectiondocs(`assessmentResults/${uid}`, 'attempts');
+  deletedDocs += await deleteSubcollectiondocs(`assessments/${uid}`, 'attempts');
   deletedDocs += await deleteSubcollectiondocs(`studentProgress/${uid}`, 'diagnostics');
   deletedDocs += await deleteSubcollectiondocs(`assessmentQuestionHistory/${uid}`, 'questions');
 
   if (effectiveLrn !== uid) {
     deletedDocs += await tryDeleteByField('notifications', 'userId', effectiveLrn);
+    await deleteDoc(doc(db, 'diagnosticResults', effectiveLrn)).then(() => { deletedDocs += 1; }).catch(() => undefined);
   }
 
   await setDoc(
