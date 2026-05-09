@@ -16,6 +16,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
+import { checkAndAwardAchievements } from './achievementCheckerService';
+import { ACHIEVEMENT_MAP } from '../config/achievements';
 
 // Award XP and handle level ups
 export const awardXP = async (
@@ -238,70 +240,28 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
 
     const newAchievements: Achievement[] = [];
 
-    // Define achievement conditions
-    const achievementConditions = [
-      {
-        id: 'first_lesson',
-        condition: (progressData.totalLessonsCompleted || 0) >= 1,
-        title: 'First Steps',
-        description: 'Complete your first lesson',
-        icon: 'target',
-        xpReward: 50,
-      },
-      {
-        id: 'ten_lessons',
-        condition: (progressData.totalLessonsCompleted || 0) >= 10,
-        title: 'Dedicated Learner',
-        description: 'Complete 10 lessons',
-        icon: 'book-open',
-        xpReward: 200,
-      },
-      {
-        id: 'perfect_score',
-        condition: progressData.quizAttempts?.some((q: { score: number }) => q.score === 100) || false,
-        title: 'Perfect Score',
-        description: 'Get 100% on a quiz',
-        icon: 'star',
-        xpReward: 150,
-      },
-      {
-        id: 'week_streak',
-        condition: (progressData.totalLessonsCompleted || 0) >= 7,
-        title: 'Week Warrior',
-        description: 'Complete lessons on 7 different days',
-        icon: 'flame',
-        xpReward: 300,
-      },
-      {
-        id: 'level_five',
-        condition: (userData.level || 0) >= 5,
-        title: 'Rising Star',
-        description: 'Reach level 5',
-        icon: 'star',
-        xpReward: 250,
-      },
-    ];
+    // Call the new service to evaluate and award achievements
+    const newlyUnlocked = await checkAndAwardAchievements(userId, progressData, userData);
 
-    // Check each condition
-    for (const achievement of achievementConditions) {
-      const alreadyUnlocked = unlockedAchievements.some((a: { id: string }) => a.id === achievement.id);
+    for (const unlocked of newlyUnlocked) {
+      const config = ACHIEVEMENT_MAP.get(unlocked.id);
       
-      if (!alreadyUnlocked && achievement.condition) {
-        const newAchievement: Achievement = {
-          id: achievement.id,
-          title: achievement.title,
-          description: achievement.description,
-          icon: achievement.icon,
-          xpReward: achievement.xpReward,
-          condition: achievement.id,
-          unlockedAt: new Date(),
-        };
+      const newAchievement: Achievement = {
+        id: unlocked.id,
+        title: unlocked.title,
+        description: unlocked.description,
+        icon: config?.icon?.name ?? unlocked.id,
+        xpReward: config?.xpReward ?? unlocked.xpReward,
+        condition: unlocked.id,
+        iconColor: unlocked.iconColor,
+        category: unlocked.category,
+        unlockedAt: unlocked.unlockedAt,
+      };
 
-        newAchievements.push(newAchievement);
+      newAchievements.push(newAchievement);
 
-        // Award XP for achievement
-        await awardXP(userId, achievement.xpReward, 'achievement_unlocked', `Unlocked: ${achievement.title}`);
-      }
+      // Award XP for achievement
+      await awardXP(userId, newAchievement.xpReward, 'achievement_unlocked', `Unlocked: ${newAchievement.title}`);
     }
 
     // Save new achievements

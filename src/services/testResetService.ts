@@ -301,26 +301,6 @@ export async function resetTestingDataForRole(
     throw new Error('Missing user id for reset.');
   }
 
-  if (role === 'teacher' || role === 'admin') {
-    return resetTestingDataViaBackend(params);
-  }
-
-  let result: { deletedDocs: number; updatedDocs: number };
-
-  if (role === 'student') {
-    result = await resetStudentTestingData(uid, lrn);
-  } else if (role === 'teacher') {
-    result = await resetTeacherTestingData(uid);
-  } else {
-    result = await resetAdminTestingData(uid);
-  }
-
-  const summary = `${role} reset complete: ${result.deletedDocs} records deleted, ${result.updatedDocs} records reset.`;
-
-  return {
-    role,
-    deletedDocs: result.deletedDocs,
-    updatedDocs: result.updatedDocs,
-    summary,
-  };
+  // Route ALL roles through backend API for consistent, full deletion coverage
+  return resetTestingDataViaBackend(params);
 }
