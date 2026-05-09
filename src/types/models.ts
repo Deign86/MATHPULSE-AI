@@ -795,3 +795,51 @@ export interface RecommendationLog {
   status: 'active' | 'completed' | 'superseded';
   supersededBy?: string;
 }
+
+// ─── Assessment Results Types ───
+
+export interface AssessmentAnswer {
+  questionId: string;
+  questionText: string;
+  correctAnswer: string;
+  userAnswer: string | null;
+  isCorrect: boolean;
+  topic: string;
+  competencyCode: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  explanation: string;
+}
+
+export interface CompetencyBreakdown {
+  topic: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracyPercent: number;
+  isStrength: boolean;
+  isWeakness: boolean;
+}
+
+export interface AssessmentResult {
+  attemptId: string;
+  studentId: string;
+  strand: string;
+  gradeLevel: string;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  timeTakenSeconds: number;
+  completedAt: string;
+  answers: AssessmentAnswer[];
+  competencyBreakdown: CompetencyBreakdown[];
+  proficiencyLevel: 'Beginner' | 'Developing' | 'Proficient' | 'Advanced';
+  aiNarrative?: string;
+}
+
+export interface AssessmentHistoryEntry {
+  attemptId: string;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  completedAt: string;
+  proficiencyLevel: string;
+}
