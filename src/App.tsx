@@ -202,6 +202,7 @@ const App = () => {
   const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState<boolean | null>(null);
   const [assessmentDismissed, setAssessmentDismissed] = useState(false);
   const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
+  const [diagnosticCheckVersion, setDiagnosticCheckVersion] = useState(0);
   const [showAssessmentPage, setShowAssessmentPage] = useState(false);
   const [assessmentTestId, setAssessmentTestId] = useState<string>('');
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
@@ -372,7 +373,7 @@ const App = () => {
     };
     void checkDiagnostic();
     return () => { cancelled = true; };
-  }, [isLoggedIn, userRole, profileReady, userProfile?.uid]);
+  }, [isLoggedIn, userRole, profileReady, userProfile?.uid, diagnosticCheckVersion]);
 
   const atRiskSignature = [...atRiskSubjects].sort().join('|');
   const supplementalDismissStorageKey = userProfile?.uid
@@ -704,6 +705,10 @@ const App = () => {
       setInitialAssessmentCompleted(false);
       setComputedGpa('0.00');
       setActiveTab('Dashboard');
+      // Refresh AuthContext profile so stale assessment fields are re-read from Firestore
+      void refreshProfile();
+      // Re-trigger diagnostic check so modal shows if assessment was properly reset
+      setDiagnosticCheckVersion(v => v + 1);
     }
 
     toast.success(result.summary);
@@ -1246,13 +1251,14 @@ const App = () => {
           {/* Rewards Modal */}
           {showRewardsModal && (
             <Suspense fallback={null}>
-              <RewardsModal
+<RewardsModal
                 isOpen={showRewardsModal}
                 onClose={() => setShowRewardsModal(false)}
                 userLevel={userLevel}
                 currentXP={currentXP}
                 xpToNextLevel={xpToNextLevel}
                 totalXP={totalXP}
+                userId={userProfile?.uid || ''}
               />
             </Suspense>
           )}
