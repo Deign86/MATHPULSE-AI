@@ -54,6 +54,7 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'hf_space_test/**'
               - 'deploy-hf.py'
               - 'scripts/enforce_hf_space_chat_env.py'
               - '.github/workflows/deploy-hf.yml'
@@ -158,17 +159,16 @@ jobs:
             cd ..
           }
           
-          # Sync backend files into the Space repo
-          rsync -av --delete \
-            --exclude='.git' \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            --exclude='datasets/vectorstore' \
-            --exclude='datasets/vectorstore/**' \
-            backend/ hf-space/
+# Sync backend files into the Space repo
+           rsync -av --delete \
+             --exclude='.git' \
+             --exclude='__pycache__' \
+             --exclude='*.pyc' \
+             --exclude='datasets/vectorstore' \
+             --exclude='datasets/vectorstore/**' \
+             hf_space_test/ hf-space/
 
-          # Sync the backend Dockerfile to the Space root (HF Spaces use Dockerfile at repo root)
-          cp backend/Dockerfile hf-space/Dockerfile
+           # Dockerfile is included in hf_space_test/ and synced by rsync above
 
           # Ensure backend Space metadata README exists with LF-only frontmatter.
           # This avoids malformed Space metadata states on the Hub API.
