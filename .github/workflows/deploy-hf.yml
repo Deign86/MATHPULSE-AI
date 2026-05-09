@@ -151,24 +151,22 @@ jobs:
 
           # Clone the HF Space repo (or create it)
           SPACE_REPO="https://Deign86:${HF_TOKEN}@huggingface.co/spaces/Deign86/mathpulse-api-v3test"
-          
+
           git clone "${SPACE_REPO}" hf-space 2>/dev/null || {
             echo "Space repo not found — creating fresh push"
             mkdir hf-space && cd hf-space && git init
             git remote add origin "${SPACE_REPO}"
             cd ..
           }
-          
-# Sync backend files into the Space repo
-           rsync -av --delete \
-             --exclude='.git' \
-             --exclude='__pycache__' \
-             --exclude='*.pyc' \
-             --exclude='datasets/vectorstore' \
-             --exclude='datasets/vectorstore/**' \
-             hf_space_test/ hf-space/
 
-           # Dockerfile is included in hf_space_test/ and synced by rsync above
+          # Sync backend files into the Space repo
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='datasets/vectorstore' \
+            --exclude='datasets/vectorstore/**' \
+            hf_space_test/ hf-space/
 
           # Ensure backend Space metadata README exists with LF-only frontmatter.
           # This avoids malformed Space metadata states on the Hub API.
@@ -198,13 +196,13 @@ jobs:
           grep -q '^app_port: 7860$' hf-space/README.md
           grep -q '^pinned: false$' hf-space/README.md
           echo "Backend README.md Space metadata validation passed"
-          
+
           # Guardrail: ensure vectorstore is not pushed to HF Spaces.
           if [ -d "hf-space/datasets/vectorstore" ]; then
             echo "❌ datasets/vectorstore should not be deployed to HF Spaces."
             exit 1
           fi
-          
+
           # Commit and push
           cd hf-space
           git add -A
