@@ -6,10 +6,12 @@ POST /api/diagnostic/submit  - Score responses, run risk analysis, save to Fires
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import traceback
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +24,10 @@ from rag.curriculum_rag import retrieve_curriculum_context
 logger = logging.getLogger("mathpulse.diagnostic")
 
 router = APIRouter(prefix="/api/diagnostic", tags=["diagnostic"])
+
+# In-memory fallback session store (used if Firestore is unavailable)
+# This ensures assessment works even without Firebase credentials
+_in_memory_sessions: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
 
 # ─── Pydantic Models ───────────────────────────────────────────────
@@ -432,7 +438,7 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
         import firebase_admin
         from firebase_admin import firestore as fs
         firestore_client = fs.client()
-        await _store_diagnostic_session(
+        stored = await _store_diagnostic_session(
             firestore_client,
             user.uid,
             test_id,
@@ -440,8 +446,13 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
             request.grade_level,
             questions,
         )
+        if not stored:
+            raise HTTPException(status_code=503, detail="Session storage failed. Please try again.")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.warning(f"Could not store diagnostic session: {e}")
+        logger.error(f"Could not store diagnostic session: {e}")
+        raise HTTPException(status_code=503, detail="Database unavailable. Please try again.")
 
     client_questions = _strip_answers(questions)
 

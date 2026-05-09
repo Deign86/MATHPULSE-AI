@@ -87,8 +87,26 @@ export async function generateDiagnostic(
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => 'Unknown error');
-      throw new Error(`Diagnostic generation failed (${res.status}): ${body.slice(0, 300)}`);
+      const body = await res.text().catch(() => '');
+      let message = 'Something went wrong. Please try again.';
+      try {
+        const errorJson = JSON.parse(body);
+        if (errorJson.detail) {
+          const detail = String(errorJson.detail);
+          if (detail.includes('Database unavailable') || detail.includes('unavailable')) {
+            message = 'Our servers are temporarily busy. Please try again in a moment.';
+          } else if (detail.includes('timeout') || detail.includes('timed out')) {
+            message = 'The request timed out. Please check your connection and try again.';
+          } else {
+            message = detail;
+          }
+        }
+      } catch {
+        if (!res.ok && body) {
+          message = 'Failed to start assessment. Please try again.';
+        }
+      }
+      throw new Error(message);
     }
 
     return res.json();
@@ -124,8 +142,32 @@ export async function submitDiagnostic(
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => 'Unknown error');
-      throw new Error(`Diagnostic submission failed (${res.status}): ${body.slice(0, 300)}`);
+      const body = await res.text().catch(() => '');
+      let message = 'Something went wrong. Please try again.';
+      try {
+        const errorJson = JSON.parse(body);
+        // Return user-friendly message from structured error response
+        if (errorJson.detail) {
+          const detail = String(errorJson.detail);
+          if (detail.includes('session') || detail.includes('not found')) {
+            message = 'Your assessment session has expired. Please restart the assessment.';
+          } else if (detail.includes('Database unavailable') || detail.includes('unavailable')) {
+            message = 'Our servers are temporarily busy. Please try again in a moment.';
+          } else if (detail.includes('timeout') || detail.includes('timed out')) {
+            message = 'The request timed out. Please check your connection and try again.';
+          } else {
+            message = detail;
+          }
+        }
+      } catch {
+        // If JSON parsing fails, use a generic message
+        if (body.includes('404') || body.includes('not found')) {
+          message = 'Your assessment session has expired. Please restart the assessment.';
+        } else if (body) {
+          message = 'Something went wrong. Please try again.';
+        }
+      }
+      throw new Error(message);
     }
 
     return res.json();

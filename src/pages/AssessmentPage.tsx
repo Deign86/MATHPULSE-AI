@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui/button';
-import { ChevronRight, Clock, Loader2, CheckCircle } from 'lucide-react';
+import { Brain, ChevronRight, Clock, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   submitDiagnostic,
   type DiagnosticQuestion,
@@ -123,10 +123,9 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         });
       }, 3000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Submission failed. Your answers are saved locally.';
+      // User-friendly error is already formatted by diagnosticService
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
-      // Keep responses in state — don't silently reset. Step is already 'testing'.
-      // The UI will show the error + the Next/Submit button is still active.
     }
   };
 
@@ -139,13 +138,16 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   const optionLabels = ['A', 'B', 'C', 'D'];
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-sky-50 to-white flex flex-col">
       {step === 'testing' && (
         <div className="flex flex-col h-full max-w-2xl mx-auto w-full px-4 sm:px-6">
           {/* Header */}
-          <div className="flex items-center justify-between py-4 border-b border-[#dde3eb]">
+          <div className="flex items-center justify-between py-4 border-b border-sky-100">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-[#5a6578]">
+              <div className="w-9 h-9 bg-sky-100 rounded-xl flex items-center justify-center">
+                <Brain size={18} className="text-sky-600" />
+              </div>
+              <span className="text-sm font-bold text-sky-700">
                 Question {currentIndex + 1} of {totalQuestions}
               </span>
               <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -155,16 +157,16 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
             </div>
             <button
               onClick={onCancel}
-              className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors"
+              className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-100"
             >
               Cancel
             </button>
           </div>
 
           {/* Progress Bar */}
-          <div className="h-1.5 bg-[#edf1f7] rounded-full overflow-hidden mt-3">
+          <div className="h-1.5 bg-sky-100 rounded-full overflow-hidden mt-3">
             <motion.div
-              className="h-full bg-purple-600 rounded-full origin-left"
+              className="h-full bg-gradient-to-r from-sky-500 to-sky-600 rounded-full origin-left"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: progressPct / 100 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -175,8 +177,8 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
 
           {/* Question Card */}
           <div className="flex-1 flex flex-col justify-center py-6 space-y-6">
-            <div className="bg-[#edf1f7] p-5 rounded-2xl border border-[#dde3eb]">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
+            <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-wide text-sky-600 mb-2">
                 {currentQuestion.domain} &bull; {currentQuestion.difficulty}
               </p>
               <h3 className="text-lg font-bold text-[#0a1628] leading-relaxed">
@@ -196,23 +198,23 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                     key={letter}
                     onClick={() => handleSelectAnswer(letter)}
                     disabled={!!selectedAnswer}
-                    className={`w-full text-left p-3.5 rounded-xl border-2 transition-all font-medium text-sm flex items-center gap-3 ${
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all font-medium text-sm flex items-center gap-3 shadow-sm ${
                       isSelected
-                        ? 'border-purple-600 bg-purple-50 text-[#0a1628]'
-                        : 'border-[#dde3eb] hover:border-purple-400 hover:bg-purple-50/50 text-[#0a1628]'
+                        ? 'border-sky-500 bg-sky-50 text-[#0a1628]'
+                        : 'border-slate-200 hover:border-sky-300 hover:bg-sky-50/50 text-[#0a1628]'
                     } ${selectedAnswer && !isSelected ? 'opacity-50' : ''}`}
                   >
                     <span
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                         isSelected
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-white border border-[#dde3eb] text-[#5a6578]'
+                          ? 'bg-sky-500 text-white shadow-md'
+                          : 'bg-white border border-slate-200 text-slate-500'
                       }`}
                     >
                       {letter}
                     </span>
                     <span className="flex-1">{optionText}</span>
-                    {isSelected && <ChevronRight size={18} className="text-purple-600 flex-shrink-0" />}
+                    {isSelected && <ChevronRight size={18} className="text-sky-500 flex-shrink-0" />}
                   </button>
                 );
               })}
@@ -220,11 +222,11 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
           </div>
 
           {/* Next Button */}
-          <div className="py-4 border-t border-[#dde3eb]">
+          <div className="py-4 border-t border-sky-100">
             <Button
               onClick={handleNext}
               disabled={!selectedAnswer}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-40"
+              className="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-40 shadow-md shadow-sky-200"
             >
               {currentIndex < totalQuestions - 1 ? 'Next Question' : 'Submit Assessment'}
             </Button>
@@ -237,23 +239,58 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="space-y-4"
+            className="space-y-6 max-w-sm"
           >
-            <Loader2 size={48} className="animate-spin text-purple-600 mx-auto" />
-            <h2 className="text-xl font-bold text-[#0a1628]">Analyzing your results...</h2>
-            <p className="text-sm text-[#5a6578] max-w-xs mx-auto">
-              We&apos;re evaluating your responses and building your personalized learning path.
-            </p>
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
+            {!error ? (
+              <>
+                <div className="relative w-20 h-20 mx-auto">
+                  <div className="absolute inset-0 bg-sky-100 rounded-full animate-ping opacity-75"></div>
+                  <div className="relative w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center">
+                    <Brain size={36} className="text-sky-600" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[#0a1628]">Analyzing your results...</h2>
+                  <p className="text-sm text-slate-500 mt-2">
+                    We&apos;re evaluating your responses and building your personalized learning path.
+                  </p>
+                </div>
+                <Loader2 size={24} className="animate-spin text-sky-500 mx-auto" />
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
+                  <AlertCircle size={32} className="text-amber-500" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[#0a1628]">Something went wrong</h2>
+                  <p className="text-sm text-slate-500 mt-2">{error}</p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <Button
+                    onClick={() => {
+                      setError(null);
+                      setStep('testing');
+                    }}
+                    className="bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-sky-200 flex items-center justify-center gap-2 mx-auto"
+                  >
+                    <RefreshCw size={16} />
+                    Try Again
+                  </Button>
+                  <button
+                    onClick={onCancel}
+                    className="text-sm text-slate-400 hover:text-slate-600 font-medium transition-colors"
+                  >
+                    Return to dashboard
+                  </button>
+                </div>
+              </>
             )}
           </motion.div>
         </div>
       )}
 
-      {step === 'results' && (
+{step === 'results' && (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -261,11 +298,11 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="space-y-4"
           >
-            <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-teal-100">
               <CheckCircle size={40} className="text-teal-600" />
             </div>
             <h2 className="text-xl font-bold text-[#0a1628]">Assessment Complete!</h2>
-            <p className="text-sm text-[#5a6578] max-w-xs mx-auto">
+            <p className="text-sm text-slate-500 max-w-xs mx-auto">
               Great job, {userName}! Your personalized learning path is ready.
             </p>
             <p className="text-xs text-slate-400">Redirecting to dashboard...</p>
