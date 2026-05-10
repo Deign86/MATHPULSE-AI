@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   Activity,
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   CheckCircle,
   Clock,
   DollarSign,
   Eye,
   Flame,
-  HelpCircle,
   Info,
   Lightbulb,
   MessageSquare,
@@ -22,8 +19,8 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { fetchDeepSeekMonitoringData } from '../services/deepseekMonitoringService';
-import type { DeepSeekMonitoringData } from '../types/hfMonitoring';
+import { useAIMonitoring } from '../hooks/useAIMonitoring';
+import type { AIUsageLog } from '../types/hfMonitoring';
 
 // ─────────────────────────────────────────────
 // Types
@@ -159,47 +156,41 @@ function formatNumber(n: number): string {
 // Data Transformation
 // ─────────────────────────────────────────────
 
-function transformToAIUsageAreas(
-  raw: DeepSeekMonitoringData,
-): AIUsageArea[] {
-  // Derive total "requests" from cost + balance
-  // If no cost data, use hubApiCallsUsed as proxy for HF usage
-  const totalCost = raw.totalPeriodCost + raw.inferenceBalance;
-  const totalRequests =
-    raw.hubApiCallsUsed > 0
-      ? raw.hubApiCallsUsed
-      : Math.round(totalCost * 50); // rough estimate if no call data
-
+/**
+ * Map Firestore AIUsageLog[] to the component's display AIUsageArea[].
+ * Matches logs to PLATFORM_AI_FEATURES by name similarity.
+ * Falls back to USAGE_WEIGHTS distribution when no log found for a feature.
+ */
+function mapStatsToUsageAreas(stats: AIUsageLog[]): AIUsageArea[] {
+  const totalReq = stats.reduce((sum, s) => sum + s.requestCount, 0);
+  const totalCost = stats.reduce((sum, s) => sum + s.estimatedCostUSD, 0);
   const now = new Date().toISOString();
 
   const areas = PLATFORM_AI_FEATURES.map((feature) => {
-    const weight = USAGE_WEIGHTS[feature.id] ?? 1;
-    const requests = Math.round((totalRequests * weight) / 100);
-    const estimatedCost = (totalCost * weight) / 100;
+    // Find matching log by fuzzy name match
+    const log = stats.find(s => {
+      const cleanName = s.featureName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanFeature = feature.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return cleanName.includes(cleanFeature) || cleanFeature.includes(cleanName);
+    });
 
-    // Determine status based on provider health
-    let status: HealthStatus = 'Healthy';
-    if (feature.id === 'curriculum-search') {
-      // RAG/search is HF-based
-      status =
-        raw.embeddingModelStatus === 'Operational' ? 'Healthy' :
-        raw.embeddingModelStatus === 'Degraded' ? 'Warning' :
-        raw.embeddingModelStatus === 'Loading' ? 'Warning' : 'Offline';
-    } else if (feature.id === 'content-processing') {
-      // Content processing uses HF ZeroGPU
-      status =
-        raw.zeroGpuMinutesUsed < raw.zeroGpuMinutesLimit * 0.9 ? 'Healthy' :
-        raw.zeroGpuMinutesUsed >= raw.zeroGpuMinutesLimit ? 'Offline' : 'Warning';
-    } else {
-      // Most features use DeepSeek
-      status =
-        raw.modelStatus === 'Operational' && raw.avgResponseTimeMs < 5000 ? 'Healthy' :
-        raw.modelStatus === 'Degraded' || raw.avgResponseTimeMs > 5000 ? 'Warning' :
-        raw.modelStatus === 'Loading' ? 'Warning' : 'Offline';
-    }
+    const requests = log?.requestCount ?? Math.round((totalReq * (USAGE_WEIGHTS[feature.id] ?? 1)) / 100);
+    const estimatedCost = log?.estimatedCostUSD ?? (totalCost * (USAGE_WEIGHTS[feature.id] ?? 1)) / 100;
 
-    const usageLevel: UsageLevel =
-      weight >= 20 ? 'High' : weight >= 8 ? 'Medium' : 'Low';
+    // Map AIUsageLog status → HealthStatus
+    const status: HealthStatus = log
+      ? log.status === 'Degraded' ? 'Warning'
+        : log.status === 'Down' ? 'Offline'
+        : 'Healthy'
+      : 'Healthy';
+
+    const usageLevel: UsageLevel = log
+      ? log.priority === 'High' ? 'High'
+        : log.priority === 'Medium' ? 'Medium'
+        : 'Low'
+      : USAGE_WEIGHTS[feature.id] >= 20 ? 'High'
+        : USAGE_WEIGHTS[feature.id] >= 8 ? 'Medium'
+        : 'Low';
 
     return {
       ...feature,
@@ -208,12 +199,11 @@ function transformToAIUsageAreas(
       estimatedCost,
       avgCostPerRequest: requests > 0 ? estimatedCost / requests : 0,
       usageLevel,
-      lastActiveAt: now,
+      lastActiveAt: log?.lastUpdated?.toDate().toISOString() ?? now,
       trend: 'Stable' as const,
     };
   });
 
-  // Calculate cost percentages
   const totalDerivedCost = areas.reduce((sum, a) => sum + a.estimatedCost, 0);
   return areas.map((a) => ({
     ...a,
@@ -221,43 +211,30 @@ function transformToAIUsageAreas(
   }));
 }
 
-function deriveOverallStatus(areas: AIUsageArea[]): HealthStatus {
-  if (areas.some((a) => a.status === 'Offline')) return 'Warning';
-  if (areas.some((a) => a.status === 'Warning')) return 'Warning';
-  return 'Healthy';
-}
-
-function deriveAlerts(areas: AIUsageArea[], raw: DeepSeekMonitoringData): AlertItem[] {
+function deriveAlerts(areas: AIUsageArea[], stats: AIUsageLog[]): AlertItem[] {
   const alerts: AlertItem[] = [];
 
-  // High latency alert
-  if (raw.avgResponseTimeMs > 5000) {
+  // Degraded features
+  const degradedFeatures = stats.filter(s => s.status === 'Degraded');
+  if (degradedFeatures.length > 0) {
     alerts.push({
-      id: 'latency',
+      id: 'degraded',
       severity: 'warning',
-      message: 'AI Chat Tutor responses are slower than usual',
+      message: `${degradedFeatures.length} AI feature(s) are in degraded state`,
     });
   }
 
-  // RAG model health
-  if (raw.embeddingModelStatus !== 'Operational') {
+  // Down (offline) features
+  const downFeatures = stats.filter(s => s.status === 'Down');
+  if (downFeatures.length > 0) {
     alerts.push({
-      id: 'rag',
-      severity: 'warning',
-      message: 'Curriculum Search may be slow — indexing model is not fully ready',
+      id: 'offline',
+      severity: 'critical',
+      message: `${downFeatures[0].featureName} is currently unavailable`,
     });
   }
 
-  // ZeroGPU near limit
-  if (raw.zeroGpuMinutesUsed >= raw.zeroGpuMinutesLimit * 0.9) {
-    alerts.push({
-      id: 'gpulimit',
-      severity: raw.zeroGpuMinutesUsed >= raw.zeroGpuMinutesLimit ? 'critical' : 'warning',
-      message: 'Free GPU time is almost exhausted — consider upgrading',
-    });
-  }
-
-  // High-cost feature spike (mock: if AI chat > 30% cost)
+  // High-cost feature spike
   const chatArea = areas.find((a) => a.id === 'ai-chat');
   if (chatArea && chatArea.costPercent && chatArea.costPercent > 40) {
     alerts.push({
@@ -267,17 +244,7 @@ function deriveAlerts(areas: AIUsageArea[], raw: DeepSeekMonitoringData): AlertI
     });
   }
 
-  // Offline features
-  const offlineAreas = areas.filter((a) => a.status === 'Offline');
-  if (offlineAreas.length > 0) {
-    alerts.push({
-      id: 'offline',
-      severity: 'critical',
-      message: `${offlineAreas[0].name} is currently offline and unavailable to students`,
-    });
-  }
-
-  // Quiz generation cost increase (mock: if quiz gen > 25%)
+  // Quiz generation cost increase
   const quizArea = areas.find((a) => a.id === 'quiz-generation');
   if (quizArea && quizArea.costPercent && quizArea.costPercent > 25) {
     alerts.push({
@@ -403,48 +370,30 @@ function SectionHeader({
 // ─────────────────────────────────────────────
 
 const AdminAIMonitoring: React.FC = () => {
-  const [rawData, setRawData] = useState<DeepSeekMonitoringData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await fetchDeepSeekMonitoringData();
-      setRawData(result);
-    } catch (err) {
-      console.error('Failed to load AI monitoring data', err);
-      setError('Unable to load AI usage data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const {
+    stats,
+    systemHealth: overallStatus,
+    totalSpend,
+    highestCostFeature,
+    mostActiveFeature,
+    isLoading,
+    error,
+    refresh,
+  } = useAIMonitoring();
 
   // ── Derived data ──────────────────────────────
 
   const usageAreas = useMemo(
-    () => (rawData ? transformToAIUsageAreas(rawData) : []),
-    [rawData],
-  );
-
-  const overallStatus = useMemo(
-    () => (usageAreas.length > 0 ? deriveOverallStatus(usageAreas) : 'Healthy'),
-    [usageAreas],
+    () => mapStatsToUsageAreas(stats),
+    [stats],
   );
 
   const alerts = useMemo(
-    () => (rawData ? deriveAlerts(usageAreas, rawData) : []),
-    [usageAreas, rawData],
+    () => deriveAlerts(usageAreas, stats),
+    [usageAreas, stats],
   );
 
-  const totalMonthlyCost = rawData?.totalPeriodCost ?? 0;
-  const totalInferenceBalance = rawData?.inferenceBalance ?? 0;
-  const totalCost = totalMonthlyCost + totalInferenceBalance;
+  const totalCost = totalSpend;
 
   const sortedByCost = useMemo(
     () =>
@@ -458,8 +407,16 @@ const AdminAIMonitoring: React.FC = () => {
     [usageAreas],
   );
 
-  const topCostArea = sortedByCost[0];
-  const topActivityArea = sortedByRequests[0];
+  const topCostArea = highestCostFeature ? {
+    name: highestCostFeature.featureName,
+    estimatedCost: highestCostFeature.estimatedCostUSD,
+    costPercent: totalCost > 0 ? (highestCostFeature.estimatedCostUSD / totalCost) * 100 : 0,
+  } : null;
+
+  const topActivityArea = mostActiveFeature ? {
+    name: mostActiveFeature.featureName,
+    requests: mostActiveFeature.requestCount,
+  } : null;
 
   // ── Render ────────────────────────────────────
 
@@ -482,11 +439,11 @@ const AdminAIMonitoring: React.FC = () => {
           variant="outline"
           size="sm"
           className="text-xs gap-1.5 shrink-0"
-          onClick={loadData}
-          disabled={loading}
+          onClick={refresh}
+          disabled={isLoading}
           data-testid="refresh-btn"
         >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
           Refresh
         </Button>
       </motion.div>
@@ -522,27 +479,27 @@ const AdminAIMonitoring: React.FC = () => {
               className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
                 overallStatus === 'Healthy'
                   ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
-                  : overallStatus === 'Warning'
+                  : overallStatus === 'Degraded'
                   ? 'bg-gradient-to-br from-amber-400 to-amber-600'
                   : 'bg-gradient-to-br from-rose-400 to-rose-600'
               }`}
             >
               {overallStatus === 'Healthy' ? (
                 <CheckCircle size={18} className="text-white" />
-              ) : overallStatus === 'Warning' ? (
+              ) : overallStatus === 'Degraded' ? (
                 <AlertTriangle size={18} className="text-white" />
               ) : (
                 <AlertTriangle size={18} className="text-white" />
               )}
             </div>
           </div>
-          {loading ? (
+          {isLoading ? (
             <Skeleton className="w-28 h-8 rounded-lg mb-2" />
           ) : (
             <p className="text-2xl font-bold text-[#0a1628] mb-1">
               {overallStatus === 'Healthy'
                 ? 'Healthy'
-                : overallStatus === 'Warning'
+                : overallStatus === 'Degraded'
                 ? 'Needs Attention'
                 : 'Partial Outage'}
             </p>
@@ -550,7 +507,7 @@ const AdminAIMonitoring: React.FC = () => {
           <p className="text-xs text-[#5a6578] font-medium">
             {overallStatus === 'Healthy'
               ? 'Most AI features are working normally'
-              : overallStatus === 'Warning'
+              : overallStatus === 'Degraded'
               ? 'Some AI features need attention'
               : 'Several AI features are unavailable'}
           </p>
@@ -566,7 +523,7 @@ const AdminAIMonitoring: React.FC = () => {
               <DollarSign size={18} className="text-white" />
             </div>
           </div>
-          {loading ? (
+          {isLoading ? (
             <Skeleton className="w-24 h-8 rounded-lg mb-2" />
           ) : (
             <p className="text-2xl font-bold text-[#0a1628] mb-1">
@@ -574,13 +531,11 @@ const AdminAIMonitoring: React.FC = () => {
             </p>
           )}
           <p className="text-xs text-[#5a6578] font-medium">
-            {loading ? '...' : 'Total AI spend this month'}
+            {isLoading ? '...' : 'Total AI spend this month'}
           </p>
-          {!loading && rawData && totalMonthlyCost > 0 && (
+          {!isLoading && totalSpend > 0 && (
             <p className="text-xs text-[#a0aec0] mt-1">
-              {totalInferenceBalance > 0
-                ? `$${totalInferenceBalance.toFixed(2)} balance remaining`
-                : 'Balance depleted this period'}
+              Cumulative AI cost for current period
             </p>
           )}
         </div>
@@ -595,7 +550,7 @@ const AdminAIMonitoring: React.FC = () => {
               <TrendingUp size={18} className="text-white" />
             </div>
           </div>
-          {loading ? (
+          {isLoading ? (
             <Skeleton className="w-32 h-8 rounded-lg mb-2" />
           ) : (
             <p className="text-2xl font-bold text-[#0a1628] mb-1 truncate">
@@ -603,9 +558,9 @@ const AdminAIMonitoring: React.FC = () => {
             </p>
           )}
           <p className="text-xs text-[#5a6578] font-medium">
-            {loading ? '...' : 'Highest AI cost this month'}
+            {isLoading ? '...' : 'Highest AI cost this month'}
           </p>
-          {!loading && topCostArea && (
+          {!isLoading && topCostArea && (
             <p className="text-xs text-[#a0aec0] mt-1">
               {formatCurrency(topCostArea.estimatedCost)} ·{' '}
               {topCostArea.costPercent?.toFixed(0)}% of total
@@ -623,7 +578,7 @@ const AdminAIMonitoring: React.FC = () => {
               <Flame size={18} className="text-white" />
             </div>
           </div>
-          {loading ? (
+          {isLoading ? (
             <Skeleton className="w-32 h-8 rounded-lg mb-2" />
           ) : (
             <p className="text-2xl font-bold text-[#0a1628] mb-1 truncate">
@@ -631,9 +586,9 @@ const AdminAIMonitoring: React.FC = () => {
             </p>
           )}
           <p className="text-xs text-[#5a6578] font-medium">
-            {loading ? '...' : 'Most active AI feature'}
+            {isLoading ? '...' : 'Most active AI feature'}
           </p>
-          {!loading && topActivityArea && (
+          {!isLoading && topActivityArea && (
             <p className="text-xs text-[#a0aec0] mt-1">
               {formatNumber(topActivityArea.requests)} requests
             </p>
@@ -650,7 +605,7 @@ const AdminAIMonitoring: React.FC = () => {
           subtitle="All AI-powered features in the platform"
           testId="section-ai-usage-areas-header"
         />
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -717,7 +672,7 @@ const AdminAIMonitoring: React.FC = () => {
           subtitle="AI features ranked by estimated spend this month"
           testId="section-highest-cost-header"
         />
-        {loading ? (
+        {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
@@ -810,7 +765,7 @@ const AdminAIMonitoring: React.FC = () => {
           subtitle="Features with the highest request volume this month"
           testId="section-highest-usage-header"
         />
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -870,7 +825,7 @@ const AdminAIMonitoring: React.FC = () => {
           subtitle="Actionable issues that may need review"
           testId="section-needs-attention-header"
         />
-        {loading ? (
+        {isLoading ? (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]">
             <div className="space-y-3">
               {[1, 2].map((i) => (
@@ -958,7 +913,7 @@ const AdminAIMonitoring: React.FC = () => {
           testId="section-ai-breakdown-table-header"
         />
         <div className="bg-white rounded-2xl shadow-sm border border-[#dde3eb] overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="p-4 space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="w-full h-12 rounded-lg" />
