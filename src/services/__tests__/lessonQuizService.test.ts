@@ -1,10 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { generateLessonQuiz, getQuestionCountForQuiz } from '../lessonQuizService';
 
-// Global mocks in test-setup.ts handle Firebase - here we only mock apiService
-// Since the backend might return different counts, we test fallback behavior
-vi.mock('./apiService', () => ({
-  // Mock returns error so test goes to fallback
+// Correct path: vi.mock resolves relative to the test file (services/__tests__/),
+// so ../apiService points to services/apiService.ts
+vi.mock('../apiService', () => ({
   apiFetch: vi.fn().mockRejectedValue(new Error('Mock API error for test')),
 }));
 
@@ -93,10 +92,10 @@ describe('lessonQuizService', () => {
       });
     });
 
-    it('returns fallback questions on API failure', async () => {
+    it('ensures fallback questions are non-empty', async () => {
       const quiz = await generateLessonQuiz({
         lessonId: 'test',
-        lessonTitle: '', // Empty title may cause API issues
+        lessonTitle: '', // Empty title triggers fallback
         questionCount: 6,
       });
       expect(quiz.length).toBeGreaterThan(0);

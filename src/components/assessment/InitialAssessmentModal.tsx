@@ -1,27 +1,45 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/button';
-import { Brain, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Brain, CheckCircle, AlertTriangle, Loader2, X } from 'lucide-react';
 import { generateDiagnostic, type DiagnosticQuestion } from '../../services/diagnosticService';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 interface InitialAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onDismiss: () => void; // Sets assessmentDismissed=true in App + closes modal — used by "Skip for Now"
   userId: string;
   strand: string;
   gradeLevel: string;
   onAssessmentStart: (testId: string, questions: DiagnosticQuestion[]) => void;
+  onAssessmentComplete?: (result: {
+    overallRisk: string;
+    overallScorePercent: number;
+    intervention: string;
+    xpEarned: number;
+    badgeUnlocked: string;
+    competencyScores?: Record<string, { score: number; correct: number; attempted: number }>;
+    proficiencyProfile?: {
+      strengths: string[];
+      weaknesses: string[];
+      borderline: string[];
+      suggestedStartingModule: string;
+      recommendedPace: 'support_intensive' | 'normal' | 'accelerated';
+    };
+  }) => void;
 }
 
 const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   isOpen,
   onClose,
+  onDismiss,
   userId,
   strand,
   gradeLevel,
   onAssessmentStart,
+  onAssessmentComplete,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,19 +67,26 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
     }
   };
 
-  const handleSkip = async () => {
+  const handleXClose = () => {
+    // X button: session-only close via sessionStorage, does NOT persist to Firestore
+    // Modal will reappear on next page refresh / new session
+    // User will be reminded again on next session
+    sessionStorage.setItem('mathpulse_iar_session_dismissed', 'true');
+    onClose();
+  };
+
+  const handlePersistDismiss = async () => {
+    // "Skip for now": persist to Firestore + update App.tsx state so modal/tooltip are gone for good.
+    // Can only be re-accessed via hero banner chat bubble.
     try {
-      await setDoc(doc(db, 'diagnosticResults', userId), {
-        userId,
-        status: 'skipped',
-        skippedAt: serverTimestamp(),
-        strand,
-        gradeLevel,
+      await updateDoc(doc(db, 'users', userId), {
+        assessmentDismissed: true,
+        assessmentDismissedAt: serverTimestamp(),
       });
     } catch (err) {
-      console.error('[diagnostic] Failed to save skip state:', err);
+      console.error('[diagnostic] Failed to save dismiss state:', err);
     }
-    onClose();
+    onDismiss();
   };
 
   if (!isOpen) return null;
@@ -69,7 +94,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={(e) => e.stopPropagation()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -92,6 +117,13 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               <p className="text-[11px] text-[#5a6578]">Analyze your strengths & weaknesses</p>
             </div>
           </div>
+          <button
+            onClick={handleXClose}
+            aria-label="Close assessment modal"
+            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-[#5a6578] hover:bg-[#dde3eb] hover:text-[#0a1628] transition-colors"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <div className="p-5 text-center space-y-3">
@@ -155,7 +187,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               <Button
                 onClick={handleStart}
                 disabled={loading}
-                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[190px] mx-auto"
+                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[320px] mx-auto"
               >
                 {loading ? (
                   <>
@@ -173,11 +205,11 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               )}
               {!loading && (
                 <button
-                  onClick={handleSkip}
+                  onClick={handlePersistDismiss}
                   disabled={loading}
                   className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium disabled:opacity-40"
                 >
-                  Skip for now &rarr;
+                  Skip for now
                 </button>
               )}
             </div>

@@ -68,6 +68,42 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Daily Rewards (users can only claim their own, must change lastClaimedDate) ──
+    match /users/{userId}/dailyRewards/{rewardId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+                    && request.resource.data.lastClaimedDate != resource.data.lastClaimedDate;
+      allow delete: if isAdmin();
+    }
+
+    // ── Login Streak Rewards (parallel system — fixed 7-day cycle) ──
+    match /users/{userId}/loginStreakRewards/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+                    && request.resource.data.lastClaimedDate != resource.data.lastClaimedDate;
+      allow delete: if isAdmin();
+    }
+
+    // ── Competency Matrix (subcollection under users) ──
+    match /users/{userId}/competencyMatrix/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
+    // ── Quiz Results (subcollection under users) ──
+    match /users/{userId}/quizResults/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
+    // ── Module Progress (subcollection under users) ──
+    match /users/{userId}/moduleProgress/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
     match /progress/{docId} {
       // Allow by document ID (docId == userId) or by userId field
       allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
@@ -210,6 +246,30 @@ service cloud.firestore {
       // Temporarily permissive for debugging - allow students to read their own
       allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
       allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ── Diagnostic Sessions (backend writes, students read their own) ──
+    match /diagnosticSessions/{docId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isTeacherOrAdmin());
+      allow create: if isSignedIn();  // Backend creates via firebase-admin, also allow student-initiated
+      allow update, delete: if false;  // Backend only
+    }
+    // Assessment Results — students can read their own, backend writes
+    match /assessmentResults/{studentId}/attempts/{attemptId} {
+      allow read: if request.auth != null && request.auth.uid == studentId;
+      allow write: if request.auth != null;
+    }
+
+
+    // ── Student Progress / Stats (written by backend after diagnostic) ──
+    match /studentProgress/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isAdmin();
+    }
+    match /studentProgress/{userId}/stats/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if false;  // Backend only via firebase-admin
       allow delete: if isAdmin();
     }
 

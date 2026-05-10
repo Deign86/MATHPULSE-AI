@@ -17,8 +17,6 @@ interface RightSidebarProps {
   currentXP: number;
   overallXP?: number;
   xpToNextLevel: number;
-  streak: number;
-  streakHistory?: string[];
   onLogout?: () => void;
   onOpenProfile?: () => void;
   userName?: string;
@@ -40,7 +38,9 @@ const PodiumAvatar: React.FC<{
   userPhoto?: string;
   rankColor: { bg: string; border: string; badge: string; shadow: string };
 }> = ({ entry, rank, isYou, userPhoto, rankColor }) => {
-  const photoSrc = isYou ? (userPhoto || entry?.photo) : entry?.photo;
+  // Prefer the live leaderboard photo (auto-updates via Firestore subscription),
+  // fall back to userPhoto prop which carries the freshly uploaded PFP URL
+  const photoSrc = isYou ? (entry?.photo || userPhoto) : entry?.photo;
   const name = isYou ? 'You' : (entry?.name || '---');
   const xp = entry?.xp || 0;
 
@@ -101,14 +101,13 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   userPhoto,
   currentXP,
   xpToNextLevel,
-  streak,
-  streakHistory = [],
 }) => {
   const progressPercentage = (currentXP / xpToNextLevel) * 100;
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [lbLoading, setLbLoading] = useState(true);
   const [lbError, setLbError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!currentUserId) {
@@ -124,6 +123,11 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         setLeaderboard(entries);
         setLbLoading(false);
         setLbError(null);
+        // Clear the fallback timeout now that data has arrived
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
       },
       currentUserId,
       false,
@@ -133,15 +137,19 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
     unsubscribeRef.current = unsubscribe;
 
-    const timeout = setTimeout(() => {
-      if (setLbLoading) {
-        setLbLoading(false);
-        setLbError('Leaderboard data unavailable');
-      }
-    }, 12000);
+    // Fallback timeout — only fires if Firestore subscription silently fails
+    // (e.g. permissions issue or collection doesn't exist). onSnapshot error
+    // handler also calls callback([]) so this is a secondary safety net.
+    timeoutRef.current = setTimeout(() => {
+      setLbLoading(false);
+      setLbError('Leaderboard data unavailable');
+    }, 15000);
 
     return () => {
-      clearTimeout(timeout);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
@@ -235,11 +243,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
                 Review more lessons to earn more XP!
               </TooltipContent>
             </Tooltip>
-            <div className="w-px h-3 bg-white/35" />
-            <div className="flex items-center gap-1.5 text-xs font-body px-1 text-white">
-              <Flame size={12} className="text-[#FF8B8B]" />
-              <span className="font-bold">{streak}d</span>
-            </div>
           </div>
 
           <div>
@@ -264,7 +267,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <DailyChallengeWidget streakHistory={streakHistory} onNavigateToQuizBattle={onNavigateToQuizBattle} userPhoto={userPhoto} />
+        <DailyChallengeWidget onNavigateToQuizBattle={onNavigateToQuizBattle} userPhoto={userPhoto} />
       </motion.div>
 
       <motion.div

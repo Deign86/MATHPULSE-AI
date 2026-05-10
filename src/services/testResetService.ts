@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   query,
@@ -110,6 +111,18 @@ async function tryDeleteByField(collectionName: string, field: string, value: st
   }
 }
 
+async function deleteSubcollectiondocs(
+  parentPath: string,
+  subcollectionName: string,
+): Promise<number> {
+  try {
+    const q = collection(db, parentPath, subcollectionName);
+    return await deleteByQuery(q);
+  } catch {
+    return 0;
+  }
+}
+
 async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ deletedDocs: number; updatedDocs: number }> {
   const effectiveLrn = lrn || uid;
   let deletedDocs = 0;
@@ -118,6 +131,7 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   await initializeUserProgress(uid);
   updatedDocs += 1;
 
+  // Reset users/{uid} with all assessment fields cleared
   await setDoc(
     doc(db, 'users', uid),
     {
@@ -134,6 +148,33 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
       subjectBadges: {},
       riskClassifications: {},
       overallRisk: 'Low',
+      assessmentDismissed: false,
+      initialAssessmentCompleted: false,
+      hasCompletedInitialAssessment: false,
+      assessmentResults: null,
+      assessmentCompletedAt: null,
+      initialAssessmentCompletedAt: deleteField(),
+      // Additional assessment fields to reset
+      diagnosticCompleted: false,
+      lastAssessmentDate: deleteField(),
+      assessmentAttemptCount: 0,
+      initialProficiencyLevel: deleteField(),
+      iarQuestionSetVersion: deleteField(),
+      iarTopicClassifications: deleteField(),
+      topicScores: deleteField(),
+      priorityTopics: deleteField(),
+      recommendedPace: deleteField(),
+      g12ReadinessIndicators: deleteField(),
+      riskFlags: deleteField(),
+      iarMode: deleteField(),
+      lastAssessmentType: deleteField(),
+      startingQuarterG11: deleteField(),
+      recommendedNextTopicGroupId: deleteField(),
+      recommendationRationale: deleteField(),
+      recommendationReasonCode: deleteField(),
+      grade12TransitionGate: deleteField(),
+      currentCurriculumVersionSetId: deleteField(),
+      unlockCriteriaVersion: deleteField(),
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -144,8 +185,21 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   deletedDocs += await tryDeleteByField('chatSessions', 'userId', uid);
   deletedDocs += await tryDeleteByField('chatMessages', 'userId', uid);
 
+  // Delete legacy diagnostic results and competency profile so checkDiagnostic
+  // on next load sees no completed assessment and shows the modal.
+  await deleteDoc(doc(db, 'diagnosticResults', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+  await deleteDoc(doc(db, 'competencyProfiles', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+  await deleteDoc(doc(db, 'assessments', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+
+  // Delete assessment subcollection documents
+  deletedDocs += await deleteSubcollectiondocs(`assessmentResults/${uid}`, 'attempts');
+  deletedDocs += await deleteSubcollectiondocs(`assessments/${uid}`, 'attempts');
+  deletedDocs += await deleteSubcollectiondocs(`studentProgress/${uid}`, 'diagnostics');
+  deletedDocs += await deleteSubcollectiondocs(`assessmentQuestionHistory/${uid}`, 'questions');
+
   if (effectiveLrn !== uid) {
     deletedDocs += await tryDeleteByField('notifications', 'userId', effectiveLrn);
+    await deleteDoc(doc(db, 'diagnosticResults', effectiveLrn)).then(() => { deletedDocs += 1; }).catch(() => undefined);
   }
 
   await setDoc(
@@ -247,26 +301,6 @@ export async function resetTestingDataForRole(
     throw new Error('Missing user id for reset.');
   }
 
-  if (role === 'teacher' || role === 'admin') {
-    return resetTestingDataViaBackend(params);
-  }
-
-  let result: { deletedDocs: number; updatedDocs: number };
-
-  if (role === 'student') {
-    result = await resetStudentTestingData(uid, lrn);
-  } else if (role === 'teacher') {
-    result = await resetTeacherTestingData(uid);
-  } else {
-    result = await resetAdminTestingData(uid);
-  }
-
-  const summary = `${role} reset complete: ${result.deletedDocs} records deleted, ${result.updatedDocs} records reset.`;
-
-  return {
-    role,
-    deletedDocs: result.deletedDocs,
-    updatedDocs: result.updatedDocs,
-    summary,
-  };
+  // Route ALL roles through backend API for consistent, full deletion coverage
+  return resetTestingDataViaBackend(params);
 }

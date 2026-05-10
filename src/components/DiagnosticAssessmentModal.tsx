@@ -13,6 +13,9 @@ import {
   getDepEdIARQuestionBlueprint,
   estimateIarDurationMinutes,
 } from '../data/iarBlueprint';
+import AssessmentProgressBar from './assessment/AssessmentProgressBar';
+import AssessmentQuestionCard from './assessment/AssessmentQuestionCard';
+import AssessmentResultsModal from './assessment/AssessmentResultsModal';
 
 interface DiagnosticAssessmentModalProps {
   isOpen: boolean;
@@ -123,6 +126,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
   const [currentInput, setCurrentInput] = useState('');
   const [showCalculator, setShowCalculator] = useState(false);
   const [showCalcTooltip, setShowCalcTooltip] = useState(false);
+  const [showResultsModal, setShowResultsModal] = useState(false);
   const [topicSummaries, setTopicSummaries] = useState<Record<IARTopicArea, TopicScoreSummary> | null>(null);
   const [g12Readiness, setG12Readiness] = useState<G12ReadinessIndicators | null>(null);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>([]);
@@ -530,7 +534,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 <div className="pt-3 space-y-2.5">
                   <Button 
                     onClick={handleStart}
-                    className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-sky-200 w-full max-w-[190px] mx-auto"
+                    className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-sky-200 w-full max-w-[280px] mx-auto"
                   >
                     {assessmentType === 'followup_diagnostic' ? 'Start Deep Diagnostic' : 'Start Assessment'}
                   </Button>
@@ -556,28 +560,14 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                 className="space-y-6"
                 style={{ willChange: 'transform, opacity' }}
               >
-                <div className="flex items-center justify-between text-xs font-bold text-[#5a6578] mb-2">
-                  <span>Question {currentQuestionIndex + 1} of {QUESTIONS.length}</span>
-                  <span>{completionPercent}% Completed</span>
-                </div>
-                <div className="h-1.5 bg-[#edf1f7] rounded-full overflow-hidden mb-6">
-                  <motion.div 
-                    className="h-full bg-sky-600 rounded-full origin-left"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: completionPercent / 100 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                    style={{ willChange: 'transform' }}
-                  />
-                </div>
+                <AssessmentProgressBar current={currentQuestionIndex + 1} total={QUESTIONS.length} />
 
-                <div className="bg-[#edf1f7] p-4 rounded-xl border border-[#dde3eb] mb-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">
-                    {TOPIC_LABELS[currentQuestion.topicArea]} • {currentQuestion.difficulty}
-                  </p>
-                  <h3 className="text-lg font-bold text-[#0a1628] leading-relaxed">
-                    {currentQuestion.prompt}
-                  </h3>
-                </div>
+                <AssessmentQuestionCard
+                  questionNumber={currentQuestionIndex + 1}
+                  questionText={currentQuestion.prompt}
+                  topic={TOPIC_LABELS[currentQuestion.topicArea] || currentQuestion.topicArea}
+                  difficulty={(currentQuestion.difficulty as string as 'Easy' | 'Medium' | 'Hard') || 'Medium'}
+                >
 
                 {(currentQuestion.answerType === 'MCQ' || currentQuestion.answerType === 'confidenceLikert') && (
                   <div className="grid grid-cols-1 gap-2.5">
@@ -639,6 +629,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                     </Button>
                   </div>
                 )}
+              </AssessmentQuestionCard>
               </motion.div>
             )}
 
@@ -724,10 +715,16 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   </div>
                 )}
 
-                <div className="pt-4">
+                <div className="pt-4 space-y-3">
+                  <Button 
+                    onClick={() => setShowResultsModal(true)}
+                    className="bg-white border-2 border-sky-200 text-sky-600 hover:bg-sky-50 px-6 py-3 rounded-xl text-sm font-bold w-full max-w-[320px] mx-auto"
+                  >
+                    View Full Results
+                  </Button>
                   <Button 
                     onClick={handleComplete}
-                    className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-3 rounded-xl text-base font-bold w-full"
+                    className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-3 rounded-xl text-sm font-bold w-full max-w-[320px] mx-auto"
                   >
                     Go to Dashboard
                   </Button>
@@ -781,6 +778,15 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Assessment Results Modal */}
+      {showResultsModal && (
+        <AssessmentResultsModal
+          isOpen={showResultsModal}
+          onClose={() => setShowResultsModal(false)}
+          studentId={lrn || ''}
+        />
+      )}
     </div>
   );
 };

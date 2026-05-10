@@ -1,7 +1,8 @@
-﻿import React, { lazy, Suspense } from 'react';
+﻿import React, { lazy, Suspense, useState } from 'react';
 import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AvatarLayers } from './CompositeAvatar';
+import AssessmentResultsModal from './assessment/AssessmentResultsModal';
 
 const DashboardAvatar = lazy(() => import('./DashboardAvatar.tsx'));
 
@@ -12,6 +13,7 @@ interface HeroBannerProps {
   onContinueLearning?: () => void;
   showAssessmentTooltip?: boolean;
   onOpenAssessment?: () => void;
+  studentId?: string;
 }
 
 const HeroBanner: React.FC<HeroBannerProps> = ({ 
@@ -20,8 +22,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   avatarLayers, 
   onContinueLearning,
   showAssessmentTooltip,
-  onOpenAssessment
+  onOpenAssessment,
+  studentId,
 }) => {
+  const [showResultsModal, setShowResultsModal] = useState(false);
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -100,6 +104,41 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
             <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
           </div>
         </motion.div>
+      )}
+
+      {/* Success Tooltip showing Assessment is Completed — click to open results */}
+      {!showAssessmentTooltip && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, x: 10 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          transition={{ delay: 0.5, type: 'spring' }}
+          onClick={() => studentId && setShowResultsModal(true)}
+          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group"
+        >
+          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-teal-600">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <p className="text-xs lg:text-sm font-bold text-teal-900 leading-tight">
+                Assessment Complete!<br/>
+                <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">View results &amp; history</span>
+              </p>
+            </div>
+            {/* Speech bubble tail pointing right-down towards avatar */}
+            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
+          </div>
+        </motion.div>
+      )}
+
+      {showResultsModal && studentId && (
+        <AssessmentResultsModal
+          isOpen={showResultsModal}
+          onClose={() => setShowResultsModal(false)}
+          studentId={studentId}
+        />
       )}
 
       <div

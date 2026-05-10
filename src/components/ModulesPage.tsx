@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   Search,
+  Target,
   TrendingUp,
   Layers,
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import ModuleFolderCard from './ModuleFolderCard';
 import ModuleDetailView from './ModuleDetailView';
+import PracticeCenter from './PracticeCenter';
 
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
@@ -26,7 +28,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
 import { toast } from 'sonner';
 import { unlockAvatarItem } from '../services/gamificationService';
-import { getDailyCheckInState, claimDailyCheckIn } from '../services/dailyCheckInService';
+import { useDailyReward } from '../hooks/useDailyReward';
+import { getDayOfWeek } from '../data/rewardCatalog';
 import { notify } from '@/features/notifications';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { cacheKeys } from '../utils/cacheKeys';
@@ -48,9 +51,13 @@ interface ModulesPageProps {
   atRiskSubjects?: string[];
   priorityTopics?: DiagnosticTopicKey[];
   initialModuleId?: string | null;
+  isInQuizMode?: boolean;
+  setIsInQuizMode?: (value: boolean) => void;
+  /** Whether the initial assessment has been completed — REVIEW badge suppressed until true */
+  hasCompletedDiagnostic?: boolean;
 }
 
-type ModulesTab = 'modules' | 'recommended';
+type ModulesTab = 'modules' | 'recommended' | 'practice';
 
 const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
 
@@ -59,6 +66,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   atRiskSubjects = [],
   priorityTopics = [],
   initialModuleId = null,
+  isInQuizMode = false,
+  setIsInQuizMode,
+  hasCompletedDiagnostic = false,
 }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
@@ -116,30 +126,29 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [competencyProfileLoading, setCompetencyProfileLoading] = useState(false);
 
 
-  // Daily Check-in State (Firestore-backed)
+  // Daily Rewards (new weekly shuffle system)
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
-  const [claimedDays, setClaimedDays] = useState<number[]>([]);
-  const [currentDay, setCurrentDay] = useState(1);
-  const [checkInLoading, setCheckInLoading] = useState(false);
 
-  // Load check-in state from Firestore on mount AND listen for notification navigations
+  const {
+    weekRewards,
+    todayReward,
+    canClaim,
+    isClaiming,
+    claimedDays,
+    timeUntilReset,
+    claim,
+    lastClaimResult,
+  } = useDailyReward(userProfile?.uid ?? null);
+
+  // Show modal on mount if user can claim
   useEffect(() => {
     if (!userProfile?.uid) return;
 
     let cancelled = false;
     const loadState = async (forceShow?: boolean) => {
-      try {
-        const state = await getDailyCheckInState(userProfile.uid);
-        if (cancelled) return;
-        setCurrentDay(state.currentDay);
-        setClaimedDays(state.claimedDays || []);
-
-        const today = new Date().toISOString().split('T')[0];
-        if (state.lastClaimDate !== today || forceShow) {
-          setShowDailyCheckIn(true);
-        }
-      } catch (error) {
-        console.error('Failed to load check-in state:', error);
+      if (cancelled) return;
+      if (canClaim || forceShow) {
+        setShowDailyCheckIn(true);
       }
     };
 
@@ -150,59 +159,50 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       }
     };
 
-    loadState();
+    // Small delay to let hook initialise
+    const timer = setTimeout(() => loadState(), 500);
     window.addEventListener('mathpulse:navigate', handleNotificationNav);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       window.removeEventListener('mathpulse:navigate', handleNotificationNav);
     };
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, canClaim]);
 
-  const handleClaimDailyReward = async (reward: any) => {
-    if (!userProfile?.uid || checkInLoading) return;
-    setCheckInLoading(true);
+  const handleClaimDailyReward = async () => {
+    if (!userProfile?.uid) return;
 
     try {
-      const result = await claimDailyCheckIn(userProfile.uid);
-
-      // Update local state
-      const newClaimed = [...claimedDays, result.day];
-      setClaimedDays(newClaimed);
-      setCurrentDay(result.isLastDay ? 1 : result.day + 1);
+      await claim();
 
       // Fire notification
-      notify({
-        userId: userProfile.uid,
-        type: 'daily_checkin',
-        title: 'Daily Check-In Complete!',
-        message: `You earned ${reward?.amount || 'bonus'} XP and kept your streak alive!`,
-        metadata: { xpEarned: reward?.amount, streakDay: result.day },
-      }).catch(console.error);
+      if (lastClaimResult?.success) {
+        notify({
+          userId: userProfile.uid,
+          type: 'daily_checkin',
+          title: 'Daily Reward Claimed!',
+          message: `You earned ${lastClaimResult.reward.label} and kept your streak alive!`,
+          metadata: { rewardId: lastClaimResult.reward.id, streakDay: lastClaimResult.dayIndex + 1 },
+        }).catch(console.error);
 
-      // Avatar Rewards Unlock Logic (Run in background)
-      if (result.day === 3) {
-        unlockAvatarItem(userProfile.uid, 'acc_blue_cap')
-          .then(() => toast.success("✨ Blue Cap unlocked in Avatar Studio!"))
-          .catch(console.error);
-      } else if (result.day === 7) {
-        unlockAvatarItem(userProfile.uid, 'acc_crown')
-          .then(() => toast.success("👑 Golden Crown unlocked in Avatar Studio!"))
-          .catch(console.error);
+        // Avatar unlock for epic rewards
+        if (lastClaimResult.reward.rarity === 'epic') {
+          unlockAvatarItem(userProfile.uid, 'acc_crown')
+            .then(() => toast.success("👑 Epic reward unlocked!"))
+            .catch(console.error);
+        }
       }
 
-      // Auto-close quickly
-      setTimeout(() => setShowDailyCheckIn(false), 800);
+      // Auto-close
+      setTimeout(() => setShowDailyCheckIn(false), 1000);
     } catch (error) {
       const msg = error instanceof Error ? error.message : '';
       console.error('Failed to claim daily reward:', error);
       if (msg.includes('Already claimed')) {
-        setClaimedDays((prev) => prev.includes(currentDay) ? prev : [...prev, currentDay]);
         toast.info('You already claimed your reward today!');
       } else {
         toast.error('Failed to claim daily reward. Please try again.');
       }
-    } finally {
-      setCheckInLoading(false);
     }
   };
 
@@ -371,9 +371,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       onEarnXP(xpEarned, `Quiz Completed! +${xpEarned} XP`);
     }
     setSelectedQuiz(null);
+    if (setIsInQuizMode) setIsInQuizMode(false);
   };
 
   if (selectedQuiz) {
+    if (setIsInQuizMode) setIsInQuizMode(true);
     return (
       <QuizExperience
         quiz={selectedQuiz}
@@ -390,6 +392,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         module={selectedModule}
         onBack={() => setSelectedModule(null)}
         onEarnXP={onEarnXP}
+        isInQuizMode={isInQuizMode}
+        setIsInQuizMode={setIsInQuizMode}
       />
     );
   }
@@ -403,8 +407,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         isOpen={showDailyCheckIn}
         onClose={() => setShowDailyCheckIn(false)}
         onClaim={handleClaimDailyReward}
-        currentDay={currentDay}
+        weekRewards={weekRewards}
+        todayReward={todayReward}
+        canClaim={canClaim}
+        isClaiming={isClaiming}
         claimedDays={claimedDays}
+        currentDayIndex={getDayOfWeek()}
+        timeUntilReset={timeUntilReset}
       />
 
       {/* Hero Section */}
@@ -416,12 +425,17 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           <p className="text-[#3c4043] text-[16px] md:text-[17px] leading-[1.7] md:pr-10">
             MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
           </p>
-          <div className="mt-4 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
-            {curriculumContextLabel}
+          <div className="mt-4 flex items-center gap-3">
+            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
+              {curriculumContextLabel}
+            </div>
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center justify-center lg:justify-end w-full lg:w-[350px] mt-4 lg:mt-0">
-          <ModulesMascot />
+          <ModulesMascot 
+            assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
+            initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
+          />
         </div>
       </div>
 
@@ -447,27 +461,30 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               <button
                 onClick={async () => {
                   if (!userProfile?.uid) return;
-                  const { getDoc, updateDoc } = await import('firebase/firestore');
+                  const { doc, setDoc } = await import('firebase/firestore');
                   const { db } = await import('../lib/firebase');
-                  const ref = getDoc as any;
                   try {
-                    const docRef = (await import('firebase/firestore')).doc(db, 'users', userProfile.uid, 'settings', 'dailyCheckIn');
-                    await updateDoc(docRef, {
-                      currentDay: 3,
-                      claimedDays: [1, 2],
-                      lastClaimDate: '',
-                    } as any);
-                    setCurrentDay(3);
-                    setClaimedDays([1, 2]);
+                    const docRef = doc(db, 'users', userProfile.uid, 'dailyRewards', userProfile.uid);
+                    await setDoc(docRef, {
+                      lastClaimedDate: '',
+                      lastClaimedWeekSeed: 0,
+                      claimedDays: [0, 1],
+                      currentStreak: 2,
+                      longestStreak: 2,
+                      totalClaimed: 2,
+                      hintTokens: 0,
+                      streakShields: 0,
+                      activeMultiplier: null,
+                    });
                     setShowDailyCheckIn(true);
-                    toast.success('Dev: Check-in reset to day 3, days 1-2 claimed');
+                    toast.success('Dev: Daily rewards reset (days 1-2 claimed)');
                   } catch (e) {
                     console.error(e);
                     toast.error('Dev reset failed');
                   }
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-1.5 rounded-lg hover:bg-amber-50"
-                title="Reset Daily Check-in (Dev Only)"
+                title="Reset Daily Rewards (Dev Only)"
               >
                 <RotateCcw size={14} />
               </button>
@@ -529,6 +546,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             {[
               { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
               { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
+              { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -544,7 +562,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       layoutId="modulesTabBackground"
                       className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
+      />
+
                   )}
                   <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
                     <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
@@ -571,6 +590,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   <Sparkles size={15} className="text-[#75D06A]" />
                 </div>
                 <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Suggested Next</span>
+              </>
+            )}
+            {activeTab === 'practice' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center">
+                  <Target size={15} className="text-[#FFB356]" />
+                </div>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
               </>
             )}
 
@@ -622,12 +649,15 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           transition={{ duration: 0.3 }}
           className="pb-8 mt-4"
         >
-          {activeTab === 'modules' ? (
+          {activeTab === 'practice' ? (
+            <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
+          ) : activeTab === 'modules' ? (
             <ModulesLibraryView
               modules={filteredModules}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
-              isAtRisk={normalizedRiskTopics.length > 0}
+              isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
+              weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
             />
           ) : (
             <RecommendedModulesView
@@ -635,9 +665,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               fullPool={modulePool}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
-              isAtRisk={normalizedRiskTopics.length > 0}
+              isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
               learningPathContext={learningPathContext}
               learningPathLoading={learningPathLoading}
+              weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
             />
           )}
         </motion.div>
@@ -693,7 +724,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 p-4">
+              {/* Sources hidden from students - uncomment below to show for debugging */}
+              {/* <div className="rounded-2xl border border-slate-200 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sources</p>
                 <div className="mt-2 space-y-2">
                   {sourcePreviewModule.module_sources.map((source) => (
@@ -709,7 +741,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                     </a>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </div>
           </motion.aside>
         )}
@@ -723,7 +755,8 @@ const ModulesLibraryView: React.FC<{
   onSelectModule: (module: CurriculumModuleRuntime) => void;
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
-}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false }) => {
+  weakTopics?: string[];
+}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, weakTopics = [] }) => {
   return (
     <div className="pr-2 space-y-8">
       <div>
@@ -737,7 +770,14 @@ const ModulesLibraryView: React.FC<{
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {modules.map((module, index) => (
+            {modules.map((module, index) => {
+              const isRecommended = weakTopics.some(wt => 
+                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
+              );
+              return (
               <ModuleFolderCard
                 key={module.id}
                 module={module}
@@ -745,8 +785,9 @@ const ModulesLibraryView: React.FC<{
                 onClick={() => onSelectModule(module)}
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
+                isRecommended={isRecommended}
               />
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -762,7 +803,8 @@ const RecommendedModulesView: React.FC<{
   isAtRisk?: boolean;
   learningPathContext?: string | null;
   learningPathLoading?: boolean;
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false }) => {
+  weakTopics?: string[];
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false, weakTopics = [] }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
@@ -795,7 +837,14 @@ const RecommendedModulesView: React.FC<{
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {inProgress.slice(0, 4).map((module, index) => (
+            {inProgress.slice(0, 4).map((module, index) => {
+              const isRecommended = weakTopics.some(wt => 
+                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
+              );
+              return (
               <ModuleFolderCard
                 key={module.id}
                 module={module}
@@ -804,8 +853,9 @@ const RecommendedModulesView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="In Progress"
+                isRecommended={isRecommended}
               />
-            ))}
+            )})}
           </div>
         </div>
       )}
@@ -817,7 +867,14 @@ const RecommendedModulesView: React.FC<{
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {suggested.map((module, index) => (
+            {suggested.map((module, index) => {
+              const isRecommended = weakTopics.some(wt => 
+                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
+                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
+              );
+              return (
               <ModuleFolderCard
                 key={module.id}
                 module={module}
@@ -826,8 +883,9 @@ const RecommendedModulesView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
+                isRecommended={isRecommended}
               />
-            ))}
+            )})}
           </div>
         )}
       </div>

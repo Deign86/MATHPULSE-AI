@@ -232,7 +232,6 @@ class EnhancedRiskRequest(BaseModel):
     avgQuizScore: float = Field(..., ge=0, le=100)
     attendance: float = Field(..., ge=0, le=100)
     assignmentCompletion: float = Field(..., ge=0, le=100)
-    streak: Optional[int] = 0
     xpGrowthRate: Optional[float] = 0.0
     timeOnPlatform: Optional[float] = 0.0  # hours
     # Optional trend data
@@ -810,7 +809,7 @@ def _build_risk_features(data: EnhancedRiskRequest) -> np.ndarray:
         data.avgQuizScore,
         data.attendance,
         data.assignmentCompletion,
-        data.streak or 0,
+        0,  # streak removed
         data.xpGrowthRate or 0.0,
         data.timeOnPlatform or 0.0,
         data.engagementTrend7d or 0.0,
@@ -871,12 +870,8 @@ def _rule_based_risk(data: EnhancedRiskRequest) -> EnhancedRiskPrediction:
         score -= 10
     if (data.daysSinceLastActivity or 0) >= 7:
         score -= 10
-    if (data.streak or 0) == 0:
-        score -= 5
 
     # Bonuses
-    if (data.streak or 0) >= 7:
-        score += 5
     if (data.engagementTrend7d or 0) > 0:
         score += 5
 
@@ -1156,7 +1151,7 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
                     data.get("avgQuizScore", 50),
                     data.get("attendance", 80),
                     data.get("assignmentCompletion", 60),
-                    data.get("streak", 0),
+                    0,  # streak removed
                     data.get("xpGrowthRate", 0),
                     data.get("timeOnPlatform", 0),
                     0.0,  # engagementTrend7d
@@ -1260,7 +1255,7 @@ def _generate_synthetic_risk_data(n: int) -> Tuple[np.ndarray, np.ndarray]:
             quiz = np.random.normal(35, 12)
             attendance = np.random.normal(50, 15)
             completion = np.random.normal(35, 15)
-            streak = max(0, int(np.random.normal(1, 2)))
+            # streak removed
             xp_growth = np.random.normal(-0.5, 0.3)
             time_platform = np.random.normal(2, 1)
             trend = np.random.normal(-10, 5)
@@ -1272,7 +1267,7 @@ def _generate_synthetic_risk_data(n: int) -> Tuple[np.ndarray, np.ndarray]:
             quiz = np.random.normal(60, 10)
             attendance = np.random.normal(72, 10)
             completion = np.random.normal(60, 12)
-            streak = max(0, int(np.random.normal(3, 3)))
+            # streak removed
             xp_growth = np.random.normal(0.2, 0.3)
             time_platform = np.random.normal(5, 2)
             trend = np.random.normal(0, 8)
@@ -1284,7 +1279,7 @@ def _generate_synthetic_risk_data(n: int) -> Tuple[np.ndarray, np.ndarray]:
             quiz = np.random.normal(85, 8)
             attendance = np.random.normal(93, 5)
             completion = np.random.normal(88, 8)
-            streak = max(0, int(np.random.normal(10, 5)))
+            # streak removed
             xp_growth = np.random.normal(1.0, 0.4)
             time_platform = np.random.normal(10, 3)
             trend = np.random.normal(5, 5)
@@ -1297,7 +1292,7 @@ def _generate_synthetic_risk_data(n: int) -> Tuple[np.ndarray, np.ndarray]:
             max(0, min(100, quiz)),
             max(0, min(100, attendance)),
             max(0, min(100, completion)),
-            streak,
+            0,  # streak removed
             xp_growth,
             max(0, time_platform),
             trend,

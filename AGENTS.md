@@ -28,9 +28,12 @@ Project root: C:\Users\Deign\Downloads\MATHPULSE-AI
 - Never make assumptions about the stack, architecture, or conventions — always read from memory bank files
 
 ### After ANY significant change:
+- **⚠️ MANDATORY: After ANY change, IMMEDIATELY call `update-memory-bank` to persist the change**
 - Call `update-memory-bank` to update the relevant file(s)
 - Always update `memory-bank\activeContext.md` with what just changed and what is next
 - Update `memory-bank\progress.md` if a feature was completed or a bug was found
+
+> **⚠️ AUTO-INVOKE RULE: After EVERY edit, config change, tool creation, or any modification — call `update-memory-bank` IMMEDIATELY. Do NOT wait. Do NOT ask. Just invoke it.**
 
 ### After EVERY session (last prompt before user stops):
 - Update `memory-bank\activeContext.md` — what was done, what is next
@@ -129,10 +132,134 @@ api.restart_space('deign86/mathpulse-api-v3test')
 ```
 **Required secrets:** `FIREBASE_SERVICE_ACCOUNT_JSON`, `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `INFERENCE_PROVIDER`
 
-## Gotchas
+## Layer 2: Code Intelligence MCPs
 
-- **`npm run dev` has a predev hook** — it runs `sync:models` (Python) and `check:backend:dev` (Node `backend-gate.mjs`) before Vite starts. Both must pass or dev server won't start.
-- **ROLE_POLICIES** in `backend/main.py:310` controls endpoint access. If students get 403 on an endpoint, check if it's mapped to `TEACHER_OR_ADMIN` instead of `ALL_APP_ROLES`.
-- **HF Space secrets** require a space restart via `api.restart_space()` after adding.
-- **ModuleDetailView infinite loop bug** — inline callback references in `ModuleDetailView.tsx` cause "Maximum update depth exceeded". Fix: wrap callbacks in `useCallback`.
+Two knowledge graph engines are active as local MCP servers in OpenCode:
 
+- **Graphify** — codebase-level clustering, GRAPH_REPORT.md, doc/image coverage
+- **GitNexus** — symbol-level precision: blast radius, call chains, refactor safety
+
+### Graphify MCP Tools
+
+| Tool | Use for |
+|---|---|
+| `graphify_query_graph` | Natural-language query → relevant nodes/edges |
+| `graphify_get_node` | Single node details by label/ID |
+| `graphify_get_neighbors` | Direct neighbors of a node |
+| `graphify_get_community` | All members of a community |
+| `graphify_god_nodes` | Most-connected nodes (core abstractions) |
+| `graphify_graph_stats` | Graph summary stats |
+| `graphify_shortest_path` | Shortest path between two concepts |
+
+### GitNexus MCP Tools
+
+| Tool | Use for |
+|---|---|
+| `gitnexus_query` | Find execution flows by concept (ranked by relevance) |
+| `gitnexus_context` | Full symbol info: callers, callees, processes |
+| `gitnexus_impact` | Blast radius analysis before editing |
+| `gitnexus_rename` | Safe multi-file rename via call graph |
+| `gitnexus_detect_changes` | Map git diff → affected execution flows |
+| `gitnexus_cypher` | Raw Cypher query for complex graph traversal |
+| `gitnexus_api_impact` | API route impact analysis |
+| `gitnexus_route_map` | API route → handler → consumer mapping |
+| `gitnexus_shape_check` | API response shape vs consumer usage |
+| `gitnexus_list_repos` | List indexed repositories |
+| `gitnexus_group_list` / `gitnexus_group_sync` | Multi-repo group operations |
+
+### Index Freshness
+
+**GitNexus:** No auto-update. Re-index after code changes:
+```bash
+npx gitnexus analyze        # single repo
+```
+
+**Graphify:** Auto-indexes on file edits locally. Full rebuild:
+```bash
+npx graphify analyze
+```
+
+Run re-index before important tasks if significant changes since last session.
+
+### GitNexus Rules (MCP Tools)
+
+**MUST do before editing any symbol:**
+1. `gitnexus_impact({ target: "symbolName", direction: "upstream" })` → report blast radius + risk
+2. If risk = HIGH or CRITICAL, warn user before proceeding
+
+**MUST do before committing:**
+- `gitnexus_detect_changes()` → verify only expected symbols affected
+
+**NEVER:**
+- Edit without running `gitnexus_impact` first
+- Rename with find-and-replace — use `gitnexus_rename`
+- Commit with unexpected affected scopes
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **MATHPULSE-AI** (15991 symbols, 29062 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/MATHPULSE-AI/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/MATHPULSE-AI/clusters` | All functional areas |
+| `gitnexus://repo/MATHPULSE-AI/processes` | All execution flows |
+| `gitnexus://repo/MATHPULSE-AI/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->
+
+---
+
+## External Documentation — Mandatory Context7 Usage
+
+**ALWAYS use Context7 API when working with external libraries, APIs, or frameworks.**
+
+When implementing features that use:
+- New npm packages or Python libraries
+- Framework APIs (React, FastAPI, Firebase, etc.)
+- Third-party services or SDKs
+- Any external dependency not covered in this AGENTS.md
+
+You MUST:
+1. Use `context7_resolve-library-id` to find the library
+2. Use `context7_query-docs` to get current documentation and code examples
+3. Never assume API behavior — always verify with Context7
+
+**Why:** Prevents hallucinations about library APIs, ensures correct usage patterns, and provides production-ready code examples.
+
+**Triggers (auto-invoke):**
+- "How do I use [library]?"
+- "What's the best practice for [framework feature]?"
+- Implementing unfamiliar npm/pip packages
+- Any question about external library behavior

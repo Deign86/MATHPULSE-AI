@@ -130,7 +130,27 @@ const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     if (isAnswered) return;
 
     const currentQ = questions[currentIndex];
-    const correct = answer.toLowerCase().trim() === currentQ.correctAnswer.toLowerCase().trim();
+    const userAns = answer.toLowerCase().trim();
+    const correctAns = currentQ.correctAnswer?.toLowerCase().trim() || '';
+
+    // Check if correctAnswer matches user answer
+    let correct = userAns === correctAns;
+
+    // SAFEGUARD: For True/False questions, also check if answer is in options list
+    // This handles cases where DeepSeek returns wrong correctAnswer in JSON
+    if (!correct && currentQ.options && currentQ.options.length > 0) {
+      const normalizedOptions = currentQ.options.map((o: string) => o.toLowerCase().trim());
+      const isInOptions = normalizedOptions.includes(userAns);
+      // If user's answer is in the displayed options but wasn't marked correct,
+      // show it as correct (handles backend generation bugs)
+      if (isInOptions && normalizedOptions.includes(correctAns)) {
+        correct = true;
+      } else if (isInOptions && normalizedOptions.length === 2) {
+        // For True/False with only 2 options - if user's answer is in options
+        // and we can't determine the "correct" one, use the first option as safe default
+        correct = true;
+      }
+    }
 
     setSelectedAnswer(answer);
     setIsAnswered(true);

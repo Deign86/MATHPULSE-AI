@@ -37,6 +37,7 @@ export const DEFAULT_BLOOM_LEVELS = [
   "remember",
   "understand",
   "apply",
+  "analyze",
 ];
 
 export const DEFAULT_QUESTION_TYPES = [
@@ -61,7 +62,6 @@ export const INITIAL_GAMIFICATION = {
   level: 1,
   currentXP: 0,
   totalXP: 0,
-  streak: 0,
   hasTakenDiagnostic: false,
   atRiskSubjects: [] as string[],
 };

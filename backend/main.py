@@ -116,10 +116,12 @@ except Exception:
 try:
     from google.oauth2 import id_token as google_id_token  # type: ignore[import-not-found]
     from google.auth.transport import requests as google_auth_requests  # type: ignore[import-not-found]
+    from google.cloud.firestore import DELETE_FIELD  # type: ignore[import-not-found]
     HAS_GOOGLE_AUTH = True
 except Exception:
     google_id_token = None  # type: ignore[assignment]
     google_auth_requests = None  # type: ignore[assignment]
+    DELETE_FIELD = None  # type: ignore[assignment]
     HAS_GOOGLE_AUTH = False
 
 # Event-driven automation engine
@@ -531,6 +533,24 @@ def _init_firebase_admin() -> None:
         logger.warning("firebase-admin is not available; protected API endpoints will reject requests.")
         return
 
+    # Helper: load Firebase service account JSON from env var OR HF Spaces secret file
+    def _load_firebase_sa_json() -> Optional[str]:
+        # 1. Environment variable (standard deployment)
+        if FIREBASE_SERVICE_ACCOUNT_JSON:
+            return FIREBASE_SERVICE_ACCOUNT_JSON
+        # 2. HF Spaces secret mount path (secrets mounted as files at /secret/)
+        hf_space_secret_path = "/secret/FIREBASE_SERVICE_ACCOUNT_JSON"
+        if os.path.exists(hf_space_secret_path):
+            try:
+                with open(hf_space_secret_path, "r") as f:
+                    content = f.read().strip()
+                if content:
+                    logger.info(f"Loaded FIREBASE_SERVICE_ACCOUNT_JSON from HF Spaces secret file: {hf_space_secret_path}")
+                    return content
+            except Exception as e:
+                logger.warning(f"Failed to read HF Spaces secret file {hf_space_secret_path}: {e}")
+        return None
+
     try:
         if not firebase_admin._apps:  # type: ignore[attr-defined]
             init_options: Dict[str, Any] = {}
@@ -538,12 +558,17 @@ def _init_firebase_admin() -> None:
             if FIREBASE_AUTH_PROJECT_ID:
                 init_options["projectId"] = FIREBASE_AUTH_PROJECT_ID
 
-            if FIREBASE_SERVICE_ACCOUNT_JSON:
-                service_account_payload = json.loads(FIREBASE_SERVICE_ACCOUNT_JSON)
+            sa_json = _load_firebase_sa_json()
+            if sa_json:
+                service_account_payload = json.loads(sa_json)
                 credentials_obj = cast(Any, firebase_admin).credentials.Certificate(service_account_payload)
+                logger.info("Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT_JSON")
             elif FIREBASE_SERVICE_ACCOUNT_FILE:
                 credentials_obj = cast(Any, firebase_admin).credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_FILE)
+                logger.info("Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT_FILE")
 
+            # Only initialize if we have credentials or at minimum a project ID
+            # Without credentials, Firebase init succeeds but ALL Firestore calls will fail
             if credentials_obj and init_options:
                 firebase_admin.initialize_app(credentials_obj, options=init_options)  # type: ignore[union-attr]
             elif credentials_obj:
@@ -551,7 +576,15 @@ def _init_firebase_admin() -> None:
             elif init_options:
                 firebase_admin.initialize_app(options=init_options)  # type: ignore[union-attr]
             else:
-                firebase_admin.initialize_app()  # type: ignore[union-attr]
+                # No credentials AND no project ID — Firebase will NOT be usable
+                logger.error(
+                    "Firebase Admin SDK could not initialize: no credentials found. "
+                    "Set FIREBASE_SERVICE_ACCOUNT_JSON env var, FIREBASE_SERVICE_ACCOUNT_FILE path, "
+                    "or ensure HF Spaces secret is mounted at /secret/FIREBASE_SERVICE_ACCOUNT_JSON. "
+                    "Firestore operations will fail."
+                )
+                return
+
         _firebase_ready = True
         if FIREBASE_AUTH_PROJECT_ID:
             logger.info(f"Firebase Admin SDK initialized for API auth verification (projectId={FIREBASE_AUTH_PROJECT_ID})")
@@ -2923,7 +2956,6 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
         f"engagementScore: {data.engagementScore:.1f}\n"
         f"avgQuizScore: {data.avgQuizScore:.1f}\n"
         f"assignmentCompletion: {data.assignmentCompletion:.1f}\n"
-        f"streak: {int(data.streak or 0)}\n"
         f"daysSinceLastActivity: {int(data.daysSinceLastActivity or 0)}\n"
         f"top_factors: {', '.join(result.top_factors)}"
     )
@@ -11297,6 +11329,25 @@ def _testing_reset_try_set_doc(doc_ref: Any, payload: Dict[str, Any], label: str
         return 0
 
 
+def _testing_reset_try_delete_subcollection(
+    client: Any, parent_path: str, subcollection_name: str
+) -> int:
+    """Delete all documents in a subcollection. Returns count of deleted docs."""
+    try:
+        docs = list(client.collection(parent_path).document().parent.collection(subcollection_name).stream())
+        for doc_snapshot in docs:
+            doc_snapshot.reference.delete()
+        return len(docs)
+    except Exception as err:
+        logger.warning(
+            "Testing reset skipped delete for %s/%s: %s",
+            parent_path,
+            subcollection_name,
+            err,
+        )
+        return 0
+
+
 def _reset_student_testing_data_admin(
     client: Any,
     uid: str,
@@ -11323,24 +11374,36 @@ def _reset_student_testing_data_admin(
         merge=False,
     )
 
+    # Build users/{uid} payload with DELETE_FIELD for optional assessment fields
+    users_payload = {
+        "level": 1,
+        "currentXP": 0,
+        "totalXP": 0,
+        "atRiskSubjects": [],
+        "hasTakenDiagnostic": False,
+        "iarAssessmentState": "not_started",
+        "learningPathState": "unlocked",
+        "remediationState": "not_required",
+        "subjectBadges": {},
+        "riskClassifications": {},
+        "overallRisk": "Low",
+        "updatedAt": timestamp_value,
+    }
+    # Add assessment-specific fields using DELETE_FIELD to remove them
+    if DELETE_FIELD is not None:
+        users_payload["diagnosticCompleted"] = DELETE_FIELD
+        users_payload["lastAssessmentDate"] = DELETE_FIELD
+        users_payload["assessmentAttemptCount"] = DELETE_FIELD
+        users_payload["initialProficiencyLevel"] = DELETE_FIELD
+    else:
+        users_payload["diagnosticCompleted"] = False
+        users_payload["lastAssessmentDate"] = None
+        users_payload["assessmentAttemptCount"] = 0
+        users_payload["initialProficiencyLevel"] = None
+
     updated_docs += _testing_reset_try_set_doc(
         client.collection("users").document(uid),
-        {
-            "level": 1,
-            "currentXP": 0,
-            "totalXP": 0,
-            "streak": 0,
-            "streakHistory": [],
-            "atRiskSubjects": [],
-            "hasTakenDiagnostic": False,
-            "iarAssessmentState": "not_started",
-            "learningPathState": "unlocked",
-            "remediationState": "not_required",
-            "subjectBadges": {},
-            "riskClassifications": {},
-            "overallRisk": "Low",
-            "updatedAt": timestamp_value,
-        },
+        users_payload,
         f"users/{uid}",
         merge=True,
     )
@@ -11348,6 +11411,11 @@ def _reset_student_testing_data_admin(
     deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", uid)
     deleted_docs += _testing_reset_try_delete_by_field(client, "chatSessions", "userId", uid)
     deleted_docs += _testing_reset_try_delete_by_field(client, "chatMessages", "userId", uid)
+
+    # Delete assessment subcollection documents
+    deleted_docs += _testing_reset_try_delete_subcollection(client, f"assessmentResults/{uid}", "attempts")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, f"studentProgress/{uid}", "diagnostics")
+    deleted_docs += _testing_reset_try_delete_subcollection(client, f"assessmentQuestionHistory/{uid}", "questions")
 
     if effective_lrn != uid:
         deleted_docs += _testing_reset_try_delete_by_field(client, "notifications", "userId", effective_lrn)
@@ -12712,7 +12780,6 @@ class ProgressEvaluateRequest(BaseModel):
     mastery_level_before: str
     items: List[Dict[str, Any]]
     previous_attempts: int = Field(default=0)
-    current_streak_days: int = Field(default=0)
 
 
 class ProgressEvaluateResponse(BaseModel):
@@ -12747,11 +12814,11 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
         
         applying_level_correct = sum(
             1 for item in request.items
-            if item.get("is_correct", False) and item.get("bloom_level", "") in ("applying", "analyzing", "evaluating")
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("applying", "analyzing")
         )
         analyzing_level_correct = sum(
             1 for item in request.items
-            if item.get("is_correct", False) and item.get("bloom_level", "") in ("analyzing", "evaluating", "creating")
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("analyzing",)
         )
         
         if prev == "beginning" and score_percent >= 60 and applying_level_correct >= 2:
@@ -12762,7 +12829,6 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
             mastery_changed = True
         
         xp_base = 0
-        xp_streak = 0
         xp_mastery = 0
         xp_other = 0
         
@@ -12776,8 +12842,6 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
                 elif diff == "hard":
                     xp_base += 20
         
-        xp_streak = min(30, 5 * request.current_streak_days)
-        
         if mastery_changed:
             xp_mastery = 50
         
@@ -12787,7 +12851,7 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
         if request.previous_attempts >= 1 and score_percent > 60:
             xp_other += 15
         
-        xp_total = xp_base + xp_streak + xp_mastery + xp_other
+        xp_total = xp_base + xp_mastery + xp_other
         
         error_analysis = []
         for item in request.items:
@@ -12844,7 +12908,6 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
                 stats_ref = db.collection("studentProgress").document(request.student_id).collection("stats").document("summary")
                 stats_ref.set({
                     "total_xp": firebase_firestore.Increment(xp_total),
-                    "current_streak_days": request.current_streak_days,
                     "topics_mastered": firebase_firestore.Increment(1) if mastery_changed else firebase_firestore.Increment(0),
                 }, merge=True)
             except Exception as fs_err:
@@ -12855,7 +12918,7 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
             mastery_changed=mastery_changed,
             score_percent=round(score_percent, 1),
             xp_earned=xp_total,
-            xp_breakdown={"base": xp_base, "mastery_bonus": xp_mastery, "streak_bonus": xp_streak, "other": xp_other},
+            xp_breakdown={"base": xp_base, "mastery_bonus": xp_mastery, "other": xp_other},
             badges_unlocked=[],
             performance_feedback=f"You got {correct_count}/{total_items} correct.",
             error_analysis=error_analysis,

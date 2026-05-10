@@ -309,7 +309,7 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
 
                 {/* Cropper area */}
                 <div className="p-4 sm:p-6 bg-slate-50 flex flex-col items-center">
-                  <div className="relative h-[350px] sm:h-[450px] w-full overflow-hidden rounded-xl bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-inner">
+                  <div className="relative h-[350px] sm:h-[450px] w-[350px] sm:w-[450px] mx-auto overflow-hidden rounded-xl bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-inner">
                     <Cropper
                       image={selectedPreview}
                       crop={crop}

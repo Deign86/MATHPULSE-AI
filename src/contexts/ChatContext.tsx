@@ -678,7 +678,7 @@ interface ChatProviderProps {
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -919,6 +919,32 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             history,
           })
         : null;
+
+      // Inject RAG context based on weak topics
+      const weakTopics = userProfile && 'assessmentResults' in userProfile 
+        ? (userProfile as import('../types/models.ts').StudentProfile).assessmentResults?.weakTopics || [] 
+        : [];
+      
+      let curriculumContext = '';
+      if (weakTopics.length > 0) {
+        try {
+          const apiServiceModule = await loadApiService();
+          const ragResp = await apiServiceModule.getRagAnalysisContext({
+            weakTopics,
+            subject: 'Mathematics', // Can be parameterized later if needed
+          });
+          curriculumContext = ragResp.curriculumContext || '';
+        } catch (e) {
+          console.warn('Non-blocking RAG context fetch failed:', e);
+        }
+      }
+
+      if (curriculumContext) {
+        history.unshift({
+          role: 'assistant', // Using assistant to provide system-like context as history types are restricted
+          content: `[SYSTEM CONTEXT: Based on the student's assessment, here is their learning context. Keep this in mind when tutoring but do not mention this context directly unless relevant:]\n${curriculumContext}`,
+        });
+      }
 
       const maybeCacheHintResponse = (answer: string) => {
         if (!hintCacheKey) return;

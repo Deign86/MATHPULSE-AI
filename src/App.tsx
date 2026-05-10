@@ -1,11 +1,12 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AppLoadingScreen from './components/AppLoadingScreen.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService.ts';
 import { createNotification } from './services/notificationService.ts';
-import { updateStreak, awardXP } from './services/gamificationService.ts';
+import { awardXP } from './services/gamificationService.ts';
 import { updateCompetencyProfile } from './services/assessmentService.ts';
 import { getUserProgress } from './services/progressService.ts';
 import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
@@ -16,7 +17,7 @@ import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from '
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
-import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 type ProfileSaveData = Partial<User> &
@@ -58,6 +59,8 @@ const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
 const App = () => {
   // Get authentication state from context
   const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const tabLoadingFallback = (
     <div className="flex min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
       Loading content...
@@ -96,7 +99,7 @@ const App = () => {
     sumRequiredForCurrentLevel += Math.floor(100 * Math.pow(1.5, i - 1));
   }
   const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
-  const [streak, setStreak] = useState(studentProfile?.streak || 0);
+  // (Streak derived from Daily Reward system via RightSidebar)
 
   // Curriculum data for navigation
   const activeGradeLevel = resolveLearnerGradeLevel(studentProfile?.grade);
@@ -119,6 +122,45 @@ const App = () => {
   // App-level Navigation State
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
 
+  // URL path mapping for tab navigation
+  const tabToPath: Record<string, string> = {
+    'Dashboard': '/',
+    'Modules': '/modules',
+    'AI Chat': '/chat',
+    'Assessment': '/assessment',
+    'Quiz Battle': '/battle',
+    'Leaderboard': '/leaderboard',
+    'Grades': '/grades',
+    'Avatar Studio': '/avatar',
+  };
+
+  const pathToTab: Record<string, string> = {
+    '/': 'Dashboard',
+    '/modules': 'Modules',
+    '/chat': 'AI Chat',
+    '/assessment': 'Assessment',
+    '/battle': 'Quiz Battle',
+    '/leaderboard': 'Leaderboard',
+    '/grades': 'Grades',
+    '/avatar': 'Avatar Studio',
+  };
+
+  // Sync activeTab from URL on mount and location change
+  useEffect(() => {
+    const tab = pathToTab[location.pathname] || 'Dashboard';
+    setActiveTab(tab);
+  }, [location.pathname]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = pathToTab[window.location.pathname] || 'Dashboard';
+      setActiveTab(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleStudentNavigation = (tab: string, moduleId?: string) => {
     if (moduleId) {
       setTargetModuleId(moduleId);
@@ -134,6 +176,11 @@ const App = () => {
     }
 
     setActiveTab(tab);
+    // Also update URL for deep-link support
+    const path = tabToPath[tab];
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
     setIsMobileSidebarOpen(false);
   };
 
@@ -145,6 +192,7 @@ const App = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
   const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
+  const [isInQuizMode, setIsInQuizMode] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [dismissedSupplementalSignature, setDismissedSupplementalSignature] = useState<string>('');
   const [dashboardShellDeferredReady, setDashboardShellDeferredReady] = useState(false);
@@ -152,6 +200,9 @@ const App = () => {
   // Diagnostic / Assessment State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
   const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState<boolean | null>(null);
+  const [assessmentDismissed, setAssessmentDismissed] = useState(false);
+  const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
+  const [diagnosticCheckVersion, setDiagnosticCheckVersion] = useState(0);
   const [showAssessmentPage, setShowAssessmentPage] = useState(false);
   const [assessmentTestId, setAssessmentTestId] = useState<string>('');
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
@@ -180,7 +231,6 @@ const App = () => {
       setUserLevel(studentProfile.level || 1);
       setCurrentXP(studentProfile.currentXP || 0);
       setTotalXP(studentProfile.totalXP || 0);
-      setStreak(studentProfile.streak || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
       setPriorityTopics((studentProfile.priorityTopics || []) as DiagnosticTopicKey[]);
       setProfileReady(true);
@@ -234,14 +284,6 @@ const App = () => {
   }, [isLoggedIn, userRole]);
 
   useEffect(() => {
-    if (isLoggedIn && userRole === 'student' && userProfile) {
-      updateStreak(userProfile.uid).then((newStreak) => {
-        setStreak(newStreak);
-      });
-    }
-  }, [isLoggedIn, userRole, userProfile]);
-
-  useEffect(() => {
     setProfileOverrides({});
   }, [userProfile?.uid]);
 
@@ -272,6 +314,12 @@ const App = () => {
     setShowDiagnosticModal(true);
   };
 
+  useEffect(() => {
+    const handler = () => setShowDiagnosticModal(true);
+    window.addEventListener('mathpulse:open-assessment', handler);
+    return () => window.removeEventListener('mathpulse:open-assessment', handler);
+  }, []);
+
   // Firestore-based diagnostic check on student login
   useEffect(() => {
     if (!isLoggedIn || userRole !== 'student' || !profileReady || !userProfile?.uid) return;
@@ -279,6 +327,9 @@ const App = () => {
     let cancelled = false;
     const checkDiagnostic = async () => {
       try {
+        setAssessmentDismissed(!!studentProfile?.assessmentDismissed);
+        setInitialAssessmentCompleted(!!studentProfile?.initialAssessmentCompleted);
+
         // Check legacy diagnostic results
         const legacySnap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
         // Check new competency profile
@@ -292,7 +343,13 @@ const App = () => {
         if (!hasLegacyComplete && !hasEnhancedComplete) {
           setHasCompletedDiagnostic(false);
           const timer = setTimeout(() => {
-            if (!cancelled) setShowDiagnosticModal(true);
+            if (!cancelled && !assessmentDismissed && !initialAssessmentCompleted) {
+              // Also check session-only dismiss — X button sets sessionStorage, not Firestore
+              const sessionDismissed = sessionStorage.getItem('mathpulse_iar_session_dismissed') === 'true';
+              if (!sessionDismissed) {
+                setShowDiagnosticModal(true);
+              }
+            }
           }, 1000);
           return () => clearTimeout(timer);
         } else {
@@ -320,16 +377,7 @@ const App = () => {
     };
     void checkDiagnostic();
     return () => { cancelled = true; };
-  }, [isLoggedIn, userRole, profileReady, userProfile?.uid]);
-
-  // Update streak when user logs in (students only)
-  useEffect(() => {
-    if (isLoggedIn && userRole === 'student' && userProfile) {
-      updateStreak(userProfile.uid).then((newStreak) => {
-        setStreak(newStreak);
-      });
-    }
-  }, [isLoggedIn, userRole, userProfile]);
+  }, [isLoggedIn, userRole, profileReady, userProfile?.uid, diagnosticCheckVersion]);
 
   const atRiskSignature = [...atRiskSubjects].sort().join('|');
   const supplementalDismissStorageKey = userProfile?.uid
@@ -472,6 +520,17 @@ const App = () => {
         resetSupplementalBannerDismissal();
       } catch (err) {
         console.error('[diagnostic] Failed to refresh risk data:', err);
+      }
+
+      try {
+        await updateDoc(doc(db, 'users', userProfile.uid), {
+          initialAssessmentCompleted: true,
+          assessmentDismissed: false,
+          assessmentCompletedAt: serverTimestamp(),
+        });
+        await awardXP(userProfile.uid, 50, 'initial_assessment', 'Initial assessment completed');
+      } catch (err) {
+        console.error('[App] Failed to persist assessment completion:', err);
       }
     }
   };
@@ -643,12 +702,17 @@ const App = () => {
       setUserLevel(1);
       setCurrentXP(0);
       setTotalXP(0);
-      setStreak(0);
       setAtRiskSubjects([]);
       setPriorityTopics([]);
       setHasCompletedDiagnostic(null);
+      setAssessmentDismissed(false);
+      setInitialAssessmentCompleted(false);
       setComputedGpa('0.00');
       setActiveTab('Dashboard');
+      // Refresh AuthContext profile so stale assessment fields are re-read from Firestore
+      void refreshProfile();
+      // Re-trigger diagnostic check so modal shows if assessment was properly reset
+      setDiagnosticCheckVersion(v => v + 1);
     }
 
     toast.success(result.summary);
@@ -957,7 +1021,7 @@ const App = () => {
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
                   <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-orange-700">{streak} day{streak !== 1 ? 's' : ''}</span>
+                  <span className="text-xs font-display font-bold text-orange-700">Daily Rewards</span>
                 </div>
               </div>
             </div>
@@ -1013,13 +1077,14 @@ const App = () => {
                     <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-0">
                         <Suspense fallback={dashboardPanelFallback}>
-                          <HeroBanner 
-                            userName={firstName} 
+                          <HeroBanner
+                            userName={firstName}
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
                             onContinueLearning={() => handleStudentNavigation('Modules')}
-                            showAssessmentTooltip={false}
+                            showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null && !assessmentDismissed}
                             onOpenAssessment={handleOpenInitialAssessment}
+                            studentId={userProfile?.uid}
                           />
                         </Suspense>
 
@@ -1108,8 +1173,6 @@ const App = () => {
                               currentXP={progressXPInLevel}
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}
-                              streak={streak}
-                              streakHistory={studentProfile?.streakHistory || []}
                               userName={firstName}
                             />
                           </Suspense>
@@ -1126,6 +1189,9 @@ const App = () => {
                       atRiskSubjects={atRiskSubjects}
                       priorityTopics={prioritizedFocusTopics}
                       initialModuleId={targetModuleId}
+                      isInQuizMode={isInQuizMode}
+                      setIsInQuizMode={setIsInQuizMode}
+                      hasCompletedDiagnostic={hasCompletedDiagnostic ?? false}
                     />
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (
@@ -1165,8 +1231,8 @@ const App = () => {
             </AnimatePresence>
           </main>
 
-          {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page */}
-          {activeTab !== 'AI Chat' && (
+          {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
+          {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
               <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
@@ -1189,14 +1255,14 @@ const App = () => {
           {/* Rewards Modal */}
           {showRewardsModal && (
             <Suspense fallback={null}>
-              <RewardsModal
+<RewardsModal
                 isOpen={showRewardsModal}
                 onClose={() => setShowRewardsModal(false)}
                 userLevel={userLevel}
                 currentXP={currentXP}
                 xpToNextLevel={xpToNextLevel}
                 totalXP={totalXP}
-                streak={streak}
+                userId={userProfile?.uid || ''}
               />
             </Suspense>
           )}
@@ -1264,12 +1330,17 @@ const App = () => {
           {showDiagnosticModal && !showAssessmentPage && (
             <Suspense fallback={null}>
               <InitialAssessmentModal
-                isOpen={showDiagnosticModal}
+                isOpen={showDiagnosticModal && !showAssessmentPage}
                 onClose={() => setShowDiagnosticModal(false)}
+                onDismiss={() => {
+                  setShowDiagnosticModal(false);
+                  setAssessmentDismissed(true);
+                }}
                 userId={userProfile?.uid || ''}
                 strand={studentProfile?.major || 'STEM'}
                 gradeLevel={studentProfile?.grade || 'Grade 11'}
                 onAssessmentStart={handleDiagnosticStart}
+                onAssessmentComplete={handleAssessmentComplete}
               />
             </Suspense>
           )}

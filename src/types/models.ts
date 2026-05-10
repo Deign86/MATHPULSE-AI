@@ -47,9 +47,16 @@ export interface StudentProfile extends User {
   level: number;
   currentXP: number;
   totalXP: number;
-  streak: number;
-  streakHistory?: string[]; // Array of YYYY-MM-DD strings
   ownedAvatarItems?: string[]; // Array of item IDs user has purchased
+  // Daily Rewards fields (denormalized for fast profile reads)
+  coins?: number;
+  hintTokens?: number;
+  lives?: number; // Login Streak combo reward — accumulated, uncapped
+  streakShields?: number;
+  activeMultiplier?: {
+    multiplier: number;
+    expiresAt: string; // ISO timestamp
+  };
   atRiskSubjects: string[];
   hasTakenDiagnostic: boolean;
   iarAssessmentState?:
@@ -112,6 +119,16 @@ export interface StudentProfile extends User {
   recommendedNextTopicGroupId?: string;
   recommendationRationale?: string;
   recommendationReasonCode?: string;
+  // Assessment dismissal & completion tracking
+  assessmentDismissed?: boolean;
+  assessmentDismissedAt?: Date;
+  initialAssessmentCompleted?: boolean; // boolean flag (separate from initialAssessmentCompletedAt)
+  assessmentResults?: {
+    topicScores: Record<string, number>;
+    weakTopics: string[];
+    strongTopics: string[];
+  };
+  assessmentCompletedAt?: Date;
 }
 
 export interface TeacherProfile extends User {
@@ -317,9 +334,14 @@ export interface Achievement {
   id: string;
   title: string;
   description: string;
+  /** Lucide icon component or icon name string (for legacy compatibility) */
   icon: string;
   xpReward: number;
-  condition: string; // e.g., "complete_10_lessons"
+  condition: string; // e.g. "complete_10_lessons"
+  /** Icon color as Tailwind class, e.g. "text-yellow-500" */
+  iconColor?: string;
+  /** Achievement category */
+  category?: string;
   unlockedAt?: Date;
 }
 
@@ -775,4 +797,52 @@ export interface RecommendationLog {
   reasonCode?: string;
   status: 'active' | 'completed' | 'superseded';
   supersededBy?: string;
+}
+
+// ─── Assessment Results Types ───
+
+export interface AssessmentAnswer {
+  questionId: string;
+  questionText: string;
+  correctAnswer: string;
+  userAnswer: string | null;
+  isCorrect: boolean;
+  topic: string;
+  competencyCode: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  explanation: string;
+}
+
+export interface CompetencyBreakdown {
+  topic: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracyPercent: number;
+  isStrength: boolean;
+  isWeakness: boolean;
+}
+
+export interface AssessmentResult {
+  attemptId: string;
+  studentId: string;
+  strand: string;
+  gradeLevel: string;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  timeTakenSeconds: number;
+  completedAt: string;
+  answers: AssessmentAnswer[];
+  competencyBreakdown: CompetencyBreakdown[];
+  proficiencyLevel: 'Beginner' | 'Developing' | 'Proficient' | 'Advanced';
+  aiNarrative?: string;
+}
+
+export interface AssessmentHistoryEntry {
+  attemptId: string;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  completedAt: string;
+  proficiencyLevel: string;
 }
