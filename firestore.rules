@@ -92,6 +92,18 @@ service cloud.firestore {
       allow write: if isSelf(userId) || isTeacherOrAdmin();
     }
 
+    // ── Quiz Results (subcollection under users) ──
+    match /users/{userId}/quizResults/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
+    // ── Module Progress (subcollection under users) ──
+    match /users/{userId}/moduleProgress/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
     match /progress/{docId} {
       // Allow by document ID (docId == userId) or by userId field
       allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
