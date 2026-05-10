@@ -1,5 +1,6 @@
 """
 Startup validation for MathPulse AI backend.
+Rebuild: 2026-05-10 - DeepSeek API secrets injected
 
 This module validates all critical dependencies and configurations BEFORE
 the FastAPI app starts, preventing indefinite restart loops.
