@@ -1,3 +1,5 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type AIHealthStatus = 'Operational' | 'Loading' | 'Degraded' | 'Unknown';
 
 export interface DeepSeekMonitoringData {
@@ -31,6 +33,23 @@ export interface DeepSeekMonitoringData {
 export interface DeepSeekMonitoringResponse {
   success: boolean;
   data: DeepSeekMonitoringData;
+}
+
+export interface AIUsageLog {
+  featureId: string;
+  featureName: string;
+  month: string;
+  requestCount: number;
+  estimatedCostUSD: number;
+  lastUpdated: Timestamp | null;
+  priority: 'High' | 'Medium' | 'Low';
+  status: 'Healthy' | 'Degraded' | 'Down';
+}
+
+export interface AIUsageStats {
+  totalRequests: number;
+  totalCost: number;
+  featureBreakdown: AIUsageLog[];
 }
 
 export type HFMonitoringData = DeepSeekMonitoringData;
