@@ -75,6 +75,7 @@ from services.user_provisioning_service import (
     UserProvisioningService,
 )
 from routes.rag_routes import router as rag_router
+from routes.curriculum_routes import router as curriculum_router
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -974,6 +975,7 @@ class RequestMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
 app.include_router(rag_router)
+app.include_router(curriculum_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
