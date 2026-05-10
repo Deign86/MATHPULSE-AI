@@ -113,10 +113,10 @@ class InferenceClient:
         self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
         self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
-        self.enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
-        self.qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "Qwen/Qwen3-32B").strip() or "Qwen/Qwen3-32B"
+        self.enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "false").strip().lower() in {"1", "true", "yes", "on"}
+        self.qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "deepseek-chat").strip() or "deepseek-chat"
 
-        default_model_fallback = str(primary.get("id") or "Qwen/Qwen3-32B")
+        default_model_fallback = str(primary.get("id") or "deepseek-chat")
         env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
         self.default_model = env_model_id or default_model_fallback
         
@@ -189,16 +189,16 @@ class InferenceClient:
         )
 
         # Default task-to-model routing.
-        # Keep all tasks pinned to Qwen3-32B when qwen-only lock is active.
+        # Keep all tasks pinned to deepseek-chat when qwen-only lock is active.
         self.task_model_map: Dict[str, str] = {
-            "chat": "Qwen/Qwen3-32B",
-            "verify_solution": "Qwen/Qwen3-32B",
-            "lesson_generation": "Qwen/Qwen3-32B",
-            "quiz_generation": "Qwen/Qwen3-32B",
-            "learning_path": "Qwen/Qwen3-32B",
-            "daily_insight": "Qwen/Qwen3-32B",
-            "risk_classification": "Qwen/Qwen3-32B",
-            "risk_narrative": "Qwen/Qwen3-32B",
+            "chat": "deepseek-chat",
+            "verify_solution": "deepseek-chat",
+            "lesson_generation": "deepseek-chat",
+            "quiz_generation": "deepseek-chat",
+            "learning_path": "deepseek-chat",
+            "daily_insight": "deepseek-chat",
+            "risk_classification": "deepseek-chat",
+            "risk_narrative": "deepseek-chat",
         }
         # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
