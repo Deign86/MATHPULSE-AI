@@ -422,6 +422,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     isOffline,
   } = useLessonContent(lesson.id, request, true);
 
+  const { userProfile } = useAuth();
+
   // Extract specific lesson topic from RAG sections (e.g., "Simple Interest" from "Introduction to Simple Interest")
   // This fixes the quiz topic bug where the generic competency name was used instead
   const [lessonSpecificTopic, setLessonSpecificTopic] = useState<string | null>(null);
