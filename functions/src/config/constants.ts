@@ -37,6 +37,7 @@ export const DEFAULT_BLOOM_LEVELS = [
   "remember",
   "understand",
   "apply",
+  "analyze",
 ];
 
 export const DEFAULT_QUESTION_TYPES = [

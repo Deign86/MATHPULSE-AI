@@ -12814,11 +12814,11 @@ async def evaluate_progress(request: ProgressEvaluateRequest):
         
         applying_level_correct = sum(
             1 for item in request.items
-            if item.get("is_correct", False) and item.get("bloom_level", "") in ("applying", "analyzing", "evaluating")
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("applying", "analyzing")
         )
         analyzing_level_correct = sum(
             1 for item in request.items
-            if item.get("is_correct", False) and item.get("bloom_level", "") in ("analyzing", "evaluating", "creating")
+            if item.get("is_correct", False) and item.get("bloom_level", "") in ("analyzing",)
         )
         
         if prev == "beginning" and score_percent >= 60 and applying_level_correct >= 2:
