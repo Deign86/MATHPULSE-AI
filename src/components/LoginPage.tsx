@@ -96,10 +96,9 @@ const getFriendlyErrorMessage = (err: unknown, defaultMessage: string): string =
 };
 
 const LoginPage: React.FC = () => {
-  const GRADE_OPTIONS = ['Grade 11', 'Grade 12'];
+  const GRADE_OPTIONS = ['Grade 11'];
   const SECTION_OPTIONS: Record<string, string[]> = {
     'Grade 11': ['STEM A', 'STEM B', 'ABM A', 'HUMSS A'],
-    'Grade 12': ['STEM A', 'STEM B', 'ABM A', 'HUMSS A'],
   };
   const DEPARTMENT_OPTIONS: Record<'teacher', string[]> = {
     teacher: ['Mathematics', 'Science', 'English', 'Technology', 'Humanities'],

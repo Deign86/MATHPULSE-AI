@@ -30,6 +30,7 @@ import {
   deleteGeneratedQuiz,
 } from '../services/quizService';
 import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
+import { logQuizGeneration } from '../services/trackingService';
 import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../types/models';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -107,8 +108,8 @@ const filterTopicsByGrade = (
   );
 };
 
-// Balanced limits for classroom use: allows longer quizzes while keeping response times practical.
-const MAX_QUESTIONS_LIMIT = 30;
+// AI Quiz Maker cap: Limit to 10 questions for token/cost control.
+const MAX_QUESTIONS_LIMIT = 10;
 const MAX_TOPICS_LIMIT = 12;
 const QUIZ_TASK_STORAGE_KEY = 'mathpulse:quiz-maker:active-task';
 
@@ -628,6 +629,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       try {
         await autoSaveGeneratedQuiz(result, requestPayload);
         toast.success('Quiz auto-saved to your library as draft.');
+        // Track quiz generation activity
+        if (currentUser?.uid && requestPayload.topics?.[0]) {
+          logQuizGeneration(currentUser.uid, requestPayload.topics[0], result.questions.length).catch(() => {});
+        }
       } catch (saveErr) {
         toast.error(saveErr instanceof Error ? saveErr.message : 'Quiz generated but failed to save to library');
       }
