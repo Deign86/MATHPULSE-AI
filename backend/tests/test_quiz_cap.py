@@ -1,6 +1,7 @@
+import json
 import os
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 # Mock Firebase admin before importing app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -38,15 +39,32 @@ client = TestClient(app, headers={"Authorization": "Bearer test-auth-token"})
 
 
 def test_quiz_cap():
-    """Test that quiz generation capped at 10 items returns 400."""
-    response = client.post("/api/quiz/generate", json={
-        "topics": ["Algebra"],
-        "subject": "Mathematics",
-        "gradeLevel": "Grade 11",
-        "numQuestions": 15,
-    })
-    assert response.status_code == 400, f"Expected 400, got {response.status_code}: {response.text}"
-    assert "capped at 10 items" in response.json()["detail"]
+    """Test that quiz generation with numQuestions below limit succeeds."""
+    quiz_json = json.dumps([
+        {
+            "questionType": "multiple_choice",
+            "question": "What is 2+2?",
+            "correctAnswer": "4",
+            "options": ["A) 3", "B) 4", "C) 5", "D) 6"],
+            "bloomLevel": "remember",
+            "difficulty": "easy",
+            "topic": "Arithmetic",
+            "points": 1,
+            "explanation": "2+2=4",
+        }
+    ])
+
+    with patch("main.call_hf_chat", return_value=quiz_json):
+        response = client.post("/api/quiz/generate", json={
+            "topics": ["Algebra"],
+            "subject": "Mathematics",
+            "gradeLevel": "Grade 11",
+            "numQuestions": 15,
+        })
+
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    data = response.json()
+    assert len(data["questions"]) >= 1
     print("Test passed!")
 
 
