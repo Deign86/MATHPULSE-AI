@@ -1146,19 +1146,19 @@ async def train_risk_model(force_retrain: bool = False) -> RiskTrainResponse:
                 if not data:
                     continue
 
-                    features = [
-                        data.get("engagementScore", 50),
-                        data.get("avgQuizScore", 50),
-                        data.get("attendance", 80),
-                        data.get("assignmentCompletion", 60),
-                        0,  # streak removed
-                        data.get("xpGrowthRate", 0),
-                        data.get("timeOnPlatform", 0),
-                        0.0,  # engagementTrend7d
-                        0.0,  # quizScoreVariance
-                        data.get("consecutiveAbsences", 0),
-                        data.get("daysSinceLastActivity", 0),
-                    ]
+                features = [
+                    data.get("engagementScore", 50),
+                    data.get("avgQuizScore", 50),
+                    data.get("attendance", 80),
+                    data.get("assignmentCompletion", 60),
+                    0,  # streak removed
+                    data.get("xpGrowthRate", 0),
+                    data.get("timeOnPlatform", 0),
+                    0.0,  # engagementTrend7d
+                    0.0,  # quizScoreVariance
+                    data.get("consecutiveAbsences", 0),
+                    data.get("daysSinceLastActivity", 0),
+                ]
                 X_data.append(features)
 
                 # Determine label from existing riskLevel or compute it
