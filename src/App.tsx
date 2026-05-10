@@ -35,6 +35,7 @@ const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
 const NotificationBell = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationBell })));
 
 const SupplementalBanner = lazy(() => import('./components/SupplementalBanner.tsx'));
+const SupplementalPillCarousel = lazy(() => import('./components/SupplementalPillCarousel.tsx'));
 const LearningPath = lazy(() => import('./components/LearningPath.tsx'));
 const CompetencyRadarChart = lazy(() =>
   import('./components/CompetencyRadarChart.tsx').then((module) => ({
@@ -1105,14 +1106,11 @@ const App = () => {
                           </div>
                         )}
 
-                        {dashboardShellDeferredReady && shouldShowSupplementalBanner && (
+                        {dashboardShellDeferredReady && atRiskSubjects.length > 0 && (
                           <Suspense fallback={dashboardWidgetFallback}>
-                            <SupplementalBanner
-                              variant="full"
+                            <SupplementalPillCarousel
                               atRiskSubjects={atRiskSubjects}
-                              onDismiss={dismissSupplementalBanner}
-                              onAction={() => {
-                                dismissSupplementalBanner();
+                              onTopicClick={(topic) => {
                                 handleStudentNavigation('Modules');
                               }}
                             />
