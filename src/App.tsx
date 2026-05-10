@@ -1332,6 +1332,10 @@ const App = () => {
               <InitialAssessmentModal
                 isOpen={showDiagnosticModal && !showAssessmentPage}
                 onClose={() => setShowDiagnosticModal(false)}
+                onDismiss={() => {
+                  setShowDiagnosticModal(false);
+                  setAssessmentDismissed(true);
+                }}
                 userId={userProfile?.uid || ''}
                 strand={studentProfile?.major || 'STEM'}
                 gradeLevel={studentProfile?.grade || 'Grade 11'}

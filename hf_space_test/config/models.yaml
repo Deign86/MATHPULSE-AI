@@ -1,55 +1,85 @@
 models:
   primary:
-    id: Qwen/Qwen3-32B
-    description: Global default instruction model for interactive Grade 11-12 math tutoring
-    max_new_tokens: 640
-    temperature: 0.25
+    id: deepseek-chat
+    description: Default DeepSeek chat model — all chat tasks, quizzes, lessons, reasoning
+    max_new_tokens: 800
+    temperature: 0.7
     top_p: 0.9
 
-  backup:
-    - id: meta-llama/Meta-Llama-3-70B-Instruct
-      description: High-quality model used for harder multi-step prompts
-      max_new_tokens: 768
-      temperature: 0.3
-      top_p: 0.9
-    - id: google/gemma-2-2b-it
-      description: Secondary backup with broad instruction coverage
-      max_new_tokens: 384
-      temperature: 0.2
-      top_p: 0.9
+  rag_primary:
+    id: deepseek-reasoner
+    description: DeepSeek reasoner — extended reasoning for complex RAG tasks
+    max_new_tokens: 1800
+    temperature: 0.2
+    top_p: 0.9
+    enable_thinking_tasks:
+      - rag_lesson
+      - verify_solution
+      - risk_narrative
+    no_thinking_tasks:
+      - chat
+      - quiz_generation
+      - learning_path
+      - daily_insight
 
-  experimental:
-    - id: mistralai/Mistral-7B-Instruct-v0.3
-      notes: Prompt/procedure experimentation
-    - id: meta-llama/Meta-Llama-3-8B-Instruct
-      notes: Baseline comparison against legacy deployment
+  embedding:
+    id: BAAI/bge-small-en-v1.5
+    description: Embedding model for RAG retrieval — curriculum vectorstore ingestion and semantic search
+    note: Not part of the generation pipeline. Read from EMBEDDING_MODEL env var only. Not swappable via admin panel.
+
+  model_capabilities:
+    sequential_only:
+      - deepseek-reasoner
+    supports_thinking:
+      - deepseek-reasoner
 
 routing:
   task_model_map:
-    # Keep all task defaults aligned to Qwen3-32B.
-    # Hard prompts can still escalate via runtime policy in inference_client.
-    chat: Qwen/Qwen3-32B
-    verify_solution: Qwen/Qwen3-32B
-    lesson_generation: Qwen/Qwen3-32B
-    quiz_generation: Qwen/Qwen3-32B
-    learning_path: Qwen/Qwen3-32B
-    daily_insight: Qwen/Qwen3-32B
-    risk_classification: Qwen/Qwen3-32B
-    risk_narrative: Qwen/Qwen3-32B
+    chat:                  deepseek-chat
+    verify_solution:       deepseek-reasoner
+    lesson_generation:     deepseek-chat
+    quiz_generation:       deepseek-chat
+    learning_path:         deepseek-chat
+    daily_insight:         deepseek-chat
+    risk_classification:   deepseek-chat
+    risk_narrative:        deepseek-reasoner
+    rag_lesson:            deepseek-reasoner
+    rag_problem:           deepseek-chat
+    rag_analysis_context:  deepseek-chat
 
   task_fallback_model_map:
-    chat: []                                       # Chat is strict-primary only (no fallback chain)
+    chat:
+      - deepseek-chat
     verify_solution:
-      - meta-llama/Meta-Llama-3-70B-Instruct      # Higher-capacity fallback
-      - meta-llama/Llama-3.1-8B-Instruct          # Second fallback
+      - deepseek-chat
+    lesson_generation:
+      - deepseek-chat
+    quiz_generation:
+      - deepseek-chat
+    learning_path:
+      - deepseek-chat
+    daily_insight:
+      - deepseek-chat
+    risk_classification:
+      - deepseek-chat
+    risk_narrative:
+      - deepseek-chat
+    rag_lesson:
+      - deepseek-chat
+    rag_problem:
+      - deepseek-chat
+    rag_analysis_context:
+      - deepseek-chat
 
   task_provider_map:
-    # All tasks use hf_inference router (Qwen/Qwen3-32B natively supported)
-    chat: hf_inference
-    verify_solution: hf_inference
-    lesson_generation: hf_inference
-    quiz_generation: hf_inference
-    learning_path: hf_inference
-    daily_insight: hf_inference
-    risk_narrative: hf_inference
-    risk_classification: hf_inference
+    chat:                  deepseek
+    verify_solution:       deepseek
+    lesson_generation:     deepseek
+    quiz_generation:       deepseek
+    learning_path:         deepseek
+    daily_insight:         deepseek
+    risk_classification:   deepseek
+    risk_narrative:        deepseek
+    rag_lesson:            deepseek
+    rag_problem:           deepseek
+    rag_analysis_context:  deepseek
