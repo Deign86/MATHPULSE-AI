@@ -54,8 +54,6 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-              - 'hf_space_deploy/**'
-              - 'deploy-hf.py'
               - 'scripts/enforce_hf_space_chat_env.py'
               - '.github/workflows/deploy-hf.yml'
             frontend:
@@ -166,7 +164,7 @@ jobs:
             --exclude='*.pyc' \
             --exclude='datasets/vectorstore' \
             --exclude='datasets/vectorstore/**' \
-            hf_space_deploy/ hf-space/
+            backend/ hf-space/
 
           # Ensure backend Space metadata README exists with LF-only frontmatter.
           # This avoids malformed Space metadata states on the Hub API.
