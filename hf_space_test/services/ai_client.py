@@ -1,9 +1,10 @@
 import os
-from openai import OpenAI, APIError, RateLimitError, APITimeoutError
+from openai import OpenAI, AsyncOpenAI, APIError, RateLimitError, APITimeoutError
 from functools import lru_cache
 
 __all__ = [
     "get_deepseek_client",
+    "get_async_deepseek_client",
     "CHAT_MODEL",
     "REASONER_MODEL",
     "DEEPSEEK_BASE_URL",
@@ -23,6 +24,17 @@ def get_deepseek_client() -> OpenAI:
     if not api_key:
         raise ValueError("DEEPSEEK_API_KEY environment variable not set")
     return OpenAI(
+        api_key=api_key,
+        base_url=DEEPSEEK_BASE_URL,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_async_deepseek_client() -> AsyncOpenAI:
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise ValueError("DEEPSEEK_API_KEY environment variable not set")
+    return AsyncOpenAI(
         api_key=api_key,
         base_url=DEEPSEEK_BASE_URL,
     )
