@@ -724,7 +724,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 p-4">
+              {/* Sources hidden from students - uncomment below to show for debugging */}
+              {/* <div className="rounded-2xl border border-slate-200 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sources</p>
                 <div className="mt-2 space-y-2">
                   {sourcePreviewModule.module_sources.map((source) => (
@@ -740,7 +741,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                     </a>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </div>
           </motion.aside>
         )}

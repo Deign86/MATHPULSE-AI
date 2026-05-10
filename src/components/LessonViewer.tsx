@@ -77,9 +77,6 @@ function ErrorPanel({
           <RefreshCw size={16} />
           Try Again
         </Button>
-        <button onClick={onRetry} className="mt-3 text-slate-400 text-xs hover:text-slate-600 underline">
-          Retry
-        </button>
       </motion.div>
     </div>
   );
@@ -244,34 +241,33 @@ function SectionRenderer({
               <p className="text-sm text-slate-600 mb-4 max-w-lg">
                 Test your understanding of this lesson with an interactive quiz. Answer questions, get instant feedback, and track your progress to reinforce what you've learned.
               </p>
-              {practiceQuiz && (
-                <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 rounded-xl p-4">
-                  <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-                    <span className="inline-flex items-center gap-1"><NotebookPen size={12} /> {practiceQuiz.questions} questions</span>
-                    <span className="inline-flex items-center gap-1"><Clock size={12} /> {practiceQuiz.duration}</span>
-                    <span className="inline-flex items-center gap-1 text-amber-500"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
-                  </div>
-                  {practiceQuizCompleted ? (
-                    <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 rounded-xl">
-                      <CheckCircle size={16} className="text-emerald-600" />
-                      <span className="text-sm font-bold text-emerald-700">
-                        Quiz Complete
-                        {typeof practiceQuizScore === 'number' && (
-                          <span className="ml-1 text-emerald-600">{practiceQuizScore}%</span>
-                        )}
-                      </span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={onStartPractice}
-                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
-                    >
-                      <ClipboardCheck size={16} />
-                      Start Quiz
-                    </button>
-                  )}
+              {/* Always show Start Quiz button - use defaults if no practiceQuiz provided */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 rounded-xl p-4">
+                <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                  <span className="inline-flex items-center gap-1"><NotebookPen size={12} /> {practiceQuiz?.questions || 10} questions</span>
+                  <span className="inline-flex items-center gap-1"><Clock size={12} /> {practiceQuiz?.duration || lesson?.duration || '15 min'}</span>
+                  <span className="inline-flex items-center gap-1 text-amber-500"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
                 </div>
-              )}
+                {practiceQuizCompleted ? (
+                  <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 rounded-xl">
+                    <CheckCircle size={16} className="text-emerald-600" />
+                    <span className="text-sm font-bold text-emerald-700">
+                      Quiz Complete
+                      {typeof practiceQuizScore === 'number' && (
+                        <span className="ml-1 text-emerald-600">{practiceQuizScore}%</span>
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => onStartPractice?.()}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
+                  >
+                    <ClipboardCheck size={16} />
+                    Start Quiz
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -675,7 +671,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                           />
                     </div>
 
-                    {sources.length > 0 && (
+                    {/* Sources hidden from students - uncomment below to show for debugging */}
+                    {/* {sources.length > 0 && (
                       <details className="rounded-xl border border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-3 text-xs text-slate-500 shadow-sm">
                         <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
                           {sources.length} source{sources.length > 1 ? 's' : ''} used
@@ -688,7 +685,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                           ))}
                         </div>
                       </details>
-                    )}
+                    )} */}
                   </motion.div>
                 </AnimatePresence>
               </div>
