@@ -7769,7 +7769,7 @@ MAX_TOPICS_LIMIT = 12
 
 class QuizGenerationRequest(BaseModel):
     topics: List[str] = Field(
-        default_factory=list,
+        default=None,
         min_length=1,
         description="Specific math topics to cover (at least one required)",
     )
@@ -7830,11 +7830,32 @@ class QuizGenerationRequest(BaseModel):
             raise ValueError(f"Difficulty distribution percentages must sum to 100, got {total}")
         return v
 
+    @model_validator(mode="before")
+    @classmethod
+    def handle_topics_input(cls, values: Any) -> Any:
+        """
+        Runs BEFORE field defaults. Handles:
+        1. topic → topics alias (if topic provided but topics missing/empty)
+        2. Missing topics → raises ValueError (422 via Pydantic) instead of
+           defaulting to [] which would bypass min_length and hit route handler as 400.
+        """
+        if not isinstance(values, dict):
+            return values
+        topics_val = values.get("topics")
+        topic_val = values.get("topic")
+        # topic → topics alias
+        if topic_val is not None:
+            if topics_val is None:
+                values["topics"] = [topic_val]
+            elif isinstance(topics_val, list) and len(topics_val) == 0:
+                values["topics"] = [topic_val]
+        # Missing topics: raise BEFORE default_factory creates [], so Pydantic gives 422 not route-handler 400
+        if values.get("topics") is None:
+            raise ValueError("topics field is required")
+        return values
+
     @model_validator(mode="after")
     def resolve_aliases(self) -> "QuizGenerationRequest":
-        # Handle topic → topics alias (test compatibility)
-        if self.topic and not self.topics:
-            self.topics = [self.topic]
         # questionCount overrides numQuestions if provided (for test compatibility)
         if self.questionCount is not None:
             self.numQuestions = self.questionCount
