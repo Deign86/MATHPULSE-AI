@@ -10,12 +10,197 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import yaml
-from huggingface_hub import InferenceClient as HFInferenceClient
+from openai import OpenAI, APIError, RateLimitError, APITimeoutError
 
+from .ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL, DEEPSEEK_BASE_URL
 from .logging_utils import configure_structured_logging, log_model_call
 
 LOGGER = configure_structured_logging("mathpulse.inference")
 TEMP_CHAT_MODEL_OVERRIDE_ENV = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
+
+# ── Model Profiles ────────────────────────────────────────────────────────────
+# A profile sets multiple env defaults in one shot.
+# Individual env vars (DEEPSEEK_MODEL, DEEPSEEK_REASONER_MODEL, etc.) still override.
+# Usage: MODEL_PROFILE=dev  or  MODEL_PROFILE=prod  or  MODEL_PROFILE=budget
+# Profiles can also be applied at runtime via the admin panel without restart.
+
+_MODEL_PROFILES: dict[str, dict[str, str]] = {
+    "dev": {
+        "INFERENCE_MODEL_ID": CHAT_MODEL,
+        "INFERENCE_CHAT_MODEL_ID": CHAT_MODEL,
+        "HF_QUIZ_MODEL_ID": CHAT_MODEL,
+        "HF_RAG_MODEL_ID": CHAT_MODEL,
+        "INFERENCE_LOCK_MODEL_ID": CHAT_MODEL,
+    },
+    "prod": {
+        "INFERENCE_MODEL_ID": CHAT_MODEL,
+        "INFERENCE_CHAT_MODEL_ID": CHAT_MODEL,
+        "HF_QUIZ_MODEL_ID": CHAT_MODEL,
+        "HF_RAG_MODEL_ID": REASONER_MODEL,
+        "INFERENCE_LOCK_MODEL_ID": CHAT_MODEL,
+    },
+    "budget": {
+        "INFERENCE_MODEL_ID": CHAT_MODEL,
+        "INFERENCE_CHAT_MODEL_ID": CHAT_MODEL,
+        "HF_QUIZ_MODEL_ID": CHAT_MODEL,
+        "HF_RAG_MODEL_ID": CHAT_MODEL,
+        "INFERENCE_LOCK_MODEL_ID": CHAT_MODEL,
+    },
+}
+
+# ── Runtime Override Store ────────────────────────────────────────────────────
+# Mutated at runtime by the admin panel via /api/admin/model-config.
+# Priority: above env vars, below INFERENCE_ENFORCE_LOCK_MODEL.
+# Persisted to Firestore so backend cold-restarts restore the last admin-set config.
+
+_RUNTIME_OVERRIDES: dict[str, str] = {}
+_RUNTIME_PROFILE: str = ""
+
+_FS_COLLECTION = "system_config"
+_FS_DOC = "active_model_config"
+
+
+def _save_runtime_config_to_firestore() -> None:
+    try:
+        from firebase_admin import firestore as fs
+
+        db = fs.client()
+        db.collection(_FS_COLLECTION).document(_FS_DOC).set(
+            {
+                "profile": _RUNTIME_PROFILE,
+                "overrides": _RUNTIME_OVERRIDES,
+                "updatedAt": fs.SERVER_TIMESTAMP,
+            }
+        )
+    except Exception as e:
+        LOGGER.warning("Could not persist model config to Firestore: %s", e)
+
+
+def _load_runtime_config_from_firestore() -> None:
+    try:
+        from firebase_admin import firestore as fs
+
+        db = fs.client()
+        doc = db.collection(_FS_COLLECTION).document(_FS_DOC).get()
+        if not doc.exists:
+            return
+        data = doc.to_dict() or {}
+        profile = str(data.get("profile", "")).strip().lower()
+        overrides = data.get("overrides", {})
+        if profile and profile in _MODEL_PROFILES:
+            global _RUNTIME_PROFILE
+            _RUNTIME_PROFILE = profile
+            _RUNTIME_OVERRIDES.clear()
+            _RUNTIME_OVERRIDES.update(_MODEL_PROFILES[profile])
+        if isinstance(overrides, dict):
+            for key, value in overrides.items():
+                _RUNTIME_OVERRIDES[str(key)] = str(value)
+        LOGGER.info("Restored runtime model config from Firestore: profile=%s", profile)
+    except ImportError:
+        LOGGER.debug("Firebase not available (optional for DeepSeek-only)")
+    except Exception as e:
+        LOGGER.warning("Could not restore model config from Firestore: %s", e)
+
+
+def _apply_model_profile() -> None:
+    profile_name = os.getenv("MODEL_PROFILE", "").strip().lower()
+    if not profile_name:
+        return
+    profile = _MODEL_PROFILES.get(profile_name)
+    if profile is None:
+        LOGGER.warning("MODEL_PROFILE='%s' is not a known profile.", profile_name)
+        return
+    for key, value in profile.items():
+        if not os.environ.get(key):
+            os.environ[key] = value
+    LOGGER.info("Startup model profile applied: %s", profile_name)
+
+
+_apply_model_profile()
+_load_runtime_config_from_firestore()
+
+
+def set_runtime_model_profile(profile_name: str) -> None:
+    """Apply a named profile at runtime without restarting the process."""
+    global _RUNTIME_PROFILE, _RUNTIME_OVERRIDES
+    normalized = profile_name.strip().lower()
+    profile = _MODEL_PROFILES.get(normalized)
+    if not profile:
+        raise ValueError(
+            f"Unknown profile: '{profile_name}'. Valid values: {list(_MODEL_PROFILES.keys())}"
+        )
+    _RUNTIME_PROFILE = normalized
+    _RUNTIME_OVERRIDES.clear()
+    _RUNTIME_OVERRIDES.update(profile)
+    LOGGER.info("Runtime model profile switched to: %s", profile_name)
+    _save_runtime_config_to_firestore()
+
+
+def set_runtime_model_override(key: str, value: str) -> None:
+    """Set a single model env key at runtime."""
+    _RUNTIME_OVERRIDES[key] = value
+    LOGGER.info("Runtime model override set: %s = %s", key, value)
+    _save_runtime_config_to_firestore()
+
+
+def reset_runtime_overrides() -> None:
+    """Clear all runtime overrides."""
+    global _RUNTIME_PROFILE
+    _RUNTIME_OVERRIDES.clear()
+    _RUNTIME_PROFILE = ""
+    LOGGER.info("Runtime model overrides cleared.")
+    _save_runtime_config_to_firestore()
+
+
+def get_current_runtime_config() -> dict:
+    resolved: dict[str, str] = {}
+    for key in {
+        "INFERENCE_MODEL_ID", "INFERENCE_CHAT_MODEL_ID",
+        "HF_QUIZ_MODEL_ID", "HF_RAG_MODEL_ID", "INFERENCE_LOCK_MODEL_ID",
+    }:
+        resolved[key] = _resolve_key(key)
+    return {
+        "profile": _RUNTIME_PROFILE,
+        "overrides": dict(_RUNTIME_OVERRIDES),
+        "resolved": resolved,
+    }
+
+
+def _resolve_key(key: str) -> str:
+    if value := _RUNTIME_OVERRIDES.get(key):
+        return value
+    if _RUNTIME_PROFILE and _RUNTIME_PROFILE in _MODEL_PROFILES:
+        if value := _MODEL_PROFILES[_RUNTIME_PROFILE].get(key):
+            return value
+    return os.getenv(key, "")
+
+
+def get_model_for_task(task_type: str) -> str:
+    task = (task_type or "default").strip().lower()
+    enforce_lock = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
+    if enforce_lock:
+        override = (
+            _RUNTIME_OVERRIDES.get("INFERENCE_LOCK_MODEL_ID")
+            or os.getenv("INFERENCE_LOCK_MODEL_ID")
+            or CHAT_MODEL
+        )
+        return override
+    task_key_map = {
+        "chat": "INFERENCE_CHAT_MODEL_ID",
+        "quiz_generation": "HF_QUIZ_MODEL_ID",
+        "rag_lesson": "HF_RAG_MODEL_ID",
+        "rag_problem": "HF_RAG_MODEL_ID",
+        "rag_analysis_context": "HF_RAG_MODEL_ID",
+    }
+    if env_key := task_key_map.get(task):
+        if resolved := _resolve_key(env_key):
+            return resolved
+    return _resolve_key("INFERENCE_MODEL_ID") or CHAT_MODEL
+
+
+def model_supports_thinking(model_id: str = "") -> bool:
+    mid = (model_id or os.getenv("INFERENCE_MODEL_ID") or "").strip()
+    return mid == REASONER_MODEL
 
 
 def _normalize_local_space_url(raw_url: str) -> str:
@@ -24,8 +209,6 @@ def _normalize_local_space_url(raw_url: str) -> str:
     if not cleaned:
         return "http://127.0.0.1:7860"
 
-    # Convert page URL format to runtime host format:
-    # https://huggingface.co/spaces/{owner}/{space} -> https://{owner}-{space}.hf.space
     match = re.match(r"^https?://huggingface\.co/spaces/([^/]+)/([^/]+)$", cleaned, re.IGNORECASE)
     if match:
         owner = match.group(1).strip().lower()
@@ -41,28 +224,31 @@ class InferenceRequest:
     model: Optional[str] = None
     task_type: str = "default"
     request_tag: str = ""
-    max_new_tokens: int = 512
+    max_new_tokens: int = 900
     temperature: float = 0.2
     top_p: float = 0.9
     repetition_penalty: float = 1.15
     timeout_sec: Optional[int] = None
+    enable_thinking: bool = False
 
 
 class InferenceClient:
-    def __init__(self) -> None:
-        # Try multiple config paths (HF Space, Docker, local development)
-        # The deploy script uploads config/ to the space root
+    def __init__(self, firestore_client: Optional[Any] = None) -> None:
+        self.firestore = firestore_client
+        self._last_persist_time = 0.0
+        self._persist_throttle_sec = 30.0
+
         config_paths = [
-            Path("./config/models.yaml"),  # Current working directory (most reliable)
-            Path("/config/models.yaml"),  # HF Space root
-            Path("/app/config/models.yaml"),  # App directory
-            Path.cwd() / "config" / "models.yaml",  # CWD with config subdir
-            Path(__file__).resolve().parents[2] / "config" / "models.yaml",  # Package root
+            Path("./config/models.yaml"),
+            Path("/config/models.yaml"),
+            Path("/app/config/models.yaml"),
+            Path.cwd() / "config" / "models.yaml",
+            Path(__file__).resolve().parents[2] / "config" / "models.yaml",
         ]
-        
+
         config: Dict[str, object] = {}
         config_path = None
-        
+
         for path in config_paths:
             if path.exists():
                 config_path = path
@@ -70,7 +256,7 @@ class InferenceClient:
                     config = yaml.safe_load(fh) or {}
                 LOGGER.info(f"✅ Loaded config from {config_path}")
                 break
-        
+
         if not config_path:
             LOGGER.warning(f"⚠️  Config file not found. Checked: {[str(p) for p in config_paths]}")
             LOGGER.warning(f"    CWD: {Path.cwd()}")
@@ -84,74 +270,43 @@ class InferenceClient:
                 if isinstance(primary_cfg, dict):
                     primary = primary_cfg
 
-        self.provider = os.getenv("INFERENCE_PROVIDER", "hf_inference").strip().lower()
-        self.pro_provider = os.getenv("INFERENCE_PRO_PROVIDER", "hf_inference").strip().lower()
-        self.gpu_provider = os.getenv("INFERENCE_GPU_PROVIDER", "hf_inference").strip().lower()
-        self.cpu_provider = os.getenv("INFERENCE_CPU_PROVIDER", "hf_inference").strip().lower()
-        self.enable_provider_fallback = os.getenv("INFERENCE_ENABLE_PROVIDER_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"}
-        self.pro_enabled = os.getenv("INFERENCE_PRO_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-        self.hf_token = os.getenv(
-            "HF_TOKEN",
-            os.getenv("HUGGING_FACE_API_TOKEN", os.getenv("HUGGINGFACE_API_TOKEN", "")),
-        )
-        self.hf_base_url = os.getenv("INFERENCE_HF_BASE_URL", "https://router.huggingface.co/hf-inference/models")
-        self.hf_chat_url = os.getenv("INFERENCE_HF_CHAT_URL", "https://router.huggingface.co/v1/chat/completions")
-        
-        # Featherless AI for Qwen math models (used as fallback when HF router fails)
-        self.featherless_api_key = os.getenv("FEATHERLESS_API_KEY", "")
-        self.featherless_chat_url = os.getenv("FEATHERLESS_CHAT_URL", "https://api.featherless.ai/openai/v1/chat/completions")
+        self.provider = "deepseek"
+        self.ds_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        self.ds_base_url = os.getenv("DEEPSEEK_BASE_URL", DEEPSEEK_BASE_URL)
+        self.ds_chat_model = os.getenv("DEEPSEEK_MODEL", CHAT_MODEL)
+        self.ds_reasoner_model = os.getenv("DEEPSEEK_REASONER_MODEL", REASONER_MODEL)
 
-        # DeepSeek API (primary inference provider)
-        self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
-        self.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
-        self.deepseek_chat_url = f"{self.deepseek_base_url}/v1/chat/completions"
-        
         self.local_space_url = _normalize_local_space_url(
             os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
         )
         self.local_generate_path = os.getenv("INFERENCE_LOCAL_SPACE_GENERATE_PATH", "/gradio_api/call/generate")
-        self.pro_route_header_name = os.getenv("INFERENCE_PRO_ROUTE_HEADER_NAME", "")
-        self.pro_route_header_value = os.getenv("INFERENCE_PRO_ROUTE_HEADER_VALUE", "true")
 
-        self.enforce_qwen_only = os.getenv("INFERENCE_ENFORCE_QWEN_ONLY", "false").strip().lower() in {"1", "true", "yes", "on"}
-        self.qwen_lock_model = os.getenv("INFERENCE_QWEN_LOCK_MODEL", "deepseek-chat").strip() or "deepseek-chat"
+        self.enforce_lock_model = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.lock_model_id = os.getenv("INFERENCE_LOCK_MODEL_ID", CHAT_MODEL).strip() or CHAT_MODEL
 
-        default_model_fallback = str(primary.get("id") or "deepseek-chat")
+        default_model_fallback = str(primary.get("id") or CHAT_MODEL)
         env_model_id = os.getenv("INFERENCE_MODEL_ID", "").strip()
         self.default_model = env_model_id or default_model_fallback
-        
+
         default_max_tokens = str(primary.get("max_new_tokens") or 512)
         self.default_max_new_tokens = int(os.getenv("INFERENCE_MAX_NEW_TOKENS", default_max_tokens))
-        
+
         default_temp = str(primary.get("temperature") or 0.2)
         self.default_temperature = float(os.getenv("INFERENCE_TEMPERATURE", default_temp))
-        
+
         default_top_p = str(primary.get("top_p") or 0.9)
         self.default_top_p = float(os.getenv("INFERENCE_TOP_P", default_top_p))
-        
-        # Task-specific model overrides via environment variables
+
         self.chat_model_override = os.getenv("INFERENCE_CHAT_MODEL_ID", "").strip()
         self.chat_model_temp_override = os.getenv(TEMP_CHAT_MODEL_OVERRIDE_ENV, "").strip()
         self.chat_strict_model_only = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
-        self.chat_hard_model = os.getenv("INFERENCE_CHAT_HARD_MODEL_ID", "meta-llama/Meta-Llama-3-70B-Instruct").strip()
-        self.chat_hard_trigger_enabled = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-        self.chat_hard_prompt_chars = max(256, int(os.getenv("INFERENCE_CHAT_HARD_PROMPT_CHARS", "800")))
-        self.chat_hard_history_chars = max(
-            self.chat_hard_prompt_chars,
-            int(os.getenv("INFERENCE_CHAT_HARD_HISTORY_CHARS", "1800")),
-        )
-        hard_keywords_raw = os.getenv(
-            "INFERENCE_CHAT_HARD_KEYWORDS",
-            "step-by-step,show all steps,derive,proof,prove,rigorous,multi-step,word problem",
-        )
-        self.chat_hard_keywords = [kw.strip().lower() for kw in hard_keywords_raw.split(",") if kw.strip()]
 
-        self.hf_timeout_sec = int(os.getenv("INFERENCE_HF_TIMEOUT_SEC", "90"))
+        self.ds_timeout_sec = int(os.getenv("INFERENCE_HF_TIMEOUT_SEC", "90"))
         self.local_timeout_sec = int(os.getenv("INFERENCE_LOCAL_SPACE_TIMEOUT_SEC", "90"))
         self.max_retries = int(os.getenv("INFERENCE_MAX_RETRIES", "3"))
         self.backoff_sec = float(os.getenv("INFERENCE_BACKOFF_SEC", "1.5"))
-        self.interactive_timeout_sec = int(os.getenv("INFERENCE_INTERACTIVE_TIMEOUT_SEC", str(self.hf_timeout_sec)))
-        self.background_timeout_sec = int(os.getenv("INFERENCE_BACKGROUND_TIMEOUT_SEC", str(self.hf_timeout_sec)))
+        self.interactive_timeout_sec = int(os.getenv("INFERENCE_INTERACTIVE_TIMEOUT_SEC", str(self.ds_timeout_sec)))
+        self.background_timeout_sec = int(os.getenv("INFERENCE_BACKGROUND_TIMEOUT_SEC", str(self.ds_timeout_sec)))
         self.interactive_max_retries = int(os.getenv("INFERENCE_INTERACTIVE_MAX_RETRIES", str(self.max_retries)))
         self.background_max_retries = int(os.getenv("INFERENCE_BACKGROUND_MAX_RETRIES", str(self.max_retries)))
         self.interactive_backoff_sec = float(os.getenv("INFERENCE_INTERACTIVE_BACKOFF_SEC", str(self.backoff_sec)))
@@ -172,12 +327,6 @@ class InferenceClient:
         )
         self.cpu_only_tasks = {v.strip().lower() for v in cpu_tasks_raw.split(",") if v.strip()}
 
-        pro_tasks_raw = os.getenv(
-            "INFERENCE_PRO_PRIORITY_TASKS",
-            "chat,quiz_generation,lesson_generation,learning_path,verify_solution",
-        )
-        self.pro_priority_tasks = {v.strip().lower() for v in pro_tasks_raw.split(",") if v.strip()}
-
         interactive_tasks_raw = os.getenv(
             "INFERENCE_INTERACTIVE_TASKS",
             "chat,verify_solution,daily_insight",
@@ -189,29 +338,20 @@ class InferenceClient:
         )
 
         # Default task-to-model routing.
-        # Keep all tasks pinned to deepseek-chat when qwen-only lock is active.
         self.task_model_map: Dict[str, str] = {
-            "chat": "deepseek-chat",
-            "verify_solution": "deepseek-chat",
-            "lesson_generation": "deepseek-chat",
-            "quiz_generation": "deepseek-chat",
-            "learning_path": "deepseek-chat",
-            "daily_insight": "deepseek-chat",
-            "risk_classification": "deepseek-chat",
-            "risk_narrative": "deepseek-chat",
+            "chat": CHAT_MODEL,
+            "verify_solution": CHAT_MODEL,
+            "lesson_generation": CHAT_MODEL,
+            "quiz_generation": CHAT_MODEL,
+            "learning_path": CHAT_MODEL,
+            "daily_insight": CHAT_MODEL,
+            "risk_classification": CHAT_MODEL,
+            "risk_narrative": CHAT_MODEL,
         }
-        # Fallback chains (only to other HF-supported models, no featherless-ai)
         self.task_fallback_model_map: Dict[str, List[str]] = {
-            "chat": [
-                "meta-llama/Llama-3.1-8B-Instruct",
-                "google/gemma-2-2b-it",
-            ],
-            "verify_solution": [
-                "meta-llama/Llama-3.1-8B-Instruct",
-                "google/gemma-2-2b-it",
-            ],
+            "chat": [CHAT_MODEL],
+            "verify_solution": [CHAT_MODEL],
         }
-        # Model-to-provider mappings (not needed when using model:provider syntax directly)
         self.model_provider_map: Dict[str, str] = {}
         self.task_provider_map: Dict[str, str] = {}
         if isinstance(config, dict):
@@ -224,7 +364,6 @@ class InferenceClient:
                         for task, model in task_models.items()
                         if str(task).strip() and str(model).strip()
                     }
-                    # Merge config models with defaults (config overrides defaults)
                     self.task_model_map.update(config_task_models)
                 task_fallback_models = routing_cfg.get("task_fallback_model_map", {})
                 if isinstance(task_fallback_models, dict):
@@ -265,21 +404,19 @@ class InferenceClient:
         else:
             env_override_note = ""
 
-        if self.enforce_qwen_only:
-            qwen_map_before = dict(self.task_model_map)
-            self.default_model = self.qwen_lock_model
+        if self.enforce_lock_model:
+            lock_map_before = dict(self.task_model_map)
+            self.default_model = self.lock_model_id
             for task_key in list(self.task_model_map.keys()):
-                self.task_model_map[task_key] = self.qwen_lock_model
+                self.task_model_map[task_key] = self.lock_model_id
             self.fallback_models = []
             self.task_fallback_model_map = {
                 task_key: [] for task_key in self.task_model_map.keys()
             }
-            self.chat_hard_trigger_enabled = False
-            LOGGER.info(f"🔒 INFERENCE_ENFORCE_QWEN_ONLY enabled: locking all inference tasks to {self.qwen_lock_model}")
-            LOGGER.info(f"   Cleared fallback models and hard-escalation path")
-            LOGGER.info(f"   Task model mappings forced from: {qwen_map_before}")
+            LOGGER.info(f"🔒 INFERENCE_ENFORCE_LOCK_MODEL enabled: locking all inference tasks to {self.lock_model_id}")
+            LOGGER.info(f"   Cleared fallback models")
+            LOGGER.info(f"   Task model mappings forced from: {lock_map_before}")
 
-        # Log configuration loaded for debugging
         config_status = "from file" if config_path else "hardcoded defaults (no config file found)"
         effective_chat_model_for_logs = self.chat_model_override or self.task_model_map.get("chat", self.default_model)
         LOGGER.info(f"✅ InferenceClient initialized {config_status}{env_override_note}")
@@ -287,7 +424,7 @@ class InferenceClient:
         LOGGER.info(f"   Chat model: {effective_chat_model_for_logs}")
         LOGGER.info(f"   Chat temp override ({TEMP_CHAT_MODEL_OVERRIDE_ENV}): {self.chat_model_temp_override or 'disabled'}")
         LOGGER.info(f"   Chat strict model lock: {self.chat_strict_model_only}")
-        LOGGER.info(f"   Global Qwen-only lock: {self.enforce_qwen_only}")
+        LOGGER.info(f"   Global model lock: {self.enforce_lock_model}")
         LOGGER.info(f"   Verify solution model: {self.task_model_map.get('verify_solution', self.default_model)}")
         LOGGER.info(f"   Full task_model_map: {self.task_model_map}")
 
@@ -299,11 +436,15 @@ class InferenceClient:
             "requests_error": 0,
             "retries_total": 0,
             "fallback_attempts": 0,
+            "latency_sum_ms": 0.0,
+            "latency_count": 0,
             "route_counts": {},
             "task_counts": {},
             "provider_counts": {},
             "status_code_counts": {},
         }
+
+        self._load_persistent_metrics()
 
     def _bump_metric(self, key: str, inc: int = 1) -> None:
         with self._metrics_lock:
@@ -311,6 +452,7 @@ class InferenceClient:
             if not isinstance(current, int):
                 current = 0
             self._metrics[key] = current + inc
+        self._persist_metrics()
 
     def _bump_bucket(self, key: str, bucket: str, inc: int = 1) -> None:
         with self._metrics_lock:
@@ -322,6 +464,50 @@ class InferenceClient:
             if not isinstance(current, int):
                 current = 0
             mapping[bucket] = current + inc
+        self._persist_metrics()
+
+    def _record_completion(self, *, latency_ms: float) -> None:
+        with self._metrics_lock:
+            self._metrics["latency_sum_ms"] = (self._metrics.get("latency_sum_ms") or 0.0) + latency_ms
+            self._metrics["latency_count"] = (self._metrics.get("latency_count") or 0) + 1
+        self._persist_metrics()
+
+    def _load_persistent_metrics(self) -> None:
+        if not self.firestore:
+            return
+        try:
+            doc_ref = self.firestore.collection("system_metrics").document("inference_stats")
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                with self._metrics_lock:
+                    for k, v in data.items():
+                        if k in self._metrics:
+                            if isinstance(v, (int, float)):
+                                self._metrics[k] = v
+                            elif isinstance(v, dict) and isinstance(self._metrics[k], dict):
+                                self._metrics[k].update(v)
+                LOGGER.info("✅ Persistent inference metrics loaded from Firestore")
+        except Exception as e:
+            LOGGER.warning(f"⚠️  Failed to load persistent metrics: {e}")
+
+    def _persist_metrics(self, force: bool = False) -> None:
+        if not self.firestore:
+            return
+
+        now = time.time()
+        if not force and (now - self._last_persist_time < self._persist_throttle_sec):
+            return
+
+        try:
+            self._last_persist_time = now
+            doc_ref = self.firestore.collection("system_metrics").document("inference_stats")
+            with self._metrics_lock:
+                snapshot = dict(self._metrics)
+
+            doc_ref.set(snapshot, merge=True)
+        except Exception as e:
+            LOGGER.warning(f"⚠️  Failed to persist metrics: {e}")
 
     def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
         self._bump_metric("requests_total", 1)
@@ -333,6 +519,10 @@ class InferenceClient:
 
     def snapshot_metrics(self) -> Dict[str, Any]:
         with self._metrics_lock:
+            l_sum = self._metrics.get("latency_sum_ms") or 0.0
+            l_count = self._metrics.get("latency_count") or 0
+            avg_latency = round(l_sum / l_count, 2) if l_count > 0 else 0.0
+
             snapshot = {
                 "uptime_sec": round(max(0.0, time.time() - self._metrics_started_at), 2),
                 "requests_total": self._metrics.get("requests_total") or 0,
@@ -340,6 +530,9 @@ class InferenceClient:
                 "requests_error": self._metrics.get("requests_error") or 0,
                 "retries_total": self._metrics.get("retries_total") or 0,
                 "fallback_attempts": self._metrics.get("fallback_attempts") or 0,
+                "avg_latency_ms": avg_latency,
+                "active_model": self.default_model,
+                "primary_provider": self.provider,
                 "route_counts": dict(self._metrics.get("route_counts") or {}),
                 "task_counts": dict(self._metrics.get("task_counts") or {}),
                 "provider_counts": dict(self._metrics.get("provider_counts") or {}),
@@ -351,21 +544,17 @@ class InferenceClient:
         effective_task = (req.task_type or "default").strip().lower()
         request_tag = req.request_tag.strip() or f"{effective_task}-{int(time.time() * 1000)}"
         selected_model, model_selection_source = self._resolve_primary_model(req)
-        
+
         model_chain = self._model_chain_for_task(effective_task, selected_model)
         last_error: Optional[Exception] = None
-        provider_chain = self._provider_chain_for_task(req.task_type)
-        
-        # Normalize model name (remove any provider suffix since we use hf_inference router)
-        model_base = selected_model.split(":")[0] if ":" in selected_model else selected_model
-        
-        # Log model selection for debugging - confirm which model will actually be used
+
+        model_base = selected_model
+
         LOGGER.info(
-            f"🎯 request_tag={request_tag} task={effective_task} source={model_selection_source} "
-            f"selected_model={model_base} (primary) provider_chain={provider_chain}"
+            f"📤 request_tag={request_tag} task={effective_task} source={model_selection_source} "
+            f"selected_model={model_base} (primary)"
         )
         LOGGER.info(f"   fallback_chain={model_chain[1:] if len(model_chain) > 1 else 'none'}")
-
 
         for fallback_depth, model_name in enumerate(model_chain):
             request_for_model = InferenceRequest(
@@ -379,20 +568,19 @@ class InferenceClient:
                 repetition_penalty=req.repetition_penalty,
                 timeout_sec=req.timeout_sec,
             )
-            
-            for provider in provider_chain:
-                try:
-                    result = self._generate_with_provider(request_for_model, provider, fallback_depth)
-                    if fallback_depth > 0:
-                        LOGGER.info(f"✅ Fallback succeeded at depth={fallback_depth} model={model_name} provider={provider}")
-                    return result
-                except Exception as exc:
-                    last_error = exc
-                    fallback_hint = f" (depth {fallback_depth})" if fallback_depth > 0 else ""
-                    LOGGER.warning(
-                        f"⚠️  Attempt failed{fallback_hint}: task={request_for_model.task_type} "
-                        f"provider={provider} model={model_name} error={exc.__class__.__name__}: {str(exc)[:100]}"
-                    )
+
+            try:
+                result = self._call_deepseek(request_for_model, fallback_depth)
+                if fallback_depth > 0:
+                    LOGGER.info(f"✅ Fallback succeeded at depth={fallback_depth} model={model_name}")
+                return result
+            except Exception as exc:
+                last_error = exc
+                fallback_hint = f" (depth {fallback_depth})" if fallback_depth > 0 else ""
+                LOGGER.warning(
+                    f"⚠️  Attempt failed{fallback_hint}: task={request_for_model.task_type} "
+                    f"model={model_name} error={exc.__class__.__name__}: {str(exc)[:100]}"
+                )
 
         if last_error:
             raise last_error
@@ -405,10 +593,6 @@ class InferenceClient:
         effective_task = (req.task_type or "default").strip().lower()
         runtime_chat_override = self._runtime_chat_model_override()
 
-        def _base_model(model_name: str) -> str:
-            return (model_name or "").split(":", 1)[0].strip()
-
-        # Check explicit request model first, then chat override env, then task map/default.
         if effective_task == "chat" and runtime_chat_override:
             selected_model = runtime_chat_override
             model_selection_source = "chat_temp_override_env"
@@ -422,107 +606,39 @@ class InferenceClient:
             selected_model = self.task_model_map.get(effective_task, self.default_model)
             model_selection_source = "task_map"
 
-        if self.enforce_qwen_only:
-            effective_qwen_lock_model = self.qwen_lock_model
+        if self.enforce_lock_model:
+            effective_lock_model_id = self.lock_model_id
             if effective_task == "chat":
-                effective_qwen_lock_model = runtime_chat_override or self.chat_model_override or self.qwen_lock_model
+                effective_lock_model_id = runtime_chat_override or self.chat_model_override or self.lock_model_id
 
-            selected_base = _base_model(selected_model)
-            lock_base = _base_model(effective_qwen_lock_model)
+            selected_base = (selected_model or "").split(":", 1)[0].strip()
+            lock_base = (effective_lock_model_id or "").split(":", 1)[0].strip()
             if selected_base != lock_base:
                 LOGGER.warning(
-                    f"⚠️ Qwen-only lock replaced requested model {selected_model} with {effective_qwen_lock_model}"
+                    f"⚠️  Model lock replaced requested model {selected_model} with {effective_lock_model_id}"
                 )
-            selected_model = effective_qwen_lock_model
-            model_selection_source = f"{model_selection_source}:qwen_only"
+            selected_model = effective_lock_model_id
+            model_selection_source = f"{model_selection_source}:model_lock"
 
         if effective_task == "chat" and self.chat_strict_model_only:
             return selected_model, f"{model_selection_source}:chat_strict_model_only"
 
-        if effective_task == "chat" and self.chat_hard_trigger_enabled and self.chat_hard_model:
-            should_escalate, reason = self._should_escalate_chat_to_hard_model(req.messages)
-            if should_escalate and selected_model != self.chat_hard_model:
-                return self.chat_hard_model, f"chat_hard_escalation:{reason}"
-
         return selected_model, model_selection_source
-
-    def _should_escalate_chat_to_hard_model(self, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
-        latest_user = self._latest_user_message(messages)
-        if not latest_user:
-            return False, "no_user_message"
-
-        latest_norm = latest_user.lower()
-        prompt_chars = len(latest_user)
-        history_chars = 0
-        for msg in messages:
-            content = (msg.get("content") or "") if isinstance(msg, dict) else ""
-            history_chars += len(content)
-
-        keyword_hit = ""
-        for kw in self.chat_hard_keywords:
-            if kw and kw in latest_norm:
-                keyword_hit = kw
-                break
-
-        math_marker_count = len(
-            re.findall(
-                r"(=|\bintegral\b|\bderivative\b|\bmatrix\b|\blimit\b|\bproof\b|\bderive\b|\bsolve\b)",
-                latest_norm,
-            )
-        )
-
-        long_prompt = prompt_chars >= self.chat_hard_prompt_chars
-        long_history = history_chars >= self.chat_hard_history_chars
-        immediate_hard_request = any(
-            phrase in latest_norm
-            for phrase in (
-                "show all steps",
-                "step-by-step",
-                "step by step",
-                "rigorous proof",
-                "formal proof",
-            )
-        )
-
-        # Escalate immediately for long step-by-step prompts or heavy math density.
-        escalate = bool(keyword_hit and immediate_hard_request)
-        if not escalate:
-            escalate = bool(keyword_hit and (long_prompt or long_history or math_marker_count >= 2))
-        if not escalate and long_prompt and math_marker_count >= 2:
-            escalate = True
-        if not escalate and long_history and math_marker_count >= 2:
-            escalate = True
-
-        if not escalate:
-            return False, "normal"
-
-        reasons: List[str] = []
-        if long_prompt:
-            reasons.append(f"prompt_chars={prompt_chars}")
-        if long_history:
-            reasons.append(f"history_chars={history_chars}")
-        if keyword_hit:
-            reasons.append(f"keyword={keyword_hit}")
-        if immediate_hard_request:
-            reasons.append("immediate_hard_request")
-        if math_marker_count >= 2:
-            reasons.append(f"math_markers={math_marker_count}")
-        return True, ",".join(reasons) if reasons else "hard_prompt"
 
     def _model_chain_for_task(self, task_type: str, selected_model: str) -> List[str]:
         normalized = (task_type or "default").strip().lower()
         runtime_chat_override = self._runtime_chat_model_override() if normalized == "chat" else ""
-        chat_qwen_lock_model = runtime_chat_override or (self.chat_model_override if normalized == "chat" else "")
+        chat_lock_model_id = runtime_chat_override or (self.chat_model_override if normalized == "chat" else "")
 
-        if self.enforce_qwen_only:
+        if self.enforce_lock_model:
             if normalized == "chat":
-                locked_model = (chat_qwen_lock_model or self.qwen_lock_model or "").strip()
+                locked_model = (chat_lock_model_id or self.lock_model_id or "").strip()
             else:
-                locked_model = (self.qwen_lock_model or "").strip()
+                locked_model = (self.lock_model_id or "").strip()
             return [locked_model] if locked_model else []
 
         if normalized == "chat" and self.chat_strict_model_only:
-            chat_model = (chat_qwen_lock_model or selected_model or "").strip()
+            chat_model = (chat_lock_model_id or selected_model or "").strip()
             return [chat_model] if chat_model else []
 
         per_task_candidates = self.task_fallback_model_map.get(task_type, [])
@@ -542,34 +658,6 @@ class InferenceClient:
             return deduped[:max_models]
         return deduped
 
-    def _provider_chain_for_task(self, task_type: str) -> List[str]:
-        normalized = (task_type or "default").strip().lower()
-        forced_provider = self.task_provider_map.get(normalized)
-        if forced_provider:
-            return [forced_provider]
-
-        if normalized in self.cpu_only_tasks:
-            return [self.cpu_provider]
-
-        if self.pro_enabled and normalized in self.pro_priority_tasks:
-            chain = [self.pro_provider]
-            if self.enable_provider_fallback and self.gpu_provider not in chain:
-                chain.append(self.gpu_provider)
-            if self.enable_provider_fallback and self.provider not in chain:
-                chain.append(self.provider)
-            return chain
-
-        if normalized in self.gpu_required_tasks:
-            chain = [self.gpu_provider]
-            if self.enable_provider_fallback and self.cpu_provider != self.gpu_provider:
-                chain.append(self.cpu_provider)
-            return chain
-
-        chain = [self.provider]
-        if self.enable_provider_fallback and self.cpu_provider not in chain:
-            chain.append(self.cpu_provider)
-        return chain
-
     def _retry_profile(self, task_type: str) -> Tuple[int, float]:
         normalized = (task_type or "default").strip().lower()
         if normalized in self.interactive_tasks:
@@ -586,23 +674,6 @@ class InferenceClient:
             return self.interactive_timeout_sec
         return self.background_timeout_sec
 
-    def _resolve_route_label(self, provider: str, task_type: str) -> str:
-        normalized = (task_type or "default").strip().lower()
-        if self.pro_enabled and normalized in self.pro_priority_tasks and provider == self.pro_provider:
-            return "pro-priority"
-        return "standard"
-
-    def _generate_with_provider(self, req: InferenceRequest, provider: str, fallback_depth: int) -> str:
-        route = self._resolve_route_label(provider, req.task_type)
-        if provider == "local_space":
-            return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
-
-        if provider == "deepseek":
-            return self._call_deepseek(req, provider=provider, route=route, fallback_depth=fallback_depth)
-
-        # All other providers use HF inference router
-        return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
-
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
         parts: List[str] = []
         for msg in messages:
@@ -615,9 +686,9 @@ class InferenceClient:
                 prefix = "SYSTEM"
             elif role == "assistant":
                 prefix = "ASSISTANT"
-            parts.append(f"{prefix}:\\n{content}")
+            parts.append(f"{prefix}:\n{content}")
         parts.append("ASSISTANT:")
-        return "\\n\\n".join(parts)
+        return "\n\n".join(parts)
 
     def _latest_user_message(self, messages: List[Dict[str, str]]) -> str:
         for msg in reversed(messages):
@@ -627,390 +698,187 @@ class InferenceClient:
                 return content
         return self._messages_to_prompt(messages)
 
-    def _post_with_retry(
-        self,
-        url: str,
-        *,
-        headers: Dict[str, str],
-        payload: Dict[str, object],
-        timeout: int,
-        provider: str,
-        model: str,
-        task_type: str,
-        request_tag: str,
-        fallback_depth: int,
-        route: str,
-    ) -> Tuple[requests.Response, float, int]:
-        self._record_attempt(
-            task_type=task_type,
-            provider=provider,
-            route=route,
-            fallback_depth=fallback_depth,
+    def _call_deepseek(self, req: InferenceRequest, fallback_depth: int) -> str:
+        """Call DeepSeek API with OpenAI-compatible chat completions."""
+        if not self.ds_api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY is not set")
+
+        target_model = req.model or self.default_model
+        route = "deepseek"
+        task_type = req.task_type or "default"
+
+        LOGGER.debug(
+            f"📞 Calling DeepSeek: task={task_type} model={target_model} "
+            f"route={route} depth={fallback_depth}"
         )
+
+        timeout = self._timeout_for(req, "deepseek")
         max_retries, backoff_sec = self._retry_profile(task_type)
-        attempt = 0
 
-        def _retry_sleep(retry_attempt: int) -> None:
-            # Small jitter reduces synchronized retry storms during transient provider issues.
-            jitter_factor = random.uniform(0.9, 1.2)
-            time.sleep(backoff_sec * retry_attempt * jitter_factor)
+        client = get_deepseek_client()
 
-        while True:
+        # Build chat completions params
+        params: Dict[str, Any] = {
+            "model": target_model,
+            "messages": req.messages,
+            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
+        }
+
+        if target_model == REASONER_MODEL:
+            params["max_tokens"] = req.max_new_tokens or 1024
+        else:
+            params["temperature"] = req.temperature
+            params["top_p"] = req.top_p
+
+        # Use JSON mode for quiz generation
+        if task_type == "quiz_generation" and target_model != REASONER_MODEL:
+            params["response_format"] = {"type": "json_object"}
+
+        for attempt in range(max_retries):
+            self._record_attempt(
+                task_type=task_type,
+                provider="deepseek",
+                route=route,
+                fallback_depth=fallback_depth,
+            )
             start = time.perf_counter()
             try:
-                resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-            except Exception as exc:
+                response = client.chat.completions.create(**params, timeout=timeout)
                 latency_ms = (time.perf_counter() - start) * 1000
+
+                content = response.choices[0].message.content or ""
+                reasoning = getattr(response.choices[0].message, "reasoning_content", None)
+
+                text = content.strip()
+                if reasoning:
+                    text = f"{reasoning}\n{text}"
+
                 log_model_call(
                     LOGGER,
-                    provider=provider,
-                    model=model,
-                    endpoint=url,
+                    provider="deepseek",
+                    model=target_model,
+                    endpoint=self.ds_base_url,
+                    latency_ms=latency_ms,
+                    input_tokens=None,
+                    output_tokens=None,
+                    status="ok",
+                    task_type=task_type,
+                    request_tag=req.request_tag,
+                    retry_attempt=attempt + 1,
+                    fallback_depth=fallback_depth,
+                    route=route,
+                )
+                self._record_attempt(
+                    task_type=task_type,
+                    provider="deepseek",
+                    route=route,
+                    fallback_depth=fallback_depth,
+                )
+                self._record_completion(latency_ms=latency_ms)
+                self._bump_metric("requests_ok", 1)
+                return text
+
+            except RateLimitError:
+                latency_ms = (time.perf_counter() - start) * 1000
+                if attempt < max_retries - 1:
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="RateLimitError",
+                        error_message="rate limited",
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    self._bump_metric("retries_total", 1)
+                    time.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                self._bump_metric("requests_error", 1)
+                raise RuntimeError("DeepSeek API rate limit reached. Please try again shortly.")
+
+            except APITimeoutError:
+                latency_ms = (time.perf_counter() - start) * 1000
+                if attempt < max_retries - 1:
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="APITimeoutError",
+                        error_message="timeout",
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    self._bump_metric("retries_total", 1)
+                    time.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                self._bump_metric("requests_error", 1)
+                raise RuntimeError("DeepSeek API timed out. Please retry.")
+
+            except APIError as e:
+                latency_ms = (time.perf_counter() - start) * 1000
+                if attempt < max_retries - 1:
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="APIError",
+                        error_message=str(e)[:200],
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    self._bump_metric("retries_total", 1)
+                    time.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                self._bump_metric("requests_error", 1)
+                raise RuntimeError(f"DeepSeek API error: {str(e)}")
+
+            except Exception as exc:
+                latency_ms = (time.perf_counter() - start) * 1000
+                self._bump_metric("requests_error", 1)
+                log_model_call(
+                    LOGGER,
+                    provider="deepseek",
+                    model=target_model,
+                    endpoint=self.ds_base_url,
                     latency_ms=latency_ms,
                     input_tokens=None,
                     output_tokens=None,
                     status="error",
                     error_class=exc.__class__.__name__,
-                    error_message=str(exc),
+                    error_message=str(exc)[:200],
                     task_type=task_type,
-                    request_tag=request_tag,
+                    request_tag=req.request_tag,
                     retry_attempt=attempt + 1,
                     fallback_depth=fallback_depth,
                     route=route,
                 )
-                if attempt >= max_retries - 1:
-                    self._bump_metric("requests_error", 1)
-                    raise
-                attempt += 1
-                self._bump_metric("retries_total", 1)
-                _retry_sleep(attempt)
-                continue
+                raise
 
-            latency_ms = (time.perf_counter() - start) * 1000
-            if resp.status_code in {408, 429, 500, 502, 503, 504} and attempt < max_retries - 1:
-                log_model_call(
-                    LOGGER,
-                    provider=provider,
-                    model=model,
-                    endpoint=url,
-                    latency_ms=latency_ms,
-                    input_tokens=None,
-                    output_tokens=None,
-                    status="error",
-                    error_class="HTTPRetry",
-                    error_message=f"status={resp.status_code}",
-                    task_type=task_type,
-                    request_tag=request_tag,
-                    retry_attempt=attempt + 1,
-                    fallback_depth=fallback_depth,
-                    route=route,
-                )
-                attempt += 1
-                self._bump_metric("retries_total", 1)
-                _retry_sleep(attempt)
-                continue
-            return resp, latency_ms, attempt + 1
-
-    def _call_hf_inference_direct(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
-        """
-        Call Qwen models via Featherless AI provider.
-        Uses HF InferenceClient with provider="featherless-ai" for direct model access.
-        """
-        if not self.hf_token:
-            raise RuntimeError("HF_TOKEN is not set")
-
-        target_model = req.model or self.default_model
-        target_model_base = target_model.split(":")[0] if ":" in target_model else target_model
-        
-        timeout = self._timeout_for(req, provider)
-        start = time.perf_counter()
-        
-        try:
-            # Use HF InferenceClient with featherless-ai provider for Qwen models.
-            client = HFInferenceClient(
-                model=target_model_base,
-                token=self.hf_token,
-                provider="featherless-ai",
-                timeout=timeout
-            )
-            
-            response = client.chat_completion(
-                messages=req.messages,
-                max_tokens=req.max_new_tokens or self.default_max_new_tokens,
-                temperature=req.temperature or self.default_temperature,
-                top_p=req.top_p or self.default_top_p,
-            )
-            latency_ms = (time.perf_counter() - start) * 1000
-            
-            # Extract text from response
-            if hasattr(response, "choices") and response.choices:
-                content = response.choices[0].message.content or ""
-                text = content.strip()
-            else:
-                text = self._extract_text(response)
-            
-            log_model_call(
-                LOGGER,
-                provider="featherless-ai",
-                model=target_model_base,
-                endpoint="featherless-ai_inference",
-                latency_ms=latency_ms,
-                input_tokens=None,
-                output_tokens=None,
-                status="ok",
-                task_type=req.task_type,
-                request_tag=req.request_tag,
-                retry_attempt=1,
-                fallback_depth=fallback_depth,
-                route=route,
-            )
-            self._record_attempt(
-                task_type=req.task_type,
-                provider="featherless-ai",
-                route=route,
-                fallback_depth=fallback_depth,
-            )
-            self._bump_metric("requests_ok", 1)
-            return text
-            
-        except Exception as exc:
-            latency_ms = (time.perf_counter() - start) * 1000
-            self._bump_metric("requests_error", 1)
-            log_model_call(
-                LOGGER,
-                provider="featherless-ai",
-                model=target_model_base,
-                endpoint="featherless-ai_inference",
-                latency_ms=latency_ms,
-                input_tokens=None,
-                output_tokens=None,
-                status="error",
-                error_class=exc.__class__.__name__,
-                error_message=str(exc),
-                task_type=req.task_type,
-                request_tag=req.request_tag,
-                retry_attempt=1,
-                fallback_depth=fallback_depth,
-                route=route,
-            )
-            LOGGER.warning(
-                "task=%s provider=featherless-ai model=%s fallback_depth=%s failed: %s",
-                req.task_type,
-                target_model_base,
-                fallback_depth,
-                exc,
-            )
-            raise
-
-    def _call_hf_inference(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
-        if not self.hf_token:
-            raise RuntimeError("HF_TOKEN is not set")
-
-        target_model = req.model or self.default_model
-        chat_model = target_model if ":" in target_model else f"{target_model}:fastest"
-        url = self.hf_chat_url
-
-        # Log which model is actually being used
-        model_base = target_model.split(":")[0] if ":" in target_model else target_model
-        LOGGER.debug(
-            f"📌 Calling HF inference: task={req.task_type} model={model_base} "
-            f"route={route} depth={fallback_depth}"
-        )
-
-        payload: Dict[str, object] = {
-            "model": chat_model,
-            "messages": req.messages,
-            "stream": False,
-            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
-            "temperature": req.temperature,
-            "top_p": req.top_p,
-        }
-        headers = {
-            "Authorization": f"Bearer {self.hf_token}",
-            "Content-Type": "application/json",
-            "X-MathPulse-Task": (req.task_type or "default").strip().lower(),
-        }
-        if route == "pro-priority" and self.pro_route_header_name.strip():
-            headers[self.pro_route_header_name.strip()] = self.pro_route_header_value
-
-        timeout = self._timeout_for(req, provider)
-
-        resp, latency_ms, retry_attempt = self._post_with_retry(
-            url,
-            headers=headers,
-            payload=payload,
-            timeout=timeout,
-            provider=provider,
-            model=target_model,
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_bucket("status_code_counts", str(resp.status_code), 1)
-        if resp.status_code != 200:
-            self._bump_metric("requests_error", 1)
-            raise RuntimeError(f"HF Inference error {resp.status_code}: {resp.text}")
-
-        data = resp.json()
-        text = self._extract_text(data)
-        
-        # Log successful inference with actual model and response time
-        LOGGER.info(
-            f"✅ HF inference success: task={req.task_type} model={model_base} "
-            f"latency={latency_ms:.0f}ms tokens_out={len(text.split())}"
-        )
-        
-        log_model_call(
-            LOGGER,
-            provider=provider,
-            model=target_model,
-            endpoint=url,
-            latency_ms=latency_ms,
-            input_tokens=None,
-            output_tokens=None,
-            status="ok",
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            retry_attempt=retry_attempt,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_metric("requests_ok", 1)
-        return text
-
-    def _call_featherless(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
-        if not self.featherless_api_key:
-            raise RuntimeError("FEATHERLESS_API_KEY is not set")
-
-        target_model = req.model or self.default_model
-        url = self.featherless_chat_url
-
-        payload: Dict[str, object] = {
-            "model": target_model,
-            "messages": req.messages,
-            "stream": False,
-            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
-            "temperature": req.temperature,
-            "top_p": req.top_p,
-        }
-        headers = {
-            "Authorization": f"Bearer {self.featherless_api_key}",
-            "Content-Type": "application/json",
-            "X-MathPulse-Task": (req.task_type or "default").strip().lower(),
-        }
-
-        timeout = self._timeout_for(req, provider)
-
-        resp, latency_ms, retry_attempt = self._post_with_retry(
-            url,
-            headers=headers,
-            payload=payload,
-            timeout=timeout,
-            provider=provider,
-            model=target_model,
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_bucket("status_code_counts", str(resp.status_code), 1)
-        if resp.status_code != 200:
-            self._bump_metric("requests_error", 1)
-            raise RuntimeError(f"Featherless API error {resp.status_code}: {resp.text}")
-
-        data = resp.json()
-        text = self._extract_text(data)
-        log_model_call(
-            LOGGER,
-            provider=provider,
-            model=target_model,
-            endpoint=url,
-            latency_ms=latency_ms,
-            input_tokens=None,
-            output_tokens=None,
-            status="ok",
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            retry_attempt=retry_attempt,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_metric("requests_ok", 1)
-        return text
-
-    def _call_deepseek(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
-        """Call DeepSeek API (OpenAI-compatible endpoint)."""
-        if not self.deepseek_api_key:
-            raise RuntimeError("DEEPSEEK_API_KEY is not set")
-
-        target_model = req.model or self.default_model
-        url = self.deepseek_chat_url
-
-        model_base = target_model.split(":")[0] if ":" in target_model else target_model
-        LOGGER.debug(
-            f"📌 Calling DeepSeek: task={req.task_type} model={model_base} "
-            f"route={route} depth={fallback_depth}"
-        )
-
-        payload: Dict[str, object] = {
-            "model": target_model,
-            "messages": req.messages,
-            "stream": False,
-            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
-            "temperature": req.temperature,
-            "top_p": req.top_p,
-        }
-        headers = {
-            "Authorization": f"Bearer {self.deepseek_api_key}",
-            "Content-Type": "application/json",
-            "X-MathPulse-Task": (req.task_type or "default").strip().lower(),
-        }
-
-        timeout = self._timeout_for(req, provider)
-
-        resp, latency_ms, retry_attempt = self._post_with_retry(
-            url,
-            headers=headers,
-            payload=payload,
-            timeout=timeout,
-            provider=provider,
-            model=target_model,
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_bucket("status_code_counts", str(resp.status_code), 1)
-        if resp.status_code != 200:
-            self._bump_metric("requests_error", 1)
-            raise RuntimeError(f"DeepSeek API error {resp.status_code}: {resp.text}")
-
-        data = resp.json()
-        text = self._extract_text(data)
-
-        LOGGER.info(
-            f"✅ DeepSeek success: task={req.task_type} model={model_base} "
-            f"latency={latency_ms:.0f}ms tokens_out={len(text.split())}"
-        )
-
-        log_model_call(
-            LOGGER,
-            provider=provider,
-            model=target_model,
-            endpoint=url,
-            latency_ms=latency_ms,
-            input_tokens=None,
-            output_tokens=None,
-            status="ok",
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            retry_attempt=retry_attempt,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_metric("requests_ok", 1)
-        return text
+        raise RuntimeError(f"DeepSeek call failed after {max_retries} attempts")
 
     def _call_local_space(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         target_model = req.model or self.default_model
@@ -1030,18 +898,39 @@ class InferenceClient:
 
         timeout = self._timeout_for(req, provider)
 
-        resp, latency_ms, retry_attempt = self._post_with_retry(
-            url,
-            headers=headers,
-            payload=payload,
-            timeout=timeout,
-            provider=provider,
-            model=target_model,
+        self._record_attempt(
             task_type=req.task_type,
-            request_tag=req.request_tag,
-            fallback_depth=fallback_depth,
+            provider=provider,
             route=route,
+            fallback_depth=fallback_depth,
         )
+        start = time.perf_counter()
+
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        except Exception as exc:
+            latency_ms = (time.perf_counter() - start) * 1000
+            log_model_call(
+                LOGGER,
+                provider=provider,
+                model=target_model,
+                endpoint=url,
+                latency_ms=latency_ms,
+                input_tokens=None,
+                output_tokens=None,
+                status="error",
+                error_class=exc.__class__.__name__,
+                error_message=str(exc),
+                task_type=req.task_type,
+                request_tag=req.request_tag,
+                retry_attempt=1,
+                fallback_depth=fallback_depth,
+                route=route,
+            )
+            self._bump_metric("requests_error", 1)
+            raise
+
+        latency_ms = (time.perf_counter() - start) * 1000
         self._bump_bucket("status_code_counts", str(resp.status_code), 1)
 
         if resp.status_code != 200:
@@ -1080,7 +969,7 @@ class InferenceClient:
             status="ok",
             task_type=req.task_type,
             request_tag=req.request_tag,
-            retry_attempt=retry_attempt,
+            retry_attempt=1,
             fallback_depth=fallback_depth,
             route=route,
         )
@@ -1121,32 +1010,39 @@ class InferenceClient:
 
     def _clean_response_text(self, text: str) -> str:
         """Strip JSON braces, template artifacts, and whitespace from response text."""
-        # Strip leading/trailing whitespace
         text = text.strip()
-        
-        # Remove wrapping JSON braces or artifact markers
+
         if text.startswith("{") and text.endswith("}"):
             try:
-                # Try to parse as JSON - if it fails, return as-is
                 parsed = json.loads(text)
-                # If it's a dict with a "content" or "text" field, use that
                 if isinstance(parsed, dict):
                     if "content" in parsed:
                         text = str(parsed["content"]).strip()
                     elif "text" in parsed:
                         text = str(parsed["text"]).strip()
             except json.JSONDecodeError:
-                # Not valid JSON, just clean up braces
                 text = text.strip("{}")
-        
-        # Remove any trailing artifact markers
+
         if text.startswith("```json") or text.startswith("```"):
             text = re.sub(r"^```(?:json)?", "", text).strip()
         if text.endswith("```"):
             text = text[:-3].strip()
-        
+
         return text.strip()
 
 
-def create_default_client() -> InferenceClient:
-    return InferenceClient()
+def create_default_client(firestore_client: Optional[Any] = None) -> InferenceClient:
+    return InferenceClient(firestore_client=firestore_client)
+
+
+def is_sequential_model(model_id: str = "") -> bool:
+    mid = (model_id or os.getenv("INFERENCE_MODEL_ID") or "").strip()
+    if not mid:
+        return False
+    if mid == REASONER_MODEL:
+        return True
+    if _RUNTIME_OVERRIDES:
+        lock = _RUNTIME_OVERRIDES.get("INFERENCE_LOCK_MODEL_ID", "")
+        if lock == REASONER_MODEL:
+            return True
+    return False
