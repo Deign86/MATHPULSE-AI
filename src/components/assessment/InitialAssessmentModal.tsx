@@ -66,8 +66,10 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   };
 
   const handleXClose = () => {
-    // X button: session-only close, do NOT persist to Firestore
+    // X button: session-only close via sessionStorage, does NOT persist to Firestore
+    // Modal will reappear on next page refresh / new session
     // User will be reminded again on next session
+    sessionStorage.setItem('mathpulse_iar_session_dismissed', 'true');
     onClose();
   };
 

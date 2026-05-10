@@ -344,7 +344,11 @@ const App = () => {
           setHasCompletedDiagnostic(false);
           const timer = setTimeout(() => {
             if (!cancelled && !assessmentDismissed && !initialAssessmentCompleted) {
-              setShowDiagnosticModal(true);
+              // Also check session-only dismiss — X button sets sessionStorage, not Firestore
+              const sessionDismissed = sessionStorage.getItem('mathpulse_iar_session_dismissed') === 'true';
+              if (!sessionDismissed) {
+                setShowDiagnosticModal(true);
+              }
             }
           }, 1000);
           return () => clearTimeout(timer);
