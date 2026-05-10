@@ -6,13 +6,13 @@ import random
 from threading import Lock
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, AsyncIterator, Dict, List, Optional, Set, Tuple
 
 import requests
 import yaml
-from openai import OpenAI, APIError, RateLimitError, APITimeoutError
+from openai import OpenAI, AsyncOpenAI, APIError, RateLimitError, APITimeoutError
 
-from .ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL, DEEPSEEK_BASE_URL
+from .ai_client import get_deepseek_client, get_async_deepseek_client, CHAT_MODEL, REASONER_MODEL, DEEPSEEK_BASE_URL
 from .logging_utils import configure_structured_logging, log_model_call
 
 LOGGER = configure_structured_logging("mathpulse.inference")
@@ -271,6 +271,13 @@ class InferenceClient:
                     primary = primary_cfg
 
         self.provider = "deepseek"
+        self.cpu_provider = os.getenv("INFERENCE_CPU_PROVIDER", "deepseek").strip().lower() or self.provider
+        self.gpu_provider = os.getenv("INFERENCE_GPU_PROVIDER", "deepseek").strip().lower() or self.provider
+        # Pro provider not used in current setup
+        self.pro_enabled = False
+        self.pro_provider = self.provider
+        self.pro_priority_tasks: Set[str] = set()
+        self.enable_provider_fallback = False
         self.ds_api_key = os.getenv("DEEPSEEK_API_KEY", "")
         self.ds_base_url = os.getenv("DEEPSEEK_BASE_URL", DEEPSEEK_BASE_URL)
         self.ds_chat_model = os.getenv("DEEPSEEK_MODEL", CHAT_MODEL)
@@ -674,6 +681,10 @@ class InferenceClient:
             return self.interactive_timeout_sec
         return self.background_timeout_sec
 
+    def _provider_chain_for_task(self, task_type: str) -> List[str]:
+        """Return provider chain for task. All inference uses deepseek."""
+        return ["deepseek"]
+
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
         parts: List[str] = []
         for msg in messages:
@@ -879,6 +890,177 @@ class InferenceClient:
                 raise
 
         raise RuntimeError(f"DeepSeek call failed after {max_retries} attempts")
+
+    async def _call_deepseek_stream(self, req: InferenceRequest, fallback_depth: int) -> AsyncIterator[str]:
+        """Stream DeepSeek API with OpenAI-compatible chat completions. Yields content chunks."""
+        if not self.ds_api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY is not set")
+
+        target_model = req.model or self.default_model
+        route = "deepseek"
+        task_type = req.task_type or "default"
+
+        LOGGER.debug(
+            f"📞 Streaming DeepSeek: task={task_type} model={target_model} route={route}"
+        )
+
+        timeout = self._timeout_for(req, "deepseek")
+        max_retries, backoff_sec = self._retry_profile(task_type)
+
+        client = get_async_deepseek_client()
+
+        params: Dict[str, Any] = {
+            "model": target_model,
+            "messages": req.messages,
+            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
+            "stream": True,
+        }
+
+        if target_model == REASONER_MODEL:
+            params["max_tokens"] = req.max_new_tokens or 1024
+        else:
+            params["temperature"] = req.temperature
+            params["top_p"] = req.top_p
+
+        last_error: Optional[Exception] = None
+        for attempt in range(max_retries):
+            self._record_attempt(
+                task_type=task_type,
+                provider="deepseek",
+                route=route,
+                fallback_depth=fallback_depth,
+            )
+            start = time.perf_counter()
+            try:
+                async with client.chat.completions.stream(**params, timeout=timeout) as stream:
+                    async for event in stream:
+                        if event.type == "content.delta" and event.content:
+                            yield event.content
+
+                latency_ms = (time.perf_counter() - start) * 1000
+                log_model_call(
+                    LOGGER,
+                    provider="deepseek",
+                    model=target_model,
+                    endpoint=self.ds_base_url,
+                    latency_ms=latency_ms,
+                    input_tokens=None,
+                    output_tokens=None,
+                    status="ok",
+                    task_type=task_type,
+                    request_tag=req.request_tag,
+                    retry_attempt=attempt + 1,
+                    fallback_depth=fallback_depth,
+                    route=route,
+                )
+                self._bump_metric("requests_ok", 1)
+                return
+
+            except RateLimitError:
+                latency_ms = (time.perf_counter() - start) * 1000
+                if attempt < max_retries - 1:
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="RateLimitError",
+                        error_message="rate limited",
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    self._bump_metric("retries_total", 1)
+                    await asyncio.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                self._bump_metric("requests_error", 1)
+                raise RuntimeError("DeepSeek API rate limit reached. Please try again shortly.")
+
+            except APITimeoutError:
+                latency_ms = (time.perf_counter() - start) * 1000
+                if attempt < max_retries - 1:
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="APITimeoutError",
+                        error_message="timeout",
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    self._bump_metric("retries_total", 1)
+                    await asyncio.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                self._bump_metric("requests_error", 1)
+                raise RuntimeError("DeepSeek API timed out. Please retry.")
+
+            except APIError as e:
+                latency_ms = (time.perf_counter() - start) * 1000
+                if attempt < max_retries - 1:
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="APIError",
+                        error_message=str(e)[:200],
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    self._bump_metric("retries_total", 1)
+                    await asyncio.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                self._bump_metric("requests_error", 1)
+                raise RuntimeError(f"DeepSeek API error: {str(e)}")
+
+            except Exception as exc:
+                latency_ms = (time.perf_counter() - start) * 1000
+                self._bump_metric("requests_error", 1)
+                last_error = exc
+                log_model_call(
+                    LOGGER,
+                    provider="deepseek",
+                    model=target_model,
+                    endpoint=self.ds_base_url,
+                    latency_ms=latency_ms,
+                    input_tokens=None,
+                    output_tokens=None,
+                    status="error",
+                    error_class=exc.__class__.__name__,
+                    error_message=str(exc)[:200],
+                    task_type=task_type,
+                    request_tag=req.request_tag,
+                    retry_attempt=attempt + 1,
+                    fallback_depth=fallback_depth,
+                    route=route,
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(backoff_sec * (attempt + 1) * random.uniform(0.9, 1.2))
+                    continue
+                raise
+
+        raise last_error or RuntimeError(f"DeepSeek stream failed after {max_retries} attempts")
 
     def _call_local_space(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
         target_model = req.model or self.default_model
