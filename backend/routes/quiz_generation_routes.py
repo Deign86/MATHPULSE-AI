@@ -70,6 +70,10 @@ class QuizQuestion(BaseModel):
     options: Optional[List[str]] = None
     correctAnswer: str
     explanation: str
+    bloomLevel: Optional[str] = None
+    competencyCode: Optional[str] = None
+    points: Optional[int] = None
+    xpReward: Optional[int] = None
 
 
 class QuizGenerationResponse(BaseModel):
@@ -90,82 +94,129 @@ def _build_quiz_generation_prompt(
     difficulty: str,
     retrieved_context: str,
     variance_seed: Optional[int] = None,
+    competency_code: Optional[str] = None,
+    grade_level: str = "Grade 11/12",
+    lesson_objective: Optional[str] = None,
+    xp_reward: int = 10,
+    points: int = 1,
 ) -> str:
-    """Build the DeepSeek prompt for quiz generation with variance."""
+    """Build the QuizForge prompt for quiz generation with variance."""
+
+    # Build question type string
+    qt_str = ", ".join(question_types) if question_types else "multiple_choice"
 
     # Build variance instruction based on seed
     variance_instruction = ""
     if variance_seed is not None:
         variance_instruction = f"""
-8. VARIANCE REQUIREMENT: Use seed {variance_seed} to ensure variety. Generate DIFFERENT questions each time.
-   - Paraphrase concepts in fresh ways
-   - Use different numerical values and scenarios
-   - Vary question phrasing and structure
-   - Avoid repeating similar question patterns"""
+IMPORTANT — VARIANCE (seed {variance_seed}):
+- Paraphrase concepts in fresh ways
+- Use different numerical values and scenarios
+- Vary question phrasing and structure
+- Do NOT repeat similar question patterns"""
 
-    return f"""You are a DepEd-aligned mathematics quiz generator for Filipino Senior High School students (Grades 11-12).
+    return f"""You are a precise DepEd-aligned mathematics quiz generator for Filipino Senior High School STEM students ({grade_level}).
 
-Given the following curriculum context about "{topic}" from {subject}, generate {question_count} {difficulty}-difficulty quiz questions.
+Generate a "Try It Yourself" quiz for the following lesson.
 
-## Retrieved Curriculum Context
+## LESSON METADATA
+- Title: {lesson_title or topic}
+- DepEd Competency: {competency_code or 'Not specified'}
+- Grade Level: {grade_level}
+- Subject: {subject}
+- Lesson Objective: {lesson_objective or topic}
+
+## RAG CONTEXT (lesson source material)
 {retrieved_context}
 
+## QUIZ CONFIGURATION
+- Number of questions: {question_count}
+- Difficulty: {difficulty}
+- Question type: {qt_str}
+- XP per correct answer: {xp_reward}
+- Point value per question: {points}
+
 ## Instructions
-1. Generate exactly {question_count} questions covering the topic above.
-2. Question types to use: {', '.join(question_types)}
+1. Generate EXACTLY {question_count} questions covering the topic above.
+2. Question types to use: {qt_str}
 3. DISTRIBUTION (for {question_count} questions):
-   - 2 items: Recall and Basics (simple recall, definitions, fundamental facts)
-   - 4 items: Direct Application (real-world context with pesos, jeepney, sari-sari store, etc.)
-   - 3 items: Mixed/Interleaved Problems (combine concepts, multi-step reasoning)
-   - 1 item: Metacognitive/Reflective (explain reasoning, justify approach, identify errors)
-4. Difficulty: {difficulty} — appropriate for Grade 11-12 Filipino STEM students.
-5. Use Filipino-localized context where possible (pesos, jeepney, barangay, sari-sari store, etc.).
-6. Each question must be mathematically accurate and curriculum-aligned.
-7. Provide clear explanations for the correct answer.{variance_instruction}
+   - Include at least 1 "remember" (recall, definitions, fundamental facts)
+   - Include at least 1 "understand" (explain concepts)
+   - Include at least 1 "apply" (real-world context: pesos, jeepney, sari-sari store, barangay)
+   - Difficulty: {difficulty} — appropriate for {grade_level} Filipino STEM students.
+4. Use Filipino-localized context where possible (pesos, jeepney, barangay, sari-sari store, etc.).
+5. Each question must be mathematically accurate and curriculum-aligned.
+6. Provide clear explanations for the correct answer.{variance_instruction}
 
 ## Question Type Rules
-- multiple-choice: 4 options (A/B/C/D format), exactly one correct answer
+- multiple-choice: 4 options as array of objects with "key" and "text" fields, exactly one correct
 - true-false: statement that is either True or False
 - fill-in-blank: question with a single numeric or short text answer
 
-## Output Format
-Return ONLY a valid JSON array. No markdown, no extra text. Format:
+## Output Format (strict JSON array — no markdown, no extra text)
 [
   {{
-    "type": "multiple-choice",
-    "question": "What is the derivative of f(x) = x³?",
-    "options": ["2x²", "3x²", "x²", "3x"],
-    "correctAnswer": "3x²",
-    "explanation": "Using the power rule: d/dx(xⁿ) = nxⁿ⁻¹. So d/dx(x³) = 3x²."
+    "id": "q1",
+    "question_text": "What is the derivative of f(x) = x³?",
+    "type": "multiple_choice",
+    "bloom_level": "remember",
+    "options": [
+      {{ "key": "A", "text": "2x²" }},
+      {{ "key": "B", "text": "3x²" }},
+      {{ "key": "C", "text": "x²" }},
+      {{ "key": "D", "text": "3x" }}
+    ],
+    "correct_answer": "B",
+    "explanation": "Using the power rule: d/dx(xⁿ) = nxⁿ⁻¹. So d/dx(x³) = 3x².",
+    "points": {points},
+    "xp_reward": {xp_reward},
+    "difficulty": "{difficulty}",
+    "competency_code": "{competency_code or 'N/A'}"
   }},
   {{
+    "id": "q2",
+    "question_text": "The sum of angles in a triangle is 180 degrees.",
     "type": "true-false",
-    "question": "The sum of angles in a triangle is 180 degrees.",
-    "options": ["True", "False"],
-    "correctAnswer": "True",
-    "explanation": "By the triangle angle sum theorem, the interior angles of any Euclidean triangle sum to 180°."
+    "bloom_level": "remember",
+    "options": [
+      {{ "key": "A", "text": "True" }},
+      {{ "key": "B", "text": "False" }}
+    ],
+    "correct_answer": "A",
+    "explanation": "By the triangle angle sum theorem, interior angles of any Euclidean triangle sum to 180°.",
+    "points": {points},
+    "xp_reward": {xp_reward},
+    "difficulty": "{difficulty}",
+    "competency_code": "{competency_code or 'N/A'}"
   }},
   {{
-    "type": "fill-in-blank",
-    "question": "If f(x) = 2x + 3, then f(4) = ___",
+    "id": "q3",
+    "question_text": "If f(x) = 2x + 3, then f(4) = ___",
+    "type": "fill_in_blank",
+    "bloom_level": "apply",
     "options": null,
-    "correctAnswer": "11",
-    "explanation": "Substitute x = 4: f(4) = 2(4) + 3 = 8 + 3 = 11."
+    "correct_answer": "11",
+    "explanation": "Substitute x = 4: f(4) = 2(4) + 3 = 8 + 3 = 11.",
+    "points": {points},
+    "xp_reward": {xp_reward},
+    "difficulty": "{difficulty}",
+    "competency_code": "{competency_code or 'N/A'}"
   }}
 ]
 
 IMPORTANT:
-- Return ONLY the JSON array, no other text
-- Ensure correctAnswer exactly matches one of the options (for MC/TF)
-- For fill-in-blank, correctAnswer is the exact text that fills the blank
-- Generate FRESH, VARIED questions - no two questions should be identical or nearly identical
-- Questions should feel like they were created independently, not templated"""
+- Return ONLY a valid JSON array, no markdown fences, no extra text
+- For multiple-choice: options are objects with "key" ("A","B","C","D") and "text" (the answer text)
+- correct_answer must be the KEY ("A","B","C","D") that matches the correct option
+- For fill-in-blank, correct_answer is the exact text that fills the blank
+- Generate FRESH, VARIED questions — no two questions should be identical or nearly identical
+- Spread Bloom's taxonomy: include "remember", "understand", and "apply" level questions"""
 
 
 # ── Response Parser ────────────────────────────────────────────────────
 
 def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]:
-    """Parse and validate DeepSeek quiz generation response."""
+    """Parse and validate QuizForge quiz generation response."""
     cleaned = text.strip()
 
     # Strip markdown fences
@@ -196,30 +247,54 @@ def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]
         if not isinstance(q, dict):
             continue
 
-        # Ensure required fields
-        if "question" not in q or "correctAnswer" not in q:
+        # QuizForge required fields
+        if "question_text" not in q or "correct_answer" not in q:
+            logger.warning(f"Question {i} missing required field 'question_text' or 'correct_answer', skipping")
             continue
 
-        # Normalize field names
+        qtype = q.get("type", "multiple-choice")
+        correct_key = q.get("correct_answer", "")
+
+        # ── Flatten options from [{key, text}] to [text] ──────────────────
+        raw_options = q.get("options")
+        flat_options: Optional[List[str]] = None
+
+        if raw_options and isinstance(raw_options, list):
+            # QuizForge: options is [{key: "A", text: "..."}, ...]
+            if len(raw_options) > 0 and isinstance(raw_options[0], dict) and "text" in raw_options[0]:
+                # Sort by key to maintain consistent ordering (A, B, C, D)
+                def key_sort(opt: Dict[str, str]) -> str:
+                    return opt.get("key", "")
+                sorted_opts = sorted(raw_options, key=key_sort)
+                flat_options = [opt.get("text", "") for opt in sorted_opts]
+            else:
+                # Already flat array of strings
+                flat_options = raw_options
+        elif qtype == "true-false":
+            flat_options = ["True", "False"]
+
+        # ── Map correct_key ("A") → correct_answer TEXT ─────────────────
+        correct_answer_text: str = correct_key
+        if flat_options and isinstance(raw_options, list):
+            # Find the option whose key matches correct_key
+            for opt in raw_options:
+                if isinstance(opt, dict) and opt.get("key") == correct_key:
+                    correct_answer_text = opt.get("text", correct_key)
+                    break
+
+        # ── Build normalized internal record ────────────────────────────
         normalized = {
             "id": i + 1,
-            "type": q.get("type", "multiple-choice"),
-            "question": q["question"],
-            "correctAnswer": q["correctAnswer"],
+            "type": qtype,
+            "question": q["question_text"],
+            "bloomLevel": q.get("bloom_level", "apply"),
+            "competencyCode": q.get("competency_code"),
+            "correctAnswer": correct_answer_text,
+            "options": flat_options,
             "explanation": q.get("explanation", ""),
+            "points": q.get("points", 1),
+            "xpReward": q.get("xp_reward", 10),
         }
-
-        # Handle options
-        if "options" in q and q["options"]:
-            normalized["options"] = q["options"]
-        elif "choices" in q and q["choices"]:
-            normalized["options"] = q["choices"]
-        else:
-            # For true-false, auto-populate options
-            if normalized["type"] == "true-false":
-                normalized["options"] = ["True", "False"]
-            else:
-                normalized["options"] = None
 
         validated.append(normalized)
 
@@ -296,7 +371,7 @@ async def generate_quiz(request: QuizGenerationRequest):
 
         confidence = summarize_retrieval_confidence(chunks)
 
-        # 2. Build generation prompt
+        # 2. Build generation prompt (QuizForge format)
         prompt = _build_quiz_generation_prompt(
             topic=request.topic,
             subject=request.subject,
@@ -306,6 +381,11 @@ async def generate_quiz(request: QuizGenerationRequest):
             difficulty=request.difficulty,
             retrieved_context=formatted_context,
             variance_seed=request.varianceSeed,
+            competency_code=request.competencyCode,
+            grade_level="Grade 11/12",
+            lesson_objective=request.topic,
+            xp_reward=10,
+            points=1,
         )
 
         # 3. Call DeepSeek with higher temperature for variance

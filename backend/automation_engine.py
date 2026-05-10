@@ -553,7 +553,7 @@ class MathPulseAutomationEngine:
                         "word_problem",
                     ],
                     "difficultyDistribution": cfg["dist"],
-                    "bloomLevels": ["remember", "understand", "apply"],
+                    "bloomLevels": ["remember", "understand", "apply", "analyze"],
                     "includeGraphs": False,
                     "excludeTopics": [],
                     "purpose": "remedial",

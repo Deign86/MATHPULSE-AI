@@ -319,7 +319,7 @@ Finite Math:     FM1-MAT-01, FM2-PROB-01, FM2-PROB-02
 {previous_block}{variance_block}DIFFICULTY DISTRIBUTION (across all 15 questions):
   - Easy   (Bloom: remembering / understanding): 6 questions (40%)
   - Medium (Bloom: applying / analyzing):         6 questions (40%)
-  - Hard   (Bloom: evaluating / creating):        3 questions (20%)
+  - Hard   (Bloom: analyzing):                  3 questions (20%)
 
 QUESTION RULES:
 1. All questions are 4-option multiple choice (A, B, C, D).
