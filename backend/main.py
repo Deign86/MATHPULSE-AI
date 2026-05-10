@@ -7768,7 +7768,11 @@ MAX_TOPICS_LIMIT = 12
 
 
 class QuizGenerationRequest(BaseModel):
-    topics: List[str] = Field(default_factory=list, description="Specific math topics to cover")
+    topics: List[str] = Field(
+        default_factory=list,
+        min_length=1,
+        description="Specific math topics to cover (at least one required)",
+    )
     topic: Optional[str] = Field(default=None, description="Single topic alias (for test compatibility)")
     subject: Optional[str] = Field(default=None, description="Subject name (for test compatibility)")
     gradeLevel: str = Field(default="Grade 11", description="Student grade level (e.g., 'Grade 7', 'Grade 10', 'College')")
@@ -7827,12 +7831,10 @@ class QuizGenerationRequest(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def resolve_aliases_and_cap(self) -> "QuizGenerationRequest":
+    def resolve_aliases(self) -> "QuizGenerationRequest":
         # Handle topic → topics alias (test compatibility)
         if self.topic and not self.topics:
             self.topics = [self.topic]
-        if not self.topics:
-            self.topics = ["General Mathematics"]
         # questionCount overrides numQuestions if provided (for test compatibility)
         if self.questionCount is not None:
             self.numQuestions = self.questionCount
