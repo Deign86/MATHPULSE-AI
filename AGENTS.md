@@ -238,3 +238,28 @@ This project is indexed by GitNexus as **MATHPULSE-AI** (15991 symbols, 29062 re
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+---
+
+## External Documentation — Mandatory Context7 Usage
+
+**ALWAYS use Context7 API when working with external libraries, APIs, or frameworks.**
+
+When implementing features that use:
+- New npm packages or Python libraries
+- Framework APIs (React, FastAPI, Firebase, etc.)
+- Third-party services or SDKs
+- Any external dependency not covered in this AGENTS.md
+
+You MUST:
+1. Use `context7_resolve-library-id` to find the library
+2. Use `context7_query-docs` to get current documentation and code examples
+3. Never assume API behavior — always verify with Context7
+
+**Why:** Prevents hallucinations about library APIs, ensures correct usage patterns, and provides production-ready code examples.
+
+**Triggers (auto-invoke):**
+- "How do I use [library]?"
+- "What's the best practice for [framework feature]?"
+- Implementing unfamiliar npm/pip packages
+- Any question about external library behavior
