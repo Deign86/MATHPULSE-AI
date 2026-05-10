@@ -100,6 +100,11 @@ class InferenceClient:
         # Featherless AI for Qwen math models (used as fallback when HF router fails)
         self.featherless_api_key = os.getenv("FEATHERLESS_API_KEY", "")
         self.featherless_chat_url = os.getenv("FEATHERLESS_CHAT_URL", "https://api.featherless.ai/openai/v1/chat/completions")
+
+        # DeepSeek API (primary inference provider)
+        self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        self.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
+        self.deepseek_chat_url = f"{self.deepseek_base_url}/v1/chat/completions"
         
         self.local_space_url = _normalize_local_space_url(
             os.getenv("INFERENCE_LOCAL_SPACE_URL", "http://127.0.0.1:7860")
@@ -591,8 +596,11 @@ class InferenceClient:
         route = self._resolve_route_label(provider, req.task_type)
         if provider == "local_space":
             return self._call_local_space(req, provider=provider, route=route, fallback_depth=fallback_depth)
-        
-        # All models use HF inference router directly (including Qwen/Qwen3-32B)
+
+        if provider == "deepseek":
+            return self._call_deepseek(req, provider=provider, route=route, fallback_depth=fallback_depth)
+
+        # All other providers use HF inference router
         return self._call_hf_inference(req, provider=provider, route=route, fallback_depth=fallback_depth)
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -913,6 +921,79 @@ class InferenceClient:
 
         data = resp.json()
         text = self._extract_text(data)
+        log_model_call(
+            LOGGER,
+            provider=provider,
+            model=target_model,
+            endpoint=url,
+            latency_ms=latency_ms,
+            input_tokens=None,
+            output_tokens=None,
+            status="ok",
+            task_type=req.task_type,
+            request_tag=req.request_tag,
+            retry_attempt=retry_attempt,
+            fallback_depth=fallback_depth,
+            route=route,
+        )
+        self._bump_metric("requests_ok", 1)
+        return text
+
+    def _call_deepseek(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
+        """Call DeepSeek API (OpenAI-compatible endpoint)."""
+        if not self.deepseek_api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY is not set")
+
+        target_model = req.model or self.default_model
+        url = self.deepseek_chat_url
+
+        model_base = target_model.split(":")[0] if ":" in target_model else target_model
+        LOGGER.debug(
+            f"📌 Calling DeepSeek: task={req.task_type} model={model_base} "
+            f"route={route} depth={fallback_depth}"
+        )
+
+        payload: Dict[str, object] = {
+            "model": target_model,
+            "messages": req.messages,
+            "stream": False,
+            "max_tokens": req.max_new_tokens or self.default_max_new_tokens,
+            "temperature": req.temperature,
+            "top_p": req.top_p,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.deepseek_api_key}",
+            "Content-Type": "application/json",
+            "X-MathPulse-Task": (req.task_type or "default").strip().lower(),
+        }
+
+        timeout = self._timeout_for(req, provider)
+
+        resp, latency_ms, retry_attempt = self._post_with_retry(
+            url,
+            headers=headers,
+            payload=payload,
+            timeout=timeout,
+            provider=provider,
+            model=target_model,
+            task_type=req.task_type,
+            request_tag=req.request_tag,
+            fallback_depth=fallback_depth,
+            route=route,
+        )
+        self._bump_bucket("status_code_counts", str(resp.status_code), 1)
+        if resp.status_code != 200:
+            self._bump_metric("requests_error", 1)
+            raise RuntimeError(f"DeepSeek API error {resp.status_code}: {resp.text}")
+
+        data = resp.json()
+        text = self._extract_text(data)
+
+        LOGGER.info(
+            f"✅ DeepSeek success: task={req.task_type} model={model_base} "
+            f"latency={latency_ms:.0f}ms tokens_out={len(text.split())}"
+        )
+
         log_model_call(
             LOGGER,
             provider=provider,

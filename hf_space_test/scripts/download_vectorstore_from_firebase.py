@@ -14,7 +14,7 @@ logger = logging.getLogger("mathpulse.download_vectorstore")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from backend.rag.firebase_storage_loader import _init_firebase_storage
+from hf_space_test.rag.firebase_storage_loader import _init_firebase_storage
 
 REMOTE_PREFIX = "vectorstore/"
 LOCAL_DEST_DIR = Path("/app/datasets/vectorstore")

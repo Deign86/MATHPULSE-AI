@@ -9,6 +9,7 @@ import { db } from '../../lib/firebase';
 interface InitialAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onDismiss: () => void; // Sets assessmentDismissed=true in App + closes modal — used by "Skip for Now"
   userId: string;
   strand: string;
   gradeLevel: string;
@@ -33,6 +34,7 @@ interface InitialAssessmentModalProps {
 const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   isOpen,
   onClose,
+  onDismiss,
   userId,
   strand,
   gradeLevel,
@@ -74,8 +76,8 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
   };
 
   const handlePersistDismiss = async () => {
-    // "Skip for now": persist to Firestore so reminder shows on HeroBanner
-    // This persists across devices for the same account
+    // "Skip for now": persist to Firestore + update App.tsx state so modal/tooltip are gone for good.
+    // Can only be re-accessed via hero banner chat bubble.
     try {
       await updateDoc(doc(db, 'users', userId), {
         assessmentDismissed: true,
@@ -84,7 +86,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
     } catch (err) {
       console.error('[diagnostic] Failed to save dismiss state:', err);
     }
-    onClose();
+    onDismiss();
   };
 
   if (!isOpen) return null;
