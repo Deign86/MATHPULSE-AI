@@ -790,6 +790,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const firebasePromise = loadChatService()
         .then(async (chatService) => {
           const firebaseSession = await chatService.createChatSession(currentUser.uid, title);
+          // Track chat session activity
+          import('../services/trackingService').then(({ logChatSession }) => 
+            logChatSession(currentUser.uid, firebaseSession.id, firstMessage ? 1 : 0).catch(() => {})
+          );
 
           // If there was a first message, persist it
           if (firstMessage) {

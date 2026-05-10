@@ -14,6 +14,7 @@ import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { logLessonView } from '../services/trackingService';
 
 interface LessonViewerProps {
   lesson: Lesson & { subjectId?: string; lessonId?: string; competencyCode?: string };
@@ -476,6 +477,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       }
     }
   }, [sections]);
+
+  // Track lesson view activity when lesson loads
+  useEffect(() => {
+    if (sections.length > 0 && userProfile?.uid && lesson.id) {
+      logLessonView(userProfile.uid, lesson.id, lessonSpecificTopic || lesson.title).catch(() => {});
+    }
+  }, [sections.length, userProfile?.uid, lesson.id, lessonSpecificTopic, lesson.title]);
 
   const totalSections = sections.length || SECTION_TABS.length;
 
