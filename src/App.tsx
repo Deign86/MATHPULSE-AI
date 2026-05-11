@@ -584,12 +584,13 @@ const App = () => {
     }
 
     const updates: Record<string, unknown> = {};
-    const allowedKeys: Array<keyof ProfileSaveData> = [
+const allowedKeys: Array<keyof ProfileSaveData> = [
       'name',
       'email',
       'phone',
       'photo',
       'avatarLayers',
+      'gender',
       'lrn',
       'grade',
       'section',

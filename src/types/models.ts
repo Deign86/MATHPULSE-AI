@@ -31,6 +31,7 @@ export interface User {
     accessory?: string;
   };
   phone?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   createdAt: Date;
   updatedAt: Date;
 }
