@@ -16,6 +16,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import {
   ApiError,
   ApiNetworkError,
@@ -439,24 +440,54 @@ export async function applyAdminBulkAction(input: AdminBulkActionInput): Promise
 
 // ─── Audit Logs ──────────────────────────────────────────────
 
-/** Fetch audit log entries ordered by most recent. */
+/**
+ * Fetch audit log entries ordered by most recent.
+ * Only call this when the user is authenticated and has admin/teacher role.
+ * Returns [] if not authorized or if Firestore throws permission-denied.
+ */
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   try {
-    const q = query(collection(db, 'auditLogs'), orderBy('timestampRaw', 'desc'), limit(100));
+    // Gate: require authenticated user (defensive - UI should already gate this)
+    if (!auth.currentUser) {
+      return [];
+    }
+
+    const q = query(collection(db, 'accessAuditLogs'), orderBy('timestamp', 'desc'), limit(100));
     const snap = await getDocs(q);
     return snap.docs.map(d => {
       const data = d.data() as Record<string, unknown>;
+      
+      const success = data.success !== false;
+      const severity: AuditSeverity = !success ? 'Error' : 'Info';
+      
+      const actionRaw = (data.action as string) || '';
+      // Simple categorization based on the action prefix or module
+      let category: AuditCategory = 'System';
+      const module = data.module as string;
+      if (module === 'admin' || actionRaw.startsWith('admin_')) category = 'User';
+      else if (actionRaw.includes('login') || actionRaw.includes('auth')) category = 'Auth';
+      else if (actionRaw.includes('upload') || actionRaw.includes('course')) category = 'Content';
+      
       return {
         id: d.id,
-        severity: (data.severity as AuditSeverity) || 'Info',
-        timestamp: (data.timestamp as string) || timestampToString(data.timestampRaw as { toDate?: () => Date }),
-        user: (data.user as AuditLogEntry['user']) || { name: 'System', role: 'Admin', avatar: null },
-        action: (data.action as string) || '',
-        category: (data.category as AuditCategory) || 'System',
-        details: (data.details as string) || '',
+        severity,
+        timestamp: (data.timestamp as string) || timestampToString(data.timestamp as { toDate?: () => Date }),
+        user: { 
+          name: (data.actorName as string) || (data.teacherEmail as string) || 'System', 
+          role: (data.actorRole as string) || (data.role as string) || 'Admin', 
+          avatar: null 
+        },
+        action: actionRaw,
+        category,
+        details: (data.description as string) || (data.status ? `Status: ${data.status}` : ''),
       };
     });
-  } catch (err) {
+  } catch (err: unknown) {
+    // Log only unexpected errors, not permission-denied (which is expected for non-admin/teacher)
+    const error = err as { code?: string };
+    if (error?.code === 'permission-denied' || error?.code === 'firestore/permission-denied') {
+      return [];
+    }
     console.error('[adminService] getAuditLogs error:', err);
     return [];
   }
