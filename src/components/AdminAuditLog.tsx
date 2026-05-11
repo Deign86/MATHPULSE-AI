@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { 
+import {
   Search, Shield, AlertTriangle, AlertCircle, Info,
-  Calendar, Eye, Loader2, RefreshCw
+  Calendar, Eye, Loader2, RefreshCw, Lock
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -21,11 +21,14 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { getAuditLogs, type AuditLogEntry } from '../services/adminService';
+import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
 const AdminAuditLog: React.FC = () => {
+  const { userProfile, loading: authLoading } = useAuth();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedSeverity, setSelectedSeverity] = useState('All Severity');
@@ -34,6 +37,18 @@ const AdminAuditLog: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
 
   const loadLogs = useCallback(async () => {
+    // Wait for auth and profile to be fully loaded
+    if (authLoading || !userProfile) return;
+
+    // Normalize role to lowercase and check access
+    const normalizedRole = String(userProfile.role || '').toLowerCase();
+    if (normalizedRole !== 'admin' && normalizedRole !== 'teacher') {
+      setLoading(false);
+      setAccessDenied(true);
+      return;
+    }
+
+    setAccessDenied(false);
     setLoading(true);
     try {
       const data = await getAuditLogs();
@@ -43,7 +58,7 @@ const AdminAuditLog: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authLoading, userProfile]);
 
   useEffect(() => {
     loadLogs();
@@ -140,7 +155,13 @@ const AdminAuditLog: React.FC = () => {
         <div className="flex items-center justify-center h-24">
           <Loader2 size={24} className="animate-spin text-sky-500" />
         </div>
+      ) : accessDenied ? (
+        <div className="flex flex-col items-center justify-center h-24 text-center">
+          <Lock size={24} className="text-[#a0aec0] mb-2" />
+          <p className="text-sm font-medium text-[#5a6578]">Audit logs are available only to teachers and admins.</p>
+        </div>
       ) : null}
+      {!accessDenied && !loading && (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
           <p className="text-xs font-bold text-[#5a6578] mb-1">Total Events</p>
@@ -168,8 +189,10 @@ const AdminAuditLog: React.FC = () => {
           <p className="text-2xl font-bold text-red-600">{errorCount}</p>
         </div>
       </div>
+      )}
 
       {/* Filter Bar */}
+      {!accessDenied && (
       <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
@@ -220,6 +243,7 @@ const AdminAuditLog: React.FC = () => {
           </Select>
         </div>
       </div>
+      )}
 
       {/* Audit List */}
       <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-hidden">

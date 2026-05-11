@@ -86,11 +86,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
 
   useEffect(() => {
     if (activeTab !== 'Overview') return;
+    if (!userProfile) return;
+    // Only query audit logs if user has admin/teacher role
+    const normalizedRole = String(userProfile.role || '').toLowerCase();
+    const canReadAuditLogs = normalizedRole === 'admin' || normalizedRole === 'teacher';
+
     let cancelled = false;
     setLoadingOverview(true);
     Promise.all([
       getDashboardStats(),
-      getAuditLogs(),
+      canReadAuditLogs ? getAuditLogs() : Promise.resolve([]),
       getTopPerformers(3),
     ]).then(([stats, logs, performers]) => {
       if (cancelled) return;
@@ -101,7 +106,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       if (!cancelled) setLoadingOverview(false);
     });
     return () => { cancelled = true; };
-  }, [activeTab]);
+  }, [activeTab, userProfile]);
 
   const systemStats = [
     {
