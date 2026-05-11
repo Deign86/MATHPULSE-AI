@@ -301,6 +301,27 @@ export async function resetTestingDataForRole(
     throw new Error('Missing user id for reset.');
   }
 
-  // Route ALL roles through backend API for consistent, full deletion coverage
-  return resetTestingDataViaBackend(params);
+  let localResult: { deletedDocs: number; updatedDocs: number };
+  if (role === 'student') {
+    localResult = await resetStudentTestingData(uid, lrn);
+  } else if (role === 'teacher') {
+    localResult = await resetTeacherTestingData(uid);
+  } else {
+    localResult = await resetAdminTestingData(uid);
+  }
+
+  // Also persist to backend for audit / server-side cleanup
+  let backendResult: ResetTestingDataResult | null = null;
+  try {
+    backendResult = await resetTestingDataViaBackend(params);
+  } catch (err) {
+    console.warn('[testReset] Backend sync failed (non-fatal):', err);
+  }
+
+  return {
+    role,
+    deletedDocs: localResult.deletedDocs + (backendResult?.deletedDocs ?? 0),
+    updatedDocs: localResult.updatedDocs + (backendResult?.updatedDocs ?? 0),
+    summary: `${role} reset complete: ${localResult.deletedDocs} local records deleted, ${localResult.updatedDocs} local records updated.${backendResult ? ` Backend: ${backendResult.summary}` : ''}`,
+  };
 }
