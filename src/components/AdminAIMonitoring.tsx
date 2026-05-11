@@ -381,6 +381,8 @@ const AdminAIMonitoring: React.FC = () => {
     refresh,
   } = useAIMonitoring();
 
+  const targetMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
   // ── Derived data ──────────────────────────────
 
   const usageAreas = useMemo(
@@ -460,6 +462,16 @@ const AdminAIMonitoring: React.FC = () => {
         </motion.div>
       )}
 
+      {/* ── Empty State ── */}
+      {!isLoading && !error && stats.length === 0 && (
+        <div className="mb-6 bg-sky-50 border border-sky-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <Info size={18} className="text-sky-600 shrink-0" />
+          <p className="text-sm text-sky-800">
+            No AI usage data recorded yet for {targetMonth}. Data will appear here once AI features are used.
+          </p>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════
           SECTION 1: Top Summary Row (4 cards)
       ══════════════════════════════════════════ */}
@@ -527,7 +539,7 @@ const AdminAIMonitoring: React.FC = () => {
             <Skeleton className="w-24 h-8 rounded-lg mb-2" />
           ) : (
             <p className="text-2xl font-bold text-[#0a1628] mb-1">
-              {formatCurrency(totalCost)}
+              {stats.length === 0 ? 'No data' : formatCurrency(totalCost)}
             </p>
           )}
           <p className="text-xs text-[#5a6578] font-medium">

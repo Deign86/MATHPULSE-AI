@@ -19,6 +19,7 @@ import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTo
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
 import { deleteDoc, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
+import { saveAssessmentResult } from './services/gradesService';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -534,6 +535,25 @@ const App = () => {
         await awardXP(userProfile.uid, 50, 'initial_assessment', 'Initial assessment completed');
       } catch (err) {
         console.error('[App] Failed to persist assessment completion:', err);
+      }
+
+      // Persist to grades service for GradesPage
+      try {
+        await saveAssessmentResult({
+          uid: userProfile.uid,
+          testId: assessmentTestId || 'diagnostic',
+          title: 'Diagnostic Assessment',
+          subject: 'General Mathematics',
+          type: 'diagnostic',
+          score: result.overallScorePercent,
+          totalQuestions: Object.values(result.competencyScores || {}).reduce((sum, s) => sum + s.attempted, 0),
+          risk: result.overallRisk,
+          intervention: result.intervention,
+          xpEarned: result.xpEarned,
+          badgeUnlocked: result.badgeUnlocked,
+        });
+      } catch (err) {
+        console.error('[App] Failed to persist grade result:', err);
       }
     }
   };
