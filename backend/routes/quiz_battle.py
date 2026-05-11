@@ -18,6 +18,11 @@ from rag.pdf_ingestion import ingest_pdf, IngestionResult
 from services.question_bank_service import get_questions_for_battle, cache_session_questions, get_cached_session
 from services.variance_engine import apply_variance
 
+try:
+    from firebase_admin import firestore as firebase_firestore
+except Exception:
+    firebase_firestore = None
+
 router = APIRouter(prefix="/api/quiz-battle", tags=["quiz-battle"])
 
 
@@ -185,8 +190,10 @@ async def bank_status(
     if user.role not in ("teacher", "admin"):
         raise HTTPException(status_code=403, detail="Teacher or admin access required")
 
-    from google.cloud import firestore
-    db = firestore.Client(project=os.getenv("FIREBASE_AUTH_PROJECT_ID", "mathpulse-ai-2026"))
+    if not firebase_firestore:
+        raise HTTPException(status_code=503, detail="Firestore not available")
+
+    db = firebase_firestore.client()
 
     docs = db.collection("pdf_processing_status").stream()
     pdfs = []
