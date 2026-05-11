@@ -233,16 +233,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           }}
                           disabled={!isEditing}
                         >
-                          <SelectTrigger className="w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
-                            <SelectValue placeholder="Select gender (optional)">
-                              {({ value }) => {
-                                if (value === 'male') return <><Mars className="size-4 text-blue-500" /><span>Male</span></>;
-                                if (value === 'female') return <><Venus className="size-4 text-pink-500" /><span>Female</span></>;
-                                if (value === 'prefer_not_to_say') return <><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></>;
-                                return null;
-                              }}
-                            </SelectValue>
-                          </SelectTrigger>
+                        <SelectTrigger className="w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                          <span className="flex items-center gap-2">
+                            {editedData.gender === 'male' && <><Mars className="size-4 text-blue-500" /><span>Male</span></>}
+                            {editedData.gender === 'female' && <><Venus className="size-4 text-pink-500" /><span>Female</span></>}
+                            {editedData.gender === 'prefer_not_to_say' && <><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></>}
+                            {!editedData.gender && <span className="text-muted-foreground">Select gender (optional)</span>}
+                          </span>
+                        </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="male">
                               <div className="flex items-center gap-2">
