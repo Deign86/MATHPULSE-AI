@@ -56,6 +56,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── User Assessments (subcollection — written by student, read self + teachers/admins) ──
+    match /users/{userId}/assessments/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId);
+      allow delete: if isAdmin();
+    }
+
+    // ── User Grade Summary (subcollection — rolling averages maintained by student write) ──
+    match /users/{userId}/gradeSummary/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId);
+      allow delete: if isAdmin();
+    }
+
     // Leaderboard collection - publicly readable, written only by backend
     match /leaderboard/{docId} {
       allow read: if isSignedIn();
@@ -441,6 +455,12 @@ service cloud.firestore {
     match /platformConfig/{docId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
+    }
+
+    // ── AI Usage Logs (written by backend/admin SDK, read by admins) ──
+    match /aiUsageLogs/{docId} {
+      allow read: if isAdmin() || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
     }
 
     // Deny-by-default for unknown collections.
