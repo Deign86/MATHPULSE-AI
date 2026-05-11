@@ -64,6 +64,7 @@ import type { ClassSectionMetadata } from '../types/models';
 import type { ParseWorkbookResult } from '../features/import/services/shsExcel/parser/types';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
+import { getModuleActivity, getAtRiskStudents } from '../services/trackingService';
 
 interface TeacherDashboardProps {
   onLogout: () => void;

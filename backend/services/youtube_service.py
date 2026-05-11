@@ -8,6 +8,8 @@ Results are cached in Firestore video_cache/{lessonId} with 7-day TTL.
 
 from __future__ import annotations
 
+import firebase_admin
+from firebase_admin import firestore
 import hashlib
 import json
 import logging
@@ -733,8 +735,6 @@ def _get_cache_key(topic: str, subject: str, grade_level: str) -> str:
 def get_cached_videos(lesson_id: str) -> Optional[List[Dict]]:
     """Check Firestore video_cache/{lessonId} for cached results (TTL 7 days)."""
     try:
-        import firebase_admin
-        from firebase_admin import firestore
         if not firebase_admin._apps:
             return None
 
@@ -773,8 +773,6 @@ def get_cached_videos(lesson_id: str) -> Optional[List[Dict]]:
 def cache_videos(lesson_id: str, videos: List[Dict], topic: str) -> None:
     """Store search results in Firestore video_cache/{lessonId}."""
     try:
-        import firebase_admin
-        from firebase_admin import firestore
         if not firebase_admin._apps:
             return
 
