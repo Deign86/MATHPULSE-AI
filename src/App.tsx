@@ -17,7 +17,7 @@ import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from '
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
-import { deleteDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 type ProfileSaveData = Partial<User> &
@@ -331,10 +331,12 @@ const App = () => {
         setAssessmentDismissed(!!studentProfile?.assessmentDismissed);
         setInitialAssessmentCompleted(!!studentProfile?.initialAssessmentCompleted);
 
-        // Check legacy diagnostic results
-        const legacySnap = await getDoc(doc(db, 'diagnosticResults', userProfile.uid));
-        // Check new competency profile
-        const profileSnap = await getDoc(doc(db, 'competencyProfiles', userProfile.uid));
+        // Check legacy diagnostic results (force server read to avoid stale cache after reset)
+        const legacySnap = await getDocFromServer(doc(db, 'diagnosticResults', userProfile.uid))
+          .catch(() => getDoc(doc(db, 'diagnosticResults', userProfile.uid)));
+        // Check new competency profile (force server read to avoid stale cache after reset)
+        const profileSnap = await getDocFromServer(doc(db, 'competencyProfiles', userProfile.uid))
+          .catch(() => getDoc(doc(db, 'competencyProfiles', userProfile.uid)));
 
         if (cancelled) return;
 
