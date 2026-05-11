@@ -21,6 +21,7 @@ interface ClassesOverviewMenuProps {
   onOpenProfile?: () => void;
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
+  viewType?: 'analytics' | 'competency';
 }
 
 export const CLASS_COLORS = [
@@ -38,9 +39,12 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   onOpenProfile,
   insightDismissed,
   onOpenInsightModal,
+  viewType = 'analytics',
 }) => {
   const { currentUser, userProfile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const isCompetency = viewType === 'competency';
 
   // Global Stats calculation
   const totalStudents = classes.reduce((sum, c) => sum + (c.studentCount || 0), 0);
@@ -112,26 +116,30 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
           </div>
         </div>
 
-        <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight">Classes Overview</h1>
+        <div>
+          <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight">
+            {isCompetency ? 'Competency Overview' : 'Classes Overview'}
+          </h1>
+          {isCompetency && (
+            <p className="text-[13px] text-[#64748b] mt-1">Select a class to view detailed student competency breakdowns</p>
+          )}
+        </div>
 
         {/* Global Stats & Alerts Row (Vibrant Palette) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-[16px]">
-          {/* Global Stats Cards */}
-          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
-            
-            {/* Card 1 (Attendance / Green) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
+        {isCompetency ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+            {/* Card 1 (Total Students / Amethyst) */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
               <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Attendance rate</span>
+                <span className="text-[13px] font-medium text-white/90">Total Students Evaluated</span>
                 <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                   <Users className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-[32px] font-bold relative z-10 leading-none mb-6">94%</div>
+              <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{totalStudents}</div>
               <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Active participants</span>
-                <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">{totalStudents > 0 ? Math.round(totalStudents * 0.94) : 0}</span>
+                <span className="text-[12px] font-medium text-white/90">Active across all classes</span>
               </div>
             </div>
             
@@ -139,77 +147,132 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
             <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
               <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Class average</span>
+                <span className="text-[13px] font-medium text-white/90">Global Avg Competency</span>
                 <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                   <Target className="w-4 h-4 text-white" />
                 </div>
               </div>
               <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{avgPerformance}%</div>
               <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Vs. last month</span>
-                <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">+2.1%</span>
+                <span className="text-[12px] font-medium text-white/90">Vs. expected benchmark</span>
+                <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">+1.4%</span>
               </div>
             </div>
             
-            {/* Card 3 (Total At-Risk / Orange) */}
+            {/* Card 3 (Most Common Weakness / Orange) */}
             <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
               <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">At risk</span>
+                <span className="text-[13px] font-medium text-white/90">Universal Weakness</span>
                 <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                  <AlertCircle className="w-4 h-4 text-white" />
+                  <Target className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{totalAtRisk}</div>
-              <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Requires attention</span>
-                <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">
-                  {totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%
-                </span>
+              <div className="text-[20px] font-bold relative z-10 leading-tight mb-2 truncate">Foundational Skills</div>
+              <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
+                <span className="text-[12px] font-medium text-white/90">Identified in {classes.length} classes</span>
               </div>
             </div>
           </div>
-          
-          {/* AI Action Items (Purple Theme) */}
-          <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white">
-            <div className="absolute -right-12 -top-12 w-40 h-40 bg-white/10 rounded-full"></div>
-
-            <div className="flex justify-between items-center mb-4 relative z-10 border-b border-white/20 pb-3">
-              <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-                AI Action Items
-              </h3>
-              <span className="text-[10px] font-bold text-[#9333ea] bg-white px-2 py-0.5 rounded-[4px]">2 Pending</span>
-            </div>
-            
-            <div className="space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
-              {/* Alert 1 */}
-              <div className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
-                <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
-                  <TrendingDown className="w-4 h-4" />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-[16px]">
+            {/* Global Stats Cards */}
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+              
+              {/* Card 1 (Attendance / Green) */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
+                <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
+                <div className="flex items-start justify-between relative z-10 mb-4">
+                  <span className="text-[13px] font-medium text-white/90">Attendance rate</span>
+                  <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                    <Users className="w-4 h-4 text-white" />
+                  </div>
                 </div>
-                <div className="leading-snug text-white/90">
-                  <span className="font-bold text-white">Grade 11 - Section B</span> average dropped by 4% after the last quiz.
+                <div className="text-[32px] font-bold relative z-10 leading-none mb-6">94%</div>
+                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
+                  <span className="text-[12px] font-medium text-white/90">Active participants</span>
+                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">{totalStudents > 0 ? Math.round(totalStudents * 0.94) : 0}</span>
                 </div>
               </div>
               
-              {/* Alert 2 */}
-              <div className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
-                <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
-                  <FileText className="w-4 h-4" />
+              {/* Card 2 (Global Average / Blue) */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
+                <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
+                <div className="flex items-start justify-between relative z-10 mb-4">
+                  <span className="text-[13px] font-medium text-white/90">Class average</span>
+                  <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                    <Target className="w-4 h-4 text-white" />
+                  </div>
                 </div>
-                <div className="leading-snug text-white/90">
-                  <span className="font-bold text-white">3 Lesson Plans</span> generated and awaiting your review.
+                <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{avgPerformance}%</div>
+                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
+                  <span className="text-[12px] font-medium text-white/90">Vs. last month</span>
+                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">+2.1%</span>
+                </div>
+              </div>
+              
+              {/* Card 3 (Total At-Risk / Orange) */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
+                <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
+                <div className="flex items-start justify-between relative z-10 mb-4">
+                  <span className="text-[13px] font-medium text-white/90">At risk</span>
+                  <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                    <AlertCircle className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{totalAtRisk}</div>
+                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
+                  <span className="text-[12px] font-medium text-white/90">Requires attention</span>
+                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">
+                    {totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* AI Action Items (Purple Theme) */}
+            <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white">
+              <div className="absolute -right-12 -top-12 w-40 h-40 bg-white/10 rounded-full"></div>
+  
+              <div className="flex justify-between items-center mb-4 relative z-10 border-b border-white/20 pb-3">
+                <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                  AI Action Items
+                </h3>
+                <span className="text-[10px] font-bold text-[#9333ea] bg-white px-2 py-0.5 rounded-[4px]">2 Pending</span>
+              </div>
+              
+              <div className="space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
+                {/* Alert 1 */}
+                <div className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
+                  <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
+                    <TrendingDown className="w-4 h-4" />
+                  </div>
+                  <div className="leading-snug text-white/90">
+                    <span className="font-bold text-white">Grade 11 - Section B</span> average dropped by 4% after the last quiz.
+                  </div>
+                </div>
+                
+                {/* Alert 2 */}
+                <div className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
+                  <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="leading-snug text-white/90">
+                    <span className="font-bold text-white">3 Lesson Plans</span> generated and awaiting your review.
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* My Classes Grid Section */}
         <div className="bg-white/60 backdrop-blur-[12px] rounded-[24px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-[24px]">
           <div className="mb-6 border-b border-[#f1f5f9] pb-4">
-            <h2 className="text-[18px] font-semibold text-[#1e293b]">My Classes</h2>
+            <h2 className="text-[18px] font-semibold text-[#1e293b]">
+              {isCompetency ? 'Select a Class' : 'My Classes'}
+            </h2>
           </div>
 
           {/* Grid of Classes */}
@@ -267,14 +330,20 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
                     </div>
                     <div className="w-[1px] h-8 bg-[#e2e8f0]"></div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Average</span>
+                      <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">
+                        {isCompetency ? 'Avg Competency' : 'Average'}
+                      </span>
                       <span className="font-semibold text-[#1e293b]">{classItem.avgScore}%</span>
                     </div>
-                    <div className="w-[1px] h-8 bg-[#e2e8f0]"></div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
-                      <span className="font-semibold text-[#1e293b]">{classItem.schedule || 'Mon-Fri'}</span>
-                    </div>
+                    {!isCompetency && (
+                      <>
+                        <div className="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
+                          <span className="font-semibold text-[#1e293b]">{classItem.schedule || 'Mon-Fri'}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );

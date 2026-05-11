@@ -1280,7 +1280,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          {activeView !== 'analytics' && activeView !== 'intervention' && (
+          {activeView !== 'analytics' && activeView !== 'intervention' && activeView !== 'competency' && activeView !== 'topic_mastery' && (
           <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
@@ -1333,7 +1333,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {insightDismissed && (
                 <div className="relative group">
                   <button
@@ -1357,6 +1357,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               >
                 <Bell size={18} />
               </button>
+              
+
             </div>
           </div>
         </header>
@@ -1444,12 +1446,41 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onBack={handleBackToAnalytics}
               />
             )}
-            {activeView === 'topic_mastery' && <TopicMasteryView classSectionId={selectedClassSectionId} />}
-            {activeView === 'competency' && (
+            {activeView === 'topic_mastery' && (
+              <TopicMasteryView 
+                classSectionId={selectedClassSectionId}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+              />
+            )}
+            {activeView === 'competency' && effectiveAnalyticsClass && (
               <StudentCompetencyTable
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
                 fallbackStudents={students}
+                onBack={() => setSelectedClass(null)}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
+              />
+            )}
+            {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
+              <ClassesOverviewMenu
+                classes={classes}
+                onSelectClass={(cls) => setSelectedClass(cls)}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
+                viewType="competency"
+              />
+            )}
+            {activeView === 'competency' && !effectiveAnalyticsClass && classes.length === 0 && (
+              <ToolsPlaceholderView
+                icon={Users}
+                title="Student Competency"
+                description="No classes available yet. Import class records to view competency breakdowns."
               />
             )}
             {activeView === 'import' && (
