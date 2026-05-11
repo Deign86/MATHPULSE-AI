@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Phone, Calendar, BookOpen, Award, Users, Building, Globe, Save } from 'lucide-react';
+import { X, Mail, Phone, Calendar, BookOpen, Award, Users, Building, Globe, Save, Venus, Mars, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { getLeaderboard, getUserRank } from '../services/gamificationService';
 import { LeaderboardEntry } from '../types/models';
 import ProfilePictureUploader from './ProfilePictureUploader';
@@ -219,22 +226,44 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                       </div>
                       <div>
                         <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Gender</label>
-                        <div className="relative">
-                          <select
-                            value={editedData.gender || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditedData({ ...editedData, gender: val ? (val as 'male' | 'female' | 'prefer_not_to_say') : undefined });
-                            }}
-                            disabled={!isEditing}
-                            className="w-full pl-10 pr-3 py-2 bg-white border border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
-                          >
-                            <option value="">Select gender (optional)</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="prefer_not_to_say">Prefer not to say</option>
-                          </select>
-                        </div>
+                        <Select
+                          value={editedData.gender || ''}
+                          onValueChange={(value) => {
+                            setEditedData({ ...editedData, gender: value ? (value as 'male' | 'female' | 'prefer_not_to_say') : undefined });
+                          }}
+                          disabled={!isEditing}
+                        >
+                          <SelectTrigger className="w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                            <SelectValue placeholder="Select gender (optional)">
+                              {({ value }) => {
+                                if (value === 'male') return <><Mars className="size-4 text-blue-500" /><span>Male</span></>;
+                                if (value === 'female') return <><Venus className="size-4 text-pink-500" /><span>Female</span></>;
+                                if (value === 'prefer_not_to_say') return <><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></>;
+                                return null;
+                              }}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">
+                              <div className="flex items-center gap-2">
+                                <Mars className="size-4 text-blue-500" />
+                                <span>Male</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="female">
+                              <div className="flex items-center gap-2">
+                                <Venus className="size-4 text-pink-500" />
+                                <span>Female</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="prefer_not_to_say">
+                              <div className="flex items-center gap-2">
+                                <HelpCircle className="size-4 text-gray-500" />
+                                <span>Prefer not to say</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">

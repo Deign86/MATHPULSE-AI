@@ -13,7 +13,17 @@ import {
   Palette,
   Eye,
   EyeOff,
+  Venus,
+  Mars,
+  HelpCircle,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
@@ -418,19 +428,46 @@ setAccountData({
 
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Gender</label>
-                    <select
+                    <Select
                       value={accountData.gender || ''}
-                      onChange={(event) => {
-                        const val = event.target.value;
-                        setAccountData((prev) => ({ ...prev, gender: val ? (val as 'male' | 'female' | 'prefer_not_to_say') : undefined }));
+                      onValueChange={(value) => {
+                        setAccountData((prev) => ({ 
+                          ...prev, 
+                          gender: value ? (value as 'male' | 'female' | 'prefer_not_to_say') : undefined 
+                        }));
                       }}
-                      className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628] max-w-md"
                     >
-                      <option value="">Select gender (optional)</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="prefer_not_to_say">Prefer not to say</option>
-                    </select>
+                      <SelectTrigger className="max-w-md [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                        <SelectValue placeholder="Select gender (optional)">
+                          {({ value }) => {
+                            if (value === 'male') return <><Mars className="size-4 text-blue-500" /><span>Male</span></>;
+                            if (value === 'female') return <><Venus className="size-4 text-pink-500" /><span>Female</span></>;
+                            if (value === 'prefer_not_to_say') return <><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></>;
+                            return null;
+                          }}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">
+                          <div className="flex items-center gap-2">
+                            <Mars className="size-4 text-blue-500" />
+                            <span>Male</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="female">
+                          <div className="flex items-center gap-2">
+                            <Venus className="size-4 text-pink-500" />
+                            <span>Female</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="prefer_not_to_say">
+                          <div className="flex items-center gap-2">
+                            <HelpCircle className="size-4 text-gray-500" />
+                            <span>Prefer not to say</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {accountData.role === 'student' && (
