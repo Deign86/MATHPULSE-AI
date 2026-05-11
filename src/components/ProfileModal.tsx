@@ -233,7 +233,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           }}
                           disabled={!isEditing}
                         >
-                        <SelectTrigger className="w-full [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                        <SelectTrigger className="w-full bg-white border-[#dde3eb] rounded-lg [&>span]:flex [&>span]:items-center [&>span]:gap-2">
                           <span className="flex items-center gap-2">
                             {editedData.gender === 'male' && <><Mars className="size-4 text-blue-500" /><span>Male</span></>}
                             {editedData.gender === 'female' && <><Venus className="size-4 text-pink-500" /><span>Female</span></>}
