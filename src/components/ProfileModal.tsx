@@ -222,7 +222,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                         <div className="relative">
                           <select
                             value={editedData.gender || ''}
-                            onChange={(e) => setEditedData({ ...editedData, gender: e.target.value || undefined })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedData({ ...editedData, gender: val ? (val as 'male' | 'female' | 'prefer_not_to_say') : undefined });
+                            }}
                             disabled={!isEditing}
                             className="w-full pl-10 pr-3 py-2 bg-white border border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           >

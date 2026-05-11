@@ -420,7 +420,10 @@ setAccountData({
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Gender</label>
                     <select
                       value={accountData.gender || ''}
-                      onChange={(event) => setAccountData((prev) => ({ ...prev, gender: event.target.value || undefined }))}
+                      onChange={(event) => {
+                        const val = event.target.value;
+                        setAccountData((prev) => ({ ...prev, gender: val ? (val as 'male' | 'female' | 'prefer_not_to_say') : undefined }));
+                      }}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628] max-w-md"
                     >
                       <option value="">Select gender (optional)</option>
