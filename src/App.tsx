@@ -1114,7 +1114,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
                             onContinueLearning={() => handleStudentNavigation('Modules')}
-                            showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null && !assessmentDismissed}
+                            showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null}
                             onOpenAssessment={handleOpenInitialAssessment}
                             studentId={userProfile?.uid}
                             assessmentCompleted={hasCompletedDiagnostic === true}
