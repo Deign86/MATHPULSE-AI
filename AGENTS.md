@@ -46,6 +46,18 @@ Project root: C:\Users\Deign\Downloads\MATHPULSE-AI
 
 ---
 
+## Vision Image Analysis — Always On
+
+**When user shares images, ALWAYS analyze them via MCP.**
+
+- MCP tool: `mcp_openrouter_image_analyze_image` (openrouter-image-mcp, model: `nvidia/nemotron-nano-12b-v2-vl:free`)
+- When user shares 1+ images, call `mcp_openrouter_image_analyze_image` on each image before responding
+- Do NOT describe the image yourself — let the MCP tool provide the analysis
+- Image paths are provided by the opencode-minimax-easy-vision plugin via `{imageList}` in the prompt template
+- If the plugin prompt template is absent, inject the tool call manually using the image paths from the user's message
+
+---
+
 ## Project Overview
 
 **What:** MathPulse AI — AI-powered mathematics tutoring platform

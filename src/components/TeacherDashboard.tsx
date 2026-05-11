@@ -5,7 +5,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -62,6 +62,7 @@ import TeacherCalendarView from './TeacherCalendarView';
 import { Skeleton } from './ui/skeleton';
 import type { ClassSectionMetadata } from '../types/models';
 import type { ParseWorkbookResult } from '../features/import/services/shsExcel/parser/types';
+import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 
@@ -551,6 +552,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassView | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentView | null>(null);
+  const [insightDismissed, setInsightDismissed] = useState(false);
+  const [insightModalOpen, setInsightModalOpen] = useState(false);
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -1027,8 +1030,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   }, [selectedClass]);
 
   const effectiveAnalyticsClass = useMemo(() => {
-    return selectedClass || classes[0] || null;
-  }, [selectedClass, classes]);
+    return selectedClass || null;
+  }, [selectedClass]);
+
+  const effectiveClassColor = useMemo(() => {
+    if (!effectiveAnalyticsClass) return undefined;
+    const idx = classes.findIndex(c => c.id === effectiveAnalyticsClass.id);
+    return CLASS_COLORS[Math.max(0, idx) % CLASS_COLORS.length];
+  }, [effectiveAnalyticsClass, classes]);
 
   const filteredStudentsForAnalytics = useMemo(() => {
     if (!effectiveAnalyticsClass) return students;
@@ -1271,7 +1280,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          {activeView !== 'analytics' && (
+          {activeView !== 'analytics' && activeView !== 'intervention' && (
           <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
@@ -1287,7 +1296,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <div>
                 <h1 className="text-xl font-display font-semibold text-foreground leading-tight">
                   {activeView === 'dashboard' && 'Teacher Dashboard'}
-                  {activeView === 'intervention' && 'Student Intervention'}
                   {activeView === 'topic_mastery' && 'Topic Mastery'}
                   {activeView === 'competency' && 'Student Competency'}
                   {activeView === 'import' && 'Data Import'}
@@ -1298,7 +1306,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                  {activeView === 'intervention' && selectedStudent?.name}
                   {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
                   {activeView === 'competency' && 'Per-student topic-level breakdown'}
                   {activeView === 'import' && 'Upload class records and materials'}
@@ -1327,6 +1334,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               )}
             </div>
             <div className="flex items-center gap-2">
+              {insightDismissed && (
+                <div className="relative group">
+                  <button
+                    onClick={() => setInsightModalOpen(true)}
+                    className="w-[38px] h-[38px] flex items-center justify-center rounded-lg border border-[#a5b4fc] text-[#4f46e5] bg-[#eef2ff] hover:bg-[#e0e7ff] hover:border-[#818cf8] transition-colors shadow-sm relative"
+                    aria-label="View AI Insight"
+                  >
+                    <Sparkles size={18} />
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white animate-pulse" />
+                  </button>
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                    AI Insight
+                  </span>
+                </div>
+              )}
               <button
                 onClick={() => setActiveView('notifications')}
                 className="w-[38px] h-[38px] flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
@@ -1341,7 +1363,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         )}
 
         {/* View Content */}
-        <main className={`${activeView === 'dashboard' ? 'flex-1' : 'w-full'} overflow-y-auto`}>
+        <main className={`${activeView === 'dashboard' ? 'flex-1' : 'w-full h-full flex flex-col'} ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <AnimatePresence mode="wait">
               {activeView === 'dashboard' && (
                 <DashboardView
@@ -1355,6 +1377,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   }}
                   dailyInsight={dailyInsight}
                   insightLoading={insightLoading}
+                  isInsightDismissed={insightDismissed}
+                  onDismissInsight={() => setInsightDismissed(true)}
+                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                   totalStudents={totalStudents}
                   totalAtRisk={totalAtRisk}
                   avgPerformance={avgPerformance}
@@ -1367,15 +1392,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 riskDistribution={riskDistribution}
                 topicPerformance={topicPerformance}
                 onViewStudent={handleViewStudent}
-                onBack={handleBackToDashboard}
+                onBack={() => setSelectedClass(null)}
                 teacherOptions={teacherDirectory}
                 managerUpdating={managerUpdating}
                 onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
                 onOpenNotifications={() => setActiveView('notifications')}
                 onOpenProfile={onOpenProfile}
+                classColor={effectiveClassColor}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
               />
             )}
-            {activeView === 'analytics' && !effectiveAnalyticsClass && (
+            {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
+              <ClassesOverviewMenu
+                classes={classes}
+                onSelectClass={handleViewClass}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
+              />
+            )}
+            {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length === 0 && (
               <ToolsPlaceholderView
                 icon={BarChart3}
                 title="Class Analytics"
@@ -1493,6 +1531,57 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         )}
       </div>
 
+      {/* Insight Modal */}
+      <AnimatePresence>
+        {insightModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200"
+            >
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <Sparkles size={16} />
+                  </div>
+                  <h3 className="font-semibold text-slate-800">Detailed AI Insight</h3>
+                </div>
+                <button 
+                  onClick={() => { setInsightModalOpen(false); }}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6">
+                <BoneSkeleton
+                  name="teacher-dashboard-ai-insight-modal"
+                  loading={insightLoading}
+                  fixture={<Skeleton className="h-32 w-full bg-slate-200" />}
+                  fallback={<Skeleton className="h-32 w-full bg-slate-200" />}
+                >
+                  <div className="text-sm text-slate-600 leading-relaxed">
+                    <ChatMarkdown>
+                      {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `I've noticed **${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently showing a high risk of falling behind in recent topics. Shall I draft an intervention plan?`}
+                    </ChatMarkdown>
+                  </div>
+                </BoneSkeleton>
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+                <button 
+                  onClick={() => { setInsightModalOpen(false); }}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Minimize to Menu
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Logout Confirmation */}
       <ConfirmModal
         isOpen={showLogoutConfirm}
@@ -1570,10 +1659,13 @@ const DashboardView: React.FC<{
   onViewActivityStudent?: (studentName: string) => void;
   dailyInsight: string;
   insightLoading: boolean;
+  isInsightDismissed: boolean;
+  onDismissInsight: () => void;
+  onOpenInsightModal: () => void;
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, totalStudents, totalAtRisk, avgPerformance }) => {
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -1585,10 +1677,14 @@ const DashboardView: React.FC<{
       className="p-6 space-y-4"
     >
       {/* AI Banner */}
-      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] flex items-center gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      {!isInsightDismissed && (
+      <div 
+        onClick={onOpenInsightModal}
+        className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] flex items-center gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
+      >
         <div className="relative flex-shrink-0">
           <div className="absolute -inset-[5px] rounded-full border-2 border-[#a5b4fc] opacity-50 animate-pulse" />
-          <div className="w-[46px] h-[46px] rounded-full bg-[#eef2ff] border-2 border-[#c7d2fe] flex items-center justify-center text-[#4f46e5] text-xl relative overflow-hidden">
+          <div className="w-[46px] h-[46px] rounded-full bg-[#eef2ff] border-2 border-[#c7d2fe] flex items-center justify-center text-[#4f46e5] text-xl relative overflow-hidden group-hover:scale-[1.05] transition-transform">
             <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
           </div>
         </div>
@@ -1598,24 +1694,16 @@ const DashboardView: React.FC<{
             MathPulse AI insight
             <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
           </div>
-          <BoneSkeleton
-            name="teacher-dashboard-ai-insight"
-            loading={insightLoading}
-            fixture={<Skeleton className="h-3.5 w-11/12 bg-slate-200" />}
-            fallback={<Skeleton className="h-3.5 w-11/12 bg-slate-200" />}
-          >
-            <div className="text-[12.5px] text-[#475569] leading-[1.55]">
-              <ChatMarkdown>
-                {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `I've noticed **${totalAtRisk} students (${riskPercentage}%)** are currently showing a high risk of falling behind in recent topics. Shall I draft an intervention plan?`}
-              </ChatMarkdown>
-            </div>
-          </BoneSkeleton>
+          <div className="text-[12.5px] text-[#475569] leading-[1.55]">
+            I've noticed some students are currently showing a high risk of falling behind. Click to view detailed analysis...
+          </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
-          <button onClick={onViewAllClasses} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
+          <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
+          <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
         </div>
       </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-3">
@@ -1782,6 +1870,9 @@ const AnalyticsView: React.FC<{
   onAssignManager: (manager: TeacherDirectoryOption) => void | Promise<void>;
   onOpenNotifications: () => void;
   onOpenProfile?: () => void;
+  classColor?: { hex: string; bg: string; border: string; borderLeft: string; text: string; groupHover: string };
+  insightDismissed?: boolean;
+  onOpenInsightModal?: () => void;
 }> = ({
   selectedClass,
   students,
@@ -1794,6 +1885,9 @@ const AnalyticsView: React.FC<{
   onAssignManager,
   onOpenNotifications,
   onOpenProfile,
+  classColor,
+  insightDismissed,
+  onOpenInsightModal,
 }) => {
   const { currentUser, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -1878,10 +1972,26 @@ const AnalyticsView: React.FC<{
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
             <ChevronLeft className="w-4 h-4" />
-            Back to Dashboard
+            Back to Classes
         </button>
 
         <div className="flex items-center gap-3">
+            {/* AI Insight Button */}
+            {insightDismissed && (
+              <div className="relative group">
+                <button
+                  onClick={onOpenInsightModal}
+                  className="w-9 h-9 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] transition-colors cursor-pointer hover:scale-[1.02] relative"
+                  aria-label="View AI Insight"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
+                </button>
+                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                  AI Insight
+                </span>
+              </div>
+            )}
             {/* Notification Bell */}
             <button onClick={onOpenNotifications} className="relative w-9 h-9 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]">
                 <Bell className="w-4 h-4" />
@@ -1899,8 +2009,14 @@ const AnalyticsView: React.FC<{
       </div>
 
       {/* Header Card */}
-      <header className="bg-gradient-to-r from-indigo-100/90 via-indigo-50/80 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[24px] lg:p-[32px] border border-indigo-50 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-[6px] h-full bg-[#6366f1] rounded-l-[18px]"></div>
+      <header 
+        style={{
+          background: classColor ? `linear-gradient(to right, ${classColor.hex}1a, #ffffffE6, #ffffffE6)` : undefined,
+          borderColor: classColor ? `${classColor.hex}33` : undefined
+        }}
+        className={`${classColor ? '' : 'bg-gradient-to-r from-indigo-100/90 via-indigo-50/80 to-white/90 border-indigo-50'} backdrop-blur-[12px] rounded-[18px] p-[24px] lg:p-[32px] border shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group`}
+      >
+          <div style={{ backgroundColor: classColor?.hex || '#6366f1' }} className="absolute top-0 left-0 w-[6px] h-full rounded-l-[18px]"></div>
           
           {/* Left Side Info */}
           <div className="shrink-0">
@@ -2473,533 +2589,450 @@ const InterventionView: React.FC<{
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="w-full h-full flex overflow-hidden relative"
     >
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-semibold mb-6 transition-colors group"
-      >
-        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Analytics
-      </button>
-
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Student Header */}
-        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <div className="flex items-start gap-6">
-            <img
-              src={student.avatar}
-              alt={student.name}
-              className="w-24 h-24 rounded-2xl object-cover"
-            />
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-display font-semibold text-foreground">{student.name}</h1>
-                <span className={`px-4 py-1.5 rounded-xl text-sm font-semibold border-2 ${getRiskBadge(student.riskLevel)}`}>
-                  {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
-                </span>
-              </div>
-              <p className="text-muted-foreground mb-4">{student.className}</p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-muted rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                  <p className="text-2xl font-semibold text-foreground">{student.avgScore}%</p>
-                </div>
-                <div className="bg-muted rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Last Active</p>
-                  <p className="text-sm font-semibold text-foreground">{student.lastActive}</p>
-                </div>
-                <div className="bg-muted rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Weakest Topic</p>
-                  <p className="text-sm font-semibold text-[#FF8B8B]">{student.weakestTopic}</p>
-                </div>
-              </div>
-
-              <div className="mt-5 p-4 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-xl">
-                <p className="text-xs font-semibold text-[#9956DE] mb-3 uppercase tracking-wider">Section Assignment</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Input
-                    value={gradeDraft}
-                    onChange={(e) => setGradeDraft(e.target.value)}
-                    placeholder="Grade"
-                    className="h-10"
-                  />
-                  <Input
-                    value={sectionDraft}
-                    onChange={(e) => setSectionDraft(e.target.value)}
-                    placeholder="Section"
-                    className="h-10"
-                  />
-                  <Button
-                    onClick={handleSaveSectionAssignment}
-                    disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
-                    className="bg-[#9956DE] hover:bg-[#7A44B3] text-white h-10"
-                  >
-                    {savingSection ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Save Section'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Analysis */}
-        <div className={`${analysisTone.card} border-2 rounded-2xl p-6`}>
-          <div className="flex items-start gap-4 mb-4">
-            <div className={`w-12 h-12 ${analysisTone.icon} rounded-xl flex items-center justify-center flex-shrink-0`}>
-              <AlertCircle size={24} className="text-white" />
-            </div>
+      {/* Center Scrollable Content: Insights & Tools */}
+      <div className="flex-1 overflow-y-auto p-[24px] xl:p-[32px] no-scrollbar">
+        <div className="max-w-[1000px] mx-auto space-y-[24px]">
+          
+          {/* Top Navigation & Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-[8px]">
             <div>
-              <h2 className="text-xl font-display font-semibold text-foreground mb-2">
-                {isUrgentBarrier ? 'AI Analysis - Learning Barriers' : 'AI Analysis - Learning Strengths & Next Steps'}
-              </h2>
-              {analysisCurriculumContext && (
-                <CurriculumSourceBadge
-                  sources={lessonCurriculumSources}
-                  className="mt-1"
-                />
-              )}
-              <BoneSkeleton
-                name="teacher-intervention-analysis"
-                loading={pathLoading}
-                fixture={
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-3.5 w-64" />
-                    <Skeleton className="h-3.5 w-56" />
-                    <Skeleton className="h-3.5 w-44" />
-                  </div>
-                }
-                fallback={
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-3.5 w-64" />
-                    <Skeleton className="h-3.5 w-56" />
-                    <Skeleton className="h-3.5 w-44" />
-                  </div>
-                }
-              >
-                <ul className="space-y-2 text-foreground">
-                  {student.struggles.length > 0 ? (
-                    student.struggles.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className={`${analysisTone.bullet} inline-flex h-5 items-center`}>&bull;</span>
-                        <span>
-                          {isUrgentBarrier ? 'Struggles with ' : 'Continue strengthening '}
-                          <strong>{s}</strong>
-                        </span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="flex items-start gap-2">
-                      <span className={`${analysisTone.bullet} inline-flex h-5 items-center`}>&bull;</span>
-                      <span>
-                        {isUrgentBarrier ? 'Needs support in ' : 'Maintain momentum in '}
-                        <strong>{student.weakestTopic}</strong>
-                      </span>
-                    </li>
-                  )}
-                </ul>
-              </BoneSkeleton>
+              <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] mb-[16px] w-max shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Analytics
+              </button>
+              <div className="flex items-center gap-3">
+                <h1 className="text-[26px] font-semibold text-[#1e293b] leading-tight">Student Intervention</h1>
+                <span className="px-[10px] py-[2px] bg-indigo-50 text-[#4f46e5] text-[10px] font-bold rounded-full border border-indigo-100 uppercase tracking-wider hidden sm:inline-block">AI Assisted</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* AI-Generated Learning Path */}
-        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <h2 className="text-xl font-display font-semibold text-foreground mb-6">AI-Generated Learning Path</h2>
-
-          <BoneSkeleton
-            name="teacher-intervention-learning-path"
-            loading={pathLoading}
-            fixture={
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
+          {/* AI Analysis Banner */}
+          <div className="bg-gradient-to-r from-[#eef2ff] to-[#faf5ff] backdrop-blur-[12px] rounded-[18px] p-[24px] border border-indigo-50 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+            <div className="absolute right-0 top-0 opacity-10 pointer-events-none transform translate-x-4 -translate-y-4">
+              <Sparkles className="w-40 h-40 text-indigo-600" />
+            </div>
+            <div className="flex flex-col sm:flex-row items-start gap-5 relative z-10">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4f46e5] to-[#9333ea] flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(79,70,229,0.3)] border-2 border-white">
+                <Bot className="w-7 h-7 text-white" />
               </div>
-            }
-            fallback={
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            }
-          >
-            {learningPath ? (
-              <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-xl p-5 mb-6 text-sm text-foreground">
-                <ChatMarkdown>{learningPath}</ChatMarkdown>
-              </div>
-            ) : null}
-
-            <div className="space-y-4 relative">
-              {/* Vertical Timeline Line */}
-              <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-border"></div>
-
-              {remedialSteps.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <motion.div
-                    key={step.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="relative pl-16"
-                  >
-                    {/* Step Number Circle */}
-                    <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-[#7274ED] to-[#9956DE] rounded-xl flex items-center justify-center shadow-md">
-                      <Icon size={24} className="text-white" />
+              <div className="flex-1 w-full">
+                <h3 className="text-[15px] font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                  AI Analysis
+                  <span className="px-2 py-0.5 bg-indigo-100 text-[#4f46e5] text-[10px] font-bold rounded-full uppercase tracking-wider">Insights Active</span>
+                </h3>
+                {analysisCurriculumContext && (
+                  <CurriculumSourceBadge
+                    sources={lessonCurriculumSources}
+                    className="mb-4"
+                  />
+                )}
+                
+                <BoneSkeleton
+                  name="teacher-intervention-analysis"
+                  loading={pathLoading}
+                  fixture={
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                      <Skeleton className="h-24 w-full rounded-[14px]" />
+                      <Skeleton className="h-24 w-full rounded-[14px]" />
                     </div>
+                  }
+                  fallback={
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                      <Skeleton className="h-24 w-full rounded-[14px]" />
+                      <Skeleton className="h-24 w-full rounded-[14px]" />
+                    </div>
+                  }
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                    <div className="bg-white/60 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                      <h4 className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> Learning Strengths
+                      </h4>
+                      <p className="text-[13px] text-[#475569] leading-relaxed">
+                        {!isUrgentBarrier ? (
+                          <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
+                        ) : (
+                          <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
+                        )}
+                      </p>
+                    </div>
+                    <div className="bg-white/60 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                      <h4 className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-rose-500" /> Next Steps
+                      </h4>
+                      <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1">
+                        {student.struggles.length > 0 ? (
+                          student.struggles.map((s, i) => (
+                            <li key={i}>
+                              Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.
+                            </li>
+                          ))
+                        ) : (
+                          <li>
+                            Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </BoneSkeleton>
+              </div>
+            </div>
+          </div>
 
-                    {/* Step Content */}
-                    <div className="bg-gradient-to-br from-[#9956DE]/12 to-[#6ED1CF]/18 border border-[#9956DE]/30 rounded-2xl p-5 hover:shadow-md transition-all">
-                      <div className="flex items-start justify-between mb-2">
+          {/* Learning Path Timeline */}
+          <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+            <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
+              <h3 className="text-[15px] font-semibold text-[#1e293b]">Generated Learning Path</h3>
+              <button disabled={pathLoading} onClick={() => setLessonTrigger(n => n + 1)} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
+                <RefreshCw className="w-3 h-3" /> Regenerate
+              </button>
+            </div>
+            
+            <BoneSkeleton
+              name="teacher-intervention-learning-path"
+              loading={pathLoading}
+              fixture={
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full rounded-xl" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                </div>
+              }
+              fallback={
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full rounded-xl" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                </div>
+              }
+            >
+              {learningPath ? (
+                <div className="bg-[#eef2ff]/50 border border-[#e0e7ff] rounded-xl p-5 mb-6 text-[13px] text-[#475569] leading-relaxed">
+                  <ChatMarkdown>{learningPath}</ChatMarkdown>
+                </div>
+              ) : null}
+
+              <div className="mb-8 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mr-2">Methodology:</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Interactive</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Video</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Practice</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Quiz</span>
+              </div>
+
+              <div className="relative border-l-2 border-[#e2e8f0] ml-[20px] space-y-[28px] pb-4">
+                {remedialSteps.map((step, index) => {
+                  let stepIcon = <Video className="w-4 h-4" />;
+                  let bgClass = "bg-[#8b5cf6] shadow-[0_4px_10px_rgba(139,92,246,0.3)]";
+                  let tagClass = "text-purple-600";
+                  let cardHover = "group-hover:border-purple-200";
+                  let actionBg = "hover:bg-[#4f46e5]";
+                  let actionIcon = <Play className="w-4 h-4 ml-0.5" />;
+
+                  if (step.type === 'quiz') {
+                    stepIcon = <PenTool className="w-4 h-4" />;
+                    bgClass = "bg-sky-500 shadow-[0_4px_10px_rgba(14,165,233,0.3)]";
+                    tagClass = "text-sky-600";
+                    cardHover = "group-hover:border-sky-200";
+                    actionBg = "hover:bg-sky-500";
+                    actionIcon = <ChevronRight className="w-4 h-4" />;
+                  } else if (step.type === 'assessment') {
+                    stepIcon = <CheckCircle2 className="w-4 h-4" />;
+                    bgClass = "bg-emerald-500 shadow-[0_4px_10px_rgba(16,185,129,0.3)]";
+                    tagClass = "text-emerald-600";
+                    cardHover = "group-hover:bg-emerald-50";
+                  }
+
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative pl-[32px] group"
+                    >
+                      {/* Step Number Circle */}
+                      <div className={`absolute -left-[17px] top-1 w-8 h-8 rounded-full ${bgClass} text-white flex items-center justify-center ring-4 ring-white group-hover:scale-110 transition-transform`}>
+                        {stepIcon}
+                      </div>
+
+                      {/* Step Content */}
+                      <div className={`${step.type === 'assessment' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-[#f1f5f9]'} rounded-[14px] p-[18px] border shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center transition-colors ${cardHover}`}>
                         <div>
-                          <h3 className="font-display font-semibold text-foreground mb-1">{step.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
-                            {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
-                            {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
+                          <span className={`text-[10px] font-semibold uppercase tracking-wider mb-1 block ${tagClass}`}>
+                            Step {index + 1} • {step.type === 'video' ? 'Video Lesson' : step.type === 'quiz' ? 'Practice' : 'Assessment'}
+                          </span>
+                          <p className="font-semibold text-[#1e293b] text-[13px] mb-0.5">{step.title}</p>
+                          <p className="text-[#64748b] text-[11px] flex items-center gap-1.5">
+                            {step.type === 'video' && <><Clock className="w-3 h-3" /> {(step as { duration?: string }).duration}</>}
+                            {step.type === 'quiz' && <><ListChecks className="w-3 h-3" /> {(step as { questions?: number }).questions} questions</>}
+                            {step.type === 'assessment' && <><Target className="w-3 h-3" /> {(step as { questions?: number }).questions} assessment questions</>}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                          step.type === 'video' ? 'bg-[#F08386]/20 text-[#C65E63]' :
-                          step.type === 'quiz' ? 'bg-[#9956DE]/20 text-[#9956DE]' :
-                          'bg-[#75D06A]/22 text-[#4D9F46]'
-                        }`}>
-                          {step.type === 'video' ? 'Video' : step.type === 'quiz' ? 'Quiz' : 'Assessment'}
-                        </span>
+                        {step.type === 'assessment' ? (
+                          <Award className="w-6 h-6 text-emerald-400" />
+                        ) : (
+                          <button className={`w-8 h-8 rounded-full bg-[#f8fafc] flex items-center justify-center text-[#64748b] ${actionBg} hover:text-white transition-colors border border-[#e2e8f0]`}>
+                            {actionIcon}
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </BoneSkeleton>
-        </div>
-
-        {/* Import-grounded Lesson Plan */}
-        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-xl font-display font-semibold text-foreground">Targeted Lesson Plan</h2>
-              <p className="text-sm text-muted-foreground">Class records drive risk signals. Import-grounded lesson generation needs uploaded course materials for topic context.</p>
-            </div>
-            <Button
-              onClick={() => setLessonTrigger(n => n + 1)}
-              disabled={lessonLoading}
-              className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
-            >
-              {lessonLoading ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Regenerate'}
-            </Button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </BoneSkeleton>
           </div>
 
-          <p className="mb-4 text-xs text-muted-foreground bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg px-3 py-2">
-            Class records alone are not enough for import-grounded lesson plans. Upload course materials in Data Import to provide lesson topic grounding.
-          </p>
-
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
-              <input
-                type="checkbox"
-                checked={allowReviewSources}
-                onChange={(event) => setAllowReviewSources(event.target.checked)}
-              />
-              Allow sources requiring manual review
-            </label>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
-              <input
-                type="checkbox"
-                checked={allowUnverifiedLesson}
-                onChange={(event) => setAllowUnverifiedLesson(event.target.checked)}
-              />
-              Allow unverified lesson draft (publish remains blocked)
-            </label>
-          </div>
-
-          <BoneSkeleton
-            name="teacher-intervention-lesson-plan"
-            loading={lessonLoading}
-            fixture={
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-                <Skeleton className="h-28 w-full rounded-xl" />
-                <Skeleton className="h-28 w-full rounded-xl" />
+          {/* Targeted Lesson Generator Settings */}
+          <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[15px] font-semibold text-[#1e293b]">Targeted Lesson Generation</h3>
+              <Button
+                onClick={() => setLessonTrigger(n => n + 1)}
+                disabled={lessonLoading}
+                className="bg-[#4f46e5] hover:bg-[#3730a3] text-white h-8 text-[11px] rounded-full px-4"
+              >
+                {lessonLoading ? <Skeleton className="h-3 w-16 bg-white/35" /> : 'Regenerate'}
+              </Button>
+            </div>
+            <p className="text-[13px] text-[#64748b] mb-6">Configure inputs and requirements for AI lesson generation.</p>
+            
+            <div className="bg-[#f8fafc]/80 rounded-[14px] p-[20px] border border-[#f1f5f9] mb-6">
+              <div className="flex items-start gap-3 mb-4">
+                <Info className="w-4 h-4 text-[#4f46e5] shrink-0 mt-0.5" />
+                <p className="text-[13px] text-[#475569] leading-relaxed">
+                  Class records alone are not enough for import-grounded lesson plans. Ensure course materials are uploaded via <span className="text-[#4f46e5] font-semibold">Data Import</span>.
+                </p>
               </div>
-            }
-            fallback={
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-                <Skeleton className="h-28 w-full rounded-xl" />
-                <Skeleton className="h-28 w-full rounded-xl" />
-              </div>
-            }
-          >
-            {lessonError && (
-              <div className="bg-[#FF8B8B]/14 border border-[#FF8B8B]/35 rounded-xl p-3 text-sm text-[#D66A6A]">
-                {lessonError}
-              </div>
-            )}
-
-            {lessonPlan && (
-              <div className="space-y-4">
-                <div className="bg-secondary border border-border rounded-xl p-4">
-                  <div className="mb-2">
-                    <CurriculumSourceBadge sources={lessonCurriculumSources} />
+              
+              <div className="space-y-4 border-t border-[#e2e8f0] pt-5 mt-5">
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow sources requiring manual review</span>
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only peer" checked={allowReviewSources} onChange={(e) => setAllowReviewSources(e.target.checked)} />
+                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
                   </div>
-                  <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
-                    {' \u2022 '}Imported topic count: {lessonPlan.importedTopicCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Subject: {lessonPlan.subject || 'general_math'} {' \u2022 '}Quarter: Q{lessonPlan.quarter || 1}
-                  </p>
-                  {lessonPlan.curriculumCompetency && (
-                    <p className="text-xs text-[#9956DE] font-semibold mt-1">
-                      Competency: {lessonPlan.curriculumCompetency}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
-                  </p>
-                  {lessonPlan.warnings.length > 0 && (
-                    <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.warnings.join(' ')}</p>
-                  )}
-                </div>
+                </label>
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow unverified lesson draft</span>
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only peer" checked={allowUnverifiedLesson} onChange={(e) => setAllowUnverifiedLesson(e.target.checked)} />
+                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
+                  </div>
+                </label>
+              </div>
+            </div>
 
-                <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Curriculum Grounding</p>
-                      <p className="text-sm font-semibold text-foreground mt-1">Source-backed lesson basis</p>
+            <BoneSkeleton
+              name="teacher-intervention-lesson-plan"
+              loading={lessonLoading}
+              fixture={
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                  </div>
+                  <Skeleton className="h-28 w-full rounded-xl" />
+                </div>
+              }
+              fallback={
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                  </div>
+                  <Skeleton className="h-28 w-full rounded-xl" />
+                </div>
+              }
+            >
+              {lessonError && (
+                <div className="bg-[#FF8B8B]/14 border border-[#FF8B8B]/35 rounded-xl p-3 text-sm text-[#D66A6A] mb-4">
+                  {lessonError}
+                </div>
+              )}
+
+              {lessonPlan && (
+                <div className="space-y-4">
+                  <div className="bg-[#f8fafc] border border-[#f1f5f9] rounded-[14px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                    <div className="mb-3">
+                      <CurriculumSourceBadge sources={lessonCurriculumSources} />
                     </div>
-                    {lessonPlan.curriculumGrounding && (
-                      <span className={`px-3 py-1 rounded-full text-[11px] font-semibold border ${lessonPlan.curriculumGrounding.confidenceBand === 'high' ? 'bg-[#75D06A]/15 text-[#2E7D32] border-[#75D06A]/40' : lessonPlan.curriculumGrounding.confidenceBand === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-[#FF8B8B]/14 text-[#C65E63] border-[#FF8B8B]/35'}`}>
-                        {lessonPlan.curriculumGrounding.confidenceBand.toUpperCase()} confidence
-                      </span>
+                    <p className="text-[14px] font-semibold text-[#1e293b]">{lessonPlan.lessonTitle}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+                      <p className="text-[11px] text-[#64748b]">
+                        <span className="font-semibold text-[#475569]">Imported topics:</span> {lessonPlan.usedImportedTopics ? 'Yes' : 'No'} ({lessonPlan.importedTopicCount})
+                      </p>
+                      <p className="text-[11px] text-[#64748b]">
+                        <span className="font-semibold text-[#475569]">Subject:</span> {lessonPlan.subject || 'General Math'} (Q{lessonPlan.quarter || 1})
+                      </p>
+                    </div>
+                    {lessonPlan.curriculumCompetency && (
+                      <p className="text-[11px] text-[#4f46e5] font-semibold mt-2 bg-indigo-50/50 px-2 py-1 rounded inline-block">
+                        Competency: {lessonPlan.curriculumCompetency}
+                      </p>
+                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-[11px] text-[#64748b]">
+                        Publish readiness: <span className={`font-semibold ${lessonPlan.publishReady ? 'text-emerald-600' : 'text-rose-500'}`}>{lessonPlan.publishReady ? 'Ready' : 'Blocked'}</span>
+                      </p>
+                    </div>
+                    {lessonPlan.warnings.length > 0 && (
+                      <p className="text-[11px] text-amber-600 mt-2 bg-amber-50 px-2 py-1.5 rounded">{lessonPlan.warnings.join(' ')}</p>
                     )}
                   </div>
 
                   {lessonPlan.lessonObjective && (
-                    <div className="bg-muted/60 rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Lesson objective</p>
-                      <p className="text-sm text-foreground mt-1">{lessonPlan.lessonObjective}</p>
+                    <div className="bg-white border border-[#e2e8f0] rounded-[14px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                      <p className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5">Lesson objective</p>
+                      <p className="text-[13px] text-[#1e293b]">{lessonPlan.lessonObjective}</p>
                     </div>
                   )}
 
                   {lessonPlan.realWorldHook && (
-                    <div className="bg-[#9956DE]/10 border border-[#9956DE]/20 rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-[#9956DE] uppercase tracking-wider">Real-life application</p>
-                      <p className="text-sm text-foreground mt-1">{lessonPlan.realWorldHook}</p>
+                    <div className="bg-indigo-50/50 border border-indigo-100 rounded-[14px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                      <p className="text-[10px] font-semibold text-[#4f46e5] uppercase tracking-wider mb-1.5">Real-life application</p>
+                      <p className="text-[13px] text-[#1e293b]">{lessonPlan.realWorldHook}</p>
                     </div>
                   )}
 
-                  {lessonPlan.curriculumGrounding && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="bg-muted/50 rounded-xl p-3">
-                        <p className="text-muted-foreground font-semibold">Retrieval confidence</p>
-                        <p className="text-sm font-semibold text-foreground mt-1">{Math.round((lessonPlan.curriculumGrounding.confidence || 0) * 100)}%</p>
-                      </div>
-                      <div className="bg-muted/50 rounded-xl p-3">
-                        <p className="text-muted-foreground font-semibold">Retrieved chunks</p>
-                        <p className="text-sm font-semibold text-foreground mt-1">{lessonPlan.curriculumGrounding.retrievedChunks}</p>
-                      </div>
-                      <div className="bg-muted/50 rounded-xl p-3">
-                        <p className="text-muted-foreground font-semibold">Review state</p>
-                        <p className="text-sm font-semibold text-foreground mt-1">{lessonPlan.needsReview ? 'Needs review' : 'Ready for review'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {lessonPlan.explanation && (
-                    <div className="bg-card border border-border rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Explanation</p>
-                      <p className="text-sm text-foreground leading-relaxed">{lessonPlan.explanation}</p>
-                    </div>
-                  )}
-
-                  <details className="group rounded-xl border border-border bg-card p-3">
-                    <summary className="cursor-pointer list-none text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between gap-2">
-                      Retrieved source snippets
-                      <span className="text-[11px] text-[#9956DE] group-open:rotate-180 transition-transform">▾</span>
-                    </summary>
-                    <div className="mt-3 space-y-2">
-                      {(lessonPlan.retrievedEvidence?.length || 0) > 0 ? (
-                        lessonPlan.retrievedEvidence?.map((source, index) => (
-                          <div key={`${source.sourceFile || 'source'}-${source.page || index}`} className="rounded-xl bg-muted/60 border border-border p-3">
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                              <span className="font-semibold text-foreground">{source.sourceFile || 'Curriculum source'}</span>
-                              <span>p.{source.page || '?'}</span>
-                              <span>{source.contentDomain || 'n/a'}</span>
-                              <span>score {(source.score * 100).toFixed(1)}%</span>
-                            </div>
-                            <p className="text-sm text-foreground mt-2 leading-relaxed">{source.content}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-muted-foreground">No retrieved snippets were returned.</p>
-                      )}
-                    </div>
-                  </details>
-
-                  {lessonPlan.sourceCitations && lessonPlan.sourceCitations.length > 0 && (
-                    <div className="rounded-xl bg-muted/50 border border-border p-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Source citations</p>
-                      <div className="flex flex-wrap gap-2">
-                        {lessonPlan.sourceCitations.slice(0, 6).map((citation) => (
-                          <span key={citation} className="px-2 py-1 rounded-full bg-card border border-border text-[11px] text-foreground">
-                            {citation}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">Source Legitimacy</p>
-                    <p className="text-sm font-semibold text-foreground mt-1">
-                      {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} {' \u2022 '}Review: {lessonPlan.sourceLegitimacy.reviewMaterials} {' \u2022 '}Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
-                    </p>
-                    {lessonPlan.sourceLegitimacy.issues.length > 0 && (
-                      <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
-                    )}
-                  </div>
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">Self Validation</p>
-                    <p className="text-sm font-semibold text-foreground mt-1">
-                      {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
-                    </p>
-                    {lessonPlan.selfValidation.issues.length > 0 && (
-                      <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
-                    )}
-                  </div>
-                </div>
-
-                {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Provenance Filters</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        <span className="font-semibold">Source File</span>
-                        <select
-                          value={lessonSourceFilter}
-                          onChange={(event) => setLessonSourceFilter(event.target.value)}
-                          className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
-                        >
-                          <option value="all">All sources</option>
-                          {lessonProvenanceSources.map((source) => (
-                            <option key={source} value={source}>{source}</option>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    {filteredLessonBlocks.map((block) => (
+                      <div key={block.blockId} className="border border-[#e2e8f0] rounded-[14px] p-4 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                        <h3 className="text-[13px] font-semibold text-[#1e293b]">{block.title}</h3>
+                        <p className="text-[11px] text-[#64748b] mt-1">{block.estimatedMinutes} mins {' \u2022 '} {block.strategy}</p>
+                        <p className="text-[12px] text-[#475569] mt-2 bg-[#f8fafc] p-2 rounded-lg">{block.objective}</p>
+                        <div className="mt-3">
+                          <p className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5">Activities</p>
+                          {block.activities.slice(0, 2).map((activity, idx) => (
+                            <p key={idx} className="text-[11px] text-[#475569] mb-1 flex items-start gap-1">
+                              <span className="text-[#94a3b8] mt-0.5">•</span> <span>{activity}</span>
+                            </p>
                           ))}
-                        </select>
-                      </label>
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        <span className="font-semibold">Material ID</span>
-                        <select
-                          value={lessonMaterialFilter}
-                          onChange={(event) => setLessonMaterialFilter(event.target.value)}
-                          className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
-                        >
-                          <option value="all">All materials</option>
-                          {lessonProvenanceMaterials.map((material) => (
-                            <option key={material} value={material}>{material}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-2">
-                      Showing {filteredLessonBlocks.length} of {lessonPlan.blocks.length} lesson blocks after provenance filters.
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {filteredLessonBlocks.map((block) => (
-                    <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
-                      <h3 className="text-sm font-semibold text-foreground">{block.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins {' \u2022 '} {block.strategy}</p>
-                      <p className="text-sm text-foreground mt-2">{block.objective}</p>
-                      <div className="mt-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
-                        {block.activities.slice(0, 2).map((activity, idx) => (
-                          <p key={idx} className="text-xs text-muted-foreground">{'\u2022'} {activity}</p>
-                        ))}
-                      </div>
-                      {block.provenance && (
-                        <div className="mt-3 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg p-2">
-                          <p className="text-[11px] font-semibold text-[#9956DE]">Provenance</p>
-                          {block.provenance.sourceFile && <p className="text-[11px] text-[#5E3388]">Source: {block.provenance.sourceFile}</p>}
-                          {block.provenance.materialId && <p className="text-[11px] text-[#5E3388]">Material: {block.provenance.materialId}</p>}
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {filteredLessonBlocks.length === 0 && (
-                  <div className="border border-border rounded-xl p-4 bg-card text-sm text-muted-foreground">
-                    No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
+                      </div>
+                    ))}
                   </div>
-                )}
 
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => void saveLessonDraft()}
-                    disabled={savingLessonDraft || !lessonPlan}
-                    className="border-[#9956DE]/45 text-[#9956DE]"
-                  >
-                    {savingLessonDraft ? <Skeleton className="h-4 w-16" /> : 'Save Draft'}
-                  </Button>
-                  <Button
-                    onClick={() => void publishCurrentLessonPlan()}
-                    disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
-                    className="bg-[#75D06A] hover:bg-[#5AB84E] text-white"
-                  >
-                    {publishingLesson ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Publish Lesson Plan'}
-                  </Button>
-                  {savedLessonPlanId && (
-                    <p className="text-xs text-muted-foreground self-center">Draft ID: {savedLessonPlanId}</p>
-                  )}
+                  <div className="flex flex-wrap gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => void saveLessonDraft()}
+                      disabled={savingLessonDraft || !lessonPlan}
+                      className="border-[#cbd5e1] text-[#475569] hover:bg-[#f8fafc] text-[12px] h-9 rounded-full px-5"
+                    >
+                      {savingLessonDraft ? <Skeleton className="h-4 w-16" /> : 'Save Draft'}
+                    </Button>
+                    <Button
+                      onClick={() => void publishCurrentLessonPlan()}
+                      disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
+                      className="bg-[#10b981] hover:bg-[#059669] text-white text-[12px] h-9 rounded-full px-5"
+                    >
+                      {publishingLesson ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Publish Lesson Plan'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </BoneSkeleton>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2">
-              <Send size={20} />
-              Schedule One-on-One Session
-            </Button>
-            <Button
-              variant="outline"
-              className="border-2 border-[#9956DE] text-[#9956DE] hover:bg-[#9956DE]/12 font-semibold py-4 rounded-xl flex items-center justify-center gap-2"
-            >
-              <Download size={20} />
-              Export Printed Materials
-            </Button>
+              )}
+            </BoneSkeleton>
           </div>
         </div>
       </div>
+
+      {/* RIGHT SIDEBAR: Student Profile & Actions (Fixed) */}
+      <aside className="w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col h-full shrink-0 overflow-y-auto z-10 no-scrollbar relative">
+        <div className="p-[24px] space-y-[24px] flex flex-col items-center">
+          
+          {/* Profile Block */}
+          <div className="flex flex-col items-center text-center w-full">
+            <img src={student.avatar} alt={student.name} className="w-[96px] h-[96px] rounded-full object-cover shadow-[0_8px_16px_rgba(0,0,0,0.1)] mb-4 border-4 border-white z-10 relative" />
+            <h2 className="text-[20px] font-semibold text-[#1e293b] mb-1">{student.name}</h2>
+            <p className="text-[11px] font-semibold text-[#64748b] mb-3 uppercase tracking-wider">ID: {student.id.substring(0, 8)}</p>
+            <span className={`text-[11px] font-semibold px-3 py-1 rounded-[14px] border ${student.riskLevel === 'high' ? 'text-rose-600 bg-rose-50 border-rose-100' : student.riskLevel === 'medium' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+              {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
+            </span>
+          </div>
+
+          {/* 4 Stats Grid */}
+          <div className="w-full grid grid-cols-2 gap-[12px]">
+            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
+              <p className="text-[20px] font-bold text-[#4f46e5]">{student.avgScore}%</p>
+            </div>
+            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
+              <p className="text-[20px] font-bold text-[#1e293b]">{student.avgScore > 80 ? 'High' : student.avgScore > 50 ? 'Medium' : 'Low'}</p>
+            </div>
+            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
+              <p className="text-[13px] font-semibold text-[#1e293b] mt-1">{student.lastActive}</p>
+            </div>
+            <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
+              <p className="text-[13px] font-semibold text-[#1e293b] mt-1 leading-tight truncate" title={student.weakestTopic}>{student.weakestTopic}</p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="w-full flex flex-col gap-[10px]">
+            <button className="w-full flex items-center justify-center gap-2 bg-[#4f46e5] hover:bg-[#3730a3] text-white text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]">
+              <CalendarPlus className="w-4 h-4" /> Schedule One-on-One Session
+            </button>
+            <button className="w-full flex items-center justify-center gap-2 bg-white hover:bg-[#f8fafc] text-[#475569] border border-[#cbd5e1] hover:border-[#94a3b8] text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]">
+              <Printer className="w-4 h-4" /> Export Materials
+            </button>
+          </div>
+
+          {/* Section Assignment */}
+          <div className="w-full bg-white/80 rounded-[18px] p-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-auto">
+            <h3 className="text-[13px] font-semibold text-[#1e293b] mb-4">Section Assignment</h3>
+            <div className="space-y-[12px]">
+              <div>
+                <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Grade Level</label>
+                <div className="relative">
+                  <Input
+                    value={gradeDraft}
+                    onChange={(e) => setGradeDraft(e.target.value)}
+                    placeholder="Grade"
+                    className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Section</label>
+                <div className="relative">
+                  <Input
+                    value={sectionDraft}
+                    onChange={(e) => setSectionDraft(e.target.value)}
+                    placeholder="Section"
+                    className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveSectionAssignment}
+                disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
+                className="w-full bg-white hover:bg-[#f8fafc] disabled:opacity-50 text-[#4f46e5] border border-[#e0e7ff] text-[13px] font-semibold rounded-[14px] px-4 py-2.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] mt-2"
+              >
+                {savingSection ? 'Updating...' : 'Update Assignment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
     </motion.div>
   );
+
 };
 
 // Import View
