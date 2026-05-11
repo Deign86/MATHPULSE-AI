@@ -246,7 +246,7 @@ service cloud.firestore {
       // Temporarily permissive for debugging - allow students to read their own
       allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
       allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && request.auth.uid == docId || isAdmin();
     }
 
     // ── Diagnostic Sessions (backend writes, students read their own) ──
@@ -410,20 +410,20 @@ service cloud.firestore {
     match /assessments/{uid} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
       allow create, update: if isSelf(uid) || isAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && request.auth.uid == uid || isAdmin();
     }
 
     match /assessments/{uid}/attempts/{attemptId} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
       allow create, update: if isSelf(uid) || isAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && request.auth.uid == uid || isAdmin();
     }
 
     // ── Competency Profiles (student's competency tracking) ──
     match /competencyProfiles/{uid} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
-      allow create, update: if isSelf(uid) || isAdmin();
-      allow delete: if isAdmin();
+      allow create, update: if isSelf(uid) || isTeacherOrAdmin() || isAdmin();
+      allow delete: if isSignedIn() && request.auth.uid == uid || isAdmin();
     }
 
     // ── Class Assessments (teacher view of class assessment summaries) ──
