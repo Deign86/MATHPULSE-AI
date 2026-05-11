@@ -1087,6 +1087,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                             showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null && !assessmentDismissed}
                             onOpenAssessment={handleOpenInitialAssessment}
                             studentId={userProfile?.uid}
+                            assessmentCompleted={hasCompletedDiagnostic === true}
                           />
                         </Suspense>
 

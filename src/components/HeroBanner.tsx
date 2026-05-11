@@ -14,6 +14,7 @@ interface HeroBannerProps {
   showAssessmentTooltip?: boolean;
   onOpenAssessment?: () => void;
   studentId?: string;
+  assessmentCompleted?: boolean;
 }
 
 const HeroBanner: React.FC<HeroBannerProps> = ({ 
@@ -24,6 +25,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   showAssessmentTooltip,
   onOpenAssessment,
   studentId,
+  assessmentCompleted = false,
 }) => {
   const [showResultsModal, setShowResultsModal] = useState(false);
   // Get time-based greeting
@@ -107,7 +109,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       )}
 
       {/* Success Tooltip showing Assessment is Completed — click to open results */}
-      {!showAssessmentTooltip && (
+      {assessmentCompleted && !showAssessmentTooltip && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9, x: 10 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
