@@ -17,7 +17,7 @@ import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from '
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 type ProfileSaveData = Partial<User> &
@@ -692,6 +692,14 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     const lrn = userRole === 'student'
       ? (studentProfile as StudentProfile | undefined)?.lrn || userProfile.uid
       : undefined;
+
+    // Immediately delete diagnostic documents BEFORE resetting state.
+    // This guarantees checkDiagnostic sees them gone even if the async
+    // reset is slow or the Firestore cache hasn't propagated yet.
+    if (userRole === 'student') {
+      await deleteDoc(doc(db, 'diagnosticResults', userProfile.uid)).catch(() => undefined);
+      await deleteDoc(doc(db, 'competencyProfiles', userProfile.uid)).catch(() => undefined);
+    }
 
     const { resetTestingDataForRole } = await import('./services/testResetService.ts');
     const result = await resetTestingDataForRole({
