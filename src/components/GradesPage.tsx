@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, Award, Target, Calendar, Download, Filter } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserProgress } from '../services/progressService';
-import { UserProgress, type StudentProfile } from '../types/models';
+import { subscribeToGradeSummary, subscribeToAssessments, type GradeSummary, type AssessmentRecord } from '../services/gradesService';
+import { type StudentProfile } from '../types/models';
 import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { useCurriculum } from '../hooks/useCurriculum';
 
@@ -12,7 +12,8 @@ const GradesPage = () => {
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState<UserProgress | null>(null);
+  const [gradeSummary, setGradeSummary] = useState<GradeSummary | null>(null);
+  const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
 
 // Safely cast userProfile to StudentProfile to access grade
 const studentGrade = (userProfile as StudentProfile | null)?.grade;
@@ -42,29 +43,31 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    const loadProgress = async () => {
-      if (!currentUser) return;
-      setLoading(true);
-      try {
-        const data = await getUserProgress(currentUser.uid);
-        setProgress(data);
-      } catch (err) {
-        console.error("Failed to load progress for grades:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!currentUser) return;
+    setLoading(true);
 
-    loadProgress();
+    const unsubSummary = subscribeToGradeSummary(currentUser.uid, (summary) => {
+      setGradeSummary(summary);
+      setLoading(false);
+    });
+
+    const unsubAssessments = subscribeToAssessments(currentUser.uid, (records) => {
+      setAssessments(records);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubSummary();
+      unsubAssessments();
+    };
   }, [currentUser]);
 
   // Compute stats safely
-  const quizAttempts = progress?.quizAttempts || [];
-  const totalQuizzes = progress?.totalQuizzesCompleted || 0;
-  const averageScore = progress?.averageScore || 0;
+  const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore) : 0;
+  const totalQuizzes = gradeSummary?.quizzesCompleted ?? 0;
   
   // Calculate GPA approximation (assuming 0-100 scale mapping to 0.0-4.0)
-  const gpa = averageScore > 0 ? Math.min((averageScore / 25), 4.0).toFixed(2) : '0.00';
+  const gpa = averageScore > 0 ? ((averageScore / 100) * 4.0).toFixed(2) : '0.00';
 
   const colorBySubjectId: Record<SubjectId, string> = {
     'gen-math': 'indigo',
@@ -92,12 +95,12 @@ useEffect(() => {
     .map((subject) => subject.name);
 
   // Compute subject metrics
-const subjectPerformance = Object.entries(progress?.subjects || {})
+const subjectPerformance = Object.entries({})
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
-    .map(([subjectId, subjectData]) => {
+    .map(([subjectId, subjectData]: [string, any]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
-      const subjectQuizzes = quizAttempts.filter(q => q.quizId?.startsWith(subjectId));
+      const subjectQuizzes: any[] = [];
       const avg = subjectQuizzes.length > 0
         ? Math.round(subjectQuizzes.reduce((sum: number, q: { score: number }) => sum + q.score, 0) / subjectQuizzes.length)
         : Math.round(subjectData?.progress ?? 0); // Fallback to progress %
@@ -124,22 +127,23 @@ const subjectPerformance = Object.entries(progress?.subjects || {})
   const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : defaultSubjectPerformance;
 
   // Recent Quizzes mapping
-  const recentQuizzes = quizAttempts
+  const recentQuizzes = assessments
     .slice()
-    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
-    .slice(0, 10).map((attempt, i) => {
-      // Find the subject from the ID
-      const subjectEntry = Object.entries(subjectMap).find(([key]) => attempt.quizId?.startsWith(key));
-      const subjectLabel = subjectEntry?.[1]?.label || 'General';
-      
+    .sort((a, b) => {
+      const aTime = a.completedAt?.toDate?.()?.getTime() ?? 0;
+      const bTime = b.completedAt?.toDate?.()?.getTime() ?? 0;
+      return bTime - aTime;
+    })
+    .slice(0, 10)
+    .map((record, i) => {
       return {
         id: i + 1,
-        title: attempt.quizId?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || `Quiz ${i + 1}`,
-        subject: subjectLabel,
-        score: attempt.score,
-        date: formatDateOnly(attempt.completedAt),
-        type: attempt.quizId?.includes('practice') ? 'practice' as const : 'module' as const,
-        status: attempt.score >= 80 ? 'Excellent' : attempt.score >= 60 ? 'Passing' : 'Needs Review'
+        title: record.title || `Assessment ${i + 1}`,
+        subject: record.subject || 'General',
+        score: record.score,
+        date: record.completedAt ? formatDateOnly(record.completedAt.toDate()) : 'N/A',
+        type: record.type === 'practice' ? 'practice' as const : record.type === 'diagnostic' ? 'module' as const : 'module' as const,
+        status: record.score >= 80 ? 'Excellent' : record.score >= 60 ? 'Passing' : 'Needs Review'
       };
     })
     .filter((quiz) => allowedSubjectLabels.includes(quiz.subject)); // Enforce grade filter
