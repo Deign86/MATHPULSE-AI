@@ -3,6 +3,7 @@
  * Dropdown panel listing notifications.
  */
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, CheckCheck, X } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { NotificationItem } from './NotificationItem';
@@ -26,10 +27,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  return (
+  const panel = (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-80 bg-[#f7f9fc] rounded-xl shadow-2xl border border-[#dde3eb] max-h-96 overflow-y-auto z-50 overflow-hidden"
+      className="fixed right-4 top-20 w-80 bg-[#f7f9fc] rounded-xl shadow-2xl border border-[#dde3eb] max-h-96 overflow-y-auto z-[9999] overflow-hidden"
+      style={{ right: '1rem', top: '5rem' }}
     >
       {/* Header */}
       <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between bg-gradient-to-r from-sky-600 to-sky-500">
@@ -83,4 +85,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
       </div>
     </div>
   );
+
+  return createPortal(panel, document.body);
 };
