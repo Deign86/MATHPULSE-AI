@@ -437,7 +437,7 @@ setAccountData({
                         }));
                       }}
                     >
-                      <SelectTrigger className="max-w-md [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                      <SelectTrigger className="max-w-md bg-white border-[#dde3eb] rounded-lg [&>span]:flex [&>span]:items-center [&>span]:gap-2">
                         <span className="flex items-center gap-2">
                           {accountData.gender === 'male' && <><Mars className="size-4 text-blue-500" /><span>Male</span></>}
                           {accountData.gender === 'female' && <><Venus className="size-4 text-pink-500" /><span>Female</span></>}
