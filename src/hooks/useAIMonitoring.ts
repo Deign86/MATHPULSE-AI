@@ -32,6 +32,7 @@ export function useAIMonitoring(month?: string): UseAIMonitoringReturn {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
     setIsLoading(true);
     setError(null);
 
@@ -43,6 +44,7 @@ export function useAIMonitoring(month?: string): UseAIMonitoringReturn {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        if (!isMounted) return;
         const logs: AIUsageLog[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as AIUsageLog;
@@ -52,13 +54,17 @@ export function useAIMonitoring(month?: string): UseAIMonitoringReturn {
         setIsLoading(false);
       },
       (err) => {
+        if (!isMounted) return;
         console.error('[useAIMonitoring] Firestore error:', err);
         setError('Failed to load AI usage data. Please try again.');
         setIsLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetMonth, refreshKey]);
 
