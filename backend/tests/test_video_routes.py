@@ -92,14 +92,19 @@ def test_cache_and_retrieve(mock_youtube_api_key, monkeypatch):
          "thumbnailUrl": "http://example.com/thumb.jpg", "durationSeconds": 300}
     ]
 
-    # Mock Firebase at the module level where it's imported inside functions
+    # Mock the module-level firebase_admin and firestore in youtube_service
     mock_doc = MagicMock()
     mock_doc.get.return_value.exists = False
     mock_db = MagicMock()
     mock_db.collection.return_value.document.return_value = mock_doc
 
-    with patch("firebase_admin.firestore.client", return_value=mock_db):
-        with patch("firebase_admin._apps", {"default": MagicMock()}):
+    mock_firebase_admin = MagicMock()
+    mock_firebase_admin._apps = {"default": MagicMock()}
+    mock_firestore = MagicMock()
+    mock_firestore.client.return_value = mock_db
+
+    with patch("services.youtube_service.firebase_admin", mock_firebase_admin):
+        with patch("services.youtube_service.firestore", mock_firestore):
             # Store should call set
             cache_videos(lesson_id, videos, "quadratic equations")
             mock_doc.set.assert_called_once()
