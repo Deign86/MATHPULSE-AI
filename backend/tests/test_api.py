@@ -844,7 +844,7 @@ class TestClassRecordImportMapping:
 
     @patch("main.call_hf_chat")
     def test_generate_quiz_accepts_new_max_limits(self, mock_chat):
-        max_questions = main_module.MAX_QUESTIONS_LIMIT
+        max_questions = 10  # Cap enforced at 10 items
         quiz_json = json.dumps([
             {
                 "questionType": "identification",
