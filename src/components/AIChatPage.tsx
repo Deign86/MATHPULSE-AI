@@ -265,9 +265,10 @@ const AIChatPage = () => {
                       </p>
                     </div>
                     {message.sender === 'user' && (
-                      <UserAvatar
+<UserAvatar
                         src={userProfile?.photo}
                         name={userProfile?.name}
+                        gender={userProfile?.gender}
                         className="w-7 h-7 flex-shrink-0 mb-1"
                         fallbackClassName="text-[10px]"
                       />

@@ -15,6 +15,7 @@ interface ProfileData {
   photo: string;
   avatarLayers?: { top?: string; bottom?: string; shoes?: string; accessory?: string; };
   role: 'student' | 'teacher' | 'admin';
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   // Student-specific
   lrn?: string;
   grade?: string;
@@ -204,7 +205,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           />
                         </div>
                       </div>
-                      <div>
+<div>
                         <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Phone Number</label>
                         <div className="relative">
                           <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -214,6 +215,25 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             disabled={!isEditing}
                             className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Gender</label>
+                        <div className="relative">
+                          <select
+                            value={editedData.gender || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditedData({ ...editedData, gender: val ? (val as 'male' | 'female' | 'prefer_not_to_say') : undefined });
+                            }}
+                            disabled={!isEditing}
+                            className="w-full pl-10 pr-3 py-2 bg-white border border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
+                          >
+                            <option value="">Select gender (optional)</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="prefer_not_to_say">Prefer not to say</option>
+                          </select>
                         </div>
                       </div>
                       <div>

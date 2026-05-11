@@ -306,7 +306,7 @@ export const updateUserProfile = async (
       throw new Error('Profile not found');
     }
 
-    const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers'];
+    const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers', 'gender'];
     const roleAllowedMap: Record<UserRole, string[]> = {
       student: ['lrn', 'grade', 'section', 'school', 'enrollmentDate', 'major', 'gpa'],
       teacher: ['department', 'subject', 'yearsOfExperience', 'qualification'],

@@ -1,10 +1,12 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { cn } from './ui/utils';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 
 interface UserAvatarProps {
   src?: string;
   name?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   className?: string;
   fallbackClassName?: string;
   /** Extra classes applied to the AvatarImage (e.g. object-fit overrides). */
@@ -35,21 +37,29 @@ const getInitials = (value?: string): string => {
 const UserAvatar: React.FC<UserAvatarProps> = ({
   src,
   name,
+  gender,
   className,
   fallbackClassName,
   imageClassName,
 }) => {
   const initials = getInitials(name);
+  const fallbackSrc = getDefaultAvatar(gender);
 
-  return (
+return (
     <Avatar className={cn('shrink-0', className)}>
-      {src && (
+      {(src ? (
         <AvatarImage
           src={src}
           alt={name || 'User'}
           className={cn('object-cover', imageClassName)}
         />
-      )}
+      ) : (
+        <AvatarImage
+          src={fallbackSrc}
+          alt={name || 'User'}
+          className={cn('object-cover', imageClassName)}
+        />
+      ))}
       <AvatarFallback
         className={cn(
           'bg-gradient-to-br from-violet-500 to-indigo-600 text-white font-display font-bold text-xs select-none',
