@@ -5,6 +5,7 @@ import logging
 
 from rag.firebase_storage_loader import _init_firebase_storage, PDF_METADATA
 from scripts.ingest_from_storage import ingest_from_firebase_storage
+from services.audit_logger import log_audit_event
 
 logger = logging.getLogger("mathpulse.admin")
 
@@ -67,6 +68,23 @@ async def upload_pdf(
         logger.error(f"Failed to trigger reingestion: {e}")
         
     storage_url = f"gs://{bucket.name}/{storage_path}"
+    
+    # Audit log
+    import asyncio
+    asyncio.create_task(log_audit_event(
+        action="UPLOAD_COURSE_MATERIAL",
+        actor_uid=_admin.uid,
+        actor_name=_admin.name if hasattr(_admin, "name") else "Unknown",
+        actor_email=_admin.email if hasattr(_admin, "email") else "",
+        actor_role=_admin.role,
+        description=f"Uploaded course material for {subjectName}: {file.filename}",
+        target_type="subject",
+        target_id=subjectId,
+        route="/api/admin/upload-pdf",
+        module="admin",
+        metadata={"filename": file.filename, "size": len(file_content)}
+    ))
+    
     return {
         "success": True,
         "chunkCount": 0,
@@ -81,6 +99,17 @@ async def reingest_pdf(
 ):
     try:
         ingest_from_firebase_storage(force_reindex=True)
+        import asyncio
+        asyncio.create_task(log_audit_event(
+            action="REINGEST_RAG_KNOWLEDGE",
+            actor_uid=_admin.uid,
+            actor_name=_admin.name if hasattr(_admin, "name") else "Unknown",
+            actor_email=_admin.email if hasattr(_admin, "email") else "",
+            actor_role=_admin.role,
+            description="Triggered a full reingestion of the RAG knowledge base",
+            route="/api/admin/reingest-pdf",
+            module="admin"
+        ))
         return {"success": True, "message": "Reingestion triggered successfully."}
     except Exception as e:
         logger.error(f"Failed to reingest: {e}")

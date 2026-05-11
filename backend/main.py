@@ -26,10 +26,13 @@ import urllib.parse
 import random
 import secrets
 import string
+import asyncio
 from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast, cast
+from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
 from threading import Lock
+
+from services.audit_logger import log_audit_event
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
 try:
@@ -4301,31 +4304,26 @@ def _write_access_audit_log(
 
     try:
         user = get_current_user(request)
-        payload: Dict[str, Any] = {
-            "action": action,
-            "status": status,
-            "teacherId": user.uid,
-            "teacherEmail": user.email,
-            "role": user.role,
-            "path": request.url.path,
-            "method": request.method,
-            "createdAt": FIRESTORE_SERVER_TIMESTAMP,
-            "createdAtIso": datetime.now(timezone.utc).isoformat(),
-        }
-        normalized_class_section_id = (class_section_id or "").strip() or None
-        if normalized_class_section_id:
-            payload["classSectionId"] = normalized_class_section_id
-        if metadata:
-            payload["metadata"] = metadata
-
-        firebase_firestore.client().collection("accessAuditLogs").add(payload)
-    except Exception as audit_err:
-        if _is_adc_missing_error(cast(Exception, audit_err)):
-            _warn_firestore_audit_lookup_once(
-                f"Access audit log skipped because Firestore ADC is not configured ({action})."
+        asyncio.create_task(
+            log_audit_event(
+                action=action,
+                actor_uid=user.uid,
+                actor_name=getattr(user, "name", "Unknown"),
+                actor_email=getattr(user, "email", ""),
+                actor_role=user.role,
+                description=f"Action: {action} (Status: {status})",
+                route=request.url.path,
+                metadata={
+                    **(metadata or {}),
+                    "status": status,
+                    "method": request.method,
+                    "classSectionId": class_section_id
+                },
+                success=status == "success"
             )
-        else:
-            logger.warning(f"Access audit log failed ({action}): {audit_err}")
+        )
+    except Exception as audit_err:
+        logger.warning(f"Access audit log failed ({action}): {audit_err}")
 
 
 def _record_risk_refresh_event(
@@ -5662,6 +5660,46 @@ async def commit_student_account_import(
         logger.error(f"Student account import commit error: {exc}")
         raise HTTPException(status_code=500, detail=f"Student account import commit error: {str(exc)}")
 
+
+class AuditLogRequest(BaseModel):
+    action: str
+    description: str
+    targetType: Optional[str] = None
+    targetId: Optional[str] = None
+    targetName: Optional[str] = None
+    route: Optional[str] = None
+    module: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    success: bool = True
+
+@app.post("/api/admin/audit-log")
+async def log_client_audit_event(
+    request: Request,
+    payload: AuditLogRequest,
+):
+    """Endpoint for frontend to log audit events like LOGIN/LOGOUT"""
+    user = get_current_user(request)
+    if user.role not in ["admin", "teacher"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    asyncio.create_task(
+        log_audit_event(
+            action=payload.action,
+            actor_uid=user.uid,
+            actor_name=user.name if hasattr(user, "name") else "Unknown",
+            actor_email=user.email if hasattr(user, "email") else "",
+            actor_role=user.role,
+            description=payload.description,
+            target_type=payload.targetType,
+            target_id=payload.targetId,
+            target_name=payload.targetName,
+            route=payload.route,
+            module=payload.module,
+            metadata=payload.metadata,
+            success=payload.success,
+        )
+    )
+    return {"success": True}
 
 @app.get("/api/admin/users", response_model=AdminUserListResponse)
 async def list_admin_users(
