@@ -1332,9 +1332,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-[#9956DE]/45 bg-card flex items-center justify-center">
-                  <UserAvatar
+<UserAvatar
                     src={userProfile?.photo}
                     name={teacherName}
+                    gender={userProfile?.gender}
                     className="w-full h-full rounded-lg"
                   />
                 </div>

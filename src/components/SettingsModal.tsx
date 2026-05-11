@@ -31,6 +31,7 @@ interface ProfileData {
   photo?: string;
   avatarLayers?: { top?: string; bottom?: string; shoes?: string; accessory?: string };
   role?: 'student' | 'teacher' | 'admin';
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   lrn?: string;
   grade?: string;
   section?: string;
@@ -105,7 +106,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const incomingSettings = settingsData ? JSON.parse(JSON.stringify(settingsData)) : cloneDefaultSettings();
     initialSettingsRef.current = incomingSettings;
 
-    setAccountData({
+setAccountData({
       uid: profileData?.uid,
       name: profileData?.name || '',
       email: profileData?.email || '',
@@ -113,6 +114,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       photo: profileData?.photo || '',
       avatarLayers: profileData?.avatarLayers,
       role: profileData?.role,
+      gender: profileData?.gender,
       lrn: profileData?.lrn || '',
       grade: profileData?.grade || '',
       section: profileData?.section || '',
@@ -404,7 +406,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       className="max-w-md"
                     />
                   </div>
-                  <div>
+<div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Phone Number</label>
                     <Input
                       type="tel"
@@ -412,6 +414,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       onChange={(event) => setAccountData((prev) => ({ ...prev, phone: event.target.value }))}
                       className="max-w-md"
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Gender</label>
+                    <select
+                      value={accountData.gender || ''}
+                      onChange={(event) => setAccountData((prev) => ({ ...prev, gender: event.target.value || undefined }))}
+                      className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628] max-w-md"
+                    >
+                      <option value="">Select gender (optional)</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="prefer_not_to_say">Prefer not to say</option>
+                    </select>
                   </div>
 
                   {accountData.role === 'student' && (

@@ -237,9 +237,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               onClick={onOpenProfile}
               className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-[#dde3eb] transition-all group"
             >
-              <UserAvatar
+<UserAvatar
                 src={userProfile?.photo}
                 name={userProfile?.name || 'Admin'}
+                gender={userProfile?.gender}
                 className="w-8 h-8 rounded-lg"
               />
               <div className="min-w-0 flex-1 text-left">
