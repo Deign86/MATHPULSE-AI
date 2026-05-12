@@ -20,6 +20,7 @@ import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data
 import { deleteDoc, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { saveAssessmentResult } from './services/gradesService';
+import { buildHeroBannerModalSummary, saveHeroBannerModalSummary } from './services/heroBannerSummaryService';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -508,6 +509,22 @@ const App = () => {
         });
       } catch (err) {
         console.error('[WARN] Failed to save competency profile:', err);
+      }
+    }
+
+    // Build and save hero banner modal summary
+    if (userProfile?.uid) {
+      try {
+        const heroBannerSummary = buildHeroBannerModalSummary({
+          assessmentId: assessmentTestId ? `assessment-${assessmentTestId}` : `assessment-${Date.now()}`,
+          overallScorePercent: result.overallScorePercent,
+          overallRisk: result.overallRisk,
+          intervention: result.intervention,
+          proficiencyProfile: result.proficiencyProfile,
+        });
+        await saveHeroBannerModalSummary(userProfile.uid, heroBannerSummary);
+      } catch (err) {
+        console.error('[App] Failed to save hero banner summary:', err);
       }
     }
 
@@ -1114,7 +1131,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
                             onContinueLearning={() => handleStudentNavigation('Modules')}
-                            showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null && !assessmentDismissed}
+                            showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null}
                             onOpenAssessment={handleOpenInitialAssessment}
                             studentId={userProfile?.uid}
                             assessmentCompleted={hasCompletedDiagnostic === true}

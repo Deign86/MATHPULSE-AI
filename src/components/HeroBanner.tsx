@@ -1,8 +1,10 @@
-﻿import React, { lazy, Suspense, useState } from 'react';
+﻿import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AvatarLayers } from './CompositeAvatar';
 import AssessmentResultsModal from './assessment/AssessmentResultsModal';
+import { subscribeToHeroBannerModalSummary } from '../services/heroBannerSummaryService';
+import type { HeroBannerModalSummary } from '../types/models';
 
 const DashboardAvatar = lazy(() => import('./DashboardAvatar.tsx'));
 
@@ -28,6 +30,24 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   assessmentCompleted = false,
 }) => {
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [heroBannerSummary, setHeroBannerSummary] = useState<HeroBannerModalSummary | null>(null);
+
+  // Subscribe to hero banner modal summary when modal is open
+  useEffect(() => {
+    if (!showResultsModal || !studentId) return;
+
+    const unsubscribe = subscribeToHeroBannerModalSummary(studentId, (summary) => {
+      setHeroBannerSummary(summary);
+    });
+    return () => unsubscribe();
+  }, [showResultsModal, studentId]);
+
+  // Clear summary when modal closes
+  useEffect(() => {
+    if (!showResultsModal) {
+      setHeroBannerSummary(null);
+    }
+  }, [showResultsModal]);
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -140,6 +160,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           isOpen={showResultsModal}
           onClose={() => setShowResultsModal(false)}
           studentId={studentId}
+          heroBannerSummary={heroBannerSummary}
         />
       )}
 
