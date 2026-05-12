@@ -60,59 +60,114 @@ export interface DiagnosticResponseItem {
 
 // ─── API Functions ─────────────────────────────────────────────
 
+/**
+ * Generate a diagnostic assessment with retry + timeout.
+ * Uses a shorter 30s per-attempt timeout with up to 2 retries (total ~90s max).
+ */
 export async function generateDiagnostic(
   strand: string,
   gradeLevel: string,
 ): Promise<DiagnosticGenerateResponse> {
   const url = `${API_URL}/api/diagnostic/generate`;
 
-  const headers = new Headers({ 'Content-Type': 'application/json' });
-
   const { auth } = await import('../lib/firebase');
   const currentUser = auth.currentUser;
-  if (currentUser) {
-    const idToken = await currentUser.getIdToken(false);
-    if (idToken) headers.set('Authorization', `Bearer ${idToken}`);
-  }
+  const getHeaders = async (): Promise<Headers> => {
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    if (currentUser) {
+      const idToken = await currentUser.getIdToken(false);
+      if (idToken) headers.set('Authorization', `Bearer ${idToken}`);
+    }
+    return headers;
+  };
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90_000);
-
-  try {
-    const res = await fetch(url, {
+  const attemptRequest = async (signal: AbortSignal): Promise<Response> => {
+    return fetch(url, {
       method: 'POST',
-      headers,
+      headers: await getHeaders(),
       body: JSON.stringify({ strand, grade_level: gradeLevel }),
-      signal: controller.signal,
+      signal,
     });
+  };
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      let message = 'Something went wrong. Please try again.';
-      try {
-        const errorJson = JSON.parse(body);
-        if (errorJson.detail) {
-          const detail = String(errorJson.detail);
-          if (detail.includes('Database unavailable') || detail.includes('unavailable')) {
-            message = 'Our servers are temporarily busy. Please try again in a moment.';
-          } else if (detail.includes('timeout') || detail.includes('timed out')) {
-            message = 'The request timed out. Please check your connection and try again.';
-          } else {
-            message = detail;
-          }
-        }
-      } catch {
-        if (!res.ok && body) {
-          message = 'Failed to start assessment. Please try again.';
+  const parseError = (res: Response, body: string): string => {
+    let message = 'Something went wrong. Please try again.';
+    try {
+      const errorJson = JSON.parse(body);
+      if (errorJson.detail) {
+        const detail = String(errorJson.detail);
+        if (detail.includes('Database unavailable') || detail.includes('unavailable')) {
+          message = 'Our servers are temporarily busy. Please try again in a moment.';
+        } else if (detail.includes('timeout') || detail.includes('timed out')) {
+          message = 'The request timed out. Please check your connection and try again.';
+        } else {
+          message = detail;
         }
       }
-      throw new Error(message);
+    } catch {
+      if (!res.ok && body) {
+        message = 'Failed to start assessment. Please try again.';
+      }
     }
+    return message;
+  };
 
-    return res.json();
-  } finally {
-    clearTimeout(timeout);
+  // Retry with exponential backoff: attempt 1 (30s), attempt 2 (30s) = 60s total max
+  const MAX_ATTEMPTS = 2;
+  const ATTEMPT_TIMEOUT_MS = 30_000;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
+
+    try {
+      const res = await attemptRequest(controller.signal);
+
+      if (res.ok) {
+        clearTimeout(timeout);
+        return res.json();
+      }
+
+      // 4xx client errors — don't retry, throw immediately
+      if (res.status >= 400 && res.status < 500) {
+        clearTimeout(timeout);
+        const body = await res.text().catch(() => '');
+        throw new Error(parseError(res, body));
+      }
+
+      // 5xx server errors or network issues — retry if attempts remain
+      const body = await res.text().catch(() => '');
+      const errorMessage = parseError(res, body);
+
+      clearTimeout(timeout);
+
+      if (attempt < MAX_ATTEMPTS) {
+        const backoffMs = attempt * 2_000; // 2s, 4s
+        console.warn(`[generateDiagnostic] attempt ${attempt} failed (${res.status}), retrying in ${backoffMs}ms...`);
+        await new Promise((r) => setTimeout(r, backoffMs));
+        continue;
+      }
+
+      throw new Error(errorMessage);
+    } catch (err) {
+      clearTimeout(timeout);
+
+      // AbortError = timeout
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        if (attempt < MAX_ATTEMPTS) {
+          console.warn(`[generateDiagnostic] attempt ${attempt} timed out, retrying...`);
+          continue;
+        }
+        throw new Error('The request timed out. Please check your connection and try again.');
+      }
+
+      // Re-throw business errors (already formatted) and network errors
+      throw err;
+    }
   }
+
+  // Should not reach here, but satisfy TypeScript
+  throw new Error('Failed to generate assessment after multiple attempts.');
 }
 
 export async function submitDiagnostic(

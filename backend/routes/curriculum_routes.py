@@ -37,6 +37,11 @@ class TopicResponse(BaseModel):
 @router.get("/subjects", response_model=list[SubjectResponse])
 async def list_subjects(grade_level: Optional[str] = Query(None, description="Filter by grade level (e.g., 'Grade 11', 'Grade 12')")):
     """List all curriculum subjects, optionally filtered by grade level."""
+    # Guard against malformed grade levels (e.g., "Grade 2011" from bad state)
+    valid_grades = {"Grade 11", "Grade 12", "Grade 11/12"}
+    if grade_level and grade_level not in valid_grades:
+        logger.warning(f"[curriculum] Invalid grade_level received: {grade_level!r}, defaulting to Grade 11")
+        grade_level = "Grade 11"
     subjects = get_subjects(grade_level)
     return subjects
 
