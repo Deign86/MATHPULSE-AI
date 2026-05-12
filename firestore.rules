@@ -17,20 +17,12 @@ service cloud.firestore {
         : 'student';  // Default to student role for unauthenticated or missing role
     }
 
-    function hasValidUserDoc() {
-      return userDoc() != null && userDoc().data != null;
-    }
-
     function isAdmin() {
       return isSignedIn() && role() == 'admin';
     }
 
     function isTeacher() {
       return isSignedIn() && role() == 'teacher';
-    }
-
-    function isStudent() {
-      return isSignedIn() && role() == 'student';
     }
 
     function isTeacherOrAdmin() {
@@ -465,6 +457,17 @@ service cloud.firestore {
     match /aiUsageLogs/{docId} {
       allow read: if isAdmin() || isTeacherOrAdmin();
       allow write: if false; // Backend only via firebase-admin
+    }
+
+    // ── Modules (DepEd curriculum + teacher-uploaded modules) ──
+    // moduleType field: "deped" (or absent) = curriculum, "teacher_uploaded" = teacher-created
+    // Teachers can create teacher_uploaded modules; all authenticated users can read all modules
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacherOrAdmin();
+      allow update, delete: if isTeacherOrAdmin() && (
+        ownerInExisting('uploadedBy') || ownerInExisting('teacherId')
+      );
     }
 
     // Deny-by-default for unknown collections.
