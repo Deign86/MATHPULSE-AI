@@ -169,7 +169,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
 
                 {/* Reward Content */}
                 <div className="flex-1 p-2 flex flex-col items-center justify-center relative min-h-[75px]">
-                  {/* Claimed Stamp Overlay */}
+                  {/* Claimed Stamp Overlay - prominent "CLAIMED" badge */}
                   {claimed && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -177,10 +177,14 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                       transition={{ type: 'spring', bounce: 0.5 }}
                       className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
                     >
-                      <div className="relative w-14 h-14 rounded-full border-[3px] border-rose-500 bg-rose-50 flex items-center justify-center transform -rotate-12 shadow-sm opacity-90">
-                        <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-10 h-10 object-contain drop-shadow-sm" />
-                        <div className="absolute -bottom-2 bg-rose-500 rounded px-1.5 py-0.5 border border-rose-200 shadow-sm">
-                          <span className="text-[8px] font-black text-white uppercase tracking-widest leading-none">Claimed</span>
+                      {/* Outer glow ring for extra visibility */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-rose-200/50" />
+                      </div>
+                      <div className="relative w-14 h-14 rounded-full border-[3px] border-rose-500 bg-rose-100 flex items-center justify-center transform -rotate-12 shadow-lg">
+                        <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-10 h-10 object-contain drop-shadow-md" />
+                        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-rose-500 rounded-md px-2 py-0.5 border-2 border-rose-300 shadow-md">
+                          <span className="text-[9px] font-black text-white uppercase tracking-wider leading-none whitespace-nowrap">Claimed</span>
                         </div>
                       </div>
                     </motion.div>
@@ -245,10 +249,14 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                     transition={{ type: 'spring', bounce: 0.5 }}
                     className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
                   >
-                    <div className="relative w-20 h-20 rounded-full border-[4px] border-rose-500 bg-rose-50 flex items-center justify-center transform rotate-12 shadow-sm opacity-90">
-                      <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-14 h-14 object-contain drop-shadow-sm" />
-                      <div className="absolute -bottom-2.5 bg-rose-500 rounded-md px-2 py-0.5 border border-rose-200 shadow-md">
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Claimed</span>
+                    {/* Outer glow ring for extra visibility */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-rose-200/50" />
+                    </div>
+                    <div className="relative w-20 h-20 rounded-full border-[4px] border-rose-500 bg-rose-100 flex items-center justify-center transform rotate-12 shadow-lg">
+                      <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-14 h-14 object-contain drop-shadow-md" />
+                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-rose-500 rounded-md px-2.5 py-1 border-2 border-rose-300 shadow-md">
+                        <span className="text-[10px] font-black text-white uppercase tracking-wider leading-none whitespace-nowrap">Claimed</span>
                       </div>
                     </div>
                   </motion.div>
