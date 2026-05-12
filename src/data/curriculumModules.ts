@@ -280,6 +280,28 @@ function makeQuizzes(module: CurriculumModuleBlueprint, assessments: CurriculumA
 }
 
 function normalizeGradeLevel(rawGrade?: string | null): GradeLevel {
+  const value = (rawGrade || '').trim();
+  if (!value) return 'Grade 11';
+
+  // Extract numeric grade from strings like "Grade 11", "Grade 11 - STEM", "2011", "Grade 2011"
+  const match = value.match(/(\d{1,2})/);
+  if (match) {
+    const gradeNum = parseInt(match[1], 10);
+    // Only Grade 11 is supported; default invalid values to Grade 11
+    if (gradeNum >= 11 && gradeNum <= 12) {
+      return `Grade ${gradeNum}` as GradeLevel;
+    }
+    return 'Grade 11';
+  }
+
+  // Already a clean "Grade 11" or "Grade 12" string
+  if (/^grade\s*\d{1,2}$/i.test(value)) {
+    const num = parseInt(value.replace(/grade\s*/i, ''), 10);
+    if (num >= 11 && num <= 12) {
+      return `Grade ${num}` as GradeLevel;
+    }
+  }
+
   return 'Grade 11';
 }
 
