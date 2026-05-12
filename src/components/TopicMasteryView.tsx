@@ -89,15 +89,14 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
   }, {});
 
   // Load curriculum (logs source - Firestore vs static)
-  const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum();
+  const { isLoading: curriculumLoading } = useCurriculum();
 
   // Log curriculum source on load
   useEffect(() => {
     if (!curriculumLoading) {
       console.log('[TopicMasteryView] Curriculum ready');
-      refetchCurriculum();
     }
-  }, [curriculumLoading, refetchCurriculum]);
+  }, [curriculumLoading]);
 
   // Selection for bulk actions
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());

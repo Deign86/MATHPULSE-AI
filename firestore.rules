@@ -12,9 +12,13 @@ service cloud.firestore {
 
     // Defensive role function - handles missing user documents
     function role() {
-      return isSignedIn() && userDoc() != null && userDoc().data.role != null 
-        ? userDoc().data.role 
+      return isSignedIn() && userDoc() != null && userDoc().data.role != null
+        ? userDoc().data.role
         : 'student';  // Default to student role for unauthenticated or missing role
+    }
+
+    function hasValidUserDoc() {
+      return userDoc() != null && userDoc().data != null;
     }
 
     function isAdmin() {
