@@ -847,3 +847,17 @@ export interface AssessmentHistoryEntry {
   completedAt: string;
   proficiencyLevel: string;
 }
+
+// Hero Banner modal summary — persisted at users/{uid}/dashboardSummary/heroBannerModal
+export interface HeroBannerModalSummary {
+  status: 'not_started' | 'ready';
+  headline: string;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendation: string;
+  latestAssessmentId: string;
+  latestScorePercent: number;
+  latestRiskLevel: string;
+  updatedAt: Date;
+}
