@@ -22,16 +22,14 @@ const studentGrade = (userProfile as StudentProfile | null)?.grade;
 const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
 const allowedSubjectSet = new Set(allowedSubjectIds);
 
-// Load curriculum (logs source - Firestore vs static)
-const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum(studentGrade);
+const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
 
-// Log curriculum source on load
-useEffect(() => {
-  if (!curriculumLoading) {
-    console.log('[GradesPage] Curriculum ready');
-    refetchCurriculum();
-  }
-}, [curriculumLoading, refetchCurriculum]);
+  // Log curriculum source on load
+  useEffect(() => {
+    if (!curriculumLoading) {
+      console.log('[GradesPage] Curriculum ready, loading:', curriculumLoading);
+    }
+  }, [curriculumLoading]);
 
   const formatDateOnly = (value: Date | string | number | null | undefined) => {
     if (value === null || value === undefined) return 'N/A';
