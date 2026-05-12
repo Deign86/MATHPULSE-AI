@@ -78,15 +78,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const activeGradeLevel = resolveLearnerGradeLevel(studentGrade);
 
   // Load curriculum (logs source - Firestore vs static)
-  const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum(activeGradeLevel);
+  const { isLoading: curriculumLoading } = useCurriculum(activeGradeLevel);
 
   // Log curriculum source on load
   useEffect(() => {
     if (!curriculumLoading) {
       console.log('[ModulesPage] Curriculum ready');
-      refetchCurriculum();
     }
-  }, [curriculumLoading, refetchCurriculum]);
+  }, [curriculumLoading]);
   const [searchQuery, setSearchQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
