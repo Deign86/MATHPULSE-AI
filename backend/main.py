@@ -87,6 +87,7 @@ from routes.curriculum_routes import router as curriculum_router
 from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
 from routes.quiz_battle import router as quiz_battle_router
+from routes.teacher_materials import router as teacher_materials_router
 
 # Rate limiting (slowapi)
 try:
@@ -341,6 +342,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/admin/users/bulk-action": ADMIN_ONLY,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
+    "/api/teacher-materials/upload": TEACHER_OR_ADMIN,
     "/api/course-materials/topics": TEACHER_OR_ADMIN,
     "/api/quiz/generate": ALL_APP_ROLES,
     "/api/quiz/generate-async": ALL_APP_ROLES,
@@ -1071,6 +1073,7 @@ app.include_router(curriculum_router)
 app.include_router(diagnostic_router)
 app.include_router(video_router)
 app.include_router(quiz_battle_router)
+app.include_router(teacher_materials_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
