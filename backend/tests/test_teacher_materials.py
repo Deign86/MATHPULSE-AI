@@ -226,7 +226,7 @@ class TestTeacherMaterialsFileValidation:
                 files=files,
                 data=data,
             )
-        assert response.status_code in (200, 500)
+assert response.status_code in (200, 500)
 
     def test_rejects_executable(self):
         """Malicious extension is rejected with 400."""
