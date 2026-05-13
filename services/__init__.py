@@ -57,6 +57,7 @@ def _alias_backend_services() -> None:
         return
 
     module_names = (
+        "audit_logger",
         "question_bank_service",
         "variance_engine",
         "youtube_service",
