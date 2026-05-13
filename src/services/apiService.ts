@@ -64,6 +64,30 @@ const IMPORTED_CLASS_OVERVIEW_RETRY_COOLDOWN_MS = 60_000;
 
 // ─── Types ────────────────────────────────────────────────────
 
+export interface ClassRecordUploadResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  summary?: {
+    totalStudents: number;
+    atRiskCount: number;
+    mediumRiskCount: number;
+    lowRiskCount: number;
+  };
+  students?: Array<{
+    name: string;
+    riskLevel: 'high' | 'medium' | 'low';
+    riskScore: number;
+    topFactors: string[];
+  }>;
+  metadata?: {
+    className?: string;
+    subject?: string;
+    quarter?: string;
+    schoolYear?: string;
+  };
+}
+
 export interface ChatRequest {
   message: string;
   history: { role: 'user' | 'assistant'; content: string }[];
@@ -1907,6 +1931,39 @@ export const apiService = {
 
     return apiFetch<UploadResponse>(
       '/api/upload/class-records',
+      { method: 'POST', body: formData },
+      UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /** Download class record template (CSV) */
+  async downloadClassRecordTemplate(options?: {
+    quarter?: string;
+    school_year?: string;
+    subject?: string;
+  }): Promise<Blob> {
+    const params = new URLSearchParams();
+    if (options?.quarter) params.set('quarter', options.quarter);
+    if (options?.school_year) params.set('school_year', options.school_year);
+    if (options?.subject) params.set('subject', options.subject);
+    const query = params.toString();
+    return apiFetchBlob(`/api/templates/class-records${query ? `?${query}` : ''}`, { method: 'GET' }, 30_000);
+  },
+
+  /** Upload a filled class record template for AI at-risk analysis */
+  async uploadClassRecordTemplate(file: File): Promise<ClassRecordUploadResponse> {
+    if (!file || file.size === 0) {
+      throw new ApiValidationError('/api/class-records/upload', 'File must be non-empty');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new ApiValidationError('/api/class-records/upload', 'File exceeds the 10 MB size limit');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return apiFetch<ClassRecordUploadResponse>(
+      '/api/class-records/upload',
       { method: 'POST', body: formData },
       UPLOAD_RETRY_OPTS,
     );
