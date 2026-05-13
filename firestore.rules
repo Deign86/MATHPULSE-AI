@@ -470,6 +470,21 @@ service cloud.firestore {
       );
     }
 
+// ── Class Records (teacher-uploaded student grade data) ──
+    match /classRecords/{teacherUid} {
+      allow read: if isAdmin() || (isTeacher() && request.auth.uid == teacherUid);
+      allow write: if false;
+      
+      match /uploads/{uploadId} {
+        allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid);
+        allow write: if false;
+      }
+      
+      match /sections/{sectionId}/students/{lrn} {
+        allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid) || (isSignedIn() && resource.data.lrn == lrn);
+        allow write: if false;
+      }
+    }
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

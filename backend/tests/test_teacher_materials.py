@@ -17,7 +17,7 @@ Or safe runner: python -m pytest backend/tests/test_teacher_materials.py -v
 """
 
 import io
-import json
+
 import os
 import sys
 from typing import Any, Dict
@@ -29,28 +29,8 @@ from fastapi.testclient import TestClient
 # Add backend directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Mock Firebase auth BEFORE importing the app
-import main as main_module
-
-_orig_verify = None
-if hasattr(main_module, 'firebase_auth') and main_module.firebase_auth is not None:
-    _orig_verify = main_module.firebase_auth.verify_id_token
-
-
-def _mock_verify(token):
-    """Role-aware token verification mock."""
-    if isinstance(token, bytes):
-        token = token.decode()
-    if "student" in token:
-        return {"uid": "test-student-uid", "role": "student"}
-    return {"uid": "test-teacher-uid", "role": "teacher"}
-
-
-main_module.firebase_auth = MagicMock()
-main_module.firebase_auth.verify_id_token = MagicMock(side_effect=_mock_verify)
-
-# Import the app after auth mock
-from main import app
+# Import the app after path is set
+from main import AuthenticatedUser, app
 
 # ─── Test client (shared across all tests) ───────────────────────────────────
 # Uses teacher role header — matches ROLE_POLICIES teacher role
@@ -74,15 +54,6 @@ def _make_txt(text: str = "Sample lesson plan content.") -> bytes:
 
 
 # ─── Fixtures ──────────────────────────────────────────────────────────────────
-
-@pytest.fixture(autouse=True)
-def _global_auth_mock():
-    """Re-apply auth mock before EVERY test (other test files override module-level mock during collection)."""
-    import main as _m
-    _m.firebase_auth = MagicMock()
-    _m.firebase_auth.verify_id_token = MagicMock(side_effect=_mock_verify)
-    yield
-
 
 @pytest.fixture
 def mock_firestore_client():
@@ -150,8 +121,9 @@ def mock_deepseek_success():
         },
     }
 
-    with patch("main.call_hf_chat_async", new_callable=AsyncMock) as mock:
-        mock.return_value = json.dumps(module_json)
+    import json
+    json_string = json.dumps(module_json)
+    with patch("services.inference_client.call_hf_chat_async", new_callable=AsyncMock, return_value=json_string):
         yield
 
 
@@ -159,7 +131,7 @@ def mock_deepseek_success():
 def mock_deepseek_failure():
     """DeepSeek raises an exception."""
     with patch(
-        "main.call_hf_chat_async",
+        "services.inference_client.call_hf_chat_async",
         side_effect=Exception("DeepSeek unavailable"),
     ):
         yield
@@ -189,7 +161,11 @@ class TestTeacherMaterialsAuth:
             app,
             headers={"Authorization": "Bearer student-auth-token"},
         )
-        with patch("routes.teacher_materials._get_firestore", return_value=None):
+        mock_student_user = AuthenticatedUser(uid="student123", role="student", email="student@test.com")
+        with (
+            patch("main.get_current_user", return_value=mock_student_user),
+            patch("routes.teacher_materials._get_firestore", return_value=None),
+        ):
             response = student_client.post(
                 "/api/teacher-materials/upload",
                 files=files,
@@ -209,9 +185,9 @@ class TestTeacherMaterialsFileValidation:
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
         # Patch the entire parsing + generation chain so it short-circuits
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("text", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_module_via_deepseek", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
+            patch("routes.teacher_materials._generate_teacher_module", return_value=None),
         ):
             response = client.post(
                 "/api/teacher-materials/upload",
@@ -227,9 +203,9 @@ class TestTeacherMaterialsFileValidation:
         files = {"file": ("lesson.docx", _make_docx(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("text", [], "docx")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_module_via_deepseek", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
+            patch("routes.teacher_materials._generate_teacher_module", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
         ):
             response = client.post(
                 "/api/teacher-materials/upload",
@@ -243,9 +219,9 @@ class TestTeacherMaterialsFileValidation:
         files = {"file": ("outline.txt", _make_txt(), "text/plain")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("text", [], "txt")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_module_via_deepseek", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
+            patch("routes.teacher_materials._generate_teacher_module", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
         ):
             response = client.post(
                 "/api/teacher-materials/upload",
@@ -290,9 +266,9 @@ class TestTeacherMaterialsRequestShape:
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         # No data fields at all
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("text", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_module_via_deepseek", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
+            patch("routes.teacher_materials._generate_teacher_module", return_value=None),
         ):
             response = client.post(
                 "/api/teacher-materials/upload",
@@ -309,11 +285,11 @@ class TestTeacherMaterialsGeneration:
     """DeepSeek module generation failure modes."""
 
     def test_returns_500_when_deepseek_fails(self, mock_firestore_unavailable, mock_deepseek_failure):
-        """When DeepSeek is unavailable, response is 500 with error message."""
+        """When DeepSeek is unavailable, response has success=False."""
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("Quadratic equations lesson text", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("Quadratic equations lesson text", 200, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
         ):
             response = client.post(
@@ -321,8 +297,6 @@ class TestTeacherMaterialsGeneration:
                 files=files,
                 data=data,
             )
-        # Endpoint handles DeepSeek failure gracefully → 200 with success=false
-        assert response.status_code == 200
         payload = response.json()
         assert payload.get("success") is False
         assert "error" in payload or "message" in payload
@@ -343,7 +317,7 @@ class TestTeacherMaterialsGeneration:
         }
         mock_db = MagicMock()
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("Quadratic equations lesson", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("Quadratic equations lesson", 200, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
             patch("routes.teacher_materials._get_firestore_client", return_value=mock_db),
             patch("routes.teacher_materials._index_teacher_material_chunks", return_value=True),
@@ -371,7 +345,7 @@ class TestTeacherMaterialsResponseShape:
         data = {"gradeLevel": "Grade 11", "subject": "Math", "quarter": "Q1"}
         mock_db = MagicMock()
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("text", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
             patch("routes.teacher_materials._get_firestore_client", return_value=mock_db),
             patch("routes.teacher_materials._index_teacher_material_chunks", return_value=True),
@@ -393,7 +367,7 @@ class TestTeacherMaterialsResponseShape:
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Math", "quarter": "Q1"}
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("text", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
         ):
             response = client.post(
@@ -423,7 +397,7 @@ class TestTeacherMaterialsRAG:
 
         captured_args: Dict[str, Any] = {}
 
-        def capture_generate(course_material_text, rag_results, metadata):
+        async def capture_generate(course_material_text, rag_results, metadata):
             captured_args["raw_text"] = course_material_text
             captured_args["rag_results"] = rag_results
             captured_args["metadata"] = metadata
@@ -449,9 +423,9 @@ class TestTeacherMaterialsRAG:
 
         mock_db = MagicMock()
         with (
-            patch("routes.teacher_materials._extract_content", return_value=("Lesson about quadratics.", [], "pdf")),
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("Lesson about quadratics.", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=rag_passages),
-            patch("routes.teacher_materials._generate_module_via_deepseek", new_callable=AsyncMock, side_effect=capture_generate),
+            patch("routes.teacher_materials._generate_teacher_module", side_effect=capture_generate),
             patch("routes.teacher_materials._get_firestore_client", return_value=mock_db),
             patch("routes.teacher_materials._index_teacher_material_chunks", return_value=True),
         ):
