@@ -88,6 +88,7 @@ from routes.diagnostic import router as diagnostic_router
 from routes.video_routes import router as video_router
 from routes.quiz_battle import router as quiz_battle_router
 from routes.teacher_materials import router as teacher_materials_router
+from routes.class_records_router import router as class_records_router
 
 # Rate limiting (slowapi)
 try:
@@ -324,6 +325,7 @@ PUBLIC_PATHS: Set[str] = {
 PUBLIC_API_PATHS: Set[str] = {
     "/api/quiz/topics",
     "/api/rag/health",
+    "/api/templates/class-records",
 }
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
@@ -391,6 +393,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/quiz-battle/generate": ALL_APP_ROLES,
     "/api/quiz-battle/ingest-pdf": TEACHER_OR_ADMIN,
     "/api/quiz-battle/bank-status": TEACHER_OR_ADMIN,
+    "/api/class-records/upload": TEACHER_OR_ADMIN,
 }
 
 if not os.getenv("DEEPSEEK_API_KEY"):
@@ -1074,6 +1077,7 @@ app.include_router(diagnostic_router)
 app.include_router(video_router)
 app.include_router(quiz_battle_router)
 app.include_router(teacher_materials_router)
+app.include_router(class_records_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
