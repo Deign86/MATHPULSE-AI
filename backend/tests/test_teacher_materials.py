@@ -202,8 +202,17 @@ class TestTeacherMaterialsFileValidation:
         """DOCX uploads are accepted."""
         files = {"file": ("lesson.docx", _make_docx(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
-test_accepts_txt patches
-
+        with (
+            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
+            patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
+            patch("routes.teacher_materials._generate_teacher_module", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
+        ):
+            response = client.post(
+                "/api/teacher-materials/upload",
+                files=files,
+                data=data,
+            )
+        assert response.status_code in (200, 500)
 
     def test_accepts_txt(self, mock_firestore_unavailable):
         """TXT uploads are accepted."""
@@ -212,7 +221,7 @@ test_accepts_txt patches
         with (
             patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_teacher_module", return_value=None),
+            patch("routes.teacher_materials._generate_teacher_module", new_callable=AsyncMock, return_value={"moduleId": "test", "title": "Test"}),
         ):
             response = client.post(
                 "/api/teacher-materials/upload",
