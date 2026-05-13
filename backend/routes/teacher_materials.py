@@ -338,7 +338,7 @@ Respond with JSON only, no markdown or extra text."""
         {"role": "user", "content": user_prompt},
     ]
 
-    # Call DeepSeek via inference_client (test-friendly patch target)
+# Call DeepSeek via inference_client (test-friendly patch target)
     from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
 
     try:
@@ -478,7 +478,7 @@ async def upload_teacher_material(
         except Exception:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        if user.role not in ("teacher", "admin"):
+if user.role not in ("teacher", "admin"):
             raise HTTPException(status_code=403, detail="Forbidden for this role")
 
         effective_teacher_id = teacherId or user.uid
@@ -507,7 +507,7 @@ async def upload_teacher_material(
             )
 
         # ── Parse file ─────────────────────────────────────────────────────────
-        extracted_text, _char_count, parsed_meta = _parse_uploaded_file(contents, filename)
+extracted_text, _char_count, parsed_meta = _parse_uploaded_file(contents, filename)
         file_type = parsed_meta.get("ext", "")
         if not extracted_text.strip():
             raise HTTPException(
@@ -543,7 +543,7 @@ async def upload_teacher_material(
 
         # ── Generate module via DeepSeek ─────────────────────────────────────
         try:
-            module_data = await _generate_teacher_module(
+module_data = await _generate_teacher_module(
                 course_material_text=extracted_text,
                 rag_results=rag_context,
                 metadata=gen_metadata,

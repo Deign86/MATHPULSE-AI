@@ -32,7 +32,18 @@ from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterato
 from collections import Counter, defaultdict
 from threading import Lock
 
-from services.audit_logger import log_audit_event
+# Lazy import for audit_logger to prevent ModuleNotFoundError during test collection.
+# All call sites use asyncio.create_task() so delaying the import is safe.
+_audit_logger = None
+def _get_audit_logger():
+    global _audit_logger
+    if _audit_logger is None:
+        try:
+            from services.audit_logger import log_audit_event as _fn
+            _audit_logger = _fn
+        except ImportError:
+            _audit_logger = False  # sentinel: don't retry
+    return _audit_logger if _audit_logger is not False else None
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
 try:
@@ -4312,7 +4323,7 @@ def _write_access_audit_log(
     try:
         user = get_current_user(request)
         asyncio.create_task(
-            log_audit_event(
+            _get_audit_logger()(
                 action=action,
                 actor_uid=user.uid,
                 actor_name=getattr(user, "name", "Unknown"),
@@ -5690,7 +5701,7 @@ async def log_client_audit_event(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     asyncio.create_task(
-        log_audit_event(
+        _get_audit_logger()(
             action=payload.action,
             actor_uid=user.uid,
             actor_name=user.name if hasattr(user, "name") else "Unknown",

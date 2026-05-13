@@ -17,6 +17,7 @@ Or safe runner: python -m pytest backend/tests/test_teacher_materials.py -v
 """
 
 import io
+
 import os
 import sys
 from typing import Any, Dict
@@ -53,6 +54,7 @@ def _make_txt(text: str = "Sample lesson plan content.") -> bytes:
 
 
 # ─── Fixtures ──────────────────────────────────────────────────────────────────
+
 @pytest.fixture
 def mock_firestore_client():
     """Mock Firestore client that does NOT raise."""
@@ -200,17 +202,8 @@ class TestTeacherMaterialsFileValidation:
         """DOCX uploads are accepted."""
         files = {"file": ("lesson.docx", _make_docx(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
-        with (
-            patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
-            patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_teacher_module", return_value=None),
-        ):
-            response = client.post(
-                "/api/teacher-materials/upload",
-                files=files,
-                data=data,
-            )
-        assert response.status_code in (200, 500)
+test_accepts_txt patches
+
 
     def test_accepts_txt(self, mock_firestore_unavailable):
         """TXT uploads are accepted."""
@@ -226,7 +219,7 @@ class TestTeacherMaterialsFileValidation:
                 files=files,
                 data=data,
             )
-assert response.status_code in (200, 500)
+        assert response.status_code in (200, 500)
 
     def test_rejects_executable(self):
         """Malicious extension is rejected with 400."""

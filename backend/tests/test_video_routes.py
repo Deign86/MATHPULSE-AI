@@ -122,19 +122,20 @@ def test_search_youtube_videos_no_api_key(no_youtube_api_key):
 
 # ─── Route Tests ────────────────────────────────────────────────
 
-def test_video_search_endpoint_no_api_key(no_youtube_api_key):
+def test_video_search_endpoint_no_api_key():
     """Should return 503 when YouTube API key is not configured."""
-    response = client.post("/api/lessons/videos/search", json={
-        "topic": "quadratic equations",
-        "subject": "General Mathematics",
-        "grade_level": "Grade 11",
-    })
+    with patch("routes.video_routes._get_youtube_service", return_value=(MagicMock(), "")):
+        response = client.post("/api/lessons/videos/search", json={
+            "topic": "quadratic equations",
+            "subject": "General Mathematics",
+            "grade_level": "Grade 11",
+        })
     assert response.status_code == 503
     data = response.json()
     assert data["detail"]["error"] == "youtube_api_not_configured"
 
 
-def test_video_search_endpoint_success(mock_youtube_api_key):
+def test_video_search_endpoint_success():
     """Should return video results when search succeeds."""
     mock_videos = [
         {"videoId": "vid1", "title": "Video 1", "channelTitle": "Channel 1",
@@ -143,15 +144,14 @@ def test_video_search_endpoint_success(mock_youtube_api_key):
          "thumbnailUrl": "http://example.com/2.jpg", "durationSeconds": 450},
     ]
 
-    with patch("routes.video_routes.YOUTUBE_API_KEY", "test_key"):
-        with patch("routes.video_routes.get_video_search_results") as mock_search:
-            mock_search.return_value = {"videos": mock_videos, "cached": False}
-            response = client.post("/api/lessons/videos/search", json={
-                "topic": "quadratic equations",
-                "subject": "General Mathematics",
-                "grade_level": "Grade 11",
-                "lesson_id": "lesson-123",
-            })
+    mock_search = MagicMock(return_value={"videos": mock_videos, "cached": False})
+    with patch("routes.video_routes._get_youtube_service", return_value=(mock_search, "test_key")):
+        response = client.post("/api/lessons/videos/search", json={
+            "topic": "quadratic equations",
+            "subject": "General Mathematics",
+            "grade_level": "Grade 11",
+            "lesson_id": "lesson-123",
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -160,15 +160,14 @@ def test_video_search_endpoint_success(mock_youtube_api_key):
     assert data["videos"][0]["videoId"] == "vid1"
 
 
-def test_video_search_endpoint_empty_results(mock_youtube_api_key):
+def test_video_search_endpoint_empty_results():
     """Should return empty list when no videos found."""
-    with patch("routes.video_routes.YOUTUBE_API_KEY", "test_key"):
-        with patch("routes.video_routes.get_video_search_results") as mock_search:
-            mock_search.return_value = {"videos": [], "cached": False}
-            response = client.post("/api/lessons/videos/search", json={
-                "topic": "very obscure topic xyz123",
-                "subject": "General Mathematics",
-            })
+    mock_search = MagicMock(return_value={"videos": [], "cached": False})
+    with patch("routes.video_routes._get_youtube_service", return_value=(mock_search, "test_key")):
+        response = client.post("/api/lessons/videos/search", json={
+            "topic": "very obscure topic xyz123",
+            "subject": "General Mathematics",
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -176,20 +175,19 @@ def test_video_search_endpoint_empty_results(mock_youtube_api_key):
     assert data["cached"] is False
 
 
-def test_video_search_endpoint_cached(mock_youtube_api_key):
+def test_video_search_endpoint_cached():
     """Should return cached results."""
     mock_videos = [
         {"videoId": "vid1", "title": "Cached Video", "channelTitle": "Channel 1",
          "thumbnailUrl": "http://example.com/1.jpg", "durationSeconds": 300},
     ]
 
-    with patch("routes.video_routes.YOUTUBE_API_KEY", "test_key"):
-        with patch("routes.video_routes.get_video_search_results") as mock_search:
-            mock_search.return_value = {"videos": mock_videos, "cached": True}
-            response = client.post("/api/lessons/videos/search", json={
-                "topic": "linear equations",
-                "lesson_id": "lesson-456",
-            })
+    mock_search = MagicMock(return_value={"videos": mock_videos, "cached": True})
+    with patch("routes.video_routes._get_youtube_service", return_value=(mock_search, "test_key")):
+        response = client.post("/api/lessons/videos/search", json={
+            "topic": "linear equations",
+            "lesson_id": "lesson-456",
+        })
 
     assert response.status_code == 200
     data = response.json()
@@ -197,18 +195,16 @@ def test_video_search_endpoint_cached(mock_youtube_api_key):
     assert len(data["videos"]) == 1
 
 
-def test_video_search_endpoint_validation_error(mock_youtube_api_key):
+def test_video_search_endpoint_validation_error():
     """Should return 422 when topic is missing or too long."""
-    with patch("routes.video_routes.YOUTUBE_API_KEY", "test_key"):
-        response = client.post("/api/lessons/videos/search", json={
-            "topic": "",
-            "subject": "General Mathematics",
-        })
+    response = client.post("/api/lessons/videos/search", json={
+        "topic": "",
+        "subject": "General Mathematics",
+    })
     assert response.status_code == 422
 
-    with patch("routes.video_routes.YOUTUBE_API_KEY", "test_key"):
-        response = client.post("/api/lessons/videos/search", json={
-            "topic": "x" * 201,
-            "subject": "General Mathematics",
-        })
+    response = client.post("/api/lessons/videos/search", json={
+        "topic": "x" * 201,
+        "subject": "General Mathematics",
+    })
     assert response.status_code == 422

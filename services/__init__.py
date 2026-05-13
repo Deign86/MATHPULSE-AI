@@ -1,4 +1,7 @@
-"""Services package - re-exports from ai_client and inference_client."""
+"""Services package - compatibility shim for backend.services."""
+
+import importlib
+import sys
 
 import importlib
 import sys
