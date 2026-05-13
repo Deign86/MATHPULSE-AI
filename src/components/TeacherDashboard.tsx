@@ -65,6 +65,7 @@ import type { ParseWorkbookResult } from '../features/import/services/shsExcel/p
 import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
+import DataImportView from '../features/DataImport/DataImportView';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -103,7 +104,7 @@ interface ClassView {
   riskLevel: 'high' | 'medium' | 'low';
 }
 
-interface StudentView {
+export interface StudentView {
   id: string;
   lrn?: string;
   name: string;
@@ -1280,7 +1281,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          {activeView !== 'analytics' && activeView !== 'intervention' && activeView !== 'competency' && activeView !== 'topic_mastery' && (
+          {activeView !== 'import' && activeView !== 'analytics' && activeView !== 'intervention' && activeView !== 'competency' && activeView !== 'topic_mastery' && (
           <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
@@ -1296,9 +1297,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <div>
                 <h1 className="text-xl font-display font-semibold text-foreground leading-tight">
                   {activeView === 'dashboard' && 'Teacher Dashboard'}
-                  {activeView === 'topic_mastery' && 'Topic Mastery'}
-                  {activeView === 'competency' && 'Student Competency'}
-                  {activeView === 'import' && 'Data Import'}
                   {activeView === 'notifications' && 'Notifications'}
                   {activeView === 'calendar' && 'Calendar'}
                   {activeView === 'quiz_maker' && 'AI Quiz Maker'}
@@ -1306,9 +1304,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                  {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
-                  {activeView === 'competency' && 'Per-student topic-level breakdown'}
-                  {activeView === 'import' && 'Upload class records and materials'}
                   {activeView === 'quiz_maker' && 'Create and manage AI-powered quizzes'}
                   {activeView === 'question_bank' && 'Manage RAG-powered quiz question bank'}
                   {activeView === 'notifications' && 'View classroom alerts and updates'}
@@ -1484,11 +1479,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               />
             )}
             {activeView === 'import' && (
-              <ImportView
-                onEditRecords={() => setActiveView('edit_records')}
+              <DataImportView
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
                 classMetadata={selectedClass?.classMetadata}
+                students={students}
+                teacherId={currentUser?.uid || ''}
+                teacherName={teacherName}
+                onStudentsUpdated={(updated) => setStudents(updated)}
+                onBackToClasses={() => setActiveView('dashboard')}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
                 onImportedClassRecords={(payload) => {
                   const uploadedStudents = payload.students.map((item) =>
                     toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
@@ -1539,14 +1540,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'calendar' && (
               <TeacherCalendarView classes={classes} teacherId={currentUser?.uid} />
             )}
-            {activeView === 'edit_records' && (
-              <EditRecordsView
-                students={students}
-                teacherId={currentUser?.uid || ''}
-                teacherName={teacherName}
-                onBack={() => setActiveView('import')}
-              />
-            )}
+            {/* Edit records view is now handled internally by DataImportView */}
             {activeView === 'quiz_maker' && (
               <QuizMaker onBack={() => setActiveView('dashboard')} />
             )}
@@ -4022,4 +4016,5 @@ function getRiskColor(level: 'high' | 'medium' | 'low') {
 }
 
 export default TeacherDashboard;
+
 
