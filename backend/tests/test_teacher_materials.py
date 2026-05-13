@@ -29,7 +29,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import the app after path is set
-from main import app
+from main import AuthenticatedUser, app
 
 # ─── Test client (shared across all tests) ───────────────────────────────────
 # Uses teacher role header — matches ROLE_POLICIES teacher role
@@ -159,7 +159,11 @@ class TestTeacherMaterialsAuth:
             app,
             headers={"Authorization": "Bearer student-auth-token"},
         )
-        with patch("routes.teacher_materials._get_firestore", return_value=None):
+        mock_student_user = AuthenticatedUser(uid="student123", role="student", email="student@test.com")
+        with (
+            patch("main.get_current_user", return_value=mock_student_user),
+            patch("routes.teacher_materials._get_firestore", return_value=None),
+        ):
             response = student_client.post(
                 "/api/teacher-materials/upload",
                 files=files,
@@ -234,7 +238,7 @@ class TestTeacherMaterialsFileValidation:
             data=data,
         )
         assert response.status_code == 400
-        assert "Invalid file type" in response.json().get("detail", "")
+        assert "Unsupported file format" in response.json().get("detail", "")
 
 
 # ─── Metadata & missing file tests ────────────────────────────────────────────
