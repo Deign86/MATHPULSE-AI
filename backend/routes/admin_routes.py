@@ -5,7 +5,17 @@ import logging
 
 from rag.firebase_storage_loader import _init_firebase_storage, PDF_METADATA
 from scripts.ingest_from_storage import ingest_from_firebase_storage
-from services.audit_logger import log_audit_event
+# Lazy import for audit_logger to prevent ModuleNotFoundError during test collection
+_audit_logger = None
+def _get_audit_logger():
+    global _audit_logger
+    if _audit_logger is None:
+        try:
+            from services.audit_logger import log_audit_event as _fn
+            _audit_logger = _fn
+        except ImportError:
+            _audit_logger = False
+    return _audit_logger if _audit_logger is not False else None
 
 logger = logging.getLogger("mathpulse.admin")
 
@@ -71,7 +81,7 @@ async def upload_pdf(
     
     # Audit log
     import asyncio
-    asyncio.create_task(log_audit_event(
+    asyncio.create_task(_get_audit_logger()(
         action="UPLOAD_COURSE_MATERIAL",
         actor_uid=_admin.uid,
         actor_name=_admin.name if hasattr(_admin, "name") else "Unknown",
@@ -100,7 +110,7 @@ async def reingest_pdf(
     try:
         ingest_from_firebase_storage(force_reindex=True)
         import asyncio
-        asyncio.create_task(log_audit_event(
+        asyncio.create_task(_get_audit_logger()(
             action="REINGEST_RAG_KNOWLEDGE",
             actor_uid=_admin.uid,
             actor_name=_admin.name if hasattr(_admin, "name") else "Unknown",
