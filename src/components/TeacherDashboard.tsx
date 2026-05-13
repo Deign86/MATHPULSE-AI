@@ -42,6 +42,7 @@ import {
   fetchAnalysisCurriculumContext,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
+  type ClassRecordUploadResponse,
   type UploadResponse,
 } from '../services/apiService';
 import {
@@ -2998,6 +2999,10 @@ const ImportView: React.FC<{
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
+  const [classRecordUploadResult, setClassRecordUploadResult] = useState<ClassRecordUploadResponse | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [templateDownloading, setTemplateDownloading] = useState(false);
+  const templateFileInputRef = useRef<HTMLInputElement>(null);
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -3253,6 +3258,58 @@ const ImportView: React.FC<{
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    setTemplateDownloading(true);
+    try {
+      const blob = await apiService.downloadClassRecordTemplate({
+        quarter: teacherQuarter || undefined,
+        subject: teacherSubject || undefined,
+        school_year: classMetadata?.schoolYear || undefined,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `class-record-template-${className || 'default'}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success('Template downloaded');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download template');
+    } finally {
+      setTemplateDownloading(false);
+    }
+  };
+
+  const handleClassRecordUpload = async (file: File) => {
+    setUploading(true);
+    setClassRecordUploadResult(null);
+    try {
+      const result = await apiService.uploadClassRecordTemplate(file);
+      setClassRecordUploadResult(result);
+      if (result.success) {
+        toast.success(result.message || 'Upload complete');
+      } else {
+        toast.error(result.error || 'Upload failed');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (templateFileInputRef.current) {
+        templateFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleTemplateFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      void handleClassRecordUpload(file);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -3284,6 +3341,38 @@ const ImportView: React.FC<{
               dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12' : 'border-border'
             }`}
           >
+            {/* Template Download + Upload Bar */}
+            <div
+              className="flex items-center justify-between mb-4 pb-4 border-b border-border"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleDownloadTemplate}
+                disabled={templateDownloading}
+                className="flex items-center gap-2 text-sm font-medium text-[#9956DE] hover:text-[#7A44B3] transition-colors disabled:opacity-50"
+              >
+                <Download size={16} />
+                {templateDownloading ? 'Downloading...' : 'Download Template'}
+              </button>
+              <div>
+                <input
+                  ref={templateFileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx"
+                  onChange={handleTemplateFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => templateFileInputRef.current?.click()}
+                  disabled={uploading}
+                  size="sm"
+                  className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-semibold rounded-xl"
+                >
+                  {uploading ? 'Uploading...' : 'Upload Filled Template'}
+                </Button>
+              </div>
+            </div>
+
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
               onDragLeave={() => setDragOver1(false)}
@@ -3324,6 +3413,71 @@ const ImportView: React.FC<{
                 Click or drag & drop
               </Button>
             </div>
+
+            {/* Class Record Upload Results */}
+            {classRecordUploadResult && (
+              <div className="mt-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                {classRecordUploadResult.summary && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-muted rounded-xl p-3 text-center">
+                      <p className="text-2xl font-bold text-foreground">{classRecordUploadResult.summary.totalStudents}</p>
+                      <p className="text-xs text-muted-foreground">Total Students</p>
+                    </div>
+                    <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3 text-center border border-red-200 dark:border-red-800">
+                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">{classRecordUploadResult.summary.atRiskCount}</p>
+                      <p className="text-xs text-red-500">At Risk</p>
+                    </div>
+                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center border border-amber-200 dark:border-amber-800">
+                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{classRecordUploadResult.summary.mediumRiskCount}</p>
+                      <p className="text-xs text-amber-500">Medium Risk</p>
+                    </div>
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-800">
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{classRecordUploadResult.summary.lowRiskCount}</p>
+                      <p className="text-xs text-emerald-500">Low Risk</p>
+                    </div>
+                  </div>
+                )}
+
+                {classRecordUploadResult.students && classRecordUploadResult.students.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-2">At-Risk Students</h4>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {classRecordUploadResult.students
+                        .filter((s) => s.riskLevel === 'high')
+                        .slice(0, 20)
+                        .map((student, i) => (
+                          <div key={i} className="flex items-center justify-between bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
+                            <span className="text-sm font-medium text-foreground">{student.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-red-500 font-semibold">{student.riskScore.toFixed(1)}%</span>
+                              {student.topFactors.length > 0 && (
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{student.topFactors.slice(0, 2).join(', ')}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {classRecordUploadResult.metadata && (
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground border-t border-border pt-3">
+                    {classRecordUploadResult.metadata.className && (
+                      <span className="bg-muted px-2 py-1 rounded">Class: {classRecordUploadResult.metadata.className}</span>
+                    )}
+                    {classRecordUploadResult.metadata.subject && (
+                      <span className="bg-muted px-2 py-1 rounded">Subject: {classRecordUploadResult.metadata.subject}</span>
+                    )}
+                    {classRecordUploadResult.metadata.quarter && (
+                      <span className="bg-muted px-2 py-1 rounded">Quarter: {classRecordUploadResult.metadata.quarter}</span>
+                    )}
+                    {classRecordUploadResult.metadata.schoolYear && (
+                      <span className="bg-muted px-2 py-1 rounded">SY: {classRecordUploadResult.metadata.schoolYear}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Course Materials */}
