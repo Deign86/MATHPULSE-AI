@@ -1046,3 +1046,10 @@ def is_sequential_model(model_id: str = "") -> bool:
         if lock == REASONER_MODEL:
             return True
     return False
+
+
+# Lazy re-export of main.call_hf_chat_async for teacher_materials route
+def call_hf_chat_async(*args: Any, **kwargs: Any) -> Any:
+    """Delegate to main.call_hf_chat_async at call time to avoid circular imports."""
+    from main import call_hf_chat_async as _fn  # type: ignore[import-not-found]
+    return _fn(*args, **kwargs)
