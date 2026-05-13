@@ -2975,6 +2975,10 @@ const ImportView: React.FC<{
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
+  const [teacherSubject, setTeacherSubject] = useState(classMetadata?.classification || '');
+  const [teacherQuarter, setTeacherQuarter] = useState('');
+  const [teacherStrand, setTeacherStrand] = useState(classMetadata?.strand || '');
+  const [teacherGradeLevel, setTeacherGradeLevel] = useState(classMetadata?.gradeLevel?.toString() || '');
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
     summary?: {
@@ -3193,18 +3197,25 @@ const ImportView: React.FC<{
     setUploadingCourseMaterials(true);
     setUploadResult('');
     try {
-      const result = await apiService.uploadCourseMaterials(file, {
-        classSectionId,
-        className,
+      const result = await apiService.uploadTeacherMaterial(file, {
+        gradeLevel: teacherGradeLevel || undefined,
+        subject: teacherSubject || undefined,
+        strandOrTrack: teacherStrand || undefined,
+        quarter: teacherQuarter || undefined,
+        classId: classSectionId,
       });
 
       if (result.success) {
-        const topicCount = result.topics?.length ?? 0;
-        toast.success(`Course material imported (${topicCount} topics extracted). Lesson generation now has material context.`);
+        toast.success(result.message || 'Teacher module created and available to students.');
         setUploadResult(
-          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s). Lesson generation is now ready with material context.`,
+          result.moduleId
+            ? `Module "${result.title}" created and available to students.`
+            : result.message,
         );
         onDataChanged?.();
+      } else {
+        toast.error(result.error || result.message || 'Course material upload failed');
+        setUploadResult(result.message || 'Course material upload failed.');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Course material upload failed');
@@ -3316,16 +3327,79 @@ const ImportView: React.FC<{
           </div>
 
           {/* Course Materials */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
-            onDragLeave={() => setDragOver2(false)}
-            onDrop={handleCourseMaterialDrop}
-            onClick={() => materialInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 ${
-              dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
-            }`}
-          >
-            <input
+          <div className="flex flex-col gap-4">
+            {/* Metadata Form */}
+            <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 rounded-2xl border border-border">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Subject</label>
+                <select
+                  value={teacherSubject}
+                  onChange={(e) => setTeacherSubject(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+                >
+                  <option value="">Select subject</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="English">English</option>
+                  <option value="Science">Science</option>
+                  <option value="Filipino">Filipino</option>
+                  <option value="Aralin Panlipunan">Aralin Panlipunan</option>
+                  <option value="ESP">ESP</option>
+                  <option value="TLE">TLE</option>
+                  <option value="Music">Music</option>
+                  <option value="Arts">Arts</option>
+                  <option value="Physical Education">Physical Education</option>
+                  <option value="Health">Health</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Quarter</label>
+                <select
+                  value={teacherQuarter}
+                  onChange={(e) => setTeacherQuarter(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+                >
+                  <option value="">Select quarter</option>
+                  <option value="Quarter 1">Quarter 1</option>
+                  <option value="Quarter 2">Quarter 2</option>
+                  <option value="Quarter 3">Quarter 3</option>
+                  <option value="Quarter 4">Quarter 4</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Grade Level</label>
+                <select
+                  value={teacherGradeLevel}
+                  onChange={(e) => setTeacherGradeLevel(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+                >
+                  <option value="">Select grade</option>
+                  <option value="Grade 11">Grade 11</option>
+                  <option value="Grade 12">Grade 12</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Strand/Track</label>
+                <input
+                  type="text"
+                  value={teacherStrand}
+                  onChange={(e) => setTeacherStrand(e.target.value)}
+                  placeholder="e.g. STEM"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+                />
+              </div>
+            </div>
+
+            {/* Drop Zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
+              onDragLeave={() => setDragOver2(false)}
+              onDrop={handleCourseMaterialDrop}
+              onClick={() => materialInputRef.current?.click()}
+              className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 flex-1 ${
+                dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
+              }`}
+            >
+              <input
               ref={materialInputRef}
               type="file"
               accept=".pdf,.docx,.txt"
@@ -3356,6 +3430,7 @@ const ImportView: React.FC<{
             <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-bold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
+            </div>
           </div>
 
         </div>

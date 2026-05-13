@@ -50,6 +50,29 @@ export interface CurriculumModuleBlueprint {
   isAvailable?: boolean;
 }
 
+export interface TeacherUploadedModule {
+  moduleId: string;
+  title: string;
+  gradeLevel: string;
+  subject: string;
+  quarter: string;
+  strandOrTrack: string | null;
+  competencyTags: string[];
+  moduleType: 'teacher_uploaded';
+  sourceLabel: 'Teacher Upload';
+  summary: string;
+  learningObjectives: string[];
+  sections: Array<{ title: string; content: string }>;
+  practice: Array<{
+    question: string;
+    options: Array<{ label: string; text: string }>;
+    answer: string;
+    explanation: string;
+  }>;
+  teacherId: string;
+  createdAt: any; // using any or timestamp, since Firebase is not imported here natively. Better to just use any or import Timestamp if available. Wait, FirebaseFirestore.Timestamp is in the instructions, but we can't easily import it without bringing in firebase-admin or firebase/firestore. Let's use `any` or `{ seconds: number; nanoseconds: number } | null` or just `Date | any`. I will use `any` or `Date | null | { seconds: number, nanoseconds: number }` for safety without imports.
+}
+
 export type CurriculumModuleRuntime = Module & {
   subjectId: CurriculumSubjectId;
   subject: string;

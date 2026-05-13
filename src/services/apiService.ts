@@ -386,6 +386,14 @@ export interface CourseMaterialUploadResponse {
   };
 }
 
+export interface TeacherMaterialUploadResponse {
+  success: boolean;
+  moduleId?: string;
+  title?: string;
+  message: string;
+  error?: string;
+}
+
 export interface CourseMaterialArtifactSummary {
   materialId: string;
   fileName: string;
@@ -2172,6 +2180,37 @@ export const apiService = {
 
     return apiFetch<CourseMaterialUploadResponse>(
       '/api/upload/course-materials',
+      { method: 'POST', body: formData },
+      UPLOAD_RETRY_OPTS,
+    );
+  },
+
+  /**
+   * Upload a course material (PDF/DOCX/TXT) and generate a teacher-uploaded
+   * student-facing curriculum module via DeepSeek + RAG.
+   */
+  async uploadTeacherMaterial(
+    file: File,
+    options?: {
+      teacherId?: string;
+      classId?: string;
+      gradeLevel?: string;
+      subject?: string;
+      quarter?: string;
+      strandOrTrack?: string;
+    },
+  ): Promise<TeacherMaterialUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (options?.teacherId) formData.append('teacherId', options.teacherId);
+    if (options?.classId) formData.append('classId', options.classId);
+    if (options?.gradeLevel) formData.append('gradeLevel', options.gradeLevel);
+    if (options?.subject) formData.append('subject', options.subject);
+    if (options?.quarter) formData.append('quarter', options.quarter);
+    if (options?.strandOrTrack) formData.append('strandOrTrack', options.strandOrTrack);
+
+    return apiFetch<TeacherMaterialUploadResponse>(
+      '/api/teacher-materials/upload',
       { method: 'POST', body: formData },
       UPLOAD_RETRY_OPTS,
     );

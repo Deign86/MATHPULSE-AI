@@ -13,7 +13,12 @@ import {
   ExternalLink,
   Sparkles,
   RotateCcw,
+  GraduationCap,
+  BookUser,
 } from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { type TeacherUploadedModule } from '../data/curriculumModules';
 import { motion, AnimatePresence } from 'motion/react';
 import ModuleFolderCard from './ModuleFolderCard';
 import ModuleDetailView from './ModuleDetailView';
@@ -57,7 +62,7 @@ interface ModulesPageProps {
   hasCompletedDiagnostic?: boolean;
 }
 
-type ModulesTab = 'modules' | 'recommended' | 'practice';
+type ModulesTab = 'modules' | 'recommended' | 'practice' | 'teacher_uploaded';
 
 const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
 
@@ -123,6 +128,39 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   // Competency profile state for personalized module filtering
   const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
   const [competencyProfileLoading, setCompetencyProfileLoading] = useState(false);
+
+  // Teacher uploaded modules state
+  const [teacherModules, setTeacherModules] = useState<TeacherUploadedModule[]>([]);
+  const [teacherModulesLoading, setTeacherModulesLoading] = useState(false);
+
+  // Fetch teacher-uploaded modules from Firestore
+  useEffect(() => {
+    if (activeTab !== 'teacher_uploaded') return;
+    
+    if (!db) return;
+    
+    setTeacherModulesLoading(true);
+    const unsubscribe = onSnapshot(
+      query(collection(db, 'modules'), where('moduleType', '==', 'teacher_uploaded')),
+      (snapshot) => {
+        const modules = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            ...data,
+            moduleId: doc.id,
+          } as TeacherUploadedModule;
+        });
+        setTeacherModules(modules);
+        setTeacherModulesLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching teacher modules:', error);
+        setTeacherModulesLoading(false);
+      }
+    );
+    
+    return () => unsubscribe();
+  }, [activeTab]);
 
 
   // Daily Rewards (new weekly shuffle system)
@@ -546,6 +584,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
               { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
               { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
+              { id: 'teacher_uploaded', label: 'Teacher Uploaded', icon: GraduationCap, color: 'text-[#F08386]' },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -599,6 +638,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
               </>
             )}
+            {activeTab === 'teacher_uploaded' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-[#F08386]/15 border border-[#F08386]/30 flex items-center justify-center text-[#F08386]">
+                  <BookUser size={15} strokeWidth={2.5} />
+                </div>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Teacher Uploaded Modules</span>
+              </>
+            )}
 
           </div>
         </div>
@@ -650,6 +697,52 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         >
           {activeTab === 'practice' ? (
             <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
+          ) : activeTab === 'teacher_uploaded' ? (
+            teacherModulesLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 animate-pulse">
+                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-4" />
+                    <div className="h-3 bg-slate-100 rounded w-1/2 mb-3" />
+                    <div className="h-3 bg-slate-100 rounded w-5/6" />
+                  </div>
+                ))}
+              </div>
+            ) : teacherModules.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 bg-[#F08386]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <BookUser size={32} className="text-[#F08386]" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">No Teacher-Uploaded Modules Yet</h3>
+                <p className="text-slate-500 text-sm">Your teachers haven't uploaded any custom modules yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                {teacherModules.map((mod) => (
+                  <div
+                    key={mod.moduleId}
+                    className="bg-white rounded-2xl border border-[#F08386]/30 p-6 hover:border-[#F08386]/60 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => {/* open module detail */}}
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="px-2 py-1 rounded-md bg-[#F08386]/12 border border-[#F08386]/30 text-[#F08386] text-xs font-bold">
+                        Teacher Upload
+                      </span>
+                      {mod.quarter && (
+                        <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs">
+                          {mod.quarter}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2">{mod.title}</h3>
+                    <p className="text-sm text-slate-600 mb-3">{mod.subject} · {mod.gradeLevel}</p>
+                    {mod.summary && (
+                      <p className="text-xs text-slate-500 line-clamp-3">{mod.summary}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
           ) : activeTab === 'modules' ? (
             <ModulesLibraryView
               modules={filteredModules}
