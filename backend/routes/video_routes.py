@@ -11,10 +11,19 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from services.youtube_service import (
-    get_video_search_results,
-    YOUTUBE_API_KEY,
-)
+_youtube_service = None
+
+
+def _get_youtube_service():
+    global _youtube_service
+    if _youtube_service is not None:
+        return _youtube_service
+    try:
+        from services.youtube_service import get_video_search_results, YOUTUBE_API_KEY  # type: ignore[import-untyped]
+    except ImportError:
+        from backend.services.youtube_service import get_video_search_results, YOUTUBE_API_KEY  # type: ignore[import-untyped]
+    _youtube_service = (get_video_search_results, YOUTUBE_API_KEY)
+    return _youtube_service
 
 logger = logging.getLogger("mathpulse.videos")
 router = APIRouter(prefix="/api/lessons/videos", tags=["videos"])
@@ -51,6 +60,9 @@ async def search_videos(request: Request, payload: VideoSearchRequest):
     - Filters for educational channels, medium/long duration, HD quality
     - Returns up to 3 video results
     """
+    # Lazy import to avoid stale-services shadowing at project root
+    get_video_search_results, YOUTUBE_API_KEY = _get_youtube_service()
+
     # Graceful degradation: if YouTube API key is not configured, return 503
     # so the frontend can hide the video section silently
     if not YOUTUBE_API_KEY:
