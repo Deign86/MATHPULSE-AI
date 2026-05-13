@@ -15,8 +15,26 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from rag.pdf_ingestion import ingest_pdf, IngestionResult
-from services.question_bank_service import get_questions_for_battle, cache_session_questions, get_cached_session
-from services.variance_engine import apply_variance
+_quiz_battle_services = None
+
+
+def _get_quiz_battle_services():
+    global _quiz_battle_services
+    if _quiz_battle_services is not None:
+        return _quiz_battle_services
+    try:
+        from services.question_bank_service import get_questions_for_battle, cache_session_questions, get_cached_session  # type: ignore[import-untyped]
+        from services.variance_engine import apply_variance  # type: ignore[import-untyped]
+    except ImportError:
+        from backend.services.question_bank_service import get_questions_for_battle, cache_session_questions, get_cached_session  # type: ignore[import-untyped]
+        from backend.services.variance_engine import apply_variance  # type: ignore[import-untyped]
+    _quiz_battle_services = (
+        get_questions_for_battle,
+        cache_session_questions,
+        get_cached_session,
+        apply_variance,
+    )
+    return _quiz_battle_services
 
 try:
     from firebase_admin import firestore as firebase_firestore
@@ -103,6 +121,14 @@ async def generate_questions(
     Returns questions with choices but WITHOUT correct_answer (unless called
     by an internal service with X-Internal-Service header).
     """
+    # Lazy import to avoid stale-services shadowing at project root
+    (
+        get_questions_for_battle,
+        cache_session_questions,
+        _get_cached_session,
+        apply_variance,
+    ) = _get_quiz_battle_services()
+
     # 1. Fetch base questions
     questions = await get_questions_for_battle(
         body.grade_level,
