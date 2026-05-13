@@ -163,10 +163,12 @@ def _parse_txt(contents: bytes) -> tuple[str, List[str]]:
     return text, []
 
 
-def _extract_content(
+def _parse_uploaded_file(
     contents: bytes, filename: str
-) -> tuple[str, List[str], str]:
-    """Router that dispatches to correct parser based on extension."""
+) -> tuple[str, int, dict]:
+    """Parse uploaded file — returns (text, char_count, metadata_dict).
+
+    Called both by the route handler and in tests (patched)."""
     ext = os.path.splitext(filename)[1].lower()
     if ext == ".pdf":
         text, outlines = _parse_pdf(contents)
@@ -177,9 +179,9 @@ def _extract_content(
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format: {ext}. Use .pdf, .docx, or .txt",
+            detail=f"Invalid file type: {ext}. Use .pdf, .docx, or .txt",
         )
-    return text, outlines, ext.replace(".", "")
+    return text, len(text), {"ext": ext.replace(".", ""), "outlines": outlines}
 
 
 # ─── RAG Context Retrieval ────────────────────────────────────────────────────
@@ -217,6 +219,18 @@ def _retrieve_rag_context(
     except Exception as e:
         logger.warning(f"RAG retrieval failed: {e}")
         return ""
+
+
+async def _generate_teacher_module(
+    course_material_text: str,
+    rag_results: str,
+    metadata: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Async wrapper delegating to _generate_module_via_deepseek.
+
+    Exists as a stable patch target for tests and future override points.
+    """
+    return await _generate_module_via_deepseek(course_material_text, rag_results, metadata)
 
 
 # ─── DeepSeek Module Generation ───────────────────────────────────────────────
@@ -324,9 +338,8 @@ Respond with JSON only, no markdown or extra text."""
         {"role": "user", "content": user_prompt},
     ]
 
-    # Call DeepSeek via the existing async pattern
-    # Import from main at call time to avoid circular imports
-    from main import call_hf_chat_async
+    # Call DeepSeek via inference_client (test-friendly patch target)
+    from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
 
     try:
         raw_response = await call_hf_chat_async(
@@ -465,6 +478,9 @@ async def upload_teacher_material(
         except Exception:
             raise HTTPException(status_code=401, detail="Authentication required")
 
+        if user.role not in ("teacher", "admin"):
+            raise HTTPException(status_code=403, detail="Forbidden for this role")
+
         effective_teacher_id = teacherId or user.uid
 
         # ── File validation ─────────────────────────────────────────────────────
@@ -491,7 +507,8 @@ async def upload_teacher_material(
             )
 
         # ── Parse file ─────────────────────────────────────────────────────────
-        extracted_text, outlines, file_type = _extract_content(contents, filename)
+        extracted_text, _char_count, parsed_meta = _parse_uploaded_file(contents, filename)
+        file_type = parsed_meta.get("ext", "")
         if not extracted_text.strip():
             raise HTTPException(
                 status_code=400,
@@ -526,7 +543,7 @@ async def upload_teacher_material(
 
         # ── Generate module via DeepSeek ─────────────────────────────────────
         try:
-            module_data = await _generate_module_via_deepseek(
+            module_data = await _generate_teacher_module(
                 course_material_text=extracted_text,
                 rag_results=rag_context,
                 metadata=gen_metadata,

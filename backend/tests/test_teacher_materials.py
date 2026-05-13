@@ -20,7 +20,7 @@ import io
 import os
 import sys
 from typing import Any, Dict
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest  # type: ignore[import-not-found]
 from fastapi.testclient import TestClient
@@ -119,13 +119,9 @@ def mock_deepseek_success():
         },
     }
 
-    mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(
-            message=MagicMock(content=module_json)
-        )
-    ]
-    with patch("services.inference_client.call_hf_chat_async", new_callable=AsyncMock, return_value=mock_response):
+    import json
+    json_string = json.dumps(module_json)
+    with patch("services.inference_client.call_hf_chat_async", new_callable=AsyncMock, return_value=json_string):
         yield
 
 
@@ -396,7 +392,7 @@ class TestTeacherMaterialsRAG:
 
         captured_args: Dict[str, Any] = {}
 
-        def capture_generate(raw_text, rag_results, metadata):
+        async def capture_generate(raw_text, rag_results, metadata):
             captured_args["raw_text"] = raw_text
             captured_args["rag_results"] = rag_results
             captured_args["metadata"] = metadata
