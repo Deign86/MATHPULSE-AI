@@ -2,6 +2,7 @@
 
 import importlib
 import sys
+import pkgutil
 
 from .ai_client import (
     get_deepseek_client,
@@ -50,22 +51,21 @@ __all__ = [
 
 
 def _alias_backend_services() -> None:
-    """Expose backend.services.* modules under services.* for test imports."""
+    """Expose all backend.services.* modules under services.* for test imports."""
     try:
         backend_services = importlib.import_module("backend.services")
     except Exception:
         return
 
-    module_names = (
-        "audit_logger",
-        "question_bank_service",
-        "variance_engine",
-        "youtube_service",
-    )
-
-    for name in module_names:
-        full_name = f"backend.services.{name}"
-        alias_name = f"services.{name}"
+    for importer, modname, ispkg in pkgutil.iter_modules(backend_services.__path__):
+        if ispkg:
+            continue
+        # Skip modules that already exist in the root services package
+        # (ai_client, inference_client are already re-exported directly)
+        full_name = f"backend.services.{modname}"
+        alias_name = f"services.{modname}"
+        if alias_name in sys.modules:
+            continue
         try:
             module = importlib.import_module(full_name)
         except Exception:
