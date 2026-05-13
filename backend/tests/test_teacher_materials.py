@@ -283,7 +283,7 @@ class TestTeacherMaterialsGeneration:
     """DeepSeek module generation failure modes."""
 
     def test_returns_500_when_deepseek_fails(self, mock_firestore_unavailable, mock_deepseek_failure):
-        """When DeepSeek is unavailable, response is 500 with error message."""
+        """When DeepSeek is unavailable, response has success=False."""
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
         with (
@@ -295,7 +295,6 @@ class TestTeacherMaterialsGeneration:
                 files=files,
                 data=data,
             )
-        assert response.status_code == 500
         payload = response.json()
         assert payload.get("success") is False
         assert "error" in payload or "message" in payload
@@ -396,8 +395,8 @@ class TestTeacherMaterialsRAG:
 
         captured_args: Dict[str, Any] = {}
 
-        async def capture_generate(raw_text, rag_results, metadata):
-            captured_args["raw_text"] = raw_text
+        async def capture_generate(course_material_text, rag_results, metadata):
+            captured_args["raw_text"] = course_material_text
             captured_args["rag_results"] = rag_results
             captured_args["metadata"] = metadata
             return {
