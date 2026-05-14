@@ -1,38 +1,35 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   AlertTriangle,
   Bell,
-  Bot,
   CheckCheck,
   Clock,
   GraduationCap,
   Loader2,
   MessageSquare,
   Trophy,
-  Zap,
+  Sparkles,
+  Users,
+  History,
+  MoreVertical,
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { useNotifications } from '@/features/notifications';
+import { useNotifications, Notification } from '@/features/notifications';
+import { formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 
 interface TeacherNotificationsViewProps {
   liveActivity?: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
   atRiskStudents?: { name: string; riskLevel: string; weakestTopic: string }[];
+  onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
+  onOpenInsightModal?: () => void;
+  userPhoto?: string;
+  teacherName?: string;
 }
 
-const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liveActivity, atRiskStudents }) => {
+const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
-
-  const formatRelativeTime = (date: Date): string => {
-    const diffMs = Date.now() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-  };
+  const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all');
 
   const iconForType = (type: string) => {
     switch (type) {
@@ -46,166 +43,232 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liv
         return GraduationCap;
       case 'reminder':
       case 'streak_reminder':
+      case 'daily_checkin':
         return Clock;
       case 'risk_alert':
         return AlertTriangle;
-      case 'automation':
-      case 'system_alert':
-        return Bot;
+      case 'sparkles':
+      case 'lesson_plan_ready':
+        return Sparkles;
+      case 'users':
+      case 'student_import':
+        return Users;
       default:
         return Bell;
     }
   };
 
-  const badgeForType = (type: string) => {
+  const getNotificationColor = (type: string, isRead: boolean) => {
+    if (isRead) return 'bg-slate-50 text-slate-500 border-slate-100 opacity-70';
     switch (type) {
       case 'risk_alert':
-        return 'bg-destructive/10 text-destructive';
-      case 'achievement_unlocked':
-      case 'achievement':
-        return 'bg-rose-500/10 text-rose-600 dark:text-rose-400';
-      case 'message':
-        return 'bg-sky-500/10 text-sky-700 dark:text-sky-400';
-      case 'grade':
-      case 'quiz_result':
-        return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
-      case 'reminder':
-      case 'streak_reminder':
-        return 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
-      case 'automation':
-      case 'system_alert':
-        return 'bg-violet-500/10 text-violet-700 dark:text-violet-400';
+        return 'bg-rose-50/30 text-rose-500 border-rose-100';
+      case 'sparkles':
+      case 'lesson_plan_ready':
+        return 'bg-purple-50/30 text-[#a855f7] border-purple-100';
+      case 'daily_checkin':
+        return 'bg-amber-50/20 text-amber-500 border-amber-100';
+      case 'users':
+      case 'student_import':
+        return 'bg-blue-50/30 text-blue-500 border-blue-100';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-slate-50 text-slate-500 border-slate-100';
     }
   };
 
+  const getGradientColor = (type: string) => {
+    switch (type) {
+      case 'risk_alert':
+        return 'from-rose-400 to-rose-600 shadow-[0_4px_12px_rgba(244,63,94,0.3)]';
+      case 'sparkles':
+      case 'lesson_plan_ready':
+        return 'from-[#a855f7] to-[#9333ea] shadow-[0_4px_12px_rgba(168,85,247,0.3)]';
+      case 'daily_checkin':
+        return 'from-amber-300 to-amber-500 shadow-[0_4px_12px_rgba(245,158,11,0.3)]';
+      case 'users':
+      case 'student_import':
+        return 'from-blue-400 to-blue-600 shadow-[0_4px_12px_rgba(59,130,246,0.3)]';
+      default:
+        return 'from-slate-400 to-slate-600 shadow-[0_4px_12px_rgba(100,116,139,0.3)]';
+    }
+  };
+
+  const filteredNotifications = useMemo(() => {
+    let result = notifications;
+    if (filter === 'unread') result = result.filter(n => !n.isRead);
+    if (filter === 'important') result = result.filter(n => n.type === 'risk_alert');
+    return result;
+  }, [notifications, filter]);
+
+  const groupedNotifications = useMemo(() => {
+    const groups: { title: string; icon: any; items: Notification[] }[] = [];
+    const today = filteredNotifications.filter(n => isToday(n.createdAt));
+    const yesterday = filteredNotifications.filter(n => isYesterday(n.createdAt));
+    const older = filteredNotifications.filter(n => !isToday(n.createdAt) && !isYesterday(n.createdAt));
+    if (today.length > 0) groups.push({ title: 'Today', icon: Clock, items: today });
+    if (yesterday.length > 0) groups.push({ title: 'Yesterday', icon: History, items: yesterday });
+    if (older.length > 0) groups.push({ title: 'Earlier', icon: History, items: older });
+    return groups;
+  }, [filteredNotifications]);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -18 }}
-      className="p-4 sm:p-6 space-y-4"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 flex items-center justify-center flex-shrink-0">
-              <Bell size={20} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-2xl font-display font-bold text-foreground">Notifications</h2>
-              <p className="text-sm text-muted-foreground font-body">Classroom alerts and updates</p>
-            </div>
+    <div className="w-full h-full flex flex-col bg-[#f8fafc]/50">
+      <div className="max-w-[900px] mx-auto w-full p-[24px] xl:p-[32px] space-y-[24px] flex-1 overflow-y-auto no-scrollbar pb-12">
+
+        {/* Filters + controls row */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Filter tabs */}
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-6 py-2.5 text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border ${
+              filter === 'all'
+                ? 'bg-purple-50 text-[#9333ea] border-purple-200 shadow-md font-bold'
+                : 'bg-white/80 text-[#64748b] border-white hover:border-[#e2e8f0] shadow-sm font-medium'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilter('unread')}
+            className={`px-6 py-2.5 text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border flex items-center gap-2 ${
+              filter === 'unread'
+                ? 'bg-purple-50 text-[#9333ea] border-purple-200 shadow-md font-bold'
+                : 'bg-white/80 text-[#64748b] border-white hover:border-[#e2e8f0] shadow-sm font-medium'
+            }`}
+          >
+            Unread
+            <span className="w-5 h-5 rounded-full bg-slate-100 text-[10px] font-bold flex items-center justify-center text-slate-500">
+              {unreadCount}
+            </span>
+          </button>
+          <button
+            onClick={() => setFilter('important')}
+            className={`px-6 py-2.5 text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border flex items-center gap-2 ${
+              filter === 'important'
+                ? 'bg-purple-50 text-[#9333ea] border-purple-200 shadow-md font-bold'
+                : 'bg-white/80 text-[#64748b] border-white hover:border-[#e2e8f0] shadow-sm font-medium'
+            }`}
+          >
+            Important
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+          </button>
+
+          {/* Right: unread count + mark all */}
+          <div className="ml-auto flex items-center gap-3 shrink-0">
+            <span className="text-[13px] font-bold text-[#64748b]">
+              {unreadCount > 0 ? `${unreadCount} unread` : 'No unread'}
+            </span>
+            <button
+              onClick={markAllAsRead}
+              disabled={unreadCount === 0}
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-[13px] font-bold rounded-full px-5 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+            >
+              <CheckCheck className="w-4 h-4 text-[#94a3b8] group-hover:text-emerald-500 transition-colors" />
+              Mark all as read
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-xs text-muted-foreground font-body">
-            {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-          </div>
-          {unreadCount > 0 && (
-            <Button variant="outline" size="sm" onClick={markAllAsRead}>
-              <CheckCheck />
-              Mark all as read
-            </Button>
+        {/* Notification List */}
+        <div className="space-y-8">
+          {isLoading ? (
+            <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white p-12 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="w-8 h-8 text-[#a855f7] animate-spin" />
+              <p className="text-[14px] font-medium text-[#64748b]">Syncing notifications...</p>
+            </div>
+          ) : groupedNotifications.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white p-16 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100">
+                <Bell className="w-10 h-10 text-slate-300" />
+              </div>
+              <h3 className="text-[18px] font-bold text-[#1e293b] mb-2">All clear!</h3>
+              <p className="text-[14px] text-[#64748b] max-w-sm">
+                No notifications found for this filter. New alerts will appear here automatically.
+              </p>
+            </div>
+          ) : (
+            groupedNotifications.map((group) => (
+              <div key={group.title}>
+                <h3 className="text-[12px] font-bold text-[#94a3b8] uppercase tracking-wider mb-3 ml-2 flex items-center gap-2">
+                  <group.icon className="w-4 h-4" /> {group.title}
+                </h3>
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-[#f1f5f9]">
+                  {group.items.map((notification) => {
+                    const Icon = iconForType(notification.type);
+                    const isRisk = notification.type === 'risk_alert';
+                    return (
+                      <motion.div
+                        layout
+                        key={notification.id}
+                        onClick={() => !notification.isRead && markAsRead(notification.id)}
+                        className={`relative p-5 flex gap-5 group cursor-pointer hover:bg-white transition-all duration-300 ${
+                          !notification.isRead ? getNotificationColor(notification.type, false) : 'opacity-80'
+                        }`}
+                      >
+                        {/* Unread accent bar */}
+                        <div className={`absolute left-0 top-0 w-1.5 h-full transition-colors ${
+                          !notification.isRead
+                            ? (isRisk ? 'bg-rose-500' : 'bg-[#a855f7]')
+                            : 'bg-transparent'
+                        }`} />
+
+                        {/* Icon */}
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform bg-gradient-to-br ${getGradientColor(notification.type)}`}>
+                          <Icon className="w-6 h-6" />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start mb-1">
+                            <h4 className="text-[15px] font-bold text-[#1e293b] flex items-center gap-2 truncate pr-4">
+                              {notification.title}
+                              {!notification.isRead && (
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                                  isRisk
+                                    ? 'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)]'
+                                    : 'bg-[#a855f7] shadow-[0_0_6px_rgba(168,85,247,0.8)]'
+                                }`} />
+                              )}
+                            </h4>
+                            <span className={`text-[12px] font-bold whitespace-nowrap ${
+                              !notification.isRead
+                                ? (isRisk ? 'text-rose-600' : 'text-[#a855f7]')
+                                : 'text-[#94a3b8]'
+                            }`}>
+                              {formatDistanceToNow(notification.createdAt)} ago
+                            </span>
+                          </div>
+                          <p className="text-[14px] text-[#475569] font-medium leading-relaxed">
+                            {notification.message}
+                          </p>
+                          {!notification.isRead && notification.actionUrl && (
+                            <div className="mt-3 flex gap-2">
+                              <button className={`px-5 py-2 bg-white border rounded-full text-[12px] font-bold shadow-sm transition-all hover:-translate-y-0.5 ${
+                                isRisk
+                                  ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
+                                  : 'border-purple-200 text-[#9333ea] hover:bg-purple-50'
+                              }`}>
+                                Review Plan
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* More button */}
+                        <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-slate-600 transition-all rounded-full hover:bg-slate-100 shrink-0 self-start">
+                          <MoreVertical size={18} />
+                        </button>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </div>
 
-      <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 size={18} className="animate-spin" />
-            <span className="text-sm font-body">Loading notifications…</span>
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="p-10">
-            <div className="max-w-xl">
-              <div className="w-12 h-12 rounded-xl bg-muted text-muted-foreground flex items-center justify-center mb-4">
-                <Bell size={22} />
-              </div>
-              <h3 className="text-lg font-display font-bold text-foreground mb-1">No notifications</h3>
-              <p className="text-sm text-muted-foreground font-body">Teacher alerts and classroom updates will appear here.</p>
-            </div>
-          </div>
-        )         : (
-          <div>
-            {liveActivity && liveActivity.length > 0 && (
-              <div>
-                {liveActivity.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="w-full text-left px-4 py-4 border-b border-border transition-colors hover:bg-accent/40"
-                  >
-                    <div className="flex gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        activity.type === 'success' ? 'bg-[#75D06A]/15 text-[#4D9F46]' :
-                        activity.type === 'warning' ? 'bg-[#F08386]/15 text-[#C65E63]' :
-                        'bg-[#9956DE]/15 text-[#9956DE]'
-                      }`}>
-                        <Zap size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-body font-bold text-foreground line-clamp-1">{activity.student} — {activity.action}</h4>
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground font-body leading-relaxed line-clamp-2">Topic: {activity.topic}</p>
-                          </div>
-                          <div className="text-xs text-muted-foreground font-body flex-shrink-0">{activity.time}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {notifications.map((notification) => {
-              const Icon = iconForType(notification.type);
-              const badge = badgeForType(notification.type);
-              const time = formatRelativeTime(notification.createdAt);
-
-              return (
-                <button
-                  key={notification.id}
-                  onClick={() => markAsRead(notification.id)}
-                  className={`w-full text-left px-4 py-4 border-b border-border last:border-b-0 transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
-                    notification.isRead ? '' : 'bg-sky-50/40 dark:bg-sky-500/5'
-                  }`}
-                >
-                  <div className="flex gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${badge}`}>
-                      <Icon size={18} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-body font-bold text-foreground line-clamp-1">{notification.title}</h4>
-                            {!notification.isRead && <span className="w-2 h-2 rounded-full bg-sky-500 flex-shrink-0" />}
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground font-body leading-relaxed line-clamp-2">{notification.message}</p>
-                        </div>
-                        <div className="text-xs text-muted-foreground font-body flex-shrink-0">{time}</div>
-                      </div>
-                      
-                      {notification.actionUrl && (
-                        <div className="mt-2 text-xs text-sky-600 dark:text-sky-400 font-body">
-                          Opens link
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
