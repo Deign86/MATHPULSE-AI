@@ -46,6 +46,7 @@ export const createCalendarEvent = async (
     description?: string;
     startTime: Date;
     endTime?: Date;
+    color?: 'purple' | 'blue' | 'emerald' | 'amber' | 'rose';
   },
 ): Promise<CalendarEvent> => {
   const eventRef = doc(collection(db, 'calendarEvents'));
@@ -56,6 +57,7 @@ export const createCalendarEvent = async (
     description: payload.description,
     startTime: payload.startTime,
     endTime: payload.endTime,
+    color: payload.color,
     createdAt: new Date(),
   };
 
@@ -70,7 +72,7 @@ export const createCalendarEvent = async (
 
 export const updateCalendarEvent = async (
   eventId: string,
-  updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime'>>,
+  updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color'>>,
 ): Promise<void> => {
   const eventRef = doc(db, 'calendarEvents', eventId);
   await updateDoc(eventRef, {
