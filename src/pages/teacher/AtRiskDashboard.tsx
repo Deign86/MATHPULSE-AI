@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
-  query,
-  where,
-  orderBy,
   onSnapshot,
-  doc,
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { RiskBadge } from '../../components/risk/RiskBadge';
@@ -22,10 +18,8 @@ import {
   ChevronDown,
   SortAsc,
   SortDesc,
-  Filter,
   Users,
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
 import type { ManagedStudent } from '../../services/studentService';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -41,23 +35,29 @@ interface DashboardStudent extends ManagedStudent {
   systemPerformanceAvg: number | null;
 }
 
-// ─── Stats Summary ───────────────────────────────────────────────────────────
+// ─── Gradient Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
   label: string;
   value: number | string;
   icon: React.ReactNode;
-  color: string;
+  gradient: string;
+  shadowColor: string;
+  subtitle: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color }) => (
-  <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg p-4">
-    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-      {icon}
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon, gradient, shadowColor, subtitle }) => (
+  <div className={`relative overflow-hidden ${gradient} rounded-[16px] p-5 shadow-[0_4px_12px_${shadowColor}] hover:shadow-[0_8px_24px_${shadowColor}] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white`}>
+    <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
+    <div className="flex items-start justify-between relative z-10 mb-2">
+      <span className="text-[13px] font-medium text-white/90">{label}</span>
+      <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+        {icon}
+      </div>
     </div>
-    <div>
-      <div className="text-2xl font-bold text-slate-900 tabular-nums">{value}</div>
-      <div className="text-xs text-slate-500 font-medium">{label}</div>
+    <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{value}</div>
+    <div className="flex items-center relative z-10 border-t border-white/20 pt-3 mt-auto">
+      <span className="text-[12px] font-medium text-white/90">{subtitle}</span>
     </div>
   </div>
 );
@@ -73,21 +73,16 @@ export const AtRiskDashboard: React.FC = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
-  // Subscribe to all managedStudents (teacher can see their own)
   useEffect(() => {
-    // Filter by teacherId when available
     const managedStudentsRef = collection(db, 'managedStudents');
-    // Note: teacher-scoped filter requires currentUserId prop — add when AtRiskDashboard receives userId
-    // const q = query(managedStudentsRef, where('teacherId', '==', currentUserId));
     const unsubscribe = onSnapshot(
       managedStudentsRef,
       (snapshot) => {
-        const data = snapshot.docs.map((doc) => {
-          const d = doc.data();
+        const data = snapshot.docs.map((docSnap) => {
+          const d = docSnap.data();
           return {
-            id: doc.id,
+            id: docSnap.id,
             ...d,
-            // Map WRI fields from document
             wri: (d.wri as number) ?? null,
             riskStatus: (d.riskStatus as DashboardStudent['riskStatus']) ?? null,
             diagnosticScore: (d.diagnosticScore as number) ?? null,
@@ -103,20 +98,14 @@ export const AtRiskDashboard: React.FC = () => {
         setLoading(false);
       }
     );
-
     return unsubscribe;
   }, []);
 
-  // Filter + sort
   const filteredStudents = useMemo(() => {
     let result = [...students];
-
-    // Status filter
     if (filterStatus !== 'all') {
       result = result.filter((s) => s.riskStatus === filterStatus);
     }
-
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -126,8 +115,6 @@ export const AtRiskDashboard: React.FC = () => {
           (s.lrn || '').toLowerCase().includes(q)
       );
     }
-
-    // Sort
     result.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') {
@@ -139,11 +126,9 @@ export const AtRiskDashboard: React.FC = () => {
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
-
     return result;
   }, [students, filterStatus, searchQuery, sortField, sortDir]);
 
-  // Stats
   const stats = useMemo(() => {
     const total = students.length;
     const safe = students.filter((s) => s.riskStatus === 'safe').length;
@@ -165,111 +150,123 @@ export const AtRiskDashboard: React.FC = () => {
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return null;
-    return sortDir === 'asc' ? <SortAsc size={12} /> : <SortDesc size={12} />;
+    return sortDir === 'asc' ? <SortAsc size={12} className="text-white" /> : <SortDesc size={12} className="text-white" />;
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f8fafc]">
       {/* Page Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">At-Risk Student Monitoring</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Track student risk using the Weighted Risk Index (WRI) based on DepEd grading standards
-            </p>
-          </div>
-        </div>
+      <div className="bg-white/80 backdrop-blur-[16px] border-b border-slate-200/50 px-6 py-5">
+        <h1 className="text-xl font-bold text-slate-900">At-Risk Student Monitoring</h1>
+        <p className="text-[13px] text-slate-500 mt-0.5">
+          Track student risk using the Weighted Risk Index (WRI) based on DepEd grading standards
+        </p>
       </div>
 
       <div className="px-6 py-6 space-y-6">
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Stats Row — Gradient Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-[16px]">
           <StatCard
             label="Total Students"
             value={stats.total}
-            icon={<Users size={20} className="text-slate-600" />}
-            color="bg-slate-100"
+            icon={<Users className="w-4 h-4 text-white" />}
+            gradient="bg-gradient-to-br from-[#a855f7] to-[#9333ea]"
+            shadowColor="rgba(168,85,247,0.2)"
+            subtitle="Enrolled in system"
           />
           <StatCard
             label="Safe"
             value={stats.safe}
-            icon={<ShieldCheck size={20} className="text-emerald-600" />}
-            color="bg-emerald-50"
+            icon={<ShieldCheck className="w-4 h-4 text-white" />}
+            gradient="bg-gradient-to-br from-[#10b981] to-[#059669]"
+            shadowColor="rgba(16,185,129,0.2)"
+            subtitle="On track"
           />
           <StatCard
             label="Watch"
             value={stats.watch}
-            icon={<Eye size={20} className="text-blue-600" />}
-            color="bg-blue-50"
+            icon={<Eye className="w-4 h-4 text-white" />}
+            gradient="bg-gradient-to-br from-[#0ea5e9] to-[#0284c7]"
+            shadowColor="rgba(14,165,233,0.2)"
+            subtitle="Monitor closely"
           />
           <StatCard
             label="Intervene"
             value={stats.intervene}
-            icon={<AlertTriangle size={20} className="text-amber-600" />}
-            color="bg-amber-50"
+            icon={<AlertTriangle className="w-4 h-4 text-white" />}
+            gradient="bg-gradient-to-br from-[#f97316] to-[#ea580c]"
+            shadowColor="rgba(249,115,22,0.2)"
+            subtitle="Needs support"
           />
           <StatCard
             label="Critical"
             value={stats.critical}
-            icon={<AlertCircle size={20} className="text-rose-600" />}
-            color="bg-rose-50"
+            icon={<AlertCircle className="w-4 h-4 text-white" />}
+            gradient="bg-gradient-to-br from-[#ef4444] to-[#dc2626]"
+            shadowColor="rgba(239,68,68,0.2)"
+            subtitle="Immediate action"
           />
           <StatCard
             label="At Risk"
             value={stats.atRisk}
-            icon={<Skull size={20} className="text-slate-600" />}
-            color="bg-slate-100"
+            icon={<Skull className="w-4 h-4 text-white" />}
+            gradient="bg-gradient-to-br from-[#6b7280] to-[#4b5563]"
+            shadowColor="rgba(107,114,128,0.2)"
+            subtitle="Legacy classification"
           />
         </div>
 
-        {/* Filters Row */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Status Filter Chips */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-            {(['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'] as FilterStatus[]).map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                  filterStatus === status
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
-                {status !== 'all' && (
-                  <span className="ml-1.5 text-xs opacity-70">
-                    ({stats[status as keyof typeof stats]})
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+        {/* Sticky Filter Bar */}
+        <div className="sticky top-0 z-30 py-4 -my-4 bg-[#f8fafc]/80 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 mb-6 rounded-b-[18px]">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
+              {/* Search */}
+              <div className="flex items-center bg-white px-4 py-2.5 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full sm:w-64">
+                <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#9956DE] transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search student..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+                />
+              </div>
 
-          {/* Search */}
-          <div className="relative flex-1 max-w-xs">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search student..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300"
-            />
-          </div>
+              {/* Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar p-2 -m-2">
+                {(['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'] as FilterStatus[]).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setFilterStatus(status)}
+                    className={`px-4 py-1.5 text-[13px] font-semibold rounded-full whitespace-nowrap transition-colors shadow-md ${
+                      filterStatus === status
+                        ? 'bg-[#9956DE] text-white'
+                        : 'bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status !== 'all' && (
+                      <span className="ml-1 text-[11px] opacity-70">
+                        ({stats[status as keyof typeof stats]})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <div className="text-sm text-slate-500">
-            {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+            <span className="text-[13px] text-slate-500 font-medium shrink-0">
+              {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+            </span>
           </div>
         </div>
 
         {/* Students Table */}
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="bg-white rounded-[18px] border border-slate-200 overflow-hidden shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <RefreshCw size={20} className="animate-spin text-slate-400" />
-              <span className="ml-2 text-slate-500">Loading students...</span>
+              <RefreshCw size={20} className="animate-spin text-[#9956DE]" />
+              <span className="ml-2 text-slate-500 text-sm">Loading students...</span>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -279,114 +276,74 @@ export const AtRiskDashboard: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700">
-                      <button
-                        onClick={() => handleSort('name')}
-                        className="flex items-center gap-1 hover:text-slate-900"
-                      >
+                <thead>
+                  <tr className="bg-[#9956DE] text-[11px] font-bold text-white tracking-wider uppercase">
+                    <th className="text-left px-5 py-3.5">
+                      <button onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-white/80 transition-colors">
                         Student <SortIcon field="name" />
                       </button>
                     </th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700">Status</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700">
-                      <button
-                        onClick={() => handleSort('wri')}
-                        className="flex items-center gap-1 hover:text-slate-900"
-                      >
+                    <th className="text-left px-4 py-3.5">Status</th>
+                    <th className="text-left px-4 py-3.5">
+                      <button onClick={() => handleSort('wri')} className="flex items-center gap-1 hover:text-white/80 transition-colors">
                         WRI <SortIcon field="wri" />
                       </button>
                     </th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700 hidden md:table-cell">
-                      Diagnostic
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700 hidden lg:table-cell">
-                      External
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700 hidden lg:table-cell">
-                      System
-                    </th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-700">Actions</th>
+                    <th className="text-left px-4 py-3.5 hidden md:table-cell">Diagnostic</th>
+                    <th className="text-left px-4 py-3.5 hidden lg:table-cell">External</th>
+                    <th className="text-left px-4 py-3.5 hidden lg:table-cell">System</th>
+                    <th className="text-right px-5 py-3.5">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredStudents.map((student) => (
                     <React.Fragment key={student.id}>
                       <tr
-                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        className="hover:bg-slate-50/60 transition-colors cursor-pointer"
                         onClick={() =>
-                          setExpandedStudentId((prev) =>
-                            prev === student.id ? null : student.id
-                          )
+                          setExpandedStudentId((prev) => prev === student.id ? null : student.id)
                         }
                       >
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900">
-                            {student.name || '—'}
-                          </div>
-                          <div className="text-xs text-slate-500">{student.email}</div>
+                        <td className="px-5 py-3.5">
+                          <div className="font-semibold text-slate-800 text-[14px]">{student.name || '—'}</div>
+                          <div className="text-[11px] text-slate-400">{student.email}</div>
                         </td>
-                        <td className="px-4 py-3">
-                          <RiskBadge
-                            status={student.riskStatus}
-                            wri={student.wri}
-                            size="sm"
-                            showScore
-                          />
+                        <td className="px-4 py-3.5">
+                          <RiskBadge status={student.riskStatus} wri={student.wri} size="sm" showScore />
                         </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono font-semibold tabular-nums">
+                        <td className="px-4 py-3.5">
+                          <span className="font-mono font-bold text-slate-800 tabular-nums">
                             {student.wri !== null ? student.wri.toFixed(1) : '—'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-600 hidden md:table-cell tabular-nums">
-                          {student.diagnosticScore !== null
-                            ? `${student.diagnosticScore.toFixed(0)}%`
-                            : '—'}
+                        <td className="px-4 py-3.5 text-slate-600 hidden md:table-cell tabular-nums">
+                          {student.diagnosticScore !== null ? `${student.diagnosticScore.toFixed(0)}%` : '—'}
                         </td>
-                        <td className="px-4 py-3 text-slate-600 hidden lg:table-cell tabular-nums">
-                          {student.externalGradesAvg !== null
-                            ? `${student.externalGradesAvg.toFixed(0)}%`
-                            : '—'}
+                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums">
+                          {student.externalGradesAvg !== null ? `${student.externalGradesAvg.toFixed(0)}%` : '—'}
                         </td>
-                        <td className="px-4 py-3 text-slate-600 hidden lg:table-cell tabular-nums">
-                          {student.systemPerformanceAvg !== null
-                            ? `${student.systemPerformanceAvg.toFixed(0)}%`
-                            : '—'}
+                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums">
+                          {student.systemPerformanceAvg !== null ? `${student.systemPerformanceAvg.toFixed(0)}%` : '—'}
                         </td>
-                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() =>
-                              setExpandedStudentId((prev) =>
-                                prev === student.id ? null : student.id
-                              )
-                            }
-                            className="text-slate-400 hover:text-slate-600 transition-colors"
+                            onClick={() => setExpandedStudentId((prev) => prev === student.id ? null : student.id)}
+                            className="text-slate-400 hover:text-[#9956DE] transition-colors"
                           >
                             <ChevronDown
                               size={14}
-                              className={`transition-transform ${
-                                expandedStudentId === student.id ? 'rotate-180' : ''
-                              }`}
+                              className={`transition-transform duration-200 ${expandedStudentId === student.id ? 'rotate-180' : ''}`}
                             />
                           </button>
                         </td>
                       </tr>
 
-                      {/* Expanded Detail Row */}
                       {expandedStudentId === student.id && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-4 bg-slate-50/50">
-                            <RiskDetailPanel
-                              studentId={student.id!}
-                              studentName={student.name!}
-                            />
+                          <td colSpan={7} className="px-5 py-4 bg-[#f5f3ff]/40 border-t border-slate-100">
+                            <RiskDetailPanel studentId={student.id!} studentName={student.name!} />
                             {(student.riskStatus === 'critical' || student.riskStatus === 'at_risk') && (
-                              <InterventionChecklistPanel
-                                studentId={student.id!}
-                                studentName={student.name!}
-                              />
+                              <InterventionChecklistPanel studentId={student.id!} studentName={student.name!} />
                             )}
                           </td>
                         </tr>
@@ -400,7 +357,7 @@ export const AtRiskDashboard: React.FC = () => {
         </div>
 
         {/* DepEd Attribution */}
-        <div className="text-xs text-slate-400 text-center">
+        <div className="text-[11px] text-slate-400 text-center">
           WRI classification based on DepEd DO No. 8, s. 2015 (Policy Guidelines on Classroom Assessment).
           WRI is a support tool — final academic decisions remain with the teacher.
         </div>
