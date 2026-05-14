@@ -467,6 +467,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ── Module Activities (student activity tracking — self write, self + teachers/admins read) ──
+    match /moduleActivities/{docId} {
+      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
+      allow create: if isSignedIn() && ownerInIncoming('userId');
+      allow update, delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+    }
+
+    // ── Platform Settings (admin-managed, publicly readable) ──
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // ── AI Usage Logs (written by backend/admin SDK, read by admins) ──
     match /aiUsageLogs/{docId} {
       allow read: if isAdmin() || isTeacherOrAdmin();
