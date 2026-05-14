@@ -9,6 +9,10 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import { registerBoneyardRegistry } from './bones/registry';
 import { queryClient } from './lib/queryClient.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { applySettingsFromCache } from './services/settingsService.ts';
+
+// Apply cached theme/font before React renders to prevent flash
+applySettingsFromCache();
 
 // Global error handlers — catch unhandled errors and promise rejections
 // that would otherwise result in silent failures or blank screens.

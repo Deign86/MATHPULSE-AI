@@ -16,6 +16,8 @@ import {
   Venus,
   Mars,
   HelpCircle,
+  Server,
+  BookOpen,
 } from 'lucide-react';
 import {
   Select,
@@ -32,6 +34,13 @@ import { Switch } from './ui/switch';
 import ConfirmModal from './ConfirmModal';
 import ProfilePictureUploader from './ProfilePictureUploader';
 import { DEFAULT_USER_SETTINGS, ProfileVisibility, QuizDifficultyPreference, StudyTimePreference, UserSettings } from '../types/models';
+import { useUserSettings } from '../hooks/useUserSettings';
+import {
+  changeEmailWithReauth,
+  changePasswordWithReauth,
+  deleteAccountWithReauth,
+} from '../services/settingsService';
+import { TeacherPreferences } from '../types/settings';
 
 interface ProfileData {
   uid?: string;
@@ -61,10 +70,8 @@ interface SettingsModalProps {
   settingsData?: UserSettings;
   onSaveSettings?: (settings: Partial<UserSettings>) => Promise<void>;
   onApplySettingsPreview?: (settings: UserSettings) => void;
-  onUpdatePassword?: (newPassword: string) => Promise<void>;
   onExportData?: () => Promise<void>;
   onClearCache?: () => Promise<void>;
-  onDeleteAccount?: () => Promise<void>;
   onResetData?: () => Promise<void>;
 }
 
@@ -78,15 +85,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   settingsData,
   onSaveSettings,
   onApplySettingsPreview,
-  onUpdatePassword,
   onExportData,
   onClearCache,
-  onDeleteAccount,
   onResetData,
 }) => {
+  const role = profileData?.role || 'student';
+  const { teacherPrefs, adminConfig, saveTeacherPrefs, saveAdminConfig } = useUserSettings();
+
   const [activeSection, setActiveSection] = useState('account');
   const [accountData, setAccountData] = useState<ProfileData>({});
   const [localSettings, setLocalSettings] = useState<UserSettings>(cloneDefaultSettings());
+  const [localTeacherPrefs, setLocalTeacherPrefs] = useState<TeacherPreferences>(teacherPrefs);
+  const [localAdminConfig, setLocalAdminConfig] = useState(adminConfig);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -94,10 +104,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Re-auth state
+  const [reAuthModalOpen, setReAuthModalOpen] = useState(false);
+  const [reAuthPassword, setReAuthPassword] = useState('');
+  const [reAuthAction, setReAuthAction] = useState<'password' | 'email' | 'delete' | null>(null);
+  const [reAuthProcessing, setReAuthProcessing] = useState(false);
+  const [showReAuthPassword, setShowReAuthPassword] = useState(false);
+
+  // Password/email change state
   const [newPassword, setNewPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+
   const hasInitializedForOpenRef = useRef(false);
   const initialSettingsRef = useRef<UserSettings>(cloneDefaultSettings());
 
@@ -106,17 +124,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       hasInitializedForOpenRef.current = false;
       return;
     }
-
-    if (hasInitializedForOpenRef.current) {
-      return;
-    }
-
+    if (hasInitializedForOpenRef.current) return;
     hasInitializedForOpenRef.current = true;
 
     const incomingSettings = settingsData ? JSON.parse(JSON.stringify(settingsData)) : cloneDefaultSettings();
     initialSettingsRef.current = incomingSettings;
-
-setAccountData({
+    setAccountData({
       uid: profileData?.uid,
       name: profileData?.name || '',
       email: profileData?.email || '',
@@ -135,9 +148,10 @@ setAccountData({
       qualification: profileData?.qualification || '',
       position: profileData?.position || '',
     });
-
     setLocalSettings(incomingSettings);
-  }, [isOpen, profileData, settingsData]);
+    setLocalTeacherPrefs(teacherPrefs);
+    setLocalAdminConfig(adminConfig);
+  }, [isOpen, profileData, settingsData, teacherPrefs, adminConfig]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -146,46 +160,97 @@ setAccountData({
 
   useEffect(() => {
     if (!isOpen) return;
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onApplySettingsPreview?.(initialSettingsRef.current);
         onClose();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, onApplySettingsPreview, settingsData]);
+  }, [isOpen, onClose, onApplySettingsPreview]);
 
-  const sections = useMemo(
-    () => [
+  // Role-gated sections
+  const sections = useMemo(() => {
+    const base = [
       { id: 'account', label: 'Account', icon: User },
       { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'appearance', label: 'Appearance', icon: Palette },
       { id: 'privacy', label: 'Privacy & Security', icon: Shield },
-      { id: 'learning', label: 'Learning', icon: Globe },
-      { id: 'data', label: 'Data & Storage', icon: Download },
-    ],
-    [],
-  );
+    ];
+    if (role === 'student') {
+      base.push({ id: 'learning', label: 'Learning', icon: Globe });
+    }
+    if (role === 'teacher') {
+      base.push({ id: 'teaching', label: 'Teaching', icon: BookOpen });
+    }
+    if (role === 'admin') {
+      base.push({ id: 'system', label: 'System', icon: Server });
+    }
+    base.push({ id: 'data', label: 'Data & Storage', icon: Download });
+    return base;
+  }, [role]);
 
   const updateSettings = (updater: (current: UserSettings) => UserSettings) => {
     setLocalSettings((prev) => updater(prev));
   };
 
+  // ─── Re-auth flow ──────────────────────────────────────────────────────────
+  const openReAuth = (action: 'password' | 'email' | 'delete') => {
+    setReAuthAction(action);
+    setReAuthPassword('');
+    setShowReAuthPassword(false);
+    if (action === 'password') setNewPassword('');
+    if (action === 'email') setNewEmail(accountData.email || '');
+    setReAuthModalOpen(true);
+  };
+
+  const handleReAuthSubmit = async () => {
+    if (!reAuthPassword.trim()) {
+      toast.error('Current password is required');
+      return;
+    }
+    setReAuthProcessing(true);
+    try {
+      if (reAuthAction === 'password') {
+        if (newPassword.length < 8) {
+          toast.error('New password must be at least 8 characters');
+          return;
+        }
+        await changePasswordWithReauth(reAuthPassword, newPassword);
+        toast.success('Password updated');
+      } else if (reAuthAction === 'email') {
+        if (!newEmail.includes('@')) {
+          toast.error('Enter a valid email');
+          return;
+        }
+        await changeEmailWithReauth(reAuthPassword, newEmail);
+        setAccountData((prev) => ({ ...prev, email: newEmail }));
+        toast.success('Email updated');
+      } else if (reAuthAction === 'delete') {
+        await deleteAccountWithReauth(reAuthPassword, accountData.uid || '');
+        toast.success('Account deleted');
+        onClose();
+        return;
+      }
+      setReAuthModalOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Authentication failed');
+    } finally {
+      setReAuthProcessing(false);
+    }
+  };
+
+  // ─── Save ──────────────────────────────────────────────────────────────────
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
-      if (onSave) {
-        await onSave(accountData);
-      }
-      if (onSaveSettings) {
-        await onSaveSettings(localSettings);
-      }
+      if (onSave) await onSave(accountData);
+      if (onSaveSettings) await onSaveSettings(localSettings);
+      if (role === 'teacher') await saveTeacherPrefs(localTeacherPrefs);
+      if (role === 'admin') await saveAdminConfig(localAdminConfig);
       onClose();
     } catch (error) {
-      console.error('Error saving settings:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save settings');
     } finally {
       setIsSaving(false);
@@ -193,144 +258,48 @@ setAccountData({
   };
 
   const handleCancel = () => {
+    setReAuthModalOpen(false);
     setIsResetConfirmOpen(false);
     setIsDeleteConfirmOpen(false);
-    setIsPasswordModalOpen(false);
-    setNewPassword('');
-    setShowPassword(false);
     onApplySettingsPreview?.(initialSettingsRef.current);
     onClose();
   };
 
-  const handleResetData = () => {
-    if (!onResetData || isResetting) return;
+  const handleExport = async () => {
+    if (!onExportData || isExporting) return;
+    setIsExporting(true);
+    try { await onExportData(); } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export data');
+    } finally { setIsExporting(false); }
+  };
 
-    setIsResetConfirmOpen(true);
+  const handleClearCache = async () => {
+    if (!onClearCache || isClearingCache) return;
+    setIsClearingCache(true);
+    try { await onClearCache(); } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to clear cache');
+    } finally { setIsClearingCache(false); }
   };
 
   const handleConfirmResetData = async () => {
     if (!onResetData || isResetting) return;
-
     setIsResetConfirmOpen(false);
-
     setIsResetting(true);
     try {
       await onResetData();
       toast.success('Testing data reset completed');
     } catch (error) {
-      console.error('Error resetting testing data:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to reset testing data');
-    } finally {
-      setIsResetting(false);
-    }
+    } finally { setIsResetting(false); }
   };
 
-  const handleUpdatePasswordClick = async () => {
-    if (!onUpdatePassword) {
-      toast.info('Password update is not available in this environment.');
-      return;
-    }
-
-    setNewPassword('');
-    setShowPassword(false);
-    setIsPasswordModalOpen(true);
-  };
-
-  const handleSubmitPasswordUpdate = async () => {
-    if (!onUpdatePassword || isUpdatingPassword) return;
-
-    const password = newPassword.trim();
-
-    if (!password) {
-      toast.error('Password is required.');
-      return;
-    }
-
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters long.');
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    try {
-      await onUpdatePassword(password);
-      toast.success('Password updated successfully.');
-      setIsPasswordModalOpen(false);
-      setNewPassword('');
-      setShowPassword(false);
-    } catch (error) {
-      console.error('Error updating password:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update password');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
-
-  const handleEnable2FA = () => {
-    toast.info('Two-factor authentication setup is not enabled for this project yet.');
-  };
-
-  const handleExport = async () => {
-    if (!onExportData || isExporting) {
-      toast.info('Data export is not available right now.');
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      await onExportData();
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to export data');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleClearCache = async () => {
-    if (!onClearCache || isClearingCache) {
-      toast.info('Cache clearing is not available right now.');
-      return;
-    }
-
-    setIsClearingCache(true);
-    try {
-      await onClearCache();
-    } catch (error) {
-      console.error('Error clearing cache:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to clear cache');
-    } finally {
-      setIsClearingCache(false);
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    if (!onDeleteAccount || isDeleting) {
-      toast.info('Account deletion is not available right now.');
-      return;
-    }
-
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDeleteAccount = async () => {
-    if (!onDeleteAccount || isDeleting) return;
-
+  const handleConfirmDeleteAccount = () => {
     setIsDeleteConfirmOpen(false);
-
-    setIsDeleting(true);
-    try {
-      await onDeleteAccount();
-      onClose();
-    } catch (error) {
-      console.error('Error deleting account:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to delete account');
-    } finally {
-      setIsDeleting(false);
-    }
+    openReAuth('delete');
   };
 
   if (!isOpen) return null;
+
 
   return (
     <AnimatePresence>
@@ -351,12 +320,12 @@ setAccountData({
           transition={{ duration: 0.2 }}
           className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-4xl max-h-[85vh] overflow-hidden flex"
         >
+          {/* Sidebar */}
           <div className="w-64 bg-slate-50 border-r border-slate-200 p-6 overflow-y-auto">
             <div className="mb-6">
               <h2 className="text-xl font-display font-bold text-[#0a1628]">Settings</h2>
               <p className="text-xs text-slate-500 mt-1 font-body">Manage your preferences</p>
             </div>
-
             <nav className="space-y-1">
               {sections.map((section) => {
                 const Icon = section.icon;
@@ -378,10 +347,11 @@ setAccountData({
             </nav>
           </div>
 
+          {/* Content */}
           <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-[#dde3eb]">
               <h3 className="text-lg font-display font-bold text-[#0a1628]">
-                {sections.find((section) => section.id === activeSection)?.label}
+                {sections.find((s) => s.id === activeSection)?.label}
               </h3>
               <button onClick={handleCancel} className="p-2 hover:bg-[#edf1f7] rounded-xl transition-colors">
                 <X size={20} className="text-[#5a6578]" />
@@ -389,6 +359,7 @@ setAccountData({
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
+              {/* ─── Account Section ─── */}
               {activeSection === 'account' && (
                 <div className="space-y-6">
                   <ProfilePictureUploader
@@ -403,25 +374,25 @@ setAccountData({
                     <Input
                       type="text"
                       value={accountData.name || ''}
-                      onChange={(event) => setAccountData((prev) => ({ ...prev, name: event.target.value }))}
+                      onChange={(e) => setAccountData((prev) => ({ ...prev, name: e.target.value }))}
                       className="max-w-md"
                     />
                   </div>
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Email Address</label>
-                    <Input
-                      type="email"
-                      value={accountData.email || ''}
-                      onChange={(event) => setAccountData((prev) => ({ ...prev, email: event.target.value }))}
-                      className="max-w-md"
-                    />
+                    <div className="flex items-center gap-2 max-w-md">
+                      <Input type="email" value={accountData.email || ''} disabled className="flex-1 bg-slate-100" />
+                      <Button variant="outline" size="sm" onClick={() => openReAuth('email')}>
+                        Change
+                      </Button>
+                    </div>
                   </div>
-<div>
+                  <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Phone Number</label>
                     <Input
                       type="tel"
                       value={accountData.phone || ''}
-                      onChange={(event) => setAccountData((prev) => ({ ...prev, phone: event.target.value }))}
+                      onChange={(e) => setAccountData((prev) => ({ ...prev, phone: e.target.value }))}
                       className="max-w-md"
                     />
                   </div>
@@ -430,176 +401,76 @@ setAccountData({
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Gender</label>
                     <Select
                       value={accountData.gender || ''}
-                      onValueChange={(value) => {
-                        setAccountData((prev) => ({ 
-                          ...prev, 
-                          gender: value ? (value as 'male' | 'female' | 'prefer_not_to_say') : undefined 
-                        }));
-                      }}
+                      onValueChange={(value) => setAccountData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'prefer_not_to_say' }))}
                     >
-                      <SelectTrigger className="max-w-md bg-white border-[#dde3eb] rounded-lg [&>span]:flex [&>span]:items-center [&>span]:gap-2">
-                        <span className="flex items-center gap-2">
-                          {accountData.gender === 'male' && <><Mars className="size-4 text-blue-500" /><span>Male</span></>}
-                          {accountData.gender === 'female' && <><Venus className="size-4 text-pink-500" /><span>Female</span></>}
-                          {accountData.gender === 'prefer_not_to_say' && <><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></>}
-                          {!accountData.gender && <span className="text-muted-foreground">Select gender (optional)</span>}
-                        </span>
+                      <SelectTrigger className="max-w-md bg-white border-[#dde3eb] rounded-lg">
+                        <SelectValue placeholder="Select gender (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="male">
-                          <div className="flex items-center gap-2">
-                            <Mars className="size-4 text-blue-500" />
-                            <span>Male</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="female">
-                          <div className="flex items-center gap-2">
-                            <Venus className="size-4 text-pink-500" />
-                            <span>Female</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="prefer_not_to_say">
-                          <div className="flex items-center gap-2">
-                            <HelpCircle className="size-4 text-gray-500" />
-                            <span>Prefer not to say</span>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="male"><div className="flex items-center gap-2"><Mars className="size-4 text-blue-500" /><span>Male</span></div></SelectItem>
+                        <SelectItem value="female"><div className="flex items-center gap-2"><Venus className="size-4 text-pink-500" /><span>Female</span></div></SelectItem>
+                        <SelectItem value="prefer_not_to_say"><div className="flex items-center gap-2"><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></div></SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {accountData.role === 'student' && (
+                  {role === 'student' && (
                     <>
                       <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Learner's Reference Number (LRN)</label>
-                        <Input
-                          type="text"
-                          value={accountData.lrn || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, lrn: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">LRN</label>
+                        <Input value={accountData.lrn || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, lrn: e.target.value }))} className="max-w-md" />
                       </div>
                       <div>
                         <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Grade Level</label>
-                        <Input
-                          type="text"
-                          value={accountData.grade || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, grade: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <Input value={accountData.grade || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, grade: e.target.value }))} className="max-w-md" />
                       </div>
                       <div>
                         <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Section</label>
-                        <Input
-                          type="text"
-                          value={accountData.section || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, section: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <Input value={accountData.section || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, section: e.target.value }))} className="max-w-md" />
                       </div>
                       <div>
                         <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">School</label>
-                        <Input
-                          type="text"
-                          value={accountData.school || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, school: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <Input value={accountData.school || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, school: e.target.value }))} className="max-w-md" />
                       </div>
                     </>
                   )}
 
-                  {accountData.role === 'teacher' && (
+                  {role === 'teacher' && (
                     <>
                       <div>
                         <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
-                        <Input
-                          type="text"
-                          value={accountData.department || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, department: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <Input value={accountData.department || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, department: e.target.value }))} className="max-w-md" />
                       </div>
                       <div>
                         <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Subject</label>
-                        <Input
-                          type="text"
-                          value={accountData.subject || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, subject: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <Input value={accountData.subject || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, subject: e.target.value }))} className="max-w-md" />
                       </div>
                       <div>
                         <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Years of Experience</label>
-                        <Input
-                          type="text"
-                          value={accountData.yearsOfExperience || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, yearsOfExperience: event.target.value }))}
-                          className="max-w-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Qualification</label>
-                        <Input
-                          type="text"
-                          value={accountData.qualification || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, qualification: event.target.value }))}
-                          className="max-w-md"
-                        />
+                        <Input value={accountData.yearsOfExperience || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, yearsOfExperience: e.target.value }))} className="max-w-md" />
                       </div>
                     </>
                   )}
 
-                  {accountData.role === 'admin' && (
-                    <>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Position</label>
-                        <Input
-                          type="text"
-                          value={accountData.position || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, position: event.target.value }))}
-                          className="max-w-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
-                        <Input
-                          type="text"
-                          value={accountData.department || ''}
-                          onChange={(event) => setAccountData((prev) => ({ ...prev, department: event.target.value }))}
-                          className="max-w-md"
-                        />
-                      </div>
-                    </>
+                  {role === 'admin' && (
+                    <div>
+                      <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Position</label>
+                      <Input value={accountData.position || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, position: e.target.value }))} className="max-w-md" />
+                    </div>
                   )}
-
-                  <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Role</label>
-                    <Input type="text" value={accountData.role || ''} className="max-w-md bg-slate-100" disabled />
-                  </div>
 
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Change Password</label>
-                    <Button variant="outline" className="rounded-xl" onClick={handleUpdatePasswordClick}>
+                    <Button variant="outline" className="rounded-xl" onClick={() => openReAuth('password')}>
                       <Lock size={16} className="mr-2" />
                       Update Password
                     </Button>
                   </div>
-
-                  <div className="pt-4 border-t border-[#dde3eb]">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-bold text-[#0a1628] font-body">Two-Factor Authentication</h4>
-                        <p className="text-xs text-slate-500 mt-1">Add an extra layer of security</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="rounded-xl" onClick={handleEnable2FA}>
-                        Enable
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               )}
 
+
+              {/* ─── Notifications Section ─── */}
               {activeSection === 'notifications' && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -609,15 +480,9 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.notifications.emailNotifications}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, emailNotifications: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, emailNotifications: v } }))}
                     />
                   </div>
-
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Push Notifications</h4>
@@ -625,15 +490,9 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.notifications.pushNotifications}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, pushNotifications: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, pushNotifications: v } }))}
                     />
                   </div>
-
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Sound Effects</h4>
@@ -641,14 +500,34 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.notifications.soundEnabled}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          notifications: { ...prev.notifications, soundEnabled: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, soundEnabled: v } }))}
                     />
                   </div>
+
+                  {role === 'teacher' && (
+                    <>
+                      <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                        <div>
+                          <h4 className="text-sm font-bold text-[#0a1628] font-body">Student Submissions</h4>
+                          <p className="text-xs text-slate-500 mt-1">Notify when students submit work</p>
+                        </div>
+                        <Switch
+                          checked={localTeacherPrefs.notifyOnSubmission}
+                          onCheckedChange={(v) => setLocalTeacherPrefs((p) => ({ ...p, notifyOnSubmission: v }))}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                        <div>
+                          <h4 className="text-sm font-bold text-[#0a1628] font-body">Student Activity Alerts</h4>
+                          <p className="text-xs text-slate-500 mt-1">Notify on at-risk student activity</p>
+                        </div>
+                        <Switch
+                          checked={localTeacherPrefs.notifyOnStudentActivity}
+                          onCheckedChange={(v) => setLocalTeacherPrefs((p) => ({ ...p, notifyOnStudentActivity: v }))}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="pt-4">
                     <h4 className="text-sm font-bold text-[#0a1628] mb-3 font-body">Notification Types</h4>
@@ -664,15 +543,12 @@ setAccountData({
                           <input
                             type="checkbox"
                             checked={localSettings.notifications.notificationTypes[item.key as keyof UserSettings['notifications']['notificationTypes']]}
-                            onChange={(event) =>
-                              updateSettings((prev) => ({
-                                ...prev,
+                            onChange={(e) =>
+                              updateSettings((p) => ({
+                                ...p,
                                 notifications: {
-                                  ...prev.notifications,
-                                  notificationTypes: {
-                                    ...prev.notifications.notificationTypes,
-                                    [item.key]: event.target.checked,
-                                  },
+                                  ...p.notifications,
+                                  notificationTypes: { ...p.notifications.notificationTypes, [item.key]: e.target.checked },
                                 },
                               }))
                             }
@@ -686,60 +562,38 @@ setAccountData({
 
                   <div className="pt-4 border-t border-[#dde3eb]">
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
-                      <Clock size={16} className="inline mr-2" />
-                      Quiet Hours
+                      <Clock size={16} className="inline mr-2" />Quiet Hours
                     </label>
                     <div className="flex items-center gap-3">
                       <Input
                         type="time"
                         value={localSettings.notifications.quietHours.start}
-                        onChange={(event) =>
-                          updateSettings((prev) => ({
-                            ...prev,
-                            notifications: {
-                              ...prev.notifications,
-                              quietHours: { ...prev.notifications.quietHours, start: event.target.value },
-                            },
-                          }))
-                        }
+                        onChange={(e) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, quietHours: { ...p.notifications.quietHours, start: e.target.value } } }))}
                         className="w-32"
                       />
                       <span className="text-[#5a6578]">to</span>
                       <Input
                         type="time"
                         value={localSettings.notifications.quietHours.end}
-                        onChange={(event) =>
-                          updateSettings((prev) => ({
-                            ...prev,
-                            notifications: {
-                              ...prev.notifications,
-                              quietHours: { ...prev.notifications.quietHours, end: event.target.value },
-                            },
-                          }))
-                        }
+                        onChange={(e) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, quietHours: { ...p.notifications.quietHours, end: e.target.value } } }))}
                         className="w-32"
                       />
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">No notifications during this time</p>
                   </div>
                 </div>
               )}
 
+              {/* ─── Appearance Section ─── */}
               {activeSection === 'appearance' && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Dark Mode</h4>
-                      <p className="text-xs text-slate-500 mt-1">Smart invert colors like extension dark mode</p>
+                      <p className="text-xs text-slate-500 mt-1">Toggle dark theme</p>
                     </div>
                     <Switch
                       checked={localSettings.appearance.darkMode}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          appearance: { ...prev.appearance, darkMode: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, appearance: { ...p.appearance, darkMode: v } }))}
                     />
                   </div>
 
@@ -752,15 +606,11 @@ setAccountData({
                         min="12"
                         max="20"
                         value={localSettings.appearance.fontSize}
-                        onChange={(event) =>
-                          updateSettings((prev) => ({
-                            ...prev,
-                            appearance: { ...prev.appearance, fontSize: Number(event.target.value) },
-                          }))
-                        }
+                        onChange={(e) => updateSettings((p) => ({ ...p, appearance: { ...p.appearance, fontSize: Number(e.target.value) } }))}
                         className="flex-1"
                       />
                       <span className="text-xs text-slate-500">Large</span>
+                      <span className="text-xs font-mono text-slate-600 w-8">{localSettings.appearance.fontSize}px</span>
                     </div>
                   </div>
 
@@ -771,12 +621,7 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.appearance.compactView}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          appearance: { ...prev.appearance, compactView: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, appearance: { ...p.appearance, compactView: v } }))}
                     />
                   </div>
 
@@ -787,17 +632,14 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.appearance.reduceAnimations}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          appearance: { ...prev.appearance, reduceAnimations: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, appearance: { ...p.appearance, reduceAnimations: v } }))}
                     />
                   </div>
                 </div>
               )}
 
+
+              {/* ─── Privacy Section ─── */}
               {activeSection === 'privacy' && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -807,12 +649,7 @@ setAccountData({
                     </div>
                     <select
                       value={localSettings.privacy.profileVisibility}
-                      onChange={(event) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          privacy: { ...prev.privacy, profileVisibility: event.target.value as ProfileVisibility },
-                        }))
-                      }
+                      onChange={(e) => updateSettings((p) => ({ ...p, privacy: { ...p.privacy, profileVisibility: e.target.value as ProfileVisibility } }))}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628]"
                     >
                       <option value="everyone">Everyone</option>
@@ -820,7 +657,6 @@ setAccountData({
                       <option value="private">Private</option>
                     </select>
                   </div>
-
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Show Activity Status</h4>
@@ -828,15 +664,9 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.privacy.showActivityStatus}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          privacy: { ...prev.privacy, showActivityStatus: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, privacy: { ...p.privacy, showActivityStatus: v } }))}
                     />
                   </div>
-
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Data Sharing</h4>
@@ -844,54 +674,37 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.privacy.dataSharing}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          privacy: { ...prev.privacy, dataSharing: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, privacy: { ...p.privacy, dataSharing: v } }))}
                     />
                   </div>
                 </div>
               )}
 
-              {activeSection === 'learning' && (
+              {/* ─── Learning Section (Student only) ─── */}
+              {activeSection === 'learning' && role === 'student' && (
                 <div className="space-y-6">
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Daily XP Goal</label>
                     <Input
                       type="number"
                       value={localSettings.learning.dailyXpGoal}
-                      onChange={(event) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          learning: { ...prev.learning, dailyXpGoal: Number(event.target.value || 0) },
-                        }))
-                      }
+                      onChange={(e) => updateSettings((p) => ({ ...p, learning: { ...p.learning, dailyXpGoal: Number(e.target.value || 0) } }))}
                       className="max-w-xs"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Set your daily learning target</p>
                   </div>
-
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Preferred Study Time</label>
                     <select
                       value={localSettings.learning.preferredStudyTime}
-                      onChange={(event) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          learning: { ...prev.learning, preferredStudyTime: event.target.value as StudyTimePreference },
-                        }))
-                      }
+                      onChange={(e) => updateSettings((p) => ({ ...p, learning: { ...p.learning, preferredStudyTime: e.target.value as StudyTimePreference } }))}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm w-full max-w-xs bg-white text-[#0a1628]"
                     >
                       <option value="morning">Morning (6AM - 12PM)</option>
                       <option value="afternoon">Afternoon (12PM - 6PM)</option>
-                      <option value="evening">Evening (6PM - 12AM)</option>
+                      <option value="evening">Evening (6PM - 12PM)</option>
                       <option value="night">Night (12AM - 6AM)</option>
                     </select>
                   </div>
-
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Auto-play Next Lesson</h4>
@@ -899,15 +712,9 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.learning.autoPlayLessons}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          learning: { ...prev.learning, autoPlayLessons: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, learning: { ...p.learning, autoPlayLessons: v } }))}
                     />
                   </div>
-
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Show Hints During Quizzes</h4>
@@ -915,28 +722,14 @@ setAccountData({
                     </div>
                     <Switch
                       checked={localSettings.learning.showHints}
-                      onCheckedChange={(value) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          learning: { ...prev.learning, showHints: value },
-                        }))
-                      }
+                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, learning: { ...p.learning, showHints: v } }))}
                     />
                   </div>
-
                   <div>
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Quiz Difficulty Preference</label>
                     <select
                       value={localSettings.learning.quizDifficultyPreference}
-                      onChange={(event) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          learning: {
-                            ...prev.learning,
-                            quizDifficultyPreference: event.target.value as QuizDifficultyPreference,
-                          },
-                        }))
-                      }
+                      onChange={(e) => updateSettings((p) => ({ ...p, learning: { ...p.learning, quizDifficultyPreference: e.target.value as QuizDifficultyPreference } }))}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm w-full max-w-xs bg-white text-[#0a1628]"
                     >
                       <option value="adaptive">Adaptive (Recommended)</option>
@@ -945,28 +738,169 @@ setAccountData({
                       <option value="hard">Hard</option>
                     </select>
                   </div>
-
                   <div className="pt-4 border-t border-[#dde3eb]">
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
-                      <Smartphone size={16} className="inline mr-2" />
-                      Study Reminders
+                      <Smartphone size={16} className="inline mr-2" />Study Reminders
                     </label>
                     <Input
                       type="time"
                       value={localSettings.learning.studyReminderTime}
-                      onChange={(event) =>
-                        updateSettings((prev) => ({
-                          ...prev,
-                          learning: { ...prev.learning, studyReminderTime: event.target.value },
-                        }))
-                      }
+                      onChange={(e) => updateSettings((p) => ({ ...p, learning: { ...p.learning, studyReminderTime: e.target.value } }))}
                       className="w-32"
                     />
-                    <p className="text-xs text-slate-500 mt-2">Daily reminder to study</p>
                   </div>
                 </div>
               )}
 
+              {/* ─── Teaching Section (Teacher only) ─── */}
+              {activeSection === 'teaching' && role === 'teacher' && (
+                <div className="space-y-6">
+                  <h4 className="text-sm font-bold text-[#0a1628] font-body">Quiz Defaults</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Time Limit (min)</label>
+                      <Input
+                        type="number"
+                        value={localTeacherPrefs.quizDefaults.timeLimitMinutes}
+                        onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, quizDefaults: { ...p.quizDefaults, timeLimitMinutes: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Passing Score (%)</label>
+                      <Input
+                        type="number"
+                        value={localTeacherPrefs.quizDefaults.passingScore}
+                        onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, quizDefaults: { ...p.quizDefaults, passingScore: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Max Attempts</label>
+                      <Input
+                        type="number"
+                        value={localTeacherPrefs.quizDefaults.maxAttempts}
+                        onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, quizDefaults: { ...p.quizDefaults, maxAttempts: Number(e.target.value) } }))}
+                      />
+                    </div>
+                  </div>
+
+                  <h4 className="text-sm font-bold text-[#0a1628] font-body pt-4">Class Preferences</h4>
+                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Auto-Enroll Students</h4>
+                      <p className="text-xs text-slate-500 mt-1">Automatically enroll new students</p>
+                    </div>
+                    <Switch
+                      checked={localTeacherPrefs.classPreferences.autoEnroll}
+                      onCheckedChange={(v) => setLocalTeacherPrefs((p) => ({ ...p, classPreferences: { ...p.classPreferences, autoEnroll: v } }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[#5a6578] block mb-1">Class Visibility</label>
+                    <select
+                      value={localTeacherPrefs.classPreferences.classVisibility}
+                      onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, classPreferences: { ...p.classPreferences, classVisibility: e.target.value as 'public' | 'private' | 'invite_only' } }))}
+                      className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628]"
+                    >
+                      <option value="public">Public</option>
+                      <option value="private">Private</option>
+                      <option value="invite_only">Invite Only</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 border-t border-[#dde3eb]">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Student Analytics Visibility</h4>
+                      <p className="text-xs text-slate-500 mt-1">Let students see their leaderboard rank</p>
+                    </div>
+                    <Switch
+                      checked={localTeacherPrefs.studentAnalyticsVisibility}
+                      onCheckedChange={(v) => setLocalTeacherPrefs((p) => ({ ...p, studentAnalyticsVisibility: v }))}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ─── System Section (Admin only) ─── */}
+              {activeSection === 'system' && role === 'admin' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Maintenance Mode</h4>
+                      <p className="text-xs text-slate-500 mt-1">Disable platform access for non-admins</p>
+                    </div>
+                    <Switch
+                      checked={localAdminConfig.maintenanceMode}
+                      onCheckedChange={(v) => setLocalAdminConfig((p) => ({ ...p, maintenanceMode: v }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Default Grade Level</label>
+                      <Input
+                        value={localAdminConfig.defaultGradeLevel}
+                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, defaultGradeLevel: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Default Curriculum</label>
+                      <Input
+                        value={localAdminConfig.defaultCurriculum}
+                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, defaultCurriculum: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Max Class Size</label>
+                      <Input
+                        type="number"
+                        value={localAdminConfig.maxClassSize}
+                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, maxClassSize: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Audit Log Visible</h4>
+                      <p className="text-xs text-slate-500 mt-1">Show audit logs in admin dashboard</p>
+                    </div>
+                    <Switch
+                      checked={localAdminConfig.auditLogVisible}
+                      onCheckedChange={(v) => setLocalAdminConfig((p) => ({ ...p, auditLogVisible: v }))}
+                    />
+                  </div>
+
+                  <h4 className="text-sm font-bold text-[#0a1628] font-body pt-4">AI Configuration</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Model Name</label>
+                      <Input
+                        value={localAdminConfig.aiConfig.modelName}
+                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, aiConfig: { ...p.aiConfig, modelName: e.target.value } }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[#5a6578] block mb-1">Temperature</label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="2"
+                        value={localAdminConfig.aiConfig.temperature}
+                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, aiConfig: { ...p.aiConfig, temperature: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs text-[#5a6578] block mb-1">API Endpoint</label>
+                      <Input
+                        value={localAdminConfig.aiConfig.endpoint}
+                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, aiConfig: { ...p.aiConfig, endpoint: e.target.value } }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+              {/* ─── Data & Storage Section ─── */}
               {activeSection === 'data' && (
                 <div className="space-y-6">
                   <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl">
@@ -989,46 +923,40 @@ setAccountData({
                   <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
                     <h4 className="text-sm font-bold text-rose-900 mb-1">Reset Progress</h4>
                     <p className="text-xs text-rose-700 mb-3">
-                      {(accountData.role || 'student') === 'student' && 'Reset quizzes, diagnostic state, XP, and learning progress for retesting.'}
-                      {accountData.role === 'teacher' && 'Reset imported records, managed classrooms, and teacher-generated quiz artifacts for retesting.'}
-                      {accountData.role === 'admin' && 'Reset admin testing artifacts like personal audit/content update records for QA loops.'}
+                      {role === 'student' && 'Reset quizzes, diagnostic state, XP, and learning progress for retesting.'}
+                      {role === 'teacher' && 'Reset imported records, managed classrooms, and teacher-generated quiz artifacts.'}
+                      {role === 'admin' && 'Reset admin testing artifacts like personal audit/content update records.'}
                     </p>
                     <Button
                       variant="outline"
                       size="sm"
                       className="rounded-xl text-rose-700 border-rose-300"
                       disabled={!onResetData || isResetting}
-                      onClick={handleResetData}
+                      onClick={() => setIsResetConfirmOpen(true)}
                     >
                       {isResetting ? 'Resetting...' : 'Reset Testing Data'}
                     </Button>
                   </div>
 
-                  {accountData.role === 'admin' ? (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                      <h4 className="text-sm font-bold text-red-900 mb-1">Delete Account</h4>
-                      <p className="text-xs text-red-700 mb-3">Permanently delete your account and all data</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl text-red-700 border-red-300"
-                        onClick={handleDeleteAccount}
-                        disabled={isDeleting}
-                      >
-                        <Trash2 size={16} className="mr-2" />
-                        {isDeleting ? 'Deleting...' : 'Delete Account'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-                      <h4 className="text-sm font-bold text-emerald-900 mb-1 font-body">Protected Account Controls</h4>
-                      <p className="text-xs text-emerald-700">Account deletion is restricted to administrator accounts.</p>
-                    </div>
-                  )}
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <h4 className="text-sm font-bold text-red-900 mb-1">Delete Account</h4>
+                    <p className="text-xs text-red-700 mb-3">Permanently delete your account and all data</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-red-700 border-red-300"
+                      onClick={() => setIsDeleteConfirmOpen(true)}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 size={16} className="mr-2" />
+                      {isDeleting ? 'Deleting...' : 'Delete Account'}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Footer */}
             <div className="p-6 border-t border-[#dde3eb] bg-[#edf1f7] flex items-center justify-between">
               <p className="text-xs text-slate-500 font-body">MathPulse AI v2.1.0</p>
               <div className="flex gap-2">
@@ -1044,18 +972,14 @@ setAccountData({
         </motion.div>
       </div>
 
-{isPasswordModalOpen ? (
+      {/* ─── Re-Auth Modal ─── */}
+      {reAuthModalOpen && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => {
-            if (isUpdatingPassword) return;
-            setIsPasswordModalOpen(false);
-            setNewPassword('');
-            setShowPassword(false);
-          }}
+          onClick={() => { if (!reAuthProcessing) setReAuthModalOpen(false); }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -1063,85 +987,94 @@ setAccountData({
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ duration: 0.2 }}
             className="w-full max-w-md rounded-2xl border border-[#dde3eb] bg-[#f7f9fc] shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[#dde3eb] px-6 py-4">
-              <h4 className="text-lg font-display font-bold text-[#0a1628]">Update Password</h4>
+              <h4 className="text-lg font-display font-bold text-[#0a1628]">
+                {reAuthAction === 'password' && 'Change Password'}
+                {reAuthAction === 'email' && 'Change Email'}
+                {reAuthAction === 'delete' && 'Delete Account'}
+              </h4>
               <button
-                onClick={() => {
-                  if (isUpdatingPassword) return;
-                  setIsPasswordModalOpen(false);
-                  setNewPassword('');
-                  setShowPassword(false);
-                }}
+                onClick={() => { if (!reAuthProcessing) setReAuthModalOpen(false); }}
                 className="p-2 rounded-xl hover:bg-[#edf1f7] transition-colors"
-aria-label="Close password update dialog"
+                aria-label="Close"
               >
                 <X size={18} className="text-[#5a6578]" />
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <p className="text-sm text-[#5a6578]">Enter a new password with at least 8 characters.</p>
+              <p className="text-sm text-[#5a6578]">Enter your current password to continue.</p>
               <div className="relative">
                 <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  placeholder="New password"
+                  type={showReAuthPassword ? 'text' : 'password'}
+                  value={reAuthPassword}
+                  onChange={(e) => setReAuthPassword(e.target.value)}
+                  placeholder="Current password"
                   autoFocus
                   className="pr-10"
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      void handleSubmitPasswordUpdate();
-                    }
-                  }}
-                  disabled={isUpdatingPassword}
+                  disabled={reAuthProcessing}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleReAuthSubmit(); }}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowReAuthPassword(!showReAuthPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   tabIndex={-1}
                 >
-                  {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                  {showReAuthPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
               </div>
+
+              {reAuthAction === 'password' && (
+                <div className="relative">
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password (min 8 chars)"
+                    disabled={reAuthProcessing}
+                  />
+                </div>
+              )}
+
+              {reAuthAction === 'email' && (
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="New email address"
+                  disabled={reAuthProcessing}
+                />
+              )}
+
+              {reAuthAction === 'delete' && (
+                <p className="text-sm text-red-600 font-medium">This action is permanent and cannot be undone.</p>
+              )}
+
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (isUpdatingPassword) return;
-                    setIsPasswordModalOpen(false);
-                    setNewPassword('');
-                    setShowPassword(false);
-                  }}
-                  disabled={isUpdatingPassword}
-                >
+                <Button variant="outline" onClick={() => setReAuthModalOpen(false)} disabled={reAuthProcessing}>
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleSubmitPasswordUpdate}
-                  className="bg-sky-600 hover:bg-sky-700 text-white"
-                  disabled={isUpdatingPassword}
+                  onClick={() => void handleReAuthSubmit()}
+                  className={reAuthAction === 'delete' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-sky-600 hover:bg-sky-700 text-white'}
+                  disabled={reAuthProcessing}
                 >
-                  {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                  {reAuthProcessing ? 'Processing...' : reAuthAction === 'delete' ? 'Delete Forever' : 'Confirm'}
                 </Button>
               </div>
             </div>
           </motion.div>
         </motion.div>
-      ) : null}
+      )}
 
       <ConfirmModal
         isOpen={isResetConfirmOpen}
-        onClose={() => {
-          if (isResetting) return;
-          setIsResetConfirmOpen(false);
-        }}
+        onClose={() => setIsResetConfirmOpen(false)}
         onConfirm={handleConfirmResetData}
         title="Reset Testing Data?"
-        message={`Reset ${(accountData.role || 'student')} testing data? This will clear quizzes, diagnostic assessments, assessment history, XP, and learning progress. This action is for QA/demo use and cannot be undone.`}
+        message={`Reset ${role} testing data? This will clear quizzes, diagnostic assessments, assessment history, XP, and learning progress. This action cannot be undone.`}
         confirmText={isResetting ? 'Resetting...' : 'Reset Data'}
         cancelText="Cancel"
         type="warning"
@@ -1151,14 +1084,11 @@ aria-label="Close password update dialog"
 
       <ConfirmModal
         isOpen={isDeleteConfirmOpen}
-        onClose={() => {
-          if (isDeleting) return;
-          setIsDeleteConfirmOpen(false);
-        }}
+        onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={handleConfirmDeleteAccount}
         title="Delete Account?"
-        message="Delete account permanently? This action cannot be undone."
-        confirmText={isDeleting ? 'Deleting...' : 'Delete Account'}
+        message="You will need to re-authenticate to permanently delete your account. This cannot be undone."
+        confirmText="Continue"
         cancelText="Cancel"
         type="danger"
         icon="delete"
