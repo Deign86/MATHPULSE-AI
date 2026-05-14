@@ -49,10 +49,6 @@ const mergeSettings = (incoming?: Partial<UserSettings> | null): UserSettings =>
         ...incoming.notifications?.quietHours,
       },
     },
-    pushPreferences: {
-      ...defaults.pushPreferences,
-      ...incoming.pushPreferences,
-    },
     appearance: {
       ...defaults.appearance,
       ...incoming.appearance,
