@@ -1,29 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { Virtuoso } from 'react-virtuoso';
 import {
   Users, TrendingUp, AlertTriangle, Calendar,
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, Download, Send, Edit3, Save, Settings
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from './ui/dialog';
 import ConfirmModal from './ConfirmModal';
+import NotificationDropdown from './NotificationDropdown';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getClassroomsByTeacher,
@@ -51,7 +44,6 @@ import {
   fetchAnalysisCurriculumContext,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
-  type ClassRecordUploadResponse,
   type UploadResponse,
 } from '../services/apiService';
 import {
@@ -59,6 +51,8 @@ import {
   saveGeneratedLessonPlan,
   generateLessonPlanWithCurriculumGrounding,
 } from '../services/lessonPlanService';
+import { fetchQuizzesByTeacher } from '../services/quizService';
+import type { GeneratedQuiz } from '../types/models';
 import type { CurriculumSource } from '../types/curriculum';
 import CurriculumSourceBadge from './CurriculumSourceBadge';
 import { toast } from 'sonner';
@@ -72,10 +66,10 @@ import TeacherCalendarView from './TeacherCalendarView';
 import { Skeleton } from './ui/skeleton';
 import type { ClassSectionMetadata } from '../types/models';
 import type { ParseWorkbookResult } from '../features/import/services/shsExcel/parser/types';
+import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
-import { getModuleActivity, getAtRiskStudents } from '../services/trackingService';
-import { AtRiskDashboard } from '../pages/teacher/AtRiskDashboard';
+import DataImportView from '../features/DataImport/DataImportView';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -94,8 +88,7 @@ type View =
   | 'notifications'
   | 'calendar'
   | 'quiz_maker'
-  | 'question_bank'
-  | 'at_risk';
+  | 'question_bank';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -115,7 +108,7 @@ interface ClassView {
   riskLevel: 'high' | 'medium' | 'low';
 }
 
-interface StudentView {
+export interface StudentView {
   id: string;
   lrn?: string;
   name: string;
@@ -564,6 +557,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassView | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentView | null>(null);
+  const [insightDismissed, setInsightDismissed] = useState(false);
+  const [insightModalOpen, setInsightModalOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -1029,6 +1025,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setMobileNavOpen(false);
   }, [activeView, isMobileViewport]);
 
+  const handleSidebarNav = (view: View) => {
+    setActiveView(view);
+    setSelectedClass(null);
+    setSelectedStudent(null);
+  };
+
   const teacherName = userProfile?.name || 'Teacher';
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
@@ -1040,8 +1042,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   }, [selectedClass]);
 
   const effectiveAnalyticsClass = useMemo(() => {
-    return selectedClass || classes[0] || null;
-  }, [selectedClass, classes]);
+    return selectedClass || null;
+  }, [selectedClass]);
+
+  const effectiveClassColor = useMemo(() => {
+    if (!effectiveAnalyticsClass) return undefined;
+    const idx = classes.findIndex(c => c.id === effectiveAnalyticsClass.id);
+    return CLASS_COLORS[Math.max(0, idx) % CLASS_COLORS.length];
+  }, [effectiveAnalyticsClass, classes]);
 
   const filteredStudentsForAnalytics = useMemo(() => {
     if (!effectiveAnalyticsClass) return students;
@@ -1118,7 +1126,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             </div>
             {(!sidebarCollapsed || sidebarHovered) && (
               <div>
-                <h1 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
+                <h1 className="text-base font-semibold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
               </div>
             )}
           </div>
@@ -1153,7 +1161,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Overview</p>
+              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Overview</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1169,7 +1177,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 label="Class Analytics"
                 active={activeView === 'analytics'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('analytics')}
+                onClick={() => handleSidebarNav('analytics')}
                 forceExpanded={isMobileViewport}
               />
             </div>
@@ -1182,7 +1190,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Students</p>
+              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Students</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1190,7 +1198,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 label="Topic Mastery"
                 active={activeView === 'topic_mastery'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('topic_mastery')}
+                onClick={() => handleSidebarNav('topic_mastery')}
                 forceExpanded={isMobileViewport}
               />
               <NavItem
@@ -1198,15 +1206,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 label="Competency"
                 active={activeView === 'competency'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('competency')}
-                forceExpanded={isMobileViewport}
-              />
-              <NavItem
-                icon={AlertTriangle}
-                label="At-Risk Monitor"
-                active={activeView === 'at_risk'}
-                collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('at_risk')}
+                onClick={() => handleSidebarNav('competency')}
                 forceExpanded={isMobileViewport}
               />
             </div>
@@ -1219,7 +1219,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-bold text-[#5a6578] uppercase tracking-widest">Tools</p>
+              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Tools</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1247,14 +1247,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 forceExpanded={isMobileViewport}
               />
               <NavItem
-                icon={Bell}
-                label="Notifications"
-                active={activeView === 'notifications'}
-                collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('notifications')}
-                forceExpanded={isMobileViewport}
-              />
-              <NavItem
                 icon={Calendar}
                 label="Calendar"
                 active={activeView === 'calendar'}
@@ -1271,7 +1263,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           <motion.button
             whileHover={{ x: 2 }}
             whileTap={{ scale: 0.98 }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-bold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-semibold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
               sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
             }`}
             onClick={onOpenSettings}
@@ -1287,109 +1279,147 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </div>
       </motion.aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-3 sticky top-0 z-30">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0">
-              {isMobileViewport && (
-                <button
-                  onClick={() => setMobileNavOpen(true)}
-                  className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
-                  aria-label="Open navigation"
-                >
-                  <Menu size={18} />
-                </button>
-              )}
-              <div>
-                <h1 className="text-xl font-display font-bold text-foreground leading-tight">
-                  {activeView === 'dashboard' && 'Teacher Dashboard'}
-                  {activeView === 'analytics' && (selectedClass ? selectedClass.name : 'Class Analytics')}
-                  {activeView === 'intervention' && 'Student Intervention'}
-                  {activeView === 'topic_mastery' && 'Topic Mastery'}
-                  {activeView === 'competency' && 'Student Competency'}
-                  {activeView === 'import' && 'Data Import'}
-                  {activeView === 'notifications' && 'Notifications'}
-                  {activeView === 'calendar' && 'Calendar'}
-                  {activeView === 'quiz_maker' && 'AI Quiz Maker'}
-                  {activeView === 'question_bank' && 'Question Bank'}
-                  {activeView === 'at_risk' && 'At-Risk Monitoring'}
-                </h1>
-                <p className="text-xs text-muted-foreground font-body">
-                  {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                  {activeView === 'analytics' && 'Deep dive into class performance'}
-                  {activeView === 'intervention' && selectedStudent?.name}
-                  {activeView === 'topic_mastery' && 'Monitor class-wide topic mastery'}
-                  {activeView === 'competency' && 'Per-student topic-level breakdown'}
-                  {activeView === 'import' && 'Upload class records and materials'}
-                  {activeView === 'quiz_maker' && 'Create and manage AI-powered quizzes'}
-                  {activeView === 'question_bank' && 'Manage RAG-powered quiz question bank'}
-                  {activeView === 'notifications' && 'View classroom alerts and updates'}
-                  {activeView === 'calendar' && 'Check upcoming class events and schedule'}
-                  {activeView === 'at_risk' && 'Track student risk using the Weighted Risk Index (WRI)'}
-                </p>
-              </div>
-              {/* Quick teacher stats */}
-              {activeView === 'dashboard' && (
-                <div className="hidden xl:flex items-center gap-2 ml-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
-                    <Users size={13} className="text-[#9956DE]" />
-                    <span className="text-xs font-display font-bold text-[#9956DE]">{totalStudents} students</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
-                    <AlertTriangle size={13} className="text-[#F08386]" />
-                    <span className="text-xs font-display font-bold text-[#C65E63]">{totalAtRisk} at risk</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
-                    <TrendingUp size={13} className="text-[#75D06A]" />
-                    <span className="text-xs font-display font-bold text-[#4D9F46]">{avgPerformance}% avg</span>
-                  </div>
+      {/* Main Content + Right Sidebar */}
+      <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
+          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-[16px] flex-shrink-0 z-30">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-0">
+              <div className="flex-1 flex items-start gap-3">
+                {isMobileViewport && (
+                  <button
+                    onClick={() => setMobileNavOpen(true)}
+                    className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
+                    aria-label="Open navigation"
+                  >
+                    <Menu size={18} />
+                  </button>
+                )}
+                <div>
+                  <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
+                    {activeView === 'dashboard' && 'Teacher Dashboard'}
+                    {activeView === 'analytics' && 'Class Analytics'}
+                    {activeView === 'intervention' && 'Intervention Center'}
+                    {activeView === 'competency' && 'Student Competency'}
+                    {activeView === 'topic_mastery' && 'Topic Mastery'}
+                    {activeView === 'calendar' && 'Academic Calendar'}
+                    {activeView === 'notifications' && 'Notifications'}
+                    {activeView === 'question_bank' && 'Question Bank'}
+                    {activeView === 'import' && 'Data Import'}
+                    {activeView === 'quiz_maker' && 'AI Quiz Maker'}
+                  </h1>
+                  <p className="text-[13px] text-[#64748b] mt-1">
+                    {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
+                    {activeView === 'analytics' && 'Analyze performance and risk across your classes.'}
+                    {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
+                    {activeView === 'competency' && 'Track individual student progress against learning goals.'}
+                    {activeView === 'topic_mastery' && 'Overview of student mastery levels across different math topics.'}
+                    {activeView === 'calendar' && 'Manage your schedules and academic events.'}
+                    {activeView === 'notifications' && 'Stay updated with student activity and system alerts.'}
+                    {activeView === 'question_bank' && 'Manage and create math questions for your quizzes.'}
+                    {activeView === 'import' && 'Upload class records and materials to power AI analytics.'}
+                    {activeView === 'quiz_maker' && 'Create AI-powered quizzes based on your curriculum.'}
+                  </p>
                 </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onOpenProfile}
-                className="flex items-center gap-2.5 bg-muted p-1.5 pr-3 rounded-lg cursor-pointer hover:bg-accent transition-all group max-w-[220px]"
-              >
-                <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-[#9956DE]/45 bg-card flex items-center justify-center">
-<UserAvatar
-                    src={userProfile?.photo}
-                    name={teacherName}
-                    gender={userProfile?.gender}
-                    className="w-full h-full rounded-lg"
+                {/* Quick teacher stats */}
+                {activeView === 'dashboard' && (
+                  <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
+                      <Users size={13} className="text-[#9956DE]" />
+                      <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
+                      <AlertTriangle size={13} className="text-[#F08386]" />
+                      <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
+                      <TrendingUp size={13} className="text-[#75D06A]" />
+                      <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                {/* AI Insights Button */}
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      setInsightModalOpen(true);
+                      setInsightDismissed(true);
+                    }}
+                    className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+                    aria-label="View AI Insight"
+                  >
+                    <Sparkles size={18} />
+                    {!insightDismissed && (
+                      <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+                    )}
+                  </button>
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                    AI Insight
+                  </span>
+                </div>
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+                    aria-label="View notifications"
+                    title="Notifications"
+                  >
+                    <Bell size={18} />
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                  </button>
+
+                  <NotificationDropdown 
+                    isOpen={showNotifications} 
+                    onClose={() => setShowNotifications(false)}
+                    onViewAll={() => setActiveView('notifications')}
                   />
                 </div>
-                <div className="hidden md:block min-w-0 text-left">
-                  <p className="text-sm font-semibold text-foreground leading-none group-hover:text-[#9956DE] transition-colors truncate">{teacherName}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-none">Teacher</p>
-                </div>
-              </button>
+                {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
+                {activeView !== 'dashboard' && (
+                  <div
+                    onClick={onOpenProfile}
+                    className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                      <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
         {/* View Content */}
-        <main className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && (
-              <DashboardView
-                classes={classes}
-                liveActivity={liveActivity}
-                onViewClass={handleViewClass}
-                onViewAllClasses={() => setActiveView('analytics')}
-                onViewActivityStudent={(name) => {
-                  const match = students.find(s => s.name === name);
-                  if (match) handleViewStudent(match);
-                }}
-                dailyInsight={dailyInsight}
-                insightLoading={insightLoading}
-                totalStudents={totalStudents}
-                totalAtRisk={totalAtRisk}
-                avgPerformance={avgPerformance}
-              />
-            )}
+        <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+            <AnimatePresence mode="wait">
+              {activeView === 'dashboard' && (
+                <DashboardView
+                  classes={classes}
+                  liveActivity={liveActivity}
+                  onViewClass={handleViewClass}
+                  onViewAllClasses={() => setActiveView('analytics')}
+                  onViewActivityStudent={(name) => {
+                    const match = students.find(s => s.name === name);
+                    if (match) handleViewStudent(match);
+                  }}
+                  dailyInsight={dailyInsight}
+                  insightLoading={insightLoading}
+                  isInsightDismissed={insightDismissed}
+                  onDismissInsight={() => setInsightDismissed(true)}
+                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                  totalStudents={totalStudents}
+                  totalAtRisk={totalAtRisk}
+                  avgPerformance={avgPerformance}
+                />
+              )}
             {activeView === 'analytics' && effectiveAnalyticsClass && (
               <AnalyticsView
                 selectedClass={effectiveAnalyticsClass}
@@ -1397,13 +1427,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 riskDistribution={riskDistribution}
                 topicPerformance={topicPerformance}
                 onViewStudent={handleViewStudent}
-                onBack={handleBackToDashboard}
+                onBack={() => setSelectedClass(null)}
                 teacherOptions={teacherDirectory}
                 managerUpdating={managerUpdating}
                 onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                classColor={effectiveClassColor}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
               />
             )}
-            {activeView === 'analytics' && !effectiveAnalyticsClass && (
+            {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
+              <ClassesOverviewMenu
+                classes={classes}
+                onSelectClass={handleViewClass}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
+              />
+            )}
+            {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length === 0 && (
               <ToolsPlaceholderView
                 icon={BarChart3}
                 title="Class Analytics"
@@ -1432,27 +1477,64 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   );
                 }}
                 onBack={handleBackToAnalytics}
+                onNavigateToQuizMaker={(tab) => {
+                  setActiveView('quiz_maker');
+                  // pass tab hint via sessionStorage so QuizMaker can pick it up
+                  if (tab) sessionStorage.setItem('quizMakerInitialTab', tab);
+                }}
               />
             )}
-            {activeView === 'topic_mastery' && <TopicMasteryView classSectionId={selectedClassSectionId} />}
-            {activeView === 'competency' && (
+            {activeView === 'topic_mastery' && (
+              <TopicMasteryView 
+                classSectionId={selectedClassSectionId}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+              />
+            )}
+            {activeView === 'competency' && effectiveAnalyticsClass && (
               <StudentCompetencyTable
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
                 fallbackStudents={students}
+                onBack={() => setSelectedClass(null)}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
               />
             )}
-            {activeView === 'at_risk' && (
-              <div className="flex-1 overflow-auto min-h-0">
-                <AtRiskDashboard />
-              </div>
+            {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
+              <ClassesOverviewMenu
+                classes={classes}
+                onSelectClass={(cls) => setSelectedClass(cls)}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                insightDismissed={insightDismissed}
+                onOpenInsightModal={() => setInsightModalOpen(true)}
+                viewType="competency"
+              />
+            )}
+            {activeView === 'competency' && !effectiveAnalyticsClass && classes.length === 0 && (
+              <ToolsPlaceholderView
+                icon={Users}
+                title="Student Competency"
+                description="No classes available yet. Import class records to view competency breakdowns."
+              />
             )}
             {activeView === 'import' && (
-              <ImportView
-                onEditRecords={() => setActiveView('edit_records')}
+              <DataImportView
                 classSectionId={selectedClassSectionId}
                 className={selectedClass?.name}
                 classMetadata={selectedClass?.classMetadata}
+                students={students}
+                teacherId={currentUser?.uid || ''}
+                teacherName={teacherName}
+                onStudentsUpdated={(updated) => setStudents(updated)}
+                onBackToClasses={() => setActiveView('dashboard')}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
                 onImportedClassRecords={(payload) => {
                   const uploadedStudents = payload.students.map((item) =>
                     toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
@@ -1498,28 +1580,103 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 atRiskStudents={students
                   .filter(s => s.riskLevel === 'high')
                   .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
               />
             )}
             {activeView === 'calendar' && (
-              <TeacherCalendarView classes={classes} teacherId={currentUser?.uid} />
-            )}
-            {activeView === 'edit_records' && (
-              <EditRecordsView
-                students={students}
-                teacherId={currentUser?.uid || ''}
-                teacherName={teacherName}
-                onBack={() => setActiveView('import')}
+              <TeacherCalendarView 
+                classes={classes} 
+                teacherId={currentUser?.uid} 
               />
             )}
+            {/* Edit records view is now handled internally by DataImportView */}
             {activeView === 'quiz_maker' && (
-              <QuizMaker onBack={() => setActiveView('dashboard')} />
+              <QuizMaker
+                onBack={() => {
+                  const returnTo = sessionStorage.getItem('quizMakerReturnTo');
+                  sessionStorage.removeItem('quizMakerReturnTo');
+                  sessionStorage.removeItem('quizMakerInitialTab');
+                  setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
+                }}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
+              />
             )}
             {activeView === 'question_bank' && (
-              <QuestionBankPanel />
+              <QuestionBankPanel 
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
+              />
             )}
           </AnimatePresence>
-        </main>
+          </main>
+        </div>
+
+        {activeView === 'dashboard' && (
+          <DashboardRightSidebar onViewCalendar={() => setActiveView('calendar')} onOpenProfile={onOpenProfile} userProfile={userProfile} teacherName={teacherName} />
+        )}
       </div>
+
+      {/* Insight Modal */}
+      <AnimatePresence>
+        {insightModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200"
+            >
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <Sparkles size={16} />
+                  </div>
+                  <h3 className="font-semibold text-slate-800">Detailed AI Insight</h3>
+                </div>
+                <button 
+                  onClick={() => { setInsightModalOpen(false); }}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6">
+                <BoneSkeleton
+                  name="teacher-dashboard-ai-insight-modal"
+                  loading={insightLoading}
+                  fixture={<Skeleton className="h-32 w-full bg-slate-200" />}
+                  fallback={<Skeleton className="h-32 w-full bg-slate-200" />}
+                >
+                  <div className="text-sm text-slate-600 leading-relaxed">
+                    <ChatMarkdown>
+                      {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `I've noticed **${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently showing a high risk of falling behind in recent topics. Shall I draft an intervention plan?`}
+                    </ChatMarkdown>
+                  </div>
+                </BoneSkeleton>
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+                <button 
+                  onClick={() => { setInsightModalOpen(false); }}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Minimize to Menu
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Logout Confirmation */}
       <ConfirmModal
@@ -1557,7 +1714,7 @@ const NavItem: React.FC<{
     }`}
   >
     <Icon size={18} strokeWidth={active ? 2.5 : 2} className="flex-shrink-0" />
-    {(!collapsed || forceExpanded) && <span className="font-body font-bold text-xs">{label}</span>}
+    {(!collapsed || forceExpanded) && <span className="font-body font-semibold text-xs">{label}</span>}
     {active && !collapsed && (
       <motion.div
         layoutId="sidebar-active-indicator"
@@ -1583,7 +1740,7 @@ const ToolsPlaceholderView: React.FC<{
       <div className="w-12 h-12 rounded-xl bg-[#9956DE]/20 text-[#9956DE] flex items-center justify-center mb-4">
         <Icon size={24} />
       </div>
-      <h2 className="text-2xl font-display font-bold text-foreground mb-2">{title}</h2>
+      <h2 className="text-2xl font-display font-semibold text-foreground mb-2">{title}</h2>
       <p className="text-sm text-muted-foreground font-body leading-relaxed">{description}</p>
     </div>
   </motion.div>
@@ -1598,10 +1755,13 @@ const DashboardView: React.FC<{
   onViewActivityStudent?: (studentName: string) => void;
   dailyInsight: string;
   insightLoading: boolean;
+  isInsightDismissed: boolean;
+  onDismissInsight: () => void;
+  onOpenInsightModal: () => void;
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, totalStudents, totalAtRisk, avgPerformance }) => {
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -1610,212 +1770,188 @@ const DashboardView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 space-y-6"
+      className="p-6 space-y-4"
     >
-      {/* Daily AI Insight Banner -€” compact, not dominating */}
-      <div className="bg-gradient-to-r from-[#7274ED] to-[#9956DE] rounded-2xl p-5 text-white shadow-md">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-card/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <AlertTriangle size={20} />
+      {/* AI Banner */}
+      {!isInsightDismissed && (
+      <div 
+        onClick={onOpenInsightModal}
+        className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] flex items-center gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
+      >
+        <div className="relative flex-shrink-0">
+          <div className="absolute -inset-[5px] rounded-full border-2 border-[#a5b4fc] opacity-50 animate-pulse" />
+          <div className="w-[46px] h-[46px] rounded-full bg-[#eef2ff] border-2 border-[#c7d2fe] flex items-center justify-center text-[#4f46e5] text-xl relative overflow-hidden group-hover:scale-[1.05] transition-transform">
+            <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-display font-bold mb-1">AI Insight</h2>
-            <BoneSkeleton
-              name="teacher-dashboard-ai-insight"
-              loading={insightLoading}
-              fixture={
-                <div className="space-y-2 pt-1">
-                  <Skeleton className="h-3.5 w-11/12 bg-white/25" />
-                  <Skeleton className="h-3.5 w-10/12 bg-white/20" />
-                  <Skeleton className="h-3.5 w-8/12 bg-white/15" />
-                </div>
-              }
-              fallback={
-                <div className="space-y-2 pt-1">
-                  <Skeleton className="h-3.5 w-11/12 bg-white/25" />
-                  <Skeleton className="h-3.5 w-10/12 bg-white/20" />
-                  <Skeleton className="h-3.5 w-8/12 bg-white/15" />
-                </div>
-              }
+        </div>
+        <div className="flex-1">
+          <div className="text-[13.5px] font-semibold text-[#1e1b4b] flex items-center gap-2 mb-1">
+            <Sparkles size={14} className="text-[#818cf8]" />
+            MathPulse AI insight
+            <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
+          </div>
+          <div className="text-[12.5px] text-[#475569] leading-[1.55]">
+            I've noticed some students are currently showing a high risk of falling behind. Click to view detailed analysis...
+          </div>
+        </div>
+        <div className="flex gap-2 flex-shrink-0">
+          <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
+          <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
+        </div>
+      </div>
+      )}
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">Total students</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{totalStudents}</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Added this year</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
+          </div>
+        </div>
+        
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">Class average</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Vs. last month</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">Engagement rate</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Activity size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Active participants</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate/100)*totalStudents)}</span>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90">At risk</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertCircle size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Requires attention</span>
+            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Classes Container */}
+      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="flex justify-between items-center mb-[14px]">
+          <h2 className="text-[15px] font-semibold text-[#1e293b]">My classes</h2>
+          <span onClick={onViewAllClasses} className="text-[12px] text-[#10b981] font-semibold cursor-pointer hover:underline">View all</span>
+        </div>
+
+        <div className="space-y-[9px]">
+          {classes.length === 0 && (
+            <p className="text-sm text-slate-500 text-center py-4">No classes imported yet.</p>
+          )}
+          {classes.map((classItem, idx) => {
+            const colors = [
+              { bg: 'bg-[#f3e8ff]', text: 'text-[#a855f7]', borderHover: 'hover:border-[#d8b4fe]', stripe: 'bg-[#a855f7]' },
+              { bg: 'bg-[#eff6ff]', text: 'text-[#3b82f6]', borderHover: 'hover:border-[#bfdbfe]', stripe: 'bg-[#3b82f6]' },
+              { bg: 'bg-[#f0fdf4]', text: 'text-[#22c55e]', borderHover: 'hover:border-[#bbf7d0]', stripe: 'bg-[#22c55e]' },
+              { bg: 'bg-[#fff7ed]', text: 'text-[#f97316]', borderHover: 'hover:border-[#fed7aa]', stripe: 'bg-[#f97316]' },
+              { bg: 'bg-[#fff1f2]', text: 'text-[#f43f5e]', borderHover: 'hover:border-[#fecdd3]', stripe: 'bg-[#f43f5e]' },
+            ];
+            const color = colors[idx % colors.length];
+
+            return (
+            <div
+              key={classItem.id}
+              onClick={() => onViewClass(classItem)}
+              className={`relative overflow-hidden flex items-center gap-3 p-[12px_13px] pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] transition-all group`}
             >
-              <div>
-                <div aria-live="polite" aria-atomic="true" className="text-[#F1E4FF] text-sm leading-relaxed [&_p]:m-0 [&_strong]:font-semibold">
-                  <ChatMarkdown>
-                    {dailyInsight || `${totalAtRisk} students (${riskPercentage}%) are at high risk of falling behind`}
-                  </ChatMarkdown>
-                </div>
+              <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${color.stripe}`} />
+              <div className={`w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
+                <BookOpen size={18} />
               </div>
-            </BoneSkeleton>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats Row -€” moved from inside the banner for better visibility */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">Total Students</p>
-          <p className="text-2xl font-display font-bold text-foreground">{totalStudents}</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-[#9956DE]">{avgPerformance}%</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">Engagement Rate</p>
-          <p className="text-2xl font-display font-bold text-[#75D06A]">{engagementRate}%</p>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-[#FF8B8B]/35 shadow-sm">
-          <p className="text-xs text-muted-foreground font-body mb-1">At Risk</p>
-          <p className="text-2xl font-display font-bold text-[#FF8B8B]">{totalAtRisk}</p>
-        </div>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* My Classes - 2 columns */}
-        <div className="xl:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold text-foreground">My Classes</h2>
-            <button
-              onClick={onViewAllClasses}
-              className="text-sm font-bold text-[#9956DE] hover:text-[#9956DE] flex items-center gap-1 group"
-            >
-              View All
-              <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {classes.map((classItem) => (
-              <motion.div
-                key={classItem.id}
-                whileHover={{ scale: 1.01 }}
-                className={`bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer`}
-                onClick={() => onViewClass(classItem)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-display font-bold text-foreground">{classItem.name}</h3>
-                      <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(classItem.riskLevel)}`}>
-                        {classItem.riskLevel === 'high' ? 'High Risk' : classItem.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock size={14} />
-                      <span>{classItem.schedule}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[classItem.gradeLevel, classItem.classification, classItem.strand]
-                        .filter(Boolean)
-                        .map((badge) => (
-                          <span key={`${classItem.id}-${badge}`} className="px-2 py-0.5 rounded-md bg-[#9956DE]/12 border border-[#9956DE]/30 text-[#9956DE] text-[11px] font-semibold">
-                            {badge}
-                          </span>
-                        ))}
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Manager: {classItem.managerName || classItem.classMetadata?.managerName || 'Not assigned'}
-                    </p>
-                  </div>
-                  <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold px-6 py-2 rounded-xl">
-                    View Class
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Total Students</p>
-                    <p className="text-xl font-bold text-foreground">{classItem.studentCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">At Risk</p>
-                    <p className="text-xl font-bold text-[#FF8B8B]">{classItem.atRiskCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                    <p className="text-xl font-bold text-[#9956DE]">{classItem.avgScore}%</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live Classroom Pulse - 1 column */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-[#F08386]/20 rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-[#F08386]" />
+              <div className="flex-1">
+                <div className="text-[12.5px] font-medium text-[#1e293b]">{classItem.name}</div>
+                <div className="text-[11px] text-[#94a3b8] mt-[1px]">{classItem.classification || 'High School'}</div>
+              </div>
+              <div className="text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
+              <div className="text-[12px] text-[#64748b] min-w-[85px]">{classItem.studentCount} students</div>
+              <span className={`text-[10px] font-semibold px-[9px] py-[3px] rounded-[6px] ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
+                {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
+              </span>
+              <MoreHorizontal size={16} className="text-[#cbd5e1] ml-auto hover:text-[#64748b]" />
             </div>
-            <h2 className="text-xl font-display font-bold text-foreground">Live Classroom Pulse</h2>
-          </div>
-
-          <div className="bg-card rounded-2xl p-5 shadow-sm border border-border space-y-3 max-h-[600px] overflow-y-auto">
-            {liveActivity.length === 0 && (
-              <p className="text-sm text-muted-foreground">No live classroom events yet. Activity appears here in real time.</p>
-            )}
-            {liveActivity.map((activity) => (
-              <div
-                key={activity.id}
-                onClick={() => onViewActivityStudent?.(activity.student)}
-                className={`p-4 rounded-xl border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
-                  activity.type === 'success' ? 'bg-[#75D06A]/14 border-[#75D06A]' :
-                  activity.type === 'warning' ? 'bg-[#F08386]/12 border-[#F08386]' :
-                  'bg-[#9956DE]/12 border-[#9956DE]'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <p className="font-bold text-foreground text-sm">{activity.student}</p>
-                  <span className="text-xs text-slate-500">{activity.time}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {activity.action} <span className="font-bold text-foreground">{activity.topic}</span>
-                </p>
-              </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </motion.div>
   );
 };
 
-const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentView; onViewStudent: (s: StudentView) => void }) => (
-  <motion.div
-    whileHover={{ scale: 1.02 }}
-    onClick={() => onViewStudent(student)}
-    className={`p-4 rounded-2xl border-2 cursor-pointer hover:shadow-md transition-all ${getRiskColor(student.riskLevel)}`}
-  >
-    <div className="flex items-center gap-3 mb-3">
-      <img
-        src={student.avatar}
-        alt={student.name}
-        className="w-12 h-12 rounded-xl object-cover border-2 border-current"
-      />
-      <div className="flex-1">
-        <h4 className="font-bold text-foreground">{student.name}</h4>
-        <p className="text-xs text-muted-foreground">{student.lastActive}</p>
-      </div>
-    </div>
+const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentView; onViewStudent: (s: StudentView) => void }) => {
+  const getTheme = () => {
+    if (student.riskLevel === 'high') {
+      return { borderLeft: 'border-l-rose-500', bgAvatar: 'bg-rose-50 text-rose-600 border-rose-100/50', badge: 'text-rose-600 bg-rose-50', progress: 'bg-rose-500' };
+    }
+    if (student.riskLevel === 'medium') {
+      return { borderLeft: 'border-l-amber-500', bgAvatar: 'bg-amber-50 text-amber-600 border-amber-100/50', badge: 'text-amber-600 bg-amber-50', progress: 'bg-amber-500' };
+    }
+    return { borderLeft: 'border-l-emerald-500', bgAvatar: 'bg-emerald-50 text-emerald-600 border-emerald-100/50', badge: 'text-emerald-600 bg-emerald-50', progress: 'bg-emerald-500' };
+  };
 
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-xs font-bold text-muted-foreground">Avg Score</span>
-        <span className="text-xs font-bold text-foreground">{student.avgScore}%</span>
+  const theme = getTheme();
+  
+  return (
+    <div
+      onClick={() => onViewStudent(student)}
+      className={`p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] ${theme.borderLeft} hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between`}
+    >
+      <div className="flex justify-between items-start mb-[10px]">
+        <div className="flex gap-[8px] items-center min-w-0 pr-2">
+          {student.avatar ? (
+            <img src={student.avatar} alt={student.name} className={`w-8 h-8 rounded-full border ${theme.bgAvatar.split(' ')[2]} object-cover shrink-0`} />
+          ) : (
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0 border ${theme.bgAvatar}`}>
+              {student.name.substring(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">{student.name}</p>
+            <p className="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+              <Clock className="w-[10px] h-[10px] shrink-0" /> {student.lastActive || 'recently'}
+            </p>
+          </div>
+        </div>
+        <span className={`font-semibold text-[11px] px-[6px] py-[2px] rounded-[14px] shrink-0 ${theme.badge}`}>{student.avgScore}%</span>
       </div>
-      <div className="h-2 bg-card rounded-full overflow-hidden e-w" style={{ ['--w' as any]: `${student.avgScore}%` }}>
-        <div
-          className={`h-full rounded-full ${
-            student.riskLevel === 'high' ? 'bg-[#FF8B8B]' :
-            student.riskLevel === 'medium' ? 'bg-[#F08386]' :
-            'bg-[#75D06A]'
-          }`}
-        ></div>
+      <div className="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+        <div className={`h-full rounded-full ${theme.progress}`} style={{ width: `${student.avgScore}%` }}></div>
       </div>
     </div>
-  </motion.div>
-));
+  );
+});
 
 // Analytics View
 const AnalyticsView: React.FC<{
@@ -1828,6 +1964,11 @@ const AnalyticsView: React.FC<{
   teacherOptions: TeacherDirectoryOption[];
   managerUpdating: boolean;
   onAssignManager: (manager: TeacherDirectoryOption) => void | Promise<void>;
+  onOpenNotifications: () => void;
+  onOpenProfile?: () => void;
+  classColor?: { hex: string; bg: string; border: string; borderLeft: string; text: string; groupHover: string };
+  insightDismissed?: boolean;
+  onOpenInsightModal?: () => void;
 }> = ({
   selectedClass,
   students,
@@ -1838,52 +1979,41 @@ const AnalyticsView: React.FC<{
   teacherOptions,
   managerUpdating,
   onAssignManager,
+  onOpenNotifications,
+  onOpenProfile,
+  classColor,
+  insightDismissed,
+  onOpenInsightModal,
 }) => {
+  const { currentUser, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedManagerId, setSelectedManagerId] = useState('');
-  const [teacherModules, setTeacherModules] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState('All');
 
   useEffect(() => {
     setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
   }, [selectedClass]);
 
-  // Fetch teacher-uploaded modules for cross-reference with at-risk students
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-    (async () => {
-      const { collection, query, where, onSnapshot } = await import('firebase/firestore');
-      const { db } = await import('../lib/firebase');
-      const q = query(collection(db, 'modules'), where('moduleType', '==', 'teacher_uploaded'));
-      unsub = onSnapshot(q, (snap) => {
-        const modules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setTeacherModules(modules);
-      });
-    })();
-    return () => { unsub?.(); };
-  }, []);
-
-  // Compute recommended modules matching this class's subject
-  const recommendedModules = useMemo(() => {
-    const classSubject = selectedClass.classMetadata?.classification || selectedClass.classification || '';
-    if (!classSubject || teacherModules.length === 0) return [];
-    return teacherModules.filter((mod: any) => {
-      const modSubject = mod.subject || '';
-      return modSubject.toLowerCase().includes(classSubject.toLowerCase())
-        || classSubject.toLowerCase().includes(modSubject.toLowerCase());
-    }).slice(0, 5);
-  }, [teacherModules, selectedClass]);
-
   const visibleStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return students;
-    return students.filter((student) => {
-      return (
-        student.name.toLowerCase().includes(query)
-        || (student.lrn || '').toLowerCase().includes(query)
-        || (student.weakestTopic || '').toLowerCase().includes(query)
-      );
-    });
-  }, [searchTerm, students]);
+    let filtered = students;
+    if (query) {
+      filtered = filtered.filter((student) => {
+        return (
+          student.name.toLowerCase().includes(query)
+          || (student.lrn || '').toLowerCase().includes(query)
+          || (student.weakestTopic || '').toLowerCase().includes(query)
+        );
+      });
+    }
+
+    if (filterType === 'Good') {
+      filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+    } else if (filterType === 'Risk') {
+      filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+    }
+    return filtered;
+  }, [searchTerm, students, filterType]);
 
   const averageCompletion = useMemo(() => {
     if (students.length === 0) return 0;
@@ -1905,16 +2035,7 @@ const AnalyticsView: React.FC<{
   }, [students]);
 
   const attentionStudents = useMemo(() => {
-    return [...students]
-      .filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65)
-      .sort((a, b) => {
-        if (a.riskLevel !== b.riskLevel) {
-          const rank = { high: 3, medium: 2, low: 1 };
-          return rank[b.riskLevel] - rank[a.riskLevel];
-        }
-        return a.avgScore - b.avgScore;
-      })
-      .slice(0, 6);
+    return [...students].filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65);
   }, [students]);
 
   const selectedManager = useMemo(
@@ -1941,213 +2062,259 @@ const AnalyticsView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-[24px] xl:p-[32px] space-y-[24px] h-full overflow-y-auto"
     >
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-bold mb-6 transition-colors group"
+      {/* Header handled by global dashboard header pattern if needed, but Analytics has a specialized sub-header */}
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+            <ChevronLeft className="w-4 h-4" />
+            Back to Classes
+        </button>
+      </div>
+
+      {/* Header Card */}
+      <header 
+        style={{
+          backgroundColor: classColor?.hex || '#6366f1'
+        }}
+        className="rounded-[24px] p-[24px] lg:p-[32px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group text-white"
       >
-        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Dashboard
-      </button>
-
-      <div className="bg-card rounded-2xl border border-border p-5 shadow-sm mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-display font-bold text-foreground">{selectedClass.name}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRiskBadge(selectedClass.riskLevel)}`}>
-                {selectedClass.riskLevel === 'high' ? 'High Risk Cohort' : selectedClass.riskLevel === 'medium' ? 'Medium Risk Cohort' : 'Low Risk Cohort'}
-              </span>
-              {classBadges.map((badge) => (
-                <span key={badge} className="px-3 py-1 rounded-lg text-xs font-semibold border bg-[#9956DE]/12 border-[#9956DE]/30 text-[#9956DE]">
-                  {badge}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}
-            </p>
-          </div>
-
-          <div className="min-w-[260px] bg-muted rounded-xl p-3 border border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Section Manager</p>
-            <div className="flex gap-2">
-              <select
-                id="analytics-section-manager-select"
-                name="analytics-section-manager-select"
-                aria-label="Select section manager"
-                value={selectedManagerId || ''}
-                onChange={(event) => setSelectedManagerId(event.target.value)}
-                className="h-10 flex-1 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#9956DE]/40 transition-colors"
-              >
-                <option value="">Select teacher</option>
-                {teacherOptions.map((teacher) => (
-                  <option key={teacher.uid} value={teacher.uid}>
-                    {teacher.name} ({teacher.email})
-                  </option>
-                ))}
-              </select>
-              <Button
-                onClick={handleAssignManager}
-                disabled={!selectedManagerId || managerUpdating}
-                className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
-              >
-                {managerUpdating ? <Skeleton className="h-4 w-12 bg-white/35" /> : 'Assign'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Class Average</p>
-          <p className="text-2xl font-display font-bold text-[#9956DE]">{selectedClass.avgScore}%</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Completion Rate</p>
-          <p className="text-2xl font-display font-bold text-[#75D06A]">{averageCompletion}%</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Participation</p>
-          <p className="text-2xl font-display font-bold text-[#9956DE]">{participationRate}%</p>
-        </div>
-        <div className="bg-card border border-[#FF8B8B]/35 rounded-xl p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Needs Attention</p>
-          <p className="text-2xl font-display font-bold text-[#FF8B8B]">{attentionStudents.length}</p>
-        </div>
-      </div>
-
-      {/* Split View */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        {/* Left Column - Student List */}
-        <div className="xl:col-span-2 bg-card rounded-2xl p-6 shadow-sm border border-border">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-display font-bold text-foreground">Students ({visibleStudents.length})</h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <Input
-                id="analytics-student-search"
-                name="analytics-student-search"
-                aria-label="Search students"
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-40 pl-9 pr-4 py-2 rounded-xl border-border text-sm"
-              />
-            </div>
-          </div>
-
-          {visibleStudents.length === 0 ? (
-            <div className="border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground">
-              No students match your search.
-            </div>
-          ) : (
-            <Virtuoso
-              style={{ height: '700px' }}
-              data={visibleStudents}
-              itemContent={(_, student) => <StudentCard student={student} onViewStudent={onViewStudent} />}
-              computeItemKey={(index, student) => buildStudentViewKey(student)}
-            />
-          )}
-        </div>
-
-        {/* Right Column - Charts */}
-        <div className="xl:col-span-3 space-y-6">
-          {/* Risk Distribution */}
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-display font-bold text-foreground mb-5">Risk Distribution</h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={riskDistribution}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                  {riskDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+          {/* Decorative Circles */}
+          <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 group-hover:scale-[1.3] transition-transform duration-700 ease-out pointer-events-none" />
+          <div className="absolute -left-10 -top-10 w-32 h-32 rounded-full bg-white/10 group-hover:scale-[1.2] transition-transform duration-700 delay-75 ease-out pointer-events-none" />
+          
+          {/* Left Side Info */}
+          <div className="shrink-0 relative z-10">
+              <h1 className="text-[28px] font-bold mb-3 tracking-tight">{selectedClass.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                  {classBadges.map((badge, idx) => (
+                      <span key={badge} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[12px] font-semibold rounded-full shadow-sm border border-white/20">{badge}</span>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+              </div>
+              <p className="text-[13px] text-white/80 font-medium">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
           </div>
 
-          {/* Topic Performance */}
-          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-display font-bold text-foreground mb-5">Topic Performance</h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={topicPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
-                <Tooltip />
-                <Bar dataKey="score" fill="#9956DE" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-bold text-foreground mb-3">Top Performers</h3>
-              <div className="space-y-2">
-                {topPerformers.slice(0, 4).map((student) => (
-                  <button
-                    key={`top-${buildStudentViewKey(student)}`}
-                    onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-border px-3 py-2 hover:bg-[#9956DE]/12 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-[#75D06A]">{student.avgScore}%</span>
-                  </button>
-                ))}
-                {topPerformers.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No students available yet.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <h3 className="text-sm font-display font-bold text-foreground mb-3">Students Needing Attention</h3>
-              <div className="space-y-2">
-                {attentionStudents.slice(0, 4).map((student) => (
-                  <button
-                    key={`attention-${buildStudentViewKey(student)}`}
-                    onClick={() => onViewStudent(student)}
-                    className="w-full flex items-center justify-between rounded-lg border border-[#FF8B8B]/35 bg-[#FF8B8B]/14 px-3 py-2 hover:bg-[#FF8B8B]/20 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-foreground">{student.name}</span>
-                    <span className="text-xs font-bold text-[#FF8B8B]">{student.riskLevel.toUpperCase()}</span>
-                  </button>
-                ))}
-                {attentionStudents.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No urgent students in this class right now.</p>
-                )}
-              </div>
-
-              {/* Recommended Teacher Modules */}
-              {recommendedModules.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <BookOpen size={12} />
-                    Recommended Modules
-                  </h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recommendedModules.map((mod: any) => (
-                      <span
-                        key={mod.moduleId || mod.id}
-                        className="inline-flex items-center px-2 py-1 rounded-md bg-[#9956DE]/10 border border-[#9956DE]/20 text-xs font-medium text-[#9956DE]"
+          {/* Right Side Section Manager */}
+          <div className="bg-white/10 border border-white/20 rounded-[18px] p-[16px] backdrop-blur-md flex flex-col w-full md:w-auto shrink-0 relative z-10 shadow-inner">
+              <label className="text-[11px] font-bold text-white/90 uppercase tracking-wider mb-2 ml-1">Section Manager</label>
+              <div className="flex items-center gap-3">
+                  <div className="relative w-full md:w-[320px]">
+                      <select
+                        value={selectedManagerId || ''}
+                        onChange={(e) => setSelectedManagerId(e.target.value)}
+                        className="appearance-none bg-white/20 border border-white/30 text-white text-[13px] font-bold rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-white/50 focus:ring-2 focus:ring-white/20 w-full shadow-sm cursor-pointer [&>option]:text-[#1e293b]"
                       >
-                        {mod.title || 'Untitled Module'}
-                      </span>
-                    ))}
+                          <option value="">Select teacher</option>
+                          {teacherOptions.map((teacher) => (
+                            <option key={teacher.uid} value={teacher.uid}>
+                              {teacher.name} ({teacher.email})
+                            </option>
+                          ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
-                </div>
-              )}
-            </div>
+                  <button
+                    onClick={handleAssignManager}
+                    disabled={!selectedManagerId || managerUpdating}
+                    className="bg-white text-[#6366f1] hover:bg-white/90 text-[13px] font-bold rounded-full px-6 py-2.5 shadow-md transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50 disabled:hover:scale-100"
+                    style={{ color: classColor?.hex || '#6366f1' }}
+                  >
+                      {managerUpdating ? 'Updating...' : 'Assign'}
+                  </button>
+              </div>
           </div>
+      </header>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion Rate</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{participationRate}%</div>
+        </div>
+
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Needs Attention</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertTriangle size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">
+            {attentionStudents.length} <span className="text-[13px] opacity-90 font-medium">students</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-[24px] h-auto xl:h-[600px]">
+        {/* Left Column - Student List */}
+        <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
+            <div className="p-5 border-b border-[#f1f5f9] shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
+                </div>
+                <div className="flex items-center bg-white px-4 py-2 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
+                    <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#64748b]"
+                    />
+                </div>
+                <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+                    <button
+                      onClick={() => setFilterType('All')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
+                    >All Students</button>
+                    <button
+                      onClick={() => setFilterType('Good')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
+                    >Top Performers</button>
+                    <button
+                      onClick={() => setFilterType('Risk')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
+                    >Needs Attention</button>
+                </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col no-scrollbar">
+                <Virtuoso
+                  style={{ height: '100%' }}
+                  data={visibleStudents}
+                  className="no-scrollbar"
+                  itemContent={(_, student) => (
+                      <div className="py-[6px] px-[8px]">
+                          <StudentCard student={student} onViewStudent={onViewStudent} />
+                      </div>
+                  )}
+                  computeItemKey={(index, student) => buildStudentViewKey(student)}
+                />
+            </div>
+        </div>
+
+        {/* Right Column - Charts & Lists */}
+        <div className="xl:col-span-2 flex flex-col gap-[24px] h-full overflow-y-auto no-scrollbar pb-10 xl:pb-0">
+            {/* Top Row Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                {/* Visual Chart 1: Risk Distribution */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b]">Risk Distribution</h3>
+                        <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div className="relative w-full flex-1 min-h-[180px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={riskDistribution}>
+                                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
+                                    {riskDistribution.map((entry, index) => {
+                                        const mapping: Record<string, string> = { 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981' };
+                                        return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
+                                    })}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Visual Chart 2: Topic Performance */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b]">Topic Performance</h3>
+                        <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div className="relative w-full flex-1 min-h-[180px] -ml-8">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={topicPerformance} layout="vertical" margin={{ top: 0, right: 10, left: 40, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
+                                <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
+                                <YAxis dataKey="topic" type="category" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 600 }} dx={-10} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={28}>
+                                    {topicPerformance.map((entry, index) => {
+                                        const colors = ['#6366f1', '#a855f7', '#10b981', '#f59e0b', '#ec4899'];
+                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                    })}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Row Lists */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                {/* Top Performers List */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-emerald-500" />
+                            Top Performers
+                        </h3>
+                    </div>
+                    <div className="space-y-[8px]">
+                        {topPerformers.map((student) => (
+                            <div key={`top-${student.id}`} onClick={() => onViewStudent(student)} className="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
+                                <span className="text-[13px] font-semibold text-emerald-600">{student.avgScore}%</span>
+                            </div>
+                        ))}
+                        {topPerformers.length === 0 && <p className="text-xs text-muted-foreground">No students available yet.</p>}
+                    </div>
+                </div>
+
+                {/* Needs Attention List */}
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-rose-500" />
+                            Needs Attention
+                        </h3>
+                    </div>
+                    <div className="space-y-[8px]">
+                        {attentionStudents.slice(0, 4).map((student) => {
+                            const isHigh = student.riskLevel === 'high';
+                            const theme = isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';
+                            return (
+                                <div key={`attn-${student.id}`} onClick={() => onViewStudent(student)} className={`flex justify-between items-center p-3 rounded-[14px] border group hover:scale-[1.02] transition-transform cursor-pointer ${theme}`}>
+                                    <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
+                                    <span className={`text-[11px] font-semibold bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${isHigh ? 'text-rose-600' : 'text-amber-600'}`}>
+                                        {isHigh ? 'HIGH RISK' : 'MEDIUM RISK'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                        {attentionStudents.length === 0 && <p className="text-xs text-muted-foreground">No urgent students.</p>}
+                    </div>
+                </div>
+            </div>
         </div>
       </div>
     </motion.div>
@@ -2161,9 +2328,10 @@ const InterventionView: React.FC<{
   teacherName: string;
   onStudentUpdated: (student: StudentView) => void;
   onBack: () => void;
+  onNavigateToQuizMaker?: (tab?: 'create' | 'bank') => void;
   initialCache?: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string };
   onCacheUpdate?: (studentId: string, cache: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string }) => void;
-}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack, initialCache, onCacheUpdate }) => {
+}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack, onNavigateToQuizMaker, initialCache, onCacheUpdate }) => {
   const normalizedRiskLevel = (student.riskLevel || 'low').toLowerCase() as 'high' | 'medium' | 'low';
   const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
   const analysisTone = isUrgentBarrier
@@ -2196,15 +2364,43 @@ const InterventionView: React.FC<{
   const [savingLessonDraft, setSavingLessonDraft] = useState(false);
   const [publishingLesson, setPublishingLesson] = useState(false);
   const [lessonTrigger, setLessonTrigger] = useState(0);
-  // Intervention Plan state
-  const [interventionPlan, setInterventionPlan] = useState<{plan: string; strategies: string[]} | null>(null);
-  const [generatingIntervention, setGeneratingIntervention] = useState(false);
-  const [interventionDialogOpen, setInterventionDialogOpen] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalStep, setExportModalStep] = useState<'choose' | 'bank'>('choose');
+  const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  // Drawer state
+  const [showQuizDrawer, setShowQuizDrawer] = useState(false);
+  const [drawerDirty, setDrawerDirty] = useState(false);  // true once quiz generation starts
+  const [showDrawerCloseConfirm, setShowDrawerCloseConfirm] = useState(false);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
     setSectionDraft(student.section || 'Section A');
   }, [student.grade, student.section]);
+
+  // Escape key closes drawer (with confirm if dirty), Escape also closes export modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showDrawerCloseConfirm) { setShowDrawerCloseConfirm(false); return; }
+      if (showQuizDrawer) {
+        if (drawerDirty) { setShowDrawerCloseConfirm(true); } else { setShowQuizDrawer(false); }
+        return;
+      }
+      if (showExportModal) { setShowExportModal(false); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showQuizDrawer, showExportModal, drawerDirty, showDrawerCloseConfirm]);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    if (showQuizDrawer) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [showQuizDrawer]);
 
   useEffect(() => {
     onCacheUpdate?.(student.id, { lessonPlan, learningPath, gradeDraft, sectionDraft });
@@ -2502,646 +2698,700 @@ const InterventionView: React.FC<{
     }
   };
 
-  // Generate Intervention Plan handler
-  const handleGenerateInterventionPlan = async () => {
-    setGeneratingIntervention(true);
-    try {
-      const riskFactors = student.struggles?.length > 0 ? student.struggles : [student.weakestTopic || 'General academic support'];
-      const result = await apiService.generateInterventionPlan({
-        lrn: student.id,
-        subject: 'Mathematics',
-        quarter: 'Quarter 1',
-        riskFactors,
-      });
-      setInterventionPlan(result);
-      setInterventionDialogOpen(true);
-      toast.success('Intervention plan generated');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to generate intervention plan');
-    } finally {
-      setGeneratingIntervention(false);
-    }
-  };
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="w-full h-full flex overflow-hidden relative"
     >
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-[#9956DE] font-bold mb-6 transition-colors group"
-      >
-        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        Back to Analytics
-      </button>
+      {/* Center Scrollable Content: Insights & Tools */}
+      <div className="flex-1 overflow-y-auto p-[24px] xl:p-[32px] no-scrollbar">
+        <div className="max-w-[1000px] mx-auto space-y-[24px]">
+          
+          {/* Top Navigation & Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-[8px]">
+            <div>
+              <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] mb-[16px] w-max shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Analytics
+              </button>
+            </div>
+          </div>
 
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Student Header */}
-        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <div className="flex items-start gap-6">
-            <img
-              src={student.avatar}
-              alt={student.name}
-              className="w-24 h-24 rounded-2xl object-cover"
-            />
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-display font-bold text-foreground">{student.name}</h1>
-                <span className={`px-4 py-1.5 rounded-xl text-sm font-bold border-2 ${getRiskBadge(student.riskLevel)}`}>
-                  {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
+          {/* AI Analysis Banner — light mint green */}
+          <div className="bg-gradient-to-br from-[#ecfdf5] via-[#f0fdf4] to-[#f7fdf9] backdrop-blur-[12px] rounded-[20px] p-[24px] border border-emerald-100 shadow-[0_4px_16px_rgba(16,185,129,0.08)] relative overflow-hidden">
+            <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.06] pointer-events-none">
+              <Bot className="w-48 h-48 text-emerald-600" />
+            </div>
+
+            {/* Header row */}
+            <div className="flex items-center gap-3 mb-5 relative z-10">
+              <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-[#059669] to-[#10b981] flex items-center justify-center shrink-0 shadow-[0_4px_10px_rgba(5,150,105,0.3)]">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-[15px] font-bold text-[#1e293b]">AI Analysis</h3>
+                <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full uppercase tracking-wider shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  Insights Active
                 </span>
               </div>
-              <p className="text-muted-foreground mb-4">{student.className}</p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-muted rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Avg Score</p>
-                  <p className="text-2xl font-bold text-foreground">{student.avgScore}%</p>
-                </div>
-                <div className="bg-muted rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Last Active</p>
-                  <p className="text-sm font-bold text-foreground">{student.lastActive}</p>
-                </div>
-                <div className="bg-muted rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Weakest Topic</p>
-                  <p className="text-sm font-bold text-[#FF8B8B]">{student.weakestTopic}</p>
-                </div>
-              </div>
-
-              <div className="mt-5 p-4 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-xl">
-                <p className="text-xs font-semibold text-[#9956DE] mb-3 uppercase tracking-wider">Section Assignment</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Input
-                    value={gradeDraft}
-                    onChange={(e) => setGradeDraft(e.target.value)}
-                    placeholder="Grade"
-                    className="h-10"
-                  />
-                  <Input
-                    value={sectionDraft}
-                    onChange={(e) => setSectionDraft(e.target.value)}
-                    placeholder="Section"
-                    className="h-10"
-                  />
-                  <Button
-                    onClick={handleSaveSectionAssignment}
-                    disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
-                    className="bg-[#9956DE] hover:bg-[#7A44B3] text-white h-10"
-                  >
-                    {savingSection ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Save Section'}
-                  </Button>
-                </div>
-              </div>
             </div>
-          </div>
-        </div>
 
-        {/* AI Analysis */}
-        <div className={`${analysisTone.card} border-2 rounded-2xl p-6`}>
-          <div className="flex items-start gap-4 mb-4">
-            <div className={`w-12 h-12 ${analysisTone.icon} rounded-xl flex items-center justify-center flex-shrink-0`}>
-              <AlertCircle size={24} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-display font-bold text-foreground mb-2">
-                {isUrgentBarrier ? 'AI Analysis - Learning Barriers' : 'AI Analysis - Learning Strengths & Next Steps'}
-              </h2>
-              {analysisCurriculumContext && (
-                <CurriculumSourceBadge
-                  sources={lessonCurriculumSources}
-                  className="mt-1"
-                />
-              )}
-              <BoneSkeleton
-                name="teacher-intervention-analysis"
-                loading={pathLoading}
-                fixture={
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-3.5 w-64" />
-                    <Skeleton className="h-3.5 w-56" />
-                    <Skeleton className="h-3.5 w-44" />
-                  </div>
-                }
-                fallback={
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-3.5 w-64" />
-                    <Skeleton className="h-3.5 w-56" />
-                    <Skeleton className="h-3.5 w-44" />
-                  </div>
-                }
-              >
-                <ul className="space-y-2 text-foreground">
-                  {student.struggles.length > 0 ? (
-                    student.struggles.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className={`${analysisTone.bullet} inline-flex h-5 items-center`}>&bull;</span>
-                        <span>
-                          {isUrgentBarrier ? 'Struggles with ' : 'Continue strengthening '}
-                          <strong>{s}</strong>
-                        </span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="flex items-start gap-2">
-                      <span className={`${analysisTone.bullet} inline-flex h-5 items-center`}>&bull;</span>
-                      <span>
-                        {isUrgentBarrier ? 'Needs support in ' : 'Maintain momentum in '}
-                        <strong>{student.weakestTopic}</strong>
-                      </span>
-                    </li>
-                  )}
-                </ul>
-              </BoneSkeleton>
-            </div>
-          </div>
-        </div>
-
-        {/* AI-Generated Learning Path */}
-        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <h2 className="text-xl font-display font-bold text-foreground mb-6">AI-Generated Learning Path</h2>
-
-          <BoneSkeleton
-            name="teacher-intervention-learning-path"
-            loading={pathLoading}
-            fixture={
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            }
-            fallback={
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            }
-          >
-            {learningPath ? (
-              <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-xl p-5 mb-6 text-sm text-foreground">
-                <ChatMarkdown>{learningPath}</ChatMarkdown>
-              </div>
-            ) : null}
-
-            <div className="space-y-4 relative">
-              {/* Vertical Timeline Line */}
-              <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-border"></div>
-
-              {remedialSteps.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <motion.div
-                    key={step.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="relative pl-16"
-                  >
-                    {/* Step Number Circle */}
-                    <div className="absolute left-0 w-12 h-12 bg-gradient-to-br from-[#7274ED] to-[#9956DE] rounded-xl flex items-center justify-center shadow-md">
-                      <Icon size={24} className="text-white" />
-                    </div>
-
-                    {/* Step Content */}
-                    <div className="bg-gradient-to-br from-[#9956DE]/12 to-[#6ED1CF]/18 border border-[#9956DE]/30 rounded-2xl p-5 hover:shadow-md transition-all">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-display font-bold text-foreground mb-1">{step.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {step.type === 'video' && `${(step as { duration?: string }).duration} video lesson`}
-                            {step.type === 'quiz' && `${(step as { questions?: number }).questions} practice questions`}
-                            {step.type === 'assessment' && `${(step as { questions?: number }).questions} assessment questions`}
-                          </p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                          step.type === 'video' ? 'bg-[#F08386]/20 text-[#C65E63]' :
-                          step.type === 'quiz' ? 'bg-[#9956DE]/20 text-[#9956DE]' :
-                          'bg-[#75D06A]/22 text-[#4D9F46]'
-                        }`}>
-                          {step.type === 'video' ? 'Video' : step.type === 'quiz' ? 'Quiz' : 'Assessment'}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </BoneSkeleton>
-        </div>
-
-        {/* Import-grounded Lesson Plan */}
-        <div className="bg-card rounded-2xl p-8 shadow-sm border border-border">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-xl font-display font-bold text-foreground">Targeted Lesson Plan</h2>
-              <p className="text-sm text-muted-foreground">Class records drive risk signals. Import-grounded lesson generation needs uploaded course materials for topic context.</p>
-            </div>
-            <Button
-              onClick={() => setLessonTrigger(n => n + 1)}
-              disabled={lessonLoading}
-              className="bg-[#9956DE] hover:bg-[#7A44B3] text-white"
-            >
-              {lessonLoading ? <Skeleton className="h-4 w-20 bg-white/35" /> : 'Regenerate'}
-            </Button>
-          </div>
-
-          <p className="mb-4 text-xs text-muted-foreground bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg px-3 py-2">
-            Class records alone are not enough for import-grounded lesson plans. Upload course materials in Data Import to provide lesson topic grounding.
-          </p>
-
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
-              <input
-                type="checkbox"
-                checked={allowReviewSources}
-                onChange={(event) => setAllowReviewSources(event.target.checked)}
+            {analysisCurriculumContext && (
+              <CurriculumSourceBadge
+                sources={lessonCurriculumSources}
+                className="mb-4 relative z-10"
               />
-              Allow sources requiring manual review
-            </label>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground bg-[#f8fafc] border border-border rounded-lg px-3 py-2">
-              <input
-                type="checkbox"
-                checked={allowUnverifiedLesson}
-                onChange={(event) => setAllowUnverifiedLesson(event.target.checked)}
-              />
-              Allow unverified lesson draft (publish remains blocked)
-            </label>
-          </div>
-
-          <BoneSkeleton
-            name="teacher-intervention-lesson-plan"
-            loading={lessonLoading}
-            fixture={
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-                <Skeleton className="h-28 w-full rounded-xl" />
-                <Skeleton className="h-28 w-full rounded-xl" />
-              </div>
-            }
-            fallback={
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                </div>
-                <Skeleton className="h-28 w-full rounded-xl" />
-                <Skeleton className="h-28 w-full rounded-xl" />
-              </div>
-            }
-          >
-            {lessonError && (
-              <div className="bg-[#FF8B8B]/14 border border-[#FF8B8B]/35 rounded-xl p-3 text-sm text-[#D66A6A]">
-                {lessonError}
-              </div>
             )}
 
-            {lessonPlan && (
-              <div className="space-y-4">
-                <div className="bg-secondary border border-border rounded-xl p-4">
-                  <div className="mb-2">
-                    <CurriculumSourceBadge sources={lessonCurriculumSources} />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">{lessonPlan.lessonTitle}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Imported topics used: {lessonPlan.usedImportedTopics ? 'Yes' : 'No'}
-                    {' \u2022 '}Imported topic count: {lessonPlan.importedTopicCount}
+            <BoneSkeleton
+              name="teacher-intervention-analysis"
+              loading={pathLoading}
+              fixture={
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                </div>
+              }
+              fallback={
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                </div>
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+                {/* Learning Strengths */}
+                <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-emerald-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                  <div className="absolute left-0 top-0 w-1 h-full bg-emerald-400 rounded-l-[14px]" />
+                  <h4 className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
+                    <TrendingUp className="w-3.5 h-3.5" /> Learning Strengths
+                  </h4>
+                  <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
+                    {!isUrgentBarrier ? (
+                      <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
+                    ) : (
+                      <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
+                    )}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Subject: {lessonPlan.subject || 'general_math'} {' \u2022 '}Quarter: Q{lessonPlan.quarter || 1}
-                  </p>
-                  {lessonPlan.curriculumCompetency && (
-                    <p className="text-xs text-[#9956DE] font-semibold mt-1">
-                      Competency: {lessonPlan.curriculumCompetency}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Publish readiness: {lessonPlan.publishReady ? 'Ready' : 'Blocked'}
-                  </p>
-                  {lessonPlan.warnings.length > 0 && (
-                    <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.warnings.join(' ')}</p>
-                  )}
                 </div>
 
-                <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Curriculum Grounding</p>
-                      <p className="text-sm font-bold text-foreground mt-1">Source-backed lesson basis</p>
+                {/* Next Steps */}
+                <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-rose-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                  <div className="absolute left-0 top-0 w-1 h-full bg-rose-400 rounded-l-[14px]" />
+                  <h4 className="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
+                    <Target className="w-3.5 h-3.5" /> Next Steps
+                  </h4>
+                  <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
+                    {student.struggles.length > 0 ? (
+                      student.struggles.map((s, i) => (
+                        <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
+                      ))
+                    ) : (
+                      <li>Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </BoneSkeleton>
+          </div>
+
+          {/* Learning Path Timeline */}
+          <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+            <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
+              <h3 className="text-[15px] font-semibold text-[#1e293b]">Generated Learning Path</h3>
+              <button disabled={pathLoading} onClick={() => setLessonTrigger(n => n + 1)} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
+                <RefreshCw className="w-3 h-3" /> Regenerate
+              </button>
+            </div>
+            
+            <BoneSkeleton
+              name="teacher-intervention-learning-path"
+              loading={pathLoading}
+              fixture={
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full rounded-xl" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                </div>
+              }
+              fallback={
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full rounded-xl" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                  <Skeleton className="h-20 w-full rounded-[14px]" />
+                </div>
+              }
+            >
+              {/* Raw markdown text removed as requested, using only visual steps below */}
+              <div className="mb-8 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mr-2">Methodology:</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Interactive</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Video</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Practice</span>
+                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Quiz</span>
+              </div>
+
+              <div className="relative border-l-2 border-[#e2e8f0] ml-[20px] space-y-[28px] pb-4">
+                {remedialSteps.map((step, index) => {
+                  let stepIcon = <Video className="w-4 h-4" />;
+                  let bgClass = "bg-[#8b5cf6] shadow-[0_4px_10px_rgba(139,92,246,0.3)]";
+                  let tagClass = "text-purple-600";
+                  let cardHover = "group-hover:border-purple-200";
+                  let actionBg = "hover:bg-[#4f46e5]";
+                  let actionIcon = <Play className="w-4 h-4 ml-0.5" />;
+
+                  if (step.type === 'quiz') {
+                    stepIcon = <PenTool className="w-4 h-4" />;
+                    bgClass = "bg-sky-500 shadow-[0_4px_10px_rgba(14,165,233,0.3)]";
+                    tagClass = "text-sky-600";
+                    cardHover = "group-hover:border-sky-200";
+                    actionBg = "hover:bg-sky-500";
+                    actionIcon = <ChevronRight className="w-4 h-4" />;
+                  } else if (step.type === 'assessment') {
+                    stepIcon = <CheckCircle2 className="w-4 h-4" />;
+                    bgClass = "bg-emerald-500 shadow-[0_4px_10px_rgba(16,185,129,0.3)]";
+                    tagClass = "text-emerald-600";
+                    cardHover = "group-hover:bg-emerald-50";
+                  }
+
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative pl-[32px] group"
+                    >
+                      {/* Step Number Circle */}
+                      <div className={`absolute -left-[17px] top-1 w-8 h-8 rounded-full ${bgClass} text-white flex items-center justify-center ring-4 ring-white group-hover:scale-110 transition-transform`}>
+                        {stepIcon}
+                      </div>
+
+                      {/* Step Content */}
+                      <div className={`${step.type === 'assessment' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-[#f1f5f9]'} rounded-[14px] p-[18px] border shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center transition-colors ${cardHover}`}>
+                        <div>
+                          <span className={`text-[10px] font-semibold uppercase tracking-wider mb-1 block ${tagClass}`}>
+                            Step {index + 1} • {step.type === 'video' ? 'Video Lesson' : step.type === 'quiz' ? 'Practice' : 'Assessment'}
+                          </span>
+                          <p className="font-semibold text-[#1e293b] text-[13px] mb-0.5">{step.title}</p>
+                          <p className="text-[#64748b] text-[11px] flex items-center gap-1.5">
+                            {step.type === 'video' && <><Clock className="w-3 h-3" /> {(step as { duration?: string }).duration}</>}
+                            {step.type === 'quiz' && <><ListChecks className="w-3 h-3" /> {(step as { questions?: number }).questions} questions</>}
+                            {step.type === 'assessment' && <><Target className="w-3 h-3" /> {(step as { questions?: number }).questions} assessment questions</>}
+                          </p>
+                        </div>
+                        {step.type === 'assessment' ? (
+                          <Award className="w-6 h-6 text-emerald-400" />
+                        ) : (
+                          <button className={`w-8 h-8 rounded-full bg-[#f8fafc] flex items-center justify-center text-[#64748b] ${actionBg} hover:text-white transition-colors border border-[#e2e8f0]`}>
+                            {actionIcon}
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </BoneSkeleton>
+          </div>
+
+          {/* Targeted Lesson Generator Settings */}
+          <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[15px] font-semibold text-[#1e293b]">Targeted Lesson Generation</h3>
+              <Button
+                onClick={() => setLessonTrigger(n => n + 1)}
+                disabled={lessonLoading}
+                className="bg-[#4f46e5] hover:bg-[#3730a3] text-white h-8 text-[11px] rounded-full px-4"
+              >
+                {lessonLoading ? <Skeleton className="h-3 w-16 bg-white/35" /> : 'Regenerate'}
+              </Button>
+            </div>
+            <p className="text-[13px] text-[#64748b] mb-6">Configure inputs and requirements for AI lesson generation.</p>
+            
+            <div className="bg-[#f8fafc]/80 rounded-[14px] p-[20px] border border-[#f1f5f9] mb-6">
+              <div className="flex items-start gap-3 mb-4">
+                <Info className="w-4 h-4 text-[#4f46e5] shrink-0 mt-0.5" />
+                <p className="text-[13px] text-[#475569] leading-relaxed">
+                  Class records alone are not enough for import-grounded lesson plans. Ensure course materials are uploaded via <span className="text-[#4f46e5] font-semibold">Data Import</span>.
+                </p>
+              </div>
+              
+              <div className="space-y-4 border-t border-[#e2e8f0] pt-5 mt-5">
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow sources requiring manual review</span>
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only peer" checked={allowReviewSources} onChange={(e) => setAllowReviewSources(e.target.checked)} />
+                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
+                  </div>
+                </label>
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow unverified lesson draft</span>
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only peer" checked={allowUnverifiedLesson} onChange={(e) => setAllowUnverifiedLesson(e.target.checked)} />
+                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <BoneSkeleton
+              name="teacher-intervention-lesson-plan"
+              loading={lessonLoading}
+              fixture={
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                  </div>
+                  <Skeleton className="h-28 w-full rounded-xl" />
+                </div>
+              }
+              fallback={
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <Skeleton className="h-24 w-full rounded-xl" />
+                  </div>
+                  <Skeleton className="h-28 w-full rounded-xl" />
+                </div>
+              }
+            >
+              {lessonError && (
+                <div className="bg-[#FF8B8B]/14 border border-[#FF8B8B]/35 rounded-xl p-3 text-sm text-[#D66A6A] mb-4">
+                  {lessonError}
+                </div>
+              )}
+
+              {lessonPlan && (
+                <div className="space-y-4">
+                  <div className="bg-[#f8fafc] border border-[#f1f5f9] rounded-[14px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                    <div className="mb-3">
+                      <CurriculumSourceBadge sources={lessonCurriculumSources} />
                     </div>
-                    {lessonPlan.curriculumGrounding && (
-                      <span className={`px-3 py-1 rounded-full text-[11px] font-semibold border ${lessonPlan.curriculumGrounding.confidenceBand === 'high' ? 'bg-[#75D06A]/15 text-[#2E7D32] border-[#75D06A]/40' : lessonPlan.curriculumGrounding.confidenceBand === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-[#FF8B8B]/14 text-[#C65E63] border-[#FF8B8B]/35'}`}>
-                        {lessonPlan.curriculumGrounding.confidenceBand.toUpperCase()} confidence
-                      </span>
+                    <p className="text-[14px] font-semibold text-[#1e293b]">{lessonPlan.lessonTitle}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+                      <p className="text-[11px] text-[#64748b]">
+                        <span className="font-semibold text-[#475569]">Imported topics:</span> {lessonPlan.usedImportedTopics ? 'Yes' : 'No'} ({lessonPlan.importedTopicCount})
+                      </p>
+                      <p className="text-[11px] text-[#64748b]">
+                        <span className="font-semibold text-[#475569]">Subject:</span> {lessonPlan.subject || 'General Math'} (Q{lessonPlan.quarter || 1})
+                      </p>
+                    </div>
+                    {lessonPlan.curriculumCompetency && (
+                      <p className="text-[11px] text-[#4f46e5] font-semibold mt-2 bg-indigo-50/50 px-2 py-1 rounded inline-block">
+                        Competency: {lessonPlan.curriculumCompetency}
+                      </p>
+                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-[11px] text-[#64748b]">
+                        Publish readiness: <span className={`font-semibold ${lessonPlan.publishReady ? 'text-emerald-600' : 'text-rose-500'}`}>{lessonPlan.publishReady ? 'Ready' : 'Blocked'}</span>
+                      </p>
+                    </div>
+                    {lessonPlan.warnings.length > 0 && (
+                      <p className="text-[11px] text-amber-600 mt-2 bg-amber-50 px-2 py-1.5 rounded">{lessonPlan.warnings.join(' ')}</p>
                     )}
                   </div>
 
                   {lessonPlan.lessonObjective && (
-                    <div className="bg-muted/60 rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Lesson objective</p>
-                      <p className="text-sm text-foreground mt-1">{lessonPlan.lessonObjective}</p>
+                    <div className="bg-white border border-[#e2e8f0] rounded-[14px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                      <p className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5">Lesson objective</p>
+                      <p className="text-[13px] text-[#1e293b]">{lessonPlan.lessonObjective}</p>
                     </div>
                   )}
 
                   {lessonPlan.realWorldHook && (
-                    <div className="bg-[#9956DE]/10 border border-[#9956DE]/20 rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-[#9956DE] uppercase tracking-wider">Real-life application</p>
-                      <p className="text-sm text-foreground mt-1">{lessonPlan.realWorldHook}</p>
+                    <div className="bg-indigo-50/50 border border-indigo-100 rounded-[14px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                      <p className="text-[10px] font-semibold text-[#4f46e5] uppercase tracking-wider mb-1.5">Real-life application</p>
+                      <p className="text-[13px] text-[#1e293b]">{lessonPlan.realWorldHook}</p>
                     </div>
                   )}
 
-                  {lessonPlan.curriculumGrounding && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="bg-muted/50 rounded-xl p-3">
-                        <p className="text-muted-foreground font-semibold">Retrieval confidence</p>
-                        <p className="text-sm font-bold text-foreground mt-1">{Math.round((lessonPlan.curriculumGrounding.confidence || 0) * 100)}%</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    {filteredLessonBlocks.map((block) => (
+                      <div key={block.blockId} className="border border-[#e2e8f0] rounded-[14px] p-4 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                        <h3 className="text-[13px] font-semibold text-[#1e293b]">{block.title}</h3>
+                        <p className="text-[11px] text-[#64748b] mt-1">{block.estimatedMinutes} mins {' \u2022 '} {block.strategy}</p>
+                        <p className="text-[12px] text-[#475569] mt-2 bg-[#f8fafc] p-2 rounded-lg">{block.objective}</p>
+                        <div className="mt-3">
+                          <p className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5">Activities</p>
+                          {block.activities.slice(0, 2).map((activity, idx) => (
+                            <p key={idx} className="text-[11px] text-[#475569] mb-1 flex items-start gap-1">
+                              <span className="text-[#94a3b8] mt-0.5">•</span> <span>{activity}</span>
+                            </p>
+                          ))}
+                        </div>
                       </div>
-                      <div className="bg-muted/50 rounded-xl p-3">
-                        <p className="text-muted-foreground font-semibold">Retrieved chunks</p>
-                        <p className="text-sm font-bold text-foreground mt-1">{lessonPlan.curriculumGrounding.retrievedChunks}</p>
-                      </div>
-                      <div className="bg-muted/50 rounded-xl p-3">
-                        <p className="text-muted-foreground font-semibold">Review state</p>
-                        <p className="text-sm font-bold text-foreground mt-1">{lessonPlan.needsReview ? 'Needs review' : 'Ready for review'}</p>
-                      </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
 
-                  {lessonPlan.explanation && (
-                    <div className="bg-card border border-border rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Explanation</p>
-                      <p className="text-sm text-foreground leading-relaxed">{lessonPlan.explanation}</p>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => void saveLessonDraft()}
+                      disabled={savingLessonDraft || !lessonPlan}
+                      className="border-[#cbd5e1] text-[#475569] hover:bg-[#f8fafc] text-[12px] h-9 rounded-full px-5"
+                    >
+                      {savingLessonDraft ? <Skeleton className="h-4 w-16" /> : 'Save Draft'}
+                    </Button>
+                    <Button
+                      onClick={() => void publishCurrentLessonPlan()}
+                      disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
+                      className="bg-[#10b981] hover:bg-[#059669] text-white text-[12px] h-9 rounded-full px-5"
+                    >
+                      {publishingLesson ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Publish Lesson Plan'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </BoneSkeleton>
+          </div>
+        </div>
+      </div>
 
-                  <details className="group rounded-xl border border-border bg-card p-3">
-                    <summary className="cursor-pointer list-none text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between gap-2">
-                      Retrieved source snippets
-                      <span className="text-[11px] text-[#9956DE] group-open:rotate-180 transition-transform">▾</span>
-                    </summary>
-                    <div className="mt-3 space-y-2">
-                      {(lessonPlan.retrievedEvidence?.length || 0) > 0 ? (
-                        lessonPlan.retrievedEvidence?.map((source, index) => (
-                          <div key={`${source.sourceFile || 'source'}-${source.page || index}`} className="rounded-xl bg-muted/60 border border-border p-3">
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                              <span className="font-semibold text-foreground">{source.sourceFile || 'Curriculum source'}</span>
-                              <span>p.{source.page || '?'}</span>
-                              <span>{source.contentDomain || 'n/a'}</span>
-                              <span>score {(source.score * 100).toFixed(1)}%</span>
-                            </div>
-                            <p className="text-sm text-foreground mt-2 leading-relaxed">{source.content}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-muted-foreground">No retrieved snippets were returned.</p>
+      {/* RIGHT SIDEBAR: Student Profile & Actions (Fixed) */}
+      <aside className="w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col h-full shrink-0 overflow-y-auto z-10 no-scrollbar relative">
+        <div className="p-[24px] space-y-[24px] flex flex-col items-center">
+          
+          {/* Profile Block */}
+          <div className="flex flex-col items-center text-center w-full">
+            <img src={student.avatar} alt={student.name} className="w-[96px] h-[96px] rounded-full object-cover shadow-[0_8px_16px_rgba(0,0,0,0.1)] mb-4 border-4 border-white z-10 relative" />
+            <h2 className="text-[20px] font-semibold text-[#1e293b] mb-1">{student.name}</h2>
+            <p className="text-[11px] font-semibold text-[#64748b] mb-3 uppercase tracking-wider">ID: {student.id.substring(0, 8)}</p>
+            <span className={`text-[11px] font-semibold px-3 py-1 rounded-[14px] border ${student.riskLevel === 'high' ? 'text-rose-600 bg-rose-50 border-rose-100' : student.riskLevel === 'medium' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+              {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
+            </span>
+          </div>
+
+          {/* 4 Stats Grid */}
+          <div className="w-full grid grid-cols-2 gap-[12px]">
+            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
+              <p className="text-[20px] font-bold text-[#4f46e5]">{student.avgScore}%</p>
+            </div>
+            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
+              <p className="text-[20px] font-bold text-[#1e293b]">{student.avgScore > 80 ? 'High' : student.avgScore > 50 ? 'Medium' : 'Low'}</p>
+            </div>
+            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
+              <p className="text-[13px] font-semibold text-[#1e293b] mt-1">{student.lastActive}</p>
+            </div>
+            <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
+              <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
+              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={student.weakestTopic}>{student.weakestTopic}</p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="w-full flex flex-col gap-[10px]">
+            <button
+              onClick={async () => {
+                setExportModalStep('choose');
+                setShowExportModal(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-[#f8fafc] text-[#475569] border border-[#cbd5e1] hover:border-[#94a3b8] text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]"
+            >
+              <Printer className="w-4 h-4" /> Export Materials
+            </button>
+          </div>
+
+          {/* Export Materials Portal Modal */}
+          {showExportModal && ReactDOM.createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+              onClick={() => setShowExportModal(false)}
+            >
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+              {/* Modal card */}
+              <div
+                className="relative bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.18)] w-full max-w-[460px] z-10 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Purple top bar */}
+                <div className="bg-gradient-to-r from-[#a855f7] to-[#9333ea] px-6 pt-5 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {exportModalStep === 'bank' && (
+                        <button
+                          onClick={() => setExportModalStep('choose')}
+                          className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors mr-1"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
                       )}
-                    </div>
-                  </details>
-
-                  {lessonPlan.sourceCitations && lessonPlan.sourceCitations.length > 0 && (
-                    <div className="rounded-xl bg-muted/50 border border-border p-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Source citations</p>
-                      <div className="flex flex-wrap gap-2">
-                        {lessonPlan.sourceCitations.slice(0, 6).map((citation) => (
-                          <span key={citation} className="px-2 py-1 rounded-full bg-card border border-border text-[11px] text-foreground">
-                            {citation}
-                          </span>
-                        ))}
+                      <div className="w-8 h-8 rounded-[8px] bg-white/20 flex items-center justify-center">
+                        <Wand2 className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-[15px] font-bold text-white leading-tight">
+                          {exportModalStep === 'choose' ? 'Export Materials' : 'Choose a Quiz'}
+                        </h2>
+                        <p className="text-[11px] text-white/70 font-medium">
+                          {exportModalStep === 'choose'
+                            ? `For ${student.name}`
+                            : 'Select a quiz from your bank'}
+                        </p>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">Source Legitimacy</p>
-                    <p className="text-sm font-bold text-foreground mt-1">
-                      {lessonPlan.sourceLegitimacy.status} ({Math.round(lessonPlan.sourceLegitimacy.score * 100)}%)
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Verified: {lessonPlan.sourceLegitimacy.verifiedMaterials} {' \u2022 '}Review: {lessonPlan.sourceLegitimacy.reviewMaterials} {' \u2022 '}Rejected: {lessonPlan.sourceLegitimacy.rejectedMaterials}
-                    </p>
-                    {lessonPlan.sourceLegitimacy.issues.length > 0 && (
-                      <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.sourceLegitimacy.issues.slice(0, 2).join(' ')}</p>
-                    )}
-                  </div>
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">Self Validation</p>
-                    <p className="text-sm font-bold text-foreground mt-1">
-                      {lessonPlan.selfValidation.passed ? 'Passed' : 'Failed'} ({Math.round(lessonPlan.selfValidation.score * 100)}%)
-                    </p>
-                    {lessonPlan.selfValidation.issues.length > 0 && (
-                      <p className="text-xs text-[#CC8A37] mt-1">{lessonPlan.selfValidation.issues.slice(0, 2).join(' ')}</p>
-                    )}
+                    <button
+                      onClick={() => setShowExportModal(false)}
+                      className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {(lessonProvenanceSources.length > 0 || lessonProvenanceMaterials.length > 0) && (
-                  <div className="bg-card border border-border rounded-xl p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Provenance Filters</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        <span className="font-semibold">Source File</span>
-                        <select
-                          value={lessonSourceFilter}
-                          onChange={(event) => setLessonSourceFilter(event.target.value)}
-                          className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
-                        >
-                          <option value="all">All sources</option>
-                          {lessonProvenanceSources.map((source) => (
-                            <option key={source} value={source}>{source}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="text-xs text-muted-foreground flex flex-col gap-1">
-                        <span className="font-semibold">Material ID</span>
-                        <select
-                          value={lessonMaterialFilter}
-                          onChange={(event) => setLessonMaterialFilter(event.target.value)}
-                          className="bg-card border border-border rounded-md px-2 py-1.5 text-xs"
-                        >
-                          <option value="all">All materials</option>
-                          {lessonProvenanceMaterials.map((material) => (
-                            <option key={material} value={material}>{material}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-2">
-                      Showing {filteredLessonBlocks.length} of {lessonPlan.blocks.length} lesson blocks after provenance filters.
-                    </p>
-                  </div>
-                )}
+                {/* Body */}
+                <div className="p-6">
+                  {exportModalStep === 'choose' ? (
+                    <>
+                      <p className="text-[13px] text-[#64748b] mb-5 font-medium">How would you like to proceed?</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {filteredLessonBlocks.map((block) => (
-                    <div key={block.blockId} className="border border-border rounded-xl p-4 bg-[#fcfdff]">
-                      <h3 className="text-sm font-bold text-foreground">{block.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{block.estimatedMinutes} mins {' \u2022 '} {block.strategy}</p>
-                      <p className="text-sm text-foreground mt-2">{block.objective}</p>
-                      <div className="mt-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Activities</p>
-                        {block.activities.slice(0, 2).map((activity, idx) => (
-                          <p key={idx} className="text-xs text-muted-foreground">{'\u2022'} {activity}</p>
-                        ))}
-                      </div>
-                      {block.provenance && (
-                        <div className="mt-3 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg p-2">
-                          <p className="text-[11px] font-semibold text-[#9956DE]">Provenance</p>
-                          {block.provenance.sourceFile && <p className="text-[11px] text-[#5E3388]">Source: {block.provenance.sourceFile}</p>}
-                          {block.provenance.materialId && <p className="text-[11px] text-[#5E3388]">Material: {block.provenance.materialId}</p>}
+                      {/* Option 1 — Quiz Bank */}
+                      <button
+                        onClick={async () => {
+                          setBankLoading(true);
+                          setExportModalStep('bank');
+                          try {
+                            const quizzes = await fetchQuizzesByTeacher(teacherId);
+                            setBankQuizzes(quizzes);
+                          } catch {
+                            setBankQuizzes([]);
+                          } finally {
+                            setBankLoading(false);
+                          }
+                        }}
+                        className="w-full flex items-start gap-4 p-4 rounded-[16px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_4px_12px_rgba(168,85,247,0.08)] hover:bg-purple-50/30 transition-all group mb-3 text-left"
+                      >
+                        <div className="w-10 h-10 rounded-[10px] bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-100 transition-colors">
+                          <Library className="w-5 h-5 text-[#a855f7]" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-bold text-[#1e293b] mb-0.5">Choose from existing quizzes</p>
+                          <p className="text-[12px] text-[#64748b] font-medium">Pick a quiz already in your Quiz Bank.</p>
+                        </div>
+                      </button>
+
+                      {/* Option 2 — Create new */}
+                      <button
+                        onClick={() => {
+                          setShowExportModal(false);
+                          setDrawerDirty(false);
+                          setShowQuizDrawer(true);
+                        }}
+                        className="w-full flex items-start gap-4 p-4 rounded-[16px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_4px_12px_rgba(168,85,247,0.08)] hover:bg-purple-50/30 transition-all group text-left"
+                      >
+                        <div className="w-10 h-10 rounded-[10px] bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-100 transition-colors">
+                          <Sparkles className="w-5 h-5 text-[#a855f7]" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-bold text-[#1e293b] mb-0.5">Create a new quiz</p>
+                          <p className="text-[12px] text-[#64748b] font-medium">Use AI Quiz Maker. You can return here when done.</p>
+                        </div>
+                      </button>
+                    </>
+                  ) : (
+                    /* Quiz Bank Step */
+                    <div>
+                      {bankLoading ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-3">
+                          <div className="w-8 h-8 border-2 border-[#a855f7] border-t-transparent rounded-full animate-spin" />
+                          <p className="text-[13px] text-[#64748b] font-medium">Loading quizzes...</p>
+                        </div>
+                      ) : bankQuizzes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                          <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
+                            <Library className="w-6 h-6 text-[#a855f7]" />
+                          </div>
+                          <p className="text-[14px] font-semibold text-[#1e293b]">No quizzes yet</p>
+                          <p className="text-[12px] text-[#64748b]">Create your first quiz using the AI Quiz Maker.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                          {bankQuizzes.map((quiz) => (
+                            <div
+                              key={quiz.id}
+                              className="flex items-center justify-between gap-3 p-4 rounded-[14px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_2px_8px_rgba(168,85,247,0.08)] transition-all group"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-bold text-[#1e293b] truncate">{quiz.title}</p>
+                                <p className="text-[11px] text-[#64748b] font-medium mt-0.5">
+                                  {quiz.questions?.length ?? 0} questions
+                                  {quiz.gradeLevel ? ` · ${quiz.gradeLevel}` : ''}
+                                  {quiz.metadata?.topicsCovered?.[0] ? ` · ${quiz.metadata.topicsCovered[0]}` : ''}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setShowExportModal(false);
+                                  toast.success(`"${quiz.title}" selected for ${student.name}`);
+                                }}
+                                className="shrink-0 px-3 py-1.5 rounded-full bg-[#a855f7] text-white text-[11px] font-bold hover:bg-[#9333ea] transition-colors shadow-sm"
+                              >
+                                Assign
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-                {filteredLessonBlocks.length === 0 && (
-                  <div className="border border-border rounded-xl p-4 bg-card text-sm text-muted-foreground">
-                    No lesson blocks match the selected provenance filters. Clear one or both filters to view all blocks.
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => void saveLessonDraft()}
-                    disabled={savingLessonDraft || !lessonPlan}
-                    className="border-[#9956DE]/45 text-[#9956DE]"
-                  >
-                    {savingLessonDraft ? <Skeleton className="h-4 w-16" /> : 'Save Draft'}
-                  </Button>
-                  <Button
-                    onClick={() => void publishCurrentLessonPlan()}
-                    disabled={publishingLesson || !lessonPlan || !lessonPlan.publishReady}
-                    className="bg-[#75D06A] hover:bg-[#5AB84E] text-white"
-                  >
-                    {publishingLesson ? <Skeleton className="h-4 w-24 bg-white/35" /> : 'Publish Lesson Plan'}
-                  </Button>
-                  {savedLessonPlanId && (
-                    <p className="text-xs text-muted-foreground self-center">Draft ID: {savedLessonPlanId}</p>
                   )}
                 </div>
               </div>
-            )}
-          </BoneSkeleton>
+            </div>,
+            document.body
+          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Button
-              onClick={handleGenerateInterventionPlan}
-              disabled={generatingIntervention}
-              className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"
-            >
-              {generatingIntervention ? (
-                <>
-                  <Skeleton className="h-4 w-4 rounded-full bg-white/30 animate-pulse" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Zap size={20} />
-                  Generate Intervention Plan
-                </>
-              )}
-            </Button>
-            <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
-              <Send size={20} />
-              Schedule One-on-One Session
-            </Button>
-            <Button
-              variant="outline"
-              className="border-2 border-[#9956DE] text-[#9956DE] hover:bg-[#9956DE]/12 font-bold py-4 rounded-xl flex items-center justify-center gap-2"
-            >
-              <Download size={20} />
-              Export Printed Materials
-            </Button>
-          </div>
+          {/* ─── Quiz Maker Slide-Over Drawer ─── */}
+          {showQuizDrawer && ReactDOM.createPortal(
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm"
+                onClick={() => {
+                  if (drawerDirty) { setShowDrawerCloseConfirm(true); } else { setShowQuizDrawer(false); }
+                }}
+              />
 
-          {/* Intervention Plan Result Dialog */}
-          <Dialog open={interventionDialogOpen} onOpenChange={setInterventionDialogOpen}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-[#9956DE]">
-                  <Zap size={20} />
-                  Intervention Plan
-                </DialogTitle>
-                <DialogDescription>
-                  AI-generated 3-step intervention plan for{' '}
-                  <span className="font-semibold text-foreground">{student.name}</span>
-                </DialogDescription>
-              </DialogHeader>
-
-              {interventionPlan ? (
-                <div className="space-y-4 py-2">
-                  <div className="bg-[#9956DE]/8 border border-[#9956DE]/25 rounded-xl p-4">
-                    <p className="text-sm font-bold text-foreground mb-1">Overall Plan</p>
-                    <p className="text-sm text-muted-foreground">{interventionPlan.plan}</p>
+              {/* Slide-over panel — 88vw wide, full height */}
+              <div
+                className="fixed top-0 right-0 z-[9999] h-full w-full max-w-[88vw] xl:max-w-[1080px] bg-white shadow-[-8px_0_40px_rgba(0,0,0,0.15)] flex flex-col"
+                style={{ animation: 'slideInFromRight 0.3s cubic-bezier(0.16,1,0.3,1)' }}
+              >
+                {/* Drawer header */}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+                  <button
+                    onClick={() => {
+                      if (drawerDirty) { setShowDrawerCloseConfirm(true); } else { setShowQuizDrawer(false); }
+                    }}
+                    className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to {student.name}
+                  </button>
+                  <div className="h-5 w-px bg-slate-200" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-[8px] bg-gradient-to-br from-[#a855f7] to-[#9333ea] flex items-center justify-center">
+                      <Wand2 className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-[14px] font-bold text-[#1e293b]">AI Quiz Maker</span>
                   </div>
+                  {drawerDirty && (
+                    <span className="ml-auto text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                      Quiz in progress
+                    </span>
+                  )}
+                </div>
 
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Recommended Strategies
+                {/* QuizMaker fills the rest */}
+                <div className="flex-1 overflow-hidden">
+                  <QuizMaker
+                    onBack={() => setShowQuizDrawer(false)}
+                    drawerMode={true}
+                    gradeLevel={student.grade}
+                    onQuizGenerating={() => setDrawerDirty(true)}
+                    onQuizSaved={(_id) => {
+                      setDrawerDirty(false);
+                      toast.success('Quiz saved! Close this panel or create another.', {
+                        action: { label: 'Close Panel', onClick: () => setShowQuizDrawer(false) },
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Close-confirmation dialog */}
+              {showDrawerCloseConfirm && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/60" onClick={() => setShowDrawerCloseConfirm(false)} />
+                  <div className="relative bg-white rounded-[20px] shadow-[0_24px_60px_rgba(0,0,0,0.2)] w-full max-w-[380px] p-7 z-10">
+                    <div className="w-11 h-11 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
+                      <AlertCircle className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <h3 className="text-[16px] font-bold text-[#1e293b] mb-2">Discard quiz progress?</h3>
+                    <p className="text-[13px] text-[#64748b] font-medium mb-6">
+                      Your current quiz session will be lost if you close this panel. This cannot be undone.
                     </p>
-                    <div className="space-y-2">
-                      {interventionPlan.strategies.map((strategy, index) => (
-                        <div
-                          key={index}
-                          className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-3"
-                        >
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#9956DE]/15 text-[#9956DE] flex items-center justify-center text-xs font-bold">
-                            {index + 1}
-                          </span>
-                          <p className="text-sm text-foreground">{strategy}</p>
-                        </div>
-                      ))}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowDrawerCloseConfirm(false)}
+                        className="flex-1 py-2.5 rounded-full border border-slate-200 text-[13px] font-semibold text-[#475569] hover:bg-slate-50 transition-colors"
+                      >
+                        Keep editing
+                      </button>
+                      <button
+                        onClick={() => { setShowDrawerCloseConfirm(false); setShowQuizDrawer(false); setDrawerDirty(false); }}
+                        className="flex-1 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold transition-colors"
+                      >
+                        Discard &amp; close
+                      </button>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  No plan generated yet. Click "Generate Intervention Plan" to create one.
-                </div>
               )}
 
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="default" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={async () => {
-                    try {
-                      const { setDoc, doc, serverTimestamp } = await import('firebase/firestore');
-                      const { db } = await import('../lib/firebase');
-                      await setDoc(
-                        doc(db, 'managedStudents', teacherId, 'students', student.id),
-                        { interventionApplied: true, interventionAppliedAt: serverTimestamp() },
-                        { merge: true },
-                      );
-                      toast.success('Intervention plan marked as applied');
-                      setInterventionDialogOpen(false);
-                    } catch {
-                      toast.error('Failed to mark as applied');
-                    }
-                  }}>
-                  Mark as Applied
-                </Button>
-                <DialogClose asChild>
-                  <Button variant="outline" size="sm">
-                    Close
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              {/* Slide-in keyframe */}
+              <style>{`
+                @keyframes slideInFromRight {
+                  from { transform: translateX(100%); opacity: 0.6; }
+                  to   { transform: translateX(0);    opacity: 1; }
+                }
+              `}</style>
+            </>,
+            document.body
+          )}
+
+          {/* Section Assignment */}
+          <div className="w-full bg-white/80 rounded-[18px] p-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-auto">
+            <h3 className="text-[13px] font-semibold text-[#1e293b] mb-4">Section Assignment</h3>
+            <div className="space-y-[12px]">
+              <div>
+                <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Grade Level</label>
+                <div className="relative">
+                  <Input
+                    value={gradeDraft}
+                    onChange={(e) => setGradeDraft(e.target.value)}
+                    placeholder="Grade"
+                    className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Section</label>
+                <div className="relative">
+                  <Input
+                    value={sectionDraft}
+                    onChange={(e) => setSectionDraft(e.target.value)}
+                    placeholder="Section"
+                    className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveSectionAssignment}
+                disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
+                className="w-full bg-white hover:bg-[#f8fafc] disabled:opacity-50 text-[#4f46e5] border border-[#e0e7ff] text-[13px] font-semibold rounded-[14px] px-4 py-2.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] mt-2"
+              >
+                {savingSection ? 'Updating...' : 'Update Assignment'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </aside>
     </motion.div>
   );
+
 };
 
 // Import View
@@ -3164,23 +3414,6 @@ const ImportView: React.FC<{
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
   const [uploadResult, setUploadResult] = useState<string>('');
-  const [teacherSubject, setTeacherSubject] = useState(classMetadata?.classification || '');
-  const [teacherQuarter, setTeacherQuarter] = useState('');
-  const [teacherStrand, setTeacherStrand] = useState(classMetadata?.strand || '');
-  const [teacherGradeLevel, setTeacherGradeLevel] = useState(classMetadata?.gradeLevel?.toString() || '');
-
-  // Derive teacherQuarter from current month
-  useEffect(() => {
-    const deriveQuarter = () => {
-      const m = new Date().getMonth() + 1;
-      if (m <= 3) return 'Quarter 1';
-      if (m <= 6) return 'Quarter 2';
-      if (m <= 9) return 'Quarter 3';
-      return 'Quarter 4';
-    };
-    setTeacherQuarter(prev => prev || deriveQuarter());
-  }, [classMetadata]);
-
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
     summary?: {
@@ -3200,11 +3433,6 @@ const ImportView: React.FC<{
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
-  const [classRecordUploadResult, setClassRecordUploadResult] = useState<ClassRecordUploadResponse | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [templateDownloading, setTemplateDownloading] = useState(false);
-  const templateFileInputRef = useRef<HTMLInputElement>(null);
-  const [courseMaterialSuccess, setCourseMaterialSuccess] = useState<{title: string; moduleId: string} | null>(null);
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -3403,27 +3631,19 @@ const ImportView: React.FC<{
   const handleCourseMaterialUpload = async (file: File) => {
     setUploadingCourseMaterials(true);
     setUploadResult('');
-    setCourseMaterialSuccess(null);
     try {
-      const result = await apiService.uploadTeacherMaterial(file, {
-        gradeLevel: teacherGradeLevel || undefined,
-        subject: teacherSubject || undefined,
-        strandOrTrack: teacherStrand || undefined,
-        quarter: teacherQuarter || undefined,
-        classId: classSectionId,
+      const result = await apiService.uploadCourseMaterials(file, {
+        classSectionId,
+        className,
       });
 
       if (result.success) {
-        toast.success(result.message || 'Teacher module created and available to students.');
-        if (result.moduleId) {
-          setCourseMaterialSuccess({ title: result.title || 'Untitled Module', moduleId: result.moduleId });
-        } else {
-          setUploadResult(result.message || 'Course material uploaded successfully.');
-        }
+        const topicCount = result.topics?.length ?? 0;
+        toast.success(`Course material imported (${topicCount} topics extracted). Lesson generation now has material context.`);
+        setUploadResult(
+          `Imported course material ${result.fileName} with ${topicCount} topics and ${result.sections.length} section(s). Lesson generation is now ready with material context.`,
+        );
         onDataChanged?.();
-      } else {
-        toast.error(result.error || result.message || 'Course material upload failed');
-        setUploadResult(result.message || 'Course material upload failed.');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Course material upload failed');
@@ -3461,62 +3681,6 @@ const ImportView: React.FC<{
     }
   };
 
-  const handleDownloadTemplate = async () => {
-    setTemplateDownloading(true);
-    try {
-      const blob = await apiService.downloadClassRecordTemplate({
-        quarter: teacherQuarter || undefined,
-        subject: teacherSubject || undefined,
-        school_year: classMetadata?.schoolYear || undefined,
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `class-record-template-${className || 'default'}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      toast.success('Template downloaded');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download template');
-    } finally {
-      setTemplateDownloading(false);
-    }
-  };
-
-  const handleClassRecordUpload = async (file: File) => {
-    setUploading(true);
-    setClassRecordUploadResult(null);
-    try {
-      const result = await apiService.uploadClassRecordTemplate(file, {
-        subject: teacherSubject || undefined,
-        quarter: teacherQuarter || undefined,
-        gradeLevel: teacherGradeLevel || undefined,
-      });
-      setClassRecordUploadResult(result);
-      if (result.success) {
-        toast.success(result.message || 'Upload complete');
-      } else {
-        toast.error(result.error || 'Upload failed');
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-      if (templateFileInputRef.current) {
-        templateFileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleTemplateFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      void handleClassRecordUpload(file);
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -3526,7 +3690,7 @@ const ImportView: React.FC<{
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
-          <h2 className="text-xl font-display font-bold text-foreground">Import Data</h2>
+          <h2 className="text-xl font-display font-semibold text-foreground">Import Data</h2>
           <p className="text-muted-foreground">Class records drive analytics and at-risk signals. Course materials provide topic grounding for AI lesson plans.</p>
           <div className="mt-2 flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
             <span className="px-2 py-1 rounded-md bg-muted border border-border">Class scope: {className || classSectionId || 'All classes'}</span>
@@ -3548,38 +3712,6 @@ const ImportView: React.FC<{
               dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12' : 'border-border'
             }`}
           >
-            {/* Template Download + Upload Bar */}
-            <div
-              className="flex items-center justify-between mb-4 pb-4 border-b border-border"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={handleDownloadTemplate}
-                disabled={templateDownloading}
-                className="flex items-center gap-2 text-sm font-medium text-[#9956DE] hover:text-[#7A44B3] transition-colors disabled:opacity-50"
-              >
-                <Download size={16} />
-                {templateDownloading ? 'Downloading...' : 'Download Template'}
-              </button>
-              <div>
-                <input
-                  ref={templateFileInputRef}
-                  type="file"
-                  accept=".csv,.xlsx"
-                  onChange={handleTemplateFileSelect}
-                  className="hidden"
-                />
-                <Button
-                  onClick={() => templateFileInputRef.current?.click()}
-                  disabled={uploading}
-                  size="sm"
-                  className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-semibold rounded-xl"
-                >
-                  {uploading ? 'Uploading...' : 'Upload Filled Template'}
-                </Button>
-              </div>
-            </div>
-
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
               onDragLeave={() => setDragOver1(false)}
@@ -3601,7 +3733,7 @@ const ImportView: React.FC<{
                   <FileSpreadsheet size={40} className="text-[#9956DE]" />
                 )}
               </div>
-              <h3 className="text-xl font-display font-bold text-foreground mb-2">Class Records</h3>
+              <h3 className="text-xl font-display font-semibold text-foreground mb-2">Class Records</h3>
               <p className="text-muted-foreground mb-4">
                 {uploadingClassRecords ? (
                   <span className="inline-flex flex-col items-center gap-2">
@@ -3616,151 +3748,23 @@ const ImportView: React.FC<{
                   <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
                   <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
               </p>
-              <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-bold px-6 py-3 rounded-xl w-full transition-colors">
+              <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-semibold px-6 py-3 rounded-xl w-full transition-colors">
                 Click or drag & drop
               </Button>
             </div>
-
-            {/* Class Record Upload Results */}
-            {classRecordUploadResult && (
-              <div className="mt-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-                {classRecordUploadResult.summary && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-muted rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-foreground">{classRecordUploadResult.summary.totalStudents}</p>
-                      <p className="text-xs text-muted-foreground">Total Students</p>
-                    </div>
-                    <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3 text-center border border-red-200 dark:border-red-800">
-                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">{classRecordUploadResult.summary.atRiskCount}</p>
-                      <p className="text-xs text-red-500">At Risk</p>
-                    </div>
-                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center border border-amber-200 dark:border-amber-800">
-                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{classRecordUploadResult.summary.mediumRiskCount}</p>
-                      <p className="text-xs text-amber-500">Medium Risk</p>
-                    </div>
-                    <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-800">
-                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{classRecordUploadResult.summary.lowRiskCount}</p>
-                      <p className="text-xs text-emerald-500">Low Risk</p>
-                    </div>
-                  </div>
-                )}
-
-                {classRecordUploadResult.students && classRecordUploadResult.students.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-foreground mb-2">At-Risk Students</h4>
-                    <div className="max-h-48 overflow-y-auto space-y-1">
-                      {classRecordUploadResult.students
-                        .filter((s) => s.riskLevel === 'high')
-                        .slice(0, 20)
-                        .map((student, i) => (
-                          <div key={i} className="flex items-center justify-between bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
-                            <span className="text-sm font-medium text-foreground">{student.name}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-red-500 font-semibold">{student.riskScore.toFixed(1)}%</span>
-                              {student.topFactors.length > 0 && (
-                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{student.topFactors.slice(0, 2).join(', ')}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {classRecordUploadResult.metadata && (
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground border-t border-border pt-3">
-                    {classRecordUploadResult.metadata.className && (
-                      <span className="bg-muted px-2 py-1 rounded">Class: {classRecordUploadResult.metadata.className}</span>
-                    )}
-                    {classRecordUploadResult.metadata.subject && (
-                      <span className="bg-muted px-2 py-1 rounded">Subject: {classRecordUploadResult.metadata.subject}</span>
-                    )}
-                    {classRecordUploadResult.metadata.quarter && (
-                      <span className="bg-muted px-2 py-1 rounded">Quarter: {classRecordUploadResult.metadata.quarter}</span>
-                    )}
-                    {classRecordUploadResult.metadata.schoolYear && (
-                      <span className="bg-muted px-2 py-1 rounded">SY: {classRecordUploadResult.metadata.schoolYear}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Course Materials */}
-          <div className="flex flex-col gap-4">
-            {/* Metadata Form */}
-            <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 rounded-2xl border border-border">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Subject</label>
-                <select
-                  value={teacherSubject}
-                  onChange={(e) => setTeacherSubject(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                >
-                  <option value="">Select subject</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="English">English</option>
-                  <option value="Science">Science</option>
-                  <option value="Filipino">Filipino</option>
-                  <option value="Aralin Panlipunan">Aralin Panlipunan</option>
-                  <option value="ESP">ESP</option>
-                  <option value="TLE">TLE</option>
-                  <option value="Music">Music</option>
-                  <option value="Arts">Arts</option>
-                  <option value="Physical Education">Physical Education</option>
-                  <option value="Health">Health</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Quarter</label>
-                <select
-                  value={teacherQuarter}
-                  onChange={(e) => setTeacherQuarter(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                >
-                  <option value="">Select quarter</option>
-                  <option value="Quarter 1">Quarter 1</option>
-                  <option value="Quarter 2">Quarter 2</option>
-                  <option value="Quarter 3">Quarter 3</option>
-                  <option value="Quarter 4">Quarter 4</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Grade Level</label>
-                <select
-                  value={teacherGradeLevel}
-                  onChange={(e) => setTeacherGradeLevel(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                >
-                  <option value="">Select grade</option>
-                  <option value="Grade 11">Grade 11</option>
-                  <option value="Grade 12">Grade 12</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Strand/Track</label>
-                <input
-                  type="text"
-                  value={teacherStrand}
-                  onChange={(e) => setTeacherStrand(e.target.value)}
-                  placeholder="e.g. STEM"
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                />
-              </div>
-            </div>
-
-            {/* Drop Zone */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
-              onDragLeave={() => setDragOver2(false)}
-              onDrop={handleCourseMaterialDrop}
-              onClick={() => materialInputRef.current?.click()}
-              className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 flex-1 ${
-                dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
-              }`}
-            >
-              <input
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
+            onDragLeave={() => setDragOver2(false)}
+            onDrop={handleCourseMaterialDrop}
+            onClick={() => materialInputRef.current?.click()}
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 ${
+              dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
+            }`}
+          >
+            <input
               ref={materialInputRef}
               type="file"
               accept=".pdf,.docx,.txt"
@@ -3774,7 +3778,7 @@ const ImportView: React.FC<{
                 <FileText size={40} className="text-[#F08386]" />
               )}
             </div>
-            <h3 className="text-xl font-display font-bold text-foreground mb-2">Course Materials</h3>
+            <h3 className="text-xl font-display font-semibold text-foreground mb-2">Course Materials</h3>
             <p className="text-muted-foreground mb-4">
               {uploadingCourseMaterials ? (
                 <span className="inline-flex flex-col items-center gap-2">
@@ -3788,17 +3792,16 @@ const ImportView: React.FC<{
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
                 <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
             </p>
-            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-bold px-6 py-3 rounded-xl w-full transition-colors">
+            <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-semibold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
             </Button>
-            </div>
           </div>
 
         </div>
 
         {shsExcelResult && (
           <div className="bg-card border border-border rounded-2xl p-4">
-            <h3 className="text-base font-display font-bold text-foreground mb-2">Workbook Preview Summary</h3>
+            <h3 className="text-base font-display font-semibold text-foreground mb-2">Workbook Preview Summary</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
               <div className="bg-muted rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">School</p>
@@ -3822,26 +3825,26 @@ const ImportView: React.FC<{
 
         {/* Info Box */}
         <div className="bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-2xl p-6">
-          <h3 className="text-lg font-display font-bold text-[#7A44B3] mb-3">How AI Uses Your Data</h3>
+          <h3 className="text-lg font-display font-semibold text-[#7A44B3] mb-3">How AI Uses Your Data</h3>
           <div className="space-y-2 text-[#5E3388]/80 text-sm">
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span><strong className="text-[#7A44B3]">Smart Format Detection:</strong> AI understands various spreadsheet formats and column names</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>Analyzes historical performance patterns to predict at-risk students</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>Maps curriculum topics to student knowledge gaps</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>Generates personalized remedial learning paths</span>
             </p>
             <p className="flex items-start gap-2">
-              <span className="text-[#9956DE] font-bold">&bull;</span>
+              <span className="text-[#9956DE] font-semibold">&bull;</span>
               <span>All data is processed securely and never shared</span>
             </p>
           </div>
@@ -3854,26 +3857,10 @@ const ImportView: React.FC<{
           </div>
         )}
 
-        {/* Course Material Success Card */}
-        {courseMaterialSuccess && (
-          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-700 text-xs font-bold">Module Generated ✓</span>
-            </div>
-            <h4 className="text-lg font-bold text-foreground">{courseMaterialSuccess.title}</h4>
-            <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">Available to students now</span>
-            <p className="text-xs text-muted-foreground font-mono">ID: {courseMaterialSuccess.moduleId}</p>
-            <div className="flex items-center gap-2 pt-2">
-              <Button size="sm" onClick={() => setCourseMaterialSuccess(null)}>View in Modules tab</Button>
-              <Button size="sm" variant="outline" onClick={() => setCourseMaterialSuccess(null)}>Dismiss</Button>
-            </div>
-          </div>
-        )}
-
         {uploadInterpretation && (
           <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-display font-bold text-foreground">Import Interpretation</h3>
+              <h3 className="text-lg font-display font-semibold text-foreground">Import Interpretation</h3>
               <span className="text-xs px-2 py-1 rounded bg-muted text-[#334155]">
                 Intent: {uploadInterpretation.datasetIntent || 'synthetic_student_records'}
               </span>
@@ -3883,23 +3870,23 @@ const ImportView: React.FC<{
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Scoring</p>
-                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.scoringColumns}</p>
+                  <p className="text-lg font-semibold text-foreground">{uploadInterpretation.summary.scoringColumns}</p>
                 </div>
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Display</p>
-                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
+                  <p className="text-lg font-semibold text-foreground">{uploadInterpretation.summary.displayColumns}</p>
                 </div>
                 <div className="bg-[#FFB356]/16 border border-[#FFB356]/38 rounded-xl p-3">
                   <p className="text-xs text-[#CC8A37]">Storage-only</p>
-                  <p className="text-lg font-bold text-[#A56D29]">{uploadInterpretation.summary.storageOnlyColumns}</p>
+                  <p className="text-lg font-semibold text-[#A56D29]">{uploadInterpretation.summary.storageOnlyColumns}</p>
                 </div>
                 <div className="bg-[#F08386]/12 border border-[#F08386]/30 rounded-xl p-3">
                   <p className="text-xs text-[#C65E63]">Low confidence</p>
-                  <p className="text-lg font-bold text-[#A74B50]">{uploadInterpretation.summary.lowConfidenceColumns}</p>
+                  <p className="text-lg font-semibold text-[#A74B50]">{uploadInterpretation.summary.lowConfidenceColumns}</p>
                 </div>
                 <div className="bg-[#f8fbff] border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground">Domain warnings</p>
-                  <p className="text-lg font-bold text-foreground">{uploadInterpretation.summary.domainMismatchWarnings}</p>
+                  <p className="text-lg font-semibold text-foreground">{uploadInterpretation.summary.domainMismatchWarnings}</p>
                 </div>
               </div>
             )}
@@ -3928,7 +3915,7 @@ const ImportView: React.FC<{
 
         {/* Manage Imported Data */}
         <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-          <h3 className="text-lg font-display font-bold text-foreground mb-4">Manage Imported Data</h3>
+          <h3 className="text-lg font-display font-semibold text-foreground mb-4">Manage Imported Data</h3>
           <button 
             onClick={onEditRecords}
             className="w-full bg-[#00a86b] hover:bg-[#008f5d] text-white rounded-xl p-5 flex items-center justify-between transition-all shadow-sm hover:shadow-md group"
@@ -3938,7 +3925,7 @@ const ImportView: React.FC<{
                 <Edit3 size={24} className="text-white" />
               </div>
               <div className="text-left">
-                <h4 className="font-bold text-lg">Edit Class Records</h4>
+                <h4 className="font-semibold text-lg">Edit Class Records</h4>
                 <p className="text-white/90 text-sm">Review and correct AI-analyzed student data</p>
               </div>
             </div>
@@ -4058,7 +4045,7 @@ const EditRecordsView: React.FC<{
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">Edit Class Records</h1>
+            <h1 className="text-2xl font-display font-semibold text-foreground">Edit Class Records</h1>
             <p className="text-muted-foreground">Review and modify student data manually</p>
           </div>
         </div>
@@ -4088,14 +4075,14 @@ const EditRecordsView: React.FC<{
           <table className="w-full text-left border-collapse">
             <thead className="bg-background sticky top-0 z-10">
               <tr>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Student Name</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">LRN</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Grade</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Section</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Avg Score</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Risk Level</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Weakest Topic</th>
-                <th className="p-4 font-bold text-muted-foreground border-b border-border bg-background">Actions</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Student Name</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">LRN</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Grade</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Section</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Avg Score</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Risk Level</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Weakest Topic</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -4142,13 +4129,13 @@ const EditRecordsView: React.FC<{
                       />
                     </td>
                     <td className="p-4">
-                      <span className={`font-bold ${
+                      <span className={`font-semibold ${
                         student.avgScore < 60 ? 'text-[#FF8B8B]' :
                         student.avgScore < 80 ? 'text-[#F08386]' : 'text-green-600'
                       }`}>{student.avgScore}%</span>
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${getRiskBadge(student.riskLevel)}`}>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getRiskBadge(student.riskLevel)}`}>
                         {student.riskLevel.toUpperCase()}
                       </span>
                     </td>
@@ -4166,6 +4153,182 @@ const EditRecordsView: React.FC<{
         </div>
       </div>
     </motion.div>
+  );
+};
+
+// Dashboard Right Sidebar Component
+const DashboardRightSidebar: React.FC<{
+  onViewCalendar?: () => void;
+  onOpenProfile?: () => void;
+  userProfile?: any;
+  teacherName: string;
+}> = ({ onViewCalendar, onOpenProfile, userProfile, teacherName }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<'pulse' | 'reminders'>('pulse');
+
+  const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+
+  const monthLabel = () => currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const goToPrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  const goToNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+
+  const getDaysArray = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days: (number | null)[] = [];
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.unshift(null);
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+
+    return days;
+  };
+
+  const isToday = (day: number | null) => {
+    if (!day) return false;
+    const today = new Date();
+    return day === today.getDate() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear();
+  };
+
+  const days = getDaysArray();
+  const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+  return (
+    <aside className="w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-hidden">
+      {/* Profile Section */}
+      <div className="p-[22px_16px_10px] border-b border-[#f1f5f9] flex flex-col items-center gap-[5px]">
+        <div className="w-[48px] h-[48px] rounded-full bg-[#e0e7ff] flex items-center justify-center text-[22px] text-[#4f46e5] shadow-[0_0_0_3px_#c7d2fe] flex-shrink-0">
+          <UserAvatar src={userProfile?.photo} name={teacherName} className="w-full h-full rounded-full" />
+        </div>
+        <div className="text-[13.5px] font-semibold text-[#1e293b] mt-1">{teacherName}</div>
+        <div className="text-[11px] text-[#94a3b8]">Teacher</div>
+        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#818cf8] hover:bg-[#6366f1] text-white rounded-full text-[11.5px] font-medium transition-colors">
+          Profile
+        </button>
+      </div>
+
+      {/* Calendar Section */}
+      <div className="p-[10px_16px] border-b border-[#f1f5f9]">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={goToPrevMonth}
+            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px]"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="text-[12px] font-semibold text-[#1e293b]">{monthLabel()}</span>
+          <button
+            onClick={goToNextMonth}
+            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px]"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-[2px] text-center mb-1">
+          {dayLabels.map((label) => (
+            <div key={label} className="text-[10px] font-semibold text-[#94a3b8] p-[2px_0_4px]">
+              {label}
+            </div>
+          ))}
+          {days.map((day, idx) => (
+            <div
+              key={`${currentDate.getMonth()}-${idx}`}
+              className={`text-[11px] leading-[22px] w-[22px] h-[22px] m-auto flex items-center justify-center rounded-full ${
+                day === null
+                  ? 'text-[#cbd5e1]'
+                  : isToday(day)
+                    ? 'bg-[#818cf8] text-white font-semibold'
+                    : 'text-[#475569]'
+              }`}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-[18px] p-[12px_16px_0] border-b border-[#f1f5f9] flex-shrink-0">
+        <button
+          onClick={() => setActiveTab('pulse')}
+          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
+            activeTab === 'pulse'
+              ? 'text-[#10b981] border-[#10b981]'
+              : 'text-[#94a3b8] border-transparent'
+          }`}
+        >
+          Live pulse
+        </button>
+        <button
+          onClick={() => setActiveTab('reminders')}
+          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
+            activeTab === 'reminders'
+              ? 'text-[#10b981] border-[#10b981]'
+              : 'text-[#94a3b8] border-transparent'
+          }`}
+        >
+          Reminders
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto p-[14px_16px]">
+        {activeTab === 'pulse' && (
+          <div className="flex flex-col items-center gap-3">
+            <svg className="w-[96px] h-[96px]" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#e2e8f0" strokeWidth="4"/>
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" strokeWidth="4"
+                strokeDasharray="78 100" strokeDashoffset="25" strokeLinecap="round"/>
+              <text x="18" y="16.5" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="7" fontWeight="600" fill="#1e293b">78%</text>
+              <text x="18" y="23" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="3.8" fill="#94a3b8" letterSpacing="0.3">ENGAGED</text>
+            </svg>
+            <div className="grid grid-cols-2 gap-[7px] w-full">
+              <div className="flex items-center gap-[6px] text-[11px] text-[#64748b]">
+                <div className="w-2 h-2 rounded-full bg-[#10b981] flex-shrink-0"></div>Engaged
+                <span className="ml-auto font-semibold text-[#1e293b]">78%</span>
+              </div>
+              <div className="flex items-center gap-[6px] text-[11px] text-[#64748b]">
+                <div className="w-2 h-2 rounded-full bg-[#e2e8f0] flex-shrink-0"></div>Inactive
+                <span className="ml-auto font-semibold text-[#1e293b]">22%</span>
+              </div>
+            </div>
+            <div className="bg-[#f8fafc] rounded-[11px] p-[11px_12px] text-center w-full mt-1">
+              <div className="text-[9px] font-semibold text-[#94a3b8] uppercase tracking-[0.07em] mb-[3px]">Current activity</div>
+              <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Quadratic equations quiz</div>
+              <div className="text-[11.5px] text-[#4f46e5] font-medium">10 / 12 students active</div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'reminders' && (
+          <div className="space-y-[8px]">
+            <div className="flex items-start gap-[10px] p-[10px_11px] border border-[#f1f5f9] rounded-[12px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
+              <div className="p-[7px] rounded-[8px] border border-[#f1f5f9] bg-white text-[14px] text-[#4f46e5] flex-shrink-0"><Bell size={14} /></div>
+              <div>
+                <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Eng – Vocabulary test</div>
+                <div className="text-[10.5px] text-[#94a3b8]">12 May 2026, Friday</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-[10px] p-[10px_11px] border border-[#f1f5f9] rounded-[12px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
+              <div className="p-[7px] rounded-[8px] border border-[#f1f5f9] bg-white text-[14px] text-[#10b981] flex-shrink-0"><BookOpen size={14} /></div>
+              <div>
+                <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Eng – Essay review</div>
+                <div className="text-[10.5px] text-[#94a3b8]">12 May 2026, Friday</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 };
 
@@ -4187,4 +4350,5 @@ function getRiskColor(level: 'high' | 'medium' | 'low') {
 }
 
 export default TeacherDashboard;
+
 
