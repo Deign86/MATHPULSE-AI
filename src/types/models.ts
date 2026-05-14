@@ -861,3 +861,40 @@ export interface HeroBannerModalSummary {
   latestRiskLevel: string;
   updatedAt: Date;
 }
+
+// ─── WRI (Weighted Risk Index) Types ───────────────────────────────────────
+
+// Risk History Entry — stored in riskHistory array
+export interface RiskHistoryEntry {
+  wri: number;
+  riskStatus: 'safe' | 'monitoring' | 'at_risk';
+  computedAt: Date | null;
+  trigger: 'diagnostic' | 'activity_completed' | 'grades_imported' | 'manual';
+}
+
+// WRI Weights configuration
+export interface WRIWeights {
+  w1: number; // Diagnostic weight (default 0.30)
+  w2: number; // External grades weight (default 0.40)
+  w3: number; // System performance weight (default 0.30)
+}
+
+// WRI Breakdown — for display in RiskDetailPanel
+export interface WRIBreakdown {
+  diagnostic: number | null;   // D
+  external: number | null;     // G
+  system: number | null;       // P
+}
+
+// Student Risk Profile — for managedStudents/{studentId} documents
+export interface StudentRiskProfile {
+  wri?: number | null;
+  riskStatus?: 'safe' | 'monitoring' | 'at_risk' | null;
+  riskUpdatedAt?: Date | null;
+  weights?: WRIWeights;
+  diagnosticScore?: number | null;       // D — set once after initial assessment
+  externalGradesAvg?: number | null;    // G — computed from externalGrades array
+  systemPerformanceAvg?: number | null; // P — computed from activityScores array
+  riskHistory?: RiskHistoryEntry[];
+  riskRecalcNeeded?: boolean;            // Flag for Cloud Function debounced recalc
+}
