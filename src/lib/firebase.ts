@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
@@ -62,8 +62,17 @@ if (import.meta.env.DEV) {
   // Firebase app initialized
 }
 
-// Initialize Firebase services
-export const auth = getAuth(app);
+// Initialize Firebase services with persistence fallback chain.
+// browserLocalPersistence (IndexedDB) is preferred, but falls back to
+// sessionStorage or memory when third-party storage is blocked by
+// browser Tracking Prevention (e.g., ERR_BLOCKED_BY_CLIENT).
+export const auth = typeof window !== 'undefined'
+  ? initializeAuth(app, {
+      persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+    })
+  : initializeAuth(app, {
+      persistence: [inMemoryPersistence],
+    });
 export const db = initializeFirestore(app, typeof window !== 'undefined' ? {
   localCache: persistentLocalCache()
 } : {});
@@ -88,10 +97,16 @@ if (useFunctionsEmulator) {
 export const realtimeDb = databaseUrl ? getDatabase(app, databaseUrl) : null;
 export const isRealtimeDbEnabled = Boolean(databaseUrl);
 
-// Initialize Analytics (optional, only in browser and if measurementId is configured)
+// Initialize Analytics (optional, only in browser and if measurementId is configured).
+// Wrapped in try/catch to prevent ERR_BLOCKED_BY_CLIENT from crashing the app
+// when ad/tracking blockers block Firebase Analytics telemetry URLs.
 let analytics = null;
 if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
-  analytics = getAnalytics(app);
+  try {
+    analytics = getAnalytics(app);
+  } catch {
+    // Analytics is non-critical — silently skip if blocked or unavailable
+  }
 }
 
 export { analytics };
