@@ -107,19 +107,3 @@ graphify-out/cache/
 Local KuzuDB binary index — regenerates on: npx gitnexus analyze
 .gitnexus/
 gitnexus.db
-
-# Agent / AI tooling — never commit
-.claude/
-CLAUDE.md
-.opencode/
-.sisyphus/
-.pr-body.md
-
-# Temp scratch files
-scratch.txt
-patch_sidebar_index.js
-deploy-trigger.txt
-eslint_output.txt
-.lint-out.txt
-.lint-temp.txt
-docs/ui-standardization-summary.md
