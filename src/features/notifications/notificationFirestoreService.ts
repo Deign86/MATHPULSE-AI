@@ -19,8 +19,19 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { startOfDay, endOfDay } from 'date-fns';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import type { Notification, NotificationPayload } from './types';
+
+/** Auth guard: skip Firestore call silently if user is not authenticated.
+ *  Prevents "Missing or insufficient permissions" errors from Firestore
+ *  when auth state has not yet initialized or token is stale. */
+function requireAuth(): string | null {
+  const uid = auth.currentUser?.uid ?? null;
+  if (!uid) {
+    console.warn('[notificationFirestoreService] Skipping Firestore call — user not authenticated');
+  }
+  return uid;
+}
 
 const mapNotificationDoc = (docSnap: { id: string; data: () => Record<string, unknown> }): Notification => {
   const data = docSnap.data();
@@ -45,6 +56,8 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => Record<string, un
 };
 
 export const createNotification = async (payload: NotificationPayload): Promise<string> => {
+  const uid = requireAuth();
+  if (!uid) throw new Error('Cannot create notification — not authenticated');
   try {
     const notificationRef = doc(collection(db, 'notifications', payload.userId, 'items'));
     const notificationData = {
@@ -124,6 +137,13 @@ export const subscribeToNotifications = (
   userId: string,
   callback: (notifications: Notification[]) => void
 ): (() => void) => {
+  const uid = requireAuth();
+  if (!uid || uid !== userId) {
+    console.warn('[notificationFirestoreService] subscribeToNotifications skipped — auth UID mismatch or not signed in');
+    callback([]);
+    return () => undefined;
+  }
+
   const notificationsQuery = query(
     collection(db, 'notifications', userId, 'items'),
     orderBy('createdAt', 'desc')
@@ -141,6 +161,7 @@ export const subscribeToNotifications = (
 };
 
 export const hasCheckedInToday = async (userId: string): Promise<boolean> => {
+  if (!requireAuth()) return false;
   try {
     const now = new Date();
     const start = startOfDay(now);
@@ -151,6 +172,7 @@ export const hasCheckedInToday = async (userId: string): Promise<boolean> => {
       where('type', '==', 'daily_checkin'),
       where('createdAt', '>=', start),
       where('createdAt', '<=', end),
+      orderBy('createdAt', 'asc'),
       limit(1)
     );
 
@@ -163,6 +185,7 @@ export const hasCheckedInToday = async (userId: string): Promise<boolean> => {
 };
 
 export const hasRemindedToday = async (userId: string): Promise<boolean> => {
+  if (!requireAuth()) return false;
   try {
     const now = new Date();
     const start = startOfDay(now);
@@ -171,6 +194,7 @@ export const hasRemindedToday = async (userId: string): Promise<boolean> => {
       collection(db, 'notifications', userId, 'items'),
       where('type', '==', 'streak_reminder'),
       where('createdAt', '>=', start),
+      orderBy('createdAt', 'asc'),
       limit(1)
     );
 

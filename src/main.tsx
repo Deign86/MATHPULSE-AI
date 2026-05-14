@@ -8,6 +8,21 @@ import 'katex/dist/katex.min.css';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { registerBoneyardRegistry } from './bones/registry';
 import { queryClient } from './lib/queryClient.ts';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+
+// Global error handlers — catch unhandled errors and promise rejections
+// that would otherwise result in silent failures or blank screens.
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    console.error('[global] Uncaught error:', event.error?.message ?? event.message);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('[global] Unhandled promise rejection:', event.reason?.message ?? event.reason);
+    // Prevent the default browser console warning
+    event.preventDefault();
+  });
+}
 
 // Suppress browser console.log/info in production builds (localhost:3000 dev shows them)
 if (!import.meta.env.DEV) {
@@ -26,13 +41,15 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
+  <ErrorBoundary>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  </ErrorBoundary>
 );
 
 registerBoneyardRegistry();
