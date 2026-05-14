@@ -471,7 +471,9 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
       return {
         id: d.id,
         severity,
-        timestamp: (data.timestamp as string) || timestampToString(data.timestamp as { toDate?: () => Date }),
+        timestamp: typeof data.timestamp === 'string'
+        ? data.timestamp
+        : timestampToString(data.timestamp as { toDate?: () => Date }),
         user: { 
           name: (data.actorName as string) || (data.teacherEmail as string) || 'System', 
           role: (data.actorRole as string) || (data.role as string) || 'Admin', 

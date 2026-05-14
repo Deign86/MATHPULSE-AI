@@ -10,6 +10,16 @@ interface FloatingAITutorProps {
   onFullScreen: () => void;
 }
 
+/** Safely convert a Date or Firestore Timestamp to a time string */
+function safeTimestamp(ts: unknown): string {
+  if (!ts) return '';
+  if (ts instanceof Date) return ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (typeof ts === 'object' && 'toDate' in (ts as Record<string, unknown>)) {
+    return (ts as { toDate: () => Date }).toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return String(ts);
+}
+
 const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _constraintsRef, onFullScreen }) => {
   const { activeSessionId, setActiveSessionId, createNewSession, getActiveSession, sendMessage, isLoading } = useChatContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -157,7 +167,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
                 <p className={`text-[10px] mt-1 ${
                   message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
                 }`}>
-                  {message.timestamp}
+                  {safeTimestamp(message.timestamp)}
                 </p>
               </div>
             </div>

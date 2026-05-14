@@ -8,6 +8,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
 import UserAvatar from './UserAvatar';
 
+/** Safely convert a Date or Firestore Timestamp to a time string */
+function safeTimestamp(ts: unknown): string {
+  if (!ts) return '';
+  if (ts instanceof Date) return ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (typeof ts === 'object' && 'toDate' in (ts as Record<string, unknown>)) {
+    return (ts as { toDate: () => Date }).toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return String(ts);
+}
+
 const AIChatPage = () => {
   const { 
     sessions, 
@@ -261,7 +271,7 @@ const AIChatPage = () => {
                       <p className={`text-[10px] mt-1.5 ${
                         message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
                       }`}>
-                        {message.timestamp}
+                        {safeTimestamp(message.timestamp)}
                       </p>
                     </div>
                     {message.sender === 'user' && (
