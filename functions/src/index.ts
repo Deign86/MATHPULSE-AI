@@ -77,16 +77,3 @@ export {
   quizBattleResumeSession,
   quizBattleResolvePublicMatchmakingSweep,
 } from "./triggers/quizBattleApi";
-
-// ─── FCM Push Notification Triggers ──────────────────────────
-
-export {
-  onAchievementUnlocked,
-  onQuizBattleUpdate,
-  onGradePosted,
-  dailyRewardReminder,
-  streakReminder,
-  notifyAssignmentDeadline,
-  sendTestPush,
-  onInAppNotificationCreated,
-} from "./notifications";
