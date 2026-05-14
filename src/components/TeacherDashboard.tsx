@@ -1281,82 +1281,86 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          {activeView !== 'import' && activeView !== 'analytics' && activeView !== 'intervention' && activeView !== 'competency' && activeView !== 'topic_mastery' && (
+          {activeView !== 'import' && activeView !== 'analytics' && activeView !== 'intervention' && activeView !== 'competency' && activeView !== 'topic_mastery' && activeView !== 'quiz_maker' && activeView !== 'question_bank' && activeView !== 'notifications' && activeView !== 'calendar' && (
           <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0">
-              {isMobileViewport && (
-                <button
-                  onClick={() => setMobileNavOpen(true)}
-                  className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
-                  aria-label="Open navigation"
-                >
-                  <Menu size={18} />
-                </button>
-              )}
-              <div>
-                <h1 className="text-xl font-display font-semibold text-foreground leading-tight">
-                  {activeView === 'dashboard' && 'Teacher Dashboard'}
-                  {activeView === 'notifications' && 'Notifications'}
-                  {activeView === 'calendar' && 'Calendar'}
-                  {activeView === 'quiz_maker' && 'AI Quiz Maker'}
-                  {activeView === 'question_bank' && 'Question Bank'}
-                </h1>
-                <p className="text-xs text-muted-foreground font-body">
-                  {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                  {activeView === 'quiz_maker' && 'Create and manage AI-powered quizzes'}
-                  {activeView === 'question_bank' && 'Manage RAG-powered quiz question bank'}
-                  {activeView === 'notifications' && 'View classroom alerts and updates'}
-                  {activeView === 'calendar' && 'Check upcoming class events and schedule'}
-                </p>
-              </div>
-              {/* Quick teacher stats */}
-              {activeView === 'dashboard' && (
-                <div className="hidden xl:flex items-center gap-2 ml-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
-                    <Users size={13} className="text-[#9956DE]" />
-                    <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
-                    <AlertTriangle size={13} className="text-[#F08386]" />
-                    <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
-                    <TrendingUp size={13} className="text-[#75D06A]" />
-                    <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              {insightDismissed && (
-                <div className="relative group">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+              <div className="flex-1 flex items-start gap-3">
+                {isMobileViewport && (
                   <button
-                    onClick={() => setInsightModalOpen(true)}
-                    className="w-[38px] h-[38px] flex items-center justify-center rounded-lg border border-[#a5b4fc] text-[#4f46e5] bg-[#eef2ff] hover:bg-[#e0e7ff] hover:border-[#818cf8] transition-colors shadow-sm relative"
-                    aria-label="View AI Insight"
+                    onClick={() => setMobileNavOpen(true)}
+                    className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
+                    aria-label="Open navigation"
                   >
-                    <Sparkles size={18} />
-                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white animate-pulse" />
+                    <Menu size={18} />
                   </button>
-                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                    AI Insight
-                  </span>
+                )}
+                <div>
+                  <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
+                    {activeView === 'dashboard' && 'Teacher Dashboard'}
+                  </h1>
+                  <p className="text-[13px] text-[#64748b] mt-1">
+                    {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
+                  </p>
                 </div>
-              )}
-              <button
-                onClick={() => setActiveView('notifications')}
-                className="w-[38px] h-[38px] flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
-                aria-label="View notifications"
-                title="Notifications"
-              >
-                <Bell size={18} />
-              </button>
-              
+                {/* Quick teacher stats */}
+                {activeView === 'dashboard' && (
+                  <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
+                      <Users size={13} className="text-[#9956DE]" />
+                      <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
+                      <AlertTriangle size={13} className="text-[#F08386]" />
+                      <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
+                      <TrendingUp size={13} className="text-[#75D06A]" />
+                      <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                {/* AI Insights Button */}
+                {insightDismissed && (
+                  <div className="relative group">
+                    <button
+                      onClick={() => setInsightModalOpen(true)}
+                      className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+                      aria-label="View AI Insight"
+                    >
+                      <Sparkles size={18} />
+                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white animate-pulse" />
+                    </button>
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                      AI Insight
+                    </span>
+                  </div>
+                )}
+                {/* Notification Bell */}
+                <button
+                  onClick={() => setActiveView('notifications')}
+                  className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+                  aria-label="View notifications"
+                  title="Notifications"
+                >
+                  <Bell size={18} />
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                </button>
+                {/* Profile Pill */}
+                <div
+                  onClick={onOpenProfile}
+                  className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                >
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                    <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
         )}
 
         {/* View Content */}
@@ -1490,6 +1494,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onBackToClasses={() => setActiveView('dashboard')}
                 onOpenNotifications={() => setActiveView('notifications')}
                 onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
                 onImportedClassRecords={(payload) => {
                   const uploadedStudents = payload.students.map((item) =>
                     toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
@@ -1535,17 +1541,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 atRiskStudents={students
                   .filter(s => s.riskLevel === 'high')
                   .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
               />
             )}
             {activeView === 'calendar' && (
-              <TeacherCalendarView classes={classes} teacherId={currentUser?.uid} />
+              <TeacherCalendarView 
+                classes={classes} 
+                teacherId={currentUser?.uid} 
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
+              />
             )}
             {/* Edit records view is now handled internally by DataImportView */}
             {activeView === 'quiz_maker' && (
-              <QuizMaker onBack={() => setActiveView('dashboard')} />
+              <QuizMaker 
+                onBack={() => setActiveView('dashboard')} 
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
+              />
             )}
             {activeView === 'question_bank' && (
-              <QuestionBankPanel />
+              <QuestionBankPanel 
+                onOpenNotifications={() => setActiveView('notifications')}
+                onOpenProfile={onOpenProfile}
+                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                userPhoto={userProfile?.photo}
+                teacherName={teacherName}
+              />
             )}
           </AnimatePresence>
           </main>

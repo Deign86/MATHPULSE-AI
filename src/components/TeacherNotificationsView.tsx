@@ -11,16 +11,31 @@ import {
   MessageSquare,
   Trophy,
   Zap,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNotifications } from '@/features/notifications';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TeacherNotificationsViewProps {
   liveActivity?: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
   atRiskStudents?: { name: string; riskLevel: string; weakestTopic: string }[];
+  onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
+  onOpenInsightModal?: () => void;
+  userPhoto?: string;
+  teacherName?: string;
 }
 
-const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liveActivity, atRiskStudents }) => {
+const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({
+  liveActivity,
+  atRiskStudents,
+  onOpenNotifications,
+  onOpenProfile,
+  onOpenInsightModal,
+  userPhoto,
+  teacherName,
+}) => {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
 
   const formatRelativeTime = (date: Date): string => {
@@ -57,6 +72,8 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liv
     }
   };
 
+  const { currentUser } = useAuth();
+
   const badgeForType = (type: string) => {
     switch (type) {
       case 'risk_alert':
@@ -81,37 +98,59 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liv
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -18 }}
-      className="p-4 sm:p-6 space-y-4"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 flex items-center justify-center flex-shrink-0">
-              <Bell size={20} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-2xl font-display font-bold text-foreground">Notifications</h2>
-              <p className="text-sm text-muted-foreground font-body">Classroom alerts and updates</p>
-            </div>
+    <div className="w-full min-h-full flex flex-col bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
+      {/* Standard Header */}
+      <div className="w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+          <div className="flex-1">
+            <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">Notifications</h1>
+            <p className="text-[13px] text-[#64748b] mt-1">Classroom alerts and updates.</p>
           </div>
-        </div>
+          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-2 mr-2">
+              <div className="text-xs text-muted-foreground font-body">
+                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+              </div>
+              {unreadCount > 0 && (
+                <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                  <CheckCheck />
+                  Mark all as read
+                </Button>
+              )}
+            </div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-xs text-muted-foreground font-body">
-            {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+            {/* AI Insights Button */}
+            <button
+              onClick={onOpenInsightModal}
+              className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+              aria-label="View AI Insight"
+            >
+              <Sparkles className="w-4 h-4" />
+              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
+            </button>
+            {/* Notification Bell */}
+            <button
+              onClick={onOpenNotifications}
+              className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+            </button>
+            {/* Profile Pill */}
+            <div
+              onClick={onOpenProfile}
+              className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+            >
+              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                <img src={userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+            </div>
           </div>
-          {unreadCount > 0 && (
-            <Button variant="outline" size="sm" onClick={markAllAsRead}>
-              <CheckCheck />
-              Mark all as read
-            </Button>
-          )}
         </div>
       </div>
+
+      <div className="w-full px-[24px] xl:px-[32px] pb-[32px] space-y-[24px]">
 
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? (
@@ -205,7 +244,8 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({ liv
           </div>
         )}
       </div>
-    </motion.div>
+      </div>
+    </div>
   );
 };
 

@@ -337,7 +337,7 @@ const TopicMasteryView: React.FC<{
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-[24px] font-bold text-[#1e293b] tracking-tight mb-1">Class Topic Mastery</h1>
+          <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight mb-1">Class Topic Mastery</h1>
           <p className="text-[13px] text-[#64748b] max-w-2xl">Topics where 75% or more of the class scored 85%+ are marked as mastered and can be safely excluded from future quiz generation.</p>
         </div>
 

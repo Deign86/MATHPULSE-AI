@@ -315,7 +315,7 @@ export default function DataImportView({
 
   return (
     <div className="h-full overflow-y-auto w-full block">
-      <div className="max-w-[1400px] mx-auto p-[24px] xl:p-[32px] space-y-[24px]">
+      <div className="w-full p-[24px] xl:p-[32px] space-y-[24px]">
         {/* Universal Top Navigation Bar */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div className="flex-1">

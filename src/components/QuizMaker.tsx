@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Brain, Sparkles, BookOpen, BarChart3, Target, ChevronDown,
   ChevronRight, ChevronLeft, Plus, Minus, Eye, Wand2, Download, Copy, Check,
-  AlertCircle, Loader2, GraduationCap, Layers, TrendingUp,
+  AlertCircle, Loader2, GraduationCap, Layers, TrendingUp, Bell,
   FileText, Calculator, ChevronUp, Info, Lightbulb,
   Save, Send, Library, Trash2, Users, Search,
 } from 'lucide-react';
@@ -39,6 +39,11 @@ interface QuizMakerProps {
   gradeLevel?: string;
   selectedClassId?: string;
   selectedClassName?: string;
+  onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
+  onOpenInsightModal?: () => void;
+  userPhoto?: string;
+  teacherName?: string;
 }
 
 type Step = 'setup' | 'topics' | 'style' | 'preview' | 'results';
@@ -132,6 +137,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   gradeLevel: initialGrade,
   selectedClassId,
   selectedClassName,
+  onOpenNotifications,
+  onOpenProfile,
+  onOpenInsightModal,
+  userPhoto,
+  teacherName,
 }) => {
   const { currentUser, loading: authLoading } = useAuth();
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
@@ -1107,11 +1117,40 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     <div className="w-full min-h-full flex flex-col bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
 
       {/* ─── PAGE HEADER ─── */}
-      <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+      <div className="w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div className="flex-1">
             <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">AI Quiz Maker</h1>
-            <p className="text-[14px] text-[#64748b] mt-1 font-medium">Create AI-powered assessments and manage your question bank.</p>
+            <p className="text-[13px] text-[#64748b] mt-1">Create AI-powered assessments and manage your question bank.</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+            {/* AI Insights Button */}
+            <button
+              onClick={onOpenInsightModal}
+              className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+              aria-label="View AI Insight"
+            >
+              <Sparkles className="w-4 h-4" />
+              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
+            </button>
+            {/* Notification Bell */}
+            <button
+              onClick={onOpenNotifications}
+              className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+            </button>
+            {/* Profile Pill */}
+            <div
+              onClick={onOpenProfile}
+              className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+            >
+              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                <img src={userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+            </div>
           </div>
         </div>
 
@@ -1141,11 +1180,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       </div>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="flex-1 flex flex-col w-full overflow-y-auto">
+      <div className="w-full px-[24px] xl:px-[32px] pb-[32px] flex-1">
 
           {/* ─── QUIZ BANK TAB ─── */}
           {activeTab === 'bank' && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] pb-[32px] space-y-[24px]">
+            <div className="w-full space-y-[24px]">
               {/* Bank Filters */}
               <div className="flex items-center gap-3 overflow-x-auto pb-2 border-b border-[#e2e8f0] mb-6" style={{scrollbarWidth:'none'}}>
                 {(['all', 'draft', 'published', 'assigned', 'completed'] as const).map((f) => (
@@ -1250,7 +1289,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* Error Banner */}
           {error && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] pt-4">
+            <div className="w-full px-[24px] xl:px-[32px] pt-4">
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1300,7 +1339,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* WIZARD STEPPER */}
           {!generating && step !== 'results' && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] mb-8">
+            <div className="w-full px-[24px] xl:px-[32px] mb-8">
               <div className="flex items-center justify-between bg-white/80 backdrop-blur-[12px] rounded-2xl border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] p-1.5">
                 {[
                   { id: 'setup', label: 'Setup' },
@@ -1350,7 +1389,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: SETUP ─── */}
           {step === 'setup' && !generating && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
+            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
 
               {/* Info Banner */}
               <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-100/50 rounded-[16px] p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -1419,7 +1458,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: TOPICS ─── */}
           {step === 'topics' && !generating && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
+            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
               <div className="flex items-end justify-between mb-2">
                 <div>
                   <h2 className="text-[20px] font-bold text-[#1e293b] mb-1">Select topics</h2>
@@ -1514,7 +1553,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: STYLE ─── */}
           {step === 'style' && !generating && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
+            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
               {/* Question Types */}
               <div className="bg-white/80 backdrop-blur-[12px] rounded-[20px] border border-[#e2e8f0] shadow-sm overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
                 <div className="p-5 border-b border-[#f1f5f9] bg-white/50">
@@ -1610,7 +1649,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: PREVIEW ─── */}
           {step === 'preview' && !generating && !quizResult && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
+            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
               <div className="bg-white/80 backdrop-blur-md rounded-[20px] border border-[#e2e8f0] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden p-8">
                 <h3 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-6 flex items-center gap-2">
                   <BarChart3 size={16} className="text-[#a855f7]" /> Quiz Summary
@@ -1645,7 +1684,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: RESULTS ─── */}
           {step === 'results' && quizResult && (
-            <div className="max-w-[1200px] mx-auto w-full px-[24px] xl:px-[32px] space-y-[24px] pb-8">
+            <div className="w-full px-[24px] xl:px-[32px] space-y-[24px] pb-8">
               {/* Summary Card */}
               <div className="bg-white/80 backdrop-blur-md rounded-[20px] border border-[#e2e8f0] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1817,7 +1856,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       {/* EDGE-TO-EDGE STICKY ACTION BAR */}
       {activeTab === 'create' && (
         <div className="sticky bottom-0 mt-auto w-full bg-white/90 backdrop-blur-[12px] border-t border-[#e2e8f0] z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-          <div className="max-w-[1200px] mx-auto px-6 xl:px-8 py-4 flex items-center justify-between">
+          <div className="w-full px-6 xl:px-8 py-4 flex items-center justify-between">
             <div>
               {step === 'topics' && !generating && (
                 <button onClick={() => { setSelectedTopics([]); setExcludeTopics([]); }} className="text-[13px] font-semibold text-[#a855f7] hover:underline">
