@@ -1114,14 +1114,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   };
 
   return (
-    <div className="w-full min-h-full flex flex-col bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
+    <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
 
       {/* ─── PAGE HEADER ─── */}
       <div className="w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div className="flex-1">
-            <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">AI Quiz Maker</h1>
-            <p className="text-[13px] text-[#64748b] mt-1">Create AI-powered assessments and manage your question bank.</p>
+            <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
+              {activeTab === 'create' ? 'AI Quiz Maker' : 'Quiz Bank'}
+            </h1>
+            <p className="text-[13px] text-[#64748b] mt-1">
+              {activeTab === 'create' 
+                ? 'Create AI-powered assessments and manage your question bank.' 
+                : 'Manage and review your generated quizzes.'}
+            </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
             {/* AI Insights Button */}

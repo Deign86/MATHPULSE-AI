@@ -614,50 +614,6 @@ const StudentCompetencyTable: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="p-6 space-y-6"
     >
-      {/* Top Navigation Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {onBack && (
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 w-max"
-          >
-            <ChevronDown className="w-4 h-4 rotate-90" />
-            Back to Classes
-          </button>
-        )}
-        
-        <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-          {onOpenInsightModal && insightDismissed && (
-            <button onClick={onOpenInsightModal} className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#4f46e5] transition-colors">
-              <Sparkles className="w-4 h-4" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
-            </button>
-          )}
-          {onOpenNotifications && (
-            <button onClick={onOpenNotifications} className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-            </button>
-          )}
-          {onOpenProfile && (
-            <div onClick={onOpenProfile} className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.name || currentUser?.displayName || 'Teacher')}&background=random`} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[13px] font-semibold text-[#1e293b] hidden sm:block">{userProfile?.name || currentUser?.displayName || 'Teacher'}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Header Row */}
-      <div>
-        <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
-          {className || 'Student Competency'}
-        </h1>
-        <p className="text-[13px] text-[#64748b] mt-1">Per-student topic-level breakdown</p>
-      </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px] mb-6">
         {/* Card 1 */}

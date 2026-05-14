@@ -332,34 +332,6 @@ const TopicMasteryView: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="w-full p-[24px] xl:p-[32px] space-y-[24px]"
     >
-
-
-      {/* Top Header Section */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-2">
-        <div>
-          <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight mb-1">Class Topic Mastery</h1>
-          <p className="text-[13px] text-[#64748b] max-w-2xl">Topics where 75% or more of the class scored 85%+ are marked as mastered and can be safely excluded from future quiz generation.</p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {onOpenNotifications && (
-            <button onClick={onOpenNotifications} className="relative w-9 h-9 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-            </button>
-          )}
-
-          {onOpenProfile && (
-            <div onClick={onOpenProfile} className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors hover:scale-[1.02]">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.name || currentUser?.displayName || 'Teacher')}&background=random`} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[13px] font-semibold text-[#1e293b]">{userProfile?.name || currentUser?.displayName || 'Teacher'}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* 4 Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
         {/* Total Topics */}

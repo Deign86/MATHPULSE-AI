@@ -98,10 +98,10 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({
   };
 
   return (
-    <div className="w-full min-h-full flex flex-col bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
+    <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
       {/* Standard Header */}
       <div className="w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
           <div className="flex-1">
             <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">Notifications</h1>
             <p className="text-[13px] text-[#64748b] mt-1">Classroom alerts and updates.</p>
@@ -151,99 +151,103 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({
       </div>
 
       <div className="w-full px-[24px] xl:px-[32px] pb-[32px] space-y-[24px]">
+        {/* Filters */}
+        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
+          <button className="px-6 py-2.5 text-[13px] font-bold rounded-full whitespace-nowrap transition-all duration-300 bg-purple-50 text-[#9333ea] border border-purple-200 shadow-md">
+            All
+          </button>
+          <button className="px-6 py-2.5 text-[13px] font-medium rounded-full whitespace-nowrap transition-all duration-300 bg-white/80 text-[#64748b] border border-white hover:border-[#e2e8f0] shadow-sm flex items-center gap-2">
+            Unread <span className="w-5 h-5 rounded-full bg-slate-100 text-[10px] font-bold flex items-center justify-center text-slate-500">{unreadCount}</span>
+          </button>
+          <button className="px-6 py-2.5 text-[13px] font-medium rounded-full whitespace-nowrap transition-all duration-300 bg-white/80 text-[#64748b] border border-white hover:border-[#e2e8f0] shadow-sm flex items-center gap-2">
+            Important <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+          </button>
+        </div>
 
-      <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 size={18} className="animate-spin" />
-            <span className="text-sm font-body">Loading notifications…</span>
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="p-10">
-            <div className="max-w-xl">
-              <div className="w-12 h-12 rounded-xl bg-muted text-muted-foreground flex items-center justify-center mb-4">
-                <Bell size={22} />
-              </div>
-              <h3 className="text-lg font-display font-bold text-foreground mb-1">No notifications</h3>
-              <p className="text-sm text-muted-foreground font-body">Teacher alerts and classroom updates will appear here.</p>
+        {/* Notification List */}
+        <div className="space-y-8 pb-8">
+          {isLoading ? (
+            <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white p-12 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="w-8 h-8 text-[#a855f7] animate-spin" />
+              <p className="text-[14px] font-medium text-[#64748b]">Loading your alerts...</p>
             </div>
-          </div>
-        )         : (
-          <div>
-            {liveActivity && liveActivity.length > 0 && (
-              <div>
-                {liveActivity.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="w-full text-left px-4 py-4 border-b border-border transition-colors hover:bg-accent/40"
-                  >
-                    <div className="flex gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        activity.type === 'success' ? 'bg-[#75D06A]/15 text-[#4D9F46]' :
-                        activity.type === 'warning' ? 'bg-[#F08386]/15 text-[#C65E63]' :
-                        'bg-[#9956DE]/15 text-[#9956DE]'
-                      }`}>
-                        <Zap size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-body font-bold text-foreground line-clamp-1">{activity.student} — {activity.action}</h4>
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground font-body leading-relaxed line-clamp-2">Topic: {activity.topic}</p>
-                          </div>
-                          <div className="text-xs text-muted-foreground font-body flex-shrink-0">{activity.time}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          ) : notifications.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white p-16 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100">
+                <Bell className="w-10 h-10 text-slate-300" />
               </div>
-            )}
-            {notifications.map((notification) => {
-              const Icon = iconForType(notification.type);
-              const badge = badgeForType(notification.type);
-              const time = formatRelativeTime(notification.createdAt);
-
-              return (
-                <button
-                  key={notification.id}
-                  onClick={() => markAsRead(notification.id)}
-                  className={`w-full text-left px-4 py-4 border-b border-border last:border-b-0 transition-colors hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
-                    notification.isRead ? '' : 'bg-sky-50/40 dark:bg-sky-500/5'
-                  }`}
-                >
-                  <div className="flex gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${badge}`}>
-                      <Icon size={18} />
-                    </div>
+              <h3 className="text-[18px] font-bold text-[#1e293b] mb-2">No notifications yet</h3>
+              <p className="text-[14px] text-[#64748b] max-w-sm">Teacher alerts and classroom updates will appear here when they occur.</p>
+            </div>
+          ) : (
+            <>
+              {/* Today Section */}
+              <div>
+                <h3 className="text-[12px] font-bold text-[#94a3b8] uppercase tracking-wider mb-3 ml-2 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Today
+                </h3>
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-[#f1f5f9]">
+                  {notifications.map((notification) => {
+                    const Icon = iconForType(notification.type);
+                    const time = formatRelativeTime(notification.createdAt);
+                    const isImportant = notification.type === 'risk_alert';
                     
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-body font-bold text-foreground line-clamp-1">{notification.title}</h4>
-                            {!notification.isRead && <span className="w-2 h-2 rounded-full bg-sky-500 flex-shrink-0" />}
+                    return (
+                      <div
+                        key={notification.id}
+                        onClick={() => markAsRead(notification.id)}
+                        className={`relative p-5 flex gap-5 group cursor-pointer hover:bg-white transition-all ${
+                          !notification.isRead 
+                            ? (isImportant ? 'bg-rose-50/30' : 'bg-purple-50/30') 
+                            : 'opacity-80'
+                        }`}
+                      >
+                        <div className={`absolute left-0 top-0 w-1.5 h-full transition-colors ${
+                          !notification.isRead 
+                            ? (isImportant ? 'bg-rose-500' : 'bg-[#a855f7]') 
+                            : 'bg-transparent'
+                        }`} />
+                        
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform ${
+                          isImportant 
+                            ? 'bg-gradient-to-br from-rose-400 to-rose-600' 
+                            : 'bg-gradient-to-br from-[#a855f7] to-[#9333ea]'
+                        }`}>
+                          <Icon className="w-6 h-6" />
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-1">
+                            <h4 className={`text-[15px] font-bold text-[#1e293b] flex items-center gap-2`}>
+                              {notification.title}
+                              {!notification.isRead && (
+                                <span className={`w-2 h-2 rounded-full ${isImportant ? 'bg-rose-500' : 'bg-[#a855f7]'} shadow-lg`} />
+                              )}
+                            </h4>
+                            <span className={`text-[12px] font-bold ${isImportant ? 'text-rose-600' : 'text-[#a855f7]'}`}>
+                              {time}
+                            </span>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground font-body leading-relaxed line-clamp-2">{notification.message}</p>
+                          <p className="text-[14px] text-[#475569] font-medium leading-relaxed">{notification.message}</p>
+                          
+                          {!notification.isRead && notification.actionUrl && (
+                            <div className="mt-3 flex gap-2">
+                              <button className={`px-5 py-2 bg-white border rounded-full text-[12px] font-bold shadow-sm transition-colors ${
+                                isImportant ? 'border-rose-200 text-rose-600 hover:bg-rose-50' : 'border-purple-200 text-[#9333ea] hover:bg-purple-50'
+                              }`}>
+                                Take Action
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground font-body flex-shrink-0">{time}</div>
                       </div>
-                      
-                      {notification.actionUrl && (
-                        <div className="mt-2 text-xs text-sky-600 dark:text-sky-400 font-body">
-                          Opens link
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

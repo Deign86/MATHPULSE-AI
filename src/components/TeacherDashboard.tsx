@@ -1281,8 +1281,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          {activeView !== 'import' && activeView !== 'analytics' && activeView !== 'intervention' && activeView !== 'competency' && activeView !== 'topic_mastery' && activeView !== 'quiz_maker' && activeView !== 'question_bank' && activeView !== 'notifications' && activeView !== 'calendar' && (
-          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-6 pb-3 pt-[20px] flex-shrink-0 z-30">
+          {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery'].includes(activeView) && (
+          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-4 flex-shrink-0 z-30">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
               <div className="flex-1 flex items-start gap-3">
                 {isMobileViewport && (
@@ -1297,9 +1297,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <div>
                   <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
                     {activeView === 'dashboard' && 'Teacher Dashboard'}
+                    {activeView === 'analytics' && 'Class Analytics'}
+                    {activeView === 'intervention' && 'Intervention Center'}
+                    {activeView === 'competency' && 'Student Competency'}
+                    {activeView === 'topic_mastery' && 'Topic Mastery'}
                   </h1>
                   <p className="text-[13px] text-[#64748b] mt-1">
                     {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
+                    {activeView === 'analytics' && 'Analyze performance and risk across your classes.'}
+                    {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
+                    {activeView === 'competency' && 'Track individual student progress against learning goals.'}
+                    {activeView === 'topic_mastery' && 'Overview of student mastery levels across different math topics.'}
                   </p>
                 </div>
                 {/* Quick teacher stats */}
@@ -1364,7 +1372,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         )}
 
         {/* View Content */}
-        <main className={`${activeView === 'dashboard' ? 'flex-1' : 'w-full h-full flex flex-col'} ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <AnimatePresence mode="wait">
               {activeView === 'dashboard' && (
                 <DashboardView
@@ -2025,44 +2033,12 @@ const AnalyticsView: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="p-[24px] xl:p-[32px] space-y-[24px] h-full overflow-y-auto"
     >
-      {/* Top Navigation & Actions */}
-      <div className="flex items-center justify-between">
+      {/* Header handled by global dashboard header pattern if needed, but Analytics has a specialized sub-header */}
+      <div className="flex items-center justify-between mb-2">
         <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
             <ChevronLeft className="w-4 h-4" />
             Back to Classes
         </button>
-
-        <div className="flex items-center gap-3">
-            {/* AI Insight Button */}
-            {insightDismissed && (
-              <div className="relative group">
-                <button
-                  onClick={onOpenInsightModal}
-                  className="w-9 h-9 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] transition-colors cursor-pointer hover:scale-[1.02] relative"
-                  aria-label="View AI Insight"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
-                </button>
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                  AI Insight
-                </span>
-              </div>
-            )}
-            {/* Notification Bell */}
-            <button onClick={onOpenNotifications} className="relative w-9 h-9 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]">
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-            </button>
-
-            {/* Profile Pill */}
-            <div onClick={onOpenProfile} className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors hover:scale-[1.02]">
-                <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                    <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.name || currentUser?.displayName || 'Teacher')}&background=random`} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[13px] font-semibold text-[#1e293b]">{userProfile?.name || currentUser?.displayName || 'Test Teacher'}</span>
-            </div>
-        </div>
       </div>
 
       {/* Header Card */}
