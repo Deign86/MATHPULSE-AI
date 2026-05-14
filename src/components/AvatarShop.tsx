@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../services/authService';
 import { purchaseAvatarItem, resetAvatarPurchasesForTesting } from '../services/gamificationService';
+import { useFeatureAccess } from '../hooks/useFeatureAccess';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
 import { MOCK_INVENTORY } from '../data/avatarData';
@@ -50,7 +51,8 @@ const AVATAR_SAVE_TIMEOUT_MS = 20_000;
 type AvatarInventoryItem = (typeof MOCK_INVENTORY)[number];
 
 const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModules }) => {
-  const { userProfile, refreshProfile } = useAuth();
+  const { userProfile, refreshProfile, currentUser } = useAuth();
+  const { cosmeticShop: shopAccess, loading: featureAccessLoading } = useFeatureAccess(currentUser?.uid || null);
   const isDevMode = import.meta.env.DEV;
 
   const [equipped, setEquipped] = useState<AvatarLayers>({
@@ -315,6 +317,31 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     { id: 'shoes', label: 'Shoes', icon: <Footprints size={16} /> },
     { id: 'accessory', label: 'Accessories', icon: <Crown size={16} /> },
   ];
+
+  if (featureAccessLoading) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[500px] gap-3">
+        <div className="animate-spin">
+          <Save size={24} className="opacity-50" />
+        </div>
+        <p className="text-sm text-slate-400 font-medium">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!shopAccess) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[500px] gap-4">
+        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+          <Lock className="w-7 h-7 text-slate-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-slate-700 mb-1">Avatar Shop Locked</p>
+          <p className="text-xs text-slate-400">This feature is temporarily unavailable while you focus on your learning.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
