@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'rea
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AppLoadingScreen from './components/AppLoadingScreen.tsx';
+import { ProgressGate } from './components/ProgressGate.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService.ts';
@@ -975,7 +976,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
   }
 
   // Show Student Dashboard (existing code)
-  return (
+  const studentDashboard = (
     <NotificationProvider>
     <>
     <ChatProvider>
@@ -1414,6 +1415,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     </>
     </NotificationProvider>
   );
+
+  return <ProgressGate>{studentDashboard}</ProgressGate>;
 };
 
 export default App;

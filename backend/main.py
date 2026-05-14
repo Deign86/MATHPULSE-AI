@@ -100,6 +100,8 @@ from routes.video_routes import router as video_router
 from routes.quiz_battle import router as quiz_battle_router
 from routes.teacher_materials import router as teacher_materials_router
 from routes.class_records_router import router as class_records_router
+from routes.risk_router import router as risk_router
+from routes.tutor_checkin import router as tutor_checkin_router
 
 # Rate limiting (slowapi)
 try:
@@ -1089,6 +1091,8 @@ app.include_router(video_router)
 app.include_router(quiz_battle_router)
 app.include_router(teacher_materials_router)
 app.include_router(class_records_router)
+app.include_router(risk_router)
+app.include_router(tutor_checkin_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────

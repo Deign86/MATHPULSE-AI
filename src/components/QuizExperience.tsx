@@ -11,6 +11,7 @@ import ScientificCalculator from './ScientificCalculator';
 import MathAnswerInput from './MathAnswerInput';
 import SupplementalBanner from './SupplementalBanner';
 import type { AIQuizQuestion } from '../types/models';
+import { useExtraHints } from '../hooks/useExtraHints';
 
 const quizAnimations = `
   @keyframes score-pop {
@@ -343,8 +344,12 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [wrongAttempted, setWrongAttempted] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
   const [showRoundResult, setShowRoundResult] = useState(false);
+  const { totalHintsAvailable } = useExtraHints(studentId || null);
   const [keysCount, setKeysCount] = useState(5);
   const [heartsCount, setHeartsCount] = useState(15);
+
+  // Augment local hint keys with extra hints from risk response system
+  const effectiveKeysCount = keysCount + totalHintsAvailable;
   const [livesRanOutAt, setLivesRanOutAt] = useState<number | null>(null);
   const [showNoLivesModal, setShowNoLivesModal] = useState(false);
   const [nextHeartCountdown, setNextHeartCountdown] = useState(15 * 60 * 1000);
@@ -1193,7 +1198,7 @@ return (
                       ) : viewIndex === currentQuestionIndex && !showExplanation ? (
                         <div className="relative z-10 flex flex-wrap justify-center gap-3 sm:gap-4">
                           {(() => {
-                               const canUseHint = keysCount > 0 && !showExplanation && !allWrongEliminated;
+                                const canUseHint = effectiveKeysCount > 0 && !showExplanation && !allWrongEliminated;
                                return (
                                  <button onClick={handleHintUse} disabled={!canUseHint} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
                                    <img src="/icons/quiz_key.png" alt="Key" className="w-5 h-5 object-contain" /> Hint

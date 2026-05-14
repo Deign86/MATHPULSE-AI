@@ -49,6 +49,8 @@ export {
   syncLeaderboardCollection,
 } from "./triggers/onStudentProfileUpdated";
 
+export { onActivityScoreWritten, onExternalGradeWritten, runWriBatchRecalc } from "./triggers/riskTriggers";
+
 // ─── HTTP Callable Functions ─────────────────────────────────
 
 export {

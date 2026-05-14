@@ -31,6 +31,7 @@ import { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import { type Module } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
+import { useModuleDifficulty, filterModulesByDifficulty } from '../hooks/useModuleDifficulty';
 import { toast } from 'sonner';
 import { unlockAvatarItem } from '../services/gamificationService';
 import { useDailyReward } from '../hooks/useDailyReward';
@@ -75,7 +76,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   setIsInQuizMode,
   hasCompletedDiagnostic = false,
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
 
   const studentProfile = userProfile as StudentProfile | null;
@@ -111,9 +112,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return Array.isArray(rawAssignments) ? rawAssignments : [];
   }, [studentProfile]);
 
+  const { difficulty: moduleDifficulty } = useModuleDifficulty(currentUser?.uid || null);
+
   const curriculumRuntimeModules = useMemo(
-    () => getCurriculumModulesForLearner(activeGradeLevel, assignedSubjects),
-    [activeGradeLevel, assignedSubjects],
+    () => {
+      const modules = getCurriculumModulesForLearner(activeGradeLevel, assignedSubjects);
+      return filterModulesByDifficulty(modules, moduleDifficulty);
+    },
+    [activeGradeLevel, assignedSubjects, moduleDifficulty],
   );
   
   const initialModule = initialModuleId 

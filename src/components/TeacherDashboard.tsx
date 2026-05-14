@@ -66,6 +66,7 @@ import type { ParseWorkbookResult } from '../features/import/services/shsExcel/p
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import { getModuleActivity, getAtRiskStudents } from '../services/trackingService';
+import { AtRiskDashboard } from '../pages/teacher/AtRiskDashboard';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -84,7 +85,8 @@ type View =
   | 'notifications'
   | 'calendar'
   | 'quiz_maker'
-  | 'question_bank';
+  | 'question_bank'
+  | 'at_risk';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -1190,6 +1192,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 onClick={() => setActiveView('competency')}
                 forceExpanded={isMobileViewport}
               />
+              <NavItem
+                icon={AlertTriangle}
+                label="At-Risk Monitor"
+                active={activeView === 'at_risk'}
+                collapsed={sidebarCollapsed && !sidebarHovered}
+                onClick={() => setActiveView('at_risk')}
+                forceExpanded={isMobileViewport}
+              />
             </div>
           </div>
 
@@ -1295,6 +1305,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'calendar' && 'Calendar'}
                   {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                   {activeView === 'question_bank' && 'Question Bank'}
+                  {activeView === 'at_risk' && 'At-Risk Monitoring'}
                 </h1>
                 <p className="text-xs text-muted-foreground font-body">
                   {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -1307,6 +1318,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {activeView === 'question_bank' && 'Manage RAG-powered quiz question bank'}
                   {activeView === 'notifications' && 'View classroom alerts and updates'}
                   {activeView === 'calendar' && 'Check upcoming class events and schedule'}
+                  {activeView === 'at_risk' && 'Track student risk using the Weighted Risk Index (WRI)'}
                 </p>
               </div>
               {/* Quick teacher stats */}
@@ -1420,6 +1432,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 className={selectedClass?.name}
                 fallbackStudents={students}
               />
+            )}
+            {activeView === 'at_risk' && (
+              <div className="flex-1 overflow-auto min-h-0">
+                <AtRiskDashboard />
+              </div>
             )}
             {activeView === 'import' && (
               <ImportView
