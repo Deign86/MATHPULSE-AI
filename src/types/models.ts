@@ -170,6 +170,23 @@ export interface UserSettings {
       end: string;
     };
   };
+  /**
+   * Per-category push opt-in toggles consumed by the Cloud Functions
+   * sender (`functions/src/utils/sendPush.ts`). Keys mirror the FCM
+   * `notificationType` values so adding a new category is a one-place
+   * change. `pushEnabled` is the master toggle.
+   */
+  pushPreferences: {
+    pushEnabled: boolean;
+    achievement: boolean;
+    quiz_battle: boolean;
+    daily_reward: boolean;
+    assignment: boolean;
+    grade_posted: boolean;
+    streak_reminder: boolean;
+    leaderboard: boolean;
+    system: boolean;
+  };
   appearance: {
     darkMode: boolean;
     fontSize: number;
@@ -225,6 +242,17 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
       start: '22:00',
       end: '08:00',
     },
+  },
+  pushPreferences: {
+    pushEnabled: true,
+    achievement: true,
+    quiz_battle: true,
+    daily_reward: true,
+    assignment: true,
+    grade_posted: true,
+    streak_reminder: true,
+    leaderboard: true,
+    system: true,
   },
   appearance: {
     darkMode: false,
