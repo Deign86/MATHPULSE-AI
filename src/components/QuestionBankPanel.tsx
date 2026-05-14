@@ -105,43 +105,44 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
         {/* Top Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Stat Card 1 */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#3b82f6] to-[#2563eb] text-white rounded-[20px] p-6 shadow-[0_8px_16px_rgba(59,130,246,0.25)] flex flex-col group hover:-translate-y-1 hover:shadow-[0_12px_24px_rgba(59,130,246,0.35)] transition-all duration-300">
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 blur-xl" />
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center border border-white/30 shadow-sm relative z-10 backdrop-blur-sm">
-                <FileText className="w-5 h-5" />
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(59,130,246,0.2)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
+            <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
+            <div className="flex items-start justify-between relative z-10 mb-4">
+              <span className="text-[13px] font-medium text-white/90">Total PDFs</span>
+              <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                <FileText size={16} className="text-white" />
               </div>
-              <span className="text-[14px] font-bold text-white/90 uppercase tracking-wider relative z-10">Total PDFs</span>
             </div>
-            <span className="text-[40px] font-extrabold text-white leading-none relative z-10 drop-shadow-sm">{pdfs.length}</span>
+            <div className="text-[32px] font-bold relative z-10 leading-none">{pdfs.length}</div>
           </div>
 
           {/* Stat Card 2 */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white rounded-[20px] p-6 shadow-[0_8px_16px_rgba(168,85,247,0.25)] flex flex-col group hover:-translate-y-1 hover:shadow-[0_12px_24px_rgba(168,85,247,0.35)] transition-all duration-300">
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 blur-xl" />
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center border border-white/30 shadow-sm relative z-10 backdrop-blur-sm">
-                <BookOpen className="w-5 h-5" />
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_8px_24px_rgba(168,85,247,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
+            <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
+            <div className="flex items-start justify-between relative z-10 mb-4">
+              <span className="text-[13px] font-medium text-white/90">Total Questions</span>
+              <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                <BookOpen size={16} className="text-white" />
               </div>
-              <span className="text-[14px] font-bold text-white/90 uppercase tracking-wider relative z-10">Total Questions</span>
             </div>
-            <span className="text-[40px] font-extrabold text-white leading-none relative z-10 drop-shadow-sm">{totalQuestions}</span>
+            <div className="text-[32px] font-bold relative z-10 leading-none">{totalQuestions}</div>
           </div>
 
           {/* Stat Card 3 */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] text-white rounded-[20px] p-6 shadow-[0_8px_16px_rgba(16,185,129,0.25)] flex flex-col group hover:-translate-y-1 hover:shadow-[0_12px_24px_rgba(16,185,129,0.35)] transition-all duration-300">
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 blur-xl" />
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center border border-white/30 shadow-sm relative z-10 backdrop-blur-sm">
-                <RefreshCw className="w-5 h-5" />
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
+            <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
+            <div className="flex items-start justify-between relative z-10 mb-4">
+              <span className="text-[13px] font-medium text-white/90">Processed</span>
+              <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                <RefreshCw size={16} className="text-white" />
               </div>
-              <span className="text-[14px] font-bold text-white/90 uppercase tracking-wider relative z-10">Processed</span>
             </div>
-            <span className="text-[40px] font-extrabold text-white leading-none relative z-10 drop-shadow-sm">{processedCount}</span>
+            <div className="text-[32px] font-bold relative z-10 leading-none">{processedCount}</div>
           </div>
         </div>
 
         {/* Ingest New PDF Card */}
+          {/* Ingest New PDF Card */}
         <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="p-[24px] sm:p-[32px]">
             <h2 className="text-[20px] font-bold text-[#1e293b] mb-6 flex items-center gap-3">
@@ -225,9 +226,9 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           </div>
         </div>
 
-        {/* Processing Status Table */}
-        <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden">
-          <div className="p-[24px] sm:p-[32px] border-b border-[#f1f5f9] flex justify-between items-center bg-white/50">
+        {/* Processing Status Table Section */}
+        <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-[24px] sm:p-[32px]">
+          <div className="flex justify-between items-center mb-6">
             <h2 className="text-[20px] font-bold text-[#1e293b]">Processing Status</h2>
             <button
               onClick={fetchStatus}
@@ -238,17 +239,18 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-[#f1f5f9]">
-                  <th className="py-4 px-6 text-[11px] font-bold text-[#64748b] uppercase tracking-wider whitespace-nowrap">Filename</th>
-                  <th className="py-4 px-6 text-[11px] font-bold text-[#64748b] uppercase tracking-wider whitespace-nowrap">Grade</th>
-                  <th className="py-4 px-6 text-[11px] font-bold text-[#64748b] uppercase tracking-wider whitespace-nowrap">Topic</th>
-                  <th className="py-4 px-6 text-[11px] font-bold text-[#64748b] uppercase tracking-wider whitespace-nowrap text-center">Questions</th>
-                  <th className="py-4 px-6 text-[11px] font-bold text-[#64748b] uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th className="py-4 px-6 text-[11px] font-bold text-[#64748b] uppercase tracking-wider whitespace-nowrap">Processed At</th>
-                </tr>
+          <div className="bg-white rounded-[16px] border border-[#f1f5f9] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#9956DE] border-b border-[#8b5cf6] shadow-md relative z-10">
+                    <th className="h-12 px-6 text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">Filename</th>
+                    <th className="h-12 px-6 text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">Grade</th>
+                    <th className="h-12 px-6 text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">Topic</th>
+                    <th className="h-12 px-6 text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap text-center">Questions</th>
+                    <th className="h-12 px-6 text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">Status</th>
+                    <th className="h-12 px-6 text-[11px] font-bold text-white uppercase tracking-wider whitespace-nowrap">Processed At</th>
+                  </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9] bg-white">
                 {pdfs.map((pdf) => (
@@ -294,8 +296,9 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                     </td>
                   </tr>
                 )}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

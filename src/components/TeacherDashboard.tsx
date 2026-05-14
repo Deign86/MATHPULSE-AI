@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { Virtuoso } from 'react-virtuoso';
 import {
   Users, TrendingUp, AlertTriangle, Calendar,
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
+import NotificationDropdown from './NotificationDropdown';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
@@ -49,6 +51,8 @@ import {
   saveGeneratedLessonPlan,
   generateLessonPlanWithCurriculumGrounding,
 } from '../services/lessonPlanService';
+import { fetchQuizzesByTeacher } from '../services/quizService';
+import type { GeneratedQuiz } from '../types/models';
 import type { CurriculumSource } from '../types/curriculum';
 import CurriculumSourceBadge from './CurriculumSourceBadge';
 import { toast } from 'sonner';
@@ -555,6 +559,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [selectedStudent, setSelectedStudent] = useState<StudentView | null>(null);
   const [insightDismissed, setInsightDismissed] = useState(false);
   const [insightModalOpen, setInsightModalOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -1020,6 +1025,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setMobileNavOpen(false);
   }, [activeView, isMobileViewport]);
 
+  const handleSidebarNav = (view: string) => {
+    setActiveView(view);
+    setSelectedClass(null);
+    setSelectedStudent(null);
+  };
+
   const teacherName = userProfile?.name || 'Teacher';
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
@@ -1166,7 +1177,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 label="Class Analytics"
                 active={activeView === 'analytics'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('analytics')}
+                onClick={() => handleSidebarNav('analytics')}
                 forceExpanded={isMobileViewport}
               />
             </div>
@@ -1187,7 +1198,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 label="Topic Mastery"
                 active={activeView === 'topic_mastery'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('topic_mastery')}
+                onClick={() => handleSidebarNav('topic_mastery')}
                 forceExpanded={isMobileViewport}
               />
               <NavItem
@@ -1195,7 +1206,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 label="Competency"
                 active={activeView === 'competency'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('competency')}
+                onClick={() => handleSidebarNav('competency')}
                 forceExpanded={isMobileViewport}
               />
             </div>
@@ -1233,14 +1244,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 active={activeView === 'question_bank'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('question_bank')}
-                forceExpanded={isMobileViewport}
-              />
-              <NavItem
-                icon={Bell}
-                label="Notifications"
-                active={activeView === 'notifications'}
-                collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('notifications')}
                 forceExpanded={isMobileViewport}
               />
               <NavItem
@@ -1282,8 +1285,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
-          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-4 flex-shrink-0 z-30">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-[16px] flex-shrink-0 z-30">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-0">
               <div className="flex-1 flex items-start gap-3">
                 {isMobileViewport && (
                   <button
@@ -1341,31 +1344,42 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
               <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
                 {/* AI Insights Button */}
-                {insightDismissed && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => setInsightModalOpen(true)}
-                      className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
-                      aria-label="View AI Insight"
-                    >
-                      <Sparkles size={18} />
-                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white animate-pulse" />
-                    </button>
-                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                      AI Insight
-                    </span>
-                  </div>
-                )}
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      setInsightModalOpen(true);
+                      setInsightDismissed(true);
+                    }}
+                    className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+                    aria-label="View AI Insight"
+                  >
+                    <Sparkles size={18} />
+                    {!insightDismissed && (
+                      <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+                    )}
+                  </button>
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                    AI Insight
+                  </span>
+                </div>
                 {/* Notification Bell */}
-                <button
-                  onClick={() => setActiveView('notifications')}
-                  className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
-                  aria-label="View notifications"
-                  title="Notifications"
-                >
-                  <Bell size={18} />
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+                    aria-label="View notifications"
+                    title="Notifications"
+                  >
+                    <Bell size={18} />
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                  </button>
+
+                  <NotificationDropdown 
+                    isOpen={showNotifications} 
+                    onClose={() => setShowNotifications(false)}
+                    onViewAll={() => setActiveView('notifications')}
+                  />
+                </div>
                 {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
                 {activeView !== 'dashboard' && (
                   <div
@@ -1463,6 +1477,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   );
                 }}
                 onBack={handleBackToAnalytics}
+                onNavigateToQuizMaker={(tab) => {
+                  setActiveView('quiz_maker');
+                  // pass tab hint via sessionStorage so QuizMaker can pick it up
+                  if (tab) sessionStorage.setItem('quizMakerInitialTab', tab);
+                }}
               />
             )}
             {activeView === 'topic_mastery' && (
@@ -1581,8 +1600,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             )}
             {/* Edit records view is now handled internally by DataImportView */}
             {activeView === 'quiz_maker' && (
-              <QuizMaker 
-                onBack={() => setActiveView('dashboard')} 
+              <QuizMaker
+                onBack={() => {
+                  const returnTo = sessionStorage.getItem('quizMakerReturnTo');
+                  sessionStorage.removeItem('quizMakerReturnTo');
+                  sessionStorage.removeItem('quizMakerInitialTab');
+                  setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
+                }}
                 onOpenNotifications={() => setActiveView('notifications')}
                 onOpenProfile={onOpenProfile}
                 onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
@@ -2046,7 +2070,7 @@ const AnalyticsView: React.FC<{
       className="p-[24px] xl:p-[32px] space-y-[24px] h-full overflow-y-auto"
     >
       {/* Header handled by global dashboard header pattern if needed, but Analytics has a specialized sub-header */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-6">
         <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
             <ChevronLeft className="w-4 h-4" />
             Back to Classes
@@ -2056,34 +2080,34 @@ const AnalyticsView: React.FC<{
       {/* Header Card */}
       <header 
         style={{
-          background: classColor ? `linear-gradient(to right, ${classColor.hex}1a, #ffffffE6, #ffffffE6)` : undefined,
-          borderColor: classColor ? `${classColor.hex}33` : undefined
+          backgroundColor: classColor?.hex || '#6366f1'
         }}
-        className={`${classColor ? '' : 'bg-gradient-to-r from-indigo-100/90 via-indigo-50/80 to-white/90 border-indigo-50'} backdrop-blur-[12px] rounded-[18px] p-[24px] lg:p-[32px] border shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group`}
+        className="rounded-[24px] p-[24px] lg:p-[32px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group text-white"
       >
-          <div style={{ backgroundColor: classColor?.hex || '#6366f1' }} className="absolute top-0 left-0 w-[6px] h-full rounded-l-[18px]"></div>
+          {/* Decorative Circles */}
+          <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 group-hover:scale-[1.3] transition-transform duration-700 ease-out pointer-events-none" />
+          <div className="absolute -left-10 -top-10 w-32 h-32 rounded-full bg-white/10 group-hover:scale-[1.2] transition-transform duration-700 delay-75 ease-out pointer-events-none" />
           
           {/* Left Side Info */}
-          <div className="shrink-0">
-              <h1 className="text-[26px] font-semibold text-[#1e293b] mb-3 tracking-tight">{selectedClass.name}</h1>
+          <div className="shrink-0 relative z-10">
+              <h1 className="text-[28px] font-bold mb-3 tracking-tight">{selectedClass.name}</h1>
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {classBadges.map((badge, idx) => {
-                      if (idx === 0) return <span key={badge} className="px-3 py-1 bg-rose-50 text-rose-600 text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-rose-100/50">{badge}</span>;
-                      return <span key={badge} className="px-3 py-1 bg-purple-50 text-purple-600 text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-purple-100/50">{badge}</span>;
-                  })}
+                  {classBadges.map((badge, idx) => (
+                      <span key={badge} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[12px] font-semibold rounded-full shadow-sm border border-white/20">{badge}</span>
+                  ))}
               </div>
-              <p className="text-[13px] text-[#64748b]">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
+              <p className="text-[13px] text-white/80 font-medium">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
           </div>
 
           {/* Right Side Section Manager */}
-          <div className="bg-[#f8fafc]/80 border border-[#f1f5f9] rounded-[18px] p-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] backdrop-blur-[12px] flex flex-col w-full md:w-auto shrink-0">
-              <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 ml-1">Section Manager</label>
+          <div className="bg-white/10 border border-white/20 rounded-[18px] p-[16px] backdrop-blur-md flex flex-col w-full md:w-auto shrink-0 relative z-10 shadow-inner">
+              <label className="text-[11px] font-bold text-white/90 uppercase tracking-wider mb-2 ml-1">Section Manager</label>
               <div className="flex items-center gap-3">
                   <div className="relative w-full md:w-[320px]">
                       <select
                         value={selectedManagerId || ''}
                         onChange={(e) => setSelectedManagerId(e.target.value)}
-                        className="appearance-none bg-white border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-lg pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] w-full shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer"
+                        className="appearance-none bg-white/20 border border-white/30 text-white text-[13px] font-bold rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-white/50 focus:ring-2 focus:ring-white/20 w-full shadow-sm cursor-pointer [&>option]:text-[#1e293b]"
                       >
                           <option value="">Select teacher</option>
                           {teacherOptions.map((teacher) => (
@@ -2092,12 +2116,13 @@ const AnalyticsView: React.FC<{
                             </option>
                           ))}
                       </select>
-                      <ChevronDown className="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                   <button
                     onClick={handleAssignManager}
                     disabled={!selectedManagerId || managerUpdating}
-                    className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[13px] font-semibold rounded-full px-6 py-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50"
+                    className="bg-white text-[#6366f1] hover:bg-white/90 text-[13px] font-bold rounded-full px-6 py-2.5 shadow-md transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50 disabled:hover:scale-100"
+                    style={{ color: classColor?.hex || '#6366f1' }}
                   >
                       {managerUpdating ? 'Updating...' : 'Assign'}
                   </button>
@@ -2106,33 +2131,46 @@ const AnalyticsView: React.FC<{
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
-        <div className="bg-gradient-to-br from-indigo-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
-          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
-            <Target className="w-[16px] h-[16px] text-[#6366f1] group-hover:scale-110 transition-transform" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Class Average</span>
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
           </div>
-          <div className="text-[26px] font-semibold text-[#4f46e5]">{selectedClass.avgScore}%</div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
         </div>
-        <div className="bg-gradient-to-br from-emerald-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-emerald-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
-          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
-            <CheckCircle className="w-[16px] h-[16px] text-emerald-500 group-hover:scale-110 transition-transform" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Completion Rate</span>
+
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion Rate</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={15} /></div>
           </div>
-          <div className="text-[26px] font-semibold text-emerald-600">{averageCompletion}%</div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
         </div>
-        <div className="bg-gradient-to-br from-purple-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-purple-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
-          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
-            <Users className="w-[16px] h-[16px] text-purple-500 group-hover:scale-110 transition-transform" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Participation</span>
+
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
           </div>
-          <div className="text-[26px] font-semibold text-purple-600">{participationRate}%</div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{participationRate}%</div>
         </div>
-        <div className="bg-gradient-to-br from-rose-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-rose-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
-          <div className="flex items-center gap-2 mb-2 text-[#64748b]">
-            <AlertTriangle className="w-[16px] h-[16px] text-rose-500 group-hover:scale-110 transition-transform" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Needs Attention</span>
+
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Needs Attention</span>
+            <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertTriangle size={15} /></div>
           </div>
-          <div className="text-[26px] font-semibold text-rose-600">{attentionStudents.length} <span className="text-[13px] text-[#64748b]">students</span></div>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight">
+            {attentionStudents.length} <span className="text-[13px] opacity-90 font-medium">students</span>
+          </div>
         </div>
       </div>
 
@@ -2295,9 +2333,10 @@ const InterventionView: React.FC<{
   teacherName: string;
   onStudentUpdated: (student: StudentView) => void;
   onBack: () => void;
+  onNavigateToQuizMaker?: (tab?: 'create' | 'bank') => void;
   initialCache?: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string };
   onCacheUpdate?: (studentId: string, cache: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string }) => void;
-}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack, initialCache, onCacheUpdate }) => {
+}> = ({ student, teacherId, teacherName, onStudentUpdated, onBack, onNavigateToQuizMaker, initialCache, onCacheUpdate }) => {
   const normalizedRiskLevel = (student.riskLevel || 'low').toLowerCase() as 'high' | 'medium' | 'low';
   const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
   const analysisTone = isUrgentBarrier
@@ -2330,11 +2369,43 @@ const InterventionView: React.FC<{
   const [savingLessonDraft, setSavingLessonDraft] = useState(false);
   const [publishingLesson, setPublishingLesson] = useState(false);
   const [lessonTrigger, setLessonTrigger] = useState(0);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalStep, setExportModalStep] = useState<'choose' | 'bank'>('choose');
+  const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  // Drawer state
+  const [showQuizDrawer, setShowQuizDrawer] = useState(false);
+  const [drawerDirty, setDrawerDirty] = useState(false);  // true once quiz generation starts
+  const [showDrawerCloseConfirm, setShowDrawerCloseConfirm] = useState(false);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
     setSectionDraft(student.section || 'Section A');
   }, [student.grade, student.section]);
+
+  // Escape key closes drawer (with confirm if dirty), Escape also closes export modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showDrawerCloseConfirm) { setShowDrawerCloseConfirm(false); return; }
+      if (showQuizDrawer) {
+        if (drawerDirty) { setShowDrawerCloseConfirm(true); } else { setShowQuizDrawer(false); }
+        return;
+      }
+      if (showExportModal) { setShowExportModal(false); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showQuizDrawer, showExportModal, drawerDirty, showDrawerCloseConfirm]);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    if (showQuizDrawer) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [showQuizDrawer]);
 
   useEffect(() => {
     onCacheUpdate?.(student.id, { lessonPlan, learningPath, gradeDraft, sectionDraft });
@@ -2653,78 +2724,83 @@ const InterventionView: React.FC<{
             </div>
           </div>
 
-          {/* AI Analysis Banner */}
-          <div className="bg-gradient-to-r from-[#eef2ff] to-[#faf5ff] backdrop-blur-[12px] rounded-[18px] p-[24px] border border-indigo-50 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden group">
-            <div className="absolute right-0 top-0 opacity-10 pointer-events-none transform translate-x-4 -translate-y-4">
-              <Sparkles className="w-40 h-40 text-indigo-600" />
+          {/* AI Analysis Banner — light mint green */}
+          <div className="bg-gradient-to-br from-[#ecfdf5] via-[#f0fdf4] to-[#f7fdf9] backdrop-blur-[12px] rounded-[20px] p-[24px] border border-emerald-100 shadow-[0_4px_16px_rgba(16,185,129,0.08)] relative overflow-hidden">
+            <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.06] pointer-events-none">
+              <Bot className="w-48 h-48 text-emerald-600" />
             </div>
-            <div className="flex flex-col sm:flex-row items-start gap-5 relative z-10">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4f46e5] to-[#9333ea] flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(79,70,229,0.3)] border-2 border-white">
-                <Bot className="w-7 h-7 text-white" />
+
+            {/* Header row */}
+            <div className="flex items-center gap-3 mb-5 relative z-10">
+              <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-[#059669] to-[#10b981] flex items-center justify-center shrink-0 shadow-[0_4px_10px_rgba(5,150,105,0.3)]">
+                <Bot className="w-5 h-5 text-white" />
               </div>
-              <div className="flex-1 w-full">
-                <h3 className="text-[15px] font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
-                  AI Analysis
-                  <span className="px-2 py-0.5 bg-indigo-100 text-[#4f46e5] text-[10px] font-bold rounded-full uppercase tracking-wider">Insights Active</span>
-                </h3>
-                {analysisCurriculumContext && (
-                  <CurriculumSourceBadge
-                    sources={lessonCurriculumSources}
-                    className="mb-4"
-                  />
-                )}
-                
-                <BoneSkeleton
-                  name="teacher-intervention-analysis"
-                  loading={pathLoading}
-                  fixture={
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                      <Skeleton className="h-24 w-full rounded-[14px]" />
-                      <Skeleton className="h-24 w-full rounded-[14px]" />
-                    </div>
-                  }
-                  fallback={
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                      <Skeleton className="h-24 w-full rounded-[14px]" />
-                      <Skeleton className="h-24 w-full rounded-[14px]" />
-                    </div>
-                  }
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                    <div className="bg-white/60 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-                      <h4 className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> Learning Strengths
-                      </h4>
-                      <p className="text-[13px] text-[#475569] leading-relaxed">
-                        {!isUrgentBarrier ? (
-                          <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
-                        ) : (
-                          <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
-                        )}
-                      </p>
-                    </div>
-                    <div className="bg-white/60 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-                      <h4 className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Target className="w-3.5 h-3.5 text-rose-500" /> Next Steps
-                      </h4>
-                      <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1">
-                        {student.struggles.length > 0 ? (
-                          student.struggles.map((s, i) => (
-                            <li key={i}>
-                              Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.
-                            </li>
-                          ))
-                        ) : (
-                          <li>
-                            Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                </BoneSkeleton>
+              <div className="flex items-center gap-2">
+                <h3 className="text-[15px] font-bold text-[#1e293b]">AI Analysis</h3>
+                <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full uppercase tracking-wider shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  Insights Active
+                </span>
               </div>
             </div>
+
+            {analysisCurriculumContext && (
+              <CurriculumSourceBadge
+                sources={lessonCurriculumSources}
+                className="mb-4 relative z-10"
+              />
+            )}
+
+            <BoneSkeleton
+              name="teacher-intervention-analysis"
+              loading={pathLoading}
+              fixture={
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                </div>
+              }
+              fallback={
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                  <Skeleton className="h-24 w-full rounded-[14px]" />
+                </div>
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+                {/* Learning Strengths */}
+                <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-emerald-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                  <div className="absolute left-0 top-0 w-1 h-full bg-emerald-400 rounded-l-[14px]" />
+                  <h4 className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
+                    <TrendingUp className="w-3.5 h-3.5" /> Learning Strengths
+                  </h4>
+                  <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
+                    {!isUrgentBarrier ? (
+                      <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
+                    ) : (
+                      <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
+                    )}
+                  </p>
+                </div>
+
+                {/* Next Steps */}
+                <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-rose-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                  <div className="absolute left-0 top-0 w-1 h-full bg-rose-400 rounded-l-[14px]" />
+                  <h4 className="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
+                    <Target className="w-3.5 h-3.5" /> Next Steps
+                  </h4>
+                  <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
+                    {student.struggles.length > 0 ? (
+                      student.struggles.map((s, i) => (
+                        <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
+                      ))
+                    ) : (
+                      <li>Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </BoneSkeleton>
           </div>
 
           {/* Learning Path Timeline */}
@@ -2756,12 +2832,7 @@ const InterventionView: React.FC<{
                 </div>
               }
             >
-              {learningPath ? (
-                <div className="bg-[#eef2ff]/50 border border-[#e0e7ff] rounded-xl p-5 mb-6 text-[13px] text-[#475569] leading-relaxed">
-                  <ChatMarkdown>{learningPath}</ChatMarkdown>
-                </div>
-              ) : null}
-
+              {/* Raw markdown text removed as requested, using only visual steps below */}
               <div className="mb-8 flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mr-2">Methodology:</span>
                 <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Interactive</span>
@@ -3020,19 +3091,271 @@ const InterventionView: React.FC<{
             </div>
             <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
-              <p className="text-[13px] font-semibold text-[#1e293b] mt-1 leading-tight truncate" title={student.weakestTopic}>{student.weakestTopic}</p>
+              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={student.weakestTopic}>{student.weakestTopic}</p>
             </div>
           </div>
 
           {/* Quick Actions */}
           <div className="w-full flex flex-col gap-[10px]">
-            <button className="w-full flex items-center justify-center gap-2 bg-[#4f46e5] hover:bg-[#3730a3] text-white text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]">
-              <CalendarPlus className="w-4 h-4" /> Schedule One-on-One Session
-            </button>
-            <button className="w-full flex items-center justify-center gap-2 bg-white hover:bg-[#f8fafc] text-[#475569] border border-[#cbd5e1] hover:border-[#94a3b8] text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]">
+            <button
+              onClick={async () => {
+                setExportModalStep('choose');
+                setShowExportModal(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-[#f8fafc] text-[#475569] border border-[#cbd5e1] hover:border-[#94a3b8] text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]"
+            >
               <Printer className="w-4 h-4" /> Export Materials
             </button>
           </div>
+
+          {/* Export Materials Portal Modal */}
+          {showExportModal && ReactDOM.createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+              onClick={() => setShowExportModal(false)}
+            >
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+              {/* Modal card */}
+              <div
+                className="relative bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.18)] w-full max-w-[460px] z-10 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Purple top bar */}
+                <div className="bg-gradient-to-r from-[#a855f7] to-[#9333ea] px-6 pt-5 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {exportModalStep === 'bank' && (
+                        <button
+                          onClick={() => setExportModalStep('choose')}
+                          className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors mr-1"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div className="w-8 h-8 rounded-[8px] bg-white/20 flex items-center justify-center">
+                        <Wand2 className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-[15px] font-bold text-white leading-tight">
+                          {exportModalStep === 'choose' ? 'Export Materials' : 'Choose a Quiz'}
+                        </h2>
+                        <p className="text-[11px] text-white/70 font-medium">
+                          {exportModalStep === 'choose'
+                            ? `For ${student.name}`
+                            : 'Select a quiz from your bank'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowExportModal(false)}
+                      className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6">
+                  {exportModalStep === 'choose' ? (
+                    <>
+                      <p className="text-[13px] text-[#64748b] mb-5 font-medium">How would you like to proceed?</p>
+
+                      {/* Option 1 — Quiz Bank */}
+                      <button
+                        onClick={async () => {
+                          setBankLoading(true);
+                          setExportModalStep('bank');
+                          try {
+                            const quizzes = await fetchQuizzesByTeacher(teacherId);
+                            setBankQuizzes(quizzes);
+                          } catch {
+                            setBankQuizzes([]);
+                          } finally {
+                            setBankLoading(false);
+                          }
+                        }}
+                        className="w-full flex items-start gap-4 p-4 rounded-[16px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_4px_12px_rgba(168,85,247,0.08)] hover:bg-purple-50/30 transition-all group mb-3 text-left"
+                      >
+                        <div className="w-10 h-10 rounded-[10px] bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-100 transition-colors">
+                          <Library className="w-5 h-5 text-[#a855f7]" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-bold text-[#1e293b] mb-0.5">Choose from existing quizzes</p>
+                          <p className="text-[12px] text-[#64748b] font-medium">Pick a quiz already in your Quiz Bank.</p>
+                        </div>
+                      </button>
+
+                      {/* Option 2 — Create new */}
+                      <button
+                        onClick={() => {
+                          setShowExportModal(false);
+                          setDrawerDirty(false);
+                          setShowQuizDrawer(true);
+                        }}
+                        className="w-full flex items-start gap-4 p-4 rounded-[16px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_4px_12px_rgba(168,85,247,0.08)] hover:bg-purple-50/30 transition-all group text-left"
+                      >
+                        <div className="w-10 h-10 rounded-[10px] bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-100 transition-colors">
+                          <Sparkles className="w-5 h-5 text-[#a855f7]" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-bold text-[#1e293b] mb-0.5">Create a new quiz</p>
+                          <p className="text-[12px] text-[#64748b] font-medium">Use AI Quiz Maker. You can return here when done.</p>
+                        </div>
+                      </button>
+                    </>
+                  ) : (
+                    /* Quiz Bank Step */
+                    <div>
+                      {bankLoading ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-3">
+                          <div className="w-8 h-8 border-2 border-[#a855f7] border-t-transparent rounded-full animate-spin" />
+                          <p className="text-[13px] text-[#64748b] font-medium">Loading quizzes...</p>
+                        </div>
+                      ) : bankQuizzes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                          <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
+                            <Library className="w-6 h-6 text-[#a855f7]" />
+                          </div>
+                          <p className="text-[14px] font-semibold text-[#1e293b]">No quizzes yet</p>
+                          <p className="text-[12px] text-[#64748b]">Create your first quiz using the AI Quiz Maker.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                          {bankQuizzes.map((quiz) => (
+                            <div
+                              key={quiz.id}
+                              className="flex items-center justify-between gap-3 p-4 rounded-[14px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_2px_8px_rgba(168,85,247,0.08)] transition-all group"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-bold text-[#1e293b] truncate">{quiz.title}</p>
+                                <p className="text-[11px] text-[#64748b] font-medium mt-0.5">
+                                  {quiz.questions?.length ?? 0} questions
+                                  {quiz.gradeLevel ? ` · ${quiz.gradeLevel}` : ''}
+                                  {quiz.topic ? ` · ${quiz.topic}` : ''}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setShowExportModal(false);
+                                  toast.success(`"${quiz.title}" selected for ${student.name}`);
+                                }}
+                                className="shrink-0 px-3 py-1.5 rounded-full bg-[#a855f7] text-white text-[11px] font-bold hover:bg-[#9333ea] transition-colors shadow-sm"
+                              >
+                                Assign
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
+          {/* ─── Quiz Maker Slide-Over Drawer ─── */}
+          {showQuizDrawer && ReactDOM.createPortal(
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm"
+                onClick={() => {
+                  if (drawerDirty) { setShowDrawerCloseConfirm(true); } else { setShowQuizDrawer(false); }
+                }}
+              />
+
+              {/* Slide-over panel — 88vw wide, full height */}
+              <div
+                className="fixed top-0 right-0 z-[9999] h-full w-full max-w-[88vw] xl:max-w-[1080px] bg-white shadow-[-8px_0_40px_rgba(0,0,0,0.15)] flex flex-col"
+                style={{ animation: 'slideInFromRight 0.3s cubic-bezier(0.16,1,0.3,1)' }}
+              >
+                {/* Drawer header */}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+                  <button
+                    onClick={() => {
+                      if (drawerDirty) { setShowDrawerCloseConfirm(true); } else { setShowQuizDrawer(false); }
+                    }}
+                    className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to {student.name}
+                  </button>
+                  <div className="h-5 w-px bg-slate-200" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-[8px] bg-gradient-to-br from-[#a855f7] to-[#9333ea] flex items-center justify-center">
+                      <Wand2 className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-[14px] font-bold text-[#1e293b]">AI Quiz Maker</span>
+                  </div>
+                  {drawerDirty && (
+                    <span className="ml-auto text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                      Quiz in progress
+                    </span>
+                  )}
+                </div>
+
+                {/* QuizMaker fills the rest */}
+                <div className="flex-1 overflow-hidden">
+                  <QuizMaker
+                    onBack={() => setShowQuizDrawer(false)}
+                    drawerMode={true}
+                    gradeLevel={student.grade}
+                    onQuizGenerating={() => setDrawerDirty(true)}
+                    onQuizSaved={(_id) => {
+                      setDrawerDirty(false);
+                      toast.success('Quiz saved! Close this panel or create another.', {
+                        action: { label: 'Close Panel', onClick: () => setShowQuizDrawer(false) },
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Close-confirmation dialog */}
+              {showDrawerCloseConfirm && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/60" onClick={() => setShowDrawerCloseConfirm(false)} />
+                  <div className="relative bg-white rounded-[20px] shadow-[0_24px_60px_rgba(0,0,0,0.2)] w-full max-w-[380px] p-7 z-10">
+                    <div className="w-11 h-11 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
+                      <AlertCircle className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <h3 className="text-[16px] font-bold text-[#1e293b] mb-2">Discard quiz progress?</h3>
+                    <p className="text-[13px] text-[#64748b] font-medium mb-6">
+                      Your current quiz session will be lost if you close this panel. This cannot be undone.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowDrawerCloseConfirm(false)}
+                        className="flex-1 py-2.5 rounded-full border border-slate-200 text-[13px] font-semibold text-[#475569] hover:bg-slate-50 transition-colors"
+                      >
+                        Keep editing
+                      </button>
+                      <button
+                        onClick={() => { setShowDrawerCloseConfirm(false); setShowQuizDrawer(false); setDrawerDirty(false); }}
+                        className="flex-1 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold transition-colors"
+                      >
+                        Discard &amp; close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Slide-in keyframe */}
+              <style>{`
+                @keyframes slideInFromRight {
+                  from { transform: translateX(100%); opacity: 0.6; }
+                  to   { transform: translateX(0);    opacity: 1; }
+                }
+              `}</style>
+            </>,
+            document.body
+          )}
 
           {/* Section Assignment */}
           <div className="w-full bg-white/80 rounded-[18px] p-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-auto">

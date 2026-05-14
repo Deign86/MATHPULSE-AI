@@ -308,10 +308,10 @@ const TopicMasteryView: React.FC<{
   };
 
   const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
-    if (sortField !== field) return <ChevronDown size={14} className="text-[#94a3b8]" />;
+    if (sortField !== field) return <ChevronDown size={14} className="text-white/40" />;
     return sortDir === 'asc'
-      ? <ChevronUp size={14} className="text-[#4f46e5]" />
-      : <ChevronDown size={14} className="text-[#4f46e5]" />;
+      ? <ChevronUp size={14} className="text-white font-bold" />
+      : <ChevronDown size={14} className="text-white font-bold" />;
   };
 
   // ─── Render ───────────────────────────────────────────────
@@ -463,36 +463,36 @@ const TopicMasteryView: React.FC<{
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               {/* Header Row */}
-              <div className="bg-[#f8fafc] grid grid-cols-12 gap-4 p-4 border-b border-[#f1f5f9] items-center text-[11px] font-bold text-[#64748b] uppercase tracking-wider">
+              <div className="bg-[#9956DE] grid grid-cols-12 gap-4 p-4 border-b border-[#8b5cf6] items-center text-[11px] font-bold text-white tracking-wider uppercase shadow-md relative z-10 h-12">
                 <div className="col-span-1 flex justify-center">
                   <input
                     type="checkbox"
                     checked={selectedTopics.size === filteredTopics.length && filteredTopics.length > 0}
                     onChange={toggleSelectAll}
-                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-gray-300 cursor-pointer"
+                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-white/30 bg-white/10 cursor-pointer"
                   />
                 </div>
                 <div 
-                  className="col-span-3 flex items-center gap-1 cursor-pointer hover:text-[#1e293b] select-none"
+                  className="col-span-3 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('topicName')}
                 >
                   TOPIC NAME <SortIcon field="topicName" />
                 </div>
                 <div className="col-span-2">UNIT</div>
                 <div 
-                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-[#1e293b] select-none"
+                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('classAverage')}
                 >
                   CLASS AVG % <SortIcon field="classAverage" />
                 </div>
                 <div 
-                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-[#1e293b] select-none"
+                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('studentsAttempted')}
                 >
                   STUDENTS <SortIcon field="studentsAttempted" />
                 </div>
                 <div 
-                  className="col-span-1 flex items-center gap-1 cursor-pointer hover:text-[#1e293b] select-none"
+                  className="col-span-1 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('masteryStatus')}
                 >
                   STATUS <SortIcon field="masteryStatus" />

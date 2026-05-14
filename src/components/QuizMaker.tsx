@@ -5,7 +5,7 @@ import {
   ChevronRight, ChevronLeft, Plus, Minus, Eye, Wand2, Download, Copy, Check,
   AlertCircle, Loader2, GraduationCap, Layers, TrendingUp, Bell,
   FileText, Calculator, ChevronUp, Info, Lightbulb,
-  Save, Send, Library, Trash2, Users, Search,
+  Save, Send, Library, Trash2, Users, Search, HelpCircle, Award, ListChecks, CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -44,6 +44,12 @@ interface QuizMakerProps {
   onOpenInsightModal?: () => void;
   userPhoto?: string;
   teacherName?: string;
+  /** When true, hides the outer gradient shell so a parent drawer controls the container */
+  drawerMode?: boolean;
+  /** Called after a quiz is saved to library — lets the drawer know it can offer to close */
+  onQuizSaved?: (quizId: string) => void;
+  /** Called when quiz generation starts — lets the drawer mark itself as dirty */
+  onQuizGenerating?: () => void;
 }
 
 type Step = 'setup' | 'topics' | 'style' | 'preview' | 'results';
@@ -142,6 +148,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   onOpenInsightModal,
   userPhoto,
   teacherName,
+  drawerMode = false,
+  onQuizSaved,
+  onQuizGenerating,
 }) => {
   const { currentUser, loading: authLoading } = useAuth();
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
@@ -604,6 +613,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   };
 
   const handleGenerate = async () => {
+    onQuizGenerating?.();
     setError('');
     setGenerating(true);
     setViewingBankQuizId(null);
@@ -805,6 +815,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         teacherId: currentUser.uid,
       } as GeneratedQuiz);
       toast.success('Quiz saved to your library!');
+      onQuizSaved?.(id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save quiz');
     } finally {
@@ -1009,102 +1020,134 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     analyze: 'bg-rose-100 text-rose-700 border-rose-300',
   };
 
+  const BLOOM_COLORS: Record<string, { badge: string; card: string; num: string }> = {
+    remember: { badge: 'border-purple-200 text-purple-700 bg-purple-50', card: 'from-[#a855f7] to-[#9333ea]', num: 'text-purple-700 bg-purple-100 border-purple-200' },
+    understand: { badge: 'border-blue-200 text-blue-700 bg-blue-50', card: 'from-[#3b82f6] to-[#2563eb]', num: 'text-blue-700 bg-blue-100 border-blue-200' },
+    apply: { badge: 'border-amber-200 text-amber-700 bg-amber-50', card: 'from-[#f59e0b] to-[#d97706]', num: 'text-amber-700 bg-amber-100 border-amber-200' },
+    analyze: { badge: 'border-orange-200 text-orange-700 bg-orange-50', card: 'from-[#f97316] to-[#ea580c]', num: 'text-orange-700 bg-orange-100 border-orange-200' },
+    evaluate: { badge: 'border-rose-200 text-rose-700 bg-rose-50', card: 'from-[#f43f5e] to-[#e11d48]', num: 'text-rose-700 bg-rose-100 border-rose-200' },
+    create: { badge: 'border-emerald-200 text-emerald-700 bg-emerald-50', card: 'from-[#10b981] to-[#059669]', num: 'text-emerald-700 bg-emerald-100 border-emerald-200' },
+  };
+
   const renderQuestionCard = (q: QuizQuestionGenerated, index: number, showAnswer: boolean) => {
     const isExpanded = expandedQuestion === index;
-    const bloomBadge = BLOOM_BADGE_COLORS[q.bloomLevel] || 'bg-[#edf1f7] text-[#5a6578] border-[#dde3eb]';
+    const bloom = BLOOM_COLORS[q.bloomLevel?.toLowerCase()] || BLOOM_COLORS['remember'];
+    const hoverBorder = q.bloomLevel?.toLowerCase() === 'remember' ? 'hover:border-purple-200'
+      : q.bloomLevel?.toLowerCase() === 'understand' ? 'hover:border-blue-200'
+      : q.bloomLevel?.toLowerCase() === 'apply' ? 'hover:border-amber-200'
+      : 'hover:border-slate-200';
     return (
       <motion.div
         key={index}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
-        className="border border-[#dde3eb] rounded-xl overflow-hidden relative"
+        className={`border border-[#e2e8f0] rounded-[20px] overflow-hidden bg-white shadow-sm hover:shadow-md ${hoverBorder} transition-all duration-300`}
       >
-        {/* Bloom Level Badge - top right */}
-        <div className={`absolute top-2 right-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${bloomBadge} z-10`}>
-          {q.bloomLevel}
-        </div>
+        {/* Header row — always visible */}
         <div
-          className="p-4 cursor-pointer hover:bg-[#edf1f7] transition-colors"
+          className="p-6 flex justify-between items-start cursor-pointer hover:bg-slate-50/50 transition-colors"
           onClick={() => setExpandedQuestion(isExpanded ? null : index)}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-xs font-bold text-white bg-sky-600 px-2 py-0.5 rounded">Q{index + 1}</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded border ${BLOOM_LABELS[q.bloomLevel as BloomLevel]?.color || 'bg-[#edf1f7] text-[#5a6578]'}`}>
-                  {q.bloomLevel}
-                </span>
-                <span className={`text-xs font-medium ${DIFFICULTY_COLORS[q.difficulty as DifficultyLevel] || 'text-[#5a6578]'}`}>
-                  {q.difficulty}
-                </span>
-                <span className="text-xs text-slate-500">{q.points} pts</span>
-                <span className="text-xs bg-[#edf1f7] text-[#5a6578] px-2 py-0.5 rounded">{q.topic}</span>
-              </div>
-              <p className="text-sm text-[#0a1628] font-medium">{q.question}</p>
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center gap-2.5 flex-wrap mb-1">
+              {/* Q-number badge */}
+              <span className={`w-8 h-8 rounded-lg bg-gradient-to-br ${bloom.card} text-white flex items-center justify-center font-bold text-[13px] shadow-sm`}>
+                Q{index + 1}
+              </span>
+              {/* Bloom badge */}
+              <span className={`px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${bloom.badge}`}>
+                {q.bloomLevel}
+              </span>
+              {/* Difficulty badge */}
+              <span className={`px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                q.difficulty === 'easy' ? 'border-emerald-200 text-emerald-700 bg-emerald-50'
+                : q.difficulty === 'hard' ? 'border-rose-200 text-rose-700 bg-rose-50'
+                : 'border-amber-200 text-amber-700 bg-amber-50'
+              }`}>
+                {q.difficulty}
+              </span>
+              {/* Points */}
+              <span className="text-[12px] font-bold text-[#64748b] bg-slate-100 px-2 py-1 rounded-md">{q.points} pts</span>
+              {/* Topic */}
+              {q.topic && (
+                <span className="text-[12px] font-semibold text-[#64748b] px-2 py-1 hidden sm:inline-block border-l border-slate-200">{q.topic}</span>
+              )}
             </div>
-            <div className="flex-shrink-0 mt-1">
-              {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+            <p className="text-[16px] font-bold text-[#1e293b] pr-4 leading-relaxed">{q.question}</p>
+          </div>
+          <div className="flex flex-col items-end justify-between h-full gap-4 shrink-0 mt-1">
+            <span className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest hidden sm:block border shadow-sm ${bloom.badge}`}>
+              {q.bloomLevel}
+            </span>
+            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200 mt-2">
+              {isExpanded ? <ChevronUp size={16} className="text-[#64748b] transition-transform duration-300" /> : <ChevronDown size={16} className="text-[#64748b]" />}
             </div>
           </div>
         </div>
 
+        {/* Expanded content */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-[#dde3eb] overflow-hidden"
+              className="overflow-hidden"
             >
-              <div className="p-4 space-y-3 bg-[#edf1f7]/50">
+              <div className="p-6 pt-0 bg-white">
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-[#e2e8f0] to-transparent mb-6" />
+
+                {/* Options */}
                 {q.options && (
-                  <div>
-                    <p className="text-xs font-semibold text-[#5a6578] mb-1">Options:</p>
-                    <div className="space-y-1">
-                      {q.options.map((opt, oi) => (
-                        <div
-                          key={oi}
-                          className={`text-sm px-3 py-1.5 rounded-lg ${
-                            showAnswer && opt.includes(q.correctAnswer)
-                              ? 'bg-green-100 text-green-800 font-medium'
-                              : 'bg-white text-[#0a1628]'
-                          }`}
-                        >
-                          {opt}
-                        </div>
-                      ))}
+                  <div className="mb-6">
+                    <p className="text-[13px] font-bold text-[#64748b] mb-3 uppercase tracking-wider">Options:</p>
+                    <div className="space-y-3">
+                      {q.options.map((opt, oi) => {
+                        const isCorrect = showAnswer && opt.includes(q.correctAnswer);
+                        return (
+                          <div key={oi} className={`rounded-[12px] p-4 text-[14px] font-medium transition-all cursor-pointer relative overflow-hidden ${
+                            isCorrect
+                              ? 'bg-gradient-to-r from-emerald-50 to-emerald-100/30 border-2 border-emerald-400 text-emerald-800 font-bold shadow-sm'
+                              : 'bg-white border border-[#e2e8f0] text-[#475569] hover:border-[#a855f7] hover:shadow-[0_2px_8px_rgba(168,85,247,0.1)]'
+                          }`}>
+                            {isCorrect && <div className="absolute left-0 top-0 w-1 h-full bg-emerald-500" />}
+                            <span className={isCorrect ? 'pl-2' : ''}>{opt}</span>
+                            {isCorrect && (
+                              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm absolute right-4 top-1/2 -translate-y-1/2">
+                                <Check size={13} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
+
+                {/* Answer + Explanation side by side */}
                 {showAnswer && (
-                  <>
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-green-700 mb-1">Correct Answer:</p>
-                      <p className="text-sm text-green-800 font-medium">{q.correctAnswer}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-[16px] p-5 shadow-sm">
+                      <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <CheckCircle2 size={14} /> Correct Answer
+                      </p>
+                      <p className="text-[16px] font-bold text-[#1e293b]">{q.correctAnswer}</p>
                     </div>
-                    <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-sky-700 mb-1">Explanation:</p>
-                      <p className="text-sm text-sky-800">{q.explanation}</p>
-                    </div>
-                  </>
-                )}
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span>Type: {QUESTION_TYPE_LABELS[q.questionType as QuestionType]?.label || q.questionType}</span>
-                  <span>Bloom: {q.bloomLevel}</span>
-                </div>
-                {q.provenance && (
-                  <div className="bg-[#f7fbff] border border-sky-100 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-sky-700 mb-1">Item Provenance</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs text-[#5a6578]">
-                      {q.provenance.title && <p>Topic: {q.provenance.title}</p>}
-                      {q.provenance.topicId && <p>Topic ID: {q.provenance.topicId}</p>}
-                      {q.provenance.materialId && <p>Material ID: {q.provenance.materialId}</p>}
-                      {q.provenance.sourceFile && <p>Source File: {q.provenance.sourceFile}</p>}
-                      {q.provenance.sectionId && <p>Section ID: {q.provenance.sectionId}</p>}
+                    <div className="bg-purple-50/80 border border-purple-200/60 rounded-[16px] p-5 shadow-sm">
+                      <p className="text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Sparkles size={14} /> AI Explanation
+                      </p>
+                      <p className="text-[13px] text-[#475569] leading-relaxed font-medium">{q.explanation}</p>
                     </div>
                   </div>
                 )}
+
+                {/* Footer metadata */}
+                <div className="flex gap-6 text-[12px] font-medium text-[#64748b] mt-5 pt-4 border-t border-slate-100">
+                  <span className="flex items-center gap-1.5"><FileText size={14} /> <strong className="text-[#1e293b]">Type:</strong> {QUESTION_TYPE_LABELS[q.questionType as QuestionType]?.label || q.questionType}</span>
+                  <span className="flex items-center gap-1.5"><Brain size={14} /> <strong className="text-[#1e293b]">Bloom:</strong> {q.bloomLevel}</span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1113,7 +1156,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     );
   };
 
-  return (
+  const content = (
     <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
       <div className="w-full px-[24px] xl:px-[32px] pt-[12px] pb-4">
         {/* ─── TAB TOGGLES ─── */}
@@ -1192,51 +1235,64 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                           handleViewBankQuiz(q);
                         }
                       }}
-                      className="border border-[#dde3eb] rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                      className={`relative bg-white/80 backdrop-blur-md rounded-[20px] p-6 shadow-sm border flex flex-col group hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a855f7] ${
+                        q.status === 'assigned' || q.status === 'published'
+                          ? 'border-white hover:border-purple-100 hover:shadow-[0_8px_24px_rgba(168,85,247,0.1)]'
+                          : 'border-white hover:border-slate-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]'
+                      }`}
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-bold text-[#0a1628] leading-tight">{q.title}</h4>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[q.status]}`}>
+                      {/* Left accent bar */}
+                      <div className={`absolute top-0 left-0 w-[6px] h-full transition-colors duration-300 ${
+                        q.status === 'assigned' || q.status === 'published'
+                          ? 'bg-purple-300 group-hover:bg-[#a855f7]'
+                          : 'bg-slate-200 group-hover:bg-slate-400'
+                      }`} />
+
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-4 gap-4 pl-3">
+                        <h3 className={`font-bold text-[15px] text-[#1e293b] leading-tight transition-colors ${
+                          q.status === 'assigned' || q.status === 'published'
+                            ? 'group-hover:text-[#9333ea]'
+                            : 'group-hover:text-slate-700'
+                        }`}>{q.title}</h3>
+                        <span className={`px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider shrink-0 shadow-sm ${STATUS_COLORS[q.status]}`}>
                           {q.status}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-1 mb-3">
+
+                      {/* Topic tags */}
+                      <div className="flex flex-wrap gap-2 mb-5 pl-3">
                         {q.metadata.topicsCovered.slice(0, 3).map((t) => (
-                          <span key={t} className="text-[10px] bg-[#edf1f7] text-[#5a6578] px-2 py-0.5 rounded">{t}</span>
+                          <span key={t} className="px-2.5 py-1 bg-[#f8fafc] text-slate-600 text-[11px] font-medium rounded-md border border-slate-200 group-hover:border-slate-300 transition-colors">{t}</span>
                         ))}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-[#5a6578] mb-3">
-                        <span>{q.questions.length} questions</span>
-                        <span>{q.totalPoints} pts</span>
-                        <span>{q.gradeLevel}</span>
+
+                      {/* Stats row */}
+                      <div className="flex items-center gap-5 text-[13px] text-[#64748b] font-medium mb-6 pl-3">
+                        <span className="flex items-center gap-1.5"><HelpCircle size={14} /> {q.questions.length} questions</span>
+                        <span className="flex items-center gap-1.5"><Award size={14} /> {q.totalPoints} pts</span>
+                        <span className="flex items-center gap-1.5"><Users size={14} /> {q.gradeLevel}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-4 mt-auto pt-5 border-t border-[#f1f5f9] pl-3">
                         <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleViewBankQuiz(q);
-                          }}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#edf1f7] text-[#5a6578] rounded-lg hover:bg-[#dde3eb] transition-colors"
+                          onClick={(e) => { e.stopPropagation(); handleViewBankQuiz(q); }}
+                          className="flex items-center gap-1.5 text-[13px] font-semibold text-[#64748b] hover:text-[#1e293b] transition-colors bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-full shadow-sm"
                         >
-                          <Eye size={12} /> View
+                          <Eye size={14} /> View
                         </button>
                         <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleOpenAssign(q.id);
-                          }}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); handleOpenAssign(q.id); }}
+                          className="flex items-center gap-1.5 text-[13px] font-bold text-[#a855f7] hover:text-[#9333ea] transition-colors"
                         >
-                          <Send size={12} /> Assign
+                          <Send size={14} /> Assign
                         </button>
                         <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDeleteBankQuiz(q.id);
-                          }}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteBankQuiz(q.id); }}
+                          className="flex items-center gap-1.5 text-[13px] font-semibold text-rose-500 hover:text-rose-700 transition-colors ml-auto opacity-60 group-hover:opacity-100"
                         >
-                          <Trash2 size={12} /> Delete
+                          <Trash2 size={14} /> Delete
                         </button>
                       </div>
                     </motion.div>
@@ -1521,32 +1577,32 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 <div className="p-5 border-b border-[#f1f5f9] bg-white/50">
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Question Types</h3>
                 </div>
-                <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, typeof QUESTION_TYPE_LABELS[QuestionType]][]).map(([type, info]) => {
                     const isSelected = selectedTypes.includes(type);
                     return (
                       <button
                         key={type}
                         onClick={() => toggleType(type)}
-                        className={`border-2 rounded-[16px] p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${
+                        className={`border-2 rounded-[16px] p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${
                           isSelected
-                            ? 'border-[#a855f7] bg-gradient-to-b from-purple-50/80 to-white/80 shadow-[0_8px_16px_rgba(168,85,247,0.12)]'
+                            ? 'border-[#a855f7] bg-gradient-to-b from-purple-50/80 to-white/80 shadow-[0_4px_12px_rgba(168,85,247,0.12)]'
                             : 'border-slate-100 bg-slate-50/50 shadow-sm hover:shadow-md hover:border-purple-200'
                         }`}
                       >
                         {isSelected && (
-                          <div className="absolute top-3 right-3 w-6 h-6 bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-full flex items-center justify-center shadow-md">
-                            <Check size={13} className="text-white" />
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-full flex items-center justify-center shadow-md">
+                            <Check size={11} className="text-white" />
                           </div>
                         )}
-                        <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 ${
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 ${
                           isSelected
                             ? 'bg-white border border-purple-200 shadow-md'
                             : 'bg-white border border-slate-200 shadow-sm group-hover:shadow-md'
                         }`}>
                           <span className={isSelected ? 'text-[#a855f7]' : 'text-slate-500'}>{info.icon}</span>
                         </div>
-                        <span className={`font-bold text-[14px] ${
+                        <span className={`font-bold text-[12px] leading-tight ${
                           isSelected ? 'text-[#9333ea]' : 'text-slate-700'
                         }`}>{info.label}</span>
                       </button>
@@ -1750,65 +1806,81 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   </div>
                 )}
 
-                {/* Distribution breakdowns */}
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="bg-white rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Difficulty</p>
+              {/* Breakdown Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 mb-10">
+                <div className="bg-white border border-[#e2e8f0] rounded-[16px] p-6 shadow-sm border-t-[4px] border-t-[#10b981] hover:shadow-md transition-shadow">
+                  <h4 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-5 flex items-center gap-2"><BarChart3 size={14} /> Difficulty</h4>
+                  <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.difficultyBreakdown).map(([d, c]) => (
-                      <div key={d} className="flex justify-between text-xs">
-                        <span className={`capitalize ${DIFFICULTY_COLORS[d as DifficultyLevel] || 'text-[#5a6578]'}`}>{d}</span>
-                        <span className="font-medium">{c}</span>
+                      <div key={d} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                        <span className={`font-bold capitalize ${DIFFICULTY_COLORS[d as DifficultyLevel] || 'text-[#475569]'}`}>{d}</span>
+                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="bg-white rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Bloom's Taxonomy</p>
+                </div>
+                <div className="bg-white border border-[#e2e8f0] rounded-[16px] p-6 shadow-sm border-t-[4px] border-t-[#a855f7] hover:shadow-md transition-shadow">
+                  <h4 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-5 flex items-center gap-2"><Brain size={14} /> Bloom's Taxonomy</h4>
+                  <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.bloomTaxonomyDistribution).map(([b, c]) => (
-                      <div key={b} className="flex justify-between text-xs">
-                        <span className="capitalize">{b}</span>
-                        <span className="font-medium">{c}</span>
+                      <div key={b} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                        <span className="text-[#1e293b] font-semibold capitalize">{b}</span>
+                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="bg-white rounded-lg p-3">
-                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Question Types</p>
+                </div>
+                <div className="bg-white border border-[#e2e8f0] rounded-[16px] p-6 shadow-sm border-t-[4px] border-t-[#0ea5e9] hover:shadow-md transition-shadow">
+                  <h4 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-5 flex items-center gap-2"><Layers size={14} /> Question Types</h4>
+                  <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.questionTypeBreakdown).map(([t, c]) => (
-                      <div key={t} className="flex justify-between text-xs">
-                        <span>{QUESTION_TYPE_LABELS[t as QuestionType]?.label || t}</span>
-                        <span className="font-medium">{c}</span>
+                      <div key={t} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                        <span className="text-[#1e293b] font-semibold">{QUESTION_TYPE_LABELS[t as QuestionType]?.label || t}</span>
+                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>
                     ))}
                   </div>
                 </div>
+              </div>
 
-                {/* Supplemental purpose */}
-                <div className="mt-3 bg-sky-50 rounded-lg p-3 flex items-start gap-2">
-                  <Info size={14} className="text-sky-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-sky-600">{quizResult.metadata.supplementalPurpose}</p>
+              {/* Insight + Recommended Actions Box */}
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50/50 border border-purple-100 rounded-[16px] p-6 mb-10 flex items-start gap-4 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#a855f7]" />
+                <div className="bg-white p-2 rounded-full shadow-sm shrink-0">
+                  <Info size={18} className="text-[#9333ea]" />
                 </div>
-
-                {/* Teacher recommendations */}
-                {quizResult.metadata.recommendedTeacherActions && (
-                  <div className="mt-3">
-                    <p className="text-xs font-semibold text-[#5a6578] mb-1">Recommended Actions:</p>
-                    <ul className="list-disc list-inside text-xs text-[#5a6578] space-y-0.5">
-                      {quizResult.metadata.recommendedTeacherActions.map((action, i) => (
-                        <li key={i}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <div>
+                  <p className="text-[14px] font-bold text-[#9333ea] mb-3">
+                    {quizResult.metadata.supplementalPurpose || 'This quiz is designed to supplement classroom instruction, not replace teacher-led learning.'}
+                  </p>
+                  {quizResult.metadata.recommendedTeacherActions && quizResult.metadata.recommendedTeacherActions.length > 0 && (
+                    <>
+                      <p className="text-[13px] font-bold text-[#1e293b] mb-2">Recommended Actions:</p>
+                      <ul className="list-disc pl-5 text-[13px] font-medium text-[#475569] space-y-1.5">
+                        {quizResult.metadata.recommendedTeacherActions.map((action, i) => (
+                          <li key={i}>{action}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              </div>
               </div>
 
               {/* Questions */}
-              <div className="space-y-3">
-                {filteredQuizQuestions.length > 0 ? (
-                  filteredQuizQuestions.map((q, i) => renderQuestionCard(q, i, true))
-                ) : (
-                  <div className="border border-[#dde3eb] rounded-xl p-4 bg-white text-sm text-[#5a6578]">
-                    No questions match the selected provenance filters. Clear one or both filters to view all questions.
-                  </div>
-                )}
+              <div className="space-y-6">
+                <h3 className="text-[18px] font-bold text-[#1e293b] flex items-center gap-2">
+                  <ListChecks size={20} className="text-[#a855f7]" /> Review Questions
+                </h3>
+                <div className="space-y-4">
+                  {filteredQuizQuestions.length > 0 ? (
+                    filteredQuizQuestions.map((q, i) => renderQuestionCard(q, i, true))
+                  ) : (
+                    <div className="border border-[#dde3eb] rounded-xl p-4 bg-white text-sm text-[#5a6578]">
+                      No questions match the selected provenance filters. Clear one or both filters to view all questions.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -2003,6 +2075,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       </AnimatePresence>
     </div>
   );
+
+  // In drawer mode, strip the outer gradient background \u2014 the drawer shell handles it
+  if (drawerMode) {
+    return (
+      <div className="w-full h-full flex flex-col overflow-hidden bg-white">
+        {content}
+      </div>
+    );
+  }
+
+  return content;
 };
 
 export default QuizMaker;
