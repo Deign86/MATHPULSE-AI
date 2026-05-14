@@ -58,6 +58,7 @@ vi.mock('firebase/firestore', () => {
 
 vi.mock('@/lib/firebase', () => ({
   db: {},
+  auth: { currentUser: { uid: 'test-user-uid' } },
 }));
 
 vi.mock('date-fns', () => ({
