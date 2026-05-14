@@ -14,6 +14,7 @@ import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, Us
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
 import { NotificationProvider } from '@/features/notifications';
+import PushNotificationsManager from './components/PushNotificationsManager';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
@@ -889,6 +890,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     return (
       <NotificationProvider>
       <>
+        <PushNotificationsManager />
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
           <TeacherDashboard 
             onLogout={handleLogout}
@@ -933,6 +935,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     return (
       <NotificationProvider>
       <>
+        <PushNotificationsManager />
         <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
           <AdminDashboard 
             onLogout={handleLogout}
@@ -975,6 +978,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
   const studentDashboard = (
     <NotificationProvider>
     <>
+    <PushNotificationsManager />
     <ChatProvider>
       <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
