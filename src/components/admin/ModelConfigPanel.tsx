@@ -1,176 +1,155 @@
 // src/components/admin/ModelConfigPanel.tsx
-import { useState, useEffect } from "react";
-import { apiFetch } from "../../services/apiService";
+// Read-only display of system model configuration from Firestore.
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { Info } from 'lucide-react';
 
-interface ModelConfig {
-  profile: string;
-  overrides: Record<string, string>;
-  resolved: Record<string, string>;
-  availableProfiles: string[];
-  profileDescriptions: Record<string, string>;
+interface ModelConfigData {
+  activeModelName?: string;
+  provider?: string;
+  endpoint?: string;
+  maxTokens?: number;
+  temperature?: number;
+  contextWindow?: number;
+  fineTuneStatus?: string;
+  lastUpdated?: { toDate?: () => Date } | Date;
 }
 
-const PROFILE_BADGE_COLORS: Record<string, string> = {
-  dev:    "bg-blue-100 text-blue-800 border-blue-300",
-  budget: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  prod:   "bg-green-100 text-green-800 border-green-300",
-};
+const FALLBACK = '—';
 
-export function ModelConfigPanel() {
-  const [config, setConfig]       = useState<ModelConfig | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [switching, setSwitching] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+function formatValue<T>(value: T | undefined | null, fallback = FALLBACK): string {
+  if (value === undefined || value === null) return fallback;
+  return String(value);
+}
 
-  const reload = () => {
-    setLoading(true);
-    apiFetch<ModelConfig>("/api/admin/model-config", { method: "GET" })
-      .then(setConfig)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  };
+function formatDate(val: ModelConfigData['lastUpdated']): string {
+  if (!val) return FALLBACK;
+  if (val instanceof Date) return val.toLocaleString();
+  if (typeof val.toDate === 'function') return val.toDate().toLocaleString();
+  return FALLBACK;
+}
 
-  useEffect(() => { reload(); }, []);
+interface InfoCardProps {
+  label: string;
+  value: string;
+  accent?: boolean;
+}
 
-  const handleSwitch = async (profile: string) => {
-    setSwitching(true);
-    setError(null);
-    try {
-      const data = await apiFetch<{ applied: ModelConfig }>("/api/admin/model-config/profile", {
-        method: "POST",
-        body: JSON.stringify({ profile }),
-      });
-      setConfig((prev) => prev
-        ? { ...prev, profile, resolved: data.applied?.resolved ?? prev.resolved }
-        : prev
-      );
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setSwitching(false);
-    }
-  };
-
-  const handleReset = async () => {
-    setSwitching(true);
-    await apiFetch("/api/admin/model-config/reset", { method: "DELETE" });
-    reload();
-    setSwitching(false);
-  };
-
-  if (loading) return (
-    <div data-testid="model-config-loading" className="admin-card">Loading model config...</div>
-  );
-  if (!config) return (
-    <div data-testid="model-config-error" className="admin-card text-red-500">
-      {error ?? "Failed to load"}
+function InfoCard({ label, value, accent }: InfoCardProps) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        accent
+          ? 'bg-sky-50 border-sky-200'
+          : 'bg-white border-[#dde3eb]'
+      }`}
+    >
+      <p className="text-xs font-medium text-[#5a6578] uppercase tracking-wide mb-1">
+        {label}
+      </p>
+      <p
+        className={`text-base font-semibold ${
+          value === FALLBACK ? 'text-slate-400' : 'text-[#0a1628]'
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
+}
+
+export function ModelConfigPanel() {
+  const [config, setConfig] = useState<ModelConfigData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const ref = doc(db, 'settings', 'modelConfig');
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          setConfig(snap.data() as ModelConfigData);
+        } else {
+          // No doc at all — show all fallbacks gracefully
+          setConfig({});
+        }
+      } catch (e: any) {
+        setError(e.message ?? 'Failed to load model configuration');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-[#5a6578]">Loading model configuration...</p>
+      </div>
+    );
+  }
 
   return (
-    <div data-testid="model-config-panel" className="admin-card space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">AI Model Configuration</h2>
-        <button
-          data-testid="model-config-reset"
-          onClick={handleReset}
-          disabled={switching}
-          className="text-sm text-gray-500 hover:text-red-500 transition"
-        >
-          Reset to .env defaults
-        </button>
+    <div className="space-y-6">
+      {/* Read-only notice */}
+      <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800">
+        <Info size={16} className="mt-0.5 flex-shrink-0" />
+        <p className="text-xs leading-relaxed">
+          This configuration is managed by the system and cannot be edited here.
+        </p>
       </div>
 
       {error && (
-        <p data-testid="model-config-inline-error" className="text-red-500 text-sm">{error}</p>
+        <p className="text-sm text-red-600">Error: {error}</p>
       )}
 
-      {/* Profile Switcher */}
-      <div data-testid="profile-switcher">
-        <p className="text-sm text-gray-500 mb-2">
-          Switch instantly — no restart required. Persisted across backend restarts.
-        </p>
-        <div className="grid grid-cols-3 gap-3">
-          {config.availableProfiles.map((p) => (
-            <button
-              key={p}
-              data-testid={`profile-btn-${p}`}
-              data-active={config.profile === p ? "true" : "false"}
-              onClick={() => handleSwitch(p)}
-              disabled={switching}
-              className={`
-                rounded-lg border-2 p-3 text-left transition
-                ${config.profile === p
-                  ? `${PROFILE_BADGE_COLORS[p] ?? "bg-gray-100"} border-current font-semibold`
-                  : "border-gray-200 hover:border-gray-400 bg-white"
-                }
-                ${switching ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-              `}
-            >
-              <div className="font-medium capitalize">{p}</div>
-              <div className="text-xs mt-1 text-gray-600">
-                {config.profileDescriptions[p]}
-              </div>
-            </button>
-          ))}
-        </div>
+      {/* Info cards grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <InfoCard
+          label="Active Model Name"
+          value={formatValue(config?.activeModelName)}
+        />
+        <InfoCard
+          label="Provider / Endpoint"
+          value={
+            config?.endpoint
+              ? `${formatValue(config?.provider)} — ${config.endpoint}`
+              : formatValue(config?.provider)
+          }
+        />
+        <InfoCard
+          label="Max Tokens"
+          value={formatValue(config?.maxTokens)}
+        />
+        <InfoCard
+          label="Temperature"
+          value={formatValue(config?.temperature)}
+        />
+        <InfoCard
+          label="Context Window"
+          value={formatValue(config?.contextWindow)}
+        />
+        <InfoCard
+          label="Fine-tune Status"
+          value={formatValue(config?.fineTuneStatus)}
+          accent
+        />
       </div>
 
-      {/* Resolved Models Table */}
-      <div data-testid="resolved-models-table">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Active Model Per Task</h3>
-        <table className="w-full text-sm border rounded overflow-hidden">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left px-3 py-2 font-medium text-gray-600">Task</th>
-              <th className="text-left px-3 py-2 font-medium text-gray-600">Model</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(config.resolved).map(([task, model], i) => (
-              <tr key={task} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                <td className="px-3 py-2 text-gray-700">{task}</td>
-                <td
-                  data-testid={`resolved-model-${task}`}
-                  className="px-3 py-2 font-mono text-xs text-indigo-700"
-                >
-                  {model}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Active Overrides Badge */}
-      {Object.keys(config.overrides).length > 0 && (
-        <div data-testid="active-overrides" className="text-xs text-gray-500">
-          <span className="font-medium">Runtime overrides active: </span>
-          {Object.entries(config.overrides).map(([k, v]) => (
-            <span key={k} data-testid={`override-badge-${k}`}
-              className="inline-block bg-gray-100 rounded px-1 mx-0.5">
-              {k}={v}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Embedding Model — Read-Only Info */}
-      <div data-testid="embedding-model-info" className="border-t pt-4 mt-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-1">RAG Retrieval Model</h3>
-        <p className="text-xs text-gray-500 mb-2">
-          Used for curriculum search (vector embeddings). Fixed — not switchable via profiles.
-          Change only by updating EMBEDDING_MODEL in the backend environment.
-        </p>
-        <div className="flex items-center gap-2">
-          <span
-            data-testid="embedding-model-display"
-            className="font-mono text-xs bg-gray-100 px-2 py-1 rounded"
-          >
-            BAAI/bge-small-en-v1.5
+      {/* Last updated */}
+      <div className="pt-4 border-t border-[#dde3eb]">
+        <p className="text-xs text-[#5a6578]">
+          Last updated:{' '}
+          <span className="font-medium text-[#0a1628]">
+            {formatDate(config?.lastUpdated)}
           </span>
-          <span className="text-xs text-gray-400">Env: EMBEDDING_MODEL</span>
-        </div>
+        </p>
       </div>
     </div>
   );
