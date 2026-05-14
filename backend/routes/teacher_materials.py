@@ -596,3 +596,78 @@ async def upload_teacher_material(
             message="An unexpected error occurred during processing.",
             error=str(e),
         )
+
+
+# ─── ENDPOINT 2: POST /api/teacher-materials/{moduleId}/generate-quiz ──────
+
+import json as _json
+
+@router.post("/{moduleId}/generate-quiz")
+async def generate_module_quiz(request: Request, moduleId: str):
+    user: Any = getattr(request.state, "user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Only teachers and admins can generate quizzes")
+
+    client = _get_firestore_client()
+    if client is None:
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    module_ref = client.collection("modules").document(moduleId)
+    module_snap = module_ref.get()
+    if not module_snap.exists:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    module_data = module_snap.to_dict()
+    title = module_data.get("title", "")
+    grade_level = module_data.get("gradeLevel", "")
+    subject = module_data.get("subject", "")
+    quarter = module_data.get("quarter", "")
+    sections = module_data.get("sections", [])
+    objectives = module_data.get("learningObjectives", [])
+
+    module_text = f"Title: {title}\nGrade: {grade_level}\nSubject: {subject}\nQuarter: {quarter}\n\n"
+    module_text += "Learning Objectives:\n" + "\n".join(objectives[:5]) + "\n\n" if objectives else ""
+    for s in sections[:3]:
+        module_text += f"Section: {s.get('title','')}\n{s.get('content','')[:800]}\n\n"
+
+    prompt = (
+        "You are a DepEd math teacher. Based on the following curriculum module content, "
+        "generate 10 multiple-choice quiz questions aligned to DepEd K-12 competencies "
+        f"for {grade_level} {subject}. Each question must have 4 choices (A-D), one correct answer, "
+        "and a brief explanation.\n\n"
+        f"MODULE CONTENT:\n{module_text[:3000]}\n\n"
+        'Return JSON: {"questions": [{"question": "...", "choices": {"A":"...","B":"...","C":"...","D":"..."}, "correct": "A", "explanation": "...", "competencyCode": "..."}]}'
+    )
+
+    try:
+        response_text = await call_hf_chat_async(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2000, temperature=0.7, task_type="quiz_generation"
+        )
+        parsed = _json.loads(response_text)
+        questions = parsed.get("questions", [])
+    except Exception as e:
+        logger.error(f"Quiz generation failed: {e}")
+        questions = []
+
+    quiz_id = uuid.uuid4().hex
+    quiz_doc = {
+        "quizId": quiz_id,
+        "moduleId": moduleId,
+        "teacherId": user.uid,
+        "gradeLevel": grade_level,
+        "subject": subject,
+        "quarter": quarter,
+        "questions": questions,
+        "createdAt": datetime.utcnow().isoformat(),
+        "source": "teacher_module",
+    }
+
+    try:
+        client.collection("quizzes").document(quiz_id).set(quiz_doc)
+    except Exception as e:
+        logger.error(f"Failed to persist quiz: {e}")
+
+    return {"quizId": quiz_id, "questions": questions}

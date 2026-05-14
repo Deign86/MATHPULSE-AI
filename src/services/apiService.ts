@@ -96,12 +96,14 @@ export interface ChatRequest {
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
+  moduleContext?: { title?: string; summary?: string; keyPoints?: string[]; subject?: string; quarter?: string; };
 }
 
 export interface ChatCompletionOptions {
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
+  moduleContext?: { title?: string; summary?: string; keyPoints?: string[]; subject?: string; quarter?: string; };
 }
 
 export interface ChatResponse {
@@ -1545,6 +1547,7 @@ export const apiService = {
       ...(typeof options?.continuationMaxRounds === 'number'
         ? { continuationMaxRounds: Math.max(0, Math.floor(options.continuationMaxRounds)) }
         : {}),
+      ...(options?.moduleContext ? { moduleContext: options.moduleContext } : {}),
     };
 
     if (onChunk) {
@@ -2760,6 +2763,39 @@ export const apiService = {
     if (params?.after) search.set('after', params.after);
     const query = search.toString();
     return apiFetch(`/api/quiz-battle/results${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+
+  /** Fetch paginated students for a past class record upload */
+  async fetchUploadStudents(uploadId: string, params?: { limit?: number; after?: string }): Promise<{
+    uploadId: string; sectionId: string; students: Array<Record<string, unknown>>; hasMore: boolean;
+  }> {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.after) search.set('after', params.after);
+    const query = search.toString();
+    return apiFetch(`/api/class-records/${uploadId}/students${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+
+  /** Generate AI class report for a past upload */
+  async generateClassReport(uploadId: string): Promise<{
+    classAverage: number; distribution: Array<{label: string; count: number; pct: number}>;
+    atRiskPct: number; recommendations: string[];
+  }> {
+    return apiFetch(`/api/class-records/${uploadId}/ai-report`, { method: 'POST' });
+  },
+
+  /** Generate quiz from a teacher-uploaded module */
+  async generateQuizFromModule(moduleId: string): Promise<{ quizId: string; questions: Array<{
+    question: string; choices: Record<string, string>; correct: string; explanation: string; competencyCode: string;
+  }> }> {
+    return apiFetch(`/api/teacher-materials/${moduleId}/generate-quiz`, { method: 'POST' });
+  },
+
+  /** Fetch personalized student study recommendations */
+  async getStudentRecommendations(uid: string): Promise<{
+    recommendations: Array<{type: 'module'|'topic'; id: string; title: string; reason: string; estimatedMinutes: number}>;
+  }> {
+    return apiFetch(`/api/student/${uid}/recommendations`, { method: 'GET' });
   },
 };
 

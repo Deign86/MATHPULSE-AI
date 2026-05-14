@@ -3113,6 +3113,23 @@ const InterventionView: React.FC<{
               )}
 
               <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="default" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={async () => {
+                    try {
+                      const { setDoc, doc, serverTimestamp } = await import('firebase/firestore');
+                      const { db } = await import('../lib/firebase');
+                      await setDoc(
+                        doc(db, 'managedStudents', teacherId, 'students', student.id),
+                        { interventionApplied: true, interventionAppliedAt: serverTimestamp() },
+                        { merge: true },
+                      );
+                      toast.success('Intervention plan marked as applied');
+                      setInterventionDialogOpen(false);
+                    } catch {
+                      toast.error('Failed to mark as applied');
+                    }
+                  }}>
+                  Mark as Applied
+                </Button>
                 <DialogClose asChild>
                   <Button variant="outline" size="sm">
                     Close
