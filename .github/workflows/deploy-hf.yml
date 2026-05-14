@@ -217,7 +217,7 @@ jobs:
             --chat-model deepseek-chat \
             --provider deepseek \
             --chat-strict-model-only true \
-            --enforce-lock-model true \
+            --enforce-lock-model false \
             --lock-model-id deepseek-chat \
             --clear-global-model \
             --clear-temp-chat-model
