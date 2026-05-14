@@ -177,7 +177,7 @@ def _resolve_key(key: str) -> str:
 
 def get_model_for_task(task_type: str) -> str:
     task = (task_type or "default").strip().lower()
-    enforce_lock = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
+    enforce_lock = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "false").strip().lower() in {"1", "true", "yes", "on"}
     if enforce_lock:
         override = (
             _RUNTIME_OVERRIDES.get("INFERENCE_LOCK_MODEL_ID")
@@ -281,7 +281,7 @@ class InferenceClient:
         )
         self.local_generate_path = os.getenv("INFERENCE_LOCAL_SPACE_GENERATE_PATH", "/gradio_api/call/generate")
 
-        self.enforce_lock_model = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.enforce_lock_model = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "false").strip().lower() in {"1", "true", "yes", "on"}
         self.lock_model_id = os.getenv("INFERENCE_LOCK_MODEL_ID", CHAT_MODEL).strip() or CHAT_MODEL
 
         default_model_fallback = str(primary.get("id") or CHAT_MODEL)
