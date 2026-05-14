@@ -8,10 +8,23 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail as firebaseUpdateEmail,
+  updatePassword as firebaseUpdatePassword,
+  deleteUser,
+} from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
 import { clearQueryClientCache } from '../lib/queryClient';
 import { DEFAULT_USER_SETTINGS, UserSettings } from '../types/models';
 import { clearHintCache } from '../utils/hintCache';
+import {
+  AdminSystemConfig,
+  DEFAULT_ADMIN_SYSTEM_CONFIG,
+  DEFAULT_TEACHER_PREFERENCES,
+  TeacherPreferences,
+} from '../types/settings';
 
 const SETTINGS_DOC_ID = 'preferences';
 
@@ -107,6 +120,8 @@ export const resetUserSettingsToDefaults = async (uid: string): Promise<UserSett
   return defaults;
 };
 
+const APPEARANCE_CACHE_KEY = 'mathpulse_appearance';
+
 export const applyRuntimeSettings = (settings: UserSettings): void => {
   const root = document.documentElement;
   root.style.setProperty('--font-size', `${settings.appearance.fontSize}px`);
@@ -123,6 +138,25 @@ export const applyRuntimeSettings = (settings: UserSettings): void => {
   } else {
     root.classList.remove('smart-dark');
   }
+
+  // Cache appearance to localStorage for instant apply on next load
+  try {
+    localStorage.setItem(APPEARANCE_CACHE_KEY, JSON.stringify(settings.appearance));
+  } catch { /* quota exceeded — non-critical */ }
+};
+
+/** Apply cached appearance settings before Firestore loads to prevent flash. */
+export const applySettingsFromCache = (): void => {
+  try {
+    const cached = localStorage.getItem(APPEARANCE_CACHE_KEY);
+    if (!cached) return;
+    const appearance = JSON.parse(cached) as UserSettings['appearance'];
+    const root = document.documentElement;
+    root.style.setProperty('--font-size', `${appearance.fontSize}px`);
+    root.dataset.density = appearance.compactView ? 'compact' : 'comfortable';
+    if (appearance.reduceAnimations) root.classList.add('reduced-motion');
+    if (appearance.darkMode) root.classList.add('smart-dark');
+  } catch { /* corrupted cache — ignore */ }
 };
 
 export const clearClientCache = async (): Promise<void> => {
@@ -178,4 +212,95 @@ export const exportUserDataSnapshot = async (uid: string): Promise<Record<string
       return acc;
     }, {}),
   };
+};
+
+// ─── Re-authentication ──────────────────────────────────────────────────────
+
+export const reauthenticateUser = async (currentPassword: string): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user || !user.email) throw new Error('No user logged in');
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+};
+
+export const changeEmailWithReauth = async (
+  currentPassword: string,
+  newEmail: string,
+): Promise<void> => {
+  await reauthenticateUser(currentPassword);
+  if (!auth.currentUser) throw new Error('Re-auth failed');
+  await firebaseUpdateEmail(auth.currentUser, newEmail);
+};
+
+export const changePasswordWithReauth = async (
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  await reauthenticateUser(currentPassword);
+  if (!auth.currentUser) throw new Error('Re-auth failed');
+  await firebaseUpdatePassword(auth.currentUser, newPassword);
+};
+
+export const deleteAccountWithReauth = async (
+  currentPassword: string,
+  uid: string,
+): Promise<void> => {
+  await reauthenticateUser(currentPassword);
+  if (!auth.currentUser) throw new Error('Re-auth failed');
+  await deleteUser(auth.currentUser);
+  try {
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'users', uid));
+  } catch {
+    // Auth deleted, profile cleanup is best-effort
+  }
+};
+
+// ─── Teacher Preferences ────────────────────────────────────────────────────
+
+const teacherPrefsRef = (uid: string) =>
+  doc(db, 'users', uid, 'settings', 'teacherPreferences');
+
+export const getTeacherPreferences = async (uid: string): Promise<TeacherPreferences> => {
+  const snap = await getDoc(teacherPrefsRef(uid));
+  if (!snap.exists()) return { ...DEFAULT_TEACHER_PREFERENCES };
+  return { ...DEFAULT_TEACHER_PREFERENCES, ...(snap.data() as Partial<TeacherPreferences>) };
+};
+
+export const updateTeacherPreferences = async (
+  uid: string,
+  updates: Partial<TeacherPreferences>,
+): Promise<TeacherPreferences> => {
+  const current = await getTeacherPreferences(uid);
+  const merged = {
+    ...current,
+    ...updates,
+    quizDefaults: { ...current.quizDefaults, ...updates.quizDefaults },
+    classPreferences: { ...current.classPreferences, ...updates.classPreferences },
+  };
+  await setDoc(teacherPrefsRef(uid), { ...merged, updatedAt: serverTimestamp() }, { merge: true });
+  return merged;
+};
+
+// ─── Admin System Config ────────────────────────────────────────────────────
+
+const systemConfigRef = () => doc(db, 'system', 'config');
+
+export const getAdminSystemConfig = async (): Promise<AdminSystemConfig> => {
+  const snap = await getDoc(systemConfigRef());
+  if (!snap.exists()) return { ...DEFAULT_ADMIN_SYSTEM_CONFIG };
+  return { ...DEFAULT_ADMIN_SYSTEM_CONFIG, ...(snap.data() as Partial<AdminSystemConfig>) };
+};
+
+export const updateAdminSystemConfig = async (
+  updates: Partial<AdminSystemConfig>,
+): Promise<AdminSystemConfig> => {
+  const current = await getAdminSystemConfig();
+  const merged = {
+    ...current,
+    ...updates,
+    aiConfig: { ...current.aiConfig, ...updates.aiConfig },
+  };
+  await setDoc(systemConfigRef(), { ...merged, updatedAt: serverTimestamp() }, { merge: true });
+  return merged;
 };

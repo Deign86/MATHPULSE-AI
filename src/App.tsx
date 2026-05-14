@@ -916,11 +916,9 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
               settingsData={userSettings}
               onSaveSettings={handleSaveSettings}
               onApplySettingsPreview={setUserSettings}
-              onUpdatePassword={handleUpdatePassword}
               onExportData={handleExportData}
               onClearCache={handleClearCache}
-              onDeleteAccount={handleDeleteAccount}
-                onResetData={handleResetTestingData}
+              onResetData={handleResetTestingData}
              />
            </Suspense>
          )}
@@ -961,10 +959,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
               settingsData={userSettings}
               onSaveSettings={handleSaveSettings}
               onApplySettingsPreview={setUserSettings}
-              onUpdatePassword={handleUpdatePassword}
               onExportData={handleExportData}
               onClearCache={handleClearCache}
-              onDeleteAccount={handleDeleteAccount}
               onResetData={handleResetTestingData}
             />
           </Suspense>
@@ -1355,10 +1351,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                 settingsData={userSettings}
                 onSaveSettings={handleSaveSettings}
                 onApplySettingsPreview={setUserSettings}
-                onUpdatePassword={handleUpdatePassword}
                 onExportData={handleExportData}
                 onClearCache={handleClearCache}
-                onDeleteAccount={handleDeleteAccount}
                 onResetData={handleResetTestingData}
               />
             </Suspense>
