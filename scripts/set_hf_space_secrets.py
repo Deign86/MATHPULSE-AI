@@ -20,7 +20,7 @@ from huggingface_hub import HfApi
 SPACE_ID = "Deign86/mathpulse-api-v3test"
 HF_API_BASE = "https://huggingface.co/api"
 
-HF_TOKEN = os.environ.get("HF_TOKEN") or os.environ.get("HF_PROXY_TOKEN")
+HF_TOKEN = (os.environ.get("HF_TOKEN") or os.environ.get("HF_PROXY_TOKEN") or "").strip().lstrip("\ufeff")
 if not HF_TOKEN:
     print("ERROR: HF_TOKEN not set. Please set HF_TOKEN env var.")
     sys.exit(1)

@@ -87,6 +87,9 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
+          # Strip BOM/whitespace that may be embedded in secrets
+          HF_TOKEN="$(printf '%s' "$HF_TOKEN" | sed 's/^\xEF\xBB\xBF//' | tr -d '[:space:]')"
+          export HF_TOKEN
           mkdir -p .secrets
           if [ -n "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" ]; then
             echo "$FIREBASE_SERVICE_ACCOUNT_JSON_B64" | base64 -d > .secrets/firebase-service-account.json
@@ -143,6 +146,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          # Strip BOM/whitespace that may be embedded in the secret
+          HF_TOKEN="$(printf '%s' "$HF_TOKEN" | sed 's/^\xEF\xBB\xBF//' | tr -d '[:space:]')"
           # Configure git for HF push
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
@@ -152,8 +157,8 @@ jobs:
 
           git clone "${SPACE_REPO}" hf-space 2>/dev/null || {
             echo "Space repo not found — creating fresh push"
-            mkdir hf-space && cd hf-space && git init
-            git remote add origin "${SPACE_REPO}"
+            mkdir -p hf-space && cd hf-space && git init
+            git remote set-url origin "${SPACE_REPO}" 2>/dev/null || git remote add origin "${SPACE_REPO}"
             cd ..
           }
 
@@ -322,6 +327,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          # Strip BOM/whitespace that may be embedded in the secret
+          HF_TOKEN="$(printf '%s' "$HF_TOKEN" | sed 's/^\xEF\xBB\xBF//' | tr -d '[:space:]')"
           test -n "${HF_TOKEN}"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
@@ -330,8 +337,8 @@ jobs:
           
           git clone "${SPACE_REPO}" hf-frontend 2>/dev/null || {
             echo "Space repo not found — creating fresh push"
-            mkdir hf-frontend && cd hf-frontend && git init
-            git remote add origin "${SPACE_REPO}"
+            mkdir -p hf-frontend && cd hf-frontend && git init
+            git remote set-url origin "${SPACE_REPO}" 2>/dev/null || git remote add origin "${SPACE_REPO}"
             cd ..
           }
           
