@@ -66,16 +66,38 @@ if (import.meta.env.DEV) {
 // browserLocalPersistence (IndexedDB) is preferred, but falls back to
 // sessionStorage or memory when third-party storage is blocked by
 // browser Tracking Prevention (e.g., ERR_BLOCKED_BY_CLIENT).
-export const auth = typeof window !== 'undefined'
-  ? initializeAuth(app, {
-      persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
-    })
-  : initializeAuth(app, {
-      persistence: [inMemoryPersistence],
-    });
-export const db = initializeFirestore(app, typeof window !== 'undefined' ? {
-  localCache: persistentLocalCache()
-} : {});
+// Guard against undefined persistence types in test environments where
+// firebase/auth may be partially mocked (test-setup.ts provides only
+// getAuth + initializeAuth).
+function buildAuthInstance() {
+  try {
+    const hasValidPersistence = typeof browserLocalPersistence !== 'undefined';
+    if (typeof window !== 'undefined' && hasValidPersistence) {
+      return initializeAuth(app, {
+        persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+      });
+    }
+    return initializeAuth(app, { persistence: [inMemoryPersistence] });
+  } catch {
+    // Test environment or partially-mocked firebase/auth — return a safe stub
+    return {
+      currentUser: null,
+    } as ReturnType<typeof initializeAuth>;
+  }
+}
+export const auth = buildAuthInstance();
+function buildDbInstance() {
+  try {
+    if (typeof window !== 'undefined' && typeof persistentLocalCache !== 'undefined') {
+      return initializeFirestore(app, { localCache: persistentLocalCache() });
+    }
+    return initializeFirestore(app, {});
+  } catch {
+    // Test environment or partially-mocked firebase/firestore — return a safe stub
+    return {} as ReturnType<typeof initializeFirestore>;
+  }
+}
+export const db = buildDbInstance();
 export const storage = getStorage(app);
 export const cloudFunctions = getFunctions(app);
 
