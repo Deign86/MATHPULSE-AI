@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathPulse AI - Class Analytics</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom configuration to match the exact design system colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts for Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="flex h-screen bg-slate-50 font-sans text-[#475569]">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col h-full shrink-0 hidden md:flex z-10">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a2 2 0 0 1 2 2c-.11.64-.17 1.3-.17 2H10c0-.7-.06-1.36-.17-2a2 2 0 0 1 2-2Z" />
+                    <path d="M22 13.5v-1c0-4.14-3.36-7.5-7.5-7.5h-5C5.36 5 2 8.36 2 12.5v1" />
+                    <path d="M17 22H7" />
+                    <path d="M19 18H5" />
+                    <circle cx="9" cy="11" r="1" fill="currentColor" />
+                    <circle cx="15" cy="11" r="1" fill="currentColor" />
+                </svg>
+            </div>
+            <span class="font-bold text-lg text-slate-800">MathPulse AI</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-4">
+            <div class="px-4 mb-2">
+                <p class="text-xs font-semibold text-slate-400 tracking-wider uppercase px-2 mb-2">Overview</p>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    Dashboard
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg font-medium">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    Class Analytics
+                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-600 ml-auto"></div>
+                </a>
+            </div>
+
+            <div class="px-4 mt-6 mb-2">
+                <p class="text-xs font-semibold text-slate-400 tracking-wider uppercase px-2 mb-2">Students</p>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="target" class="w-5 h-5"></i>
+                    Topic Mastery
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    Competency
+                </a>
+            </div>
+
+            <div class="px-4 mt-6 mb-2">
+                <p class="text-xs font-semibold text-slate-400 tracking-wider uppercase px-2 mb-2">Tools</p>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="database" class="w-5 h-5"></i>
+                    Data Import
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    AI Quiz Maker
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    Question Bank
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    Notifications
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    Calendar
+                </a>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-200">
+            <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                Settings
+            </a>
+            <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors mt-1">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                Log Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Wrapper Area -->
+    <div class="flex-1 flex overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
+        <main class="flex-1 flex flex-col overflow-hidden w-full relative">
+
+            <!-- PAGE 0: CLASSES OVERVIEW MENU (Default Landing Page) -->
+            <div id="page-classes-menu" class="h-full overflow-y-auto w-full block">
+                <div class="max-w-[1400px] mx-auto p-[24px] xl:p-[32px] space-y-[24px]">
+                    
+                    <!-- Top Navigation & Global Search -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex-1 max-w-xl">
+                            <div class="flex items-center bg-white/80 px-4 py-2.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white backdrop-blur-[12px] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                                <i data-lucide="search" class="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors"></i>
+                                <input type="text" placeholder="Global search for a student across all classes..." class="bg-transparent border-none focus:outline-none ml-3 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]">
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-3 shrink-0">
+                            <!-- Notification Bell -->
+                            <button class="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors">
+                                <i data-lucide="bell" class="w-4 h-4"></i>
+                                <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                            </button>
+
+                            <div class="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10">
+                                <div class="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                                    <img src="https://i.pravatar.cc/150?img=11" alt="Profile" class="w-full h-full object-cover">
+                                </div>
+                                <span class="text-[13px] font-semibold text-[#1e293b]">Test Teacher</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h1 class="text-[26px] font-bold text-[#1e293b] tracking-tight">Classes Overview</h1>
+
+                    <!-- Global Stats & Alerts Row (Vibrant Palette) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-[16px]">
+                        <!-- Global Stats Cards -->
+                        <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+                            
+                            <!-- Card 1 (Attendance / Green) -->
+                            <div class="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
+                                <div class="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
+                                <div class="flex items-start justify-between relative z-10 mb-4">
+                                    <span class="text-[13px] font-medium text-white/90">Attendance rate</span>
+                                    <div class="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                                        <i data-lucide="users" class="w-4 h-4 text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="text-[32px] font-bold relative z-10 leading-none mb-6">94%</div>
+                                <div class="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
+                                    <span class="text-[12px] font-medium text-white/90">Active participants</span>
+                                    <span class="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">62</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Card 2 (Global Average / Blue) -->
+                            <div class="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
+                                <div class="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
+                                <div class="flex items-start justify-between relative z-10 mb-4">
+                                    <span class="text-[13px] font-medium text-white/90">Class average</span>
+                                    <div class="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                                        <i data-lucide="target" class="w-4 h-4 text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="text-[32px] font-bold relative z-10 leading-none mb-6">78.2%</div>
+                                <div class="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
+                                    <span class="text-[12px] font-medium text-white/90">Vs. last month</span>
+                                    <span class="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">+2.1%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Card 3 (Total At-Risk / Orange) -->
+                            <div class="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
+                                <div class="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
+                                <div class="flex items-start justify-between relative z-10 mb-4">
+                                    <span class="text-[13px] font-medium text-white/90">At risk</span>
+                                    <div class="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
+                                        <i data-lucide="alert-circle" class="w-4 h-4 text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="text-[32px] font-bold relative z-10 leading-none mb-6">14</div>
+                                <div class="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
+                                    <span class="text-[12px] font-medium text-white/90">Requires attention</span>
+                                    <span class="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">25%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Action Items (Purple Theme) -->
+                        <div class="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white">
+                            <div class="absolute -right-12 -top-12 w-40 h-40 bg-white/10 rounded-full"></div>
+
+                            <div class="flex justify-between items-center mb-4 relative z-10 border-b border-white/20 pb-3">
+                                <h3 class="text-[14px] font-semibold text-white flex items-center gap-2">
+                                    <div class="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                                    AI Action Items
+                                </h3>
+                                <span class="text-[10px] font-bold text-[#9333ea] bg-white px-2 py-0.5 rounded-[4px]">2 Pending</span>
+                            </div>
+                            
+                            <div class="space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
+                                <!-- Alert 1 -->
+                                <div class="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
+                                    <div class="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
+                                        <i data-lucide="trending-down" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="leading-snug text-white/90">
+                                        <span class="font-bold text-white">Grade 11 - Section B</span> average dropped by 4% after the last quiz.
+                                    </div>
+                                </div>
+                                
+                                <!-- Alert 2 -->
+                                <div class="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
+                                    <div class="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
+                                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="leading-snug text-white/90">
+                                        <span class="font-bold text-white">3 Lesson Plans</span> generated and awaiting your review.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- My Classes Grid Section -->
+                    <div class="bg-white/60 backdrop-blur-[12px] rounded-[24px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-[24px]">
+                        <div class="mb-6 border-b border-[#f1f5f9] pb-4">
+                            <h2 class="text-[18px] font-semibold text-[#1e293b]">My Classes</h2>
+                        </div>
+
+                        <!-- Grid of Classes -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px]">
+                            
+                            <!-- Class Card 1 (Section A - Amethyst #9956DE) -->
+                            <div onclick="showClassOverview('Grade 11 - Section A')" class="flex flex-col p-[16px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5 rounded-[18px] transition-all cursor-pointer group border border-[#f1f5f9] border-l-[6px] border-l-[#9956DE]">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-[12px] bg-[#9956DE]/10 flex items-center justify-center border border-[#9956DE]/20">
+                                            <i data-lucide="book-open" class="w-5 h-5 text-[#9956DE]"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-[14px] text-[#1e293b] mb-0.5 group-hover:text-[#9956DE] transition-colors">Grade 11 - Section A</h4>
+                                            <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Senior High</p>
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-md border border-amber-100/50 uppercase">
+                                        Medium Risk
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-[13px] text-[#475569] bg-[#f8fafc] rounded-[12px] p-3 border border-[#f1f5f9]">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Students</span>
+                                        <span class="font-semibold text-[#1e293b]">12</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Average</span>
+                                        <span class="font-semibold text-[#1e293b]">73.5%</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
+                                        <span class="font-semibold text-[#1e293b]">Mon-Fri</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Class Card 2 (Section B - Slate Blue #7274ED) -->
+                            <div onclick="showClassOverview('Grade 11 - Section B')" class="flex flex-col p-[16px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5 rounded-[18px] transition-all cursor-pointer group border border-[#f1f5f9] border-l-[6px] border-l-[#7274ED]">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-[12px] bg-[#7274ED]/10 flex items-center justify-center border border-[#7274ED]/20">
+                                            <i data-lucide="book-open" class="w-5 h-5 text-[#7274ED]"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-[14px] text-[#1e293b] mb-0.5 group-hover:text-[#7274ED] transition-colors">Grade 11 - Section B</h4>
+                                            <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Senior High</p>
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-md border border-rose-100/50 uppercase">
+                                        High Risk
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-[13px] text-[#475569] bg-[#f8fafc] rounded-[12px] p-3 border border-[#f1f5f9]">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Students</span>
+                                        <span class="font-semibold text-[#1e293b]">15</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Average</span>
+                                        <span class="font-semibold text-[#1e293b]">68.2%</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
+                                        <span class="font-semibold text-[#1e293b]">Tue/Thu</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Class Card 3 (Section C - Summer Sky #1FA7E1) -->
+                            <div onclick="showClassOverview('Grade 11 - Section C')" class="flex flex-col p-[16px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5 rounded-[18px] transition-all cursor-pointer group border border-[#f1f5f9] border-l-[6px] border-l-[#1FA7E1]">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-[12px] bg-[#1FA7E1]/10 flex items-center justify-center border border-[#1FA7E1]/20">
+                                            <i data-lucide="book-open" class="w-5 h-5 text-[#1FA7E1]"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-[14px] text-[#1e293b] mb-0.5 group-hover:text-[#1FA7E1] transition-colors">Grade 11 - Section C</h4>
+                                            <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Senior High</p>
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md border border-emerald-100/50 uppercase">
+                                        On Track
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-[13px] text-[#475569] bg-[#f8fafc] rounded-[12px] p-3 border border-[#f1f5f9]">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Students</span>
+                                        <span class="font-semibold text-[#1e293b]">14</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Average</span>
+                                        <span class="font-semibold text-[#1e293b]">88.5%</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
+                                        <span class="font-semibold text-[#1e293b]">Wed/Fri</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Class Card 4 (Section D - Downy #6ED1CF) -->
+                            <div onclick="showClassOverview('Grade 11 - Section D')" class="flex flex-col p-[16px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5 rounded-[18px] transition-all cursor-pointer group border border-[#f1f5f9] border-l-[6px] border-l-[#6ED1CF]">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-[12px] bg-[#6ED1CF]/10 flex items-center justify-center border border-[#6ED1CF]/20">
+                                            <i data-lucide="book-open" class="w-5 h-5 text-[#6ED1CF]"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-[14px] text-[#1e293b] mb-0.5 group-hover:text-[#6ED1CF] transition-colors">Grade 11 - Section D</h4>
+                                            <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Senior High</p>
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md border border-emerald-100/50 uppercase">
+                                        On Track
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-[13px] text-[#475569] bg-[#f8fafc] rounded-[12px] p-3 border border-[#f1f5f9]">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Students</span>
+                                        <span class="font-semibold text-[#1e293b]">22</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Average</span>
+                                        <span class="font-semibold text-[#1e293b]">84.1%</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
+                                        <span class="font-semibold text-[#1e293b]">Mon/Wed</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Class Card 5 (Section E - Texas Rose #FFB356) -->
+                            <div onclick="showClassOverview('Grade 11 - Section E')" class="flex flex-col p-[16px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5 rounded-[18px] transition-all cursor-pointer group border border-[#f1f5f9] border-l-[6px] border-l-[#FFB356]">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-[12px] bg-[#FFB356]/10 flex items-center justify-center border border-[#FFB356]/20">
+                                            <i data-lucide="book-open" class="w-5 h-5 text-[#FFB356]"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-[14px] text-[#1e293b] mb-0.5 group-hover:text-[#FFB356] transition-colors">Grade 11 - Section E</h4>
+                                            <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Senior High</p>
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-md border border-amber-100/50 uppercase">
+                                        Medium Risk
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-[13px] text-[#475569] bg-[#f8fafc] rounded-[12px] p-3 border border-[#f1f5f9]">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Students</span>
+                                        <span class="font-semibold text-[#1e293b]">20</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Average</span>
+                                        <span class="font-semibold text-[#1e293b]">75.8%</span>
+                                    </div>
+                                    <div class="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
+                                        <span class="font-semibold text-[#1e293b]">Tue/Thu</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 1: CLASS ANALYTICS DETAILED VIEW (Hidden by Default) -->
+            <div id="page-class-analytics" class="h-full overflow-y-auto w-full hidden">
+                <div class="max-w-[1400px] mx-auto p-[24px] xl:p-[32px] space-y-[24px]">
+                    <!-- Top Navigation & Actions -->
+                    <div class="flex items-center justify-between">
+                        <button onclick="hideClassOverview()" class="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px]">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            Back to Classes
+                        </button>
+                        
+                        <div class="flex items-center gap-3">
+                            <!-- Notification Bell -->
+                            <button class="relative w-9 h-9 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors">
+                                <i data-lucide="bell" class="w-4 h-4"></i>
+                                <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                            </button>
+
+                            <div class="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors">
+                                <div class="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                                    <img src="https://i.pravatar.cc/150?img=11" alt="Profile" class="w-full h-full object-cover">
+                                </div>
+                                <span class="text-[13px] font-semibold text-[#1e293b]">Test Teacher</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Header Card -->
+                    <header class="bg-gradient-to-r from-indigo-100/90 via-indigo-50/80 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[24px] lg:p-[32px] border border-indigo-50 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group">
+                        <div class="absolute top-0 left-0 w-[6px] h-full bg-[#6366f1] rounded-l-[18px]"></div>
+                        
+                        <!-- Left Side Info -->
+                        <div class="shrink-0">
+                            <h1 id="class-title-display" class="text-[26px] font-semibold text-[#1e293b] mb-3 tracking-tight">Grade 11 - Section A</h1>
+                            <div class="flex flex-wrap items-center gap-2 mb-3">
+                                <span class="px-3 py-1 bg-amber-50 text-amber-600 text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-amber-100/50">Medium Risk Cohort</span>
+                                <span class="px-3 py-1 bg-purple-50 text-purple-600 text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-purple-100/50">Grade 11</span>
+                                <span class="px-3 py-1 bg-indigo-50 text-[#4f46e5] text-[11px] font-semibold rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50">Senior High School</span>
+                            </div>
+                            <p class="text-[13px] text-[#64748b]">Manager: testteacher@school.edu</p>
+                        </div>
+                        
+                        <!-- Right Side Section Manager -->
+                        <div class="bg-[#f8fafc]/80 border border-[#f1f5f9] rounded-[18px] p-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] backdrop-blur-[12px] flex flex-col w-full md:w-auto shrink-0">
+                            <label class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 ml-1">Section Manager</label>
+                            <div class="flex items-center gap-3">
+                                <div class="relative w-full md:w-[320px]">
+                                    <select class="appearance-none bg-white border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-lg pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] w-full shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer">
+                                        <option>Test Teacher (testteacher@school.edu)</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                </div>
+                                <button class="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[13px] font-semibold rounded-full px-6 py-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02] whitespace-nowrap">
+                                    Assign
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Quick Stats Row -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
+                        <div class="bg-gradient-to-br from-indigo-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+                            <div class="flex items-center gap-2 mb-2 text-[#64748b]">
+                                <i data-lucide="target" class="w-[16px] h-[16px] text-[#6366f1] group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[11px] font-semibold uppercase tracking-wider">Class Average</span>
+                            </div>
+                            <div class="text-[26px] font-semibold text-[#4f46e5]">73.5%</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-emerald-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-emerald-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+                            <div class="flex items-center gap-2 mb-2 text-[#64748b]">
+                                <i data-lucide="check-circle-2" class="w-[16px] h-[16px] text-emerald-500 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[11px] font-semibold uppercase tracking-wider">Completion Rate</span>
+                            </div>
+                            <div class="text-[26px] font-semibold text-emerald-600">75%</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-purple-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-purple-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+                            <div class="flex items-center gap-2 mb-2 text-[#64748b]">
+                                <i data-lucide="users" class="w-[16px] h-[16px] text-purple-500 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[11px] font-semibold uppercase tracking-wider">Participation</span>
+                            </div>
+                            <div class="text-[26px] font-semibold text-purple-600">81%</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-rose-100/90 to-white/90 backdrop-blur-[12px] rounded-[18px] p-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-rose-100/50 flex flex-col group hover:scale-[1.02] transition-transform cursor-default">
+                            <div class="flex items-center gap-2 mb-2 text-[#64748b]">
+                                <i data-lucide="alert-triangle" class="w-[16px] h-[16px] text-rose-500 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[11px] font-semibold uppercase tracking-wider">Needs Attention</span>
+                            </div>
+                            <div class="text-[26px] font-semibold text-rose-600">5 <span class="text-[13px] text-[#64748b]">students</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Main Split Layout -->
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-[24px] h-auto xl:h-[600px]">
+                        
+                        <!-- Left Column: Student List -->
+                        <div class="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
+                            <div class="p-5 border-b border-[#f1f5f9] shrink-0">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h2 class="text-[15px] font-semibold text-[#1e293b]">Students <span class="text-[#64748b] text-[13px]">(12)</span></h2>
+                                </div>
+                                <div class="flex items-center bg-white px-4 py-2 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
+                                    <i data-lucide="search" class="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors"></i>
+                                    <input type="text" placeholder="Search students..." class="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#64748b]">
+                                </div>
+                                
+                                <!-- Filter Tabs -->
+                                <div class="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-1" id="filter-tabs">
+                                    <button onclick="filterStudents('All', this)" class="filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                                        All Students
+                                    </button>
+                                    <button onclick="filterStudents('Good', this)" class="filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50">
+                                        Top Performers
+                                    </button>
+                                    <button onclick="filterStudents('Risk', this)" class="filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50">
+                                        Needs Attention
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Student Grid -->
+                            <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-[12px] no-scrollbar" id="student-grid">
+                                
+                                <!-- Top Performer (Good) -->
+                                <div onclick="showStudentDetail('Alyssa Cruz', 'AC', '92%', 'Good')" class="student-card Good p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] border-l-emerald-500 hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between">
+                                    <div class="flex justify-between items-start mb-[10px]">
+                                        <div class="flex gap-[8px] items-center min-w-0 pr-2">
+                                            <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-semibold text-[11px] shrink-0 border border-emerald-100/50">
+                                                AC
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">Alyssa Cruz</p>
+                                                <p class="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+                                                    <i data-lucide="clock" class="w-[10px] h-[10px] shrink-0"></i> 12d ago
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="font-semibold text-emerald-600 text-[11px] bg-emerald-50 px-[6px] py-[2px] rounded-[14px] shrink-0">92%</span>
+                                    </div>
+                                    <div class="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+                                        <div class="bg-emerald-500 h-full rounded-full w-[92%]"></div>
+                                    </div>
+                                </div>
+
+                                <!-- High Risk (Risk) -->
+                                <div onclick="showStudentDetail('Brent Dela Pena', 'BP', '58%', 'Risk')" class="student-card Risk p-[12px] bg-rose-50/20 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] border-l-rose-500 hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between">
+                                    <div class="flex justify-between items-start mb-[10px]">
+                                        <div class="flex gap-[8px] items-center min-w-0 pr-2">
+                                            <div class="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center font-semibold text-[11px] shrink-0 border border-rose-100/50">
+                                                BP
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">Brent Dela Pena</p>
+                                                <p class="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+                                                    <i data-lucide="clock" class="w-[10px] h-[10px] shrink-0"></i> 12d ago
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="font-semibold text-rose-600 text-[11px] bg-rose-50 px-[6px] py-[2px] rounded-[14px] shrink-0">58%</span>
+                                    </div>
+                                    <div class="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+                                        <div class="bg-rose-500 h-full rounded-full w-[58%]"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Performer (Good) -->
+                                <div onclick="showStudentDetail('Dylan Reyes', 'DR', '84%', 'Good')" class="student-card Good p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] border-l-emerald-500 hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between">
+                                    <div class="flex justify-between items-start mb-[10px]">
+                                        <div class="flex gap-[8px] items-center min-w-0 pr-2">
+                                            <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-semibold text-[11px] shrink-0 border border-emerald-100/50">
+                                                DR
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">Dylan Reyes</p>
+                                                <p class="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+                                                    <i data-lucide="clock" class="w-[10px] h-[10px] shrink-0"></i> 12d ago
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="font-semibold text-emerald-600 text-[11px] bg-emerald-50 px-[6px] py-[2px] rounded-[14px] shrink-0">84%</span>
+                                    </div>
+                                    <div class="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+                                        <div class="bg-emerald-500 h-full rounded-full w-[84%]"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Medium Risk (Risk) -->
+                                <div onclick="showStudentDetail('Ella Navarro', 'EN', '67%', 'Risk')" class="student-card Risk p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] border-l-amber-500 hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between">
+                                    <div class="flex justify-between items-start mb-[10px]">
+                                        <div class="flex gap-[8px] items-center min-w-0 pr-2">
+                                            <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center font-semibold text-[11px] shrink-0 border border-amber-100/50">
+                                                EN
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">Ella Navarro</p>
+                                                <p class="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+                                                    <i data-lucide="clock" class="w-[10px] h-[10px] shrink-0"></i> 12d ago
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="font-semibold text-amber-600 text-[11px] bg-amber-50 px-[6px] py-[2px] rounded-[14px] shrink-0">67%</span>
+                                    </div>
+                                    <div class="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+                                        <div class="bg-amber-500 h-full rounded-full w-[67%]"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Performer (Good) -->
+                                <div onclick="showStudentDetail('Franco Villanueva', 'FV', '88%', 'Good')" class="student-card Good p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] border-l-emerald-500 hover:scale-[1.02] transition-transform cursor-pointer group flex flex-col justify-between">
+                                    <div class="flex justify-between items-start mb-[10px]">
+                                        <div class="flex gap-[8px] items-center min-w-0 pr-2">
+                                            <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-semibold text-[11px] shrink-0 border border-emerald-100/50">
+                                                FV
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">Franco Villanueva</p>
+                                                <p class="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
+                                                    <i data-lucide="clock" class="w-[10px] h-[10px] shrink-0"></i> 12d ago
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="font-semibold text-emerald-600 text-[11px] bg-emerald-50 px-[6px] py-[2px] rounded-[14px] shrink-0">88%</span>
+                                    </div>
+                                    <div class="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
+                                        <div class="bg-emerald-500 h-full rounded-full w-[88%]"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Charts Only -->
+                        <div class="xl:col-span-2 flex flex-col gap-[24px] h-full overflow-y-auto no-scrollbar pb-10 xl:pb-0">
+                            <!-- Top Row Charts -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                                
+                                <!-- Visual Chart 1: Risk Distribution -->
+                                <div class="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <h3 class="font-semibold text-[15px] text-[#1e293b]">Risk Distribution</h3>
+                                        <i data-lucide="more-horizontal" class="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform"></i>
+                                    </div>
+                                    <div class="relative w-full flex-1 min-h-[180px]">
+                                        <svg width="100%" height="100%" viewBox="0 0 400 200" preserveAspectRatio="none" class="overflow-visible">
+                                            <g class="text-[10px] fill-[#64748b] font-semibold">
+                                                <text x="0" y="20" dy="4">8</text>
+                                                <line x1="15" y1="20" x2="400" y2="20" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="0" y="65" dy="4">6</text>
+                                                <line x1="15" y1="65" x2="400" y2="65" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="0" y="110" dy="4">4</text>
+                                                <line x1="15" y1="110" x2="400" y2="110" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="0" y="155" dy="4">2</text>
+                                                <line x1="15" y1="155" x2="400" y2="155" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="0" y="200" dy="4">0</text>
+                                                <line x1="15" y1="200" x2="400" y2="200" stroke="#cbd5e1" stroke-width="2" />
+                                            </g>
+                                            <g class="cursor-pointer hover:opacity-80 transition-opacity">
+                                                <rect x="50" y="132.5" width="80" height="67.5" rx="6" fill="#f43f5e" />
+                                                <text x="90" y="125" text-anchor="middle" class="text-[11px] font-semibold fill-[#1e293b]">3</text>
+                                            </g>
+                                            <g class="cursor-pointer hover:opacity-80 transition-opacity">
+                                                <rect x="170" y="132.5" width="80" height="67.5" rx="6" fill="#f59e0b" />
+                                                <text x="210" y="125" text-anchor="middle" class="text-[11px] font-semibold fill-[#1e293b]">3</text>
+                                            </g>
+                                            <g class="cursor-pointer hover:opacity-80 transition-opacity">
+                                                <rect x="290" y="65" width="80" height="135" rx="6" fill="#10b981" />
+                                                <text x="330" y="55" text-anchor="middle" class="text-[11px] font-semibold fill-[#1e293b]">6</text>
+                                            </g>
+                                            <g class="text-[11px] font-semibold fill-[#475569]">
+                                                <text x="90" y="220" text-anchor="middle">High Risk</text>
+                                                <text x="210" y="220" text-anchor="middle">Medium Risk</text>
+                                                <text x="330" y="220" text-anchor="middle">Low Risk</text>
+                                            </g>
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Visual Chart 2: Topic Performance -->
+                                <div class="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <h3 class="font-semibold text-[15px] text-[#1e293b]">Topic Performance</h3>
+                                        <i data-lucide="more-horizontal" class="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform"></i>
+                                    </div>
+                                    <div class="relative w-full flex-1 min-h-[180px]">
+                                        <svg width="100%" height="100%" viewBox="0 0 400 200" preserveAspectRatio="none" class="overflow-visible">
+                                            <g class="text-[10px] fill-[#64748b] font-semibold">
+                                                <text x="140" y="215" text-anchor="middle">0%</text>
+                                                <line x1="140" y1="10" x2="140" y2="200" stroke="#cbd5e1" stroke-width="2" />
+                                                <text x="205" y="215" text-anchor="middle">25%</text>
+                                                <line x1="205" y1="10" x2="205" y2="200" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="270" y="215" text-anchor="middle">50%</text>
+                                                <line x1="270" y1="10" x2="270" y2="200" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="335" y="215" text-anchor="middle">75%</text>
+                                                <line x1="335" y1="10" x2="335" y2="200" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                                <text x="400" y="215" text-anchor="middle">100%</text>
+                                                <line x1="400" y1="10" x2="400" y2="200" stroke="#f1f5f9" stroke-dasharray="4 4" stroke-width="1" />
+                                            </g>
+                                            <g class="cursor-pointer hover:opacity-80 transition-opacity">
+                                                <text x="130" y="45" text-anchor="end" class="text-[11px] font-semibold fill-[#1e293b]">Foundational Skills</text>
+                                                <rect x="140" y="25" width="197" height="28" rx="6" fill="#6366f1" />
+                                                <text x="345" y="44" class="text-[11px] font-semibold fill-[#4f46e5]">76%</text>
+                                            </g>
+                                            <g class="cursor-pointer hover:opacity-80 transition-opacity">
+                                                <text x="130" y="105" text-anchor="end" class="text-[11px] font-semibold fill-[#1e293b]">Algebraic Concepts</text>
+                                                <rect x="140" y="85" width="161" height="28" rx="6" fill="#a855f7" />
+                                                <text x="309" y="104" class="text-[11px] font-semibold fill-purple-600">62%</text>
+                                            </g>
+                                            <g class="cursor-pointer hover:opacity-80 transition-opacity">
+                                                <text x="130" y="165" text-anchor="end" class="text-[11px] font-semibold fill-[#1e293b]">Word Problems</text>
+                                                <rect x="140" y="145" width="228" height="28" rx="6" fill="#10b981" />
+                                                <text x="376" y="164" class="text-[11px] font-semibold fill-emerald-600">88%</text>
+                                            </g>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Row Lists -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                                <!-- Top Performers List -->
+                                <div class="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                                            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i>
+                                            Top Performers
+                                        </h3>
+                                    </div>
+                                    <div class="space-y-[8px]">
+                                        <div class="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Ivy Tan</span>
+                                            <span class="text-[13px] font-semibold text-emerald-600">95%</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Alyssa Cruz</span>
+                                            <span class="text-[13px] font-semibold text-emerald-600">92%</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Franco Villanueva</span>
+                                            <span class="text-[13px] font-semibold text-emerald-600">88%</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Dylan Reyes</span>
+                                            <span class="text-[13px] font-semibold text-emerald-600">84%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Needs Attention List -->
+                                <div class="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                                            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-500"></i>
+                                            Needs Attention
+                                        </h3>
+                                    </div>
+                                    <div class="space-y-[8px]">
+                                        <div class="flex justify-between items-center p-3 bg-rose-50/40 rounded-[14px] border border-rose-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Hector Lim</span>
+                                            <span class="text-[11px] font-semibold text-rose-600 bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9]">HIGH RISK</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-rose-50/40 rounded-[14px] border border-rose-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Liam Ortega</span>
+                                            <span class="text-[11px] font-semibold text-rose-600 bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9]">HIGH RISK</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-rose-50/40 rounded-[14px] border border-rose-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Brent Dela Pena</span>
+                                            <span class="text-[11px] font-semibold text-rose-600 bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9]">HIGH RISK</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-amber-50/40 rounded-[14px] border border-amber-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                                            <span class="text-[13px] font-semibold text-[#1e293b]">Jared Aquino</span>
+                                            <span class="text-[11px] font-semibold text-amber-600 bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9]">MEDIUM RISK</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 2: STUDENT INTERVENTION VIEW (Hidden by Default) -->
+            <div id="page-student-intervention" class="hidden w-full h-full flex overflow-hidden relative">
+                
+                <!-- Center Scrollable Content: Insights & Tools -->
+                <div class="flex-1 overflow-y-auto p-[24px] xl:p-[32px] no-scrollbar">
+                    <div class="max-w-[1000px] mx-auto space-y-[24px]">
+                        
+                        <!-- Top Navigation & Header -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-[8px]">
+                            <div>
+                                <button onclick="hideStudentDetail()" class="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] mb-[16px] w-max shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                                    Back to Analytics
+                                </button>
+                                <div class="flex items-center gap-3">
+                                    <h1 class="text-[26px] font-semibold text-[#1e293b] leading-tight">Student Intervention</h1>
+                                    <span class="px-[10px] py-[2px] bg-indigo-50 text-[#4f46e5] text-[10px] font-bold rounded-full border border-indigo-100 uppercase tracking-wider hidden sm:inline-block">AI Assisted</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-3 self-end sm:self-auto">
+                                <!-- Notification Bell -->
+                                <button class="relative w-9 h-9 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors">
+                                    <i data-lucide="bell" class="w-4 h-4"></i>
+                                    <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                                </button>
+                                <div class="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors">
+                                    <div class="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                                        <img src="https://i.pravatar.cc/150?img=11" alt="Profile" class="w-full h-full object-cover">
+                                    </div>
+                                    <span class="text-[13px] font-semibold text-[#1e293b] hidden sm:block">Test Teacher</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Analysis Banner -->
+                        <div class="bg-gradient-to-r from-[#eef2ff] to-[#faf5ff] backdrop-blur-[12px] rounded-[18px] p-[24px] border border-indigo-50 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 opacity-10 pointer-events-none transform translate-x-4 -translate-y-4">
+                                <i data-lucide="sparkles" class="w-40 h-40 text-indigo-600"></i>
+                            </div>
+                            <div class="flex flex-col sm:flex-row items-start gap-5 relative z-10">
+                                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#4f46e5] to-[#9333ea] flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(79,70,229,0.3)] border-2 border-white">
+                                    <i data-lucide="bot" class="w-7 h-7 text-white"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-[15px] font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                        AI Analysis
+                                        <span class="px-2 py-0.5 bg-indigo-100 text-[#4f46e5] text-[10px] font-bold rounded-full uppercase tracking-wider">Insights Active</span>
+                                    </h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="bg-white/60 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                                            <h4 class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                                <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-500"></i> Learning Strengths
+                                            </h4>
+                                            <p class="text-[13px] text-[#475569] leading-relaxed">
+                                                Excels in <span class="font-semibold text-[#1e293b]">Algebraic Concepts</span> and <span class="font-semibold text-[#1e293b]">Word Problems</span>. Demonstrates high engagement during interactive tests.
+                                            </p>
+                                        </div>
+                                        <div class="bg-white/60 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+                                            <h4 class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                                <i data-lucide="target" class="w-3.5 h-3.5 text-rose-500"></i> Next Steps
+                                            </h4>
+                                            <p class="text-[13px] text-[#475569] leading-relaxed">
+                                                Must continue strengthening <span class="font-semibold text-[#1e293b]">Foundational Skills</span>. Recommended to focus on repetitive practice modules.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Learning Path Timeline -->
+                        <div class="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                            <div class="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
+                                <h3 class="text-[15px] font-semibold text-[#1e293b]">Generated Learning Path</h3>
+                                <button class="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5">
+                                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Regenerate
+                                </button>
+                            </div>
+                            
+                            <div class="mb-8 flex flex-wrap items-center gap-2">
+                                <span class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mr-2">Methodology:</span>
+                                <span class="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Interactive</span>
+                                <span class="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Video</span>
+                                <span class="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Practice</span>
+                                <span class="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Quiz</span>
+                            </div>
+
+                            <div class="relative border-l-2 border-[#e2e8f0] ml-[20px] space-y-[28px] pb-4">
+                                <!-- Step 1 -->
+                                <div class="relative pl-[32px] group">
+                                    <div class="absolute -left-[17px] top-1 w-8 h-8 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center shadow-[0_4px_10px_rgba(139,92,246,0.3)] ring-4 ring-white group-hover:scale-110 transition-transform">
+                                        <i data-lucide="video" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="bg-white rounded-[14px] p-[18px] border border-[#f1f5f9] shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center group-hover:border-purple-200 transition-colors">
+                                        <div>
+                                            <span class="text-[10px] font-semibold text-purple-600 uppercase tracking-wider mb-1 block">Step 1 • Video Lesson</span>
+                                            <p class="font-semibold text-[#1e293b] text-[13px] mb-0.5">Foundational Skills Fundamentals</p>
+                                            <p class="text-[#64748b] text-[11px] flex items-center gap-1.5"><i data-lucide="clock" class="w-3 h-3"></i> 8 mins</p>
+                                        </div>
+                                        <button class="w-8 h-8 rounded-full bg-[#f8fafc] flex items-center justify-center text-[#64748b] hover:bg-[#4f46e5] hover:text-white transition-colors border border-[#e2e8f0]">
+                                            <i data-lucide="play" class="w-4 h-4 ml-0.5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Step 2 -->
+                                <div class="relative pl-[32px] group">
+                                    <div class="absolute -left-[17px] top-1 w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-[0_4px_10px_rgba(14,165,233,0.3)] ring-4 ring-white group-hover:scale-110 transition-transform">
+                                        <i data-lucide="pen-tool" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="bg-white rounded-[14px] p-[18px] border border-[#f1f5f9] shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center group-hover:border-sky-200 transition-colors">
+                                        <div>
+                                            <span class="text-[10px] font-semibold text-sky-600 uppercase tracking-wider mb-1 block">Step 2 • Practice</span>
+                                            <p class="font-semibold text-[#1e293b] text-[13px] mb-0.5">Foundational Skills Practice</p>
+                                            <p class="text-[#64748b] text-[11px] flex items-center gap-1.5"><i data-lucide="list-checks" class="w-3 h-3"></i> 10 questions</p>
+                                        </div>
+                                        <button class="w-8 h-8 rounded-full bg-[#f8fafc] flex items-center justify-center text-[#64748b] hover:bg-sky-500 hover:text-white transition-colors border border-[#e2e8f0]">
+                                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Step 3 -->
+                                <div class="relative pl-[32px] group">
+                                    <div class="absolute -left-[17px] top-1 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-[0_4px_10px_rgba(16,185,129,0.3)] ring-4 ring-white group-hover:scale-110 transition-transform">
+                                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="bg-emerald-50/50 rounded-[14px] p-[18px] border border-emerald-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center group-hover:bg-emerald-50 transition-colors">
+                                        <div>
+                                            <span class="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mb-1 block">Step 3 • Assessment</span>
+                                            <p class="font-semibold text-[#1e293b] text-[13px] mb-0.5">Final Check</p>
+                                            <p class="text-[#64748b] text-[11px] flex items-center gap-1.5"><i data-lucide="target" class="w-3 h-3"></i> 5 assessment questions</p>
+                                        </div>
+                                        <i data-lucide="award" class="w-6 h-6 text-emerald-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Targeted Lesson Generator Settings -->
+                        <div class="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                            <h3 class="text-[15px] font-semibold text-[#1e293b] mb-2">Targeted Lesson Generation</h3>
+                            <p class="text-[13px] text-[#64748b] mb-6">Configure inputs and requirements for AI lesson generation.</p>
+                            
+                            <div class="bg-[#f8fafc]/80 rounded-[14px] p-[20px] border border-[#f1f5f9]">
+                                <div class="flex items-start gap-3 mb-4">
+                                    <i data-lucide="info" class="w-4 h-4 text-[#4f46e5] shrink-0 mt-0.5"></i>
+                                    <p class="text-[13px] text-[#475569] leading-relaxed">
+                                        Class records alone are not enough for import-grounded lesson plans. Ensure course materials are uploaded via <a href="#" class="text-[#4f46e5] font-semibold hover:underline">Data Import</a>.
+                                    </p>
+                                </div>
+                                
+                                <div class="space-y-4 border-t border-[#e2e8f0] pt-5 mt-5">
+                                    <label class="flex items-center justify-between cursor-pointer group">
+                                        <span class="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow sources requiring manual review</span>
+                                        <div class="relative">
+                                            <input type="checkbox" class="sr-only peer">
+                                            <div class="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-center justify-between cursor-pointer group">
+                                        <span class="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow unverified lesson draft</span>
+                                        <div class="relative">
+                                            <input type="checkbox" class="sr-only peer" checked>
+                                            <div class="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+                
+                <!-- RIGHT SIDEBAR: Student Profile & Actions (Fixed) -->
+                <aside class="w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col h-full shrink-0 overflow-y-auto z-10 no-scrollbar relative">
+                    <div class="p-[24px] space-y-[24px] flex flex-col items-center">
+                        
+                        <!-- Profile Block -->
+                        <div class="flex flex-col items-center text-center w-full">
+                            <div id="detail-student-avatar" class="w-[96px] h-[96px] rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-3xl shadow-[0_8px_16px_rgba(16,185,129,0.2)] mb-4 border-4 border-white z-10 relative">
+                                AC
+                            </div>
+                            <h2 id="detail-student-name" class="text-[20px] font-semibold text-[#1e293b] mb-1">Alyssa Cruz</h2>
+                            <p class="text-[11px] font-semibold text-[#64748b] mb-3 uppercase tracking-wider">ID: #MP-2026-014</p>
+                            <span id="detail-student-badge" class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-[14px] border border-emerald-100 mb-2">Low Risk</span>
+                        </div>
+
+                        <!-- 4 Stats Grid -->
+                        <div class="w-full grid grid-cols-2 gap-[12px]">
+                            <div class="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+                                <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
+                                <p id="detail-student-score" class="text-[20px] font-bold text-[#4f46e5]">92%</p>
+                            </div>
+                            <div class="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+                                <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
+                                <p class="text-[20px] font-bold text-[#1e293b]">High</p>
+                            </div>
+                            <div class="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
+                                <p class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
+                                <p class="text-[13px] font-semibold text-[#1e293b] mt-1">12 days ago</p>
+                            </div>
+                            <div class="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
+                                <p class="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
+                                <p class="text-[13px] font-semibold text-[#1e293b] mt-1 leading-tight truncate">Foundational</p>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="w-full flex flex-col gap-[10px]">
+                            <button class="w-full flex items-center justify-center gap-2 bg-[#4f46e5] hover:bg-[#3730a3] text-white text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]">
+                                <i data-lucide="calendar-plus" class="w-4 h-4"></i> Schedule 1-on-1 Session
+                            </button>
+                            <button class="w-full flex items-center justify-center gap-2 bg-white hover:bg-[#f8fafc] text-[#475569] border border-[#cbd5e1] hover:border-[#94a3b8] text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]">
+                                <i data-lucide="printer" class="w-4 h-4"></i> Export Materials
+                            </button>
+                        </div>
+
+                        <!-- Section Assignment -->
+                        <div class="w-full bg-white/80 rounded-[18px] p-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
+                            <h3 class="text-[13px] font-semibold text-[#1e293b] mb-4">Section Assignment</h3>
+                            <div class="space-y-[12px]">
+                                <div>
+                                    <label class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Grade Level</label>
+                                    <div class="relative">
+                                        <select class="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] cursor-pointer">
+                                            <option>Grade 11</option>
+                                        </select>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Section</label>
+                                    <div class="relative">
+                                        <select class="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] cursor-pointer">
+                                            <option>Section A</option>
+                                        </select>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                    </div>
+                                </div>
+                                <button class="w-full bg-white hover:bg-[#f8fafc] text-[#4f46e5] border border-[#e0e7ff] text-[13px] font-semibold rounded-[14px] px-4 py-2.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] mt-2">
+                                    Update Assignment
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </aside>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Initialize Lucide Icons & Tab Logic -->
+    <script>
+        // Draw the icons
+        lucide.createIcons();
+
+        // JS to handle Switching to Class Overview (from the menu)
+        function showClassOverview(className) {
+            document.getElementById('page-classes-menu').classList.add('hidden');
+            document.getElementById('page-classes-menu').classList.remove('block');
+
+            document.getElementById('page-class-analytics').classList.remove('hidden');
+            document.getElementById('page-class-analytics').classList.add('block');
+
+            // Set dynamic title
+            document.getElementById('class-title-display').innerText = className;
+
+            // Scroll to top
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        // JS to handle Returning to Classes Menu
+        function hideClassOverview() {
+            document.getElementById('page-class-analytics').classList.add('hidden');
+            document.getElementById('page-class-analytics').classList.remove('block');
+
+            document.getElementById('page-classes-menu').classList.remove('hidden');
+            document.getElementById('page-classes-menu').classList.add('block');
+
+            // Scroll to top
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        // JS to handle Student Filter Tabs
+        function filterStudents(filterType, clickedButton) {
+            const allButtons = document.querySelectorAll('.filter-btn');
+            allButtons.forEach(btn => {
+                if (btn.innerText.includes('All')) {
+                    btn.className = "filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-white text-[#64748b] border border-[#f1f5f9]";
+                } else if (btn.innerText.includes('Top')) {
+                    btn.className = "filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50";
+                } else {
+                    btn.className = "filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50";
+                }
+            });
+
+            if (filterType === 'All') {
+                clickedButton.className = "filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]";
+            } else if (filterType === 'Good') {
+                clickedButton.className = "filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-emerald-500 text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]";
+            } else {
+                clickedButton.className = "filter-btn px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] bg-rose-500 text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]";
+            }
+
+            const allCards = document.querySelectorAll('.student-card');
+            allCards.forEach(card => {
+                if (filterType === 'All' || card.classList.contains(filterType)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // JS to handle Switching between Class Overview and Student Detailed View
+        function showStudentDetail(name, initials, score, status) {
+            document.getElementById('page-class-analytics').classList.add('hidden');
+            document.getElementById('page-class-analytics').classList.remove('block');
+            
+            document.getElementById('page-student-intervention').classList.remove('hidden');
+            document.getElementById('page-student-intervention').classList.add('flex');
+
+            document.getElementById('detail-student-name').innerText = name;
+            document.getElementById('detail-student-score').innerText = score;
+
+            const avatar = document.getElementById('detail-student-avatar');
+            const badge = document.getElementById('detail-student-badge');
+            
+            avatar.innerText = initials;
+
+            if (status === 'Good') {
+                avatar.className = "w-[96px] h-[96px] rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-3xl shadow-[0_8px_16px_rgba(16,185,129,0.2)] mb-4 border-4 border-white z-10 relative";
+                badge.innerText = "Low Risk";
+                badge.className = "text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-[14px] border border-emerald-100 mb-2";
+            } else {
+                avatar.className = "w-[96px] h-[96px] rounded-full bg-[#f43f5e] text-white flex items-center justify-center font-bold text-3xl shadow-[0_8px_16px_rgba(244,63,94,0.2)] mb-4 border-4 border-white z-10 relative";
+                badge.innerText = "High Risk";
+                badge.className = "text-[11px] font-semibold text-rose-600 bg-rose-50 px-3 py-1 rounded-[14px] border border-rose-100 mb-2";
+            }
+            
+            // Scroll to top
+            document.querySelector('.flex-1.overflow-y-auto').scrollTop = 0;
+            document.querySelector('aside').scrollTop = 0;
+        }
+
+        function hideStudentDetail() {
+            document.getElementById('page-student-intervention').classList.add('hidden');
+            document.getElementById('page-student-intervention').classList.remove('flex');
+            
+            document.getElementById('page-class-analytics').classList.remove('hidden');
+            document.getElementById('page-class-analytics').classList.add('block');
+            
+            // Scroll to top
+            document.querySelector('main').scrollTop = 0;
+        }
+    </script>
+</body>
+</html>
