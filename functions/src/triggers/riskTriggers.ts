@@ -150,6 +150,62 @@ async function applyRiskResponse(
     );
     functions.logger.info(`[RISK_RESPONSE] ${studentId}: intervention checklist generated`);
   }
+
+  // Generate AI tutor check-in for watch and below
+  if (newStatus === "watch" || newStatus === "intervene" || newStatus === "critical" || newStatus === "at_risk") {
+    try {
+      await generateTutorCheckIn(studentId, studentName, newStatus, wri, studentData);
+    } catch (err: any) {
+      functions.logger.error(`[RISK_RESPONSE] ${studentId}: tutor check-in failed`, { error: err.message });
+    }
+  }
+}
+
+/**
+ * Generate a contextual tutor check-in message and send it to the student.
+ * Uses student activity data to personalize the message.
+ */
+async function generateTutorCheckIn(
+  studentId: string,
+  studentName: string,
+  status: "watch" | "intervene" | "critical" | "at_risk",
+  wri: number | null,
+  studentData: admin.firestore.DocumentData | undefined,
+): Promise<void> {
+  const db = admin.firestore();
+
+  // Read recent activity for context
+  const recentScoresSnap = await db
+    .collection("managedStudents")
+    .doc(studentId)
+    .collection("activityScores")
+    .orderBy("timestamp", "desc")
+    .limit(3)
+    .get();
+
+  const recentScores = recentScoresSnap.docs.map((d) => d.data().score as number).filter((s): s is number => !isNaN(s));
+  const avgRecent = recentScores.length > 0
+    ? Math.round((recentScores.reduce((a, b) => a + b, 0) / recentScores.length) * 10) / 10
+    : null;
+
+  // Build contextual message
+  const messages: Record<string, string> = {
+    watch: `Hi ${studentName}! I noticed your recent quiz scores have been a bit lower than usual (${avgRecent ?? 'N/A'}%). Let's take a moment to review any tricky concepts together. You've got this! 💪`,
+    intervene: `${studentName}, your teacher and I are here to help. Your WRI is ${wri ?? 'N/A'} — let's focus on one topic at a time. I've unlocked some extra hints for your next quiz. 🎯`,
+    critical: `${studentName}, I'm worried about your progress. Your recent scores (${avgRecent ?? 'N/A'}%) suggest you might be struggling. Please start a remedial module or reach out to your teacher today. We're here for you. ❤️`,
+    at_risk: `${studentName}, your learning path is paused while your teacher reviews your progress. In the meantime, review your completed lessons and don't hesitate to ask for help. You can do this! 🌟`,
+  };
+
+  const message = messages[status];
+
+  await createNotification({
+    userId: studentId,
+    type: "message",
+    title: "MathPulse Tutor Check-in",
+    message,
+  });
+
+  functions.logger.info(`[RISK_RESPONSE] ${studentId}: tutor check-in sent → ${status}`);
 }
 
 function computeWRI(

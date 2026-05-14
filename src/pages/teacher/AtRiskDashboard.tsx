@@ -10,6 +10,7 @@ import {
 import { db } from '../../lib/firebase';
 import { RiskBadge } from '../../components/risk/RiskBadge';
 import { RiskDetailPanel } from '../../components/risk/RiskDetailPanel';
+import { InterventionChecklistPanel } from '../../components/risk/InterventionChecklistPanel';
 import {
   ShieldCheck,
   Eye,
@@ -382,6 +383,12 @@ export const AtRiskDashboard: React.FC = () => {
                               studentId={student.id!}
                               studentName={student.name!}
                             />
+                            {(student.riskStatus === 'critical' || student.riskStatus === 'at_risk') && (
+                              <InterventionChecklistPanel
+                                studentId={student.id!}
+                                studentName={student.name!}
+                              />
+                            )}
                           </td>
                         </tr>
                       )}
