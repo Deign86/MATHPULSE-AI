@@ -571,7 +571,7 @@ def _init_firebase_admin() -> None:
         return None
 
     try:
-        if not firebase_admin._apps:  # type: ignore[attr-defined]
+        if not firebase_admin._apps:  # type: ignore[union-attr]
             init_options: Dict[str, Any] = {}
             credentials_obj: Optional[Any] = None
             if FIREBASE_AUTH_PROJECT_ID:
@@ -3061,7 +3061,7 @@ async def predict_risk(student_data: StudentRiskData, response: Response):
             parsed = {"risk_label": "medium academic risk", "confidence": 0.5}
 
         risk_label = str(parsed.get("risk_label", "medium academic risk"))
-        confidence = float(parsed.get("confidence", 0.5))
+        confidence = float(parsed.get("confidence", 0.5))  # type: ignore[arg-type]
 
         risk_level = RISK_MAPPING.get(risk_label, "Medium")
         strict_risk_level = _to_strict_risk_level(risk_level)
@@ -4085,10 +4085,10 @@ def _sync_imported_students_to_teacher_dashboard(
             engagement = float(row.get("engagementScore") or 0.0)
             completion = float(row.get("assignmentCompletion") or 0.0)
 
-            state["scores"].append(avg_quiz)
-            state["attendance"].append(attendance)
-            state["engagement"].append(engagement)
-            state["completion"].append(completion)
+            state["scores"].append(avg_quiz)  # type: ignore[union-attr]
+            state["attendance"].append(attendance)  # type: ignore[union-attr]
+            state["engagement"].append(engagement)  # type: ignore[union-attr]
+            state["completion"].append(completion)  # type: ignore[union-attr]
             if not state.get("weakestTopic"):
                 state["weakestTopic"] = _pick_weakest_topic(row.get("unknownFields") or {})
 
@@ -7825,7 +7825,7 @@ MAX_TOPICS_LIMIT = 12
 
 class QuizGenerationRequest(BaseModel):
     topics: List[str] = Field(
-        default=None,
+        default=None,  # type: ignore[arg-type]
         min_length=1,
         description="Specific math topics to cover (at least one required)",
     )
@@ -9195,11 +9195,11 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
 
         if retrieval_issues:
             source_legitimacy_report["status"] = "review_required"
-            source_legitimacy_report["score"] = min(float(source_legitimacy_report.get("score") or 0.0), retrieval_confidence or 0.5)
+            source_legitimacy_report["score"] = min(float(source_legitimacy_report.get("score") or 0.0), retrieval_confidence or 0.5)  # type: ignore[arg-type]
             source_legitimacy_report.setdefault("issues", [])
-            source_legitimacy_report["issues"] = list({*map(str, source_legitimacy_report.get("issues") or []), *retrieval_issues})
+            source_legitimacy_report["issues"] = list({*map(str, source_legitimacy_report.get("issues") or []), *retrieval_issues})  # type: ignore[arg-type]
             source_legitimacy_report.setdefault("evidenceChecked", [])
-            evidence_checked = list(source_legitimacy_report.get("evidenceChecked") or [])
+            evidence_checked = list(source_legitimacy_report.get("evidenceChecked") or [])  # type: ignore[arg-type]
             evidence_checked.extend([
                 f"{chunk.get('source_file')} p.{chunk.get('page')}" for chunk in curriculum_chunks if chunk.get("source_file")
             ])
@@ -9361,7 +9361,7 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
                 confidenceBand=retrieval_band,
                 retrievedChunks=len(curriculum_chunks),
                 needsReview=needs_review,
-                issues=sorted({*(retrieval_issues or []), *(source_legitimacy_report.get("issues") or [])}),
+                issues=sorted({*(retrieval_issues or []), *(source_legitimacy_report.get("issues") or [])}),  # type: ignore[misc]
             ),
             gradeLevel=request.gradeLevel,
             classSectionId=request.classSectionId,
