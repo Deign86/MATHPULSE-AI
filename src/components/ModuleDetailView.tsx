@@ -369,7 +369,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             if (setIsInQuizMode) setIsInQuizMode(false);
           }}
           onComplete={(score, totalXP) => {
-            console.log('[QuizComplete] Score:', score, 'totalXP from calculator:', totalXP);
+            // [QuizComplete] Score logged
 
             // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {

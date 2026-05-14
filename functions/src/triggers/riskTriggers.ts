@@ -196,7 +196,47 @@ async function generateTutorCheckIn(
     at_risk: `${studentName}, your learning path is paused while your teacher reviews your progress. In the meantime, review your completed lessons and don't hesitate to ask for help. You can do this! 🌟`,
   };
 
-  const message = messages[status];
+  let message = messages[status];
+
+  // Try DeepSeek-powered AI tutor check-in via backend API
+  try {
+    const backendUrl = process.env.BACKEND_URL || "https://deign86-mathpulse-api-v3test.hf.space";
+    const topFactors = studentData?.topFactors || studentData?.struggles || [];
+    const response = await fetch(`${backendUrl}/api/tutor-checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_id: studentId,
+        student_name: studentName,
+        risk_status: status,
+        wri,
+        weak_topics: Array.isArray(topFactors) ? topFactors.slice(0, 5) : [],
+        recent_activity: avgRecent !== null ? `Recent quiz average: ${avgRecent}%` : "",
+      }),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.message) {
+        message = data.message;
+      }
+    }
+  } catch (err) {
+    functions.logger.warn(`[RISK_RESPONSE] Tutor check-in API unavailable, using fallback for ${studentId}:`, err);
+  }
+
+  // Save check-in message to Firestore for student to read
+  try {
+    const checkinRef = db.collection("tutorCheckins").doc(studentId).collection("messages").doc();
+    await checkinRef.set({
+      message,
+      generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      riskBand: status,
+      wri,
+      read: false,
+    });
+  } catch (err) {
+    functions.logger.error(`[RISK_RESPONSE] Failed to save tutor check-in for ${studentId}:`, err);
+  }
 
   await createNotification({
     userId: studentId,

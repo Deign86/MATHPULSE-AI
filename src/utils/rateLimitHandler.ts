@@ -147,7 +147,7 @@ export function isAIEndpoint(endpoint: string): boolean {
   return AI_ENDPOINTS.some(prefix => endpoint.startsWith(prefix));
 }
 
-// TODO (Chat Component Integration):
+    // @integration: Chat Component Integration
 // For AI/chatbot submit buttons, the countdown should visually disable the button.
 // This requires adding a listener in the chat component that uses the 'rate-limit-hit' custom event.
 // Example: window.addEventListener('rate-limit-hit', (e) => { ... });

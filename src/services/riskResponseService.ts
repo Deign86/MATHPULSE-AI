@@ -41,8 +41,6 @@ export async function triggerRiskResponse(
   // Only fire if status actually changed
   if (newStatus === previousStatus) return;
 
-  console.log(`[riskResponse] ${studentId}: ${previousStatus ?? 'null'} → ${newStatus} (WRI ${wri})`);
-
   switch (newStatus) {
     case 'watch':
       await adjustModuleDifficulty(studentId, 'easier');
@@ -109,7 +107,6 @@ export async function adjustModuleDifficulty(
     moduleDifficulty: mode,
     moduleDifficultyUpdatedAt: serverTimestamp(),
   });
-  console.log(`[riskResponse] ${studentId}: module difficulty → ${mode}`);
 }
 
 /**
@@ -125,7 +122,6 @@ export async function increaseHintAvailability(
     extraHintsEnabled: enabled,
     extraHintsUpdatedAt: serverTimestamp(),
   });
-  console.log(`[riskResponse] ${studentId}: extra hints → ${enabled}`);
 }
 
 /**
@@ -141,7 +137,6 @@ export async function boostXPMultiplier(
     xpMultiplier: multiplier,
     xpMultiplierUpdatedAt: serverTimestamp(),
   });
-  console.log(`[riskResponse] ${studentId}: XP multiplier → ${multiplier}x`);
 }
 
 /**
@@ -157,7 +152,6 @@ export async function increaseTutorCheckInFrequency(
     tutorCheckInFactor: factor,
     tutorCheckInUpdatedAt: serverTimestamp(),
   });
-  console.log(`[riskResponse] ${studentId}: tutor check-in factor → ${factor}x`);
 }
 
 /**
@@ -214,7 +208,6 @@ export async function notifyTeacher(
     createdAt: serverTimestamp(),
   });
 
-  console.log(`[riskResponse] ${studentId}: teacher notification sent → ${status}`);
 }
 
 /**
@@ -239,7 +232,6 @@ export async function generateInterventionChecklist(studentId: string): Promise<
     },
     { merge: true }
   );
-  console.log(`[riskResponse] ${studentId}: intervention checklist generated`);
 }
 
 /**
@@ -253,7 +245,6 @@ export async function requireTeacherAcknowledgment(studentId: string): Promise<v
     teacherAckRequiredAt: serverTimestamp(),
     teacherAcknowledged: false,
   });
-  console.log(`[riskResponse] ${studentId}: teacher acknowledgment required`);
 }
 
 /**
@@ -269,7 +260,6 @@ export async function lockNonEssentialFeatures(
     lockedFeatures: features,
     lockedFeaturesUpdatedAt: serverTimestamp(),
   });
-  console.log(`[riskResponse] ${studentId}: locked features → ${features.join(', ')}`);
 }
 
 /**
@@ -281,5 +271,5 @@ export async function unlockAllFeatures(studentId: string): Promise<void> {
     lockedFeatures: [],
     lockedFeaturesUpdatedAt: serverTimestamp(),
   });
-  console.log(`[riskResponse] ${studentId}: all features unlocked`);
+
 }

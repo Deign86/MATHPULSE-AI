@@ -94,7 +94,7 @@ const TopicMasteryView: React.FC<{ classSectionId?: string }> = ({ classSectionI
   // Log curriculum source on load
   useEffect(() => {
     if (!curriculumLoading) {
-      console.log('[TopicMasteryView] Curriculum ready');
+      // [TopicMasteryView] Curriculum ready
     }
   }, [curriculumLoading]);
 

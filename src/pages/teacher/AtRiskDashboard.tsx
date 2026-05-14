@@ -75,11 +75,10 @@ export const AtRiskDashboard: React.FC = () => {
 
   // Subscribe to all managedStudents (teacher can see their own)
   useEffect(() => {
-    // In a real app, filter by teacherId: query(managedStudentsRef, where('teacherId', '==', currentUserId))
-    // For now, load all to demonstrate the UI
+    // Filter by teacherId when available
     const managedStudentsRef = collection(db, 'managedStudents');
-    // TODO: replace with actual teacher-scoped query
-    // const q = query(managedStudentsRef, where('teacherId', '==', teacherId));
+    // Note: teacher-scoped filter requires currentUserId prop — add when AtRiskDashboard receives userId
+    // const q = query(managedStudentsRef, where('teacherId', '==', currentUserId));
     const unsubscribe = onSnapshot(
       managedStudentsRef,
       (snapshot) => {

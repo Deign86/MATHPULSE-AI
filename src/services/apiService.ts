@@ -96,12 +96,14 @@ export interface ChatRequest {
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
+  moduleContext?: { title?: string; summary?: string; keyPoints?: string[]; subject?: string; quarter?: string; };
 }
 
 export interface ChatCompletionOptions {
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
+  moduleContext?: { title?: string; summary?: string; keyPoints?: string[]; subject?: string; quarter?: string; };
 }
 
 export interface ChatResponse {
@@ -1545,6 +1547,7 @@ export const apiService = {
       ...(typeof options?.continuationMaxRounds === 'number'
         ? { continuationMaxRounds: Math.max(0, Math.floor(options.continuationMaxRounds)) }
         : {}),
+      ...(options?.moduleContext ? { moduleContext: options.moduleContext } : {}),
     };
 
     if (onChunk) {
@@ -1951,7 +1954,10 @@ export const apiService = {
   },
 
   /** Upload a filled class record template for AI at-risk analysis */
-  async uploadClassRecordTemplate(file: File): Promise<ClassRecordUploadResponse> {
+  async uploadClassRecordTemplate(
+    file: File,
+    metadata?: { subject?: string; quarter?: string; gradeLevel?: string },
+  ): Promise<ClassRecordUploadResponse> {
     if (!file || file.size === 0) {
       throw new ApiValidationError('/api/class-records/upload', 'File must be non-empty');
     }
@@ -1961,6 +1967,9 @@ export const apiService = {
 
     const formData = new FormData();
     formData.append('file', file);
+    if (metadata?.subject) formData.append('subject', metadata.subject);
+    if (metadata?.quarter) formData.append('quarter', metadata.quarter);
+    if (metadata?.gradeLevel) formData.append('gradeLevel', metadata.gradeLevel);
 
     return apiFetch<ClassRecordUploadResponse>(
       '/api/class-records/upload',
@@ -2702,6 +2711,91 @@ export const apiService = {
     lastIngested: string;
   }> => {
     return apiFetch('/api/rag/health', { method: 'GET' });
+  },
+
+  /** Generate an intervention plan for an at-risk student */
+  async generateInterventionPlan(payload: {
+    lrn: string;
+    subject: string;
+    quarter: string;
+    riskFactors: string[];
+  }): Promise<{ plan: string; strategies: string[] }> {
+    return apiFetch('/api/class-records/intervention-plan', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Fetch paginated class record uploads for the current teacher */
+  async fetchClassRecords(params?: {
+    limit?: number;
+    after?: string;
+  }): Promise<{ uploads: Array<{
+    uploadId: string;
+    uploadedAt: string;
+    studentCount: number;
+    summary: Record<string, number>;
+    metadata: Record<string, string>;
+  }>; hasMore: boolean }> {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.after) search.set('after', params.after);
+    const query = search.toString();
+    return apiFetch(`/api/class-records${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+
+  /** Fetch aggregated quiz battle results per student */
+  async fetchQuizBattleResults(params?: {
+    classId?: string;
+    limit?: number;
+    after?: string;
+  }): Promise<{ results: Array<{
+    studentId: string;
+    studentName: string;
+    totalMatches: number;
+    wins: number;
+    averageScore: number;
+    lastPlayedAt: string;
+  }>; hasMore: boolean }> {
+    const search = new URLSearchParams();
+    if (params?.classId) search.set('classId', params.classId);
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.after) search.set('after', params.after);
+    const query = search.toString();
+    return apiFetch(`/api/quiz-battle/results${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+
+  /** Fetch paginated students for a past class record upload */
+  async fetchUploadStudents(uploadId: string, params?: { limit?: number; after?: string }): Promise<{
+    uploadId: string; sectionId: string; students: Array<Record<string, unknown>>; hasMore: boolean;
+  }> {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.after) search.set('after', params.after);
+    const query = search.toString();
+    return apiFetch(`/api/class-records/${uploadId}/students${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+
+  /** Generate AI class report for a past upload */
+  async generateClassReport(uploadId: string): Promise<{
+    classAverage: number; distribution: Array<{label: string; count: number; pct: number}>;
+    atRiskPct: number; recommendations: string[];
+  }> {
+    return apiFetch(`/api/class-records/${uploadId}/ai-report`, { method: 'POST' });
+  },
+
+  /** Generate quiz from a teacher-uploaded module */
+  async generateQuizFromModule(moduleId: string): Promise<{ quizId: string; questions: Array<{
+    question: string; choices: Record<string, string>; correct: string; explanation: string; competencyCode: string;
+  }> }> {
+    return apiFetch(`/api/teacher-materials/${moduleId}/generate-quiz`, { method: 'POST' });
+  },
+
+  /** Fetch personalized student study recommendations */
+  async getStudentRecommendations(uid: string): Promise<{
+    recommendations: Array<{type: 'module'|'topic'; id: string; title: string; reason: string; estimatedMinutes: number}>;
+  }> {
+    return apiFetch(`/api/student/${uid}/recommendations`, { method: 'GET' });
   },
 };
 

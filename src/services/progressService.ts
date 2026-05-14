@@ -434,7 +434,7 @@ export const updateSubjectProgress = async (
 };
 
 // Award XP to user
-const awardXP = async (
+export const awardXP = async (
   userId: string,
   xpAmount: number,
   type: string,
@@ -442,9 +442,21 @@ const awardXP = async (
 ): Promise<void> => {
   try {
     const userRef = doc(db, 'users', userId);
+    let multiplier = 1.0;
+    try {
+      const userSnap = await getDoc(userRef);
+      const data = userSnap.data();
+      if (data?.xpMultiplier && typeof data.xpMultiplier === 'number') {
+        multiplier = data.xpMultiplier;
+      }
+    } catch {
+      // xpMultiplier read failed, proceed with default 1.0
+    }
+    const multipliedXp = Math.round(xpAmount * multiplier);
+
     await updateDoc(userRef, {
-      currentXP: increment(xpAmount),
-      totalXP: increment(xpAmount),
+      currentXP: increment(multipliedXp),
+      totalXP: increment(multipliedXp),
       updatedAt: serverTimestamp(),
     });
 
@@ -454,7 +466,7 @@ const awardXP = async (
       activityId: activityRef.id,
       userId,
       type,
-      xpEarned: xpAmount,
+      xpEarned: multipliedXp,
       description,
       timestamp: serverTimestamp(),
     });
