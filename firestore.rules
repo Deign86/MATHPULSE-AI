@@ -499,6 +499,39 @@ service cloud.firestore {
         allow write: if false;
       }
     }
+    // Tutor check-in messages (backend writes, student reads own)
+    match /tutorCheckins/{uid} {
+      match /messages/{msgId} {
+        allow read: if isSelf(uid);
+        allow create, update, delete: if false;
+      }
+    }
+
+    // AI-generated quizzes from modules
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacherOrAdmin();
+      allow update, delete: if isTeacherOrAdmin() && ownerInExisting('teacherId');
+    }
+
+    // Personalized student recommendations (backend writes, student reads own)
+    match /studentRecommendations/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+    }
+
+    // Weekly teacher digests (backend writes, teacher reads own)
+    match /teacherDigests/{teacherId} {
+      allow read: if isSelf(teacherId);
+      allow write: if false;
+    }
+
+    // Analytics cache (frontend writes, self read)
+    match /analyticsCache/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeacherOrAdmin();
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

@@ -11,6 +11,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from './ui/dialog';
 import ConfirmModal from './ConfirmModal';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
@@ -1832,10 +1841,37 @@ const AnalyticsView: React.FC<{
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedManagerId, setSelectedManagerId] = useState('');
+  const [teacherModules, setTeacherModules] = useState<any[]>([]);
 
   useEffect(() => {
     setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
   }, [selectedClass]);
+
+  // Fetch teacher-uploaded modules for cross-reference with at-risk students
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const q = query(collection(db, 'modules'), where('moduleType', '==', 'teacher_uploaded'));
+      unsub = onSnapshot(q, (snap) => {
+        const modules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setTeacherModules(modules);
+      });
+    })();
+    return () => { unsub?.(); };
+  }, []);
+
+  // Compute recommended modules matching this class's subject
+  const recommendedModules = useMemo(() => {
+    const classSubject = selectedClass.classMetadata?.classification || selectedClass.classification || '';
+    if (!classSubject || teacherModules.length === 0) return [];
+    return teacherModules.filter((mod: any) => {
+      const modSubject = mod.subject || '';
+      return modSubject.toLowerCase().includes(classSubject.toLowerCase())
+        || classSubject.toLowerCase().includes(modSubject.toLowerCase());
+    }).slice(0, 5);
+  }, [teacherModules, selectedClass]);
 
   const visibleStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -2090,6 +2126,26 @@ const AnalyticsView: React.FC<{
                   <p className="text-xs text-muted-foreground">No urgent students in this class right now.</p>
                 )}
               </div>
+
+              {/* Recommended Teacher Modules */}
+              {recommendedModules.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <BookOpen size={12} />
+                    Recommended Modules
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {recommendedModules.map((mod: any) => (
+                      <span
+                        key={mod.moduleId || mod.id}
+                        className="inline-flex items-center px-2 py-1 rounded-md bg-[#9956DE]/10 border border-[#9956DE]/20 text-xs font-medium text-[#9956DE]"
+                      >
+                        {mod.title || 'Untitled Module'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2140,6 +2196,10 @@ const InterventionView: React.FC<{
   const [savingLessonDraft, setSavingLessonDraft] = useState(false);
   const [publishingLesson, setPublishingLesson] = useState(false);
   const [lessonTrigger, setLessonTrigger] = useState(0);
+  // Intervention Plan state
+  const [interventionPlan, setInterventionPlan] = useState<{plan: string; strategies: string[]} | null>(null);
+  const [generatingIntervention, setGeneratingIntervention] = useState(false);
+  const [interventionDialogOpen, setInterventionDialogOpen] = useState(false);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
@@ -2439,6 +2499,27 @@ const InterventionView: React.FC<{
       toast.error('Failed to update section assignment');
     } finally {
       setSavingSection(false);
+    }
+  };
+
+  // Generate Intervention Plan handler
+  const handleGenerateInterventionPlan = async () => {
+    setGeneratingIntervention(true);
+    try {
+      const riskFactors = student.struggles?.length > 0 ? student.struggles : [student.weakestTopic || 'General academic support'];
+      const result = await apiService.generateInterventionPlan({
+        lrn: student.id,
+        subject: 'Mathematics',
+        quarter: 'Quarter 1',
+        riskFactors,
+      });
+      setInterventionPlan(result);
+      setInterventionDialogOpen(true);
+      toast.success('Intervention plan generated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate intervention plan');
+    } finally {
+      setGeneratingIntervention(false);
     }
   };
 
@@ -2954,7 +3035,24 @@ const InterventionView: React.FC<{
             )}
           </BoneSkeleton>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button
+              onClick={handleGenerateInterventionPlan}
+              disabled={generatingIntervention}
+              className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+            >
+              {generatingIntervention ? (
+                <>
+                  <Skeleton className="h-4 w-4 rounded-full bg-white/30 animate-pulse" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap size={20} />
+                  Generate Intervention Plan
+                </>
+              )}
+            </Button>
             <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
               <Send size={20} />
               Schedule One-on-One Session
@@ -2967,6 +3065,79 @@ const InterventionView: React.FC<{
               Export Printed Materials
             </Button>
           </div>
+
+          {/* Intervention Plan Result Dialog */}
+          <Dialog open={interventionDialogOpen} onOpenChange={setInterventionDialogOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-[#9956DE]">
+                  <Zap size={20} />
+                  Intervention Plan
+                </DialogTitle>
+                <DialogDescription>
+                  AI-generated 3-step intervention plan for{' '}
+                  <span className="font-semibold text-foreground">{student.name}</span>
+                </DialogDescription>
+              </DialogHeader>
+
+              {interventionPlan ? (
+                <div className="space-y-4 py-2">
+                  <div className="bg-[#9956DE]/8 border border-[#9956DE]/25 rounded-xl p-4">
+                    <p className="text-sm font-bold text-foreground mb-1">Overall Plan</p>
+                    <p className="text-sm text-muted-foreground">{interventionPlan.plan}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Recommended Strategies
+                    </p>
+                    <div className="space-y-2">
+                      {interventionPlan.strategies.map((strategy, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-3"
+                        >
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#9956DE]/15 text-[#9956DE] flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </span>
+                          <p className="text-sm text-foreground">{strategy}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  No plan generated yet. Click "Generate Intervention Plan" to create one.
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="default" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={async () => {
+                    try {
+                      const { setDoc, doc, serverTimestamp } = await import('firebase/firestore');
+                      const { db } = await import('../lib/firebase');
+                      await setDoc(
+                        doc(db, 'managedStudents', teacherId, 'students', student.id),
+                        { interventionApplied: true, interventionAppliedAt: serverTimestamp() },
+                        { merge: true },
+                      );
+                      toast.success('Intervention plan marked as applied');
+                      setInterventionDialogOpen(false);
+                    } catch {
+                      toast.error('Failed to mark as applied');
+                    }
+                  }}>
+                  Mark as Applied
+                </Button>
+                <DialogClose asChild>
+                  <Button variant="outline" size="sm">
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </motion.div>
@@ -2997,6 +3168,19 @@ const ImportView: React.FC<{
   const [teacherQuarter, setTeacherQuarter] = useState('');
   const [teacherStrand, setTeacherStrand] = useState(classMetadata?.strand || '');
   const [teacherGradeLevel, setTeacherGradeLevel] = useState(classMetadata?.gradeLevel?.toString() || '');
+
+  // Derive teacherQuarter from current month
+  useEffect(() => {
+    const deriveQuarter = () => {
+      const m = new Date().getMonth() + 1;
+      if (m <= 3) return 'Quarter 1';
+      if (m <= 6) return 'Quarter 2';
+      if (m <= 9) return 'Quarter 3';
+      return 'Quarter 4';
+    };
+    setTeacherQuarter(prev => prev || deriveQuarter());
+  }, [classMetadata]);
+
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
     summary?: {
@@ -3020,6 +3204,7 @@ const ImportView: React.FC<{
   const [uploading, setUploading] = useState(false);
   const [templateDownloading, setTemplateDownloading] = useState(false);
   const templateFileInputRef = useRef<HTMLInputElement>(null);
+  const [courseMaterialSuccess, setCourseMaterialSuccess] = useState<{title: string; moduleId: string} | null>(null);
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -3218,6 +3403,7 @@ const ImportView: React.FC<{
   const handleCourseMaterialUpload = async (file: File) => {
     setUploadingCourseMaterials(true);
     setUploadResult('');
+    setCourseMaterialSuccess(null);
     try {
       const result = await apiService.uploadTeacherMaterial(file, {
         gradeLevel: teacherGradeLevel || undefined,
@@ -3229,11 +3415,11 @@ const ImportView: React.FC<{
 
       if (result.success) {
         toast.success(result.message || 'Teacher module created and available to students.');
-        setUploadResult(
-          result.moduleId
-            ? `Module "${result.title}" created and available to students.`
-            : result.message,
-        );
+        if (result.moduleId) {
+          setCourseMaterialSuccess({ title: result.title || 'Untitled Module', moduleId: result.moduleId });
+        } else {
+          setUploadResult(result.message || 'Course material uploaded successfully.');
+        }
         onDataChanged?.();
       } else {
         toast.error(result.error || result.message || 'Course material upload failed');
@@ -3303,7 +3489,11 @@ const ImportView: React.FC<{
     setUploading(true);
     setClassRecordUploadResult(null);
     try {
-      const result = await apiService.uploadClassRecordTemplate(file);
+      const result = await apiService.uploadClassRecordTemplate(file, {
+        subject: teacherSubject || undefined,
+        quarter: teacherQuarter || undefined,
+        gradeLevel: teacherGradeLevel || undefined,
+      });
       setClassRecordUploadResult(result);
       if (result.success) {
         toast.success(result.message || 'Upload complete');
@@ -3661,6 +3851,22 @@ const ImportView: React.FC<{
         {uploadResult && (
           <div className="bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-2xl p-4 text-sm text-[#3E8538]">
             {uploadResult}
+          </div>
+        )}
+
+        {/* Course Material Success Card */}
+        {courseMaterialSuccess && (
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-700 text-xs font-bold">Module Generated ✓</span>
+            </div>
+            <h4 className="text-lg font-bold text-foreground">{courseMaterialSuccess.title}</h4>
+            <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">Available to students now</span>
+            <p className="text-xs text-muted-foreground font-mono">ID: {courseMaterialSuccess.moduleId}</p>
+            <div className="flex items-center gap-2 pt-2">
+              <Button size="sm" onClick={() => setCourseMaterialSuccess(null)}>View in Modules tab</Button>
+              <Button size="sm" variant="outline" onClick={() => setCourseMaterialSuccess(null)}>Dismiss</Button>
+            </div>
           </div>
         )}
 

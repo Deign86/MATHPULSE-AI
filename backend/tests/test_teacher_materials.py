@@ -187,7 +187,7 @@ class TestTeacherMaterialsFileValidation:
         with (
             patch("routes.teacher_materials._parse_uploaded_file", return_value=("text", 100, {})),
             patch("routes.teacher_materials._retrieve_rag_context", return_value=[]),
-            patch("routes.teacher_materials._generate_teacher_module", return_value=None),
+            patch("routes.teacher_materials._generate_teacher_module", return_value={"moduleId": "test-pdf", "title": "Test PDF Module", "sections": [], "practiceQuestions": []}),
         ):
             response = client.post(
                 "/api/teacher-materials/upload",

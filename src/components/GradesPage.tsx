@@ -27,7 +27,7 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
   // Log curriculum source on load
   useEffect(() => {
     if (!curriculumLoading) {
-      console.log('[GradesPage] Curriculum ready, loading:', curriculumLoading);
+      // [GradesPage] Curriculum ready
     }
   }, [curriculumLoading]);
 

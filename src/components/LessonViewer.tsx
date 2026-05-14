@@ -297,7 +297,7 @@ function SectionRenderer({
             subjectId={lesson.subjectId}
             competencyCode={lesson.competencyCode}
             onComplete={(score, total) => {
-              console.log(`[TryItYourselfQuiz] Completed: ${score}/${total}`);
+              // [TryItYourselfQuiz] Completed
             }}
             onQuizComplete={onTryItQuizComplete}
             onClose={onContinueLearning}

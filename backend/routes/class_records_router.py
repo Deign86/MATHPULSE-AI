@@ -16,8 +16,11 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File
+from fastapi import APIRouter, Form, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
+
+from services.inference_client import call_hf_chat_async
+from services.wri_service import compute_wri
 
 logger = logging.getLogger("mathpulse.class_records")
 
@@ -314,6 +317,9 @@ ALLOWED_UPLOAD_EXTS = {".xlsx", ".csv"}
 async def upload_class_records(
     request: Request,
     file: UploadFile = File(...),
+    subject: Optional[str] = Form(None),
+    quarter: Optional[str] = Form(None),
+    gradeLevel: Optional[str] = Form(None),
 ):
     user: Any = getattr(request.state, "user", None)
     if user is None:
@@ -340,6 +346,14 @@ async def upload_class_records(
             metadata, students = _parse_xlsx(contents)
     except (ValueError, KeyError, IndexError) as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
+
+    # Override metadata with form field values if provided
+    if subject:
+        metadata["subject"] = subject
+    if quarter:
+        metadata["quarter"] = quarter
+    if gradeLevel:
+        metadata["section"] = gradeLevel
 
     if not students:
         raise HTTPException(status_code=400, detail="No student data found in file")
@@ -469,10 +483,15 @@ async def upload_class_records(
 
     # ── Persist to Firestore ──
     upload_id = uuid.uuid4().hex
-    _persist_upload(teacher_uid, upload_id, metadata, processed, summary)
+    upload_persisted = _persist_upload(teacher_uid, upload_id, metadata, processed, summary)
 
     section_id = _safe_str(metadata.get("section", "unknown")).replace(" ", "_").lower() or "unknown"
-    _persist_students(teacher_uid, section_id, processed, upload_id)
+    students_persisted = _persist_students(teacher_uid, section_id, processed, upload_id)
+
+    persisted = upload_persisted and students_persisted
+
+    # D1+D3: Trigger WRI recompute for each student + cross-reference LRN → user account
+    _trigger_wri_recompute(teacher_uid, section_id, processed)
 
     student_list = []
     for s in processed:
@@ -485,10 +504,11 @@ async def upload_class_records(
             "topFactors": s.get("topFactors", []),
         })
 
-    return {
+    response: Dict[str, Any] = {
         "success": True,
         "message": f"Uploaded {summary['totalStudents']} student records. {summary['atRiskCount']} at-risk, {summary['mediumRiskCount']} medium-risk, {summary['lowRiskCount']} safe.",
         "uploadId": upload_id,
+        "persisted": persisted,
         "metadata": {
             "className": metadata.get("section", ""),
             "subject": metadata.get("subject", ""),
@@ -497,6 +517,282 @@ async def upload_class_records(
         },
         "summary": summary,
         "students": student_list,
+    }
+    if not persisted:
+        response["warning"] = "Data not saved — Firestore unavailable"
+    return response
+
+
+# ─── ENDPOINT 3: POST /api/class-records/intervention-plan ──────────────────
+
+@router.post("/class-records/intervention-plan")
+async def create_intervention_plan(request: Request):
+    """Generate a 3-step intervention plan for an at-risk student."""
+    user: Any = getattr(request.state, "user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Only teachers and admins can create intervention plans")
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    lrn = body.get("lrn")
+    subject = body.get("subject")
+    quarter = body.get("quarter")
+    risk_factors = body.get("riskFactors", [])
+
+    if not lrn or not subject or not quarter:
+        raise HTTPException(status_code=400, detail="Missing required fields: lrn, subject, quarter")
+
+    prompt = f"""You are an experienced Filipino senior high school teacher following DepEd guidelines.
+
+Student LRN: {lrn}
+Subject: {subject}
+Quarter: {quarter}
+Identified Risk Factors: {', '.join(risk_factors) if risk_factors else 'None specified'}
+
+Create a concise, actionable 3-step intervention plan for this at-risk student.
+Each step should be specific, measurable, and appropriate for the DepEd context.
+
+Format your response as:
+PLAN: <brief overall plan description>
+STRATEGIES:
+1. <first strategy>
+2. <second strategy>
+3. <third strategy>"""
+
+    try:
+        response_text = await call_hf_chat_async(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.7,
+            task_type="intervention_plan"
+        )
+
+        # Parse the response
+        plan = ""
+        strategies: List[str] = []
+
+        lines = response_text.strip().split("\n")
+        in_strategies = False
+
+        for line in lines:
+            line = line.strip()
+            if line.upper().startswith("PLAN:"):
+                plan = line[5:].strip()
+            elif line.upper().startswith("STRATEGIES:"):
+                in_strategies = True
+            elif in_strategies and line:
+                # Remove leading numbers and dots
+                cleaned = re.sub(r"^\d+\.\s*", "", line)
+                if cleaned:
+                    strategies.append(cleaned)
+
+        # Ensure we have at least 3 strategies
+        while len(strategies) < 3:
+            strategies.append("Continue monitoring student progress and adjust interventions as needed")
+
+        return {
+            "plan": plan or f"Intervention plan for {subject} - {quarter}",
+            "strategies": strategies[:3]
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate intervention plan: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate intervention plan: {str(e)}")
+
+
+# ─── ENDPOINT 4: GET /api/class-records ─────────────────────────────────────
+
+@router.get("/class-records")
+async def get_class_records(
+    request: Request,
+    limit: int = Query(20, ge=1, le=100),
+    after: Optional[str] = Query(None),
+):
+    """Get paginated class record uploads for the authenticated teacher."""
+    user: Any = getattr(request.state, "user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Only teachers and admins can view class records")
+
+    teacher_uid = user.uid
+    client = _get_firestore_client()
+
+    if client is None:
+        return {"uploads": [], "hasMore": False}
+
+    try:
+        uploads_ref = client.collection("classRecords").document(teacher_uid).collection("uploads")
+        query = uploads_ref.order_by("uploadedAt", direction="DESCENDING").limit(limit + 1)
+
+        if after:
+            # Get the document to start after
+            after_doc = uploads_ref.document(after).get()
+            if after_doc.exists:
+                query = query.start_after(after_doc)
+
+        docs = query.stream()
+        uploads: List[Dict[str, Any]] = []
+
+        for doc in docs:
+            data = doc.to_dict()
+            if data:
+                uploads.append({
+                    "uploadId": data.get("uploadId", doc.id),
+                    "uploadedAt": data.get("uploadedAt", ""),
+                    "studentCount": data.get("studentCount", 0),
+                    "summary": data.get("summary", {}),
+                    "metadata": {
+                        "section": data.get("section", ""),
+                        "subject": data.get("subject", ""),
+                        "quarter": data.get("quarter", ""),
+                        "schoolYear": data.get("schoolYear", ""),
+                    },
+                })
+
+        has_more = len(uploads) > limit
+        if has_more:
+            uploads = uploads[:limit]
+
+        return {"uploads": uploads, "hasMore": has_more}
+    except Exception as e:
+        logger.error(f"Failed to fetch class records: {e}")
+        return {"uploads": [], "hasMore": False}
+
+
+# ─── ENDPOINT 5: GET /api/class-records/{uploadId}/students ──────────────────
+
+@router.get("/class-records/{uploadId}/students")
+async def get_upload_students(
+    request: Request,
+    uploadId: str,
+    limit: int = Query(100, ge=1, le=500),
+    after: Optional[str] = Query(None),
+):
+    user: Any = getattr(request.state, "user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Only teachers and admins can view student records")
+
+    teacher_uid = user.uid
+    client = _get_firestore_client()
+    if client is None:
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    upload_ref = client.collection("classRecords").document(teacher_uid).collection("uploads").document(uploadId)
+    upload_snap = upload_ref.get()
+    if not upload_snap.exists:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    upload_data = upload_snap.to_dict()
+    section_id = (upload_data.get("section") or "unknown").replace(" ", "_").lower()
+
+    students_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id).collection("students")
+    query_ref = students_ref.limit(limit + 1)
+    if after:
+        after_doc = students_ref.document(after).get()
+        if after_doc.exists:
+            query_ref = query_ref.start_after(after_doc)
+
+    docs = query_ref.stream()
+    students: List[Dict[str, Any]] = []
+    for d in docs:
+        data = d.to_dict()
+        if data:
+            students.append(data)
+
+    has_more = len(students) > limit
+    if has_more:
+        students = students[:limit]
+
+    return {"uploadId": uploadId, "sectionId": section_id, "students": students, "hasMore": has_more}
+
+
+# ─── ENDPOINT 6: POST /api/class-records/{uploadId}/ai-report ────────────────
+
+@router.post("/class-records/{uploadId}/ai-report")
+async def generate_ai_class_report(request: Request, uploadId: str):
+    import json as _json
+
+    user: Any = getattr(request.state, "user", None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Only teachers and admins can generate reports")
+
+    teacher_uid = user.uid
+    client = _get_firestore_client()
+    if client is None:
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    upload_ref = client.collection("classRecords").document(teacher_uid).collection("uploads").document(uploadId)
+    upload_snap = upload_ref.get()
+    if not upload_snap.exists:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    upload_data = upload_snap.to_dict()
+    section_id = (upload_data.get("section") or "unknown").replace(" ", "_").lower()
+    metadata = upload_data.get("metadata", {})
+
+    students_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id).collection("students")
+    docs = students_ref.stream()
+    all_students = [d.to_dict() for d in docs if d.to_dict()]
+
+    total = len(all_students)
+    if total == 0:
+        return {"error": "No students found", "classAverage": 0, "distribution": [], "atRiskPct": 0, "recommendations": []}
+
+    grades = [s.get("transmutedGrade", 0) for s in all_students if s.get("transmutedGrade") is not None]
+    class_avg = round(sum(grades) / len(grades), 2) if grades else 0
+
+    excellent = sum(1 for g in grades if g >= 90)
+    very_satisfactory = sum(1 for g in grades if 85 <= g < 90)
+    satisfactory = sum(1 for g in grades if 80 <= g < 85)
+    fairly_satisfactory = sum(1 for g in grades if 75 <= g < 80)
+    did_not_meet = sum(1 for g in grades if g < 75)
+
+    distribution = [
+        {"label": "Excellent (90-100)", "count": excellent, "pct": round(excellent / total * 100, 1) if total else 0},
+        {"label": "Very Satisfactory (85-89)", "count": very_satisfactory, "pct": round(very_satisfactory / total * 100, 1) if total else 0},
+        {"label": "Satisfactory (80-84)", "count": satisfactory, "pct": round(satisfactory / total * 100, 1) if total else 0},
+        {"label": "Fairly Satisfactory (75-79)", "count": fairly_satisfactory, "pct": round(fairly_satisfactory / total * 100, 1) if total else 0},
+        {"label": "Did Not Meet (<75)", "count": did_not_meet, "pct": round(did_not_meet / total * 100, 1) if total else 0},
+    ]
+    at_risk_pct = round(did_not_meet / total * 100, 1) if total else 0
+
+    prompt = (
+        "You are a DepEd school analyst. Given this class grade distribution for "
+        f"{metadata.get('section','')} {metadata.get('subject','')} Q{metadata.get('quarter','')}, "
+        "write a brief Quarterly Assessment Report. "
+        f"Class avg: {class_avg}. Distribution: Excellent={excellent}, VS={very_satisfactory}, "
+        f"S={satisfactory}, FS={fairly_satisfactory}, DNME={did_not_meet}. "
+        'Write 2 specific actionable recommendations. Return JSON: {"recommendations": ["rec1", "rec2"]}'
+    )
+
+    try:
+        response_text = await call_hf_chat_async(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400, temperature=0.5, task_type="class_report"
+        )
+        try:
+            parsed = _json.loads(response_text)
+            recommendations = parsed.get("recommendations", [])
+        except Exception:
+            recommendations = [r.strip() for r in response_text.split('\n') if len(r.strip()) > 20][:2]
+    except Exception as e:
+        logger.error(f"AI class report failed: {e}")
+        recommendations = []
+
+    return {
+        "classAverage": class_avg,
+        "distribution": distribution,
+        "atRiskPct": at_risk_pct,
+        "recommendations": recommendations,
     }
 
 
@@ -630,11 +926,11 @@ def _persist_upload(
     metadata: Dict[str, Any],
     students: List[Dict[str, Any]],
     summary: Dict[str, int],
-) -> None:
+) -> bool:
     client = _get_firestore_client()
     if client is None:
         logger.warning("Firestore unavailable; class records not persisted")
-        return
+        return False
 
     try:
         upload_doc = {
@@ -656,8 +952,67 @@ def _persist_upload(
         upload_ref.set(upload_doc)
 
         logger.info(f"Upload record persisted: {teacher_uid}/{upload_id} ({len(students)} students)")
+        return True
     except Exception as e:
         logger.error(f"Failed to persist upload record: {e}")
+        return False
+
+
+def _trigger_wri_recompute(
+    teacher_uid: str,
+    section_id: str,
+    students: List[Dict[str, Any]],
+) -> None:
+    """After class records persist, recompute WRI for each student and cross-reference LRN → user account."""
+    client = _get_firestore_client()
+    if client is None:
+        logger.warning("WRI recompute skipped: Firestore unavailable")
+        return
+
+    users_ref = client.collection("users")
+    section_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id)
+
+    for s in students:
+        lrn = (s.get("lrn") or "").strip()
+        if not lrn:
+            continue
+
+        transmuted = s.get("transmutedGrade")
+        if transmuted is None:
+            continue
+
+        try:
+            result = compute_wri(d=None, g=transmuted, p=None)
+            wri_value = result.get("wri")
+            risk_status = result.get("risk_status", "pending_assessment")
+        except Exception as e:
+            logger.error(f"WRI computation failed for LRN {lrn}: {e}")
+            continue
+
+        try:
+            student_ref = section_ref.collection("students").document(lrn)
+            student_ref.set({
+                "wriScore": wri_value,
+                "wriRiskBand": risk_status,
+                "wriComputedAt": datetime.utcnow().isoformat(),
+            }, merge=True)
+        except Exception as e:
+            logger.error(f"Failed to write WRI to classRecords for LRN {lrn}: {e}")
+
+        try:
+            matched = users_ref.where("lrn", "==", lrn).limit(1).stream()
+            for user_doc in matched:
+                user_doc.reference.set({
+                    "latestGrade": transmuted,
+                    "wriExternalGrade": transmuted,
+                    "wriScore": wri_value,
+                    "wriRiskBand": risk_status,
+                    "wriUpdatedAt": datetime.utcnow().isoformat(),
+                }, merge=True)
+                logger.info(f"LRN {lrn} matched to user {user_doc.id}: grade={transmuted}, WRI={wri_value}")
+                break
+        except Exception as e:
+            logger.error(f"LRN cross-reference failed for LRN {lrn}: {e}")
 
 
 def _persist_students(
@@ -665,57 +1020,64 @@ def _persist_students(
     section_id: str,
     students: List[Dict[str, Any]],
     upload_id: str,
-) -> None:
+) -> bool:
     client = _get_firestore_client()
     if client is None:
-        return
+        return False
 
     batch = client.batch()
     section_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id)
     count = 0
 
-    for s in students:
-        lrn = s.get("lrn", "")
-        if not lrn:
-            continue
+    try:
+        for s in students:
+            lrn = s.get("lrn", "")
+            if not lrn:
+                continue
 
-        student_doc = {
-            "lrn": lrn,
-            "lastName": s.get("lastName", ""),
-            "firstName": s.get("firstName", ""),
-            "sex": s.get("sex", ""),
-            "wwScores": s.get("wwScores", []),
-            "ptScores": s.get("ptScores", []),
-            "qaScore": s.get("qaScore"),
-            "qaMax": s.get("qaMax"),
-            "absences": s.get("absences", 0),
-            "remarks": s.get("remarks", ""),
-            "wwTotal": s.get("wwTotal", 0),
-            "ptTotal": s.get("ptTotal", 0),
-            "qaGrade": s.get("qaGrade", 0),
-            "initialGrade": s.get("initialGrade", 0),
-            "transmutedGrade": s.get("transmutedGrade", 0),
-            "flags": s.get("flags", []),
-            "riskLevel": s.get("riskLevel", "safe"),
-            "uploadId": upload_id,
-            "updatedAt": datetime.utcnow().isoformat(),
-        }
+            student_doc = {
+                "lrn": lrn,
+                "lastName": s.get("lastName", ""),
+                "firstName": s.get("firstName", ""),
+                "sex": s.get("sex", ""),
+                "wwScores": s.get("wwScores", []),
+                "ptScores": s.get("ptScores", []),
+                "qaScore": s.get("qaScore"),
+                "qaMax": s.get("qaMax"),
+                "absences": s.get("absences", 0),
+                "remarks": s.get("remarks", ""),
+                "wwTotal": s.get("wwTotal", 0),
+                "ptTotal": s.get("ptTotal", 0),
+                "qaGrade": s.get("qaGrade", 0),
+                "initialGrade": s.get("initialGrade", 0),
+                "transmutedGrade": s.get("transmutedGrade", 0),
+                "flags": s.get("flags", []),
+                "riskLevel": s.get("riskLevel", "safe"),
+                "uploadId": upload_id,
+                "updatedAt": datetime.utcnow().isoformat(),
+            }
 
-        student_ref = section_ref.collection("students").document(lrn)
-        batch.set(student_ref, student_doc, merge=True)
-        count += 1
+            student_ref = section_ref.collection("students").document(lrn)
+            batch.set(student_ref, student_doc, merge=True)
+            count += 1
 
-        if count % 500 == 0:
+            if count % 500 == 0:
+                try:
+                    batch.commit()
+                except Exception as e:
+                    logger.error(f"Batch commit failed at {count} students: {e}")
+                    return False
+                batch = client.batch()
+
+        if count % 500 != 0:
             try:
                 batch.commit()
             except Exception as e:
-                logger.error(f"Batch commit failed at {count} students: {e}")
-            batch = client.batch()
+                logger.error(f"Final batch commit failed: {e}")
+                return False
 
-    if count % 500 != 0:
-        try:
-            batch.commit()
-        except Exception as e:
-            logger.error(f"Final batch commit failed: {e}")
-
-    logger.info(f"Persisted {count} students to classRecords/{teacher_uid}/sections/{section_id}")
+        logger.info(f"Persisted {count} students to classRecords/{teacher_uid}/sections/{section_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to persist students: {e}")
+        return False

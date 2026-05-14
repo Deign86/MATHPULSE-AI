@@ -86,18 +86,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   // Load curriculum (logs source - Firestore vs static)
   const { isLoading: curriculumLoading } = useCurriculum(activeGradeLevel);
 
-  // Log curriculum source on load
-  useEffect(() => {
-    if (!curriculumLoading) {
-      console.log('[ModulesPage] Curriculum ready');
-    }
-  }, [curriculumLoading]);
   const [searchQuery, setSearchQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
   const [competencyFilter, setCompetencyFilter] = useState('all');
   const [isScrolled, setIsScrolled] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
+  const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
 
   const assignedSubjects = useMemo(() => {
     const rawAssignments = (studentProfile as (StudentProfile & {
@@ -441,6 +436,87 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     );
   }
 
+  if (selectedTeacherModule) {
+    return (
+      <div className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative">
+        <button
+          onClick={() => setSelectedTeacherModule(null)}
+          className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <ArrowRight className="rotate-180" size={16} />
+          Back to Modules
+        </button>
+        <div className="bg-white rounded-2xl border border-[#F08386]/30 p-6 md:p-8">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="px-2 py-1 rounded-md bg-[#F08386]/12 border border-[#F08386]/30 text-[#F08386] text-xs font-bold">
+              Teacher Upload
+            </span>
+            {selectedTeacherModule.quarter && (
+              <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs">
+                {selectedTeacherModule.quarter}
+              </span>
+            )}
+          </div>
+          <h1 className="text-2xl md:text-3xl font-display font-black text-slate-900 mb-2">
+            {selectedTeacherModule.title}
+          </h1>
+          <p className="text-sm text-slate-600 mb-6">
+            {selectedTeacherModule.subject} · {selectedTeacherModule.gradeLevel}
+          </p>
+          {selectedTeacherModule.summary && (
+            <p className="text-slate-700 text-base leading-relaxed mb-6">
+              {selectedTeacherModule.summary}
+            </p>
+          )}
+          {selectedTeacherModule.learningObjectives?.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-2">Learning Objectives</h2>
+              <ul className="list-disc list-inside space-y-1 text-slate-700">
+                {selectedTeacherModule.learningObjectives.map((obj, i) => (
+                  <li key={i}>{obj}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {selectedTeacherModule.sections?.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-3">Sections</h2>
+              <div className="space-y-3">
+                {selectedTeacherModule.sections.map((section, i) => (
+                  <div key={i} className="border border-slate-200 rounded-xl p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-1">{section.title}</h3>
+                    <p className="text-sm text-slate-600 leading-relaxed">{section.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {selectedTeacherModule.practice?.length > 0 && (
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 mb-3">Practice Questions</h2>
+              <div className="space-y-3">
+                {selectedTeacherModule.practice.map((q, i) => (
+                  <div key={i} className="border border-slate-200 rounded-xl p-4">
+                    <p className="text-sm font-bold text-slate-800 mb-2">{q.question}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                      {q.options.map((opt, j) => (
+                        <div key={j} className="text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+                          {opt.label}. {opt.text}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-emerald-700 font-semibold">Answer: {q.answer}</p>
+                    <p className="text-xs text-slate-500 mt-1">{q.explanation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative"
@@ -728,7 +804,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   <div
                     key={mod.moduleId}
                     className="bg-white rounded-2xl border border-[#F08386]/30 p-6 hover:border-[#F08386]/60 hover:shadow-md transition-all cursor-pointer"
-                    onClick={() => {/* open module detail */}}
+                    onClick={() => setSelectedTeacherModule(mod)}
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <span className="px-2 py-1 rounded-md bg-[#F08386]/12 border border-[#F08386]/30 text-[#F08386] text-xs font-bold">
