@@ -17,6 +17,7 @@
 #      VITE_FIREBASE_MESSAGING_SENDER_ID — Firebase messaging sender ID
 #      VITE_FIREBASE_APP_ID             — Firebase app ID
 #      VITE_FIREBASE_MEASUREMENT_ID     — Firebase measurement ID
+#      VITE_FIREBASE_VAPID_KEY          — FCM Web Push VAPID public key (Console → Cloud Messaging)
 # 3. Push to main — the Action will auto-deploy
 # ============================================================
 
@@ -254,6 +255,7 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
         run: |
           missing=0
@@ -286,6 +288,7 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
         run: |
           cat > .env.production <<EOF
@@ -297,6 +300,7 @@ jobs:
           VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
           VITE_FIREBASE_MEASUREMENT_ID=${VITE_FIREBASE_MEASUREMENT_ID}
           VITE_FIREBASE_DATABASE_URL=${VITE_FIREBASE_DATABASE_URL}
+          VITE_FIREBASE_VAPID_KEY=${VITE_FIREBASE_VAPID_KEY}
           VITE_API_URL=${VITE_API_URL}
           EOF
 
@@ -310,6 +314,7 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
         run: npm run build
 
