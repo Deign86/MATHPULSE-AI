@@ -5,6 +5,8 @@ import StudentProfileModal from './StudentProfileModal';
 import { useAuth } from '../contexts/AuthContext';
 import { getLeaderboard } from '../services/gamificationService';
 import { StudentProfile } from '../types/models';
+import { useFeatureAccess } from '../hooks/useFeatureAccess';
+import { Lock } from 'lucide-react';
 
 interface LeaderboardStudent {
   id: string;
@@ -39,6 +41,7 @@ type TimeFilter = 'daily' | 'weekly' | 'all';
 const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onBack: _onBack }) => {
   const { currentUser, userProfile } = useAuth();
   const studentProfile = userProfile as StudentProfile;
+  const { leaderboard: leaderboardAccess, loading: featureAccessLoading } = useFeatureAccess(currentUser?.uid || null);
   const [activeView] = useState<'school' | 'section'>('section');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardStudent | null>(null);
@@ -160,6 +163,29 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
           <RefreshCw size={14} />
           Try Again
         </button>
+      </div>
+    );
+  }
+
+  if (featureAccessLoading) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[500px] gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <p className="text-sm text-slate-400 font-medium">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!leaderboardAccess) {
+    return (
+      <div className="flex flex-col justify-center items-center h-[500px] gap-4">
+        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+          <Lock className="w-7 h-7 text-slate-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-slate-700 mb-1">Leaderboard Locked</p>
+          <p className="text-xs text-slate-400">This feature is temporarily unavailable while you focus on your learning.</p>
+        </div>
       </div>
     );
   }

@@ -58,8 +58,11 @@ export function useModuleDifficulty(userId: string | null): ModuleDifficultyStat
  * - normal: return all modules
  * - easier: return only modules tagged as "foundation" or "basic", skip "advanced"
  * - remedial: return only modules tagged as "remedial" or "review"
+ *
+ * NOTE: This filters based on optional `tags` and `difficulty` fields.
+ * If the curriculum data does not include these fields, all modules are returned.
  */
-export function filterModulesByDifficulty<T extends { tags?: string[]; difficulty?: string }>(
+export function filterModulesByDifficulty<T extends Record<string, any>>(
   modules: T[],
   difficulty: ModuleDifficulty
 ): T[] {
@@ -67,10 +70,10 @@ export function filterModulesByDifficulty<T extends { tags?: string[]; difficult
 
   if (difficulty === 'easier') {
     return modules.filter((m) => {
-      const tags = m.tags || [];
-      const diff = m.difficulty || '';
+      const tags: string[] = m.tags || [];
+      const diff: string = m.difficulty || '';
       // Include foundation/basic, exclude advanced
-      return tags.some((t) => ['foundation', 'basic', 'introductory'].includes(t.toLowerCase())) ||
+      return tags.some((t: string) => ['foundation', 'basic', 'introductory'].includes(t.toLowerCase())) ||
         ['foundation', 'basic', 'introductory'].includes(diff.toLowerCase()) ||
         (!tags.includes('advanced') && !diff.toLowerCase().includes('advanced'));
     });
@@ -78,9 +81,9 @@ export function filterModulesByDifficulty<T extends { tags?: string[]; difficult
 
   if (difficulty === 'remedial') {
     return modules.filter((m) => {
-      const tags = m.tags || [];
-      const diff = m.difficulty || '';
-      return tags.some((t) => ['remedial', 'review', 'catch-up'].includes(t.toLowerCase())) ||
+      const tags: string[] = m.tags || [];
+      const diff: string = m.difficulty || '';
+      return tags.some((t: string) => ['remedial', 'review', 'catch-up'].includes(t.toLowerCase())) ||
         ['remedial', 'review', 'catch-up'].includes(diff.toLowerCase());
     });
   }
