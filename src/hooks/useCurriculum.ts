@@ -60,10 +60,10 @@ export function useCurriculum(gradeLevel?: string): UseCurriculumResult {
       if (firestoreSubjects && firestoreSubjects.length > 0) {
         setSubjects(firestoreSubjects);
         setSource('firestore');
-        console.log('[useCurriculum] Loaded', firestoreSubjects.length, 'subjects from Firestore');
+        // [useCurriculum] Loaded subjects from Firestore
       } else {
         // Fall back to static
-        console.log('[useCurriculum] No Firestore data, using static');
+        // [useCurriculum] No Firestore data, using static
         const staticData = (SHS_MATH_SUBJECTS as unknown as CurriculumSubject[]).filter(
           (s) => !gradeLevel || s.gradeLevel === gradeLevel,
         );

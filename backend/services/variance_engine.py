@@ -6,11 +6,14 @@ with pure-Python fallback for choice shuffling.
 """
 
 import json
+import logging
 import random
 import re
 from typing import List, Dict
 
 from services.ai_client import get_deepseek_client, CHAT_MODEL
+
+logger = logging.getLogger("mathpulse.variance_engine")
 from services.question_bank_service import get_cached_session, cache_session_questions
 
 
@@ -102,7 +105,7 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
                 raise ValueError("Missing required fields in varied question")
 
     except Exception as e:
-        print(f"[variance_engine] DeepSeek variance failed, falling back to shuffle: {e}")
+        logger.warning(f"DeepSeek variance failed, falling back to shuffle: {e}")
         varied_questions = _fallback_shuffle(questions, seed)
 
     # 4. Cache for 24 hours

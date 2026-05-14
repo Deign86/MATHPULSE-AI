@@ -338,10 +338,9 @@ Respond with JSON only, no markdown or extra text."""
         {"role": "user", "content": user_prompt},
     ]
 
-# Call DeepSeek via inference_client (test-friendly patch target)
-    from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
-
     try:
+        # Call DeepSeek via inference_client (test-friendly patch target)
+        from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
         raw_response = await call_hf_chat_async(
             messages=messages,
             max_tokens=4096,

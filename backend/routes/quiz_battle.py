@@ -11,7 +11,7 @@ import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
 from rag.pdf_ingestion import ingest_pdf, IngestionResult
@@ -88,6 +88,20 @@ class BankStatusItem(BaseModel):
 
 class BankStatusResponse(BaseModel):
     pdfs: List[BankStatusItem]
+
+
+class QuizBattleResultItem(BaseModel):
+    studentId: str
+    studentName: str
+    totalMatches: int
+    wins: int
+    averageScore: float
+    lastPlayedAt: str
+
+
+class QuizBattleResultsResponse(BaseModel):
+    results: List[QuizBattleResultItem]
+    hasMore: bool
 
 
 # ── Helper ───────────────────────────────────────────────────────────
@@ -236,3 +250,122 @@ async def bank_status(
         ))
 
     return BankStatusResponse(pdfs=pdfs)
+
+
+@router.get("/results", response_model=QuizBattleResultsResponse)
+async def get_quiz_battle_results(
+    request: Request,
+    classId: Optional[str] = Query(None, description="Filter by class section id"),
+    limit: int = Query(20, ge=1, le=100, description="Number of results to return"),
+    after: Optional[str] = Query(None, description="Pagination cursor (document id)"),
+):
+    """
+    Get aggregated quiz battle results per student.
+
+    Only teachers and admins can access this endpoint.
+    Supports pagination with `after` cursor and filtering by `classId`.
+    """
+    user = _get_current_user(request)
+    if user.role not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Teacher or admin access required")
+
+    if not firebase_firestore:
+        raise HTTPException(status_code=503, detail="Firestore not available")
+
+    try:
+        db = firebase_firestore.client()
+
+        # Try quizBattleResults collection first; fallback to battles
+        results: List[QuizBattleResultItem] = []
+        collection_name = "quizBattleResults"
+
+        # Build query
+        query = db.collection(collection_name).limit(limit + 1)
+
+        if classId:
+            # Filter by classSectionId or sectionId (support both field names)
+            query = query.where("classSectionId", "==", classId)
+
+        if after:
+            # Pagination cursor
+            query = query.start_after({"studentId": after})
+
+        docs = query.stream()
+
+        for doc in docs:
+            data = doc.to_dict()
+            if not data:
+                continue
+            results.append(QuizBattleResultItem(
+                studentId=data.get("studentId", doc.id),
+                studentName=data.get("studentName", "Unknown"),
+                totalMatches=data.get("totalMatches", 0),
+                wins=data.get("wins", 0),
+                averageScore=data.get("averageScore", 0.0),
+                lastPlayedAt=data.get("lastPlayedAt", ""),
+            ))
+
+        # If no results and collection might not exist, try battles collection
+        if not results:
+            battles_query = db.collection("battles").limit(limit + 1)
+            if classId:
+                battles_query = battles_query.where("classSectionId", "==", classId)
+            if after:
+                battles_query = battles_query.start_after({"studentId": after})
+
+            battle_docs = battles_query.stream()
+            student_stats: Dict[str, Dict[str, Any]] = {}
+
+            for doc in battle_docs:
+                data = doc.to_dict()
+                if not data:
+                    continue
+                # Aggregate per student from battle documents
+                players = data.get("players", [])
+                for player in players:
+                    sid = player.get("studentId")
+                    if not sid:
+                        continue
+                    if sid not in student_stats:
+                        student_stats[sid] = {
+                            "studentId": sid,
+                            "studentName": player.get("studentName", "Unknown"),
+                            "totalMatches": 0,
+                            "wins": 0,
+                            "totalScore": 0,
+                            "lastPlayedAt": data.get("endedAt", ""),
+                        }
+                    student_stats[sid]["totalMatches"] += 1
+                    if player.get("isWinner"):
+                        student_stats[sid]["wins"] += 1
+                    student_stats[sid]["totalScore"] += player.get("score", 0)
+
+            for sid, stats in list(student_stats.items())[:limit]:
+                avg_score = (
+                    stats["totalScore"] / stats["totalMatches"]
+                    if stats["totalMatches"] > 0
+                    else 0.0
+                )
+                results.append(QuizBattleResultItem(
+                    studentId=stats["studentId"],
+                    studentName=stats["studentName"],
+                    totalMatches=stats["totalMatches"],
+                    wins=stats["wins"],
+                    averageScore=round(avg_score, 2),
+                    lastPlayedAt=stats["lastPlayedAt"],
+                ))
+
+        has_more = len(results) > limit
+        if has_more:
+            results = results[:limit]
+
+        return QuizBattleResultsResponse(
+            results=results,
+            hasMore=has_more,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch quiz battle results: {str(e)}",
+        )
