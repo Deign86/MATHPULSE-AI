@@ -205,6 +205,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Subcollection: managedStudents/{studentId}/activityScores
+    match /managedStudents/{studentId}/activityScores/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isTeacherOrAdmin();
+    }
+
+    // Subcollection: managedStudents/{studentId}/externalGrades
+    match /managedStudents/{studentId}/externalGrades/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isTeacherOrAdmin();
+    }
+
     match /classrooms/{classroomId} {
       allow read: if isAdmin() || (isTeacher() && (
         ownerInExisting('teacherId') ||

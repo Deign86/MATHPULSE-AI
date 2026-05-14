@@ -37,8 +37,10 @@ export const awardXP = async (
     const userData = userDoc.data();
     const previousCurrentXP = userData.currentXP || 0;
     const previousTotalXP = userData.totalXP || 0;
-    const currentXP = previousCurrentXP + xpAmount;
-    const totalXP = previousTotalXP + xpAmount;
+    const xpMultiplier = userData.xpMultiplier || 1.0;
+    const adjustedXpAmount = Math.floor(xpAmount * xpMultiplier);
+    const currentXP = previousCurrentXP + adjustedXpAmount;
+    const totalXP = previousTotalXP + adjustedXpAmount;
     const currentLevel = userData.level || 1;
 
     let newLevel = currentLevel;
@@ -66,13 +68,18 @@ export const awardXP = async (
     }
 
     // Update user data - ensure we're ALWAYS incrementing from the previous value, never resetting to a hardcoded constant
-    const updatePayload = {
+    const updatePayload: Record<string, any> = {
       currentXP: currentXP, // MUST be previous + increment, never a fixed value like 50
       totalXP: totalXP,     // MUST be previous + increment, never a fixed value like 50
       level: newLevel,
       updatedAt: serverTimestamp(),
     };
-    
+
+    // Clear xpMultiplier back to baseline once it has been applied (one-shot boost)
+    if (xpMultiplier !== 1.0) {
+      updatePayload.xpMultiplier = 1.0;
+    }
+
     await updateDoc(userRef, updatePayload);
 
     // Log XP activity

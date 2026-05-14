@@ -19,7 +19,7 @@ import {
   addDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { ClassSectionMetadata } from '../types/models';
+import type { ClassSectionMetadata, WRIWeights, RiskHistoryEntry } from '../types/models';
 
 // Types for the teacher's student management
 export interface ManagedStudent {
@@ -50,6 +50,16 @@ export interface ManagedStudent {
   struggles: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // WRI (Weighted Risk Index) fields
+  wri?: number | null;
+  riskStatus?: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
+  riskUpdatedAt?: Timestamp | null;
+  weights?: WRIWeights;
+  diagnosticScore?: number | null;
+  externalGradesAvg?: number | null;
+  systemPerformanceAvg?: number | null;
+  riskHistory?: RiskHistoryEntry[];
+  riskRecalcNeeded?: boolean;
 }
 
 export interface Classroom {
