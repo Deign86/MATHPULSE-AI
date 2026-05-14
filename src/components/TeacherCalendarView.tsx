@@ -309,63 +309,30 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       exit={{ opacity: 0, y: -20 }}
       className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]"
     >
-      {/* Standard Header */}
-      <div className="w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-          <div className="flex-1">
-            <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">Academic Calendar</h1>
-            <p className="text-[13px] text-[#64748b] mt-1">Manage your class schedules and important academic events.</p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-            <div className="flex items-center gap-2 mr-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  setMonth(today);
-                  setSelectedDay(today);
-                }}
-              >
-                Today
-              </Button>
-              <Button size="sm" onClick={() => openAdd(selectedDay)}>
-                <Plus />
-                Add event
-              </Button>
-            </div>
-
-            {/* AI Insights Button */}
-            <button
-              onClick={onOpenInsightModal}
-              className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
-              aria-label="View AI Insight"
-            >
-              <Sparkles className="w-4 h-4" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
-            </button>
-            {/* Notification Bell */}
-            <button
-              onClick={onOpenNotifications}
-              className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-            </button>
-            {/* Profile Pill */}
-            <div
-              onClick={onOpenProfile}
-              className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
-            >
-              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0 border border-indigo-200">
-                <img src={userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[13px] font-semibold text-[#1e293b] hidden sm:block">{teacherName || 'Test Teacher'}</span>
-            </div>
-          </div>
+      {/* Calendar Actions Bar */}
+      <div className="w-full px-[24px] xl:px-[32px] pt-[12px] pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              setMonth(today);
+              setSelectedDay(today);
+            }}
+            className="px-4 py-1.5 bg-white/60 hover:bg-white text-[#64748b] text-[12px] font-bold rounded-full transition-all border border-white/50 backdrop-blur-md shadow-sm"
+          >
+            Today
+          </button>
+          <button 
+            onClick={() => openAdd(selectedDay)}
+            className="flex items-center gap-2 px-4 py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white text-[12px] font-bold rounded-full transition-transform hover:scale-[1.02] shadow-[0_4px_12px_rgba(79,70,229,0.2)]"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Event
+          </button>
         </div>
       </div>
+
 
       <div className="w-full px-[24px] xl:px-[32px] pb-[32px] flex flex-col flex-1 gap-6 min-h-0">
         {error && (

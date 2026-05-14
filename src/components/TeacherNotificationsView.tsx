@@ -99,54 +99,21 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = ({
 
   return (
     <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
-      {/* Standard Header */}
-      <div className="w-full px-[24px] xl:px-[32px] pt-[24px] pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-          <div className="flex-1">
-            <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">Notifications</h1>
-            <p className="text-[13px] text-[#64748b] mt-1">Classroom alerts and updates.</p>
+      {/* Notification Utilities Bar */}
+      <div className="w-full px-[24px] xl:px-[32px] pt-[12px] pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-[12px] text-[#64748b] font-medium bg-white/60 px-3 py-1 rounded-full border border-white/50 backdrop-blur-md">
+            {unreadCount > 0 ? `${unreadCount} unread messages` : 'All notifications caught up'}
           </div>
-          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-            <div className="flex items-center gap-2 mr-2">
-              <div className="text-xs text-muted-foreground font-body">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-              </div>
-              {unreadCount > 0 && (
-                <Button variant="outline" size="sm" onClick={markAllAsRead}>
-                  <CheckCheck />
-                  Mark all as read
-                </Button>
-              )}
-            </div>
-
-            {/* AI Insights Button */}
-            <button
-              onClick={onOpenInsightModal}
-              className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
-              aria-label="View AI Insight"
+          {unreadCount > 0 && (
+            <button 
+              onClick={markAllAsRead}
+              className="flex items-center gap-2 px-4 py-1.5 bg-[#4f46e5]/10 hover:bg-[#4f46e5]/20 text-[#4f46e5] text-[12px] font-bold rounded-full transition-colors border border-[#4f46e5]/20"
             >
-              <Sparkles className="w-4 h-4" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
+              <CheckCheck className="w-3.5 h-3.5" />
+              Mark all as read
             </button>
-            {/* Notification Bell */}
-            <button
-              onClick={onOpenNotifications}
-              className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-            </button>
-            {/* Profile Pill */}
-            <div
-              onClick={onOpenProfile}
-              className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
-            >
-              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                <img src={userPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

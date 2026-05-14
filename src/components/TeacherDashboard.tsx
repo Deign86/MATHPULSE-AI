@@ -1281,7 +1281,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery'].includes(activeView) && (
+          {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
           <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-4 flex-shrink-0 z-30">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
               <div className="flex-1 flex items-start gap-3">
@@ -1301,6 +1301,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     {activeView === 'intervention' && 'Intervention Center'}
                     {activeView === 'competency' && 'Student Competency'}
                     {activeView === 'topic_mastery' && 'Topic Mastery'}
+                    {activeView === 'calendar' && 'Academic Calendar'}
+                    {activeView === 'notifications' && 'Notifications'}
+                    {activeView === 'question_bank' && 'Question Bank'}
+                    {activeView === 'import' && 'Data Import'}
+                    {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                   </h1>
                   <p className="text-[13px] text-[#64748b] mt-1">
                     {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
@@ -1308,6 +1313,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
                     {activeView === 'competency' && 'Track individual student progress against learning goals.'}
                     {activeView === 'topic_mastery' && 'Overview of student mastery levels across different math topics.'}
+                    {activeView === 'calendar' && 'Manage your schedules and academic events.'}
+                    {activeView === 'notifications' && 'Stay updated with student activity and system alerts.'}
+                    {activeView === 'question_bank' && 'Manage and create math questions for your quizzes.'}
+                    {activeView === 'import' && 'Upload class records and materials to power AI analytics.'}
+                    {activeView === 'quiz_maker' && 'Create AI-powered quizzes based on your curriculum.'}
                   </p>
                 </div>
                 {/* Quick teacher stats */}
@@ -1356,16 +1366,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   <Bell size={18} />
                   <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
                 </button>
-                {/* Profile Pill */}
-                <div
-                  onClick={onOpenProfile}
-                  className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
-                >
-                  <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                    <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+                {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
+                {activeView !== 'dashboard' && (
+                  <div
+                    onClick={onOpenProfile}
+                    className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                      <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
                   </div>
-                  <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
-                </div>
+                )}
               </div>
             </div>
           </header>
@@ -2638,10 +2650,6 @@ const InterventionView: React.FC<{
                 <ArrowLeft className="w-4 h-4" />
                 Back to Analytics
               </button>
-              <div className="flex items-center gap-3">
-                <h1 className="text-[26px] font-semibold text-[#1e293b] leading-tight">Student Intervention</h1>
-                <span className="px-[10px] py-[2px] bg-indigo-50 text-[#4f46e5] text-[10px] font-bold rounded-full border border-indigo-100 uppercase tracking-wider hidden sm:inline-block">AI Assisted</span>
-              </div>
             </div>
           </div>
 

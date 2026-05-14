@@ -63,10 +63,10 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
     <div className="h-full overflow-y-auto w-full block">
       <div className="max-w-[1400px] mx-auto p-[24px] xl:p-[32px] space-y-[24px]">
         
-        {/* Top Navigation & Global Search */}
+        {/* Global Search Bar - Redesigned for content area */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1 max-w-xl">
-            <div className="flex items-center bg-white/80 px-4 py-2.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white backdrop-blur-[12px] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <div className="flex items-center bg-white/80 px-4 py-2.5 rounded-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white backdrop-blur-[12px] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
               <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
               <input 
                 type="text" 
@@ -77,52 +77,6 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
               />
             </div>
           </div>
-          
-          <div className="flex items-center gap-3 shrink-0">
-            {/* AI Insight Button */}
-            {insightDismissed && (
-              <div className="relative group">
-                <button
-                  onClick={onOpenInsightModal}
-                  className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] transition-colors"
-                  aria-label="View AI Insight"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 border border-white animate-pulse" />
-                </button>
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                  AI Insight
-                </span>
-              </div>
-            )}
-            {/* Notification Bell */}
-            <button 
-              onClick={onOpenNotifications}
-              className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-            </button>
-
-            <div 
-              onClick={onOpenProfile}
-              className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10"
-            >
-              <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile?.name || currentUser?.displayName || 'Teacher')}&background=random`} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[13px] font-semibold text-[#1e293b]">{userProfile?.name || currentUser?.displayName || 'Teacher'}</span>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight">
-            {isCompetency ? 'Competency Overview' : 'Classes Overview'}
-          </h1>
-          {isCompetency && (
-            <p className="text-[13px] text-[#64748b] mt-1">Select a class to view detailed student competency breakdowns</p>
-          )}
         </div>
 
         {/* Global Stats & Alerts Row (Vibrant Palette) */}
