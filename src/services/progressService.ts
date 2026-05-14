@@ -450,6 +450,7 @@ export const awardXP = async (
         multiplier = data.xpMultiplier;
       }
     } catch {
+      // xpMultiplier read failed, proceed with default 1.0
     }
     const multipliedXp = Math.round(xpAmount * multiplier);
 
