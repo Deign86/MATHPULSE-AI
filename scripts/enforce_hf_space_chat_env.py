@@ -99,7 +99,7 @@ def _clear_variable(api: HfApi, *, repo_id: str, key: str) -> None:
 def main() -> int:
     args = parse_args()
 
-    token = (args.hf_token or "").strip()
+    token = (args.hf_token or "").strip().lstrip("\ufeff")
     if not token:
         print("[error] HF token is required. Pass --hf-token or set HF_TOKEN.")
         return 1
