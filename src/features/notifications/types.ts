@@ -13,10 +13,7 @@ export type NotificationType =
   | 'teacher_announcement'
   | 'new_assignment'
   | 'xp_earned'
-  | 'system_alert'
-  | 'risk_alert'
-  | 'reminder'
-  | 'message';
+  | 'system_alert';
 
 export interface Notification {
   id: string;

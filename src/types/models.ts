@@ -503,7 +503,6 @@ export interface CalendarEvent {
   description?: string;
   startTime: Date;
   endTime?: Date;
-  color?: 'purple' | 'blue' | 'emerald' | 'amber' | 'rose';
   createdAt: Date;
   updatedAt?: Date;
 }

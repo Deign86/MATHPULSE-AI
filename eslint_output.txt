@@ -1,0 +1,253 @@
+﻿
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\App.tsx
+  17:10  error  'CURRICULUM_SUBJECT_META' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  17:40  error  'CurriculumModuleRuntime' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  17:70  error  'CurriculumQuarter' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\AIChatPage.tsx
+  2:10  error  'Bot' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\AdminAIMonitoring.tsx
+  22:3  error  'resolveHealthStatus' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\AdminDashboard.tsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\AdminPriorityModules.tsx
+  1:35  error  'useEffect' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\AppLoadingScreen.tsx
+  12:9  error  'screenStyle' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  23:9  error  'cardStyle' is assigned a value but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  36:9  error  'avatarShellStyle' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  48:9  error  'avatarStyle' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  55:9  error  'messageRowStyle' is assigned a value but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  63:9  error  'spinnerStyle' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  71:9  error  'titleStyle' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  78:9  error  'messageStyle' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\CompositeAvatar.tsx
+  52:119  error  'fallbackSrc' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\DailyChallengeWidget.tsx
+  3:10  error  'ChevronRight' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  3:24  error  'Calendar' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\DailyCheckInModal.tsx
+  2:18  error  'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  3:13  error  'Check' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\DiagnosticAssessmentModal.tsx
+   10:3   error  'IAR_QUESTION_BLUEPRINT' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+  130:10  error  'automationProcessing' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  315:11  error  'priorityTopics' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\FloatingAITutor.tsx
+  13:60  error  'constraintsRef' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\InteractiveLesson.tsx
+   3:25  error  'Volume2' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+   3:34  error  'RotateCcw' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   3:58  error  'Flag' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   5:11  error  'Atom' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   6:13  error  'PartyPopper' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   6:26  error  'ThumbsUp' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+   6:36  error  'Dumbbell' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+   6:46  error  'BookOpen' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  10:10  error  'Input' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  11:10  error  'Progress' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\LeaderboardPage.tsx
+   2:18   error  'Users' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   2:25   error  'Flame' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   2:32   error  'TrendingUp' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   2:44   error  'TrendingDown' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   2:65   error  'Medal' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+   2:72   error  'Eye' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+   2:77   error  'Search' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+   2:100  error  'ChevronLeft' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+   2:113  error  'Bold' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   4:10   error  'Button' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  41:78   error  'onBack' is defined but never used. Allowed unused args must match /^_/u        @typescript-eslint/no-unused-vars
+  70:73   error  'index' is defined but never used. Allowed unused args must match /^_/u         @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\LearningPath.tsx
+  26:9  error  'studentGrade' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\LessonViewer.tsx
+    2:85   error  'Volume2' is defined but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+    2:94   error  'Pause' is defined but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+    2:101  error  'ChevronRight' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+    3:18   error  'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  134:10   error  'direction' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  135:10   error  'isPlaying' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\LoginPage.tsx
+    2:128  error  'Zap' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+    5:18   error  'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  369:9    error  'handleGoogleSignIn' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\MasteryHeatmap.tsx
+  96:10  error  'getMasteryBgHex' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\ModuleDetailView.tsx
+    2:77  error  'Circle' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+    3:18  error  'AnimatePresence' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+    4:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+    5:10  error  'Progress' is defined but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+   68:9   error  'moduleAccentHex' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  106:9   error  'lessonProgressPercent' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  107:9   error  'quizProgressPercent' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\ModulesPage.tsx
+  25:15  error  'Module' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\NotificationCenter.tsx
+  24:66  error  'userRole' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  28:10  error  'loading' is assigned a value but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\PracticeCenter.tsx
+    2:45  error  'Filter' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+    2:53  error  'TrendingUp' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+    2:65  error  'CheckCircle' is defined but never used. Allowed unused vars must match /^_/u                  @typescript-eslint/no-unused-vars
+    2:84  error  'Play' is defined but never used. Allowed unused vars must match /^_/u                         @typescript-eslint/no-unused-vars
+    4:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+   91:9   error  'getTypeColor' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  124:9   error  'getDifficultyColor' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\ProfileModal.tsx
+  2:26  error  'MapPin' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\QuizBattlePage.tsx
+    14:3   error  'Maximize' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+    15:3   error  'Menu' is defined but never used. Allowed unused vars must match /^_/u                               @typescript-eslint/no-unused-vars
+    16:3   error  'Minimize' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+    30:8   error  'CompositeAvatar' is defined but never used. Allowed unused vars must match /^_/u                    @typescript-eslint/no-unused-vars
+    43:3   error  'connectQuizBattlePresence' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+    71:29  error  'TabsList' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+    71:39  error  'TabsTrigger' is defined but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+    83:10  error  'BattleTimerBar' is defined but never used. Allowed unused vars must match /^_/u                     @typescript-eslint/no-unused-vars
+   524:9   error  'opponentVisualMultiplier' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   529:9   error  'momentumTier' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  1832:9   error  'historyWinRate' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\QuizExperience.tsx
+   206:16  error  'setOrbs' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  1227:68  error  'difficulty' is defined but never used. Allowed unused args must match /^_/u        @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\QuizMaker.tsx
+     4:6    error  'Brain' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+     4:13   error  'Sparkles' is defined but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+     4:33   error  'BarChart3' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+     4:44   error  'Target' is defined but never used. Allowed unused vars must match /^_/u                          @typescript-eslint/no-unused-vars
+     6:25   error  'GraduationCap' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+     7:42   error  'Lightbulb' is defined but never used. Allowed unused vars must match /^_/u                       @typescript-eslint/no-unused-vars
+   150:25   error  'setIncludeGraphs' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+   157:10   error  'importedTopicsLoading' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   158:10   error  'importedTopicsWarning' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   162:10   error  'previewing' is assigned a value but never used. Allowed unused vars must match /^_/u             @typescript-eslint/no-unused-vars
+   168:10   error  'previewResult' is assigned a value but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   340:9    error  'toggleExclude' is assigned a value but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   581:9    error  'handlePreview' is assigned a value but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   697:9    error  'isFormValid' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   964:9    error  'renderSection' is assigned a value but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  1515:115  error  'info' is defined but never used. Allowed unused args must match /^_/u                            @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\RightSidebar.tsx
+  153:9  error  'userInTopThree' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\StudentCompetencyTable.tsx
+  5:37  error  'TrendingDown' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\StudentProfileModal.tsx
+  2:85  error  'User' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\SubjectDetailView.tsx
+  2:39  error  'Clock' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  2:65  error  'Lock' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  4:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\SupplementalBanner.tsx
+  1:27  error  'useEffect' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\TasksBoard.tsx
+   2:16  error  'X' is defined but never used. Allowed unused vars must match /^_/u                     @typescript-eslint/no-unused-vars
+   2:62  error  'Calendar' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  30:69  error  'systemTasks' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  33:10  error  'tasksLoaded' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\TeacherDashboard.tsx
+   3:10  error  'BookOpen' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+   3:57  error  'MessageCircle' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   5:3   error  'Play' is defined but never used. Allowed unused vars must match /^_/u                     @typescript-eslint/no-unused-vars
+node.exe : (node:47848) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() 
+instead.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:47848) [D...sign() instead.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   5:32  error  'Award' is defined but never used. Allowed unused vars must match /^_/u                    @typescript-eslint/no-unused-vars
+   5:39  error  'Upload' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+   7:16  error  'Eye' is defined but never used. Allowed unused vars must match /^_/u                      @typescript-eslint/no-unused-vars
+   7:44  error  'Trash2' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+  20:3   error  'getStudentsByClassroom' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  29:3   error  'addManagedStudentsBatch' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  30:3   error  'deleteManagedStudent' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  39:8   error  'ClassActivity' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\TopicMasteryView.tsx
+  6:36  error  'Info' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  6:42  error  'XCircle' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\XPNotification.tsx
+  1:28  error  'useState' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\components\battle\BattleFooter.tsx
+  17:3  error  'quizBattleAvatar' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\contexts\AuthContext.tsx
+  4:42  error  'TeacherProfile' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  4:58  error  'AdminProfile' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\data\iarBlueprint.ts
+  37:7  error  'confidenceOptions' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\features\import\services\shsExcel\parser\extractInputData.ts
+  5:30  error  'normalizeText' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\services\adminService.ts
+   16:3   error  'setDoc' is defined but never used. Allowed unused vars must match /^_/u                    @typescript-eslint/no-unused-vars
+  188:10  error  'getDepartmentFromProfile' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  199:10  error  'formatLastLogin' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\services\apiService.ts
+  1423:10  error  'validateChatResponse' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\services\chatService.ts
+  10:3  error  'limit' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\services\gamificationService.ts
+   13:3   error  'increment' is defined but never used. Allowed unused vars must match /^_/u                 @typescript-eslint/no-unused-vars
+   18:53  error  'UserAchievements' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  103:11  error  'accumulatedXP' is assigned a value but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  109:13  error  'requiredForNext' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\services\profileImageService.test.ts
+  1:36  error  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Deign\Downloads\MATHPULSE-AI\src\services\progressService.ts
+   6:3  error  'getDocs' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+   7:3  error  'query' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   8:3  error  'where' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   9:3  error  'orderBy' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  10:3  error  'limit' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  14:3  error  'Timestamp' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  20:3  error  'ModuleProgress' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  21:3  error  'SubjectProgress' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+Γ£û 153 problems (153 errors, 0 warnings)
+

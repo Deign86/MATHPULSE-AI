@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ChevronDown, ChevronRight, ChevronUp, ChevronLeft, Loader2, Search,
+  ChevronDown, ChevronRight, ChevronUp, Loader2, Search,
   AlertTriangle, Award, TrendingUp, BarChart3,
-  User, BookOpen, Brain, RefreshCw, Bell, Sparkles,
+  User, BookOpen, Brain, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentsByTeacher } from '../services/studentService';
@@ -233,7 +233,8 @@ const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string 
 const COMPETENCY_MATRIX_ITEMS: Array<{ key: keyof CompetencyMatrixSummary; short: string; label: string; header: string }> = [
   { key: 'mastery', short: 'M', label: 'Overall Mastery', header: 'Mastery' },
   { key: 'concept', short: 'C', label: 'Concept Grasp', header: 'Concept' },
-  { key: 'application', short: 'A', label: 'Application', header: 'Applications' },
+  { key: 'application', short: 'A', label: 'Application', header: 'Application' },
+  { key: 'engagement', short: 'E', label: 'Engagement', header: 'Engagement' },
   { key: 'consistency', short: 'S', label: 'Consistency', header: 'Consistency' },
 ];
 
@@ -269,13 +270,8 @@ const StudentCompetencyTable: React.FC<{
   classSectionId?: string;
   className?: string;
   fallbackStudents?: FallbackStudentInput[];
-  onBack?: () => void;
-  onOpenNotifications?: () => void;
-  onOpenProfile?: () => void;
-  insightDismissed?: boolean;
-  onOpenInsightModal?: () => void;
-}> = ({ classSectionId, className, fallbackStudents = [], onBack, onOpenNotifications, onOpenProfile, insightDismissed, onOpenInsightModal }) => {
-  const { currentUser, userProfile } = useAuth();
+}> = ({ classSectionId, className, fallbackStudents = [] }) => {
+  const { currentUser } = useAuth();
 
   const competencyMatrixLoadIdRef = useRef(0);
 
@@ -590,10 +586,10 @@ const StudentCompetencyTable: React.FC<{
   const importedTopicTitles = Array.from(new Set(importedTopics.map((topic) => topic.title).filter(Boolean))).slice(0, 10);
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ChevronDown size={14} className="text-white/40" />;
+    if (sortField !== field) return <ChevronDown size={14} className="text-slate-500" />;
     return sortDir === 'asc'
-      ? <ChevronUp size={14} className="text-white font-bold" />
-      : <ChevronDown size={14} className="text-white font-bold" />;
+      ? <ChevronUp size={14} className="text-sky-600" />
+      : <ChevronDown size={14} className="text-sky-600" />;
   };
 
   // -”€-”€-”€ Render -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
@@ -614,194 +610,120 @@ const StudentCompetencyTable: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="p-6 space-y-6"
     >
-      {onBack && (
-        <div className="flex items-center justify-between mb-2">
-          <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
-              <ChevronLeft className="w-4 h-4" />
-              Back to Classes
-          </button>
-        </div>
-      )}
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px] mb-6">
-        {/* Card 1 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_8px_24px_rgba(168,85,247,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">Total Students</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <User className="w-4 h-4 text-white" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Students', value: totalStudents, icon: <User size={20} />, color: 'bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)]' },
+          { label: 'At-Risk Students', value: highRisk, icon: <AlertTriangle size={20} />, color: 'bg-[color-mix(in_srgb,var(--chart-2)_10%,transparent)] text-[var(--chart-2)]' },
+          { label: 'Class Average', value: `${avgScore}%`, icon: <BarChart3 size={20} />, color: 'bg-[color-mix(in_srgb,var(--chart-3)_10%,transparent)] text-[var(--chart-3)]' },
+          { label: 'Avg. Engagement', value: `${avgEngagement}%`, icon: <TrendingUp size={20} />, color: 'bg-[color-mix(in_srgb,var(--chart-1)_10%,transparent)] text-[var(--chart-1)]' },
+        ].map((card, i) => (
+          <div key={i} className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.color}`}>
+              {card.icon}
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{card.value}</p>
+              <p className="text-xs text-muted-foreground">{card.label}</p>
             </div>
           </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{totalStudents}</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Evaluated in this class</span>
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(249,115,22,0.2)] hover:shadow-[0_8px_24px_rgba(249,115,22,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">At-Risk Students</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <AlertTriangle className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{highRisk}</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Need immediate intervention</span>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(14,165,233,0.2)] hover:shadow-[0_8px_24px_rgba(14,165,233,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">Class Average</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <BarChart3 className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{avgScore}%</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Vs. expected benchmark</span>
-          </div>
-        </div>
-
-        {/* Card 4 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">Avg. Engagement</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <TrendingUp className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{avgEngagement}%</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Activity completion rate</span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Sticky Filter Row Wrapper */}
-      <div className="sticky top-0 z-30 py-4 -my-4 bg-[#f8fafc]/80 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 sm:-mx-6 sm:px-6 mb-6 rounded-b-[18px]">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
-            {/* Search */}
-            <div className="flex items-center bg-white px-4 py-2.5 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full sm:w-64">
-              <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#9956DE] transition-colors" />
-              <input
-                type="text"
-                placeholder="Search students..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
-              />
-            </div>
-            
-            {/* Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto p-2 -m-2">
-              {['all', 'High', 'Medium', 'Low'].map(level => (
-                <button
-                  key={level}
-                  onClick={() => setRiskFilter(level)}
-                  className={`px-4 py-1.5 text-[13px] font-semibold rounded-full whitespace-nowrap transition-colors shadow-md ${
-                    riskFilter === level
-                      ? 'bg-[#9956DE] text-white'
-                      : 'bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  {level === 'all' ? 'All' : `${level} Risk`}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <button
-            onClick={loadStudents}
-            className="flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-slate-700 transition-colors shrink-0 bg-white px-4 py-2 rounded-full shadow-md hover:bg-slate-50 self-end sm:self-auto"
-          >
-            <RefreshCw className="w-4 h-4" /> Refresh
-          </button>
+      {/* Filter Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 w-full sm:max-w-xs">
+          <label htmlFor="student-search" className="sr-only">Search for students by name or email</label>
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            id="student-search"
+            type="text"
+            placeholder="Search students..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
+          />
         </div>
+
+        {/* Risk filter pills */}
+        <div className="flex flex-wrap gap-1.5">
+          {['all', 'High', 'Medium', 'Low'].map(level => (
+            <button
+              key={level}
+              onClick={() => setRiskFilter(level)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                riskFilter === level
+                  ? 'bg-[var(--primary)] text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              {level === 'all' ? 'All' : `${level} Risk`}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={loadStudents}
+          className="sm:ml-auto w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-accent rounded-lg text-xs font-semibold text-muted-foreground transition-colors"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </button>
       </div>
 
-      {/* Imported Topic Context Banner (Compact) */}
-      <div className="bg-[#f5f3ff]/60 border border-[#e0e7ff] rounded-[14px] px-5 py-3 mb-6 flex items-start sm:items-center gap-3">
-        <div className="mt-0.5 sm:mt-0 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#9956DE]"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center flex-1">
-          <span className="text-[#9956DE] font-semibold text-[13px] whitespace-nowrap mr-1">
-            Imported Topic Context{className ? ` for ${className}` : ''}:
-          </span>
-          {importedTopicsLoading ? (
-            <span className="text-[#8b5cf6] text-[13px]">Loading class-scoped imported topics...</span>
-          ) : importedTopicTitles.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:mt-0">
-              {importedTopicTitles.map((topic, i) => (
-                <React.Fragment key={i}>
-                  <span className="text-[#8b5cf6] text-[13px]">{topic}</span>
-                  {i < importedTopicTitles.length - 1 && <span className="text-[#c4b5fd] text-[13px]">•</span>}
-                </React.Fragment>
-              ))}
-            </div>
-          ) : (
-            <span className="text-[#8b5cf6] text-[13px]">No imported topics found for this class context</span>
-          )}
-          {(importedTopicsWarning || studentsWarning) && (
-            <div className="mt-1 sm:mt-0 sm:ml-auto text-[11px] text-rose-500 font-medium">
-              {[importedTopicsWarning, studentsWarning].filter(Boolean).join(' | ')}
-            </div>
-          )}
-        </div>
+      {/* Imported Topic Context */}
+      <div className="bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--primary)_30%,transparent)] rounded-xl p-4">
+        <p className="text-sm font-semibold text-[var(--primary)]">
+          Imported Topic Context{className ? ` for ${className}` : ''}
+        </p>
+        <p className="text-xs text-[var(--primary)] mt-1 opacity-80">
+          {importedTopicsLoading
+            ? 'Loading class-scoped imported topics...'
+            : importedTopicTitles.length > 0
+            ? `${importedTopicTitles.length} imported topics loaded for competency guidance`
+            : 'No imported topics found for this class context'}
+        </p>
+        {importedTopicsWarning && <p className="text-[11px] text-[var(--chart-4)] mt-1">{importedTopicsWarning}</p>}
+        {studentsWarning && <p className="text-[11px] text-[var(--chart-4)] mt-1">{studentsWarning}</p>}
+        {importedTopicTitles.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {importedTopicTitles.map((topic) => (
+              <span key={topic} className="text-[11px] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)] px-2 py-0.5 rounded">
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[18px] border border-slate-200 overflow-hidden shadow-sm overflow-x-auto table-scrollbar relative">
-        <div className="min-w-[1320px] flex flex-col">
-          {/* Header */}
-          <div className="flex items-center bg-[#9956DE] border-b border-[#8b5cf6] text-[11px] font-bold text-white tracking-wider uppercase h-12 sticky top-0 z-20 shadow-md">
-            <div 
-              className="w-[260px] shrink-0 sticky left-0 z-30 bg-[#9956DE] backdrop-blur-sm px-5 h-full flex items-center border-r border-[#8b5cf6] shadow-[2px_0_4px_rgba(0,0,0,0.1)] cursor-pointer hover:text-white/80 transition-colors"
-              onClick={() => handleSort('name')}
-            >
-              Student <SortIcon field="name" />
+      <div className="bg-card rounded-xl border border-border">
+        <div className="overflow-x-auto pb-2">
+          <div className="min-w-[1920px]">
+            {/* Header */}
+            <div className="grid grid-cols-[48px_280px_120px_120px_120px_120px_120px_140px_170px_170px_220px] items-center gap-6 px-6 py-4 bg-muted/60 border-b border-border text-xs font-semibold text-muted-foreground tracking-normal">
+              <div></div>
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('name')}>
+                Student <SortIcon field="name" />
+              </button>
+              {COMPETENCY_MATRIX_ITEMS.map((item) => (
+                <div key={item.key} className="text-center leading-none whitespace-nowrap tracking-normal">
+                  {item.header}
+                </div>
+              ))}
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('riskLevel')}>
+                Risk Level <SortIcon field="riskLevel" />
+              </button>
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('avgQuizScore')}>
+                Avg. Score <SortIcon field="avgQuizScore" />
+              </button>
+              <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort('engagementScore')}>
+                Engagement <SortIcon field="engagementScore" />
+              </button>
+              <div className="flex justify-end pr-2">Weakest Topic</div>
             </div>
-            <div 
-              className="w-[120px] shrink-0 px-4 flex justify-center cursor-pointer hover:text-white/80 transition-colors"
-              onClick={() => handleSort('riskLevel')}
-            >
-              Risk Level <SortIcon field="riskLevel" />
-            </div>
-            <div 
-              className="w-[200px] shrink-0 px-4 flex items-center gap-1 cursor-pointer hover:text-white/80 transition-colors"
-              onClick={() => handleSort('avgQuizScore')}
-            >
-              Avg. Score <SortIcon field="avgQuizScore" />
-            </div>
-            <div 
-              className="w-[180px] shrink-0 px-4 flex items-center gap-1 cursor-pointer hover:text-white/80 transition-colors"
-              onClick={() => handleSort('engagementScore')}
-            >
-              Engagement <SortIcon field="engagementScore" />
-            </div>
-            <div className="w-[160px] shrink-0 px-4 flex justify-center cursor-pointer hover:text-white/80 transition-colors">
-              Weakest Topic
-            </div>
-            {COMPETENCY_MATRIX_ITEMS.map((item, idx) => (
-              <div 
-                key={item.key} 
-                className={`w-[100px] shrink-0 px-2 flex justify-center ${idx === COMPETENCY_MATRIX_ITEMS.length - 1 ? 'border-r border-transparent' : ''}`}
-              >
-                {item.header}
-              </div>
-            ))}
-          </div>
 
-          {/* Rows */}
+            {/* Rows */}
             {filteredRows.length === 0 ? (
               <div className="py-12 text-center text-slate-500">
                 <User size={32} className="mx-auto mb-2 opacity-50" />
@@ -829,87 +751,105 @@ const StudentCompetencyTable: React.FC<{
                         };
 
                   return (
-                  <div key={row.rowKey} className="flex flex-col border-b border-slate-100 group">
-                    <div 
-                      className="flex items-center min-h-[64px] hover:bg-slate-50/60 transition-colors cursor-pointer relative"
-                      onClick={() => void toggleExpand(row.rowKey)}
-                    >
-                      {/* Sticky Student Column */}
-                      <div className="w-[260px] shrink-0 sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 transition-colors px-5 h-full min-h-[64px] flex items-center border-r border-slate-100 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
-                        <div className={`transition-transform duration-200 mr-3 shrink-0 ${row.expanded ? 'rotate-90' : ''}`}>
-                          <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </div>
-                        <img src={row.student.avatar} alt={row.student.name} className="w-8 h-8 rounded-full bg-border object-cover shrink-0 mr-3" />
-                        <span className="font-semibold text-slate-800 text-[14px] truncate">{row.student.name}</span>
-                      </div>
+                  <div key={row.rowKey} className="border-b border-border last:border-0">
+                {/* Main row */}
+                <button
+                  onClick={() => void toggleExpand(row.rowKey)}
+                  className="w-full grid grid-cols-[48px_280px_120px_120px_120px_120px_120px_140px_170px_170px_220px] gap-6 px-6 py-5 items-center hover:bg-muted transition-colors text-left"
+                >
+                  {/* Expand icon */}
+                  <div className="flex items-center">
+                    <span className="inline-flex h-4 w-4 items-center justify-center text-slate-500">
+                      {row.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </span>
+                  </div>
 
-                      {/* Risk Level */}
-                      <div className="w-[120px] shrink-0 px-4 flex justify-center">
-                        <span className={`px-3 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider ${
-                          row.student.riskLevel === 'High' ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                          row.student.riskLevel === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                          'bg-emerald-50 text-emerald-600 border-emerald-200'
-                        }`}>
-                          {row.student.riskLevel}
-                        </span>
-                      </div>
-
-                      {/* Avg Score */}
-                      <div className="w-[200px] shrink-0 px-4 flex items-center gap-3">
-                        <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${
-                              row.student.avgQuizScore >= 80 ? 'bg-emerald-500' :
-                              row.student.avgQuizScore >= 60 ? 'bg-amber-400' :
-                              'bg-rose-500'
-                            }`}
-                            style={{ width: `${row.student.avgQuizScore}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[13px] font-bold text-slate-800 w-8">{row.student.avgQuizScore}%</span>
-                      </div>
-
-                      {/* Engagement */}
-                      <div className="w-[180px] shrink-0 px-4 flex items-center gap-3">
-                        <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full rounded-full bg-[#9956DE]"
-                            style={{ width: `${row.student.engagementScore}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[13px] font-bold text-slate-800 w-8">{row.student.engagementScore}%</span>
-                      </div>
-
-                      {/* Weakest Topic */}
-                      <div className="w-[160px] shrink-0 px-4 flex justify-center">
-                        <span className="px-3 py-1 bg-slate-100 text-slate-600 text-[11px] font-medium rounded-full truncate max-w-full border border-slate-200">
-                          {row.student.weakestTopic}
-                        </span>
-                      </div>
-
-                      {/* Competency Matrix Categories */}
-                      {COMPETENCY_MATRIX_ITEMS.map((item) => {
-                        const value = row.competencyMatrix?.[item.key] ?? 0;
-                        const tone = getMatrixScoreTone(value);
-                        return (
-                          <div key={item.key} className="w-[100px] shrink-0 px-2 flex justify-center">
-                            {row.competencyMatrixLoading ? (
-                              <Loader2 size={12} className="animate-spin text-muted-foreground" />
-                            ) : row.competencyMatrix ? (
-                              <span className={`text-[12px] font-medium px-2 rounded-full border ${
-                                value >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' :
-                                value >= 60 ? 'text-amber-600 bg-amber-50 border-amber-100' :
-                                'text-rose-500 bg-rose-50 border-rose-100'
-                              }`}>
-                                {value}%
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {/* Student info */}
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={row.student.avatar}
+                      alt={row.student.name}
+                      className="w-8 h-8 rounded-full bg-border object-cover"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{row.student.name}</p>
+                      <p className="text-xs text-slate-500">{row.student.email}</p>
                     </div>
+                  </div>
+
+                  {/* Competency Matrix Categories */}
+                  {COMPETENCY_MATRIX_ITEMS.map((item) => {
+                    const value = row.competencyMatrix?.[item.key] ?? 0;
+                    const tone = getMatrixScoreTone(value);
+                    return (
+                      <div key={item.key} className="flex items-center justify-center">
+                        {row.competencyMatrixLoading ? (
+                          <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                        ) : row.competencyMatrix ? (
+                          <span
+                            title={`${item.label}: ${value}%`}
+                            className={`inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ${tone.bg} ${tone.text} ${tone.ring}`}
+                          >
+                            {value}%
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Risk Level */}
+                  <div>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ring-1 ${
+                      RISK_COLORS[row.student.riskLevel]?.bg
+                    } ${RISK_COLORS[row.student.riskLevel]?.text} ${RISK_COLORS[row.student.riskLevel]?.ring}`}>
+                      {row.student.riskLevel === 'High' && <AlertTriangle size={10} />}
+                      {row.student.riskLevel}
+                    </span>
+                  </div>
+
+                  {/* Avg Score as bar */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full e-w ${
+                            row.student.avgQuizScore >= 80 ? 'bg-[var(--chart-3)]' :
+                            row.student.avgQuizScore >= 60 ? 'bg-[var(--chart-4)]' :
+                            'bg-[var(--chart-2)]'
+                          }`}
+                          style={{ ['--w' as any]: `${row.student.avgQuizScore}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground w-8 text-right">{row.student.avgQuizScore}%</span>
+                    </div>
+                  </div>
+
+                  {/* Engagement */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full e-w ${
+                            row.student.engagementScore >= 75 ? 'bg-[var(--primary)]' :
+                            row.student.engagementScore >= 50 ? 'bg-[var(--primary)]/60' :
+                            'bg-muted-foreground'
+                          }`}
+                          style={{ ['--w' as any]: `${row.student.engagementScore}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground w-8 text-right">{row.student.engagementScore}%</span>
+                    </div>
+                  </div>
+
+                  {/* Weakest Topic */}
+                  <div className="flex justify-end pr-2">
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                      {row.student.weakestTopic}
+                    </span>
+                  </div>
+                </button>
 
                 {/* Expanded competency detail */}
                 <AnimatePresence>
@@ -918,57 +858,87 @@ const StudentCompetencyTable: React.FC<{
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden bg-slate-50/80 border-t border-slate-100 shadow-inner"
+                      className="overflow-hidden"
                     >
-                      <div className="flex min-w-[1320px]">
-                        {/* Filler sticky left space to match layout */}
-                        <div className="w-[260px] shrink-0 sticky left-0 z-10 bg-slate-50/90 border-r border-slate-100 flex items-start justify-end pr-4 py-4">
-                          <div className="w-1.5 h-full rounded-full bg-[#9956DE]/30"></div>
-                        </div>
-                        <div className="flex-1 py-4 pl-6 pr-6">
-                          {row.loading ? (
-                            <div className="flex items-center py-4">
-                              <Loader2 size={16} className="animate-spin text-indigo-500 mr-2" />
-                              <span className="text-sm text-slate-500">Analyzing competency data...</span>
+                      <div className="px-6 py-4 bg-muted border-t border-border">
+                        {row.loading ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 size={20} className="animate-spin text-sky-500" />
+                            <span className="ml-2 text-sm text-muted-foreground">Analyzing competency data...</span>
+                          </div>
+                        ) : row.competency ? (
+                          <div className="space-y-4">
+                            {/* Competency breakdown */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {row.competency.competencies.map((c, i) => (
+                                <CompetencyCard key={i} competency={c} />
+                              ))}
                             </div>
-                          ) : row.competency ? (
-                            <div className="space-y-4 max-w-4xl">
-                              {/* Recommendations Banner */}
-                              {row.competency.recommendedTopics.length > 0 && (
-                                <div className="bg-[#f5f3ff] rounded-[12px] p-4 border border-[#e0e7ff] inline-block shadow-sm mb-4">
-                                  <h4 className="text-[#7274ED] font-semibold text-[13px] flex items-center gap-2 mb-1.5">
-                                    <BookOpen className="w-4 h-4" /> Recommended Focus Areas
-                                  </h4>
-                                  <div className="flex flex-wrap gap-1.5 mt-2">
-                                    {row.competency.recommendedTopics.map((topic, i) => (
-                                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full border border-indigo-100 bg-white text-indigo-700 text-xs font-medium shadow-sm">
-                                        {topic}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
 
-                              {/* Competency breakdown */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {row.competency.competencies.map((c, i) => (
-                                  <CompetencyCard key={i} competency={c} />
-                                ))}
+                            {/* Recommendations */}
+                            {row.competency.recommendedTopics.length > 0 && (
+                              <div className={`border rounded-lg p-3 ${recommendationTone.card}`}>
+                                <h5 className={`text-xs font-bold mb-1.5 flex items-center gap-1 ${recommendationTone.title}`}>
+                                  <BookOpen size={12} />
+                                  Recommended Focus Areas
+                                </h5>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {row.competency.recommendedTopics.map((topic, i) => (
+                                    <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${recommendationTone.chip}`}>
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-slate-500 py-4">Failed to load competency details.</div>
-                          )}
-                        </div>
+                            )}
+
+                            {importedTopicTitles.length > 0 && (
+                              <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
+                                <h5 className="text-xs font-bold text-sky-800 mb-1.5 flex items-center gap-1">
+                                  <Brain size={12} />
+                                  Class Imported Topics
+                                </h5>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {importedTopicTitles.slice(0, 8).map((topic, i) => (
+                                    <span key={`${topic}_${i}`} className="inline-flex items-center bg-sky-100 text-sky-700 px-2 py-0.5 rounded text-xs font-medium">
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Mastered topics */}
+                            {row.competency.excludeTopics.length > 0 && (
+                              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                                <h5 className="text-xs font-bold text-emerald-800 mb-1.5 flex items-center gap-1">
+                                  <Award size={12} />
+                                  Mastered Topics (can exclude from quizzes)
+                                </h5>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {row.competency.excludeTopics.map((topic, i) => (
+                                    <span key={i} className="inline-flex items-center bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-500 text-center py-4">
+                            No competency data available. Student needs to complete quizzes first.
+                          </p>
+                        )}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
                   </div>
-                );
-              })}
+                );})}
               </div>
             )}
+          </div>
         </div>
       </div>
     </motion.div>
