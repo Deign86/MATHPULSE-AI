@@ -11,10 +11,13 @@ import * as functions from "firebase-functions";
 
 export interface NotificationPayload {
   userId: string;
-  type: "grade" | "reminder" | "message" | "achievement";
+  type: "grade" | "reminder" | "message" | "achievement" | "risk_alert";
   title: string;
   message: string;
   link?: string;
+  studentId?: string;
+  wri?: number;
+  riskStatus?: string;
 }
 
 /**

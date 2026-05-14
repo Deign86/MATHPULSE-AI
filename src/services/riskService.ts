@@ -19,7 +19,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-
 
 export interface WRIComputeResult {
   wri: number | null;
-  risk_status: 'safe' | 'monitoring' | 'at_risk' | 'pending_assessment';
+  risk_status: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment';
   inputs: { D: number | null; G: number | null; P: number | null };
   g_fallback: boolean;
   p_fallback: boolean;
@@ -163,8 +163,10 @@ function computeWRILocally(
   const wri = Math.round((weights.w1 * d + weights.w2 * gVal + weights.w3 * pVal) * 100) / 100;
 
   let risk_status: WRIComputeResult['risk_status'];
-  if (wri >= 80) risk_status = 'safe';
-  else if (wri >= 75) risk_status = 'monitoring';
+  if (wri >= 88) risk_status = 'safe';
+  else if (wri >= 80) risk_status = 'watch';
+  else if (wri >= 75) risk_status = 'intervene';
+  else if (wri >= 68) risk_status = 'critical';
   else risk_status = 'at_risk';
 
   return {

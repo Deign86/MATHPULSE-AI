@@ -20,7 +20,7 @@ interface UseStudentRiskOptions {
 
 export interface UseStudentRiskResult {
   wri: number | null;
-  riskStatus: 'safe' | 'monitoring' | 'at_risk' | null;
+  riskStatus: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
   diagnosticScore: number | null;
   externalGradesAvg: number | null;
   systemPerformanceAvg: number | null;

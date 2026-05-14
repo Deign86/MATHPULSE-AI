@@ -52,7 +52,7 @@ export interface ManagedStudent {
   updatedAt: Timestamp;
   // WRI (Weighted Risk Index) fields
   wri?: number | null;
-  riskStatus?: 'safe' | 'monitoring' | 'at_risk' | null;
+  riskStatus?: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
   riskUpdatedAt?: Timestamp | null;
   weights?: WRIWeights;
   diagnosticScore?: number | null;

@@ -169,9 +169,13 @@ export const G11_TOPIC_SEQUENCE: string[] = [
 
 // ─── WRI (Weighted Risk Index) Thresholds ─────────────────────
 
-/** WRI >= 80 → "safe" */
-export const WRI_SAFE_THRESHOLD = 80;
-/** 75 <= WRI < 80 → "monitoring" */
-export const WRI_MONITORING_THRESHOLD = 75;
+/** WRI >= 88 → "safe" */
+export const WRI_SAFE_THRESHOLD = 88;
+/** 80 <= WRI < 88 → "watch" */
+export const WRI_WATCH_THRESHOLD = 80;
+/** 75 <= WRI < 80 → "intervene" */
+export const WRI_INTERVENE_THRESHOLD = 75;
+/** 68 <= WRI < 75 → "critical" */
+export const WRI_CRITICAL_THRESHOLD = 68;
 /** Default WRI component weights: D=0.30, G=0.40, P=0.30 */
 export const DEFAULT_WRI_WEIGHTS = { w1: 0.30, w2: 0.40, w3: 0.30 };

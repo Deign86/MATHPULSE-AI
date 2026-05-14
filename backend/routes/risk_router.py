@@ -4,7 +4,14 @@ WRI (Weighted Risk Index) Computation Router.
 POST /api/risk/compute      -> Compute WRI for a single student
 POST /api/risk/compute/batch -> Batch compute WRI for multiple students
 
-Aligned with DepEd DO No. 8, s. 2015 — WRI mirrors DepEd grading thresholds.
+Prevention-first 5-band classification:
+  WRI >= 88 -> safe
+  WRI >= 80 -> watch
+  WRI >= 75 -> intervene
+  WRI >= 68 -> critical
+  WRI < 68  -> at_risk
+
+Aligned with DepEd DO No. 8, s. 2015 — 75 is the failing floor, not the trigger.
 """
 
 from __future__ import annotations

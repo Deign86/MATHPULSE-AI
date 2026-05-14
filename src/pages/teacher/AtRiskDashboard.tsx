@@ -12,8 +12,10 @@ import { RiskBadge } from '../../components/risk/RiskBadge';
 import { RiskDetailPanel } from '../../components/risk/RiskDetailPanel';
 import {
   ShieldCheck,
+  Eye,
   AlertTriangle,
   AlertCircle,
+  Skull,
   Search,
   RefreshCw,
   ChevronDown,
@@ -27,12 +29,12 @@ import type { ManagedStudent } from '../../services/studentService';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type FilterStatus = 'all' | 'safe' | 'monitoring' | 'at_risk';
+type FilterStatus = 'all' | 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk';
 type SortField = 'name' | 'wri' | 'updatedAt';
 
 interface DashboardStudent extends ManagedStudent {
   wri: number | null;
-  riskStatus: 'safe' | 'monitoring' | 'at_risk' | null;
+  riskStatus: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
   diagnosticScore: number | null;
   externalGradesAvg: number | null;
   systemPerformanceAvg: number | null;
@@ -144,10 +146,12 @@ export const AtRiskDashboard: React.FC = () => {
   // Stats
   const stats = useMemo(() => {
     const total = students.length;
-    const atRisk = students.filter((s) => s.riskStatus === 'at_risk').length;
-    const monitoring = students.filter((s) => s.riskStatus === 'monitoring').length;
     const safe = students.filter((s) => s.riskStatus === 'safe').length;
-    return { total, atRisk, monitoring, safe };
+    const watch = students.filter((s) => s.riskStatus === 'watch').length;
+    const intervene = students.filter((s) => s.riskStatus === 'intervene').length;
+    const critical = students.filter((s) => s.riskStatus === 'critical').length;
+    const atRisk = students.filter((s) => s.riskStatus === 'at_risk').length;
+    return { total, safe, watch, intervene, critical, atRisk };
   }, [students]);
 
   const handleSort = (field: SortField) => {
@@ -180,7 +184,7 @@ export const AtRiskDashboard: React.FC = () => {
 
       <div className="px-6 py-6 space-y-6">
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
             label="Total Students"
             value={stats.total}
@@ -188,22 +192,34 @@ export const AtRiskDashboard: React.FC = () => {
             color="bg-slate-100"
           />
           <StatCard
-            label="At Risk"
-            value={stats.atRisk}
-            icon={<AlertCircle size={20} className="text-rose-600" />}
-            color="bg-rose-50"
-          />
-          <StatCard
-            label="Monitoring"
-            value={stats.monitoring}
-            icon={<AlertTriangle size={20} className="text-amber-600" />}
-            color="bg-amber-50"
-          />
-          <StatCard
             label="Safe"
             value={stats.safe}
             icon={<ShieldCheck size={20} className="text-emerald-600" />}
             color="bg-emerald-50"
+          />
+          <StatCard
+            label="Watch"
+            value={stats.watch}
+            icon={<Eye size={20} className="text-blue-600" />}
+            color="bg-blue-50"
+          />
+          <StatCard
+            label="Intervene"
+            value={stats.intervene}
+            icon={<AlertTriangle size={20} className="text-amber-600" />}
+            color="bg-amber-50"
+          />
+          <StatCard
+            label="Critical"
+            value={stats.critical}
+            icon={<AlertCircle size={20} className="text-rose-600" />}
+            color="bg-rose-50"
+          />
+          <StatCard
+            label="At Risk"
+            value={stats.atRisk}
+            icon={<Skull size={20} className="text-slate-600" />}
+            color="bg-slate-100"
           />
         </div>
 
@@ -211,7 +227,7 @@ export const AtRiskDashboard: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           {/* Status Filter Chips */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-            {(['all', 'at_risk', 'monitoring', 'safe'] as FilterStatus[]).map((status) => (
+            {(['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'] as FilterStatus[]).map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
@@ -224,7 +240,7 @@ export const AtRiskDashboard: React.FC = () => {
                 {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
                 {status !== 'all' && (
                   <span className="ml-1.5 text-xs opacity-70">
-                    ({status === 'at_risk' ? stats.atRisk : status === 'monitoring' ? stats.monitoring : stats.safe})
+                    ({stats[status as keyof typeof stats]})
                   </span>
                 )}
               </button>

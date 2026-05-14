@@ -1,15 +1,17 @@
 """
-WRI CLASSIFICATION — DepEd Alignment
+WRI CLASSIFICATION — Prevention-First 5-Band System
 
 This module implements at-risk classification based on DepEd DO No. 8, s. 2015
 (Policy Guidelines on Classroom Assessment for the K to 12 Basic Education Program).
 
 Official Passing Grade: 75 (Did Not Meet Expectations = below 75)
 
-WRI threshold mirrors this:
-- WRI >= 80 → Safe (Satisfactory to Outstanding)
-- 75 ≤ WRI < 80 → Monitoring (Approaching threshold — Fairly Satisfactory)
-- WRI < 75 → At Risk (Did Not Meet Expectations — DepEd failing mark)
+Prevention-first WRI thresholds (DepEd 75 is the FLOOR, not the trigger):
+- WRI >= 88 → safe      (On Track — no intervention needed)
+- WRI >= 80 → watch     (Slight decline — system adjusts difficulty)
+- WRI >= 75 → intervene (Approaching DepEd threshold — teacher notified)
+- WRI >= 68 → critical  (Urgent — structured intervention required)
+- WRI < 68  → at_risk   (Near or below DepEd failing mark)
 
 IMPORTANT: WRI is a SUPPORT TOOL, not a replacement for teacher judgment.
 Final academic decisions must still be made by the teacher in accordance
@@ -40,7 +42,7 @@ def compute_wri(
     Returns:
         dict with keys:
             wri: float (rounded to 2 decimal places) or None if D is missing
-            risk_status: 'safe' | 'monitoring' | 'at_risk' | 'pending_assessment'
+            risk_status: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment'
             inputs: {'D': float, 'G': float, 'P': float} (actual values used, after defaults)
             g_fallback: bool (True if G defaulted to D)
             p_fallback: bool (True if P defaulted to D)
@@ -75,11 +77,15 @@ def compute_wri(
     # Compute WRI
     wri = round((w1 * d) + (w2 * g_val) + (w3 * p_val), 2)
     
-    # Classify based on DepEd thresholds
-    if wri >= 80:
+    # 5-band prevention-first classification
+    if wri >= 88:
         status = "safe"
+    elif wri >= 80:
+        status = "watch"
     elif wri >= 75:
-        status = "monitoring"
+        status = "intervene"
+    elif wri >= 68:
+        status = "critical"
     else:
         status = "at_risk"
     

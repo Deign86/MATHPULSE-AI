@@ -22,12 +22,12 @@ client = TestClient(app, headers={"Authorization": "Bearer test-auth-token"})
 
 def test_compute_risk_safe():
     response = client.post("/api/risk/compute", json={
-        "d": 90, "g": 85, "p": 80,
+        "d": 90, "g": 90, "p": 90,
         "weights": {"w1": 0.30, "w2": 0.40, "w3": 0.30}
     })
     assert response.status_code == 200
     data = response.json()
-    assert data["wri"] == 85.0
+    assert data["wri"] == 90.0
     assert data["risk_status"] == "safe"
 
 def test_compute_risk_at_risk():
@@ -39,14 +39,14 @@ def test_compute_risk_at_risk():
     assert data["wri"] == 65.5
     assert data["risk_status"] == "at_risk"
 
-def test_compute_risk_monitoring():
+def test_compute_risk_intervene():
     response = client.post("/api/risk/compute", json={
         "d": 78, "g": 76, "p": 74
     })
     assert response.status_code == 200
     data = response.json()
     assert data["wri"] == 76.0
-    assert data["risk_status"] == "monitoring"
+    assert data["risk_status"] == "intervene"
 
 def test_compute_risk_missing_g_uses_d():
     response = client.post("/api/risk/compute", json={
@@ -57,7 +57,7 @@ def test_compute_risk_missing_g_uses_d():
     assert data["g_fallback"] is True
     # WRI = 0.3*70 + 0.4*70 + 0.3*80 = 21 + 28 + 24 = 73.0
     assert data["wri"] == 73.0
-    assert data["risk_status"] == "at_risk"
+    assert data["risk_status"] == "critical"
 
 def test_compute_risk_no_diagnostic_returns_pending():
     response = client.post("/api/risk/compute", json={
@@ -78,7 +78,7 @@ def test_compute_risk_invalid_weights():
 def test_compute_risk_batch():
     response = client.post("/api/risk/compute/batch", json={
         "students": [
-            {"id": "s1", "d": 90, "g": 85, "p": 80},
+            {"id": "s1", "d": 90, "g": 90, "p": 90},
             {"id": "s2", "d": 60, "g": 70, "p": 65},
         ]
     })

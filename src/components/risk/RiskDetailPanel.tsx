@@ -204,8 +204,10 @@ export const RiskDetailPanel: React.FC<RiskDetailPanelProps> = ({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sparklineData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
                         <YAxis domain={[0, 100]} hide />
+                        <ReferenceLine y={68} stroke="#000000" strokeDasharray="3 3" strokeOpacity={0.5} />
                         <ReferenceLine y={75} stroke="#f43f5e" strokeDasharray="3 3" strokeOpacity={0.5} />
-                        <ReferenceLine y={80} stroke="#10b981" strokeDasharray="3 3" strokeOpacity={0.5} />
+                        <ReferenceLine y={80} stroke="#3b82f6" strokeDasharray="3 3" strokeOpacity={0.5} />
+                        <ReferenceLine y={88} stroke="#10b981" strokeDasharray="3 3" strokeOpacity={0.5} />
                         <RechartsTooltip
                           formatter={(val: number) => [`${val.toFixed(1)}`, 'WRI']}
                           labelFormatter={(_, payload) =>
@@ -225,9 +227,11 @@ export const RiskDetailPanel: React.FC<RiskDetailPanelProps> = ({
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span className="text-rose-500">— 75 (At-Risk threshold)</span>
-                    <span className="text-emerald-500">— 80 (Safe threshold)</span>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                    <span className="text-black">— 68 (At-Risk floor)</span>
+                    <span className="text-rose-500">— 75 (Critical threshold)</span>
+                    <span className="text-blue-500">— 80 (Watch threshold)</span>
+                    <span className="text-emerald-500">— 88 (Safe threshold)</span>
                   </div>
                 </div>
               )}

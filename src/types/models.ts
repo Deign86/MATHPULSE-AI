@@ -867,7 +867,7 @@ export interface HeroBannerModalSummary {
 // Risk History Entry — stored in riskHistory array
 export interface RiskHistoryEntry {
   wri: number;
-  riskStatus: 'safe' | 'monitoring' | 'at_risk';
+  riskStatus: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk';
   computedAt: Date | null;
   trigger: 'diagnostic' | 'activity_completed' | 'grades_imported' | 'manual';
 }
@@ -889,7 +889,7 @@ export interface WRIBreakdown {
 // Student Risk Profile — for managedStudents/{studentId} documents
 export interface StudentRiskProfile {
   wri?: number | null;
-  riskStatus?: 'safe' | 'monitoring' | 'at_risk' | null;
+  riskStatus?: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
   riskUpdatedAt?: Date | null;
   weights?: WRIWeights;
   diagnosticScore?: number | null;       // D — set once after initial assessment
