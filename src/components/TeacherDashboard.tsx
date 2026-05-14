@@ -11,6 +11,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from './ui/dialog';
 import ConfirmModal from './ConfirmModal';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
@@ -2140,6 +2149,10 @@ const InterventionView: React.FC<{
   const [savingLessonDraft, setSavingLessonDraft] = useState(false);
   const [publishingLesson, setPublishingLesson] = useState(false);
   const [lessonTrigger, setLessonTrigger] = useState(0);
+  // 1.3: Intervention Plan state
+  const [interventionPlan, setInterventionPlan] = useState<{plan: string; strategies: string[]} | null>(null);
+  const [generatingIntervention, setGeneratingIntervention] = useState(false);
+  const [interventionDialogOpen, setInterventionDialogOpen] = useState(false);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
@@ -2439,6 +2452,28 @@ const InterventionView: React.FC<{
       toast.error('Failed to update section assignment');
     } finally {
       setSavingSection(false);
+    }
+  };
+
+  // 1.3: Generate Intervention Plan handler
+  const handleGenerateInterventionPlan = async () => {
+    setGeneratingIntervention(true);
+    try {
+      // Use student.id as LRN fallback, and student.struggles as risk factors
+      const riskFactors = student.struggles?.length > 0 ? student.struggles : [student.weakestTopic || 'General academic support'];
+      const result = await apiService.generateInterventionPlan({
+        lrn: student.id, // Using student.id as LRN fallback
+        subject: teacherSubject || 'Mathematics',
+        quarter: teacherQuarter || 'Quarter 1',
+        riskFactors,
+      });
+      setInterventionPlan(result);
+      setInterventionDialogOpen(true);
+      toast.success('Intervention plan generated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate intervention plan');
+    } finally {
+      setGeneratingIntervention(false);
     }
   };
 
@@ -2954,7 +2989,24 @@ const InterventionView: React.FC<{
             )}
           </BoneSkeleton>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button
+              onClick={handleGenerateInterventionPlan}
+              disabled={generatingIntervention}
+              className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"
+            >
+              {generatingIntervention ? (
+                <>
+                  <Skeleton className="h-4 w-4 rounded-full bg-white/30 animate-pulse" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap size={20} />
+                  Generate Intervention Plan
+                </>
+              )}
+            </Button>
             <Button className="bg-[#9956DE] hover:bg-[#7A44B3] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2">
               <Send size={20} />
               Schedule One-on-One Session
@@ -2967,10 +3019,66 @@ const InterventionView: React.FC<{
               Export Printed Materials
             </Button>
           </div>
+
+          {/* Intervention Plan Result Dialog */}
+          <Dialog open={interventionDialogOpen} onOpenChange={setInterventionDialogOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-[#9956DE]">
+                  <Zap size={20} />
+                  Intervention Plan
+                </DialogTitle>
+                <DialogDescription>
+                  AI-generated 3-step intervention plan for{' '}
+                  <span className="font-semibold text-foreground">{student.name}</span>
+                </DialogDescription>
+              </DialogHeader>
+
+              {interventionPlan ? (
+                <div className="space-y-4 py-2">
+                  <div className="bg-[#9956DE]/8 border border-[#9956DE]/25 rounded-xl p-4">
+                    <p className="text-sm font-bold text-foreground mb-1">Overall Plan</p>
+                    <p className="text-sm text-muted-foreground">{interventionPlan.plan}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Recommended Strategies
+                    </p>
+                    <div className="space-y-2">
+                      {interventionPlan.strategies.map((strategy, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 bg-muted/50 border border-border rounded-lg p-3"
+                        >
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#9956DE]/15 text-[#9956DE] flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </span>
+                          <p className="text-sm text-foreground">{strategy}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  No plan generated yet. Click "Generate Intervention Plan" to create one.
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <DialogClose asChild>
+                  <Button variant="outline" size="sm">
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-      </div>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  }
 };
 
 // Import View
@@ -2997,6 +3105,18 @@ const ImportView: React.FC<{
   const [teacherQuarter, setTeacherQuarter] = useState('');
   const [teacherStrand, setTeacherStrand] = useState(classMetadata?.strand || '');
   const [teacherGradeLevel, setTeacherGradeLevel] = useState(classMetadata?.gradeLevel?.toString() || '');
+
+  // STUB C: Derive teacherQuarter from current month
+  useEffect(() => {
+    const deriveQuarter = () => {
+      const m = new Date().getMonth() + 1;
+      if (m <= 3) return 'Quarter 1';
+      if (m <= 6) return 'Quarter 2';
+      if (m <= 9) return 'Quarter 3';
+      return 'Quarter 4';
+    };
+    setTeacherQuarter(prev => prev || deriveQuarter());
+  }, [classMetadata]);
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
     summary?: {
@@ -3020,6 +3140,8 @@ const ImportView: React.FC<{
   const [uploading, setUploading] = useState(false);
   const [templateDownloading, setTemplateDownloading] = useState(false);
   const templateFileInputRef = useRef<HTMLInputElement>(null);
+  // STUB B: Course material success state for styled confirmation card
+  const [courseMaterialSuccess, setCourseMaterialSuccess] = useState<{title: string; moduleId: string} | null>(null);
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -3114,6 +3236,7 @@ const ImportView: React.FC<{
     setUploadingClassRecords(true);
     setUploadResult('');
     setUploadInterpretation(null);
+    setCourseMaterialSuccess(null); // Clear course material success state
 
     let uploadFile = file;
 
@@ -3218,6 +3341,7 @@ const ImportView: React.FC<{
   const handleCourseMaterialUpload = async (file: File) => {
     setUploadingCourseMaterials(true);
     setUploadResult('');
+    setCourseMaterialSuccess(null); // Clear previous success state
     try {
       const result = await apiService.uploadTeacherMaterial(file, {
         gradeLevel: teacherGradeLevel || undefined,
@@ -3229,11 +3353,12 @@ const ImportView: React.FC<{
 
       if (result.success) {
         toast.success(result.message || 'Teacher module created and available to students.');
-        setUploadResult(
-          result.moduleId
-            ? `Module "${result.title}" created and available to students.`
-            : result.message,
-        );
+        // STUB B: Set styled confirmation card state instead of plain string
+        if (result.moduleId) {
+          setCourseMaterialSuccess({ title: result.title || 'Untitled Module', moduleId: result.moduleId });
+        } else {
+          setUploadResult(result.message || 'Course material uploaded successfully.');
+        }
         onDataChanged?.();
       } else {
         toast.error(result.error || result.message || 'Course material upload failed');
@@ -3303,7 +3428,11 @@ const ImportView: React.FC<{
     setUploading(true);
     setClassRecordUploadResult(null);
     try {
-      const result = await apiService.uploadClassRecordTemplate(file);
+      const result = await apiService.uploadClassRecordTemplate(file, {
+        subject: teacherSubject || undefined,
+        quarter: teacherQuarter || undefined,
+        gradeLevel: teacherGradeLevel || undefined,
+      });
       setClassRecordUploadResult(result);
       if (result.success) {
         toast.success(result.message || 'Upload complete');
@@ -3350,6 +3479,67 @@ const ImportView: React.FC<{
           </div>
         </div>
 
+        {/* Metadata Form - Above Both Upload Zones */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-muted/30 rounded-2xl border border-border mb-6">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground">Subject</label>
+            <select
+              value={teacherSubject}
+              onChange={(e) => setTeacherSubject(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+            >
+              <option value="">Select subject</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="English">English</option>
+              <option value="Science">Science</option>
+              <option value="Filipino">Filipino</option>
+              <option value="Aralin Panlipunan">Aralin Panlipunan</option>
+              <option value="ESP">ESP</option>
+              <option value="TLE">TLE</option>
+              <option value="Music">Music</option>
+              <option value="Arts">Arts</option>
+              <option value="Physical Education">Physical Education</option>
+              <option value="Health">Health</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground">Quarter</label>
+            <select
+              value={teacherQuarter}
+              onChange={(e) => setTeacherQuarter(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+            >
+              <option value="">Select quarter</option>
+              <option value="Quarter 1">Quarter 1</option>
+              <option value="Quarter 2">Quarter 2</option>
+              <option value="Quarter 3">Quarter 3</option>
+              <option value="Quarter 4">Quarter 4</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground">Grade Level</label>
+            <select
+              value={teacherGradeLevel}
+              onChange={(e) => setTeacherGradeLevel(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+            >
+              <option value="">Select grade</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground">Strand/Track</label>
+            <input
+              type="text"
+              value={teacherStrand}
+              onChange={(e) => setTeacherStrand(e.target.value)}
+              placeholder="e.g. STEM"
+              className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
+            />
+          </div>
+        </div>
+
         {/* Upload Zones */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Class Records */}
@@ -3361,7 +3551,6 @@ const ImportView: React.FC<{
             {/* Template Download + Upload Bar */}
             <div
               className="flex items-center justify-between mb-4 pb-4 border-b border-border"
-              onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={handleDownloadTemplate}
@@ -3431,135 +3620,75 @@ const ImportView: React.FC<{
               </Button>
             </div>
 
-            {/* Class Record Upload Results */}
-            {classRecordUploadResult && (
-              <div className="mt-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-                {classRecordUploadResult.summary && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-muted rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-foreground">{classRecordUploadResult.summary.totalStudents}</p>
-                      <p className="text-xs text-muted-foreground">Total Students</p>
-                    </div>
-                    <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3 text-center border border-red-200 dark:border-red-800">
-                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">{classRecordUploadResult.summary.atRiskCount}</p>
-                      <p className="text-xs text-red-500">At Risk</p>
-                    </div>
-                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center border border-amber-200 dark:border-amber-800">
-                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{classRecordUploadResult.summary.mediumRiskCount}</p>
-                      <p className="text-xs text-amber-500">Medium Risk</p>
-                    </div>
-                    <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-800">
-                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{classRecordUploadResult.summary.lowRiskCount}</p>
-                      <p className="text-xs text-emerald-500">Low Risk</p>
-                    </div>
-                  </div>
-                )}
-
-                {classRecordUploadResult.students && classRecordUploadResult.students.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-foreground mb-2">At-Risk Students</h4>
-                    <div className="max-h-48 overflow-y-auto space-y-1">
-                      {classRecordUploadResult.students
-                        .filter((s) => s.riskLevel === 'high')
-                        .slice(0, 20)
-                        .map((student, i) => (
-                          <div key={i} className="flex items-center justify-between bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
-                            <span className="text-sm font-medium text-foreground">{student.name}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-red-500 font-semibold">{student.riskScore.toFixed(1)}%</span>
-                              {student.topFactors.length > 0 && (
-                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{student.topFactors.slice(0, 2).join(', ')}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {classRecordUploadResult.metadata && (
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground border-t border-border pt-3">
-                    {classRecordUploadResult.metadata.className && (
-                      <span className="bg-muted px-2 py-1 rounded">Class: {classRecordUploadResult.metadata.className}</span>
-                    )}
-                    {classRecordUploadResult.metadata.subject && (
-                      <span className="bg-muted px-2 py-1 rounded">Subject: {classRecordUploadResult.metadata.subject}</span>
-                    )}
-                    {classRecordUploadResult.metadata.quarter && (
-                      <span className="bg-muted px-2 py-1 rounded">Quarter: {classRecordUploadResult.metadata.quarter}</span>
-                    )}
-                    {classRecordUploadResult.metadata.schoolYear && (
-                      <span className="bg-muted px-2 py-1 rounded">SY: {classRecordUploadResult.metadata.schoolYear}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+
+          {/* Class Record Upload Results - Outside drag-drop container */}
+          {classRecordUploadResult && (
+            <div className="mt-6 space-y-4">
+              {classRecordUploadResult.summary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-foreground">{classRecordUploadResult.summary.totalStudents}</p>
+                    <p className="text-xs text-muted-foreground">Total Students</p>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3 text-center border border-red-200 dark:border-red-800">
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{classRecordUploadResult.summary.atRiskCount}</p>
+                    <p className="text-xs text-red-500">At Risk</p>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center border border-amber-200 dark:border-amber-800">
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{classRecordUploadResult.summary.mediumRiskCount}</p>
+                    <p className="text-xs text-amber-500">Medium Risk</p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-800">
+                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{classRecordUploadResult.summary.lowRiskCount}</p>
+                    <p className="text-xs text-emerald-500">Low Risk</p>
+                  </div>
+                </div>
+              )}
+
+              {classRecordUploadResult.students && classRecordUploadResult.students.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground mb-2">At-Risk Students</h4>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {classRecordUploadResult.students
+                      .filter((s) => s.riskLevel === 'high')
+                      .slice(0, 20)
+                      .map((student, i) => (
+                        <div key={i} className="flex items-center justify-between bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-100 dark:border-red-900">
+                          <span className="text-sm font-medium text-foreground">{student.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-red-500 font-semibold">{student.riskScore.toFixed(1)}%</span>
+                            {student.topFactors.length > 0 && (
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{student.topFactors.slice(0, 2).join(', ')}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {classRecordUploadResult.metadata && (
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground border-t border-border pt-3">
+                  {classRecordUploadResult.metadata.className && (
+                    <span className="bg-muted px-2 py-1 rounded">Class: {classRecordUploadResult.metadata.className}</span>
+                  )}
+                  {classRecordUploadResult.metadata.subject && (
+                    <span className="bg-muted px-2 py-1 rounded">Subject: {classRecordUploadResult.metadata.subject}</span>
+                  )}
+                  {classRecordUploadResult.metadata.quarter && (
+                    <span className="bg-muted px-2 py-1 rounded">Quarter: {classRecordUploadResult.metadata.quarter}</span>
+                  )}
+                  {classRecordUploadResult.metadata.schoolYear && (
+                    <span className="bg-muted px-2 py-1 rounded">SY: {classRecordUploadResult.metadata.schoolYear}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Course Materials */}
           <div className="flex flex-col gap-4">
-            {/* Metadata Form */}
-            <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 rounded-2xl border border-border">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Subject</label>
-                <select
-                  value={teacherSubject}
-                  onChange={(e) => setTeacherSubject(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                >
-                  <option value="">Select subject</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="English">English</option>
-                  <option value="Science">Science</option>
-                  <option value="Filipino">Filipino</option>
-                  <option value="Aralin Panlipunan">Aralin Panlipunan</option>
-                  <option value="ESP">ESP</option>
-                  <option value="TLE">TLE</option>
-                  <option value="Music">Music</option>
-                  <option value="Arts">Arts</option>
-                  <option value="Physical Education">Physical Education</option>
-                  <option value="Health">Health</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Quarter</label>
-                <select
-                  value={teacherQuarter}
-                  onChange={(e) => setTeacherQuarter(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                >
-                  <option value="">Select quarter</option>
-                  <option value="Quarter 1">Quarter 1</option>
-                  <option value="Quarter 2">Quarter 2</option>
-                  <option value="Quarter 3">Quarter 3</option>
-                  <option value="Quarter 4">Quarter 4</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Grade Level</label>
-                <select
-                  value={teacherGradeLevel}
-                  onChange={(e) => setTeacherGradeLevel(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                >
-                  <option value="">Select grade</option>
-                  <option value="Grade 11">Grade 11</option>
-                  <option value="Grade 12">Grade 12</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Strand/Track</label>
-                <input
-                  type="text"
-                  value={teacherStrand}
-                  onChange={(e) => setTeacherStrand(e.target.value)}
-                  placeholder="e.g. STEM"
-                  className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F08386]"
-                />
-              </div>
-            </div>
-
             {/* Drop Zone */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
@@ -3661,6 +3790,22 @@ const ImportView: React.FC<{
         {uploadResult && (
           <div className="bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-2xl p-4 text-sm text-[#3E8538]">
             {uploadResult}
+          </div>
+        )}
+
+        {/* STUB B: Course Material Success Card */}
+        {courseMaterialSuccess && (
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-700 text-xs font-bold">Module Generated ✓</span>
+            </div>
+            <h4 className="text-lg font-bold text-foreground">{courseMaterialSuccess.title}</h4>
+            <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">Available to students now</span>
+            <p className="text-xs text-muted-foreground font-mono">ID: {courseMaterialSuccess.moduleId}</p>
+            <div className="flex items-center gap-2 pt-2">
+              <Button size="sm" onClick={() => onTabChange?.('modules')}>View in Modules tab</Button>
+              <Button size="sm" variant="outline" onClick={() => setCourseMaterialSuccess(null)}>Dismiss</Button>
+            </div>
           </div>
         )}
 
