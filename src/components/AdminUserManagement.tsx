@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  Search, Plus,
+  Search, Plus, Save,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
   GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle,
-  Eye, EyeOff,
+  Eye, EyeOff, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -751,8 +751,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const visibleRangeEnd = totalUsers === 0 ? 0 : Math.min(currentPage * pageSize, totalUsers);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Stats Cards - Bento Style */}
+    <div className="flex flex-col min-h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex-1 space-y-6 pt-8 xl:pt-10 pb-6 px-1">
+        {/* Stats Cards - Bento Style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {loading && users.length === 0
           ? Array.from({ length: 5 }).map((_, idx) => (
@@ -762,21 +763,23 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
             ))
           : [
-              { label: 'Total Users', value: totalUsers, icon: Users, color: 'bg-indigo-50 text-indigo-600', border: 'border-indigo-100' },
-              { label: 'Active Today', value: users.filter(u => u.status === 'Active').length, icon: UserCheck, color: 'bg-emerald-50 text-emerald-600', border: 'border-emerald-100' },
-              { label: 'Admins', value: users.filter(u => u.role === 'Admin').length, icon: Shield, color: 'bg-sky-50 text-sky-600', border: 'border-sky-100' },
-              { label: 'Teachers', value: users.filter(u => u.role === 'Teacher').length, icon: GraduationCap, color: 'bg-purple-50 text-purple-600', border: 'border-purple-100' },
-              { label: 'Students', value: users.filter(u => u.role === 'Student').length, icon: School, color: 'bg-blue-50 text-blue-600', border: 'border-blue-100' },
+              { label: 'Total Users', value: totalUsers, icon: Users, bg: 'bg-[#4f46e5]', shadow: 'shadow-indigo-500/20' },
+              { label: 'Active Today', value: users.filter(u => u.status === 'Active').length, icon: UserCheck, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
+              { label: 'Admins', value: users.filter(u => u.role === 'Admin').length, icon: Shield, bg: 'bg-[#0ea5e9]', shadow: 'shadow-sky-500/20' },
+              { label: 'Teachers', value: users.filter(u => u.role === 'Teacher').length, icon: GraduationCap, bg: 'bg-[#8b5cf6]', shadow: 'shadow-purple-500/20' },
+              { label: 'Students', value: users.filter(u => u.role === 'Student').length, icon: School, bg: 'bg-[#3b82f6]', shadow: 'shadow-blue-500/20' },
             ].map((stat, idx) => (
-              <div key={idx} className={`bg-white p-5 rounded-[28px] border ${stat.border || 'border-slate-200/60'} shadow-sm shadow-slate-200/50 group hover:shadow-md transition-all duration-300 relative overflow-hidden`}>
-                <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform duration-700 ${stat.color.split(' ')[0]}`}></div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                  <div className={`p-2 rounded-xl ${stat.color}`}>
+              <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
+                <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-700 delay-75 ease-out" />
+                
+                <div className="relative z-10 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
+                  <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
                     <stat.icon size={14} />
                   </div>
                 </div>
-                <h3 className="text-3xl font-display font-black text-[#1e293b] leading-none">{stat.value}</h3>
+                <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
               </div>
             ))}
       </div>
@@ -800,7 +803,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           </div>
           
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            <div className="flex items-center bg-slate-50/50 p-1 rounded-2xl border border-slate-200/60 h-12">
+            <div className="flex items-center bg-slate-50/80 p-1.5 rounded-2xl border border-slate-200/80 h-12 shadow-sm">
               <Select
                 value={roleFilter}
                 onValueChange={(value) => {
@@ -809,18 +812,18 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   clearSelection();
                 }}
               >
-                <SelectTrigger className="w-[120px] bg-transparent border-none focus:ring-0 text-[11px] font-black uppercase tracking-wider text-slate-500">
-                  <SelectValue placeholder="Role" />
+                <SelectTrigger className="w-[140px] bg-white border border-slate-300 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl h-11 shadow-sm px-4">
+                  <span className="truncate">{roleFilter}</span>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Roles">All Roles</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Teacher">Teacher</SelectItem>
-                  <SelectItem value="Student">Student</SelectItem>
+                  <SelectItem value="All Roles" className="font-bold">All Roles</SelectItem>
+                  <SelectItem value="Admin" className="font-bold">Admin</SelectItem>
+                  <SelectItem value="Teacher" className="font-bold">Teacher</SelectItem>
+                  <SelectItem value="Student" className="font-bold">Student</SelectItem>
                 </SelectContent>
               </Select>
 
-              <div className="w-[1px] h-4 bg-slate-200 mx-1"></div>
+              <div className="w-[1px] h-4 bg-slate-200 mx-2"></div>
 
               <Select
                 value={statusFilter}
@@ -830,13 +833,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   clearSelection();
                 }}
               >
-                <SelectTrigger className="w-[120px] bg-transparent border-none focus:ring-0 text-[11px] font-black uppercase tracking-wider text-slate-500">
-                  <SelectValue placeholder="Status" />
+                <SelectTrigger className="w-[140px] bg-white border border-slate-300 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl h-11 shadow-sm px-4">
+                  <span className="truncate">{statusFilter}</span>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Status">All Status</SelectItem>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="All Status" className="font-bold">All Status</SelectItem>
+                  <SelectItem value="Active" className="font-bold">Active</SelectItem>
+                  <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1070,16 +1073,16 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="px-6 py-5 w-[60px]">
-                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300" />
+              <tr className="bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
+                <th className="px-6 py-4 w-[60px]">
+                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#9956DE]" />
                 </th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">User Profile</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Role & Access</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Placement</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Activity</th>
-                <th className="px-6 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
+                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">User Profile</th>
+                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Role & Access</th>
+                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Placement</th>
+                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Activity</th>
+                <th className="px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -1228,56 +1231,66 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       </div>
 
-      {/* Pagination - Refined Styling */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-2 py-4 border-t border-slate-100">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          Showing <span className="text-slate-600">{visibleRangeStart}-{visibleRangeEnd}</span> of{' '}
-          <span className="text-slate-600">{totalUsers}</span> users
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 mr-4">
-             <Select
-              value={String(pageSize)}
-              onValueChange={(value) => {
-                const nextPageSize = Number(value);
-                if (Number.isNaN(nextPageSize)) return;
-                setPageSize(nextPageSize);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="h-8 w-[100px] bg-slate-50 border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 rounded-lg focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={size}>{size} / Page</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      </div>{/* End flex-1 content wrapper */}
 
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+      {/* Pagination - Sticky Footer */}
+      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-5 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
+        <p className="text-[12px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-4">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)]"></span>
+          Showing <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{visibleRangeStart}–{visibleRangeEnd}</span>
+          <span className="text-slate-300 font-bold mx-1">/</span>
+          <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{totalUsers}</span>
+          <span className="text-slate-400 ml-1">Total System Records</span>
+        </p>
+
+        <div className="flex items-center gap-6">
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              const nextPageSize = Number(value);
+              if (Number.isNaN(nextPageSize)) return;
+              setPageSize(nextPageSize);
+              setCurrentPage(1);
+              clearSelection();
+            }}
+          >
+            <SelectTrigger className="h-10 w-[140px] bg-white border border-slate-300 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl hover:border-[#9956DE] transition-all px-4 shadow-sm">
+              <span className="truncate">{pageSize} / Page</span>
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-200">
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={size} className="font-bold">{size} / Page</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:bg-white hover:shadow-sm disabled:opacity-30 transition-all"
+              className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
               disabled={currentPage <= 1 || loading || isProcessingBulkAction}
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             >
-              <Edit size={14} className="rotate-180" />
+              <ChevronLeft size={18} strokeWidth={3} />
             </Button>
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest min-w-[80px] text-center">
-              Page {currentPage} / {Math.max(totalPages, 1)}
-            </span>
+
+            <div className="px-5 py-2 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center min-w-[130px]">
+              <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                Page <span className="text-[#9956DE] mx-1">{currentPage}</span>
+                <span className="text-slate-300 mx-1">OF</span>
+                <span className="text-slate-500">{Math.max(totalPages, 1)}</span>
+              </span>
+            </div>
+
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:bg-white hover:shadow-sm disabled:opacity-30 transition-all"
+              className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
               disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
             >
-              <Edit size={14} />
+              <ChevronRight size={18} strokeWidth={3} />
             </Button>
           </div>
         </div>
@@ -1285,157 +1298,162 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       {/* Add/Edit User Modal - Premium Styling */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)}>
-        <DialogContent className="sm:max-w-[450px] rounded-[32px] border-none shadow-2xl p-0 overflow-hidden">
-          <div className={`h-2 w-full bg-gradient-to-r ${editingUser ? 'from-indigo-500 to-purple-500' : 'from-emerald-500 to-indigo-500'}`}></div>
-          <div className="p-8 space-y-6">
-            <DialogHeader className="text-left space-y-2">
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${editingUser ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                  {editingUser ? <Edit size={24} /> : <Plus size={24} />}
+        <DialogContent className="sm:max-w-[850px] rounded-[32px] border-none shadow-2xl p-0 overflow-hidden [&>button:last-child]:hidden">
+          <div className={`h-2 w-full bg-gradient-to-r ${editingUser ? 'from-indigo-600 to-purple-600' : 'from-emerald-600 to-indigo-600'}`}></div>
+          <div className="p-8 space-y-8">
+            <DialogHeader className="text-left">
+              <div className="flex items-center gap-5">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-500 hover:rotate-3 ${editingUser ? 'bg-indigo-100 text-indigo-700 shadow-indigo-200/50' : 'bg-emerald-100 text-emerald-700 shadow-emerald-200/50'}`}>
+                  {editingUser ? <Edit size={28} className="drop-shadow-sm" /> : <Plus size={28} className="drop-shadow-sm" />}
                 </div>
                 <div>
                   <DialogTitle className="text-2xl font-display font-black text-[#1e293b] leading-tight">
-                    {editingUser ? 'Edit User Access' : 'Add New User'}
+                    {editingUser ? 'Edit User Access' : 'Onboard New User'}
                   </DialogTitle>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                    {editingUser ? 'System Management' : 'Onboarding Pipeline'}
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                    {editingUser ? 'User Identity Management' : 'System Enrollment Pipeline'}
                   </p>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="space-y-4 pt-2">
-              {/* Name Input */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                <div className="relative group">
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => {
-                      setFormData({ ...formData, name: e.target.value });
-                      if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
-                    }}
-                    placeholder="Enter full name"
-                    className={`h-11 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-medium ${formErrors.name ? 'border-rose-300 bg-rose-50/20' : ''}`}
-                  />
-                  {formErrors.name && <AlertCircle size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500" />}
-                </div>
-                {formErrors.name && <p className="text-[10px] text-rose-500 font-bold ml-1">{formErrors.name}</p>}
-              </div>
-
-              {/* Email Input */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                <div className="relative">
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => {
-                      if (editingUser) return;
-                      setFormData({ ...formData, email: e.target.value });
-                      if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: undefined }));
-                    }}
-                    readOnly={Boolean(editingUser)}
-                    placeholder="name@example.com"
-                    className={`h-11 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-medium ${formErrors.email ? 'border-rose-300 bg-rose-50/20' : ''} ${editingUser ? 'opacity-60 grayscale' : ''}`}
-                  />
-                </div>
-                {formErrors.email && <p className="text-[10px] text-rose-500 font-bold ml-1">{formErrors.email}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Role Select */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Access Role</label>
-                  <Select 
-                    value={formData.role} 
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
-                      setFormErrors((prev) => ({ ...prev, role: undefined, lrn: undefined }));
-                    }}
-                  >
-                    <SelectTrigger className="h-11 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold text-slate-700">
-                      <SelectValue placeholder="Role" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-slate-200">
-                      <SelectItem value="Student">Student</SelectItem>
-                      <SelectItem value="Teacher">Teacher</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Status Select */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Status</label>
-                  <Select 
-                    value={formData.status} 
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, status: value });
-                      if (formErrors.status) setFormErrors((prev) => ({ ...prev, status: undefined }));
-                    }}
-                  >
-                    <SelectTrigger className="h-11 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold text-slate-700">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-slate-200">
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Dynamic Inputs based on Role */}
-              {formData.role === 'Student' && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+              {/* Left Column: Primary Info */}
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.15em] pb-1 border-b border-indigo-50">Identity Details</h4>
+                  
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade Level</label>
-                    <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Section</label>
-                    <Input value={formData.section} onChange={(e) => setFormData({ ...formData, section: e.target.value })} placeholder="STEM A" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold" />
-                  </div>
-                  <div className="space-y-1.5 col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">LRN (12 Digits)</label>
-                    <Input value={formData.lrn} onChange={(e) => setFormData({ ...formData, lrn: e.target.value })} placeholder="Required for students" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold tracking-widest" />
-                  </div>
-                </div>
-              )}
-
-              {(formData.role === 'Teacher' || formData.role === 'Admin') && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Department</label>
-                  <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="Mathematics Department" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold" />
-                </div>
-              )}
-
-              {/* Password Fields for New Users */}
-              {!editingUser && (
-                <div className="space-y-4 pt-2 border-t border-slate-100 mt-4">
-                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Set Password</label>
-                    <div className="relative">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                    <div className="relative group">
                       <Input
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="h-11 rounded-xl bg-slate-50/50 border-slate-200 pr-10 font-bold tracking-widest"
+                        value={formData.name}
+                        onChange={(e) => {
+                          setFormData({ ...formData, name: e.target.value });
+                          if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                        }}
+                        placeholder="Enter full name"
+                        className={`h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-bold text-[#1e293b] ${formErrors.name ? 'border-rose-300 bg-rose-50/20' : ''}`}
                       />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                      </button>
+                      {formErrors.name && <AlertCircle size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500" />}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => {
+                        if (editingUser) return;
+                        setFormData({ ...formData, email: e.target.value });
+                      }}
+                      readOnly={Boolean(editingUser)}
+                      placeholder="name@example.com"
+                      className={`h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-bold text-[#1e293b] ${editingUser ? 'opacity-60 grayscale bg-slate-100' : ''}`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Access Role</label>
+                      <Select 
+                        value={formData.role} 
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
+                        }}
+                      >
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 font-black text-[#1e293b]">
+                          <SelectValue placeholder="Role" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-200">
+                          <SelectItem value="Student" className="font-bold">Student</SelectItem>
+                          <SelectItem value="Teacher" className="font-bold">Teacher</SelectItem>
+                          <SelectItem value="Admin" className="font-bold">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                      <Select 
+                        value={formData.status} 
+                        onValueChange={(value) => setFormData({ ...formData, status: value })}
+                      >
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 font-black text-[#1e293b]">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-200">
+                          <SelectItem value="Active" className="font-bold">Active</SelectItem>
+                          <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Right Column: Contextual Info */}
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.15em] pb-1 border-b border-indigo-50">Contextual Assignment</h4>
+
+                  {formData.role === 'Student' ? (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade Level</label>
+                          <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Section</label>
+                          <Input value={formData.section} onChange={(e) => setFormData({ ...formData, section: e.target.value })} placeholder="STEM A" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">LRN (Learner Reference Number)</label>
+                        <Input value={formData.lrn} onChange={(e) => setFormData({ ...formData, lrn: e.target.value })} placeholder="12-digit number" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-black tracking-widest" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Department / Office</label>
+                      <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="e.g. Mathematics Department" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold" />
+                    </div>
+                  )}
+
+                  {!editingUser && (
+                    <div className="space-y-1.5 pt-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Password</label>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          className="h-12 rounded-xl bg-slate-50 border-slate-200 pr-10 font-black tracking-widest"
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                          {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <DialogFooter className="flex items-center justify-between gap-3 pt-4">
-              <Button variant="ghost" className="rounded-xl font-bold text-slate-500 hover:bg-slate-100" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
-              <Button onClick={handleSaveUser} className={`flex-1 h-12 rounded-xl font-black uppercase tracking-widest gap-2 text-xs shadow-lg transition-all active:scale-95 ${editingUser ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'}`} disabled={saving}>
-                {saving ? <Loader2 size={16} className="animate-spin" /> : editingUser ? 'Save Changes' : 'Onboard User'}
+            <DialogFooter className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
+              <Button 
+                variant="outline" 
+                className={`h-12 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${editingUser ? 'border-indigo-600/50 text-indigo-600 hover:bg-indigo-50' : 'border-emerald-600/50 text-emerald-600 hover:bg-emerald-50'}`} 
+                onClick={() => setIsModalOpen(false)} 
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveUser} className={`h-12 rounded-xl font-black uppercase tracking-widest gap-3 text-[10px] shadow-lg transition-all active:scale-95 ${editingUser ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25'}`} disabled={saving}>
+                {saving ? <Loader2 size={16} className="animate-spin" /> : editingUser ? <><Save size={16} /> Save Changes</> : <><Plus size={16} /> Onboard User</>}
               </Button>
             </DialogFooter>
           </div>
