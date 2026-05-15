@@ -70,6 +70,8 @@ import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
+import { subscribeToUserCalendarEvents } from '../services/calendarService';
+import type { CalendarEvent } from '../types/models';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -1175,7 +1177,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <NavItem
                 icon={BarChart3}
                 label="Class Analytics"
-                active={activeView === 'analytics'}
+                active={activeView === 'analytics' || activeView === 'intervention'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => handleSidebarNav('analytics')}
                 forceExpanded={isMobileViewport}
@@ -1623,7 +1625,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         </div>
 
         {activeView === 'dashboard' && (
-          <DashboardRightSidebar onViewCalendar={() => setActiveView('calendar')} onOpenProfile={onOpenProfile} userProfile={userProfile} teacherName={teacherName} />
+          <DashboardRightSidebar 
+            onViewCalendar={() => setActiveView('calendar')} 
+            onOpenProfile={onOpenProfile} 
+            userProfile={userProfile} 
+            teacherName={teacherName}
+            liveActivity={liveActivity}
+          />
         )}
       </div>
 
@@ -4162,9 +4170,23 @@ const DashboardRightSidebar: React.FC<{
   onOpenProfile?: () => void;
   userProfile?: any;
   teacherName: string;
-}> = ({ onViewCalendar, onOpenProfile, userProfile, teacherName }) => {
+  liveActivity?: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
+}> = ({ onViewCalendar, onOpenProfile, userProfile, teacherName, liveActivity = [] }) => {
+  const { currentUser } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'pulse' | 'reminders'>('pulse');
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const unsubscribe = subscribeToUserCalendarEvents(
+      currentUser.uid,
+      { limitCount: 100 },
+      (items) => setEvents(items),
+      () => {}
+    );
+    return () => unsubscribe();
+  }, [currentUser?.uid]);
 
   const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
@@ -4201,6 +4223,28 @@ const DashboardRightSidebar: React.FC<{
   const days = getDaysArray();
   const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
+  const hasEvent = (day: number | null) => {
+    if (!day) return false;
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return events.some(ev => {
+      const evDate = new Date(ev.startTime);
+      const evDateStr = `${evDate.getFullYear()}-${String(evDate.getMonth() + 1).padStart(2, '0')}-${String(evDate.getDate()).padStart(2, '0')}`;
+      return evDateStr === dateStr;
+    });
+  };
+
+  const getEventTooltip = (day: number | null) => {
+    if (!day) return undefined;
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayEvents = events.filter(ev => {
+      const evDate = new Date(ev.startTime);
+      const evDateStr = `${evDate.getFullYear()}-${String(evDate.getMonth() + 1).padStart(2, '0')}-${String(evDate.getDate()).padStart(2, '0')}`;
+      return evDateStr === dateStr;
+    });
+    if (dayEvents.length === 0) return undefined;
+    return dayEvents.map(ev => `• ${ev.title}`).join('\n');
+  };
+
   return (
     <aside className="w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-hidden">
       {/* Profile Section */}
@@ -4216,18 +4260,21 @@ const DashboardRightSidebar: React.FC<{
       </div>
 
       {/* Calendar Section */}
-      <div className="p-[10px_16px] border-b border-[#f1f5f9]">
+      <div 
+        className="p-[10px_16px] border-b border-[#f1f5f9] cursor-pointer hover:bg-slate-50 transition-colors group/cal"
+        onClick={onViewCalendar}
+      >
         <div className="flex items-center justify-between mb-2">
           <button
-            onClick={goToPrevMonth}
-            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px]"
+            onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
+            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
           >
             <ChevronLeft size={14} />
           </button>
-          <span className="text-[12px] font-semibold text-[#1e293b]">{monthLabel()}</span>
+          <span className="text-[12px] font-semibold text-[#1e293b] group-hover/cal:text-[#4f46e5] transition-colors">{monthLabel()}</span>
           <button
-            onClick={goToNextMonth}
-            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px]"
+            onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
+            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
           >
             <ChevronRight size={14} />
           </button>
@@ -4243,15 +4290,23 @@ const DashboardRightSidebar: React.FC<{
           {days.map((day, idx) => (
             <div
               key={`${currentDate.getMonth()}-${idx}`}
-              className={`text-[11px] leading-[22px] w-[22px] h-[22px] m-auto flex items-center justify-center rounded-full ${
-                day === null
-                  ? 'text-[#cbd5e1]'
-                  : isToday(day)
-                    ? 'bg-[#818cf8] text-white font-semibold'
-                    : 'text-[#475569]'
-              }`}
+              className="relative flex flex-col items-center justify-center h-[28px]"
+              title={getEventTooltip(day)}
             >
-              {day}
+              <div
+                className={`text-[11px] leading-[22px] w-[22px] h-[22px] flex items-center justify-center rounded-full transition-all ${
+                  day === null
+                    ? 'text-[#cbd5e1]'
+                    : isToday(day)
+                      ? 'bg-[#818cf8] text-white font-semibold'
+                      : 'text-[#475569] group-hover/cal:bg-slate-100'
+                }`}
+              >
+                {day}
+              </div>
+              {day !== null && hasEvent(day) && (
+                <div className={`absolute bottom-0 w-1 h-1 rounded-full ${isToday(day) ? 'bg-white' : 'bg-[#a855f7]'}`} />
+              )}
             </div>
           ))}
         </div>
@@ -4284,47 +4339,78 @@ const DashboardRightSidebar: React.FC<{
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto p-[14px_16px]">
         {activeTab === 'pulse' && (
-          <div className="flex flex-col items-center gap-3">
-            <svg className="w-[96px] h-[96px]" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="14" fill="none" stroke="#e2e8f0" strokeWidth="4"/>
-              <circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" strokeWidth="4"
-                strokeDasharray="78 100" strokeDashoffset="25" strokeLinecap="round"/>
-              <text x="18" y="16.5" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="7" fontWeight="600" fill="#1e293b">78%</text>
-              <text x="18" y="23" textAnchor="middle" fontFamily="DM Sans,sans-serif" fontSize="3.8" fill="#94a3b8" letterSpacing="0.3">ENGAGED</text>
-            </svg>
-            <div className="grid grid-cols-2 gap-[7px] w-full">
-              <div className="flex items-center gap-[6px] text-[11px] text-[#64748b]">
-                <div className="w-2 h-2 rounded-full bg-[#10b981] flex-shrink-0"></div>Engaged
-                <span className="ml-auto font-semibold text-[#1e293b]">78%</span>
-              </div>
-              <div className="flex items-center gap-[6px] text-[11px] text-[#64748b]">
-                <div className="w-2 h-2 rounded-full bg-[#e2e8f0] flex-shrink-0"></div>Inactive
-                <span className="ml-auto font-semibold text-[#1e293b]">22%</span>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Live Activity Stream</div>
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span className="text-[9px] font-bold text-emerald-600">LIVE</span>
               </div>
             </div>
-            <div className="bg-[#f8fafc] rounded-[11px] p-[11px_12px] text-center w-full mt-1">
-              <div className="text-[9px] font-semibold text-[#94a3b8] uppercase tracking-[0.07em] mb-[3px]">Current activity</div>
-              <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Quadratic equations quiz</div>
-              <div className="text-[11.5px] text-[#4f46e5] font-medium">10 / 12 students active</div>
-            </div>
+            
+            {liveActivity.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+                <Activity size={32} className="text-slate-300 mb-2" />
+                <p className="text-[11px] font-bold text-[#1e293b]">No recent activity</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {liveActivity.slice(0, 5).map((item) => (
+                  <div key={item.id} className="relative pl-5 before:absolute before:left-1.5 before:top-2 before:bottom-[-16px] before:w-[1px] before:bg-slate-100 last:before:hidden">
+                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full border-2 border-white bg-indigo-500 shadow-sm z-10"></div>
+                    <div className="bg-white border border-[#f1f5f9] rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-[12px] font-bold text-[#1e293b] truncate">{item.student}</span>
+                        <span className="text-[9px] font-medium text-[#94a3b8] shrink-0">{item.time}</span>
+                      </div>
+                      <p className="text-[11px] text-[#64748b] leading-snug">
+                        {item.action} <span className="font-bold text-[#4f46e5]">{item.topic}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {activeTab === 'reminders' && (
-          <div className="space-y-[8px]">
-            <div className="flex items-start gap-[10px] p-[10px_11px] border border-[#f1f5f9] rounded-[12px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
-              <div className="p-[7px] rounded-[8px] border border-[#f1f5f9] bg-white text-[14px] text-[#4f46e5] flex-shrink-0"><Bell size={14} /></div>
-              <div>
-                <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Eng – Vocabulary test</div>
-                <div className="text-[10.5px] text-[#94a3b8]">12 May 2026, Friday</div>
+          <div className="space-y-3">
+            {events
+              .filter(ev => {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const evDate = new Date(ev.startTime);
+                return evDate.getTime() >= today.getTime();
+              })
+              .sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+              .slice(0, 5)
+              .map(ev => {
+                const isToday = new Date(ev.startTime).toDateString() === new Date().toDateString();
+                return (
+                  <div 
+                    key={ev.id} 
+                    onClick={onViewCalendar}
+                    className="flex items-start gap-3 p-3 border border-[#f1f5f9] rounded-[14px] cursor-pointer hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className={`p-2 rounded-xl border border-[#f1f5f9] bg-white text-[14px] flex-shrink-0 shadow-sm transition-transform group-hover:scale-105 ${isToday ? 'text-rose-500' : 'text-[#4f46e5]'}`}>
+                      <Calendar size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-bold text-[#1e293b] mb-0.5 truncate">{ev.title}</div>
+                      <div className={`text-[10px] font-medium ${isToday ? 'text-rose-500 font-bold' : 'text-[#94a3b8]'}`}>
+                        {isToday ? 'Today, ' : ''}{new Date(ev.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            }
+            {events.filter(ev => new Date(ev.startTime).getTime() >= new Date().setHours(0,0,0,0)).length === 0 && (
+              <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+                <Bell size={32} className="text-slate-300 mb-2" />
+                <p className="text-[11px] font-bold text-[#1e293b]">No upcoming tasks</p>
               </div>
-            </div>
-            <div className="flex items-start gap-[10px] p-[10px_11px] border border-[#f1f5f9] rounded-[12px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
-              <div className="p-[7px] rounded-[8px] border border-[#f1f5f9] bg-white text-[14px] text-[#10b981] flex-shrink-0"><BookOpen size={14} /></div>
-              <div>
-                <div className="text-[12px] font-medium text-[#1e293b] mb-[2px]">Eng – Essay review</div>
-                <div className="text-[10.5px] text-[#94a3b8]">12 May 2026, Friday</div>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
