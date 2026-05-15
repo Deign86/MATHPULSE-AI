@@ -1,162 +1,238 @@
 {
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\vite.config.ts": {
-    "mtime": 1778339429.8884132,
-    "hash": "84f1112d265a1ef166bc660bbef15dbb"
+    "mtime": 1778783032.6173694,
+    "hash": "fc44927d8a938987aee8f0790933e385"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\vitest.config.ts": {
-    "mtime": 1778339429.8889134,
+    "mtime": 1778724580.0263398,
     "hash": "126753034fa4cb756a60289d3a652a7b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\analytics.py": {
-    "mtime": 1778425110.763763,
+    "mtime": 1778724579.7452128,
     "hash": "da5f3bcaf6213cfe59efc4c13268e1de"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\automation_engine.py": {
-    "mtime": 1778425110.765857,
+    "mtime": 1778724579.7459586,
     "hash": "8cddae79e603449ab99a0583cd64faa4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\main.py": {
-    "mtime": 1778464681.8706698,
-    "hash": "0d547b8ced0aed5502c1b719f71cc438"
+    "mtime": 1778765662.1726003,
+    "hash": "3acd7e1acc958c00b5a97e9f863d2f3c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\pre_deploy_check.py": {
-    "mtime": 1778339429.6548214,
+    "mtime": 1778724579.7623274,
     "hash": "aa02694c8621980af9731e93eb49a7f4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\startup_validation.py": {
-    "mtime": 1778339429.6713479,
+    "mtime": 1778724579.785469,
     "hash": "6ddeb12dfa6c101c35e4a1f183191a80"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\test_full_rag.py": {
-    "mtime": 1778339429.6723497,
+    "mtime": 1778724579.7860887,
     "hash": "0c46741e0f1b9a36c6d70ddce8b9ad7d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\test_retrieval.py": {
-    "mtime": 1778339429.6723497,
+    "mtime": 1778724579.786669,
     "hash": "ea4c4af7bc0ea72f35bb3f864a8f6ee1"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\__init__.py": {
+    "mtime": 1778724579.7440598,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\middleware\\rate_limiter.py": {
-    "mtime": 1778339429.653822,
+    "mtime": 1778724579.7610579,
     "hash": "35cd594e86c9a886a28362369a9d7b25"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\middleware\\__init__.py": {
-    "mtime": 1778339429.6533222,
+    "mtime": 1778724579.76056,
     "hash": "ee25b4f9409c7a5b9a7f266f82e4bfe7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\curriculum_rag.py": {
-    "mtime": 1778339429.6548214,
+    "mtime": 1778724579.7638571,
     "hash": "e8d0414abb86d29ed0bb26c8afc7682f"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\docx_parser.py": {
+    "mtime": 1778725070.918787,
+    "hash": "31b786c77a2245cc443f1b9bc7fd547e"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\firebase_storage_loader.py": {
-    "mtime": 1778339429.655824,
+    "mtime": 1778724579.7643642,
     "hash": "3e1634c23a56d5aec648e7e99956b365"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\pdf_ingestion.py": {
-    "mtime": 1778339429.6563258,
+    "mtime": 1778724579.7649739,
     "hash": "1a2a22655e695cd27624dc723a9b778d"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\pdf_parser.py": {
+    "mtime": 1778725070.91979,
+    "hash": "002f7caeca1813dd28d8207fcbe794de"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\teacher_material_ingestion.py": {
+    "mtime": 1778724579.765602,
+    "hash": "47b6c93b678862f5698c06521e7837c7"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\teacher_module_generator.py": {
+    "mtime": 1778724579.765602,
+    "hash": "569d380f1cd309d03e08494bc4888549"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\vectorstore_loader.py": {
-    "mtime": 1778339429.6563258,
+    "mtime": 1778724579.765602,
     "hash": "c4431d6f3f0d6a89f7ce49955e30271e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\rag\\__init__.py": {
-    "mtime": 1778339429.6548214,
-    "hash": "b41e09cfd04848da9bc1d4065a663bdb"
+    "mtime": 1778725070.9179835,
+    "hash": "befaa58b50285eaf3c4f7625dead0e12"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\admin_model_routes.py": {
-    "mtime": 1778339429.658328,
+    "mtime": 1778724579.7666042,
     "hash": "3d7b7d2d715875c1431f5480228cfd67"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\admin_routes.py": {
-    "mtime": 1778339429.658827,
-    "hash": "ac8377bd47e84d3b6cb8bc3e905f8422"
+    "mtime": 1778724579.767617,
+    "hash": "7a903910c0f203e1762483bc5d804edd"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\class_records_router.py": {
+    "mtime": 1778765662.1752062,
+    "hash": "1df074d2f89183bac86e93244e143341"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\curriculum_routes.py": {
-    "mtime": 1778339429.658827,
-    "hash": "06f9b71eb19367d8a8f511b1c2380007"
+    "mtime": 1778724579.7681465,
+    "hash": "068a84a8b599d4c69daa3d0154c0c8c6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\diagnostic.py": {
-    "mtime": 1778425110.771868,
+    "mtime": 1778724579.7686648,
     "hash": "4fa541cef063122c2dfb53f08fcbb8f4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\quiz_battle.py": {
-    "mtime": 1778423170.100575,
-    "hash": "509fd29e5600620bf6661878683a4ff2"
+    "mtime": 1778765662.1767297,
+    "hash": "1c8c566fab76d4a9bd68d45842511783"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\quiz_generation_routes.py": {
-    "mtime": 1778427400.6008,
+    "mtime": 1778724579.769169,
     "hash": "e5ac9e9dd03eb36c7ffa369a38925f5b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\rag_routes.py": {
-    "mtime": 1778339429.6623394,
+    "mtime": 1778724579.769674,
     "hash": "9d509c2ce81321d27a4fa4c5683ae1db"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\risk_router.py": {
+    "mtime": 1778765662.1777835,
+    "hash": "8adce1c8a07d3f4a284b10f55bbe1a0e"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\teacher_materials.py": {
+    "mtime": 1778765662.178859,
+    "hash": "475ee71b4932d6dcfc19180845dc250e"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\tutor_checkin.py": {
+    "mtime": 1778765662.1804101,
+    "hash": "ab189169379750ffb2828be187a7bc90"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\video_routes.py": {
-    "mtime": 1778339429.6628387,
-    "hash": "ca66b48de1b9c89dd0be1fd9836b0412"
+    "mtime": 1778724579.7706766,
+    "hash": "bd859ab6a0ee927ef385c1f77f8e9dc5"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\routes\\__init__.py": {
-    "mtime": 1778339429.6578257,
+    "mtime": 1778724579.7666042,
     "hash": "cccccda4ce50beb159db43ad93e1a252"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\conftest.py": {
+    "mtime": 1778724579.7890213,
+    "hash": "58d2c6191d5ea600f2690b3ff67b83d8"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_admin_model_routes.py": {
-    "mtime": 1778339429.673351,
+    "mtime": 1778724579.7895715,
     "hash": "5a088e7488bd54167bb7de3e6011dc0e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_api.py": {
-    "mtime": 1778464681.873169,
+    "mtime": 1778724579.7905762,
     "hash": "d035a56cefedbc6061e3d28c174a6528"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_docx_parser.py": {
+    "mtime": 1778725070.9214916,
+    "hash": "b5735f3832c1345caca3f1dc4ebe5e6b"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_email_service.py": {
-    "mtime": 1778339429.6748517,
+    "mtime": 1778724579.7911196,
     "hash": "9b462fa1aec02b180465f7323567b4cc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_email_templates.py": {
-    "mtime": 1778339429.6748517,
+    "mtime": 1778724579.792403,
     "hash": "a3ffdec9b2eacd86c9c49e62cab494e4"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_hash_utils.py": {
+    "mtime": 1778725070.9220173,
+    "hash": "5b433d4933892f7f15dc1e1bfade4ef7"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_hf_monitoring_routes.py": {
-    "mtime": 1778339429.6758537,
+    "mtime": 1778724579.7933977,
     "hash": "0cfc99835c0edc585c4301c54bcb1f12"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_model_profiles.py": {
-    "mtime": 1778339429.6763566,
+    "mtime": 1778724579.7933977,
     "hash": "1ecc38f32c1f6f3a480f0affea96eb68"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_pdf_parser.py": {
+    "mtime": 1778725070.9220173,
+    "hash": "dccab60b20161b056bf2a173fa32119d"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_quiz_battle.py": {
-    "mtime": 1778339429.6763566,
+    "mtime": 1778724579.795397,
     "hash": "4ae85a4a84c18f1a26c8cc832a10cd0e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_quiz_cap.py": {
-    "mtime": 1778464927.0407457,
-    "hash": "2b1ce15e6930fc93c0c58e31db22f523"
+    "mtime": 1778725070.922743,
+    "hash": "6f08baccf0570f825fd5fa51ec334953"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_rag_pipeline.py": {
-    "mtime": 1778339429.6768558,
+    "mtime": 1778724579.7969358,
     "hash": "90bf941caf29efc29ca8059b2321312c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_rate_limiter.py": {
-    "mtime": 1778339429.6768558,
+    "mtime": 1778724579.7974744,
     "hash": "370aa41d4a81934e9ea3b46cd6d07a1a"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_risk_router.py": {
+    "mtime": 1778765662.1844685,
+    "hash": "51488d80ea8ffc4bb634f3992e611109"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_teacher_materials.py": {
+    "mtime": 1778765662.1859915,
+    "hash": "247ba2bb8bc8d562487ff72a9e19d48f"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_video_routes.py": {
-    "mtime": 1778464000.0558307,
-    "hash": "04b105302307c28248946f700132149d"
+    "mtime": 1778724579.7986069,
+    "hash": "68b9e91a54bfdce8d69c84ce585ee397"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\test_wri_service.py": {
+    "mtime": 1778765662.1868901,
+    "hash": "7fd16ea3a68e0cb718c984f74fd657a4"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\__init__.py": {
+    "mtime": 1778724579.7876725,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\utils\\hash_utils.py": {
+    "mtime": 1778725070.9246235,
+    "hash": "16407bd507fd5560553a89f8d4a28967"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\utils\\__init__.py": {
+    "mtime": 1778724579.7986069,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\index.js": {
-    "mtime": 1778164791.055038,
-    "hash": "481c6c5c6daa1e787b07a1dcf0c3f52a"
+    "mtime": 1778779666.1066296,
+    "hash": "20d9b51b61f354ce997b401c8290fcd6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\backfillCurriculumVersion.js": {
-    "mtime": 1778164790.8451827,
+    "mtime": 1778779665.922335,
     "hash": "3b9f3cd05deec095c3e7e994874e2899"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\diagnosticProcessor.js": {
-    "mtime": 1778164790.7461898,
+    "mtime": 1778779665.8443074,
     "hash": "3e4da8609b2c144a81a31f244b069863"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\iarAssessmentScoring.js": {
-    "mtime": 1778164790.653362,
+    "mtime": 1778779665.7790918,
     "hash": "7e2338d47842cd3257c09fbaf7d2281a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\iarAssessmentScoring.test.js": {
@@ -164,15 +240,15 @@
     "hash": "42d112f3b437a893aabfb4f545764311"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\learningPathEngine.js": {
-    "mtime": 1778164790.683946,
+    "mtime": 1778779665.8026576,
     "hash": "c31782e24c3af8a0018269d186d019de"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\notificationSender.js": {
-    "mtime": 1778164790.5956764,
+    "mtime": 1778779665.7464888,
     "hash": "8e6eea7ff39f19c5c29f34f337832f43"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\quizProcessor.js": {
-    "mtime": 1778164790.6648924,
+    "mtime": 1778779665.7877672,
     "hash": "0f36a2982449c45fad73d7bd31eed724"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\reassessment.integration.test.js": {
@@ -180,7 +256,7 @@
     "hash": "4a4645eac16cb884af13df10fd1c2e0e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\reassessmentEngine.js": {
-    "mtime": 1778164790.8125725,
+    "mtime": 1778779665.882534,
     "hash": "9521360637c765ca9c384e94592744d7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\reassessmentEngine.test.js": {
@@ -188,31 +264,35 @@
     "hash": "40693d41e95afb94c529f82fb27c09ae"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\riskAnalyzer.js": {
-    "mtime": 1778164790.6247838,
+    "mtime": 1778779665.7644567,
     "hash": "9bb22ee32b566583112bf0750a423423"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\automations\\runtimeChecks.js": {
-    "mtime": 1778164791.0582025,
+    "mtime": 1778779666.1102667,
     "hash": "969bda81aeac0178c6d57245c0d14be3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\config\\constants.js": {
-    "mtime": 1778164790.5818644,
-    "hash": "bf622ea6596a53044de5c8a3d37debb8"
+    "mtime": 1778779665.736521,
+    "hash": "8317a3f8ed9ec574c8b8dc528ed6e2c7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\config\\diagnosticPolicies.js": {
-    "mtime": 1778164790.7080197,
+    "mtime": 1778779665.8171291,
     "hash": "e50ca4f916f5f529226ffce47fa8cc9c"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\notifications\\index.js": {
+    "mtime": 1778779666.0988698,
+    "hash": "a9591901f61e45f5286328604f629590"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\scoring\\scoringEngine.js": {
-    "mtime": 1778164790.8722565,
+    "mtime": 1778779665.9379153,
     "hash": "4db72fd9731d1692fa7323ccd416d5d6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\scoring\\scoringEngine.test.js": {
-    "mtime": 1778164791.0642028,
+    "mtime": 1778779666.1156445,
     "hash": "cb6b7f8bfa9fde37b6b7b0b164fb8151"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\manualTriggers.js": {
-    "mtime": 1778164790.862226,
+    "mtime": 1778779665.9344308,
     "hash": "554b224eb6a776d429573adec061922b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\manualTriggers.test.js": {
@@ -220,15 +300,15 @@
     "hash": "b0717e48b34e6a7d5c6e04a2b6b8734e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onAttendanceUpdate.js": {
-    "mtime": 1778164790.767928,
+    "mtime": 1778779665.8577406,
     "hash": "b6e04f6f4324b07520d8a98c90e995b4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onContentUpdated.js": {
-    "mtime": 1778164790.7969935,
+    "mtime": 1778779665.874446,
     "hash": "730d806d7e2fb005256fa776a58136f1"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onDiagnosticComplete.js": {
-    "mtime": 1778164790.753212,
+    "mtime": 1778779665.8486834,
     "hash": "1abe8ec2f3347f55a53c00c2dedbd6b2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onDiagnosticComplete.test.js": {
@@ -236,15 +316,15 @@
     "hash": "3090cfe4fff825ce802b50eec310057a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onQuizSubmitted.js": {
-    "mtime": 1778164790.7607458,
+    "mtime": 1778779665.8525147,
     "hash": "49ff0885efd8f3a48e3235fd301ba413"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onStudentCreated.js": {
-    "mtime": 1778164790.6107297,
+    "mtime": 1778779665.7557259,
     "hash": "b2a8e6329ac764097fdee5dab06246b2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onStudentProfileUpdated.js": {
-    "mtime": 1778164790.8311198,
+    "mtime": 1778779665.9000802,
     "hash": "91cf57056f229bbacd21957c324c6f8e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\onStudentProfileUpdated.test.js": {
@@ -256,1136 +336,1200 @@
     "hash": "81e9de75666126a872cd0551705dfa50"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\quizBattleApi.js": {
-    "mtime": 1778164791.0471575,
+    "mtime": 1778779666.0823004,
     "hash": "78acbaa002afb48086a252165253f2b4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\quizBattleApi.test.js": {
-    "mtime": 1778164791.0802467,
+    "mtime": 1778779666.1247547,
     "hash": "d5581011b6db63113d818eda5e8e822f"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\triggers\\riskTriggers.js": {
+    "mtime": 1778779665.9125087,
+    "hash": "6a338c1885471d6d23859b3604c9c007"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\utils\\math.js": {
-    "mtime": 1778164790.8657427,
+    "mtime": 1778779665.935926,
     "hash": "f382c39d3bb9b8d636de75a5ced81813"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\utils\\rateLimiter.js": {
-    "mtime": 1778164791.0847611,
+    "mtime": 1778779666.1290429,
     "hash": "deb508351d2468634d0dcd31facf9d8e"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\lib\\utils\\sendPush.js": {
+    "mtime": 1778779666.0879803,
+    "hash": "47c34af22eea3c08e77c67715fbd5515"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\index.ts": {
-    "mtime": 1778339429.7249522,
-    "hash": "3f4e5a611b5747f5c05d2268d827edae"
+    "mtime": 1778783032.6116843,
+    "hash": "7a23b4746b0b476523346b2adf1ba1e2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\backfillCurriculumVersion.ts": {
-    "mtime": 1778339429.7209477,
+    "mtime": 1778724579.8481436,
     "hash": "5ece7a2dc253706ffb38ed3613ccf5c7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\diagnosticProcessor.ts": {
-    "mtime": 1778339429.721448,
+    "mtime": 1778724579.8487377,
     "hash": "cae15fb7a64590ae9f7ed735a7460a8f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\iarAssessmentScoring.ts": {
-    "mtime": 1778339429.721448,
+    "mtime": 1778724579.8487377,
     "hash": "537f341f9d1ab0fd2e6625384a849b84"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\learningPathEngine.ts": {
-    "mtime": 1778339429.721448,
+    "mtime": 1778724579.849531,
     "hash": "8b406a7ce01babe210dd138fb26faafa"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\notificationSender.ts": {
-    "mtime": 1778339429.7224503,
-    "hash": "c1d22c2bcc4836db4010afdb3d778764"
+    "mtime": 1778765662.1918137,
+    "hash": "e392613c297c7f62f389eb597defdb51"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\quizProcessor.ts": {
-    "mtime": 1778339429.7224503,
+    "mtime": 1778724579.8505354,
     "hash": "6700d11206f27d67b2affb4373a17d1f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\reassessmentEngine.ts": {
-    "mtime": 1778339429.7229524,
+    "mtime": 1778724579.8505354,
     "hash": "9f4b2e14073a3e965c63e589a7267264"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\riskAnalyzer.ts": {
-    "mtime": 1778339429.7234528,
+    "mtime": 1778724579.8515587,
     "hash": "d31669714246b7a442d4e2311576c191"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\automations\\runtimeChecks.ts": {
-    "mtime": 1778339429.7234528,
+    "mtime": 1778724579.8520555,
     "hash": "739fffe73473d94e8592dc629d6ddd0b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\config\\constants.ts": {
-    "mtime": 1778425110.7768717,
-    "hash": "e1e67f57107e0bfed8d0dd7aa906f727"
+    "mtime": 1778765662.194143,
+    "hash": "27455f4f8bd0d9a8275711a56edbf978"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\config\\diagnosticPolicies.ts": {
-    "mtime": 1778339429.7244627,
+    "mtime": 1778724579.8533602,
     "hash": "47b926ef3ade4c82cc0237617af356cc"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\notifications\\index.ts": {
+    "mtime": 1778783032.6122215,
+    "hash": "e33f117001d6b8fef3bd7b9a5a4517e1"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\scoring\\scoringEngine.test.ts": {
-    "mtime": 1778339429.7249522,
+    "mtime": 1778724579.8533602,
     "hash": "7a8569c7518100f9850c5e9d52ba89ab"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\scoring\\scoringEngine.ts": {
-    "mtime": 1778339429.725464,
+    "mtime": 1778724579.8543627,
     "hash": "0fc7bd6687aefa153948224635fc5491"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\manualTriggers.ts": {
-    "mtime": 1778339429.726463,
+    "mtime": 1778724579.8553584,
     "hash": "b200af2721134ffdfd18caa5fe97d2a8"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\onAttendanceUpdate.ts": {
-    "mtime": 1778339429.726463,
+    "mtime": 1778724579.8558552,
     "hash": "13b80f5ed9241389c4538279c0cee814"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\onContentUpdated.ts": {
-    "mtime": 1778339429.7269528,
+    "mtime": 1778724579.8558552,
     "hash": "cd5381b680467e9267434725e46209a2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\onDiagnosticComplete.ts": {
-    "mtime": 1778339429.7269528,
+    "mtime": 1778724579.8558552,
     "hash": "5e9e346b319d5dcf978e4f2b6b631d1e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\onQuizSubmitted.ts": {
-    "mtime": 1778339429.7274518,
+    "mtime": 1778724579.8568316,
     "hash": "b3b19e853fe37ae75cfd4bf7d1428b0d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\onStudentCreated.ts": {
-    "mtime": 1778339429.7279627,
+    "mtime": 1778724579.8568316,
     "hash": "049b0629a1423bac3050e850906053ef"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\onStudentProfileUpdated.ts": {
-    "mtime": 1778339429.7279627,
+    "mtime": 1778724579.8568316,
     "hash": "72ca81647899703ec64b49f8389ac93c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\quizBattleApi.test.ts": {
-    "mtime": 1778339429.7284522,
+    "mtime": 1778724579.8578353,
     "hash": "4e2cb6be053d5d919ebef5a3fd43c4b2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\quizBattleApi.ts": {
-    "mtime": 1778339429.728953,
+    "mtime": 1778724579.8588922,
     "hash": "2947f848c747188c748cc0eada0c4e95"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\triggers\\riskTriggers.ts": {
+    "mtime": 1778765662.1971247,
+    "hash": "e53a910558b44c4647c89b60a61cd074"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\utils\\math.ts": {
-    "mtime": 1778339429.7299569,
+    "mtime": 1778724579.8593998,
     "hash": "4a1123478547471a901e65ffada23a05"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\utils\\rateLimiter.ts": {
-    "mtime": 1778339429.7299569,
+    "mtime": 1778724579.8593998,
     "hash": "69a2fe3bd6e22c6245789be9c7dd97e2"
   },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\analytics.py": {
-    "mtime": 1778405327.56123,
-    "hash": "24fab7f07068ca9c58fa4f7a4ddf7520"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\automation_engine.py": {
-    "mtime": 1778405327.5617287,
-    "hash": "d527861590f030f748df5bc56047a86d"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\main.py": {
-    "mtime": 1778411792.7668643,
-    "hash": "e73f9e54f072f015529560495436e9b0"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\pre_deploy_check.py": {
-    "mtime": 1778405327.5661025,
-    "hash": "103cf321539e052a1e92539aae745e46"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\startup_validation.py": {
-    "mtime": 1778405327.5735095,
-    "hash": "144d9f87b69f9b317b6d4776fd740fd1"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\rag\\curriculum_rag.py": {
-    "mtime": 1778405327.5665991,
-    "hash": "4b972552678d98aba2330da55c9244b9"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\rag\\firebase_storage_loader.py": {
-    "mtime": 1778405327.567223,
-    "hash": "e37b781d9c9caf97bbf21195596864e0"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\rag\\vectorstore_loader.py": {
-    "mtime": 1778405327.567223,
-    "hash": "2d42778c8b9cfcaa6c3bad0acbc726e2"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\rag\\__init__.py": {
-    "mtime": 1778405327.5665991,
-    "hash": "a897434088041c0327c5c0f503ca4d65"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\routes\\curriculum_routes.py": {
-    "mtime": 1778405327.56916,
-    "hash": "06f9b71eb19367d8a8f511b1c2380007"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\routes\\rag_routes.py": {
-    "mtime": 1778405327.56916,
-    "hash": "4b26de9e273119ee8ef206d129e6f3be"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\routes\\__init__.py": {
-    "mtime": 1778405327.5685394,
-    "hash": "cccccda4ce50beb159db43ad93e1a252"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\tests\\test_api.py": {
-    "mtime": 1778405327.574776,
-    "hash": "a5fab578b58e309e913df3d96febb0bc"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\tests\\test_email_service.py": {
-    "mtime": 1778405327.574776,
-    "hash": "9b462fa1aec02b180465f7323567b4cc"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\tests\\test_email_templates.py": {
-    "mtime": 1778405327.574776,
-    "hash": "a3ffdec9b2eacd86c9c49e62cab494e4"
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\functions\\src\\utils\\sendPush.ts": {
+    "mtime": 1778783032.6122215,
+    "hash": "2e36bb795f5f57ddc9d9678d3b474956"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\App.tsx": {
-    "mtime": 1778477393.2575045,
-    "hash": "7f7c339a87c2112848e65415e1cf398e"
+    "mtime": 1778783032.6137617,
+    "hash": "6efd6c015c8f12a3d36a37f944b260a6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\main.tsx": {
-    "mtime": 1778425110.8274276,
-    "hash": "715d4032d542d4640b84217ae5513a58"
+    "mtime": 1778779526.0294573,
+    "hash": "8d9c6bb3cfa512cf4576cb85c7166dd6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\test-setup.ts": {
-    "mtime": 1778339429.8728857,
+    "mtime": 1778724580.0103981,
     "hash": "56ecc336de485ce5b1b245cda3d09b94"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\vite-env.d.ts": {
-    "mtime": 1778339429.8778963,
+    "mtime": 1778724580.01633,
     "hash": "7c2fbecb4290365087b6f70e380fced5"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\vitest.d.ts": {
-    "mtime": 1778339429.8778963,
+    "mtime": 1778724580.01633,
     "hash": "eb39e9bd9300cfe726e5acb748e06246"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\bones\\registry.ts": {
-    "mtime": 1778339429.784636,
+    "mtime": 1778724579.906669,
     "hash": "99d9cb54146b85aaac0315279492a82b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminAIMonitoring.tsx": {
-    "mtime": 1778464000.061343,
-    "hash": "bde47fdf752f34243bb03c32dfc6d510"
+    "mtime": 1778849922.5869765,
+    "hash": "aba82ca95a7d36ac11a97a84ca412387"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminAnalytics.tsx": {
-    "mtime": 1778339429.7871406,
-    "hash": "a9dc2b7ca2d14c364454c1ef2c0caf5c"
+    "mtime": 1778849922.588183,
+    "hash": "ab72135c6e4c9b6f11c0e783ff499af5"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminAuditLog.tsx": {
-    "mtime": 1778339429.7871406,
-    "hash": "6b8b671e5c93574c6c72006da6b35e5a"
+    "mtime": 1778849922.5894382,
+    "hash": "b8cedcb0d4860bf910924b4b58debe3f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminContent.tsx": {
-    "mtime": 1778339429.787652,
-    "hash": "a4a96d436a9ff7d6b411744cd899e404"
+    "mtime": 1778849922.5905948,
+    "hash": "cd3d88a0ee8b1aa04c057d97db535be9"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminDashboard.tsx": {
-    "mtime": 1778477393.259505,
-    "hash": "e587a2bdec6fbec744d9668d0908f56a"
+    "mtime": 1778849922.5911076,
+    "hash": "f2ad44b7662ac738823e5efec487d3d2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminPriorityModules.tsx": {
-    "mtime": 1778339429.7886503,
+    "mtime": 1778724579.9114294,
     "hash": "c8a749958c9e54d645cce6977d64d5b2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminSettings.tsx": {
-    "mtime": 1778425110.7878819,
-    "hash": "094f6a5ee5a16ed2cdbba5fde5d6d42f"
+    "mtime": 1778849922.5923262,
+    "hash": "cf01355812d0241f5d12311feedee57b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminUserManagement.tsx": {
-    "mtime": 1778339429.7896574,
-    "hash": "590f177ad53297e079b86b171a2db452"
+    "mtime": 1778849922.5928266,
+    "hash": "42b3cb650f2d746a78b07d5d4b9889db"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AIChatPage.tsx": {
-    "mtime": 1778477393.259005,
-    "hash": "5b971c802be540c355979dcb4669966f"
+    "mtime": 1778770006.4538257,
+    "hash": "fae0766c41dec7de8141ef16b8bdee7f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AppLoadingScreen.tsx": {
-    "mtime": 1778339429.7896574,
+    "mtime": 1778724579.9131525,
     "hash": "0be55a38557e9f6aa405240f82b69733"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AvatarShop.tsx": {
-    "mtime": 1778339429.7901597,
-    "hash": "155663ea28f6d1b5bd953e9a5c31dc2f"
+    "mtime": 1778765662.2047837,
+    "hash": "9d85ebd3ab483652c19f72ac0bdc1c7b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\BloomsTaxonomyModal.tsx": {
-    "mtime": 1778339429.7906587,
+    "mtime": 1778724579.91389,
     "hash": "0b8a4a30c789d80c7200e488fbf56e16"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ChatMarkdown.test.tsx": {
-    "mtime": 1778339429.7911594,
+    "mtime": 1778724579.91389,
     "hash": "df432950a70ceea7e67e3f279bdb45fe"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ChatMarkdown.tsx": {
-    "mtime": 1778339429.791659,
+    "mtime": 1778724579.914636,
     "hash": "05ad56f229fedbe36aa0cbe6d665630f"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ClassesOverviewMenu.tsx": {
+    "mtime": 1778783092.8859086,
+    "hash": "9aefb042e34c5ff7792d812b61cfb817"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\CompetencyRadarChart.tsx": {
-    "mtime": 1778425110.7888844,
-    "hash": "b49b9841b0d07b043ca125c105c90c40"
+    "mtime": 1778784166.976692,
+    "hash": "6636a81abe3894e7e7895147a571e6ce"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\CompositeAvatar.tsx": {
-    "mtime": 1778339429.7921612,
+    "mtime": 1778724579.9158971,
     "hash": "740dfc3c512e04aabd451a02e2cfa230"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ConfirmModal.tsx": {
-    "mtime": 1778339429.792661,
+    "mtime": 1778724579.9158971,
     "hash": "ea7cdb7e875932263d0dbb60bd85eb43"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\CurriculumSourceBadge.tsx": {
-    "mtime": 1778339429.792661,
+    "mtime": 1778724579.9163935,
     "hash": "ae9b82cb22522289d1eb6e3c917a5a5c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\DailyChallengeWidget.tsx": {
-    "mtime": 1778425110.7898862,
+    "mtime": 1778724579.9173896,
     "hash": "feb19ea5ec1b248f6ac9363ff36ebfef"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\DailyCheckInModal.tsx": {
-    "mtime": 1778425110.7903867,
-    "hash": "a04f9bf1894868e0a1f4b7913b725b2a"
+    "mtime": 1778724579.917887,
+    "hash": "c5dd81fd35fd5db382401541b5a4bdb2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\DashboardAvatar.tsx": {
-    "mtime": 1778339429.7936714,
+    "mtime": 1778724579.9187205,
     "hash": "2a6b68326213e5604240a373aaf760c5"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\DiagnosticAssessmentModal.tsx": {
-    "mtime": 1778425110.7923913,
+    "mtime": 1778724579.9192164,
     "hash": "1f90138aa36e5293a8092560ae208af6"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ErrorBoundary.tsx": {
+    "mtime": 1778768079.6454945,
+    "hash": "eabf36932915bf559905f686e8f3e6ac"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\FloatingAITutor.tsx": {
-    "mtime": 1778339429.7946632,
-    "hash": "e0daf8ad164bc43485785dd7b88b5a40"
+    "mtime": 1778769944.7250855,
+    "hash": "65972e7ebe659ce638026a7a772b6209"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\GradesPage.tsx": {
-    "mtime": 1778339429.7946632,
-    "hash": "f0cd9b25e334de9acd79cd33f6ff34cf"
+    "mtime": 1778765662.205786,
+    "hash": "7772210f6b2d80380edf1936af555a39"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\HeroBanner.tsx": {
-    "mtime": 1778425110.7933915,
-    "hash": "848452414ca4201a46ad5ca44447f151"
+    "mtime": 1778724579.9197133,
+    "hash": "2b38fd0375e40a252751956efe751bed"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\InteractiveLesson.tsx": {
-    "mtime": 1778425110.7943912,
+    "mtime": 1778724579.9212615,
     "hash": "44daeb00a1dcf7ccade8da8ed8e6aff2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LeaderboardPage.tsx": {
-    "mtime": 1778425110.795393,
-    "hash": "b0d740c69c1d31da4524b3e1d95891cf"
+    "mtime": 1778784166.3720548,
+    "hash": "807ebe105543b42919845d43312c2e62"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LearningPath.tsx": {
-    "mtime": 1778339429.7971857,
+    "mtime": 1778724579.9230785,
     "hash": "898961dd211d90d988a067a11ec43926"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LessonViewer.tsx": {
-    "mtime": 1778464000.0633454,
-    "hash": "8115999cb2c5c0e5216e969eca2cac17"
+    "mtime": 1778765662.2106915,
+    "hash": "6726c3ee7f8995815c40d8a1ff24d605"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LivePopup.tsx": {
-    "mtime": 1778425110.7968955,
+    "mtime": 1778724579.9236164,
     "hash": "8f2e64c43e582fd2e46be843117d1e53"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LoginPage.tsx": {
-    "mtime": 1778464000.0648482,
+    "mtime": 1778724579.9246204,
     "hash": "eb9edf6007fd36c0ca43fed9c3f9f665"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LogoutActionButton.tsx": {
-    "mtime": 1778339429.7986846,
+    "mtime": 1778724579.9251354,
     "hash": "56dd16a1151f1b75c6c571dea6519c4b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\MasteryHeatmap.tsx": {
-    "mtime": 1778339429.7986846,
+    "mtime": 1778724579.9251354,
     "hash": "5978cc20a8613cd3903e45aa4f5881aa"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\MathAnswerInput.tsx": {
-    "mtime": 1778339429.7986846,
+    "mtime": 1778724579.9260335,
     "hash": "f95037e564632f55ba6e4cac532dbe1c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ModuleDetailView.tsx": {
-    "mtime": 1778425110.7994008,
-    "hash": "1bc64ec4012e91a063795c110f99c2c1"
+    "mtime": 1778765662.2117305,
+    "hash": "691e866055a6124a0eef6aa4b88d1741"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ModuleFolderCard.tsx": {
-    "mtime": 1778425110.8009014,
+    "mtime": 1778724579.9265697,
     "hash": "91b43d790f27b424c26e07f452e73b76"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ModulesMascot.tsx": {
-    "mtime": 1778425110.8019013,
+    "mtime": 1778724579.927573,
     "hash": "b465ac8960457a6bac6d6a5ec249ac7d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ModulesPage.test.tsx": {
-    "mtime": 1778425110.8019013,
+    "mtime": 1778724579.928087,
     "hash": "8da5b583c9579a0618a284a638c7b74b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ModulesPage.tsx": {
-    "mtime": 1778425110.8034015,
-    "hash": "c88884dc2432f5b00501c26b7bc6609f"
+    "mtime": 1778765662.21383,
+    "hash": "5779192b46519f82a0afd65facbd6ff1"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\NotificationCenter.tsx": {
-    "mtime": 1778339429.8022132,
+    "mtime": 1778724579.9286644,
     "hash": "39a49e439f65e8ccf0465fc9397adfb3"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\NotificationDropdown.tsx": {
+    "mtime": 1778783092.8859086,
+    "hash": "b7bc38a1a16d798a66fbc0d452bce788"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\PracticeCenter.test.tsx": {
-    "mtime": 1778425110.8039012,
+    "mtime": 1778724579.9295375,
     "hash": "b0b28655f8aa10a9ac8e8eb7d1ac0037"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\PracticeCenter.tsx": {
-    "mtime": 1778425110.8044014,
+    "mtime": 1778724579.9295375,
     "hash": "f6ce2843dedc72656f30fb30269fd02c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ProfileModal.tsx": {
-    "mtime": 1778483654.171333,
+    "mtime": 1778724579.93054,
     "hash": "6492a73cde8ba467ef7bb3f713f12184"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ProfilePictureUploader.tsx": {
-    "mtime": 1778425110.8054028,
+    "mtime": 1778724579.93054,
     "hash": "fbc35e9a8ef2142914dce64f0ed9f721"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ProgressGate.tsx": {
+    "mtime": 1778765662.2148552,
+    "hash": "cfd63ad068cb87e549d437771c97e001"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\PushNotificationsManager.tsx": {
+    "mtime": 1778783032.614267,
+    "hash": "4b53227a14f364cf42910aca9161338d"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\QuestionBankPanel.tsx": {
-    "mtime": 1778339429.8042367,
-    "hash": "7b03efac9df710d3b5cd0b953b2b4854"
+    "mtime": 1778783092.886405,
+    "hash": "d541fb856e9f02de7f3398deb6eb5a81"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\QuizBattlePage.tsx": {
-    "mtime": 1778425110.8074052,
+    "mtime": 1778724579.9318576,
     "hash": "dc130e19e8fc5db4992684d18cee22aa"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\QuizExperience.tsx": {
-    "mtime": 1778425110.8084073,
-    "hash": "072ce875e94c492f877660870453ef37"
+    "mtime": 1778765662.218614,
+    "hash": "f4c67f99e2b73486adc9d2d10d59b9cb"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\QuizMaker.tsx": {
-    "mtime": 1778464000.067348,
-    "hash": "96893f5061f1c1daa6e5bf3635918075"
+    "mtime": 1778783092.887398,
+    "hash": "e658f308336f5fcde7a01179ed11b614"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\RecentActivityWidget.tsx": {
-    "mtime": 1778339429.807231,
+    "mtime": 1778724579.9338226,
     "hash": "2699fbdc1d8dff928d963da097a977fc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\RewardsModal.tsx": {
-    "mtime": 1778425110.8114147,
+    "mtime": 1778724579.9346843,
     "hash": "12e71e340f19b1bc3aec7362917eab25"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\RightSidebar.tsx": {
-    "mtime": 1778425110.8129144,
+    "mtime": 1778724579.9352834,
     "hash": "80508be80f8e6e179a63c5081babcf25"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ScientificCalculator.tsx": {
-    "mtime": 1778339429.8082309,
+    "mtime": 1778724579.9357803,
     "hash": "9505a29fd8017511fc12f8fe6aa385b3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\SettingsModal.tsx": {
-    "mtime": 1778483653.8680356,
-    "hash": "8d36187adb5ba6f18bcd29db92699230"
+    "mtime": 1778783032.6147823,
+    "hash": "e02a8b243cb5983b7293fba1359a72e1"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\Sidebar.tsx": {
-    "mtime": 1778339429.8087306,
+    "mtime": 1778724579.9357803,
     "hash": "f50d8a14f1987fed8951c7c0bf03e254"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\StudentCompetencyTable.tsx": {
-    "mtime": 1778339429.8097336,
-    "hash": "ffc8ba5b81dd2db6e2c7191d3e42c992"
+    "mtime": 1778783092.8880105,
+    "hash": "5f77af5c84633a44623eb19443900d2d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\StudentProfileModal.tsx": {
-    "mtime": 1778425110.814914,
+    "mtime": 1778724579.9367833,
     "hash": "7e854ed3bc1dc445dbfb5ee2cbfd0781"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\SupplementalBanner.tsx": {
-    "mtime": 1778339429.8102453,
+    "mtime": 1778724579.9367833,
     "hash": "269b6e55beb86560b8a6fb7824c3ee8b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\SupplementalPillCarousel.tsx": {
-    "mtime": 1778463998.764848,
+    "mtime": 1778724579.937796,
     "hash": "51283c26872af50a80f4207bd636569c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\TeacherCalendarView.tsx": {
-    "mtime": 1778339429.8107352,
-    "hash": "075131547f30706a249ed636ef5ae218"
+    "mtime": 1778783092.8890457,
+    "hash": "7ac7e93493e3069d41062b5e32a0a4a9"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\TeacherDashboard.tsx": {
-    "mtime": 1778477393.2620072,
-    "hash": "7659ff37b920cf3a5a14c9852acfd6bc"
+    "mtime": 1778849922.595612,
+    "hash": "e3e36166a870d1aefae7eaf43466937d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\TeacherNotificationsView.tsx": {
-    "mtime": 1778339429.8117375,
-    "hash": "dd2fcb3e4990f540634b48b336cb529f"
+    "mtime": 1778783092.8915482,
+    "hash": "1506f4aaeaac4151d55652c55aafa3dc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\TopicMasteryView.tsx": {
-    "mtime": 1778339429.8122392,
-    "hash": "4f08f887f3c190d2820d57434b74a8f5"
+    "mtime": 1778783092.8915482,
+    "hash": "05642ee78461dcac84eee0ced7467abb"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\UserAvatar.tsx": {
-    "mtime": 1778477393.2630074,
+    "mtime": 1778724579.9413366,
     "hash": "4c64f4e3e2419570a8df686c3959f904"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\XPNotification.tsx": {
-    "mtime": 1778339429.8127391,
+    "mtime": 1778724579.942403,
     "hash": "e448f09a7197f02ee8a96ae1c6516d89"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\admin\\AdminPdfUpload.tsx": {
-    "mtime": 1778339429.813242,
-    "hash": "384ce2344fac2357148a4ba8f81aa3df"
+    "mtime": 1778849922.5980723,
+    "hash": "249cc3645275046dc657fa4c4644533b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\admin\\AdminSubjects.tsx": {
-    "mtime": 1778339429.813749,
-    "hash": "3839317c0b68d367d382252657f19093"
+    "mtime": 1778849922.598572,
+    "hash": "2df2501be82ae1622a614aa1effedef2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\admin\\ModelConfigPanel.tsx": {
-    "mtime": 1778339429.813749,
-    "hash": "e6100c1c1fdd891d95120866df9fe48f"
+    "mtime": 1778774639.3101332,
+    "hash": "f3760e729cc560c932bef806c41ca178"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\admin\\SubjectsHelpModal.tsx": {
+    "mtime": 1778849922.5990725,
+    "hash": "23ba9b681f1c46ec026bc32773b29d24"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentAnswerOptions.tsx": {
-    "mtime": 1778425110.816917,
+    "mtime": 1778724579.9443984,
     "hash": "e6f5369b79eb2e3bff2ca2a6e32466c4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentFeedback.tsx": {
-    "mtime": 1778425110.817417,
+    "mtime": 1778724579.9443984,
     "hash": "47b8ef97054b41524703ce0b37f427f6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentHistoryChart.tsx": {
-    "mtime": 1778425110.817417,
+    "mtime": 1778724579.9448972,
     "hash": "f75f684d25dc77953552649337469913"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentProgressBar.tsx": {
-    "mtime": 1778425110.817417,
+    "mtime": 1778724579.9453938,
     "hash": "5a62580e8bd5a7063a9b36bb31051181"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentQuestionCard.tsx": {
-    "mtime": 1778425110.8184197,
+    "mtime": 1778724579.945891,
     "hash": "4385d9786d7b11db6433b0de76e3f10b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentResultsModal.tsx": {
-    "mtime": 1778425110.818967,
-    "hash": "29322a1124d90ae5a6e5f4c0d504ce6b"
+    "mtime": 1778724579.9463873,
+    "hash": "e4260833ce8e198d205370f13f82c8df"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\AssessmentTimer.tsx": {
-    "mtime": 1778425110.818967,
+    "mtime": 1778724579.9463873,
     "hash": "3e5f057737ae927d6db4eac5d4a02297"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\index.ts": {
-    "mtime": 1778425110.8209238,
+    "mtime": 1778724579.9473834,
     "hash": "c1aa0a051cc1c53807ac16968bf49570"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\assessment\\InitialAssessmentModal.tsx": {
-    "mtime": 1778425110.8204236,
+    "mtime": 1778724579.946884,
     "hash": "9cdee7417aab8c6793c26a4368eccafd"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\battle\\BattleActiveContent.tsx": {
-    "mtime": 1778339429.8172488,
+    "mtime": 1778724579.9473834,
     "hash": "8d064e683f5e2ce9e9931193939e4973"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\battle\\BattleFooter.tsx": {
-    "mtime": 1778339429.8172488,
+    "mtime": 1778724579.9482539,
     "hash": "9ce487cfc7801aa1e7454f9abddc350f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\battle\\BattleHeader.tsx": {
-    "mtime": 1778339429.8177483,
+    "mtime": 1778724579.948779,
     "hash": "c85b78dcd60d7ffa1fdb3789b9b0ed82"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\battle\\BattleTimerBar.tsx": {
-    "mtime": 1778339429.81826,
+    "mtime": 1778724579.9492846,
     "hash": "fdab6c160bd003856840868d583ae836"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\notebook\\TryItYourselfQuiz.tsx": {
-    "mtime": 1778425110.821924,
+    "mtime": 1778724579.9492846,
     "hash": "011b952361fd51e16d987cf14359c72c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\notebook\\VideoLessonSection.tsx": {
-    "mtime": 1778339429.818749,
+    "mtime": 1778724579.9498012,
     "hash": "a593456eb4826d965d12ff41d20d25a9"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\risk\\InterventionChecklistPanel.tsx": {
+    "mtime": 1778765662.2253304,
+    "hash": "0180c410ffac0fba4439cf4a410ca866"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\risk\\RiskBadge.tsx": {
+    "mtime": 1778765662.2268605,
+    "hash": "bb0a5a16073ff8ca9b75155e8e60bbb1"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\risk\\RiskDetailPanel.tsx": {
+    "mtime": 1778765662.2289343,
+    "hash": "8fe6a4b7207fc1214bbba1e3cf46bf20"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\accordion.tsx": {
-    "mtime": 1778339429.818749,
+    "mtime": 1778724579.9498012,
     "hash": "6ac8972bea8c72ef4531e7e939caffde"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\alert-dialog.tsx": {
-    "mtime": 1778339429.8197527,
+    "mtime": 1778724579.950804,
     "hash": "bae17108fe0e26ee8ee04b6b499523f9"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\alert.tsx": {
-    "mtime": 1778339429.820266,
+    "mtime": 1778724579.9513204,
     "hash": "77dc96be09723e553d2096f30d6b5205"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\aspect-ratio.tsx": {
-    "mtime": 1778339429.820266,
+    "mtime": 1778724579.9513204,
     "hash": "a9620dcbb14796aa5a3aeddab16e82ee"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\avatar.tsx": {
-    "mtime": 1778339429.8207545,
+    "mtime": 1778724579.9519062,
     "hash": "386ab38e62b7ce72f4581c80d529a664"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\badge.tsx": {
-    "mtime": 1778339429.8207545,
+    "mtime": 1778724579.9519062,
     "hash": "55f636d5ddf4274d9fea3502e5a9c022"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\breadcrumb.tsx": {
-    "mtime": 1778339429.8212643,
+    "mtime": 1778724579.9526823,
     "hash": "4570611e1d93766ec30603117802f6de"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\button.tsx": {
-    "mtime": 1778339429.8212643,
+    "mtime": 1778724579.9526823,
     "hash": "e41e66deb18e99f0c6adad0833b9bda3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\calendar.tsx": {
-    "mtime": 1778339429.8212643,
+    "mtime": 1778724579.9526823,
     "hash": "077793c68a5f734718c7bcd58dda66fa"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\card.tsx": {
-    "mtime": 1778339429.8222716,
+    "mtime": 1778724579.9535542,
     "hash": "3636f7385a18e766d8e9703ade2f3c3a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\carousel.tsx": {
-    "mtime": 1778339429.8227735,
+    "mtime": 1778724579.9535542,
     "hash": "bef00edc73965b6879f05e02a16b7200"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\chart.tsx": {
-    "mtime": 1778339429.8227735,
+    "mtime": 1778724579.9535542,
     "hash": "30f650f40d6f2e8ddf9f882540237a92"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\checkbox.tsx": {
-    "mtime": 1778339429.8232737,
+    "mtime": 1778724579.9545574,
     "hash": "354612a01e307a2da96d684c55745365"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\collapsible.tsx": {
-    "mtime": 1778339429.8237736,
+    "mtime": 1778724579.9545574,
     "hash": "a17e8aaee3747e28c4524f4114cf738b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\command.tsx": {
-    "mtime": 1778339429.8237736,
+    "mtime": 1778724579.9554489,
     "hash": "c38148668ea03a2f8392e198d0c9ecce"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\context-menu.tsx": {
-    "mtime": 1778339429.8242733,
+    "mtime": 1778724579.9559746,
     "hash": "b36802510ef941608474813323320c92"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\dialog.tsx": {
-    "mtime": 1778339429.8247733,
+    "mtime": 1778724579.95647,
     "hash": "71c47941cdf010532889fed020455649"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\drawer.tsx": {
-    "mtime": 1778339429.8247733,
+    "mtime": 1778724579.95647,
     "hash": "6ac1c53b510c868a3d515f3191c5bee0"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\dropdown-menu.tsx": {
-    "mtime": 1778339429.825776,
+    "mtime": 1778724579.9570634,
     "hash": "8e31a16de52ada1943b55c5ae9350c0d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\form.tsx": {
-    "mtime": 1778339429.8262784,
+    "mtime": 1778724579.9570634,
     "hash": "4dc1e43e7f987e87b0475436001d6f3f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\hover-card.tsx": {
-    "mtime": 1778339429.8262784,
+    "mtime": 1778724579.9579017,
     "hash": "a9025de8fb8c2c24abeb6585421d5e4f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\input-otp.tsx": {
-    "mtime": 1778339429.8262784,
+    "mtime": 1778724579.9579017,
     "hash": "f1fc6b67e2487b74b378f039e2b179c7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\input.tsx": {
-    "mtime": 1778339429.8262784,
+    "mtime": 1778724579.9584725,
     "hash": "ee6a7da310ce684442534f9cc8665b15"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\label.tsx": {
-    "mtime": 1778339429.8272815,
+    "mtime": 1778724579.9584725,
     "hash": "af1cc595d3044ec0c4d4acc377902324"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\menubar.tsx": {
-    "mtime": 1778339429.8272815,
+    "mtime": 1778724579.9591634,
     "hash": "31e5133397eb7e90344279128046e4de"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\navigation-menu.tsx": {
-    "mtime": 1778339429.8277833,
+    "mtime": 1778724579.9596677,
     "hash": "7c66900fe49bd30c4dc2f72eb80c43ba"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\pagination.tsx": {
-    "mtime": 1778339429.828287,
+    "mtime": 1778724579.9596677,
     "hash": "83f28ea401172adc158d838acf2d70da"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\popover.tsx": {
-    "mtime": 1778339429.828287,
+    "mtime": 1778724579.9596677,
     "hash": "b88476f4b00f8e2e966f6635a7da73db"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\progress.tsx": {
-    "mtime": 1778339429.8287969,
+    "mtime": 1778724579.9606702,
     "hash": "37388e3ca2a1a93109068c86eabd4c8f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\radio-group.tsx": {
-    "mtime": 1778339429.8287969,
+    "mtime": 1778724579.9606702,
     "hash": "c71bac07acf79b524b3157c8474ab58b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\resizable.tsx": {
-    "mtime": 1778339429.8287969,
+    "mtime": 1778724579.9611933,
     "hash": "5653c1f9a08e003d0210371613d01e4a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\scroll-area.tsx": {
-    "mtime": 1778339429.8287969,
+    "mtime": 1778724579.9611933,
     "hash": "0dd2932f08c9b5bf29056f4b76f93f88"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\select.tsx": {
-    "mtime": 1778479426.3990128,
-    "hash": "3e1b4ea3b28f8933897f80b7dff2ce7e"
+    "mtime": 1778725070.9547048,
+    "hash": "368d8aa87ba767ebef75c51021fc64e4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\separator.tsx": {
-    "mtime": 1778339429.8298037,
+    "mtime": 1778724579.9626923,
     "hash": "6cd697e94e33b3000258b5c4190aeb0e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\sheet.tsx": {
-    "mtime": 1778339429.8303168,
+    "mtime": 1778724579.9626923,
     "hash": "13bf7e121139a02120b9f7045bf4b228"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\sidebar.tsx": {
-    "mtime": 1778339429.8308055,
+    "mtime": 1778724579.9633079,
     "hash": "300fc58c94eb800fbe50834dd11f7574"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\skeleton.tsx": {
-    "mtime": 1778339429.8308055,
+    "mtime": 1778724579.9633079,
     "hash": "f2b4a2e415b6c434154de7a28aaebbb4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\slider.tsx": {
-    "mtime": 1778339429.8313057,
+    "mtime": 1778724579.9642031,
     "hash": "00636c645a8500f5078059f33fd91c79"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\sonner.tsx": {
-    "mtime": 1778339429.8313057,
+    "mtime": 1778724579.9642031,
     "hash": "10d479040581a90e3957cedc170b58be"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\switch.tsx": {
-    "mtime": 1778339429.8313057,
+    "mtime": 1778724579.9648006,
     "hash": "6965f0c019db02983e22b6bf4e560bf8"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\table.tsx": {
-    "mtime": 1778339429.8323076,
+    "mtime": 1778724579.9648006,
     "hash": "001ceb1022a0312e1eb4133baa6dc83d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\tabs.tsx": {
-    "mtime": 1778339429.83281,
+    "mtime": 1778724579.9653375,
     "hash": "dbb20d36250470a06b4aaf7662ff44d3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\textarea.tsx": {
-    "mtime": 1778339429.83281,
+    "mtime": 1778724579.9653375,
     "hash": "7b1d8603f8bc4143f670ad2e50dae5bf"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\toggle-group.tsx": {
-    "mtime": 1778339429.8333087,
+    "mtime": 1778724579.9653375,
     "hash": "dae00da8846531bbf8275720dbb756cc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\toggle.tsx": {
-    "mtime": 1778339429.8333087,
+    "mtime": 1778724579.9663408,
     "hash": "f3be0f749b20f0be6ea84414dafdbd39"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\tooltip.tsx": {
-    "mtime": 1778339429.8338096,
+    "mtime": 1778724579.9663408,
     "hash": "0938cd8c69f39046e757e4ce20475674"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\use-mobile.ts": {
-    "mtime": 1778339429.8343098,
+    "mtime": 1778724579.966936,
     "hash": "b427d228366c1d3de5167763495116e3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\utils.ts": {
-    "mtime": 1778339429.8348122,
+    "mtime": 1778724579.9675176,
     "hash": "e3f848f1b39f863e6164cf58b5a8e752"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\ui\\warp-background.tsx": {
-    "mtime": 1778339429.8348122,
+    "mtime": 1778724579.9675176,
     "hash": "d682c5909fcb029f31bdf6af18cbb1cf"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\config\\achievements.ts": {
-    "mtime": 1778425110.822924,
+    "mtime": 1778724579.9680293,
     "hash": "dc98bc9d2e0cc0a757f7fce6d612575f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\contexts\\AuthContext.tsx": {
-    "mtime": 1778339429.8363168,
+    "mtime": 1778724579.9685354,
     "hash": "f405412528bc551fe62c6203bceba908"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\contexts\\ChatContext.tsx": {
-    "mtime": 1778464000.0723565,
+    "mtime": 1778724579.9690394,
     "hash": "586a0381104009e04e4911f1d67110f1"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\avatarData.ts": {
-    "mtime": 1778425110.824924,
+    "mtime": 1778724579.9695473,
     "hash": "1dbbf83f1c10e782b6f5bd7046bede80"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\curriculumModules.ts": {
-    "mtime": 1778420390.7184353,
-    "hash": "88f300421d362fb2ac4109a4097de9f0"
+    "mtime": 1778724579.9705498,
+    "hash": "20b5b5904b07a45fd046be31d6a762af"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\curriculumTemplates.ts": {
-    "mtime": 1778424959.182723,
+    "mtime": 1778724579.9710627,
     "hash": "5b293b30c03dd9b77d859196aca3c2cc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\curriculumValidation.ts": {
-    "mtime": 1778339429.8388171,
+    "mtime": 1778724579.971559,
     "hash": "4ec24079262829369094bdbb19ec4863"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\diagnosticPolicies.ts": {
-    "mtime": 1778339429.8398204,
+    "mtime": 1778724579.9720557,
     "hash": "e3b6c23005ced85f57d25129c5c79bed"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\iarBlueprint.ts": {
-    "mtime": 1778339429.8403225,
+    "mtime": 1778724579.9720557,
     "hash": "1f859991c1b94143d2c317bafdfeb005"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\rewardCatalog.ts": {
-    "mtime": 1778425110.825426,
+    "mtime": 1778724579.9720557,
     "hash": "435b652003a478000c6709c43fd6ec43"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\subjects.ts": {
-    "mtime": 1778339429.8408222,
+    "mtime": 1778724579.9728,
     "hash": "0edf2093038a99b892dd4a28fec81fcf"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\curriculum\\index.ts": {
-    "mtime": 1778339429.8373165,
+    "mtime": 1778724579.9695473,
     "hash": "980d773b8f528fb03019bf7a9588e1c6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\data\\curriculum\\types.ts": {
-    "mtime": 1778420390.715886,
+    "mtime": 1778724579.9705498,
     "hash": "f14f7c27dd30c3e155f63c46ecb1ec04"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\DataImport\\DataImportView.tsx": {
+    "mtime": 1778783092.893015,
+    "hash": "f54eedfa1cb9dffab6f47aead88cf39c"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\import\\components\\DataImportExcel.tsx": {
-    "mtime": 1778339429.8413222,
+    "mtime": 1778724579.9734304,
     "hash": "c759a62a8fa986fd30deb6ec6f756e06"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\import\\hooks\\useShsExcelImport.ts": {
-    "mtime": 1778339429.8413222,
+    "mtime": 1778724579.9734304,
     "hash": "7858b1bb62ec0b0f84bcb73941987d62"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\index.ts": {
-    "mtime": 1778339429.8533437,
+    "mtime": 1778724579.9830222,
     "hash": "78a9fe844050aa1f49dc1c35a81b37ee"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationBell.test.tsx": {
-    "mtime": 1778339429.8503392,
+    "mtime": 1778724579.9806924,
     "hash": "7ab47aee604b636c8af50192546dad9a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationBell.tsx": {
-    "mtime": 1778339429.8503392,
+    "mtime": 1778724579.9806924,
     "hash": "3f9c21b1e597e166d6f6c8b32420adac"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationContext.test.tsx": {
-    "mtime": 1778339429.8508391,
+    "mtime": 1778724579.9815035,
     "hash": "fd92bd3e7dfdfe8ec825dfd701b6729b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationContext.tsx": {
-    "mtime": 1778339429.8508391,
+    "mtime": 1778724579.9815035,
     "hash": "57084ba7cd6b2e296c56df0768f512c7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\notificationFirestoreService.test.ts": {
-    "mtime": 1778339429.8538442,
-    "hash": "eb0e0c8ede984573716523a72fb571cb"
+    "mtime": 1778773257.0500453,
+    "hash": "946729ce57d8eb37d79777f51a0c8837"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\notificationFirestoreService.ts": {
-    "mtime": 1778339429.8538442,
-    "hash": "b8fcb30b203ebd9c7ab55d57b8bf832c"
+    "mtime": 1778768168.7312868,
+    "hash": "7f43c98b192da4b615cad8c97696a9ee"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationItem.test.tsx": {
-    "mtime": 1778339429.851339,
+    "mtime": 1778724579.9820194,
     "hash": "f54b4cacc7001d9f85398fee745034e2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationItem.tsx": {
-    "mtime": 1778339429.851339,
+    "mtime": 1778724579.9820194,
     "hash": "7e4188d4bd9131cfbbe3438a91374de2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationPanel.test.tsx": {
-    "mtime": 1778339429.8523412,
+    "mtime": 1778724579.9820194,
     "hash": "2079b8118c8efd3f74b93bb8e01133c6"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\NotificationPanel.tsx": {
-    "mtime": 1778339429.8528447,
-    "hash": "5a42a079001f7bf542ee3a8de958f387"
+    "mtime": 1778725070.955201,
+    "hash": "8b6618aa362c5868eec480676a9c32af"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\notificationService.test.ts": {
-    "mtime": 1778339429.8543437,
+    "mtime": 1778724579.9830222,
     "hash": "665bd458d00b3ce6991a729ca7ebcb09"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\notificationService.ts": {
-    "mtime": 1778339429.8548436,
+    "mtime": 1778724579.9840007,
     "hash": "31137a191229365731c1a4aaf782e07e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\types.ts": {
-    "mtime": 1778339429.8548436,
-    "hash": "9a92fdeae75828b131ed83189c46b9aa"
+    "mtime": 1778783092.8935187,
+    "hash": "c31a2b9ebe4174507828dc3b96c7d4b5"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\features\\notifications\\useDailyCheckInReminder.ts": {
-    "mtime": 1778339429.8548436,
+    "mtime": 1778724579.984507,
     "hash": "41b5a7a13ab4b10e1ad80ddf90271279"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useAIMonitoring.ts": {
-    "mtime": 1778464000.0738575,
-    "hash": "b9d1dde1ab7e21c4ad8b773483aad60e"
+    "mtime": 1778724579.9860535,
+    "hash": "d26c59580bd89998d39643a0e3362409"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useCompetencyMatrix.ts": {
-    "mtime": 1778425110.8264277,
+    "mtime": 1778724579.9865663,
     "hash": "64cb4c460e937e8a05bee23c494fff96"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useCurriculum.ts": {
-    "mtime": 1778339429.8568666,
-    "hash": "47782c94ce0f1f99d5e1ec2258757498"
+    "mtime": 1778765662.230795,
+    "hash": "2771488d344a76de6707640e73512ea9"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useDailyReward.ts": {
-    "mtime": 1778425110.8269281,
+    "mtime": 1778724579.9865663,
     "hash": "4020d93481e633cbda35315ea4cddeac"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useExtraHints.ts": {
+    "mtime": 1778765662.2319117,
+    "hash": "8e233fe6c5518994dd729de82e029942"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useFeatureAccess.ts": {
+    "mtime": 1778765662.232917,
+    "hash": "69aed8204db7dc5f307152d61c8ea1c5"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useLessonContent.ts": {
-    "mtime": 1778339429.8573668,
+    "mtime": 1778724579.9865663,
     "hash": "dfcb3dd7c638f045aff2451673950279"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useModuleDifficulty.ts": {
+    "mtime": 1778765662.2339544,
+    "hash": "414b39f068574593da19458aa4f0fe50"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\usePushNotifications.ts": {
+    "mtime": 1778783032.6153584,
+    "hash": "6913f1b5fda14c16e9554906f3aada83"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useStudentRisk.ts": {
+    "mtime": 1778765662.2349615,
+    "hash": "3d80a293890fa0343a83a4f119bf1955"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useSubjectAvailability.ts": {
-    "mtime": 1778339429.857867,
+    "mtime": 1778724579.9875681,
     "hash": "e4cda19bee85ad790725bdcb12b970d1"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\useUserSettings.ts": {
+    "mtime": 1778779526.0289607,
+    "hash": "e454360c2491f20913494b549141a13e"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\hooks\\__tests__\\useDailyReward.test.ts": {
-    "mtime": 1778425110.8259258,
+    "mtime": 1778724579.9855165,
     "hash": "ec6c53c185f548648dcb3569aecd3da9"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\lib\\diagnosticTopics.ts": {
-    "mtime": 1778339429.857867,
+    "mtime": 1778724579.9880855,
     "hash": "3565141a1b4f20b688b22ed465493d6a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\lib\\firebase.ts": {
-    "mtime": 1778339429.8583665,
-    "hash": "8d015236d5a5dbdb50c47692f0513729"
+    "mtime": 1778773257.051113,
+    "hash": "6a0e5599ae816917316d02d94deeb09b"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\lib\\queryClient.ts": {
-    "mtime": 1778339429.8583665,
+    "mtime": 1778724579.9934154,
     "hash": "d674b420304bfbe444f4564a7904ca57"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\pages\\AssessmentPage.tsx": {
-    "mtime": 1778425110.8289318,
-    "hash": "c11d065bb70c99715b0c4c11e359e2d6"
+    "mtime": 1778724579.9949155,
+    "hash": "949f5e98f253a238b0fd45e494d4fd66"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\pages\\teacher\\AtRiskDashboard.tsx": {
+    "mtime": 1778784166.9782088,
+    "hash": "917bba9c2f8e9e82173259bacdf2421f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\assessment.ts": {
-    "mtime": 1778420390.720423,
+    "mtime": 1778724580.010915,
     "hash": "de0c24919774775a6383ab2817cd7150"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\competency.ts": {
-    "mtime": 1778425110.8394446,
+    "mtime": 1778724580.011423,
     "hash": "76f8a6274cf014dd2d83bff31ff6e592"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\curriculum.ts": {
-    "mtime": 1778339429.8728857,
+    "mtime": 1778724580.011423,
     "hash": "6c8626f06a61d2b3879458ab25cda65d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\hfMonitoring.ts": {
-    "mtime": 1778464000.078364,
+    "mtime": 1778724580.012019,
     "hash": "6ade9572c48ac2c33cf8ee99774ef819"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\models.ts": {
-    "mtime": 1778477393.2640097,
-    "hash": "74654669a1027f5f08474d8d37a76387"
+    "mtime": 1778783092.8946016,
+    "hash": "1aeca3e1db3cbaf5e27cbb75f0aa8248"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\rewards.ts": {
-    "mtime": 1778425110.840946,
+    "mtime": 1778724580.0125155,
     "hash": "27ca0570b70215013d1239906faf0fe2"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\types\\settings.ts": {
+    "mtime": 1778779526.0308087,
+    "hash": "f89e53a45b3f93c9401c24e992b1e6ad"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\adminUserValidation.ts": {
-    "mtime": 1778339429.8748894,
+    "mtime": 1778724580.0125155,
     "hash": "afed47595d868ad8c943cfda2ae9f5e2"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\avatarUtils.ts": {
-    "mtime": 1778477393.2640097,
+    "mtime": 1778724580.0133033,
     "hash": "b2004b3a72d94f57365b2b6e7b364d93"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\cacheKeys.ts": {
-    "mtime": 1778339429.875392,
+    "mtime": 1778724580.0133033,
     "hash": "f548bf4c8ce8ef3ce4adc2faaf43f320"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\chatMessageFormatting.test.ts": {
-    "mtime": 1778339429.875392,
+    "mtime": 1778724580.0138085,
     "hash": "63e06132a6ddb9ac0e3133994c162e40"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\chatMessageFormatting.ts": {
-    "mtime": 1778339429.8759003,
+    "mtime": 1778724580.0138085,
     "hash": "7f179d5528616a84d7f93ca1a878a1dc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\chatPreview.test.ts": {
-    "mtime": 1778339429.8763967,
+    "mtime": 1778724580.0143178,
     "hash": "be8a02c316f5decf31707f86ee68f6ba"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\chatPreview.ts": {
-    "mtime": 1778339429.8763967,
+    "mtime": 1778724580.0148208,
     "hash": "c5e80eef56280d5f56782e547aab0d4d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\hintCache.ts": {
-    "mtime": 1778339429.8768961,
+    "mtime": 1778724580.0148208,
     "hash": "f7d82716c7f7f63fd501197bf6ba096a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\mathScope.test.ts": {
-    "mtime": 1778339429.8768961,
+    "mtime": 1778724580.0153275,
     "hash": "b6cc35f338aabdcddb70f973152480b3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\mathScope.ts": {
-    "mtime": 1778339429.8773966,
+    "mtime": 1778724580.0153275,
     "hash": "59ea66c579d74d286e2cc9a984238f9c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\utils\\rateLimitHandler.ts": {
-    "mtime": 1778339429.8773966,
-    "hash": "0e8b70da7bf4bfd8471306e4a00a9721"
+    "mtime": 1778765662.2498038,
+    "hash": "60f7efa36d698da74428f2a557971f21"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\tmp\\fetch-logs.py": {
+    "mtime": 1778785629.9687636,
+    "hash": "afb7b88a436aaa71eecadc30aefaafff"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\tmp\\fix-deepseek-key.py": {
+    "mtime": 1778785764.7727885,
+    "hash": "66b9437cadb50395098c3f045684d544"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\ANIMATION_OPTIMIZATION_VERIFICATION.md": {
-    "mtime": 1778339429.6348,
+    "mtime": 1778724579.7335658,
     "hash": "d7866aeb9babe844ad0b87c8b7690e15"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\AUDIT_REPORT_2026-05-04.md": {
-    "mtime": 1778339429.6348,
+    "mtime": 1778724579.7335658,
     "hash": "5091392704f22dd901041aced5d2eebf"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\CACHING.md": {
-    "mtime": 1778339429.6348,
+    "mtime": 1778724579.7345703,
     "hash": "af89c8e4e876020865fe5c0c6ae7f736"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\cookies.txt": {
+    "mtime": 1778838374.564852,
+    "hash": "fc31b34eb1f36e5ff23be7f4621aa04e"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\current_xp_system.md": {
-    "mtime": 1778339429.6798584,
+    "mtime": 1778724579.8016737,
     "hash": "250c7f00a36b62494f8e9fe81a52fba8"
   },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\deploy-trigger.txt": {
-    "mtime": 1778339429.7099063,
-    "hash": "62bc1dab4ee742ac797eca128a3cb6fc"
-  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\DEPLOYMENT_SAFETY.md": {
-    "mtime": 1778339429.6358023,
+    "mtime": 1778724579.7350712,
     "hash": "8a107643099f36320bcdfb5e0e7ab804"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\DEV_SETUP.md": {
-    "mtime": 1778339429.6363041,
+    "mtime": 1778724579.7357864,
     "hash": "a72ae2493f82f80a8d477eafb55e62dc"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docker-compose.yml": {
-    "mtime": 1778339429.7104113,
+    "mtime": 1778724579.8298664,
     "hash": "ee6c1dcba880779ea2e65e797e500014"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\FUTURE_CURRICULUM_IMPLEMENTATION.md": {
-    "mtime": 1778339429.6368039,
+    "mtime": 1778724579.7367895,
     "hash": "e3452d6b6eb26891f1fe8b9a5d768891"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\index.html": {
-    "mtime": 1778425110.7778728,
-    "hash": "1e235fc17b73ede6b804ad8712c01160"
+    "mtime": 1778849542.4223847,
+    "hash": "58ef32f5d152dfdac4f124981e0f461a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\JOBS.md": {
-    "mtime": 1778339429.6373045,
+    "mtime": 1778724579.7378004,
     "hash": "0b76d2f5e2214a8eaed6c95349154c60"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\MATHPULSE-AI-E2E-Results-2026-05-15.md": {
+    "mtime": 1778840339.0107818,
+    "hash": "5845d0adeda884201b56fc5b76204170"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\MISSING_PDFS_TRACKING.md": {
-    "mtime": 1778339429.6378047,
+    "mtime": 1778724579.7388344,
     "hash": "49a72e9990b06c03088cdd360968d299"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\plan.md": {
-    "mtime": 1778339429.7480066,
+    "mtime": 1778724579.8668983,
     "hash": "d83a7b284f7e14a9f69107380c74b961"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\PR_BODY.md": {
-    "mtime": 1778339429.6383042,
+    "mtime": 1778724579.739348,
     "hash": "d09d179ece4169c5e1aa921d26210715"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\RATE_LIMITING.md": {
-    "mtime": 1778339429.638804,
+    "mtime": 1778724579.739348,
     "hash": "c92628e61735b33b3911107347b72909"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\README.md": {
-    "mtime": 1778339429.638804,
+    "mtime": 1778724579.7403526,
     "hash": "f3696c2aec0f408bc8b6acafc176742a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\requirements.txt": {
-    "mtime": 1778339429.7736037,
+    "mtime": 1778724579.8917558,
     "hash": "678fa6b57c4017fb3f58320156c07c0e"
   },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\scratch.txt": {
-    "mtime": 1778339429.7736037,
-    "hash": "d41d8cd98f00b204e9800998ecf8427e"
-  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\README.md": {
-    "mtime": 1778339429.6413093,
+    "mtime": 1778724579.7440598,
     "hash": "842cf33c8cee3cabc512418c7ebafcf4"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\requirements-dev.txt": {
-    "mtime": 1778339429.6568258,
+    "mtime": 1778724579.765602,
     "hash": "d71c6af7628d78091cd482554e8c2bfb"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\requirements.txt": {
-    "mtime": 1778339429.6573257,
+    "mtime": 1778724579.7666042,
     "hash": "33d935691ff2fcc309d1d37c997df040"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\config\\models.yaml": {
-    "mtime": 1778339429.678856,
+    "mtime": 1778724579.8011582,
     "hash": "0114aa2a1f9c6236caaa9a980dd81a8c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\backend\\tests\\README.md": {
-    "mtime": 1778339429.6728516,
+    "mtime": 1778724579.786669,
     "hash": "631ba7680e0d9a08c5f4823808b432f3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\config\\models.yaml": {
-    "mtime": 1778339429.678856,
+    "mtime": 1778724579.8011582,
     "hash": "0114aa2a1f9c6236caaa9a980dd81a8c"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\datasets\\README.md": {
-    "mtime": 1778339429.68036,
+    "mtime": 1778724579.802749,
     "hash": "ffa30e315cf079263fcc1a49550ba39e"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\datasets\\metadata\\dataset_card.md": {
-    "mtime": 1778339429.7089016,
+    "mtime": 1778724579.8288624,
     "hash": "6db1ec13b1e4fcd5fe7042c7b8d1b2b3"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\admin-user-provisioning-brevo.md": {
-    "mtime": 1778339429.7109118,
+    "mtime": 1778724579.8303657,
     "hash": "cf2afe1094d15226c8ecf5a6bd6fae38"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\ai-agent-github-integration.md": {
-    "mtime": 1778339429.7109118,
+    "mtime": 1778724579.8303657,
     "hash": "1fb40f6550651e26bc9e685e3f239166"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\ai-quiz-maker.html": {
+    "mtime": 1778783092.877427,
+    "hash": "d4718b4dd051a7458b24e2736da2da20"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\automation-demo-scenario.md": {
-    "mtime": 1778339429.7109118,
+    "mtime": 1778724579.831329,
     "hash": "99b7b212ebcdb3eee28bc69b731b4cab"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\calendar-notifications.html": {
+    "mtime": 1778783092.877923,
+    "hash": "f35c7841deaf5d3627c2eba1c6e13f2b"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\class-analytics-menu.html": {
+    "mtime": 1778783092.8794246,
+    "hash": "31abd25fd758bbe4ede7bbb656eb84ee"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\class-analytics-student-detail.html": {
+    "mtime": 1778783092.879921,
+    "hash": "a071869047ee5b4faf2997d10cbe70f0"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\competency-ui.html": {
+    "mtime": 1778783092.8809235,
+    "hash": "0d7b96e0449615cca0c00c729f1db026"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\data-import.html": {
+    "mtime": 1778783092.8819191,
+    "hash": "fe0fd5907c5724ea51b8dbc1e3fed6d2"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\main-workflow-handoff-prompt.md": {
-    "mtime": 1778339429.7119248,
+    "mtime": 1778724579.834956,
     "hash": "66ba3fa104d584c73588c1b6e04a41e7"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\quiz-battle-form-split-handoff.md": {
-    "mtime": 1778339429.712442,
+    "mtime": 1778724579.835575,
     "hash": "5f45dff35d9fa6a5994a06eed97b8f76"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\quiz-battle-realtime-contracts.md": {
-    "mtime": 1778339429.712442,
+    "mtime": 1778724579.8360713,
     "hash": "12ff0839c7bf92d2f5298ca83f6b6060"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\quiz-systems-status-audit.md": {
-    "mtime": 1778339429.71294,
+    "mtime": 1778724579.836568,
     "hash": "e5ab52bbd3dc12f15f642a75f795cd47"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\session-changelog-2026-04-29.md": {
-    "mtime": 1778339429.713431,
+    "mtime": 1778724579.8375711,
     "hash": "2dacbe6f0fe39ea7119b1595a198d92e"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\three-pages.html": {
+    "mtime": 1778783092.8829212,
+    "hash": "420df87ed544684927f340694ee27284"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\topic-mastery.html": {
+    "mtime": 1778783092.8834202,
+    "hash": "f054b1efccd5253952fac7aa93e08b50"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\ui-modernization-summary.md": {
+    "mtime": 1778849922.585969,
+    "hash": "5232087b0fabf6e02698e8fb7396160d"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\xp-scoring-backend-contract.md": {
-    "mtime": 1778339429.7149312,
+    "mtime": 1778724579.8410928,
     "hash": "9e3b5203bcb90467e93b3e166558ccff"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\superpowers\\plans\\2026-05-04-quiz-battle-rag.md": {
-    "mtime": 1778339429.713931,
+    "mtime": 1778724579.83858,
     "hash": "213b885f411a5342f3b2805cb71bfc8e"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\superpowers\\plans\\2026-05-13-educational-ingestion-pipeline.md": {
+    "mtime": 1778725070.9261465,
+    "hash": "f6e86f704c928f395e507c55e85f0ff7"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\superpowers\\specs\\2026-05-04-quiz-battle-rag-design.md": {
-    "mtime": 1778339429.7144403,
+    "mtime": 1778724579.839573,
     "hash": "2bf06426f92a6d47087a444f2ddc4409"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\docs\\superpowers\\specs\\2026-05-06-executive-ai-dashboard-design.md": {
-    "mtime": 1778339429.7149312,
+    "mtime": 1778724579.840576,
     "hash": "fb53aaa4dbc21dec89d2ccb5aaee53e5"
   },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\README.md": {
-    "mtime": 1778405327.5603726,
-    "hash": "4a5d243f9101cfbc5fa0ea81f275b444"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\requirements-dev.txt": {
-    "mtime": 1778405327.568043,
-    "hash": "d71c6af7628d78091cd482554e8c2bfb"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\requirements.txt": {
-    "mtime": 1778405327.568043,
-    "hash": "38a792ecdb891ab0808a1b2419c7e8a4"
-  },
-  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\hf_space_deploy\\config\\models.yaml": {
-    "mtime": 1778405327.5622246,
-    "hash": "0114aa2a1f9c6236caaa9a980dd81a8c"
-  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\activeContext.md": {
-    "mtime": 1778431903.6183093,
-    "hash": "86947f259b298ed74100bb97ff6bfbe7"
+    "mtime": 1778781873.652882,
+    "hash": "e2f1dda9b456e6f7613d31bf5aab98a9"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\decisionLog.md": {
-    "mtime": 1778424746.04237,
-    "hash": "27d6e8fdf81a0a99fab0e10512afaa6a"
+    "mtime": 1778768496.6052308,
+    "hash": "16131e92f5ba13ff02f8e2cdefafd06d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\HANDOFF.md": {
     "mtime": 1778103462.9164665,
@@ -1396,16 +1540,16 @@
     "hash": "c962f395925489d8a2cdcac7260ebc28"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\progress.md": {
-    "mtime": 1778424134.4638793,
-    "hash": "ddefc013be08c4e9c54d0d4c3ca5c633"
+    "mtime": 1778781985.3433723,
+    "hash": "f0878e7e067406ef1d96e5ab8f291192"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\projectbrief.md": {
     "mtime": 1777871454.2276497,
     "hash": "b20c4d757d9f0e3bfddaed4b336a39fb"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\systemPatterns.md": {
-    "mtime": 1778382442.0894964,
-    "hash": "e3dbf46137df64125c5521dba54b4792"
+    "mtime": 1778642497.9709404,
+    "hash": "f74f684c64b5cc6d0c243324b1e4da5f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\techContext.md": {
     "mtime": 1778122330.60674,
@@ -1419,32 +1563,56 @@
     "mtime": 1777821464.13907,
     "hash": "64ae1d359e2b0eda1a3f9a361361f0d5"
   },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\tasks\\TASK-008-pr108-fix.md": {
+    "mtime": 1778643057.7167692,
+    "hash": "b976c8d9b8e0c230a58728cf4dc32018"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\tasks\\TASK-009-pr109-fix.md": {
+    "mtime": 1778644028.9428382,
+    "hash": "4b9ad702cdcc2249f19b815aac02029a"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\tasks\\TASK-010-deploy-hf-failure.md": {
+    "mtime": 1778724827.785069,
+    "hash": "8d8ee9ee840b2caa2e43acb09da6e97b"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\tasks\\TASK-011-fcm-push-notifications.md": {
+    "mtime": 1778778738.9046538,
+    "hash": "474a0fea388af592523a6c64ac85bc0b"
+  },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\tasks\\TASK-try-it-yourself-quiz-fix.md": {
     "mtime": 1778027823.9980974,
     "hash": "02f2ca553094127df4e9c25350a6e45d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\memory-bank\\tasks\\_index.md": {
-    "mtime": 1778420172.6044066,
-    "hash": "a747a4667cd419f1acb61d7c0ec35c73"
+    "mtime": 1778778738.9031205,
+    "hash": "a7d00fb8841a7d3c52289749b8062928"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\Attributions.md": {
-    "mtime": 1778339429.7836437,
+    "mtime": 1778724579.905149,
     "hash": "bcc7d0670ebb6255184ad6defaef81a0"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\AdminAIMonitoring.md": {
-    "mtime": 1778339429.7861404,
+    "mtime": 1778724579.9081702,
     "hash": "6e7bead6e56ba92b1e695830ee78eb9a"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\components\\LayoutDiagram.md": {
-    "mtime": 1778339429.7961853,
+    "mtime": 1778724579.9218643,
     "hash": "4aa4b0508bd005569ab04628f21e2a9f"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\guidelines\\Guidelines.md": {
-    "mtime": 1778339429.8548436,
+    "mtime": 1778724579.9850125,
     "hash": "6d7976efd6863213c6c056242bba681d"
   },
   "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\src\\guidelines\\HF_AI_MONITORING_REVAMP.md": {
-    "mtime": 1778339429.8558598,
+    "mtime": 1778724579.9855165,
     "hash": "40809a6a6b5d5facfa82592f314e049a"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\tmp\\ds-key.txt": {
+    "mtime": 1778785709.9053884,
+    "hash": "b249dab12c772e0bf34523ed4c10ec32"
+  },
+  "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI\\tmp\\hf-logs.txt": {
+    "mtime": 1778785641.9088576,
+    "hash": "b980c921001d1f391dedd76d3ed6fdff"
   }
 }
