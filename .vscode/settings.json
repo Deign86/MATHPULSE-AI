@@ -1,6 +1,7 @@
-{
+﻿{
   "terminal.integrated.env.windows": {
     "PATH": "${workspaceFolder}\\scripts;${env:PATH}"
   },
-  "css.lint.unknownAtRules": "ignore"
+  "css.lint.unknownAtRules": "ignore",
+  "typescript.autoClosingTags": false
 }
