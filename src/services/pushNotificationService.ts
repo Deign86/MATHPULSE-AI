@@ -100,9 +100,21 @@ export async function requestPushPermissionAndRegister(userId: string): Promise<
 
   let permission: NotificationPermission;
   try {
-    permission = Notification.permission === 'granted'
-      ? 'granted'
-      : await Notification.requestPermission();
+    // Respect the browser's existing decision:
+    //  - 'granted'  → skip prompt, proceed.
+    //  - 'denied'   → user (or the browser's auto-block heuristic, e.g. after
+    //                 ignoring the prompt N times) has refused. Re-prompting
+    //                 produces a no-op + a console warning every reload, so
+    //                 short-circuit and let the user re-enable manually via
+    //                 site settings.
+    //  - 'default'  → only state in which we should actually prompt.
+    if (Notification.permission === 'granted') {
+      permission = 'granted';
+    } else if (Notification.permission === 'denied') {
+      return null;
+    } else {
+      permission = await Notification.requestPermission();
+    }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[pushNotificationService] permission prompt failed:', err);
