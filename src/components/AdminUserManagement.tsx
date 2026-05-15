@@ -3,7 +3,7 @@ import {
   Search, Plus, Save,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
   GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle,
-  Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, UserPlus
+  Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, UserPlus, FilterX
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -857,7 +857,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40"
               title="Reset Filters"
             >
-              <RotateCcw size={18} />
+              <FilterX size={18} />
             </Button>
 
             <Button
@@ -1173,7 +1173,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
