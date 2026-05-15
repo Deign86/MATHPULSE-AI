@@ -204,7 +204,7 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
         }}
       />
     ))}
-</div>
+  </div>
 );
 
 const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = ({ viewportHeight, viewportWidth }) => {
@@ -533,7 +533,7 @@ const QuizBattlePage: React.FC = () => {
       if (!context) return;
 
       if (context.state === 'suspended') {
-        void context.resume().catch(() => {});
+        void context.resume().catch(() => { });
       }
 
       const presets: Record<typeof kind, { notes: number[]; duration: number; type: OscillatorType; volume: number }> = {
@@ -1413,10 +1413,10 @@ const QuizBattlePage: React.FC = () => {
       try {
         const elapsedMs = activeMatch.roundDeadlineAtMs
           ? clampNumber(
-              activeMatch.timePerQuestionSec * 1000 - Math.max(0, activeMatch.roundDeadlineAtMs - Date.now()),
-              0,
-              activeMatch.timePerQuestionSec * 1000,
-            )
+            activeMatch.timePerQuestionSec * 1000 - Math.max(0, activeMatch.roundDeadlineAtMs - Date.now()),
+            0,
+            activeMatch.timePerQuestionSec * 1000,
+          )
           : Math.max(0, (activeMatch.timePerQuestionSec - roundSecondsLeft) * 1000);
         const response = await submitQuizBattleAnswer({
           matchId: activeMatch.matchId,
@@ -1601,7 +1601,7 @@ const QuizBattlePage: React.FC = () => {
     } finally {
       setAnswerSubmitting(false);
     }
-}, [activeMatch]);
+  }, [activeMatch]);
 
   if (userRole !== 'student') {
     return (
@@ -1799,8 +1799,8 @@ const QuizBattlePage: React.FC = () => {
   const privateRoomBusy = Boolean(
     setupConfig.mode === 'online' &&
     activeRoom &&
-      (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
-      (!activeMatch || activeMatch.status !== 'completed'),
+    (activeRoom.status === 'waiting' || activeRoom.status === 'ready') &&
+    (!activeMatch || activeMatch.status !== 'completed'),
   );
   const canCancelOnlineSession = Boolean(
     queueActive ||
@@ -1813,117 +1813,117 @@ const QuizBattlePage: React.FC = () => {
     return (
       <>
         <style>{battleAnimations}</style>
-      <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
-          <RainStorm viewportHeight={viewportSize.height} />
-        )}
-        {activeMatch.status === 'completed' && activeMatch.outcome === 'draw' && (
-          <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
-        )}
-        {/* Animated BG */}
-        <div className="absolute inset-0 z-0 opacity-40">
-          <WarpBackground>
-            <div className="h-full w-full" />
-          </WarpBackground>
-        </div>
-
-        {/* Opponent Surrender Overlay */}
-        <AnimatePresence>
-          {opponentSurrendered && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[120] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center px-6"
-            >
-              <motion.div
-                initial={{ opacity: 0, transform: 'translateY(40px) scale(0.85)' }}
-                animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
-                transition={{ type: 'spring', damping: 18, stiffness: 250, delay: 0.1 }}
-                className="bg-[#1e2433] border border-white/10 rounded-[2rem] p-8 flex flex-col items-center gap-5 max-w-sm w-full shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
-              >
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-[#1a2030] border-4 border-rose-500/50 overflow-hidden flex items-end justify-center shadow-xl">
-                    {activeMatch.mode === 'bot' ? (
-                      <Bot className="h-16 w-16 text-rose-400 mb-2" strokeWidth={1.5} />
-                    ) : (
-                      <Users className="h-14 w-14 text-slate-500 mb-2" strokeWidth={1.5} />
-                    )}
-                  </div>
-                  <motion.div
-                    initial={{ opacity: 0, transform: 'scale(0.5) translateX(-10px)' }}
-                    animate={{ opacity: 1, transform: 'scale(1) translateX(0)' }}
-                    transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
-                    className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
-                  >
-                    I give up! 🏳️
-                  </motion.div>
-                </div>
-
-                <div className="text-center">
-                  <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
-                  <p className="text-white/50 text-sm">
-                    <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3 w-full">
-                  <Button
-                    size="lg"
-                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl"
-                    onClick={() => {
-                      setOpponentSurrendered(false);
-                      setActiveMatch(null);
-                      setActiveRoom(null);
-                      setQueueActive(false);
-                      setLaunchState({ status: 'idle' });
-                      setActiveTab('hub');
-                      void refreshBattleInsights();
-                    }}
-                  >
-                    🏆 Claim Victory
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full h-12 border-white/20 text-white/70 hover:bg-white/10 rounded-xl"
-                    onClick={() => {
-                      setOpponentSurrendered(false);
-                      setActiveMatch(null);
-                      setActiveRoom(null);
-                      setQueueActive(false);
-                      setLaunchState({ status: 'idle' });
-                      setActiveTab('hub');
-                    }}
-                  >
-                    Back to Arena
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
+        <div className="fixed inset-0 z-[100] bg-[#0B0F19] text-white flex flex-col overflow-hidden">
+          {activeMatch.status === 'completed' && activeMatch.outcome === 'loss' && (
+            <RainStorm viewportHeight={viewportSize.height} />
           )}
-        </AnimatePresence>
+          {activeMatch.status === 'completed' && activeMatch.outcome === 'draw' && (
+            <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />
+          )}
+          {/* Animated BG */}
+          <div className="absolute inset-0 z-0 opacity-40">
+            <WarpBackground>
+              <div className="h-full w-full" />
+            </WarpBackground>
+          </div>
 
-        {/* Pause Overlay */}
-        {designPauseActive && (
-          <div className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center">
-            <Card className="w-full max-w-sm border-border/50 bg-[#181d27] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-               <CardHeader className="text-center">
+          {/* Opponent Surrender Overlay */}
+          <AnimatePresence>
+            {opponentSurrendered && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[120] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center px-6"
+              >
+                <motion.div
+                  initial={{ opacity: 0, transform: 'translateY(40px) scale(0.85)' }}
+                  animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
+                  transition={{ type: 'spring', damping: 18, stiffness: 250, delay: 0.1 }}
+                  className="bg-[#1e2433] border border-white/10 rounded-[2rem] p-8 flex flex-col items-center gap-5 max-w-sm w-full shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full bg-[#1a2030] border-4 border-rose-500/50 overflow-hidden flex items-end justify-center shadow-xl">
+                      {activeMatch.mode === 'bot' ? (
+                        <Bot className="h-16 w-16 text-rose-400 mb-2" strokeWidth={1.5} />
+                      ) : (
+                        <Users className="h-14 w-14 text-slate-500 mb-2" strokeWidth={1.5} />
+                      )}
+                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, transform: 'scale(0.5) translateX(-10px)' }}
+                      animate={{ opacity: 1, transform: 'scale(1) translateX(0)' }}
+                      transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
+                      className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
+                    >
+                      I give up! 🏳️
+                    </motion.div>
+                  </div>
+
+                  <div className="text-center">
+                    <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
+                    <p className="text-white/50 text-sm">
+                      <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full">
+                    <Button
+                      size="lg"
+                      className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl"
+                      onClick={() => {
+                        setOpponentSurrendered(false);
+                        setActiveMatch(null);
+                        setActiveRoom(null);
+                        setQueueActive(false);
+                        setLaunchState({ status: 'idle' });
+                        setActiveTab('hub');
+                        void refreshBattleInsights();
+                      }}
+                    >
+                      🏆 Claim Victory
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full h-12 border-white/20 text-white/70 hover:bg-white/10 rounded-xl"
+                      onClick={() => {
+                        setOpponentSurrendered(false);
+                        setActiveMatch(null);
+                        setActiveRoom(null);
+                        setQueueActive(false);
+                        setLaunchState({ status: 'idle' });
+                        setActiveTab('hub');
+                      }}
+                    >
+                      Back to Arena
+                    </Button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Pause Overlay */}
+          {designPauseActive && (
+            <div className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center">
+              <Card className="w-full max-w-sm border-border/50 bg-[#181d27] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                <CardHeader className="text-center">
                   <CardTitle className="text-3xl font-black text-white">PAUSED</CardTitle>
                   <CardDescription className="text-base text-muted-foreground mt-2">
-                    {activeMatch.mode === 'online' 
-                      ? "Online match - timer continues in the background! Hurry!" 
+                    {activeMatch.mode === 'online'
+                      ? "Online match - timer continues in the background! Hurry!"
                       : "Bot match - round timer frozen."}
                   </CardDescription>
-               </CardHeader>
-               <CardContent className="flex flex-col gap-3">
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
                   <Button variant="default" size="lg" className="w-full text-lg h-12" onClick={handleToggleDesignPause}>
                     Resume Match
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full text-lg h-12 border-rose-500/20 text-rose-500 hover:bg-rose-500/10" 
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full text-lg h-12 border-rose-500/20 text-rose-500 hover:bg-rose-500/10"
                     onClick={() => {
                       setDesignPauseActive(false);
                       setActiveMatch(null);
@@ -1935,67 +1935,67 @@ const QuizBattlePage: React.FC = () => {
                   >
                     Leave Match
                   </Button>
-               </CardContent>
-            </Card>
-          </div>
-        )}
-
-        <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 py-4">
-          
-          {/* Header Row */}
-          <BattleHeader
-            playerRoundStreak={playerRoundStreak}
-            playerVisualMultiplier={playerVisualMultiplier}
-            liveXpEarned={liveXpEarned}
-            activeMatch={activeMatch}
-            subjects={subjects}
-            battleSoundEnabled={battleSoundEnabled}
-            onToggleSound={() => setBattleSoundEnabled((previous) => !previous)}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={() => {
-              if (typeof document === 'undefined') return;
-              if (document.fullscreenElement) {
-                document.exitFullscreen().catch((error) => {
-                  console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
-                });
-              } else {
-                document.documentElement.requestFullscreen().catch((error) => {
-                  console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
-                });
-              }
-            }}
-            isDesignPauseAvailable={isDesignPauseAvailable}
-            onTogglePause={handleToggleDesignPause}
-          />
-
-          {/* Shrinking Timer Bar */}
-          {activeMatch.status === 'in_progress' ? (
-            <div className="shrink-0 w-full max-w-4xl mx-auto h-2 bg-white/10 rounded-full overflow-hidden mt-6 mb-4">
-              <motion.div 
-                className="h-full"
-                animate={{ 
-                  width: `${Math.max(0, (roundSecondsLeft / activeMatch.timePerQuestionSec) * 100)}%`,
-                  backgroundColor: roundSecondsLeft > Math.floor(activeMatch.timePerQuestionSec / 2) 
-                    ? '#10b981' 
-                    : roundSecondsLeft > 3 
-                      ? '#f59e0b' 
-                      : '#ef4444' 
-                }}
-                transition={{ duration: 1, ease: "linear" }}
-              />
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <div className="shrink-0 h-6 md:h-10 w-full" /* Spacer for completed mode */ />
           )}
 
-          <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative">
-            {activeMatch.status === 'completed' ? (
-              <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md px-4">
-                <motion.div 
-                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                   className="w-full max-w-sm sm:max-w-md bg-[#161a25]/90 border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[1.5rem] p-6 text-center"
-                >
+          <div className="relative z-10 flex flex-col h-full w-full max-w-[1400px] mx-auto px-4 md:px-8 py-4">
+
+            {/* Header Row */}
+            <BattleHeader
+              playerRoundStreak={playerRoundStreak}
+              playerVisualMultiplier={playerVisualMultiplier}
+              liveXpEarned={liveXpEarned}
+              activeMatch={activeMatch}
+              subjects={subjects}
+              battleSoundEnabled={battleSoundEnabled}
+              onToggleSound={() => setBattleSoundEnabled((previous) => !previous)}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => {
+                if (typeof document === 'undefined') return;
+                if (document.fullscreenElement) {
+                  document.exitFullscreen().catch((error) => {
+                    console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
+                  });
+                } else {
+                  document.documentElement.requestFullscreen().catch((error) => {
+                    console.warn('Fullscreen mode unavailable or blocked by browser (enter):', error);
+                  });
+                }
+              }}
+              isDesignPauseAvailable={isDesignPauseAvailable}
+              onTogglePause={handleToggleDesignPause}
+            />
+
+            {/* Shrinking Timer Bar */}
+            {activeMatch.status === 'in_progress' ? (
+              <div className="shrink-0 w-full max-w-4xl mx-auto h-2 bg-white/10 rounded-full overflow-hidden mt-6 mb-4">
+                <motion.div
+                  className="h-full"
+                  animate={{
+                    width: `${Math.max(0, (roundSecondsLeft / activeMatch.timePerQuestionSec) * 100)}%`,
+                    backgroundColor: roundSecondsLeft > Math.floor(activeMatch.timePerQuestionSec / 2)
+                      ? '#10b981'
+                      : roundSecondsLeft > 3
+                        ? '#f59e0b'
+                        : '#ef4444'
+                  }}
+                  transition={{ duration: 1, ease: "linear" }}
+                />
+              </div>
+            ) : (
+              <div className="shrink-0 h-6 md:h-10 w-full" /* Spacer for completed mode */ />
+            )}
+
+            <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative">
+              {activeMatch.status === 'completed' ? (
+                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md px-4">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className="w-full max-w-sm sm:max-w-md bg-[#161a25]/90 border border-white/20 shadow-[0_30px_80px_rgba(0,0,0,0.8)] rounded-[1.5rem] p-6 text-center"
+                  >
                     <h2 className={cn(
                       "text-3xl font-black uppercase tracking-widest drop-shadow-md mb-2",
                       activeMatch.outcome === 'win' ? "text-emerald-400" : activeMatch.outcome === 'loss' ? "text-rose-400" : "text-amber-400"
@@ -2003,9 +2003,9 @@ const QuizBattlePage: React.FC = () => {
                       {activeMatch.outcome === 'win' ? 'VICTORY!' : activeMatch.outcome === 'loss' ? 'DEFEAT' : 'DRAW MATCH'}
                     </h2>
                     <p className="text-white/80 font-bold text-sm mb-4 uppercase tracking-widest">
-                       Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
+                      Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
                     </p>
-                    
+
                     <div className="bg-black/50 rounded-xl p-4 mb-5 border border-white/5 flex flex-col gap-3">
                       <div>
                         <h3 className="text-white/40 text-[10px] font-black uppercase tracking-widest text-left mb-2">Battle Score</h3>
@@ -2060,1481 +2060,1547 @@ const QuizBattlePage: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col gap-3 justify-center">
-                       <Button
-                         size="lg"
-                         onClick={() => {
-                           setActiveMatch(null);
-                           setActiveRoom(null);
-                           setQueueActive(false);
-                           setActiveTab('hub');
-                         }}
-                         className="w-full h-12 rounded-xl text-sm font-black bg-white/10 hover:bg-white/20 text-white border border-white/20"
-                       >
-                         BACK TO ARENA
-                       </Button>
-                       {activeMatch.mode === 'bot' && (
-                         <Button
-                           size="lg"
-                           onClick={() => void handleRequestRematch()}
-                           disabled={answerSubmitting}
-                           className="w-full h-12 rounded-xl text-sm font-black bg-violet-600 hover:bg-violet-500 text-white border-b-2 border-violet-800 active:border-b-0 active:translate-y-[2px]"
-                         >
-                           REMATCH
-                         </Button>
-                       )}
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          setActiveMatch(null);
+                          setActiveRoom(null);
+                          setQueueActive(false);
+                          setActiveTab('hub');
+                        }}
+                        className="w-full h-12 rounded-xl text-sm font-black bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                      >
+                        BACK TO ARENA
+                      </Button>
+                      {activeMatch.mode === 'bot' && (
+                        <Button
+                          size="lg"
+                          onClick={() => void handleRequestRematch()}
+                          disabled={answerSubmitting}
+                          className="w-full h-12 rounded-xl text-sm font-black bg-violet-600 hover:bg-violet-500 text-white border-b-2 border-violet-800 active:border-b-0 active:translate-y-[2px]"
+                        >
+                          REMATCH
+                        </Button>
+                      )}
                     </div>
-                </motion.div>
-              </div>
-            ) : (
-              <BattleActiveContent 
-                activeMatch={activeMatch}
-                roundSecondsLeft={roundSecondsLeft}
-                lastRoundResult={lastRoundResult}
-                selectedOptionIndex={selectedOptionIndex}
-                roundLocked={roundLocked}
-                answerSubmitting={answerSubmitting}
-                designPauseActive={designPauseActive}
-                onOptionSelect={(idx) => {
-                  if (!!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound) return;
-                  if (answerSubmitting || roundLocked) return;
-                  getAudioContext()?.resume().catch(() => {});
-                  playBattleTone('lock');
-                  setSelectedOptionIndex(idx);
-                  void submitRoundAnswer(idx);
-                }}
-                floatingMomentum={floatingMomentum}
-                lastRoundMomentumDelta={lastRoundMomentumDelta}
-                studentProfile={studentProfile}
-                quizBattleAvatar={quizBattleAvatar}
-              />
-            )}
+                  </motion.div>
+                </div>
+              ) : (
+                <BattleActiveContent
+                  activeMatch={activeMatch}
+                  roundSecondsLeft={roundSecondsLeft}
+                  lastRoundResult={lastRoundResult}
+                  selectedOptionIndex={selectedOptionIndex}
+                  roundLocked={roundLocked}
+                  answerSubmitting={answerSubmitting}
+                  designPauseActive={designPauseActive}
+                  onOptionSelect={(idx) => {
+                    if (!!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound) return;
+                    if (answerSubmitting || roundLocked) return;
+                    getAudioContext()?.resume().catch(() => { });
+                    playBattleTone('lock');
+                    setSelectedOptionIndex(idx);
+                    void submitRoundAnswer(idx);
+                  }}
+                  floatingMomentum={floatingMomentum}
+                  lastRoundMomentumDelta={lastRoundMomentumDelta}
+                  studentProfile={studentProfile}
+                  quizBattleAvatar={quizBattleAvatar}
+                />
+              )}
+            </div>
+
+            <BattleFooter
+              studentProfile={studentProfile}
+              activeMatch={activeMatch}
+              scorePulseTarget={scorePulseTarget}
+              quizBattleAvatar={quizBattleAvatar}
+            />
+
           </div>
-
-          <BattleFooter 
-            studentProfile={studentProfile}
-            activeMatch={activeMatch}
-            scorePulseTarget={scorePulseTarget}
-            quizBattleAvatar={quizBattleAvatar}
-          />
-
-      </div>
-      </div>
+        </div>
       </>
     );
   }
 
   return (
     <>
-<style>{battleAnimations}</style>
+      <style>{battleAnimations}</style>
       <WarpBackground bgVideo="/videos/warp_bg.mp4" className="-mx-3 lg:-mx-4 -mt-3 lg:-mt-4 -mb-8 px-4 sm:px-6 xl:px-10 py-6 sm:py-8 min-h-[calc(100vh-3.5rem)] !w-auto overflow-hidden relative">
-      <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
-        <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-3 lg:space-y-4"
-      >
-        
+        <div className="h-full flex flex-col max-w-[1400px] mx-auto w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-3 lg:space-y-4"
+          >
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
-          
 
-            <TabsContent value="hub" className="mt-0 outline-none">
-              <motion.div
-                key="hub"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-5"
-              >
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-6 sm:gap-8 lg:gap-10">
-                  {/* Left Column: Hero & Battle Modes */}
-                  <div className="space-y-3 lg:space-y-4">
-                    {/* Hero Banner */}
-                    <div className="relative select-none isolate bg-indigo-600 rounded-[2rem] shadow-[0_20px_45px_-15px_rgba(0,0,0,0.3)] shrink-0">
-                      {/* Simple black overlay to darken the specific module color */}
-                      <div className="absolute inset-0 bg-black/60 pointer-events-none z-0 rounded-[2rem]" />
-                      {/* Decorative Textbook Background */}
-                      <div 
-                        className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden repeating-stripe-bg"
-                      />
-                      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
-                      
-                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 lg:p-8 h-full min-h-[140px] lg:min-h-[160px]">
-                        <div className="flex-1 space-y-3 w-full pr-0 md:pr-[240px] lg:pr-[280px]">
-                          <div>
-                            <h1 className="flex items-center gap-3 text-3xl sm:text-4xl lg:text-[46px] font-black tracking-tight text-white mb-2 sm:mb-4">
-                              <Swords className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-[#d1abff]" strokeWidth={2.5} />   
-                              Quiz Battle
-                            </h1>
-                            <p className="text-base sm:text-lg lg:text-xl text-white mt-1.5 sm:mt-2 max-w-2xl leading-relaxed">
-                              Timed student duels with synchronized rounds, instant feedback, and progression rewards.
-                            </p>
-                            <p className="text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] text-[#8a7fbc] mt-3">
-                              Connection: <span className={connectionState === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>{connectionState}</span>
-                            </p>
+
+              <TabsContent value="hub" className="mt-0 outline-none">
+                <motion.div
+                  key="hub"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="space-y-5"
+                >
+
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-6 sm:gap-8 lg:gap-10">
+                    {/* Left Column: Hero & Battle Modes */}
+                    <div className="space-y-3 lg:space-y-4">
+                      {/* Hero Banner */}
+                      <div className="relative select-none isolate bg-indigo-600 rounded-[2rem] shadow-[0_20px_45px_-15px_rgba(0,0,0,0.3)] shrink-0">
+                        {/* Simple black overlay to darken the specific module color */}
+                        <div className="absolute inset-0 bg-black/60 pointer-events-none z-0 rounded-[2rem]" />
+                        {/* Decorative Textbook Background */}
+                        <div
+                          className="absolute inset-0 opacity-10 pointer-events-none rounded-[2rem] overflow-hidden repeating-stripe-bg"
+                        />
+                        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
+
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 lg:p-8 h-full min-h-[140px] lg:min-h-[160px]">
+                          <div className="flex-1 space-y-3 w-full pr-0 md:pr-[240px] lg:pr-[280px]">
+                            <div>
+                              <h1 className="flex items-center gap-3 text-3xl sm:text-4xl lg:text-[46px] font-black tracking-tight text-white mb-2 sm:mb-4">
+                                <Swords className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-[#d1abff]" strokeWidth={2.5} />
+                                Quiz Battle
+                              </h1>
+                              <p className="text-base sm:text-lg lg:text-xl text-white mt-1.5 sm:mt-2 max-w-2xl leading-relaxed">
+                                Timed student duels with synchronized rounds, instant feedback, and progression rewards.
+                              </p>
+                              <p className="text-xs lg:text-sm font-semibold uppercase tracking-[0.15em] text-[#8a7fbc] mt-3">
+                                Connection: <span className={connectionState === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>{connectionState}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Enlarged Avatar floating without overflow clipping - CSS WAAPI for smooth compositor animation */}
+                          <div className="hidden md:block absolute right-[-5px] lg:right-[-15px] top-0 lg:top-[5px] w-[200px] lg:w-[260px] shrink-0 pointer-events-none z-20">
+                            <img
+                              src={quizBattleAvatar}
+                              alt="Mascot"
+                              className="w-full h-full object-contain animate-mascot-float"
+                            />
                           </div>
                         </div>
-                        
-{/* Enlarged Avatar floating without overflow clipping - CSS WAAPI for smooth compositor animation */}
-          <div className="hidden md:block absolute right-[-5px] lg:right-[-15px] top-0 lg:top-[5px] w-[200px] lg:w-[260px] shrink-0 pointer-events-none z-20">
-            <img
-              src={quizBattleAvatar}
-              alt="Mascot"
-              className="w-full h-full object-contain animate-mascot-float"
-            />
-          </div>
+                      </div>
+
+                      {/* Battle Modes */}
+                      <div className="pt-4 lg:pt-6">
+                        <h2 className="flex items-center gap-2 pb-4 text-xl lg:text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+                          <Swords className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 relative z-10 w-full mb-2">
+                          {/* VS Player Card */}
+                          <motion.button
+                            type="button"
+                            onClick={() => setMode('online')}
+                            whileHover={{ scale: 1.025 }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                            className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block flex-col group"
+                          >
+                            {/* Top Highlight border / Inner Shadow effect */}
+                            <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+
+                            <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
+                              <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
+                                <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c" />
+                              </svg>
+                              <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100 font-nunito">
+                                VS Player
+                              </div>
+                            </div>
+
+                            <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
+                              {/* Shine Effect */}
+                              <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+
+                              <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
+                                {/* Expanded Full-Width Stage (Dark Purple) */}
+                                <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+
+                                {/* Animated Avatar Clones (VS Match) - CSS WAAPI animations */}
+                                <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
+                                  {/* Left Avatar */}
+                                  <img
+                                    src="/avatar/avatar_icon.png"
+                                    alt=""
+                                    className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-left"
+                                  />
+                                  {/* Center VS */}
+                                  <div className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1] animate-vs-pulse">
+                                    <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
+                                      <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
+                                    </span>
+                                  </div>
+                                  {/* Right Avatar (Flipped) */}
+                                  <img
+                                    src="/avatar/avatar_icon.png"
+                                    alt=""
+                                    className="h-[120%] sm:h-[125%] object-contain relative z-10 scale-x-[-1] origin-bottom left-[-20px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-right"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
+                                <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
+                                  Queue or room-code match with another student.
+                                </p>
+                              </div>
+                            </div>
+                          </motion.button>
+
+                          {/* VS Bot Card */}
+                          <motion.button
+                            type="button"
+                            onClick={() => setMode('bot')}
+                            whileHover={{ scale: 1.025 }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                            className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block flex-col group"
+                          >
+                            {/* Top Highlight border / Inner Shadow effect */}
+                            <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+
+                            <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
+                              <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
+                                <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c" />
+                              </svg>
+                              <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100 font-nunito">
+                                VS Bot
+                              </div>
+                            </div>
+
+                            <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
+                              {/* Shine Effect */}
+                              <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
+
+                              <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
+                                {/* Expanded Full-Width Stage (Dark Blue) */}
+                                <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+
+                                {/* Ghosting Avatars - CSS WAAPI for smooth compositor animation */}
+                                <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
+                                  {/* Left Ghost */}
+                                  <img
+                                    src="/avatar/avatar_icon.png"
+                                    alt=""
+                                    className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-left"
+                                  />
+                                  {/* Right Ghost */}
+                                  <img
+                                    src="/avatar/avatar_icon.png"
+                                    alt=""
+                                    className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-right"
+                                  />
+                                  {/* Main Avatar */}
+                                  <img
+                                    src="/avatar/avatar_icon.png"
+                                    alt="VS Bot"
+                                    className="relative opacity-100 scale-100 h-[105%] sm:h-[115%] object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] z-20 origin-bottom animate-main-avatar"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
+                                <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
+                                  Instant solo duel with selectable bot difficulty.
+                                </p>
+                              </div>
+                            </div>
+                          </motion.button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Battle Modes */}
-                    <div className="pt-4 lg:pt-6">
-                      <h2 className="flex items-center gap-2 pb-4 text-xl lg:text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
-                        <Swords className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
-                      </h2>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 relative z-10 w-full mb-2">
-                        {/* VS Player Card */}
-                        <motion.button
-                          type="button"
-                          onClick={() => setMode('online')}
-                          whileHover={{ scale: 1.025 }}
-                          whileTap={{ scale: 0.98 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                          className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block flex-col group"
-                        >
-                          {/* Top Highlight border / Inner Shadow effect */}
-                          <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+                    {/* Right Column: Mini Widgets */}
+                    <div className="space-y-3 lg:space-y-4 flex flex-col h-full justify-between">
 
-                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
-                            <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
-                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100 font-nunito">
-                              VS Player
+                      {/* Hall of Fame Widget Custom Graphic */}
+                      <div onClick={() => setActiveTab('leaderboard')} className="relative w-full bg-[#3b3a82] dark:bg-[#2b2b5f] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_30px_rgba(59,58,130,0.3)] cursor-pointer group mb-4">
+                        <div className="relative w-full h-[190px] flex flex-col items-center justify-end pt-8">
+                          {/* Stars */}
+                          <div className="absolute top-[25px] w-full flex justify-center items-end px-2 z-10 gap-3">
+                            <Star strokeWidth={0} fill="currentColor" className="w-[32px] h-[32px] text-[#fcd34d] -rotate-[15deg] mb-2 drop-shadow-[0_0_15px_rgba(252,211,77,0.8)]" />
+                            <div className="z-10 animate-star-float">
+                              <Star strokeWidth={0} fill="currentColor" className="w-[48px] h-[48px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
+                            </div>
+                            <Star strokeWidth={0} fill="currentColor" className="w-[32px] h-[32px] text-[#fcd34d] rotate-[15deg] mb-2 drop-shadow-[0_0_15px_rgba(252,211,77,0.8)]" />
+                          </div>
+
+                          {/* Light rays from behind podium */}
+                          <div className="absolute bottom-[50px] left-1/2 -translate-x-1/2 w-[220px] h-[160px] bg-gradient-to-t from-white/20 to-transparent blur-[2px] z-0 pointer-events-none" style={{ clipPath: 'polygon(25% 0, 75% 0, 100% 100%, 0% 100%)' }}></div>
+
+                          {/* Podium */}
+                          <div className="flex items-end justify-center z-10 relative px-4 bottom-[35px]">
+                            {/* Left step */}
+                            <div className="flex flex-col items-center relative z-10">
+                              <div className="w-[75px] h-[14px] bg-[#D44747] rounded-t-[3px] border-x-[1.5px] border-white/90" />
+                              <div className="w-[65px] h-[45px] bg-[#FE6464] flex flex-col items-center justify-center gap-2 border-x-[1.5px] border-white/90">
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full mt-1" />
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full" />
+                              </div>
+                            </div>
+
+                            {/* Center step */}
+                            <div className="flex flex-col items-center relative z-20 -mx-1">
+                              <div className="w-[90px] h-[16px] bg-[#F39029] rounded-t-[3px] border-x-[1.5px] border-white/90" />
+                              <div className="w-[80px] h-[65px] bg-[#FFA23A] flex flex-col items-center justify-center gap-2.5 border-x-[1.5px] border-white/90">
+                                <div className="w-10 h-1.5 bg-white/90 rounded-full mt-1" />
+                                <div className="w-10 h-1.5 bg-white/90 rounded-full" />
+                              </div>
+                            </div>
+
+                            {/* Right step */}
+                            <div className="flex flex-col items-center relative z-10">
+                              <div className="w-[75px] h-[14px] bg-[#D44747] rounded-t-[3px] border-x-[1.5px] border-white/90" />
+                              <div className="w-[65px] h-[45px] bg-[#FE6464] flex flex-col items-center justify-center gap-2 border-x-[1.5px] border-white/90">
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full mt-1" />
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full" />
+                              </div>
                             </div>
                           </div>
 
-                          <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
-                            {/* Shine Effect */}
-                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
-                            
-                            <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
-                              {/* Expanded Full-Width Stage (Dark Purple) */}
-                              <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
-                              
-{/* Animated Avatar Clones (VS Match) - CSS WAAPI animations */}
-            <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
-              {/* Left Avatar */}
-              <img
-                src="/avatar/avatar_icon.png"
-                alt=""
-                className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-left"
-              />
-              {/* Center VS */}
-              <div className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1] animate-vs-pulse">
-                <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
-                  <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
-                </span>
-              </div>
-              {/* Right Avatar (Flipped) */}
-              <img
-                src="/avatar/avatar_icon.png"
-                alt=""
-                className="h-[120%] sm:h-[125%] object-contain relative z-10 scale-x-[-1] origin-bottom left-[-20px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-right"
-              />
-            </div>
-                            </div>
-                            
-                            <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
-                              <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
-                                Queue or room-code match with another student.
-                              </p>
+                          {/* Bottom Banner */}
+                          <div className="absolute bottom-[2px] w-full flex justify-center z-30">
+                            {/* Wings */}
+                            <div className="absolute top-[10px] w-full h-[35px] bg-[#8E1010] z-0"></div>
+                            {/* Main Banner */}
+                            <div className="relative w-[85%] h-[50px] bg-[#C62828] z-10 flex flex-col items-center justify-center rounded-[3px] shadow-[0_4px_10px_rgba(0,0,0,0.2)]">
+                              <h3 className="text-[18px] font-black text-white tracking-wide leading-none font-nunito mt-0.5">Hall of Fame</h3>
+                              <span className="text-[10px] font-bold text-white/90 tracking-wide mt-1">View Page &gt;</span>
                             </div>
                           </div>
-                        </motion.button>
+                        </div>
+                      </div>
 
-                        {/* VS Bot Card */}
-                        <motion.button
-                          type="button"
-                          onClick={() => setMode('bot')}
-                          whileHover={{ scale: 1.025 }}
-                          whileTap={{ scale: 0.98 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                          className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block flex-col group"
-                        >
-                          {/* Top Highlight border / Inner Shadow effect */}
-                          <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
+                      {/* My Stats Widget */}
+                      <div className="relative w-full bg-[#3b3a82] dark:bg-[#2b2b5f] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_30px_rgba(59,58,130,0.3)]">
+                        {/* Header */}
+                        <div className="flex flex-row items-center justify-between px-5 pt-5 pb-3 relative z-10">
+                          <h3 className="text-[20px] font-black text-white tracking-wide leading-none drop-shadow-md font-nunito">My Stats</h3>
+                          <Button
+                            className="bg-[#7C51A8] hover:bg-[#6b4494] text-white font-bold text-[10px] tracking-widest uppercase rounded-full px-4 h-[28px] border border-white/10 shadow-md transition-transform active:scale-95"
+                            onClick={() => setActiveTab('stats')}
+                          >
+                            View Stats &gt;
+                          </Button>
+                        </div>
 
-                          <div className="absolute top-4 -left-4 z-20 w-[100px] h-[40px] opacity-100">
-                            <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full block drop-shadow-md">
-                              <path d="M0 0 H94 Q100 0 100 6 V34 Q100 40 94 40 H0 L14 20 Z" fill="#b91c1c"/>
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-end pr-3 font-black text-[13px] text-white tracking-[0.3px] opacity-100 font-nunito">
-                              VS Bot
+                        {/* Content: Carousel Row */}
+                        <div className="relative z-10 w-full overflow-hidden pb-6">
+                          {/* Gradient overlays to fade the edges of the carousel */}
+                          <div className="absolute left-0 top-0 bottom-6 w-8 bg-gradient-to-r from-[#3b3a82] dark:from-[#2b2b5f] to-transparent z-20 pointer-events-none"></div>
+                          <div className="absolute right-0 top-0 bottom-6 w-8 bg-gradient-to-l from-[#3b3a82] dark:from-[#2b2b5f] to-transparent z-20 pointer-events-none"></div>
+
+                          <motion.div
+                            className="flex w-max"
+                            animate={{ x: ["0%", "-33.333333%"] }}
+                            transition={{ ease: "linear", duration: 15, repeat: Infinity }}
+                          >
+                            {[1, 2, 3].map((copyIndex) => (
+                              <div key={copyIndex} className="flex gap-3 pr-3">
+                                {[
+                                  {
+                                    key: 'totalXP',
+                                    bg: 'from-[#FF7B88] to-[#FF5C70]',
+                                    shadow: 'shadow-[0_4px_15px_rgba(255,92,112,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
+                                    icon: Sparkles,
+                                    value: studentProfile?.currentXP || 0,
+                                    label: 'Total XP'
+                                  },
+                                  {
+                                    key: 'winRate',
+                                    bg: 'from-[#B467FF] to-[#9D44FF]',
+                                    shadow: 'shadow-[0_4px_15px_rgba(157,68,255,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
+                                    icon: Trophy,
+                                    value: `${Math.round(statsData?.winRate || 0)} %`,
+                                    label: 'Win Rate'
+                                  },
+                                  {
+                                    key: 'matches',
+                                    bg: 'from-[#4DB9E9] to-[#2DA1D8]',
+                                    shadow: 'shadow-[0_4px_15px_rgba(45,161,216,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
+                                    icon: Target,
+                                    value: statsData?.matchesPlayed || 0,
+                                    label: 'Matches'
+                                  },
+                                  {
+                                    key: 'response',
+                                    bg: 'from-[#48DA94] to-[#2BBF7B]',
+                                    shadow: 'shadow-[0_4px_15px_rgba(43,191,123,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
+                                    icon: Clock3,
+                                    value: statsData?.averageResponseMs ? `${(statsData.averageResponseMs / 1000).toFixed(0)}s` : '0s',
+                                    label: 'Response'
+                                  }
+                                ].map((card) => (
+                                  <div key={card.key} className={cn("w-[90px] sm:w-[100px] shrink-0 aspect-square rounded-[16px] bg-gradient-to-br p-3 flex flex-col justify-between relative overflow-hidden group", card.bg, card.shadow)}>
+                                    <div className="absolute -bottom-6 -right-6 text-white/10 transition-transform duration-500 group-hover:scale-110">
+                                      <card.icon className="w-20 h-20" />
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center relative z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.5)]">
+                                      <card.icon className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="relative z-10 flex flex-col">
+                                      <h4 className="text-[14px] sm:text-[16px] lg:text-[18px] font-black text-white leading-none tracking-tight drop-shadow-sm">{card.value}</h4>
+                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-white/80 uppercase tracking-widest mt-1 truncate">{card.label}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      <Card className={cn(cardFrameClass, 'rounded-[18px] flex flex-col min-h-[200px]')}>
+                        <CardHeader className="pb-0 pt-3 px-4 flex flex-row items-center justify-between">
+                          <CardTitle className="text-[14px] font-black flex items-center gap-2 text-[#2e2b5e] dark:text-[#f5f7fb]">
+                            <History className="h-[16px] w-[16px] text-[#2e2b5e] dark:text-[#9e8fff]" /> Match History
+                          </CardTitle>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-[12px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
+                        </CardHeader>
+                        <CardContent className="space-y-1.5 px-4 pt-1 pb-3 overflow-y-auto">
+                          <div className="text-[11px] text-muted-foreground dark:text-[#8b95ad] mb-1.5 leading-relaxed">
+                            Your recent student battles only.
+                          </div>
+                          {statsLoading ? (
+                            <div className="space-y-2">
+                              <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                              <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
                             </div>
+                          ) : filteredHistory.length === 0 ? (
+                            <p className="text-xs text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
+                          ) : (
+                            filteredHistory.slice(0, 3).map((entry) => {
+                              const isWin = entry.outcome === 'win';
+                              const isLoss = entry.outcome === 'loss';
+
+                              // Generate initials from opponent name (e.g. Practice Bot -> PB)
+                              const initials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
+
+                              return (
+                                <div key={entry.matchId} className="group relative overflow-hidden rounded-[14px] border border-muted-foreground/15 bg-white dark:bg-[#11151d] dark:border-[#2f3547] p-2 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md">
+                                  {/* Option 2: The Dynamic Background Gradient Fade */}
+                                  <div className={cn(
+                                    "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.2] dark:opacity-[0.25] mix-blend-multiply dark:mix-blend-screen transition-all",
+                                    isWin ? "bg-gradient-to-l from-emerald-500 via-emerald-500/40 to-transparent" :
+                                      isLoss ? "bg-gradient-to-l from-rose-500 via-rose-500/40 to-transparent" :
+                                        "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
+                                  )} />
+
+                                  <div className="flex items-center gap-2.5 relative z-10 w-full">
+                                    {/* Left Avatar Bubble */}
+                                    <div className={cn(
+                                      "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] tracking-wide text-white flex-shrink-0 shadow-inner",
+                                      isWin ? "bg-[#34d399] dark:bg-[#15803d]" : isLoss ? "bg-[#fb7185] dark:bg-[#be123c]" : "bg-[#fbbf24] dark:bg-[#b45309]"
+                                    )}>
+                                      {initials}
+                                    </div>
+
+                                    {/* Center Match Details */}
+                                    <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                      <p className="text-[13px] font-extrabold text-[#36326e] dark:text-[#e4e7f1] truncate leading-tight">
+                                        vs {entry.opponentName}
+                                      </p>
+                                      <p className="text-[10px] font-bold text-muted-foreground/60 dark:text-[#7f88a3] truncate flex items-center gap-1 mt-0.5">
+                                        {entry.subjectId} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.rounds || '5'} rnds
+                                      </p>
+                                    </div>
+
+                                    {/* Right Score & Outcome Text */}
+                                    <div className="text-right flex flex-col items-end justify-center pl-2 flex-shrink-0">
+                                      <p className="tabular-nums text-[16px] leading-[1.1] font-black text-[#2e2b5e] dark:text-[#f5f7fb] tracking-tighter">
+                                        {entry.scoreFor}<span className="text-muted-foreground/40 mx-[1px]">-</span>{entry.scoreAgainst}
+                                      </p>
+                                      <p
+                                        className={cn(
+                                          'text-[9px] font-black uppercase tracking-[0.1em]',
+                                          isWin ? 'text-emerald-500 dark:text-emerald-400' : isLoss ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'
+                                        )}
+                                      >
+                                        {entry.outcome}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </CardContent>
+                      </Card>
+
+                    </div>
+                  </div>
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="setup" className="mt-0 outline-none">
+                <motion.div
+                  key="setup"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="w-full space-y-6"
+                >
+                  {/* Gamified Header Banner */}
+                  <motion.div
+                    className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 shadow-lg",
+                      setupConfig.mode === 'online'
+                        ? "border-purple-500/20 shadow-[0_0_40px_-10px_rgba(138,63,211,0.2)]"
+                        : "border-sky-500/20 shadow-[0_0_40px_-10px_rgba(31,167,225,0.2)]"
+                    )}
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    {/* Animated Background Elements */}
+                    <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-r",
+                      setupConfig.mode === 'online'
+                        ? "from-purple-500/20 via-fuchsia-500/10 to-purple-600/5 dark:from-purple-500/20 dark:via-fuchsia-500/10 dark:to-purple-900/10"
+                        : "from-sky-500/20 via-cyan-500/10 to-sky-600/5 dark:from-sky-500/20 dark:via-cyan-500/10 dark:to-sky-900/10"
+                    )} />
+
+                    <div
+                      className={cn("pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl animate-orb-pulse",
+                        setupConfig.mode === 'online' ? "bg-purple-400/20" : "bg-sky-400/20"
+                      )}
+                    />
+                    <div
+                      className={cn("pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full blur-2xl animate-orb-pulse-delayed",
+                        setupConfig.mode === 'online' ? "bg-fuchsia-400/30" : "bg-cyan-400/30"
+                      )}
+                    />
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMEgxdjFIMHoiIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPgo8L3N2Zz4=')] opacity-30 dark:opacity-10 mix-blend-overlay" />
+
+                    <div className="relative p-6 sm:p-8 md:px-10 flex items-center gap-5 sm:gap-8 z-10">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setActiveTab("hub")}
+                        className={cn(
+                          "h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-full hover:scale-105 transition-all backdrop-blur-md shadow-lg shrink-0 flex items-center justify-center group",
+                          setupConfig.mode === 'online'
+                            ? "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-purple-500/30"
+                            : "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-sky-500/30"
+                        )}
+                      >
+                        <ChevronRight className={cn("h-6 w-6 sm:h-8 sm:w-8 rotate-180 transition-transform group-hover:-translate-x-0.5",
+                          setupConfig.mode === 'online' ? "text-purple-800 dark:text-purple-300" : "text-sky-800 dark:text-sky-300"
+                        )} />
+                      </Button>
+                      <div>
+                        <h2 className={cn("flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br drop-shadow-sm",
+                          setupConfig.mode === 'online'
+                            ? "from-purple-600 to-fuchsia-500 dark:from-purple-300 dark:to-fuchsia-200"
+                            : "from-sky-600 to-cyan-500 dark:from-sky-300 dark:to-cyan-200"
+                        )}>
+                          <div className={cn("p-2 rounded-2xl shadow-inner border animate-icon-bob",
+                            setupConfig.mode === 'online'
+                              ? "bg-purple-100 dark:bg-purple-900/50 border-purple-200 dark:border-purple-700/50"
+                              : "bg-sky-100 dark:bg-sky-900/50 border-sky-200 dark:border-sky-700/50"
+                          )}
+                          >
+                            {setupConfig.mode === 'online'
+                              ? <Users className="h-8 w-8 text-purple-600 dark:text-purple-400 drop-shadow-[0_0_8px_rgba(138,63,211,0.5)]" />
+                              : <Bot className="h-8 w-8 text-sky-600 dark:text-sky-400 drop-shadow-[0_0_8px_rgba(31,167,225,0.5)]" />
+                            }
+                          </div>
+                          {setupConfig.mode === 'online' ? "1v1 Online" : "1v1 vs Bot"}
+                        </h2>
+                        <p className={cn("text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm",
+                          setupConfig.mode === 'online' ? "text-purple-600/80 dark:text-purple-400/80" : "text-sky-600/80 dark:text-sky-400/80"
+                        )}>
+                          {setupConfig.mode === 'online' ? "CHALLENGE YOUR SCHOOLMATES AND PROVE YOUR SKILLS." : "CHALLENGE THE AI AND SHARPEN YOUR SKILLS."}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Setup Form Glass Panel */}
+                  <div className="rounded-[24px] border border-white/40 bg-white/85 dark:border-white/10 dark:bg-black/80 backdrop-blur-xl p-5 sm:p-7 shadow-xl">
+                    {/* Two Column Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
+
+                      {/* Left Column: Core Settings */}
+                      <div className="space-y-4">
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>Category</label>
+                          <Select
+                            value={setupConfig.subjectId}
+                            onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                              errorFor('subjectId') && 'border-rose-400')}>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              {gradeScopedSubjects.map((entry) => (
+                                <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}
+                        </div>
+
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>Strand / Topic Group</label>
+                          <Select
+                            value={setupConfig.topicId}
+                            onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                              errorFor('topicId') && 'border-rose-400')}>
+                              <SelectValue placeholder="Select topic group" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              {moduleOptions.map((entry) => (
+                                <SelectItem key={entry.value} value={entry.value} className="rounded-lg">{entry.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('topicId')}</p>}
+                        </div>
+
+                        <div className="space-y-1.5 group">
+                          <label className={cn(
+                            "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                          )}>
+                            {setupConfig.mode === 'online' ? 'Difficulty' : 'Bot Difficulty'}
+                          </label>
+                          <Select
+                            value={setupConfig.mode === 'bot'
+                              ? (setupConfig.adaptiveBot ? 'adaptive' : setupConfig.botDifficulty)
+                              : setupConfig.difficulty}
+                            onValueChange={(value) =>
+                              setSetupConfig((previous) =>
+                                previous.mode === 'bot'
+                                  ? {
+                                    ...previous,
+                                    botDifficulty: value as QuizBattleSetupConfig['botDifficulty'],
+                                    adaptiveBot: value === 'adaptive',
+                                  }
+                                  : { ...previous, difficulty: value as QuizBattleSetupConfig['difficulty'] },
+                              )
+                            }
+                          >
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                              <SelectItem value="easy" className="rounded-lg">Easy</SelectItem>
+                              <SelectItem value="medium" className="rounded-lg">Medium</SelectItem>
+                              <SelectItem value="hard" className="rounded-lg">Hard</SelectItem>
+                              {setupConfig.mode === 'bot' && <SelectItem value="adaptive" className="rounded-lg">Adaptive</SelectItem>}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5 group">
+                            <label className={cn(
+                              "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1",
+                              setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                            )}>Questions</label>
+                            <Select
+                              value={String(setupConfig.rounds)}
+                              onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
+                            >
+                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                                setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                                errorFor('rounds') && 'border-rose-400')}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                                {[3, 5, 7, 10, 12, 15].map((entry) => (
+                                  <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('rounds')}</p>}
                           </div>
 
-                          <div className="rounded-[22px] overflow-hidden relative isolate h-full flex flex-col justify-end">
-                            {/* Shine Effect */}
-                            <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
-                            
-                            <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
-                              {/* Expanded Full-Width Stage (Dark Blue) */}
-                              <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
-                              
-{/* Ghosting Avatars - CSS WAAPI for smooth compositor animation */}
-            <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
-              {/* Left Ghost */}
-              <img
-                src="/avatar/avatar_icon.png"
-                alt=""
-                className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-left"
-              />
-              {/* Right Ghost */}
-              <img
-                src="/avatar/avatar_icon.png"
-                alt=""
-                className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-right"
-              />
-              {/* Main Avatar */}
-              <img
-                src="/avatar/avatar_icon.png"
-                alt="VS Bot"
-                className="relative opacity-100 scale-100 h-[105%] sm:h-[115%] object-contain drop-shadow-[0_15px_15px_rgba(0,0,0,0.3)] z-20 origin-bottom animate-main-avatar"
-              />
-            </div>
-                            </div>
-                            
-                            <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
-                              <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
-                                Instant solo duel with selectable bot difficulty.
-                              </p>
-                            </div>
+                          <div className="space-y-1.5 group">
+                            <label className={cn(
+                              "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1 line-clamp-1",
+                              setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                            )}>Time / Q</label>
+                            <Select
+                              value={String(setupConfig.timePerQuestionSec)}
+                              onValueChange={(value) =>
+                                setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
+                              }
+                            >
+                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                                setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                                errorFor('timePerQuestionSec') && 'border-rose-400')}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                                {[15, 20, 30, 45, 60, 90].map((entry) => (
+                                  <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry} sec</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('timePerQuestionSec')}</p>}
                           </div>
-                        </motion.button>
+                        </div>
+                      </div>
+
+                      {/* Right Column: Modes, Extras, and Actions */}
+                      <div className="flex flex-col justify-between space-y-6">
+                        <div className="space-y-5">
+                          {setupConfig.mode === 'online' && (
+                            <div className="space-y-3 rounded-2xl border border-[#8A3FD3]/20 bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 p-4">
+                              <div className="space-y-2">
+                                <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">Online Match Type</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                  {[
+                                    { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
+                                    { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
+                                  ].map((entry) => (
+                                    <Button
+                                      key={entry.value}
+                                      type="button"
+                                      variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
+                                      className={cn(
+                                        "rounded-xl h-11 transition-all border-none font-bold text-xs",
+                                        setupConfig.queueType === entry.value
+                                          ? "bg-[#8A3FD3] hover:bg-[#7b35c0] text-white shadow-md shadow-[#8A3FD3]/30"
+                                          : "bg-white/50 hover:bg-white/80 dark:bg-black/30 dark:hover:bg-black/50 text-[#8A3FD3] dark:text-[#d3a8ff]"
+                                      )}
+                                      onClick={() =>
+                                        setSetupConfig((previous) => ({
+                                          ...previous,
+                                          queueType: entry.value,
+                                        }))
+                                      }
+                                    >
+                                      {entry.label}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {setupConfig.queueType === 'private_room' && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  className="pt-2 space-y-2"
+                                >
+                                  <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">
+                                    Room Code (optional)
+                                  </label>
+                                  <Input
+                                    value={privateRoomCodeInput}
+                                    onChange={(event) =>
+                                      setPrivateRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
+                                    }
+                                    placeholder="Leave blank to create a room"
+                                    className="rounded-xl h-12 text-center text-lg uppercase font-bold tracking-[0.25em] border-[#8A3FD3]/30 bg-white/80 dark:bg-black/50 dark:border-[#8A3FD3]/20 focus-visible:ring-[#8A3FD3]/50 shadow-inner"
+                                    maxLength={6}
+                                  />
+                                  <div className="rounded-xl border border-[#8A3FD3]/30 bg-[#8A3FD3]/10 px-3 py-3 text-[12px] font-semibold text-[#6620a2] leading-snug dark:border-[#8A3FD3]/30 dark:bg-[#8A3FD3]/10 dark:text-[#d3a8ff]">
+                                    Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                          )}
+
+                          <label className={cn("flex flex-col sm:flex-row sm:items-center justify-between rounded-[16px] border bg-white/50 p-4 transition-colors cursor-pointer shadow-sm dark:bg-black/50 group",
+                            setupConfig.mode === 'online' ? "border-[#8A3FD3]/20 hover:bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 dark:hover:bg-[#8A3FD3]/10" : "border-[#1FA7E1]/20 hover:bg-[#1FA7E1]/5 dark:border-[#1FA7E1]/20 dark:hover:bg-[#1FA7E1]/10"
+                          )}>
+                            <div className="flex items-center gap-3">
+                              <div className={cn("h-11 w-11 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
+                                setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3] dark:text-[#c48bfc]" : "bg-[#1FA7E1]/10 text-[#1FA7E1] dark:text-[#7ad8ff]"
+                              )}>
+                                {battleSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 opacity-60" />}
+                              </div>
+                              <div className="mb-3 sm:mb-0">
+                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Battle Sounds</p>
+                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cues for countdowns and results.</p>
+                              </div>
+                            </div>
+                            <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
+                          </label>
+
+                          <motion.div
+                            initial={false}
+                            animate={{
+                              opacity: battleSoundEnabled ? 1 : 0.45,
+                              y: battleSoundEnabled ? 0 : -2,
+                            }}
+                            className={cn(
+                              'rounded-[16px] border bg-white/40 p-4 shadow-sm dark:bg-black/40',
+                              setupConfig.mode === 'online'
+                                ? 'border-[#8A3FD3]/20 dark:border-[#8A3FD3]/20'
+                                : 'border-[#1FA7E1]/20 dark:border-[#1FA7E1]/20'
+                            )}
+                          >
+                            <div className="mb-2 flex items-center justify-between">
+                              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700 dark:text-slate-200">SFX Volume</p>
+                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{Math.round(battleSoundVolume * 100)}%</p>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={Math.round(battleSoundVolume * 100)}
+                              disabled={!battleSoundEnabled}
+                              onChange={(event) => {
+                                const next = clampNumber(Number(event.target.value) / 100, 0, 1);
+                                setBattleSoundVolume(next);
+                              }}
+                              onMouseUp={() => playBattleTone('tick')}
+                              onTouchEnd={() => playBattleTone('tick')}
+                              className="h-2 w-full cursor-pointer accent-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label="Battle sound effects volume"
+                            />
+                          </motion.div>
+                        </div>
+
+                        {/* Action Bar (Pinned to Bottom of Column) */}
+                        <div className="flex flex-col gap-3">
+                          <div aria-live="polite" className="min-h-[24px] text-sm font-medium">
+                            {launchState.status === 'queued' && (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={cn("inline-flex items-center gap-1 text-[13px] font-bold px-3 py-1.5 rounded-lg",
+                                  setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                                )}>
+                                  {launchState.message}
+                                </span>
+                                {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className={cn(
+                                      'h-8 rounded-full border-emerald-500/50 bg-emerald-50 px-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-900 shadow-sm hover:bg-emerald-100 hover:scale-105 transition-all dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20',
+                                      copiedRoomCode === activeRoom.roomCode && 'scale-105 bg-emerald-200 dark:bg-emerald-500/30'
+                                    )}
+                                    onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                                    aria-label={`Copy room code ${activeRoom.roomCode}`}
+                                  >
+                                    {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                    {activeRoom.roomCode}
+                                  </Button>
+                                )}
+                                {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
+                                  <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold animate-pulse",
+                                    setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3]" : "bg-[#1FA7E1]/10 text-[#1FA7E1]"
+                                  )}>
+                                    Waiting {formatWaitClock(queueWaitSeconds)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {launchState.status === 'error' && (
+                              <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/20">
+                                {launchState.message}
+                              </span>
+                            )}
+                            {launchState.status === 'validating' && (
+                              <span className={cn("inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg",
+                                setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                              )}>
+                                <Loader2 className="h-4 w-4 animate-spin" /> Validating...
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            {canCancelOnlineSession && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCancelOnlineSession}
+                                disabled={launchState.status === 'validating'}
+                                className="rounded-xl h-14 flex-1 sm:flex-none border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-bold px-6"
+                              >
+                                {activeRoom ? 'Cancel room' : 'Leave queue'}
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              onClick={submitSetup}
+                              disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
+                              className={cn(
+                                "rounded-xl h-14 flex-1 px-8 font-black uppercase tracking-wide text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-white border-0",
+                                setupConfig.mode === 'online'
+                                  ? "bg-[#8A3FD3] hover:bg-[#7b35c0] shadow-[#8A3FD3]/40"
+                                  : "bg-[#1FA7E1] hover:bg-[#1a95c9] shadow-[#1FA7E1]/40"
+                              )}
+                            >
+                              {launchState.status === 'validating' ? (
+                                <span className="inline-flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Starting...</span>
+                              ) : (
+                                setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
+                                  ? (privateRoomCodeInput.trim() ? 'Join Room' : 'Create Room')
+                                  : 'Start Battle'
+                              )}
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </motion.div>
+              </TabsContent>
 
-                  {/* Right Column: Mini Widgets */}
-                  <div className="space-y-3 lg:space-y-4 flex flex-col h-full justify-between">
-
-                    {/* Hall of Fame Widget Custom Graphic */}
-                    <div onClick={() => setActiveTab('leaderboard')} className="relative w-full h-[155px] sm:h-[165px] cursor-pointer group flex items-end justify-center overflow-visible mt-1 mb-2 scale-[0.75] origin-bottom sm:scale-[0.80] lg:scale-[0.85] lg:origin-center">
-                       <motion.div 
-                          className="relative w-full h-full flex flex-col items-center justify-end"
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.98 }}
-                       >
-                           {/* Stars (Moved outside the white-filter to preserve colored glowing effect) */}
-                           <div className="absolute top-[1px] sm:-top-[30px] w-full flex justify-center items-end px-2 z-0">
-                              <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] -rotate-[15deg] -mr-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
-                              
-<div className="z-10 relative animate-star-float">
-                <Star strokeWidth={0} fill="currentColor" className="w-[60px] h-[60px] text-[#fcd34d] drop-shadow-[0_0_25px_rgba(252,211,77,0.9)]" />
-              </div>
-
-                              <Star strokeWidth={0} fill="currentColor" className="w-[35px] h-[35px] text-[#fde047] rotate-[15deg] -ml-3 mb-1 z-0 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" />
-                           </div>
-
-                           {/* Add white stroke filter via combined drop-shadows */}
-                           <div className="absolute inset-x-0 bottom-[40px] top-0 z-10 flex flex-col items-center justify-end
-                                           filter drop-shadow-[0px_3px_0px_white] drop-shadow-[0px_-3px_0px_white] drop-shadow-[3px_0px_0px_white] drop-shadow-[-3px_0px_0px_white] drop-shadow-[2px_2px_0px_white] drop-shadow-[-2px_-2px_0px_white] drop-shadow-[2px_-2px_0px_white] drop-shadow-[-2px_2px_0px_white]">
-                               
-                               {/* Podium structure (Flat vector layout) */}
-                               <div className="flex items-end justify-center z-20 relative px-4">
-                                  {/* Left Pillar */}
-                                  <div className="flex flex-col items-center w-[65px] relative">
-                                     <div className="w-full h-[14px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
-                                     <div className="w-[85%] h-[50px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-1.5 pb-1.5">
-                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
-                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
-                                     </div>
-                                  </div>
-                                  
-                                  {/* Center Pillar */}
-                                  <div className="flex flex-col items-center w-[75px] -mx-[4px] z-20 relative">
-                                     <div className="w-full h-[18px] bg-[#f2812d] rounded-[2px] relative z-10 -mb-[1px]"></div>
-                                     <div className="w-[85%] h-[75px] bg-[#fa9746] rounded-b-[2px] flex flex-col justify-start items-center pt-4 gap-1.5">
-                                        <div className="w-9 h-1.5 bg-white rounded-full opacity-95" />
-                                        <div className="w-9 h-1.5 bg-white rounded-full opacity-95" />
-                                     </div>
-                                  </div>
-                                  
-                                  {/* Right Pillar */}
-                                  <div className="flex flex-col items-center w-[65px] relative">
-                                     <div className="w-full h-[14px] bg-[#d24b4b] rounded-[2px] relative z-10 -mb-[1px]"></div>
-                                     <div className="w-[85%] h-[50px] bg-[#fe5c5c] rounded-b-[2px] flex flex-col justify-center items-center gap-1.5 pb-1.5">
-                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
-                                        <div className="w-6 h-1.5 bg-white rounded-full opacity-95" />
-                                     </div>
-                                  </div>
-                               </div>
-                           </div>
-
-                           {/* 3D Ribbon / Banner overlapping the bottom of the podium */}
-                           <div className="absolute bottom-2 w-[110%] max-w-[280px] z-30 drop-shadow-2xl">
-                               <div className="relative w-full h-[52px] flex justify-center items-center">
-                                   {/* Left Cutout Flap */}
-                                   <div className="absolute -left-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0 clip-poly-left"></div>
-                                   {/* Right Cutout Flap */}
-                                   <div className="absolute -right-1 top-2 w-[55px] h-[40px] bg-[#8b0d0d] z-0 clip-poly-right"></div>
-                                   
-                                   {/* Front Ribbon Face */}
-                                   <div className="absolute inset-x-6 top-0 bottom-0 bg-[#b61515] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),_inset_0_-4px_4px_rgba(0,0,0,0.2)] z-10 flex flex-col items-center justify-center">
-                                       <h3 className="text-lg sm:text-xl font-black text-white tracking-widest leading-none drop-shadow-md font-nunito">Hall of Fame</h3>
-                                       <span className="text-[9px] sm:text-[10px] font-bold text-white/90 tracking-widest mt-0.5">View Page &gt;</span>
-                                   </div>
-                               </div>
-                           </div>
-                       </motion.div>
-                    </div>
-
-                    {/* My Stats Widget (Horizontal Swipe Carousel) */}
-                    <div className="relative w-full bg-[#3b3a82] dark:bg-[#2b2b5f] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_30px_rgba(59,58,130,0.3)]">
-                      {/* Header */}
-                      <div className="flex flex-row items-end justify-between px-5 pt-4 pb-2 relative z-10">
-                        <h3 className="text-[18px] font-black text-white tracking-wide leading-none drop-shadow-md font-nunito">My Stats</h3>
-                        <Button 
-                          variant="link" 
-                          className="text-white/80 hover:text-white p-0 h-auto font-semibold text-[13px] tracking-wide" 
-                          onClick={() => setActiveTab('stats')}
-                        >
-                          View Stats &gt;
-                        </Button>
-                      </div>
-
-                      {/* Content: Continuous Auto-scroll Marquee */}
-                      <div className="relative z-10 w-full overflow-hidden pb-4">
-                        {/* Edge Gradients for smooth fade in/out */}
-                        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
-                        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#3b3a82] to-transparent z-20 pointer-events-none dark:from-[#2b2b5f]" />
-                        
-<div className="flex w-max pl-3 animate-marquee">
-              {[0, 1].map((i) => (
-                            <div key={i} className="flex gap-2.5 pr-2.5">
-                              {/* Card 1: Win Rate */}
-                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#f0eaff] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#d6ccf5]">
-                                <Trophy className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#a06aec]/10 -rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[12px] drop-shadow-sm leading-none">🏆</span>
-                                <div className="relative z-10 space-y-[1px]">
-                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#8f5ae2] leading-none tracking-tight">{Math.round((statsData?.winRate || 0))} %</h4>
-                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#baa4df] uppercase tracking-wider leading-none">Win Rate</p>
-                                </div>
-                              </div>
-
-                              {/* Card 2: Matches */}
-                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#e1f5f7] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#b0e6eb]">
-                                <Target className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#35a8bc]/10 rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[12px] drop-shadow-sm leading-none">🎯</span>
-                                <div className="relative z-10 space-y-[1px]">
-                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#319ab4] leading-none tracking-tight">{statsData?.matchesPlayed || 0}</h4>
-                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#7eafbe] uppercase tracking-wider leading-none">Matches</p>
-                                </div>
-                              </div>
-
-                              {/* Card 3: Avg. Response */}
-                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#fef5e7] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#f6ebd2]">
-                                <Clock3 className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#e87a42]/10 -rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[12px] drop-shadow-sm leading-none">⏱️</span>
-                                <div className="relative z-10 space-y-[1px]">
-                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#db734b] leading-none tracking-tight">{statsData?.averageResponseMs ? (statsData.averageResponseMs / 1000).toFixed(1) : 0}s</h4>
-                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#d2a893] uppercase tracking-wider leading-none whitespace-nowrap">Response</p>
-                                </div>
-                              </div>
-
-                              {/* Card 4: Total XP */}
-                              <div className="flex-none w-[60px] sm:w-[65px] lg:w-[70px] xl:w-[75px] aspect-square rounded-[12px] bg-[#fdeceb] p-1.5 flex flex-col justify-between relative overflow-hidden group shadow-sm dark:bg-[#fbd3d3]">
-                                <Sparkles className="absolute -bottom-1 -right-2 w-6 h-6 sm:w-8 sm:h-8 text-[#df655a]/10 rotate-12 transition-transform group-hover:scale-110" />
-                                <span className="text-[12px] drop-shadow-sm leading-none">✨</span>
-                                <div className="relative z-10 space-y-[1px]">
-                                  <h4 className="text-[12px] sm:text-[14px] lg:text-[16px] font-black text-[#d05c54] leading-none tracking-tight">{studentProfile?.currentXP || 0}</h4>
-                                  <p className="text-[6px] lg:text-[7px] font-extrabold text-[#dd9a9a] uppercase tracking-wider leading-none whitespace-nowrap">Total XP</p>
-                                </div>
-                              </div>
-</div>
-              ))}
-            </div>
-                      </div>
-                    </div>
-
-                    <Card className={cn(cardFrameClass, 'rounded-[18px] flex flex-col min-h-[200px]')}>
-                      <CardHeader className="pb-0 pt-3 px-4 flex flex-row items-center justify-between">
-                         <CardTitle className="text-[14px] font-black flex items-center gap-2 text-[#2e2b5e] dark:text-[#f5f7fb]">
-                           <History className="h-[16px] w-[16px] text-[#2e2b5e] dark:text-[#9e8fff]" /> Match History
-                         </CardTitle>
-                         <Button variant="link" size="sm" className="h-auto p-0 text-[12px] font-semibold text-muted-foreground dark:text-[#95a0bb] hover:text-primary transition-colors" onClick={() => setActiveTab('history')}>View All</Button>
+              <TabsContent value="battle" className="mt-0 outline-none">
+                <motion.div
+                  key="battle"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="space-y-4"
+                >
+                  {!activeMatch ? (
+                    activeRoom ? (
+                      <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />Private Room Lobby</CardTitle>
+                          <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                            Room {activeRoom.roomCode} · {activeRoom.participantCount}/2 students connected.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              {activeRoom.status === 'ready'
+                                ? 'Opponent connected. Syncing start...'
+                                : 'Waiting for another student to join this room.'}
+                            </p>
+                            <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                              Share room code {activeRoom.roomCode} with your classmate.
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                              {(activeRoom.status === 'waiting' || activeRoom.status === 'ready') && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="h-8 rounded-lg"
+                                  onClick={handleCancelOnlineSession}
+                                  disabled={launchState.status === 'validating'}
+                                >
+                                  Cancel room
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 rounded-lg"
+                                onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
+                              >
+                                {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                {copiedRoomCode === activeRoom.roomCode ? 'Copied' : 'Copy code'}
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : queueActive ? (
+                      <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />Public Matchmaking</CardTitle>
+                          <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                            Searching for a student with the same setup...
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+                    ) : (
+                      <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                        <CardHeader>
+                          <CardTitle className="text-base flex items-center gap-2"><Swords className="h-4 w-4 text-primary dark:text-[#9e8fff]" />No active battle</CardTitle>
+                          <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                            Start from Setup to create a bot match, private room, or public queue session.
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+                    )
+                  ) : (
+                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center justify-between gap-3">
+                          <span className="inline-flex items-center gap-2">
+                            {activeMatch.mode === 'bot'
+                              ? <Bot className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
+                              : <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />}
+                            vs {activeMatch.opponentName}
+                          </span>
+                          <div className="inline-flex items-center gap-2">
+                            {isDesignPauseAvailable && activeMatch.status === 'in_progress' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleToggleDesignPause}
+                                className="h-8 rounded-lg"
+                              >
+                                {designPauseActive ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Play className="h-3.5 w-3.5" />
+                                    Resume
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Pause className="h-3.5 w-3.5" />
+                                    Pause
+                                  </span>
+                                )}
+                              </Button>
+                            )}
+                            <span className="text-sm font-bold tabular-nums">{activeMatch.scoreFor} - {activeMatch.scoreAgainst}</span>
+                          </div>
+                        </CardTitle>
+                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
+                          {activeMatch.status === 'completed'
+                            ? `Completed in ${activeMatch.totalRounds} rounds.`
+                            : activeMatch.status === 'ready'
+                              ? activeMatch.mode === 'online'
+                                ? 'Waiting for both players to confirm and start together.'
+                                : 'Finalizing practice bot session start.'
+                              : `Round ${activeMatch.currentRound} of ${activeMatch.totalRounds}${designPauseActive ? ' (paused for design)' : ''}`}
+                        </CardDescription>
+                        {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid) && (
+                          <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
+                            {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid)}
+                          </p>
+                        )}
                       </CardHeader>
-                      <CardContent className="space-y-1.5 px-4 pt-1 pb-3 overflow-y-auto">
-                         <div className="text-[11px] text-muted-foreground dark:text-[#8b95ad] mb-1.5 leading-relaxed">
-                           Your recent student battles only.
-                         </div>
+                      <CardContent className="space-y-4">
+                        {activeMatch.status === 'ready' && (
+                          <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
+                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              {activeMatch.mode === 'online'
+                                ? 'Waiting for both players to lock in start...'
+                                : 'Starting practice bot round...'}
+                            </p>
+                            {activeMatch.mode === 'online' && activeMatch.expiresAtMs && (
+                              <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
+                                Public match expires in <span className="font-semibold tabular-nums">{formatWaitClock(queueWaitSeconds)}</span> if the synchronized start does not happen.
+                              </p>
+                            )}
+                            {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
+                              onClick={() => {
+                                setActiveMatch(null);
+                                setActiveRoom(null);
+                                setQueueActive(false);
+                                setLaunchState({ status: 'idle' });
+                                setActiveTab('setup');
+                              }}
+                            >
+                              Force Cancel
+                            </Button>
+                          </div>
+                        )}
+
+                        {activeMatch.status === 'in_progress' && activeMatch.currentQuestion && (
+                          <>
+                            <div className="rounded-xl border border-border bg-muted/40 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                              <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                                Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>{designPauseActive ? ' (paused)' : ''}
+                              </p>
+                              {designPauseActive && (
+                                <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                  Design pause keeps this battle screen static while you edit UI.
+                                </p>
+                              )}
+                            </div>
+
+                            <p className="text-lg font-bold text-foreground dark:text-[#f5f7fb]">
+                              {activeMatch.currentQuestion.prompt}
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {activeMatch.currentQuestion.choices.map((choice, index) => (
+                                <Button
+                                  key={index}
+                                  type="button"
+                                  variant={
+                                    selectedOptionIndex === index
+                                      ? 'default'
+                                      : 'outline'
+                                  }
+                                  onClick={() => setSelectedOptionIndex(index)}
+                                  disabled={answerSubmitting || roundLocked || designPauseActive}
+                                  className={cn(
+                                    'h-auto min-h-[48px] justify-start text-left font-medium px-4 py-3 rounded-xl whitespace-normal',
+                                    selectedOptionIndex === index
+                                      ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#0B0F19]'
+                                      : '',
+                                  )}
+                                >
+                                  <span className="mr-2 font-semibold">{String.fromCharCode(65 + index)}.</span>
+                                  {choice}
+                                </Button>
+                              ))}
+                            </div>
+
+                            <div className="flex justify-end">
+                              <Button
+                                type="button"
+                                onClick={() => void submitRoundAnswer(selectedOptionIndex)}
+                                disabled={answerSubmitting || roundLocked || designPauseActive}
+                                className="rounded-xl"
+                              >
+                                {designPauseActive ? (
+                                  <span className="inline-flex items-center gap-2"><Pause className="h-4 w-4" /> Paused for design</span>
+                                ) : answerSubmitting ? (
+                                  <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</span>
+                                ) : roundLocked ? (
+                                  'Waiting for opponent...'
+                                ) : (
+                                  'Lock Answer'
+                                )}
+                              </Button>
+                            </div>
+                          </>
+                        )}
+
+                        {lastRoundResult && (
+                          <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
+                            <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                              Last round: {lastRoundResult.studentCorrect ? 'Correct' : 'Incorrect'} · {activeMatch.mode === 'bot' ? 'Bot' : 'Opponent'} {lastRoundResult.botCorrect ? 'Correct' : 'Incorrect'}
+                            </p>
+                            <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                              Correct option: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
+                            </p>
+                          </div>
+                        )}
+
+                        {activeMatch.status === 'completed' && (
+                          <div className="space-y-3">
+                            <div
+                              className={cn(
+                                'rounded-2xl border p-4',
+                                activeMatch.outcome === 'win'
+                                  ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-400/40 dark:bg-emerald-900/20'
+                                  : activeMatch.outcome === 'loss'
+                                    ? 'border-rose-300 bg-rose-50 dark:border-rose-400/40 dark:bg-rose-900/20'
+                                    : 'border-amber-300 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-900/20',
+                              )}
+                            >
+                              <p className="text-lg font-black tracking-wide text-foreground dark:text-[#ecf0fb]">
+                                {activeMatch.outcome === 'win'
+                                  ? 'Victory!'
+                                  : activeMatch.outcome === 'loss'
+                                    ? 'Match Complete'
+                                    : 'Draw Match'}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
+                                Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
+                              </p>
+                              <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
+                                XP Earned: +{activeMatch.xpBreakdown?.totalXPAwarded ?? activeMatch.xpEarned ?? 0}
+                                {activeMatch.xpBreakdown && (
+                                  <span className="block">Base: +{activeMatch.xpBreakdown.baseMatchXP} + Performance: +{activeMatch.xpBreakdown.performanceXP}</span>
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setActiveMatch(null);
+                                  setActiveRoom(null);
+                                  setQueueActive(false);
+                                  setActiveTab('setup');
+                                }}
+                                className="rounded-xl"
+                              >
+                                Start New Match
+                              </Button>
+                              {activeMatch.mode === 'bot' && (
+                                <Button
+                                  type="button"
+                                  onClick={() => void handleRequestRematch()}
+                                  disabled={answerSubmitting}
+                                  className="rounded-xl"
+                                >
+                                  Rematch
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-0 outline-none">
+                <motion.div
+                  key="history"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="space-y-4"
+                >
+                  {/* History Banner */}
+                  <motion.div
+                    className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent" />
+
+                    {/* Animated Background Elements */}
+                    <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl animate-orb-pulse" />
+                    <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-500/20 blur-2xl animate-orb-pulse-delayed" />
+
+                    <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-5">
+                        <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 transition-all backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
+                          <ChevronRight className="h-6 w-6 rotate-180 text-emerald-300" />
+                        </Button>
+                        <div>
+                          <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
+                            <div className="bg-emerald-500/20 p-2 rounded-2xl shadow-inner border border-emerald-500/30">
+                              <div className="relative w-8 h-8 flex items-center justify-center">
+                                <div className="absolute w-5 h-6 bg-emerald-500/30 border border-emerald-400/50 rounded-sm -rotate-12 translate-x-1 shadow-sm" />
+                                <div className="absolute w-5 h-6 bg-teal-400/50 border border-teal-300/60 rounded-sm rotate-6 -translate-x-1 shadow-md backdrop-blur-sm" />
+                                <div className="absolute w-5 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-sm shadow-[0_0_15px_rgba(52,211,153,0.8)] z-10 flex flex-col items-center justify-center gap-[3px]">
+                                  <div className="w-2.5 h-[2px] bg-white/90 rounded-full" />
+                                  <div className="w-3 h-[2px] bg-white/90 rounded-full" />
+                                  <div className="w-2 h-[2px] bg-white/90 rounded-full" />
+                                </div>
+                              </div>
+                            </div>
+                            Matches History
+                          </h2>
+                          <p className="text-[12px] font-black text-white/60 mt-2 tracking-[0.1em] uppercase">
+                            Review your past duels and track your progress.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  <div className="relative isolate w-full">
+                    <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
+                    <div className="absolute bottom-[-10%] left-[-5%] w-[350px] h-[350px] bg-teal-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
+
+                    <div className="rounded-[24px] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl p-6 sm:p-8">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-black text-white tracking-wide leading-none drop-shadow-md">Match History</h3>
+                        <p className="text-sm font-semibold text-white/60 mt-2">Your recent student battles only.</p>
+                      </div>
+
+                      <div className="flex gap-2 mb-6">
+                        {[
+                          { value: 'all', label: 'All' },
+                          { value: 'online', label: 'Online' },
+                          { value: 'bot', label: 'Bot' },
+                        ].map((entry) => (
+                          <Button
+                            key={entry.value}
+                            type="button"
+                            variant="outline"
+                            onClick={() => setHistoryFilterMode(entry.value as 'all' | QuizBattleMode)}
+                            className={cn(
+                              "rounded-full h-9 px-5 border transition-all font-bold tracking-wide",
+                              historyFilterMode === entry.value
+                                ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                                : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                            )}
+                          >
+                            {entry.label}
+                          </Button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-4">
                         {statsLoading ? (
-                          <div className="space-y-2">
-                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                            <Skeleton className="h-10 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
+                          <div className="space-y-3">
+                            <Skeleton className="h-[76px] w-full rounded-2xl bg-white/5 border border-white/10" />
+                            <Skeleton className="h-[76px] w-full rounded-2xl bg-white/5 border border-white/10" />
                           </div>
                         ) : filteredHistory.length === 0 ? (
-                          <p className="text-xs text-center text-muted-foreground dark:text-[#a8b2c9] py-2">No battle history yet.</p>
+                          <p className="text-sm text-white/50 py-4">No matches in this filter yet.</p>
                         ) : (
-                          filteredHistory.slice(0, 3).map((entry) => {
+                          filteredHistory.map((entry) => {
                             const isWin = entry.outcome === 'win';
                             const isLoss = entry.outcome === 'loss';
-                            
-                            // Generate initials from opponent name (e.g. Practice Bot -> PB)
-                            const initials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
-                            
-                            return (
-                              <div key={entry.matchId} className="group relative overflow-hidden rounded-[14px] border border-muted-foreground/15 bg-white dark:bg-[#11151d] dark:border-[#2f3547] p-2 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md">
-                                {/* Option 2: The Dynamic Background Gradient Fade */}
-                                <div className={cn(
-                                  "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.2] dark:opacity-[0.25] mix-blend-multiply dark:mix-blend-screen transition-all",
-                                  isWin ? "bg-gradient-to-l from-emerald-500 via-emerald-500/40 to-transparent" : 
-                                  isLoss ? "bg-gradient-to-l from-rose-500 via-rose-500/40 to-transparent" : 
-                                  "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
-                                )} />
-                                
-                                <div className="flex items-center gap-2.5 relative z-10 w-full">
-                                  {/* Left Avatar Bubble */}
-                                  <div className={cn(
-                                    "w-9 h-9 rounded-full flex items-center justify-center font-black text-[12px] tracking-wide text-white flex-shrink-0 shadow-inner",
-                                    isWin ? "bg-[#34d399] dark:bg-[#15803d]" : isLoss ? "bg-[#fb7185] dark:bg-[#be123c]" : "bg-[#fbbf24] dark:bg-[#b45309]" 
-                                  )}>
-                                    {initials}
-                                  </div>
-                                  
-                                  {/* Center Match Details */}
-                                  <div className="flex-grow min-w-0 flex flex-col justify-center">
-                                    <p className="text-[13px] font-extrabold text-[#36326e] dark:text-[#e4e7f1] truncate leading-tight">
-                                      vs {entry.opponentName}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-muted-foreground/60 dark:text-[#7f88a3] truncate flex items-center gap-1 mt-0.5">
-                                      {entry.subjectId} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-muted-foreground/30" /> {entry.rounds || '5'} rnds
-                                    </p>
-                                  </div>
 
-                                  {/* Right Score & Outcome Text */}
-                                  <div className="text-right flex flex-col items-end justify-center pl-2 flex-shrink-0">
-                                    <p className="tabular-nums text-[16px] leading-[1.1] font-black text-[#2e2b5e] dark:text-[#f5f7fb] tracking-tighter">
-                                      {entry.scoreFor}<span className="text-muted-foreground/40 mx-[1px]">-</span>{entry.scoreAgainst}
-                                    </p>   
-                                    <p
-                                      className={cn(
-                                        'text-[9px] font-black uppercase tracking-[0.1em]',
-                                        isWin ? 'text-emerald-500 dark:text-emerald-400' : isLoss ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'
-                                      )}
-                                    >
-                                      {entry.outcome}
-                                    </p>
-                                  </div>
+                            return (
+                              <div key={entry.matchId} className="relative overflow-hidden rounded-[20px] bg-white/5 border border-white/10 p-5 flex items-center justify-between shadow-lg transition-all hover:bg-white/10 hover:shadow-xl">
+                                <div className={cn(
+                                  "absolute inset-y-0 left-0 w-3/4 pointer-events-none z-0",
+                                  isWin ? "bg-gradient-to-r from-emerald-500/50 via-emerald-500/10 to-transparent" : isLoss ? "bg-gradient-to-r from-rose-500/50 via-rose-500/10 to-transparent" : "bg-gradient-to-r from-amber-500/50 via-amber-500/10 to-transparent"
+                                )} />
+
+                                <div className="relative z-10 pl-2">
+                                  <p className="text-base sm:text-lg font-black text-white drop-shadow-md">vs {entry.opponentName}</p>
+                                  <p className="text-[13px] font-bold text-white/60 tabular-nums mt-0.5">
+                                    {entry.scoreFor}-{entry.scoreAgainst} <span className="mx-1">•</span> {entry.accuracy.toFixed(0)}% <span className="mx-1">•</span> +{entry.xpEarned} XP
+                                  </p>
+                                </div>
+                                <div className="relative z-10">
+                                  <span className={cn(
+                                    'text-sm font-black uppercase tracking-[0.1em] rounded-full px-4 py-1.5 border shadow-sm',
+                                    isWin ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : isLoss ? 'text-rose-300 border-rose-500/30 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'text-amber-300 border-amber-500/30 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                                  )}>
+                                    {formatOutcomeChip(entry.outcome)}
+                                  </span>
                                 </div>
                               </div>
                             );
                           })
                         )}
-                      </CardContent>
-                    </Card>
-
-                  </div>
-                </div>
-</motion.div>
-            </TabsContent>
-
-            <TabsContent value="setup" className="mt-0 outline-none">
-              <motion.div
-                key="setup"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="w-full space-y-6"
-              >
-                {/* Gamified Header Banner */}
-                <motion.div
-                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 shadow-lg",
-                    setupConfig.mode === 'online' 
-                      ? "border-purple-500/20 shadow-[0_0_40px_-10px_rgba(138,63,211,0.2)]"
-                      : "border-sky-500/20 shadow-[0_0_40px_-10px_rgba(31,167,225,0.2)]"
-                  )}
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  {/* Animated Background Elements */}
-                  <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-r",
-                    setupConfig.mode === 'online'
-                      ? "from-purple-500/20 via-fuchsia-500/10 to-purple-600/5 dark:from-purple-500/20 dark:via-fuchsia-500/10 dark:to-purple-900/10"
-                      : "from-sky-500/20 via-cyan-500/10 to-sky-600/5 dark:from-sky-500/20 dark:via-cyan-500/10 dark:to-sky-900/10"
-                  )} />
-                  
-                  <div 
-                    className={cn("pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl animate-orb-pulse",
-                      setupConfig.mode === 'online' ? "bg-purple-400/20" : "bg-sky-400/20"
-                    )}
-                  />
-                  <div 
-                    className={cn("pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full blur-2xl animate-orb-pulse-delayed",
-                      setupConfig.mode === 'online' ? "bg-fuchsia-400/30" : "bg-cyan-400/30"
-                    )}
-                  />
-                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiLz4KPHBhdGggZD0iTTAgMEgxdjFIMHoiIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPgo8L3N2Zz4=')] opacity-30 dark:opacity-10 mix-blend-overlay" />
-                  
-                  <div className="relative p-6 sm:p-8 md:px-10 flex items-center gap-5 sm:gap-8 z-10">
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => setActiveTab("hub")} 
-                      className={cn(
-                        "h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-full hover:scale-105 transition-all backdrop-blur-md shadow-lg shrink-0 flex items-center justify-center group",
-                        setupConfig.mode === 'online'
-                          ? "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-purple-500/30"
-                          : "bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 border border-sky-500/30"
-                      )}
-                    >
-                      <ChevronRight className={cn("h-6 w-6 sm:h-8 sm:w-8 rotate-180 transition-transform group-hover:-translate-x-0.5",
-                        setupConfig.mode === 'online' ? "text-purple-800 dark:text-purple-300" : "text-sky-800 dark:text-sky-300"
-                      )} />
-                    </Button>
-                    <div>
-                      <h2 className={cn("flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br drop-shadow-sm",
-                        setupConfig.mode === 'online' 
-                          ? "from-purple-600 to-fuchsia-500 dark:from-purple-300 dark:to-fuchsia-200"
-                          : "from-sky-600 to-cyan-500 dark:from-sky-300 dark:to-cyan-200"
-                      )}>
-                        <div className={cn("p-2 rounded-2xl shadow-inner border animate-icon-bob",
-                            setupConfig.mode === 'online'
-                              ? "bg-purple-100 dark:bg-purple-900/50 border-purple-200 dark:border-purple-700/50"
-                              : "bg-sky-100 dark:bg-sky-900/50 border-sky-200 dark:border-sky-700/50"
-                          )}
-                        >
-                          {setupConfig.mode === 'online' 
-                            ? <Users className="h-8 w-8 text-purple-600 dark:text-purple-400 drop-shadow-[0_0_8px_rgba(138,63,211,0.5)]" /> 
-                            : <Bot className="h-8 w-8 text-sky-600 dark:text-sky-400 drop-shadow-[0_0_8px_rgba(31,167,225,0.5)]" />
-                          }
-                        </div>
-                        {setupConfig.mode === 'online' ? "1v1 Online" : "1v1 vs Bot"}
-                      </h2>
-                      <p className={cn("text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm",
-                        setupConfig.mode === 'online' ? "text-purple-600/80 dark:text-purple-400/80" : "text-sky-600/80 dark:text-sky-400/80"
-                      )}>
-                        {setupConfig.mode === 'online' ? "CHALLENGE YOUR SCHOOLMATES AND PROVE YOUR SKILLS." : "CHALLENGE THE AI AND SHARPEN YOUR SKILLS."}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
+              </TabsContent>
 
-                {/* Setup Form Glass Panel */}
-                <div className="rounded-[24px] border border-white/40 bg-white/85 dark:border-white/10 dark:bg-black/80 backdrop-blur-xl p-5 sm:p-7 shadow-xl">
-                  {/* Two Column Layout */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
-                    
-                    {/* Left Column: Core Settings */}
-                    <div className="space-y-4">
-                      <div className="space-y-1.5 group">
-                        <label className={cn(
-                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                        )}>Category</label>
-                        <Select
-                          value={setupConfig.subjectId}
-                          onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
-                        >
-                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
-                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
-                            errorFor('subjectId') && 'border-rose-400')}>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                            {gradeScopedSubjects.map((entry) => (
-                              <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}
-                      </div>
+              <TabsContent value="stats" className="mt-0 outline-none">
+                <motion.div
+                  key="stats"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="space-y-4"
+                >
+                  {/* Stats Banner */}
+                  <motion.div
+                    className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent" />
 
-                      <div className="space-y-1.5 group">
-                        <label className={cn(
-                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                        )}>Strand / Topic Group</label>
-                        <Select
-                          value={setupConfig.topicId}
-                          onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
-                        >
-                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
-                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
-                            errorFor('topicId') && 'border-rose-400')}>
-                            <SelectValue placeholder="Select topic group" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                            {moduleOptions.map((entry) => (
-                              <SelectItem key={entry.value} value={entry.value} className="rounded-lg">{entry.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('topicId')}</p>}
-                      </div>
+                    {/* Animated Background Elements */}
+                    <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl animate-orb-pulse" />
+                    <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-500/20 blur-2xl animate-orb-pulse-delayed" />
 
-                      <div className="space-y-1.5 group">
-                        <label className={cn(
-                          "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                          setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                        )}>
-                          {setupConfig.mode === 'online' ? 'Difficulty' : 'Bot Difficulty'}
-                        </label>
-                        <Select
-                          value={setupConfig.mode === 'bot'
-                            ? (setupConfig.adaptiveBot ? 'adaptive' : setupConfig.botDifficulty)
-                            : setupConfig.difficulty}
-                          onValueChange={(value) =>
-                            setSetupConfig((previous) =>
-                              previous.mode === 'bot'
-                                ? {
-                                  ...previous,
-                                  botDifficulty: value as QuizBattleSetupConfig['botDifficulty'],
-                                  adaptiveBot: value === 'adaptive',
-                                }
-                                : { ...previous, difficulty: value as QuizBattleSetupConfig['difficulty'] },
-                            )
-                          }
-                        >
-                          <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
-                            setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                            <SelectItem value="easy" className="rounded-lg">Easy</SelectItem>
-                            <SelectItem value="medium" className="rounded-lg">Medium</SelectItem>
-                            <SelectItem value="hard" className="rounded-lg">Hard</SelectItem>
-                            {setupConfig.mode === 'bot' && <SelectItem value="adaptive" className="rounded-lg">Adaptive</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5 group">
-                          <label className={cn(
-                            "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                          )}>Questions</label>
-                          <Select
-                            value={String(setupConfig.rounds)}
-                            onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
-                          >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
-                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
-                              errorFor('rounds') && 'border-rose-400')}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                              {[3, 5, 7, 10, 12, 15].map((entry) => (
-                                <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('rounds')}</p>}
-                        </div>
-
-                        <div className="space-y-1.5 group">
-                          <label className={cn(
-                            "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1 line-clamp-1",
-                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                          )}>Time / Q</label>
-                          <Select
-                            value={String(setupConfig.timePerQuestionSec)}
-                            onValueChange={(value) =>
-                              setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
-                            }
-                          >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner', 
-                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
-                              errorFor('timePerQuestionSec') && 'border-rose-400')}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                              {[15, 20, 30, 45, 60, 90].map((entry) => (
-                                <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry} sec</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('timePerQuestionSec')}</p>}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Modes, Extras, and Actions */}
-                    <div className="flex flex-col justify-between space-y-6">
-                      <div className="space-y-5">
-                        {setupConfig.mode === 'online' && (
-                          <div className="space-y-3 rounded-2xl border border-[#8A3FD3]/20 bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 p-4">
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">Online Match Type</label>
-                              <div className="grid grid-cols-2 gap-3">
-                                {[
-                                  { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
-                                  { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
-                                ].map((entry) => (
-                                  <Button
-                                    key={entry.value}
-                                    type="button"
-                                    variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
-                                    className={cn(
-                                      "rounded-xl h-11 transition-all border-none font-bold text-xs",
-                                      setupConfig.queueType === entry.value 
-                                        ? "bg-[#8A3FD3] hover:bg-[#7b35c0] text-white shadow-md shadow-[#8A3FD3]/30"
-                                        : "bg-white/50 hover:bg-white/80 dark:bg-black/30 dark:hover:bg-black/50 text-[#8A3FD3] dark:text-[#d3a8ff]"
-                                    )}
-                                    onClick={() =>
-                                      setSetupConfig((previous) => ({
-                                        ...previous,
-                                        queueType: entry.value,
-                                      }))
-                                    }
-                                  >
-                                    {entry.label}
-                                  </Button>
-                                ))}
+                    <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-5">
+                        <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 transition-all backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.15)] shrink-0">
+                          <ChevronRight className="h-6 w-6 rotate-180 text-indigo-300" />
+                        </Button>
+                        <div>
+                          <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
+                            <div className="bg-indigo-500/20 p-2 rounded-2xl shadow-inner border border-indigo-500/30 animate-icon-bob">
+                              <div className="relative w-8 h-8 flex items-end justify-center gap-1 pb-1">
+                                <div className="w-1.5 h-3 bg-indigo-300 rounded-t-[2px] shadow-[0_0_8px_rgba(165,180,252,0.8)]" />
+                                <div className="w-1.5 h-6 bg-purple-400 rounded-t-[2px] shadow-[0_0_12px_rgba(192,132,252,0.9)]" />
+                                <div className="w-1.5 h-4 bg-indigo-400 rounded-t-[2px] shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                               </div>
                             </div>
-
-                            {setupConfig.queueType === 'private_room' && (
-                              <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="pt-2 space-y-2"
-                              >
-                                <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">
-                                  Room Code (optional)
-                                </label>
-                                <Input
-                                  value={privateRoomCodeInput}
-                                  onChange={(event) =>
-                                    setPrivateRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
-                                  }
-                                  placeholder="Leave blank to create a room"
-                                  className="rounded-xl h-12 text-center text-lg uppercase font-bold tracking-[0.25em] border-[#8A3FD3]/30 bg-white/80 dark:bg-black/50 dark:border-[#8A3FD3]/20 focus-visible:ring-[#8A3FD3]/50 shadow-inner"
-                                  maxLength={6}
-                                />
-                                <div className="rounded-xl border border-[#8A3FD3]/30 bg-[#8A3FD3]/10 px-3 py-3 text-[12px] font-semibold text-[#6620a2] leading-snug dark:border-[#8A3FD3]/30 dark:bg-[#8A3FD3]/10 dark:text-[#d3a8ff]">
-                                  Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        )}
-
-                        <label className={cn("flex flex-col sm:flex-row sm:items-center justify-between rounded-[16px] border bg-white/50 p-4 transition-colors cursor-pointer shadow-sm dark:bg-black/50 group",
-                          setupConfig.mode === 'online' ? "border-[#8A3FD3]/20 hover:bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 dark:hover:bg-[#8A3FD3]/10" : "border-[#1FA7E1]/20 hover:bg-[#1FA7E1]/5 dark:border-[#1FA7E1]/20 dark:hover:bg-[#1FA7E1]/10"
-                        )}>
-                          <div className="flex items-center gap-3">
-                            <div className={cn("h-11 w-11 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
-                              setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3] dark:text-[#c48bfc]" : "bg-[#1FA7E1]/10 text-[#1FA7E1] dark:text-[#7ad8ff]"
-                            )}>
-                              {battleSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 opacity-60" />}
-                            </div>
-                            <div className="mb-3 sm:mb-0">
-                              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Battle Sounds</p>
-                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cues for countdowns and results.</p>
-                            </div>
-                          </div>
-                          <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
-                        </label>
-
-                        <motion.div
-                          initial={false}
-                          animate={{
-                            opacity: battleSoundEnabled ? 1 : 0.45,
-                            y: battleSoundEnabled ? 0 : -2,
-                          }}
-                          className={cn(
-                            'rounded-[16px] border bg-white/40 p-4 shadow-sm dark:bg-black/40',
-                            setupConfig.mode === 'online'
-                              ? 'border-[#8A3FD3]/20 dark:border-[#8A3FD3]/20'
-                              : 'border-[#1FA7E1]/20 dark:border-[#1FA7E1]/20'
-                          )}
-                        >
-                          <div className="mb-2 flex items-center justify-between">
-                            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700 dark:text-slate-200">SFX Volume</p>
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{Math.round(battleSoundVolume * 100)}%</p>
-                          </div>
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={Math.round(battleSoundVolume * 100)}
-                            disabled={!battleSoundEnabled}
-                            onChange={(event) => {
-                              const next = clampNumber(Number(event.target.value) / 100, 0, 1);
-                              setBattleSoundVolume(next);
-                            }}
-                            onMouseUp={() => playBattleTone('tick')}
-                            onTouchEnd={() => playBattleTone('tick')}
-                            className="h-2 w-full cursor-pointer accent-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Battle sound effects volume"
-                          />
-                        </motion.div>
-                      </div>
-
-                      {/* Action Bar (Pinned to Bottom of Column) */}
-                      <div className="flex flex-col gap-3">
-                        <div aria-live="polite" className="min-h-[24px] text-sm font-medium">
-                          {launchState.status === 'queued' && (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={cn("inline-flex items-center gap-1 text-[13px] font-bold px-3 py-1.5 rounded-lg",
-                                setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
-                              )}>
-                                {launchState.message}
-                              </span>
-                              {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className={cn(
-                                    'h-8 rounded-full border-emerald-500/50 bg-emerald-50 px-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-900 shadow-sm hover:bg-emerald-100 hover:scale-105 transition-all dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20',
-                                    copiedRoomCode === activeRoom.roomCode && 'scale-105 bg-emerald-200 dark:bg-emerald-500/30'
-                                  )}
-                                  onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
-                                  aria-label={`Copy room code ${activeRoom.roomCode}`}
-                                >
-                                  {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                  {activeRoom.roomCode}
-                                </Button>
-                              )}
-                              {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
-                                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold animate-pulse",
-                                  setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3]" : "bg-[#1FA7E1]/10 text-[#1FA7E1]"
-                                )}>
-                                  Waiting {formatWaitClock(queueWaitSeconds)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {launchState.status === 'error' && (
-                            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/20">
-                              {launchState.message}
-                            </span>
-                          )}
-                          {launchState.status === 'validating' && (
-                            <span className={cn("inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg",
-                              setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
-                            )}>
-                              <Loader2 className="h-4 w-4 animate-spin" /> Validating...
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          {canCancelOnlineSession && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={handleCancelOnlineSession}
-                              disabled={launchState.status === 'validating'}
-                              className="rounded-xl h-14 flex-1 sm:flex-none border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-bold px-6"
-                            >
-                              {activeRoom ? 'Cancel room' : 'Leave queue'}
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            onClick={submitSetup}
-                            disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
-                            className={cn(
-                              "rounded-xl h-14 flex-1 px-8 font-black uppercase tracking-wide text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-white border-0",
-                              setupConfig.mode === 'online'
-                                ? "bg-[#8A3FD3] hover:bg-[#7b35c0] shadow-[#8A3FD3]/40"
-                                : "bg-[#1FA7E1] hover:bg-[#1a95c9] shadow-[#1FA7E1]/40"
-                            )}
-                          >
-                            {launchState.status === 'validating' ? (
-                              <span className="inline-flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Starting...</span>
-                            ) : (
-                              setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
-                                ? (privateRoomCodeInput.trim() ? 'Join Room' : 'Create Room')
-                                : 'Start Battle'
-                            )}
-                          </Button>
+                            My Statistics
+                          </h2>
+                          <p className="text-[12px] font-black text-white/60 mt-2 tracking-[0.1em] uppercase">
+                            Analyzing your battlefield performance.
+                          </p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-            </TabsContent>
+                  </motion.div>
 
-            <TabsContent value="battle" className="mt-0 outline-none">
-              <motion.div
-                key="battle"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
-              >
-                {!activeMatch ? (
-                  activeRoom ? (
-                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />Private Room Lobby</CardTitle>
-                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                          Room {activeRoom.roomCode} · {activeRoom.participantCount}/2 students connected.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                            {activeRoom.status === 'ready'
-                              ? 'Opponent connected. Syncing start...'
-                              : 'Waiting for another student to join this room.'}
-                          </p>
-                          <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
-                            Share room code {activeRoom.roomCode} with your classmate.
-                          </p>
-                          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-                            {(activeRoom.status === 'waiting' || activeRoom.status === 'ready') && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-8 rounded-lg"
-                                onClick={handleCancelOnlineSession}
-                                disabled={launchState.status === 'validating'}
-                              >
-                                Cancel room
-                              </Button>
-                            )}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-8 rounded-lg"
-                              onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
-                            >
-                              {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                              {copiedRoomCode === activeRoom.roomCode ? 'Copied' : 'Copy code'}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : queueActive ? (
-                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />Public Matchmaking</CardTitle>
-                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                          Searching for a student with the same setup...
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  ) : (
-                    <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2"><Swords className="h-4 w-4 text-primary dark:text-[#9e8fff]" />No active battle</CardTitle>
-                        <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                          Start from Setup to create a bot match, private room, or public queue session.
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  )
-                ) : (
-                  <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center justify-between gap-3">
-                        <span className="inline-flex items-center gap-2">
-                          {activeMatch.mode === 'bot'
-                            ? <Bot className="h-4 w-4 text-primary dark:text-[#9e8fff]" />
-                            : <Users className="h-4 w-4 text-primary dark:text-[#9e8fff]" />}
-                          vs {activeMatch.opponentName}
-                        </span>
-                        <div className="inline-flex items-center gap-2">
-                          {isDesignPauseAvailable && activeMatch.status === 'in_progress' && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleToggleDesignPause}
-                              className="h-8 rounded-lg"
-                            >
-                              {designPauseActive ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                  <Play className="h-3.5 w-3.5" />
-                                  Resume
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5">
-                                  <Pause className="h-3.5 w-3.5" />
-                                  Pause
-                                </span>
-                              )}
-                            </Button>
-                          )}
-                          <span className="text-sm font-bold tabular-nums">{activeMatch.scoreFor} - {activeMatch.scoreAgainst}</span>
-                        </div>
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                        {activeMatch.status === 'completed'
-                          ? `Completed in ${activeMatch.totalRounds} rounds.`
-                          : activeMatch.status === 'ready'
-                            ? activeMatch.mode === 'online'
-                              ? 'Waiting for both players to confirm and start together.'
-                              : 'Finalizing practice bot session start.'
-                            : `Round ${activeMatch.currentRound} of ${activeMatch.totalRounds}${designPauseActive ? ' (paused for design)' : ''}`}
-                      </CardDescription>
-                      {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid) && (
-                        <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
-                          {describeLifecycleEvent(activeMatch.lifecycle, studentProfile?.uid)}
-                        </p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {activeMatch.status === 'ready' && (
-                        <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-[#2f3547] dark:bg-[#11151d] flex flex-col gap-3">
-                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                            {activeMatch.mode === 'online'
-                              ? 'Waiting for both players to lock in start...'
-                              : 'Starting practice bot round...'}
-                          </p>
-                          {activeMatch.mode === 'online' && activeMatch.expiresAtMs && (
-                            <p className="text-xs font-medium text-muted-foreground dark:text-[#9aa4be]">
-                              Public match expires in <span className="font-semibold tabular-nums">{formatWaitClock(queueWaitSeconds)}</span> if the synchronized start does not happen.
-                            </p>
-                          )}
-                          {/* Fallback cancel button prevents the UI from getting stuck if backend readiness fails. */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-rose-500 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-900/30"
-                            onClick={() => {
-                              setActiveMatch(null);
-                              setActiveRoom(null);
-                              setQueueActive(false);
-                              setLaunchState({ status: 'idle' });
-                              setActiveTab('setup');
-                            }}
-                          >
-                            Force Cancel
-                          </Button>
-                        </div>
-                      )}
+                  <div className="relative isolate w-full">
+                    <div className="absolute top-[0%] left-[10%] w-[350px] h-[350px] bg-indigo-500/30 rounded-full blur-[120px] pointer-events-none -z-10" />
+                    <div className="absolute bottom-[0%] right-[10%] w-[300px] h-[300px] bg-purple-500/30 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-                      {activeMatch.status === 'in_progress' && activeMatch.currentQuestion && (
-                        <>
-                          <div className="rounded-xl border border-border bg-muted/40 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                            <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
-                              Time left: <span className="font-semibold tabular-nums">{roundSecondsLeft}s</span>{designPauseActive ? ' (paused)' : ''}
-                            </p>
-                            {designPauseActive && (
-                              <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                                Design pause keeps this battle screen static while you edit UI.
-                              </p>
-                            )}
-                          </div>
-
-                          <p className="text-lg font-bold text-foreground dark:text-[#f5f7fb]">
-                            {activeMatch.currentQuestion.prompt}
-                          </p>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {activeMatch.currentQuestion.choices.map((choice, index) => (
-                              <Button
-                                key={index}
-                                type="button"
-                                variant={
-                                  selectedOptionIndex === index
-                                    ? 'default'
-                                    : 'outline'
-                                }
-                                onClick={() => setSelectedOptionIndex(index)}
-                                disabled={answerSubmitting || roundLocked || designPauseActive}
-                                className={cn(
-                                  'h-auto min-h-[48px] justify-start text-left font-medium px-4 py-3 rounded-xl whitespace-normal',
-                                  selectedOptionIndex === index
-                                    ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-[#0B0F19]'
-                                    : '',
-                                )}
-                              >
-                                <span className="mr-2 font-semibold">{String.fromCharCode(65 + index)}.</span>
-                                {choice}
-                              </Button>
-                            ))}
-                          </div>
-
-                          <div className="flex justify-end">
-                            <Button
-                              type="button"
-                              onClick={() => void submitRoundAnswer(selectedOptionIndex)}
-                              disabled={answerSubmitting || roundLocked || designPauseActive}
-                              className="rounded-xl"
-                            >
-                              {designPauseActive ? (
-                                <span className="inline-flex items-center gap-2"><Pause className="h-4 w-4" /> Paused for design</span>
-                              ) : answerSubmitting ? (
-                                <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</span>
-                              ) : roundLocked ? (
-                                'Waiting for opponent...'
-                              ) : (
-                                'Lock Answer'
-                              )}
-                            </Button>
-                          </div>
-                        </>
-                      )}
-
-                      {lastRoundResult && (
-                        <div className="rounded-xl border border-border bg-muted/30 p-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                          <p className="text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                            Last round: {lastRoundResult.studentCorrect ? 'Correct' : 'Incorrect'} · {activeMatch.mode === 'bot' ? 'Bot' : 'Opponent'} {lastRoundResult.botCorrect ? 'Correct' : 'Incorrect'}
-                          </p>
-                          <p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
-                            Correct option: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
-                          </p>
-                        </div>
-                      )}
-
-                      {activeMatch.status === 'completed' && (
-                        <div className="space-y-3">
-                          <div
-                            className={cn(
-                              'rounded-2xl border p-4',
-                              activeMatch.outcome === 'win'
-                                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-400/40 dark:bg-emerald-900/20'
-                                : activeMatch.outcome === 'loss'
-                                  ? 'border-rose-300 bg-rose-50 dark:border-rose-400/40 dark:bg-rose-900/20'
-                                  : 'border-amber-300 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-900/20',
-                            )}
-                          >
-                            <p className="text-lg font-black tracking-wide text-foreground dark:text-[#ecf0fb]">
-                              {activeMatch.outcome === 'win'
-                                ? 'Victory!'
-                                : activeMatch.outcome === 'loss'
-                                  ? 'Match Complete'
-                                  : 'Draw Match'}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-foreground dark:text-[#ecf0fb]">
-                              Final Score: {activeMatch.scoreFor} - {activeMatch.scoreAgainst}
-                            </p>
-<p className="text-xs text-muted-foreground dark:text-[#9aa4be]">
-                               XP Earned: +{activeMatch.xpBreakdown?.totalXPAwarded ?? activeMatch.xpEarned ?? 0}
-                               {activeMatch.xpBreakdown && (
-                                 <span className="block">Base: +{activeMatch.xpBreakdown.baseMatchXP} + Performance: +{activeMatch.xpBreakdown.performanceXP}</span>
-                               )}
-                             </p>
-                          </div>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                setActiveMatch(null);
-                                setActiveRoom(null);
-                                setQueueActive(false);
-                                setActiveTab('setup');
-                              }}
-                              className="rounded-xl"
-                            >
-                              Start New Match
-                            </Button>
-                            {activeMatch.mode === 'bot' && (
-                              <Button
-                                type="button"
-                                onClick={() => void handleRequestRematch()}
-                                disabled={answerSubmitting}
-                                className="rounded-xl"
-                              >
-                                Rematch
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="history" className="mt-0 outline-none">
-              <motion.div
-                key="history"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
-              >
-                {/* History Banner */}
-                <motion.div 
-                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)]")}
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:via-teal-500/10 dark:to-teal-900/10" />
-                  
-                  {/* Animated Background Elements */}
-                  <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl animate-orb-pulse" />
-                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-400/20 blur-2xl animate-orb-pulse-delayed" />
-
-                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-5">
-                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)] shrink-0">
-                        <ChevronRight className="h-6 w-6 rotate-180 text-emerald-800 dark:text-emerald-300" />
-                      </Button>
-                      <div>
-                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-emerald-600 to-teal-500 dark:from-emerald-300 dark:to-teal-200 drop-shadow-sm">
-                          <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-2xl shadow-inner border border-emerald-200 dark:border-emerald-700/50 animate-icon-rotate">
-                            <History className="h-8 w-8 text-emerald-600 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                          </div>
-                          Matches History
-                        </h2>
-                        <p className="text-sm font-bold text-emerald-800/80 dark:text-emerald-100/70 mt-2 tracking-wide uppercase">
-                          Review your past duels and track your progress.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                  <CardHeader>
-                    <CardTitle className="text-base">Match History</CardTitle>
-                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">Your recent student battles only.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                      {[
-                        { value: 'all', label: 'All' },
-                        { value: 'online', label: 'Online' },
-                        { value: 'bot', label: 'Bot' },
-                      ].map((entry) => (
-                        <Button
-                          key={entry.value}
-                          type="button"
-                          variant={historyFilterMode === entry.value ? 'default' : 'outline'}
-                          onClick={() => setHistoryFilterMode(entry.value as 'all' | QuizBattleMode)}
-                          className="rounded-xl h-8 px-3"
-                        >
-                          {entry.label}
-                        </Button>
-                      ))}
-                    </div>
-
-                    {statsLoading ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                      </div>
-                    ) : filteredHistory.length === 0 ? (
-                      <p className="text-sm text-muted-foreground dark:text-[#a8b2c9]">No matches in this filter yet.</p>
-                    ) : (
-                      filteredHistory.map((entry) => (
-                        <div key={entry.matchId} className="rounded-xl border border-border bg-muted/40 px-3 py-2 flex items-center justify-between gap-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">vs {entry.opponentName}</p>
-                            <p className="text-xs text-muted-foreground dark:text-[#95a0bb] tabular-nums">{entry.scoreFor}-{entry.scoreAgainst} · {entry.accuracy.toFixed(0)}% · +{entry.xpEarned} XP</p>
-                          </div>
-                          <span className={cn('text-xs font-semibold rounded-full px-2.5 py-1 border', entry.outcome === 'win' ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-300/40 dark:bg-emerald-900/20' : entry.outcome === 'loss' ? 'text-rose-700 border-rose-200 bg-rose-50 dark:text-rose-300 dark:border-rose-300/40 dark:bg-rose-900/20' : 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-300 dark:border-amber-300/40 dark:bg-amber-900/20')}>
-                            {formatOutcomeChip(entry.outcome)}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="stats" className="mt-0 outline-none">
-              <motion.div
-                key="stats"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
-              >
-                {/* Stats Banner */}
-                <motion.div 
-                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-indigo-500/20 shadow-[0_0_40px_-10px_rgba(99,102,241,0.2)]")}
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-indigo-600/5 dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-purple-900/10" />
-                  
-                  {/* Animated Background Elements */}
-                  <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl animate-orb-pulse" />
-                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-400/20 blur-2xl animate-orb-pulse-delayed" />
-
-                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-5">
-                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] shrink-0">
-                        <ChevronRight className="h-6 w-6 rotate-180 text-indigo-800 dark:text-indigo-300" />
-                      </Button>
-                      <div>
-                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-500 dark:from-indigo-300 dark:to-purple-200 drop-shadow-sm">
-                          <div className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-2xl shadow-inner border border-indigo-200 dark:border-indigo-700/50 animate-icon-bob">
-                            <Target className="h-8 w-8 text-indigo-600 dark:text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                          </div>
-                          My Statistics
-                        </h2>
-                        <p className="text-sm font-bold text-indigo-800/80 dark:text-indigo-100/70 mt-2 tracking-wide uppercase">
-                          Analyzing your battlefield performance.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                  {[
-                    {
-                      label: 'Wins',
-                      value: statsData?.wins ?? 0,
-                      icon: Trophy,
-                    },
-                  {
-                    label: 'Current streak',
-                    value: statsData?.currentStreak ?? 0,
-                    icon: Sparkles,
-                  },
-                  {
-                    label: 'Avg accuracy',
-                    value: `${(statsData?.averageAccuracy || 0).toFixed(1)}%`,
-                    icon: ShieldCheck,
-                  },
-                  {
-                    label: 'Avg response',
-                    value: formatResponseTime(statsData?.averageResponseMs || 0),
-                    icon: Clock3,
-                  },
-                ].map((entry) => (
-                  <Card key={entry.label} className={cn(cardFrameClass, 'rounded-[18px]')}>
-                    <CardContent className="pt-6">
-                      <p className="text-xs text-muted-foreground dark:text-[#9da7bf]">{entry.label}</p>
-                      <p className="mt-1 tabular-nums text-2xl font-black text-foreground dark:text-[#f5f7fb]">{entry.value}</p>
-                      <entry.icon className="mt-3 h-4 w-4 text-primary dark:text-[#9e8fff]" />
-                    </CardContent>
-                  </Card>
-                ))}
-                </div>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="leaderboard" className="mt-0 outline-none">
-              <motion.div
-                key="leaderboard"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-4"
-              >
-                {/* Leaderboard Banner */}
-                <motion.div 
-                  className={cn(cardFrameClass, "relative overflow-hidden rounded-[24px] mb-6 border-amber-500/20 shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]")}
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-600/5 dark:from-amber-600/20 dark:via-orange-500/10 dark:to-orange-900/10" />
-                  
-                  {/* Animated Background Elements */}
-                  <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl animate-orb-pulse" />
-                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-400/20 blur-2xl animate-orb-pulse-delayed" />
-
-                  <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-5">
-                      <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/50 dark:bg-black/40 hover:bg-white/80 dark:hover:bg-black/60 hover:scale-105 transition-all backdrop-blur-md border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)] shrink-0">
-                        <ChevronRight className="h-6 w-6 rotate-180 text-amber-800 dark:text-amber-300" />
-                      </Button>
-                      <div>
-                        <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-amber-600 to-orange-500 dark:from-amber-300 dark:to-orange-200 drop-shadow-sm">
-                          <motion.div
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-2xl shadow-inner border border-amber-200 dark:border-amber-700/50"
-                          >
-                            <Trophy className="h-8 w-8 text-amber-600 dark:text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]" />
-                          </motion.div>
-                          Hall of Fame
-                        </h2>
-                        <p className="text-sm font-bold text-amber-800/80 dark:text-amber-100/70 mt-2 tracking-wide uppercase">
-                          The top-ranked minds across the globe.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <Card className={cn(cardFrameClass, 'rounded-[18px]')}>
-                
-
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Crown className="h-4 w-4 text-primary dark:text-[#9e8fff]" /> Hall of Fame</CardTitle>
-                    <CardDescription className="text-muted-foreground dark:text-[#b2bad0]">
-                      Student-only ranking using trusted backend aggregates.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {leaderboardLoading ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                        <Skeleton className="h-12 w-full rounded-xl bg-muted dark:bg-[#2a3143]" />
-                      </div>
-                    ) : leaderboardRows.length === 0 ? (
-                      <p className="text-sm text-muted-foreground dark:text-[#a9b3ca]">No leaderboard entries yet. Finish a battle to place on the board.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                          <div className="rounded-xl border border-border bg-muted/30 p-2.5 dark:border-[#2f3547] dark:bg-[#11151d]">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#98a2bc]">Name display</p>
-                            <Select value={leaderboardNameMode} onValueChange={(value) => setLeaderboardNameMode(value as 'alias' | 'initials' | 'full')}>
-                              <SelectTrigger className="mt-1 h-8 rounded-lg">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="alias">Alias</SelectItem>
-                                <SelectItem value="initials">Initials</SelectItem>
-                                <SelectItem value="full">Full name</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <label className="rounded-xl border border-border bg-muted/30 p-2.5 flex items-center justify-between gap-3 dark:border-[#2f3547] dark:bg-[#11151d]">
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-[#98a2bc]">Score detail</p>
-                              <p className="text-xs text-muted-foreground dark:text-[#98a2bc]">Show exact score values</p>
+                    <div className="rounded-[24px] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl p-6 sm:p-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+                        {[
+                          {
+                            label: 'WINS',
+                            value: statsData?.wins ?? 0,
+                            icon: Trophy,
+                            textColor: 'text-rose-400',
+                            gradient: 'radial-gradient(circle at 10% 90%, rgba(244,63,94,0.35) 0%, transparent 70%)'
+                          },
+                          {
+                            label: 'CURRENT STREAK',
+                            value: statsData?.currentStreak ?? 0,
+                            icon: Sparkles,
+                            textColor: 'text-purple-400',
+                            gradient: 'radial-gradient(circle at 10% 90%, rgba(168,85,247,0.35) 0%, transparent 70%)'
+                          },
+                          {
+                            label: 'AVG ACCURACY',
+                            value: `${(statsData?.averageAccuracy || 0).toFixed(1)}%`,
+                            icon: Target,
+                            textColor: 'text-blue-400',
+                            gradient: 'radial-gradient(circle at 10% 90%, rgba(59,130,246,0.35) 0%, transparent 70%)'
+                          },
+                          {
+                            label: 'AVG RESPONSE',
+                            value: formatResponseTime(statsData?.averageResponseMs || 0),
+                            icon: Clock3,
+                            textColor: 'text-teal-400',
+                            gradient: 'radial-gradient(circle at 10% 90%, rgba(20,184,166,0.35) 0%, transparent 70%)'
+                          },
+                        ].map((entry) => (
+                          <div key={entry.label} className="relative overflow-hidden rounded-[20px] bg-white/5 border border-white/10 shadow-lg min-h-[160px] flex flex-col justify-between p-6 transition-transform hover:scale-105">
+                            <div className="absolute inset-0 pointer-events-none z-0 mix-blend-screen" style={{ background: entry.gradient }} />
+                            <div className="relative z-10">
+                              <p className={cn("text-[11px] font-black uppercase tracking-[0.15em] mb-3", entry.textColor)}>{entry.label}</p>
+                              <p className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md">{entry.value}</p>
                             </div>
-                            <Switch checked={showExactLeaderboardScores} onCheckedChange={setShowExactLeaderboardScores} />
-                          </label>
-                        </div>
-
-                        <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">
-                          Privacy mode keeps classmate identities and scores obfuscated by default while preserving your own exact rank and score.
-                        </p>
-
-                        {leaderboardRows.map((entry) => (
-                          <div
-                            key={entry.userId}
-                            className={cn(
-                              'rounded-xl border bg-muted/30 px-3 py-2 flex items-center justify-between dark:bg-[#11151d]',
-                              entry.isSelf
-                                ? 'border-primary/60 dark:border-[#8d7fff]'
-                                : 'border-border dark:border-[#2f3547]',
-                            )}
-                          >
-                            <div>
-                              <p className="text-sm font-semibold text-foreground dark:text-[#f5f7fb]">
-                                #{entry.rank} {entry.displayName}{entry.isSelf ? ' (You)' : ''}
-                              </p>
-                              <p className="text-xs text-muted-foreground dark:text-[#95a0bb]">Win rate {entry.winRate.toFixed(1)}% · Best streak {entry.bestStreak}</p>
+                            <div className="relative z-10 mt-6 flex justify-start">
+                              <entry.icon className={cn("h-5 w-5 drop-shadow-md", entry.textColor)} />
                             </div>
-                            <p className="tabular-nums text-sm font-semibold text-foreground dark:text-[#f5f7fb]">{entry.scoreLabel}</p>
                           </div>
                         ))}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </TabsContent>
-        </Tabs>
-      </motion.div>
-      </div>
-    </WarpBackground>
+                    </div>
+                  </div>
+                </motion.div>
+              </TabsContent>
+
+              <TabsContent value="leaderboard" className="mt-0 outline-none">
+                <motion.div
+                  key="leaderboard"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="space-y-4"
+                >
+                  {/* Leaderboard Banner */}
+                  <motion.div
+                    className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent" />
+
+                    {/* Animated Background Elements */}
+                    <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/20 blur-3xl animate-orb-pulse" />
+                    <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-500/20 blur-2xl animate-orb-pulse-delayed" />
+
+                    <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-5">
+                        <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 transition-all backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
+                          <ChevronRight className="h-6 w-6 rotate-180 text-amber-300" />
+                        </Button>
+                        <div>
+                          <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
+                            <motion.div
+                              animate={{ scale: [1, 1.1, 1] }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                              className="bg-amber-500/20 p-2 rounded-2xl shadow-inner border border-amber-500/30"
+                            >
+                              <Crown className="h-8 w-8 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
+                            </motion.div>
+                            Hall of Fame
+                          </h2>
+                          <p className="text-[12px] font-black text-white/60 mt-2 tracking-[0.1em] uppercase">
+                            The top-ranked minds across the globe.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  <div className="relative isolate w-full">
+                    <div className="absolute top-[20%] left-[20%] w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] bg-pink-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
+
+                    <div className="rounded-[24px] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl p-6 sm:p-8">
+                      <div className="mb-8 flex items-start gap-3">
+                        <Crown className="h-8 w-8 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)] shrink-0" />
+                        <div>
+                          <h3 className="text-xl font-black text-white tracking-wide leading-none drop-shadow-md">Hall of Fame</h3>
+                          <p className="text-sm font-semibold text-white/60 mt-2">Student-only ranking using trusted backend aggregates.</p>
+                        </div>
+                      </div>
+
+                      {leaderboardLoading ? (
+                        <div className="space-y-4">
+                          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
+                          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
+                          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
+                        </div>
+                      ) : leaderboardRows.length === 0 ? (
+                        <p className="text-sm text-white/50">No leaderboard entries yet. Finish a battle to place on the board.</p>
+                      ) : (
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                              <p className="text-[11px] font-black uppercase tracking-widest text-white/50 mb-3">Name display</p>
+                              <Select value={leaderboardNameMode} onValueChange={(value) => setLeaderboardNameMode(value as 'alias' | 'initials' | 'full')}>
+                                <SelectTrigger className="h-10 rounded-xl bg-black/20 border-white/10 text-white font-bold hover:bg-black/30">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border border-white/10 bg-[#161a25]/95 backdrop-blur-xl">
+                                  <SelectItem value="alias" className="text-white hover:bg-white/10 rounded-lg focus:bg-white/10 focus:text-white">Alias</SelectItem>
+                                  <SelectItem value="initials" className="text-white hover:bg-white/10 rounded-lg focus:bg-white/10 focus:text-white">Initials</SelectItem>
+                                  <SelectItem value="full" className="text-white hover:bg-white/10 rounded-lg focus:bg-white/10 focus:text-white">Full name</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <label className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4 transition-colors hover:bg-white/10 cursor-pointer">
+                              <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-white/50 mb-1">Score detail</p>
+                                <p className="text-sm font-bold text-white/90">Show exact score values</p>
+                              </div>
+                              <Switch checked={showExactLeaderboardScores} onCheckedChange={setShowExactLeaderboardScores} />
+                            </label>
+                          </div>
+
+                          <p className="text-[13px] font-semibold text-white/40 leading-relaxed px-1">
+                            Privacy mode keeps classmate identities and scores obfuscated by default while preserving your own exact rank and score.
+                          </p>
+
+                          <div className="space-y-3">
+                            {leaderboardRows.map((entry) => (
+                              <div
+                                key={entry.userId}
+                                className={cn(
+                                  'relative overflow-hidden rounded-[20px] p-5 flex items-center justify-between shadow-lg transition-all hover:scale-[1.01] group',
+                                  entry.isSelf
+                                    ? 'bg-amber-500/10 border border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
+                                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                                )}
+                              >
+                                {entry.isSelf && <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-transparent pointer-events-none -z-10" />}
+                                <div className="relative z-10 flex flex-col gap-1.5">
+                                  <h4 className={cn("text-lg sm:text-xl font-black drop-shadow-md", entry.isSelf ? "text-amber-400" : "text-white")}>
+                                    #{entry.rank} {entry.displayName}{entry.isSelf ? ' (You)' : ''}
+                                  </h4>
+                                  <p className="text-[13px] font-bold text-white/60">
+                                    Win rate {entry.winRate.toFixed(1)}% <span className="mx-1">•</span> Best streak {entry.bestStreak}
+                                  </p>
+                                </div>
+                                <div className="relative z-10 text-xl sm:text-2xl font-black text-white tabular-nums drop-shadow-md">
+                                  {entry.scoreLabel}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        </div>
+      </WarpBackground>
     </>
   );
 };
